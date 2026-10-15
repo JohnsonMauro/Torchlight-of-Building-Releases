@@ -45,7 +45,7 @@ Download the latest version from the **[Releases page](https://github.com/TomSel
 
 ## VirusTotal
 
-VirusTotal scan for v0.2.0: link coming soon.
+Scanned on VirusTotal: [Installer v0.2.0](https://www.virustotal.com/gui/file/1d5e263d6c13ff306e16ae9afb811f36cb77cb6900d41523dc5bea33d7174cdb) · Portable v0.2.0: link coming soon.
 
 A few heuristic engines can flag unsigned Electron apps, so an occasional detection like that is expected.
 
