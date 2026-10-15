@@ -542,7 +542,7 @@ export function deleteAllBuilds() {
 // last-used builds stay as they are.
 export function restoreBuildsFromBackup(backup) {
   const source = libraryFromBackup(backup);
-  if (!source) throw new TypeError("This file is not a TLI Builder backup");
+  if (!source) throw new TypeError("This file is not a Torchlight of Building backup");
   const library = loadBuildLibrary();
   const ids = new Set(library.builds.map((build) => build.id));
   const names = new Set(library.builds.map((build) => build.name));
