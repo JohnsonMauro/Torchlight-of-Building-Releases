@@ -45,7 +45,7 @@ Download the latest version from the **[Releases page](https://github.com/TomSel
 
 ## VirusTotal
 
-Scanned clean on VirusTotal: [VirusTotal scan for v0.2.0](VIRUSTOTAL_LINK_HERE)
+VirusTotal scan for v0.2.0: link coming soon.
 
 A few heuristic engines can flag unsigned Electron apps, so an occasional detection like that is expected.
 
