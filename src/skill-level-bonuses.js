@@ -1,0 +1,60 @@
+const levelPattern = /([+-]\d+)\s+(?:to\s+)?([A-Za-z]+(?:\s+[A-Za-z]+){0,2})\s+(?:Skill Levels?\b|Skills['’]? Levels?\b)/gi;
+
+function matchingBonus(text, skill) {
+  const tags = new Set((skill.tags || []).map((tag) => tag.toLowerCase()));
+  let total = 0;
+  for (const match of String(text || "").matchAll(levelPattern)) {
+    const suffix = String(text).slice(match.index + match[0].length);
+    if (/^\s+(?:for each|for every|when|while|if|per)\b/i.test(suffix)) continue;
+    // "… for every +1 to Spell Skill Level" (Nether King Ultimate node) names a level as the scaling unit; it grants none.
+    const prefix = String(text).slice(0, match.index);
+    if (/(?:for each|for every|per)\s*$/i.test(prefix)) continue;
+    const category = match[2].toLowerCase();
+    const applies = category === "all" || category === "active" && skill.role !== "aura" && skill.role !== "support" || category === "passive" && skill.role === "aura" || category === "main" && skill.role === "main" || tags.has(category);
+    if (applies) total += Number(match[1]);
+  }
+  return total;
+}
+
+/** Does a skill-level line ("+2 Fire Skill Level", "+1 to All Skills' Levels") raise this skill? (coverage badges) */
+export function skillLevelLineApplies(text, skill) {
+  return matchingBonus(text, skill) !== 0;
+}
+
+// "+1 Main Skill Level for each empty Passive Skill Slot" / "+1 Passive Skill Level for each empty Active Skill Slot" (Necklace of
+// Inverse; gear uniques round 2): N levels per empty slot of that kind. The empty slots come from the planner's skill board (5 skill
+// slots, 4 Aura slots read as the Passive Skill slots: provisional), `sources.emptySkillSlots`.
+const EMPTY_SLOT_LEVEL = /^\+(\d+) (Main|Passive|Active) Skill Levels? for each empty (Passive|Active) Skill Slot$/i;
+export function emptySlotLevelLine(text) {
+  const match = String(text || "").replace(/\s+/g, " ").trim().match(EMPTY_SLOT_LEVEL);
+  return match ? { per: Number(match[1]), target: match[2].toLowerCase(), slot: match[3].toLowerCase() } : null;
+}
+export const emptySlotLevelApplies = (line, skill) => line.target === "main" ? skill.role === "main" : line.target === "passive" ? skill.role === "aura" : skill.role !== "aura" && skill.role !== "support";
+
+export function skillLevelBonus(skill, sources) {
+  const contributions = [];
+  const add = (text, name, multiplier = 1) => {
+    const empty = emptySlotLevelLine(text);
+    if (empty) {
+      const slots = Math.max(0, Number(sources.emptySkillSlots?.[empty.slot]) || 0);
+      const levels = emptySlotLevelApplies(empty, skill) ? Math.trunc(empty.per * slots * multiplier) : 0;
+      if (levels) contributions.push({ name, text, levels, provisional: `${slots} empty ${empty.slot} slot${slots === 1 ? "" : "s"} on the skill board (provisional)` });
+      return;
+    }
+    const levels = Math.trunc(matchingBonus(text, skill) * multiplier);
+    if (levels) contributions.push({ name, text, levels });
+  };
+  for (const item of sources.gear || []) {
+    for (const modifier of [...(item.modifiers || []), ...(item.corrosionModifiers || [])]) add(modifier, item.name);
+  }
+  for (const panel of sources.talents || []) {
+    for (const node of panel.allocatedNodes || []) {
+      if (node.rank > 0 && !node.replacedBy) add(node.description, `${panel.name} talent`, node.rank * (node.inverseEffectMultiplier ?? 1));
+    }
+    for (const core of panel.activeCores || []) add(core.description, `${panel.name} core talent`);
+  }
+  for (const slate of sources.slates || []) {
+    for (const affix of [...(slate.fixed || []), ...(slate.brands || []), ...(slate.copiedTalents || [])]) add(affix, slate.name);
+  }
+  return { total: contributions.reduce((sum, entry) => sum + entry.levels, 0), contributions };
+}

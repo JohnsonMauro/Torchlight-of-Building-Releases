@@ -2,6 +2,10 @@
 
 An unofficial, fan-made build planner and damage calculator for **Torchlight: Infinite** (SS14 Tartarus).
 
+**▶ Use it in your browser: [tomselleck09.github.io/Torchlight-of-Building-Releases](https://tomselleck09.github.io/Torchlight-of-Building-Releases/)**
+
+**⬇ Or download the Windows app from [Releases](https://github.com/TomSelleck09/Torchlight-of-Building-Releases/releases/latest)**
+
 > **Calculations are a work in progress.** Many mechanics are modeled, but some are only partly modeled or not modeled yet. Every tooltip line has a badge (*In calc*, *Not modeled*, and so on), so you can see what is counted. Treat the figures as estimates, not exact in-game numbers.
 
 ## ⭐ Import from game
@@ -31,6 +35,8 @@ Download the latest version from the **[Releases page](https://github.com/TomSel
 - **Installer** (`TLI-Build-Planner-Setup-0.2.0.exe`), recommended. It updates itself from inside the app.
 - **Portable** (`TLI-Build-Planner-0.2.0-portable.exe`), no install needed. The app tells you when a new version is out and opens this page.
 
+Prefer the browser? Use it online: https://tomselleck09.github.io/Torchlight-of-Building-Releases/ (Import from game asks you to pick your UE_game.log)
+
 **Windows SmartScreen:** the app isn't code-signed, so the first launch shows "Windows protected your PC". Click **More info → Run anyway**.
 
 **Updating**
@@ -52,3 +58,5 @@ A few heuristic engines can flag unsigned Electron apps, so an occasional detect
 ## Disclaimer
 
 Torchlight of Building is an unofficial fan-made planner. It is not affiliated with, endorsed by, or connected to XD Inc. or the Torchlight: Infinite developers. Torchlight: Infinite and its names, art and data are the property of their respective owners. Game data via TLIDB (tlidb.com).
+
+Source code is in this repository. Code is MIT-licensed; game assets and data belong to their respective owners.
