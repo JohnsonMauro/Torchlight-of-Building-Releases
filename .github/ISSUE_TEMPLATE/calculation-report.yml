@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for testing! The planner's "Report calculation issue" button fills in the skill, hero, version and the planner's figures, and copies your build code: paste it into the Build code field below.
+        Thanks for testing! The planner's "Report calculation issue" button fills in the skill, hero, version and the planner's figures. The build code is filled in automatically when it fits; otherwise it's on your clipboard: paste it into the Build code field below.
   - type: input
     id: skill
     attributes:
@@ -34,16 +34,11 @@ body:
       description: The numbers the in-game recount or panel shows.
     validations:
       required: true
-  - type: dropdown
+  - type: input
     id: window
     attributes:
       label: Which in-game figure?
-      options:
-        - Last 5 s average
-        - Highest 5 s
-        - Whole-run average
-        - Character panel
-        - Other
+      description: "One of: Last 5 s average, Highest 5 s, Whole-run average, Character panel, Other."
     validations:
       required: true
   - type: textarea
@@ -63,7 +58,7 @@ body:
     id: build_code
     attributes:
       label: Build code
-      description: Paste the code the button copied (or use Export in the planner).
+      description: "Filled in automatically when it fits; otherwise it's on your clipboard: paste it here."
       render: text
     validations:
       required: true

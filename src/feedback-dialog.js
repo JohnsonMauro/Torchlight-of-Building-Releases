@@ -1,19 +1,27 @@
 import { escapeHtml } from "./html.js";
-import { AUTO_FIELD_IDS, BUILD_CODE_FIELD, clearDraft, dialogHeading, draftKeyFor, draftValues, feedbackForm, feedbackSubmission, issueTitle, missingRequired, prefillValues, readDraft, saveDraft, sendToast } from "./feedback-dialog-model.js";
+import { AUTO_FIELD_IDS, BUILD_CODE_FIELD, TITLE_FIELD, clearDraft, defaultIssueTitle, dialogHeading, draftKeyFor, draftValues, feedbackForm, feedbackSubmission, missingRequired, prefillValues, readDraft, saveDraft, sendToast } from "./feedback-dialog-model.js";
+import { compactBuildCode } from "./build-code-compact.js";
 
 // The in-planner feedback dialog behind "Report calculation issue", "Report bug" and "Submit an answer" (src/app.js).
-// It shows the GitHub form's fields (src/feedback-forms.js) in the import-build dialog's style; "Send to GitHub" copies
-// the build code (or the full report when a field had to be trimmed), then opens the pre-filled issue form in a new tab.
+// It shows an editable issue Title, then the GitHub form's fields (src/feedback-forms.js) in the import-build dialog's
+// style. The title follows its default (src/feedback-dialog-model.js defaultIssueTitle, e.g. "[Bug] <Area>: ") until the
+// player edits it. "Send to GitHub" puts the compact build code in the URL when it fits, else copies the build code (or
+// the full report when a field had to be trimmed), then opens the pre-filled issue form in a new tab.
 // The desktop app hands https links to the system browser (electron/main.cjs setWindowOpenHandler). No network here.
 
 const NOTE = "GitHub opens with everything filled in. Click Create to post it publicly (free GitHub account needed).";
 const fieldDomId = (id) => `feedback-field-${id}`;
+const TITLE_LABEL = "Title";
 
 /** The dialog's inner markup for one form (pure; tests read it). state: { heading, values, buildCode, includeBuildCode }. */
 export function feedbackDialogMarkup(formKey, { heading = "", values = {}, buildCode = "", includeBuildCode = false } = {}) {
   const form = feedbackForm(formKey);
   const editable = [];
   const auto = [];
+  {
+    const id = fieldDomId(TITLE_FIELD);
+    editable.push(`<div class="feedback-field" data-feedback-field="${TITLE_FIELD}"><label for="${id}">${TITLE_LABEL} <span class="feedback-required" aria-hidden="true">*</span></label><input type="text" id="${id}" name="${TITLE_FIELD}" data-feedback-input="${TITLE_FIELD}" required aria-required="true" aria-describedby="${id}-error" value="${escapeHtml(values[TITLE_FIELD] ?? "")}"><p class="feedback-error" id="${id}-error" hidden>This field is required.</p></div>`);
+  }
   for (const field of form.fields) {
     if (AUTO_FIELD_IDS.includes(field.id)) { auto.push(field); continue; }
     const id = fieldDomId(field.id);
@@ -47,7 +55,7 @@ const safeStorage = () => { try { return globalThis.localStorage || null; } catc
  * Wires the <dialog>. deps: { dialog, toast(message), openWindow(url), writeClipboard(text) → Promise, storage }.
  * Returns { open(formKey, context) } where context is what prefillValues takes plus { buildCode }.
  */
-export function createFeedbackDialog({ dialog, toast = () => {}, openWindow = (url) => window.open(url, "_blank", "noopener,noreferrer"), writeClipboard = (text) => navigator.clipboard.writeText(text), storage = safeStorage() }) {
+export function createFeedbackDialog({ dialog, toast = () => {}, openWindow = (url) => window.open(url, "_blank", "noopener,noreferrer"), writeClipboard = (text) => navigator.clipboard.writeText(text), storage = safeStorage(), compactCode = compactBuildCode }) {
   let current = null;
 
   const inputs = () => [...dialog.querySelectorAll("[data-feedback-input]")];
@@ -70,7 +78,7 @@ export function createFeedbackDialog({ dialog, toast = () => {}, openWindow = (u
   }
   function persist() {
     if (!current) return;
-    saveDraft(storage, current.draftKey, { values: draftValues(current.formKey, values(), current.prefilled), includeBuildCode: current.formKey === "calculation" ? false : includeCode() });
+    saveDraft(storage, current.draftKey, { values: draftValues(current.formKey, values(), current.prefilled, current.context), includeBuildCode: current.formKey === "calculation" ? false : includeCode() });
   }
   function close() {
     persist();
@@ -81,12 +89,16 @@ export function createFeedbackDialog({ dialog, toast = () => {}, openWindow = (u
     current.sendAttempted = true;
     const missing = refresh();
     if (missing.length) { for (const id of missing) { showError(id, true); current.shownErrors.add(id); } dialog.querySelector(`#${fieldDomId(missing[0])}`)?.focus(); return; }
+    const sending = current;
     const formValues = values();
-    const submission = feedbackSubmission(current.formKey, formValues, { ...options(), title: issueTitle(current.formKey, formValues, current.context) });
+    const sendOptions = options();
+    const compact = await sending.compactCode;
+    if (current !== sending) return;
+    const submission = feedbackSubmission(sending.formKey, formValues, { ...sendOptions, compactCode: compact, context: sending.context });
     let copied = true;
     if (submission.copyText) { try { await writeClipboard(submission.copyText); } catch { copied = false; } }
     openWindow(submission.url);
-    clearDraft(storage, current.draftKey);
+    clearDraft(storage, sending.draftKey);
     current = null;
     if (dialog.open) dialog.close();
     toast(sendToast(submission.copyKind, copied));
@@ -111,14 +123,28 @@ export function createFeedbackDialog({ dialog, toast = () => {}, openWindow = (u
     showError(id, empty);
     if (empty) current.shownErrors.add(id); else current.shownErrors.delete(id);
   }
+  // An unedited title follows its default (the bug form's Area, the calculation form's Skill); typing in it stops that.
+  function syncTitle(changedId) {
+    const titleInput = dialog.querySelector(`[data-feedback-input="${TITLE_FIELD}"]`);
+    if (!titleInput) return;
+    if (changedId === TITLE_FIELD) {
+      current.titleEdited = titleInput.value.trim() !== defaultIssueTitle(current.formKey, values(), current.context).trim();
+      return;
+    }
+    if (current.titleEdited) return;
+    const next = defaultIssueTitle(current.formKey, values(), current.context);
+    if (titleInput.value !== next) titleInput.value = next;
+  }
   dialog.addEventListener("input", (event) => {
     if (!current) return;
     const id = event.target.dataset?.feedbackInput;
-    if (id) current.touched.add(id);
+    if (id) { current.touched.add(id); syncTitle(id); }
     refresh(); persist();
   });
   dialog.addEventListener("change", (event) => {
     if (!current) return;
+    const id = event.target.dataset?.feedbackInput;
+    if (id) syncTitle(id);
     refresh(); persist();
     // Selects validate on change (and on Send) only: opening the native list moves focus on Windows, so blur would flash the error.
     if (event.target.matches?.("select[data-feedback-input]")) validateField(event.target);
@@ -150,7 +176,9 @@ export function createFeedbackDialog({ dialog, toast = () => {}, openWindow = (u
     const draftKey = draftKeyFor(formKey, context);
     const draft = readDraft(storage, draftKey);
     const buildCode = String(context.buildCode || "");
-    current = { formKey, context, prefilled, draftKey, buildCode, shownErrors: new Set(), touched: new Set(), sendAttempted: false };
+    // The compact code (src/build-code-compact.js) is prepared now so Send opens the tab without waiting on it.
+    const compact = buildCode ? Promise.resolve().then(() => compactCode(buildCode)).catch(() => "") : Promise.resolve("");
+    current = { formKey, context, prefilled, draftKey, buildCode, compactCode: compact, titleEdited: Boolean(draft?.values?.[TITLE_FIELD]), shownErrors: new Set(), touched: new Set(), sendAttempted: false };
     dialog.innerHTML = feedbackDialogMarkup(formKey, { heading: dialogHeading(formKey, context), values: { ...prefilled, ...(draft?.values || {}) }, buildCode, includeBuildCode: Boolean(draft?.includeBuildCode) });
     refresh();
     if (!dialog.open) dialog.showModal();

@@ -5,6 +5,10 @@
 // Field ids and labels are what scripts/collect-submissions.mjs (FIELD_LABELS) and the pre-filled URLs read: keep them.
 // Each field: id, type (input / textarea / dropdown), label, description, placeholder, options, required, and render
 // (GitHub's code-block rendering for a textarea).
+// Dropdowns are dropdowns in the dialog only. On GitHub they are written as `input` fields (same id and label, the
+// allowed values listed in the description, githubDescription): a URL query parameter fills GitHub's text fields but not
+// its dropdowns (docs.github.com "Creating an issue" > "Creating an issue from a URL query": "custom text fields"; a
+// dropdown pre-filled that way showed "None" in a 2026-10-18 test), so the dialog's choice would otherwise be lost.
 
 const field = (id, type, label, { description = "", placeholder = "", options = [], required = false, render = "" } = {}) =>
   Object.freeze({ id, type, label, description, placeholder, options: Object.freeze([...options]), required, render });
@@ -20,7 +24,7 @@ export const FEEDBACK_FORMS = Object.freeze({
     dialogTitle: "Report calculation issue",
     titlePrefix: "[Calc] ",
     label: "calculation-bug",
-    intro: "Thanks for testing! The planner's \"Report calculation issue\" button fills in the skill, hero, version and the planner's figures, and copies your build code: paste it into the Build code field below.",
+    intro: "Thanks for testing! The planner's \"Report calculation issue\" button fills in the skill, hero, version and the planner's figures. The build code is filled in automatically when it fits; otherwise it's on your clipboard: paste it into the Build code field below.",
     fields: Object.freeze([
       field("skill", "input", "Skill", { description: "The skill you compared.", required: true }),
       field("hero", "input", "Hero"),
@@ -29,7 +33,7 @@ export const FEEDBACK_FORMS = Object.freeze({
       field("window", "dropdown", "Which in-game figure?", { options: ["Last 5 s average", "Highest 5 s", "Whole-run average", "Character panel", "Other"], required: true }),
       field("test_setup", "textarea", "Test setup", { description: "Run duration, dummy level, conditions (standing still or moving, buffs, distance)." }),
       field("suspect", "textarea", "What you think is wrong"),
-      field("build_code", "textarea", "Build code", { description: "Paste the code the button copied (or use Export in the planner).", required: true, render: "text" }),
+      field("build_code", "textarea", "Build code", { description: "Filled in automatically when it fits; otherwise it's on your clipboard: paste it here.", required: true, render: "text" }),
       field("screenshots", "textarea", SCREENSHOTS_LABEL),
       field("app_version", "input", "Planner version", { description: "Filled in by the planner." }),
       field("platform", "input", "Platform", { description: "Filled in by the planner (web or desktop)." })
@@ -91,6 +95,15 @@ function scalar(value) {
   return plain ? text : JSON.stringify(text);
 }
 
+/** The GitHub field type for a schema field: dropdowns become inputs (see the header). */
+export const githubFieldType = (item) => (item.type === "dropdown" ? "input" : item.type);
+
+/** The GitHub description: a dropdown's description followed by "One of: <options>." */
+export function githubDescription(item) {
+  if (item.type !== "dropdown") return item.description;
+  return [item.description, `One of: ${item.options.join(", ")}.`].filter(Boolean).join(" ");
+}
+
 /** The GitHub issue-form YAML for one form definition (LF line endings, trailing newline). */
 export function issueFormYaml(form) {
   const lines = [
@@ -105,13 +118,10 @@ export function issueFormYaml(form) {
     for (const line of form.intro.split("\n")) lines.push(line ? `        ${line}` : "");
   }
   for (const item of form.fields) {
-    lines.push(`  - type: ${item.type}`, `    id: ${item.id}`, "    attributes:", `      label: ${scalar(item.label)}`);
-    if (item.description) lines.push(`      description: ${scalar(item.description)}`);
+    lines.push(`  - type: ${githubFieldType(item)}`, `    id: ${item.id}`, "    attributes:", `      label: ${scalar(item.label)}`);
+    const description = githubDescription(item);
+    if (description) lines.push(`      description: ${scalar(description)}`);
     if (item.placeholder && item.type !== "dropdown") lines.push(`      placeholder: ${scalar(item.placeholder)}`);
-    if (item.type === "dropdown") {
-      lines.push("      options:");
-      for (const option of item.options) lines.push(`        - ${scalar(option)}`);
-    }
     if (item.render && item.type === "textarea") lines.push(`      render: ${item.render}`);
     lines.push("    validations:", `      required: ${item.required ? "true" : "false"}`);
   }

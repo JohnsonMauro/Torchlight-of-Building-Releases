@@ -3,24 +3,11 @@ description: Something in the planner is broken, missing or wrong (not a damage 
 title: "[Bug] "
 labels: [planner-bug]
 body:
-  - type: dropdown
+  - type: input
     id: area
     attributes:
       label: Area
-      options:
-        - Gear
-        - Talents
-        - Prisms
-        - Slates
-        - Skills
-        - Hero
-        - Pacts
-        - Followers
-        - Import from game
-        - Build library & codes
-        - Damage path
-        - Desktop app
-        - Other
+      description: "One of: Gear, Talents, Prisms, Slates, Skills, Hero, Pacts, Followers, Import from game, Build library & codes, Damage path, Desktop app, Other."
     validations:
       required: true
   - type: textarea

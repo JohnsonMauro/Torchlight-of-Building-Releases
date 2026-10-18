@@ -4,6 +4,7 @@ import { damagePathPanelMarkup } from "./damage-path-panel.js";
 import { OPEN_QUESTIONS, openQuestionsFor, openQuestionsText } from "./open-questions.js";
 import { bugAreaForView, platformName } from "./feedback-links.js";
 import { createFeedbackDialog } from "./feedback-dialog.js";
+import { expandBuildCode } from "./build-code-compact.js";
 import { calculationReportContext } from "./feedback-report-context.js";
 import { APP_VERSION } from "./app-version.js";
 import { createPlannerCache } from "./planner-cache.js";
@@ -724,9 +725,11 @@ $("#export-build").addEventListener("click", async () => {
     showToast("Build code copied to clipboard");
   } catch { showToast("Clipboard access was unavailable"); }
 });
-function importBuildText(text) {
+// Import accepts the Export code and the compact "TLB3:" and "TLB2:" codes (src/build-code-compact.js), which expand to the former.
+async function importBuildText(text) {
+  const code = await expandBuildCode(text);
   persistPlannerState();
-  const imported=importBuildCode(text);
+  const imported=importBuildCode(code);
   applyPlannerState(loadPlannerState());
   renderCandidateViews();
   $("#import-build-dialog").close();
@@ -736,8 +739,7 @@ function importBuildText(text) {
 $("#import-build").addEventListener("click", () => $("#import-build-dialog").showModal());
 $("[data-cancel-import-build]").addEventListener("click", () => $("#import-build-dialog").close());
 $("[data-import-build-code]").addEventListener("click", () => {
-  try { importBuildText($("#import-build-code").value); }
-  catch { showToast("That build code could not be read"); }
+  importBuildText($("#import-build-code").value).catch(() => showToast("That build code could not be read"));
 });
 // Import from game. On open the planner asks its local reader for UE_game.log (scripts/serve.js
 // /api/game-log/snapshots, or the desktop bridge); both return only sanitised build dumps (src/game-log-local.js).
@@ -2570,8 +2572,8 @@ async function copyOpenQuestions(button) {
   button.copiedTimer = setTimeout(() => { button.textContent = "Copy questions"; }, 1600);
 }
 // Report buttons: each opens the in-planner feedback dialog (src/feedback-dialog.js) with its GitHub form's fields; "Send to
-// GitHub" copies the build code when it is included and opens the pre-filled issue form in a new tab (the desktop app hands
-// it to the system browser, electron/main.cjs setWindowOpenHandler). The build code never goes in the URL.
+// GitHub" puts the compact build code in the URL when it is included and fits (else copies it) and opens the pre-filled
+// issue form in a new tab (the desktop app hands it to the system browser, electron/main.cjs setWindowOpenHandler).
 const feedbackDialog = createFeedbackDialog({ dialog: $("#feedback-dialog"), toast: showToast });
 function currentBuildCode() {
   try { return encodePlannerState(plannerState); } catch { return ""; }

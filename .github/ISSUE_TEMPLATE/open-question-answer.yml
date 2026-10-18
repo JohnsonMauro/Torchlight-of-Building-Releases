@@ -35,16 +35,11 @@ body:
       description: What happens in game, in your own words.
     validations:
       required: true
-  - type: dropdown
+  - type: input
     id: how_tested
     attributes:
       label: How did you find out?
-      options:
-        - In-game dummy test
-        - In-game tooltip or panel
-        - Game data
-        - Patch notes or developer statement
-        - Other
+      description: "One of: In-game dummy test, In-game tooltip or panel, Game data, Patch notes or developer statement, Other."
     validations:
       required: true
   - type: textarea
