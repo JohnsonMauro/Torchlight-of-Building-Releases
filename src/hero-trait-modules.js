@@ -1,4 +1,14 @@
 import { normalizePercentageText } from "./percentage-text.js";
+import { yougaClauseKey, yougaLineStatus } from "./youga-ultimate-one.js";
+
+// Youga clause → badge module (src/youga-ultimate-one.js YOUGA_PATTERNS).
+const YOUGA_GROUPS = Object.freeze({
+  coreShare: "yougaCore", nonMain: "yougaCore", coreGrant: "yougaCore", moonTangle: "yougaCore", moonDamage: "yougaCore",
+  recalled: "yougaRecall", huntCast: "yougaRecall", huntTrack: "yougaRecall", huntRecall: "yougaRecall", huntPenetration: "yougaRecall",
+  claimGain: "yougaVault", claimExtend: "yougaVault", doomDefer: "yougaVault", doomInversion: "yougaVault",
+  threadsLinks: "yougaChains", threadsCooldown: "yougaChains", threadsTransfer: "yougaChains", threadsRatio: "yougaChains", commandGain: "yougaChains", commandDominion: "yougaChains",
+  measureExtend: "yougaSelves", measureEffect: "yougaSelves", measureDuration: "yougaSelves", liftSummon: "yougaSelves", liftRestore: "yougaSelves", liftDamage: "yougaSelves"
+});
 
 // Per-hero trait mechanics (research/talent-batch-2026-10-12.md §6.2, chunk 4). Trait lines join planner.modifierTexts
 // (origin "trait"), so plain clauses already reach every engine; this module reads the hero-specific states the plain
@@ -41,13 +51,22 @@ export const HERO_MODULES = Object.freeze([
     rule: "TLIDB keyword Stalker: \"+13% additional damage during Multistrike for every stack of Stalker. Initial max stacks: 3. Lasts for 4s\". Stacks held = min(max stacks, gains per second × 4 s): gains from movement (Moving) or 1 per Max Multistrike Count event (Cat's Punches); Cat's Vision raises the max by 1 per event, up to +3; Cat's Punches adds +1 initial Multistrike Count per 3 stacks. Provisional: \"during Multistrike\" = the repeated attacks; the initial count shifts every count of the sequence (src/skill-hit-model.js multistrikeSequence); Cat's Scratch's increment is held while events come within 4 s. 2026-10-14: Interest (share × the build's Movement Speed, capped, as additional Attack Damage), Cat Dive (per-level value × Movement Speed % chance per repeated attack to take the Max Multistrike Count attack's increment; user-confirmed reading, provisional) and Artificial Moon's Mark (+30% Mark Effect while Stalker is held) are read; Movement Speed is held in full (movement is constant, user rule)." },
   { key: "theaBlessings", heroes: /^thea-/, label: "Thea: Blessing cycle", status: "Not modeled",
     rule: "A Divine Blessing every 2 s in the order Focus, Agility, Tenacity: the Blessing duration is not in the trait text or the keyword tooltips, so how many stacks the cycle holds is undefined. God's Boon and the Divine Realm cycles are not modeled." },
-  // Youga – The Ultimate One (SS14, 2026-10-15; TLIDB The_Ultimate_One and the patch notes' trait tree): plain stat lines
-  // (Cooldown Recovery Speed, Skill Effect Duration, Movement Speed) reach the readers; the Clockwork Core and trait-skill
-  // clauses below have no model. The skill-board changes are applied (src/trait-board-grants.js): Clockwork Core in the second
-  // support slot of a Tanglable skill in Active slot 1, and the Spacetime Dictator / Conqueror / Overlord trait skills in
-  // Active slots 2 / 3 / 4; the keyword lines are badged by src/calculation-coverage.js.
-  { key: "clockworkCore", heroes: /^youga-the-ultimate-one$/, label: "Youga: Clockwork Core", status: "Not modeled",
-    rule: "The Ultimate One: Clockwork Core's own effects (the Core's additional damage from Cooldown Recovery Speed and Skill Effect Duration bonuses, the Spell Tangle attachment, the cooldown reduction on Critical Strikes), Tangle and the Spell Burst limits, Recall, the trait skills' own effects (Stasis Vault, Supreme Descent, Selves of All Realms with its 19 Alternate Spacetime Youga skill effects), Chains of Enslavement, Governance and Centralization are not modeled. The board changes are applied: Clockwork Core takes the second support slot of a Tanglable skill in Active slot 1 (the support there is left out of the calculation), and the trait skills take Active slots 2 / 3 / 4 (the skills there are left out)." },
+  // Youga – The Ultimate One (2026-10-17; src/youga-ultimate-one.js settles the clauses, src/planner.js applies them to the skill
+  // Clockwork Core supports): plain stat lines (Cooldown Recovery Speed, Skill Effect Duration, Movement Speed) reach the generic
+  // readers; the board changes are applied by src/trait-board-grants.js. Each clause below is read from state.yougaUltimateOne
+  // (yougaLineStatus: In calc / Inactive / Not on dummy / No DPS effect, with the reason).
+  { key: "yougaCore", heroes: /^youga-the-ultimate-one$/, label: "Youga: Clockwork Core", status: "Provisional",
+    rule: "I Am the Ultimate One: the Core's additional damage from the Cooldown Recovery Speed and Skill Effect Duration bonuses (180% of the increased pools, capped), Clockwork Core on the Main Skill (every Tangle attached to the Core triggers the skill at its casting interval, user-supplied 2026-10-18; only these Core triggers hit, the player's casts only summon or move the Core: user-decided 2026-10-18 from game-code evidence; the Core's crit cooldown reduction; Core bonuses reach the skill), the non-Main Tangle and Spell Burst blocks, and Artificial Moon (+1 Max Tangle Quantity and +20% additional Core damage per +1 Max Sentry Quantity). Provisional readings: src/youga-ultimate-one.js header." },
+  { key: "yougaRecall", heroes: /^youga-the-ultimate-one$/, label: "Youga: Recall", status: "Provisional",
+    rule: "Recall while Stasis Vault is active: a projectile that passes through the dummy (always Penetrate), touches the vault and is Recalled hits the dummy again, once per Recall at full damage, for Core-triggered casts inside the Vault (the player's casts fire nothing: user-decided 2026-10-18; Max Recall Count: base 1, once per trajectory, + I Will Hunt You Down's +1 per Jump, up to +2: user-supplied 2026-10-18); the Recalled-only damage lines; I Will Hunt You Down's Cast Speed penalty on the Core's triggers only while the Vault is active (user-supplied 2026-10-18). The return path crossing the dummy: provisional (switch \"Recalled projectiles hit the dummy\")." },
+  { key: "yougaVault", heroes: /^youga-the-ultimate-one$/, label: "Youga: Stasis Vault", status: "Provisional",
+    rule: "Stasis Vault pressed on cooldown (Trait Skill switch): uptime min(1, 8 s × Skill Effect Duration ÷ cooldown); I Come to Claim My Due's Centralization (2 per Recall, 4 s each) and its Vault extension at 20+ stacks; I See No Doomsday Today is defensive (No DPS effect)." },
+  { key: "yougaChains", heroes: /^youga-the-ultimate-one$/, label: "Youga: Chains of Enslavement", status: "Provisional",
+    rule: "Chains of Enslavement transfer damage between linked enemies (Not on dummy: one enemy); I Command All's Governance from hits on the linked Elite dummy while Supreme Descent is pressed on cooldown (link duration unpublished: held, provisional); Absolute Dominion stops non-Boss enemies only (Not on dummy)." },
+  { key: "yougaSelves", heroes: /^youga-the-ultimate-one$/, label: "Youga: Selves of All Realms", status: "Provisional",
+    rule: "Selves of All Realms pressed on cooldown: its Alternate Spacetime Youga effect on the supported skill at its uptime; I Am the Measure of All Time (cooldown extended by Cooldown Recovery Speed, capped at 24 s; +X% effect scales each value and cap; duration increases at 200%); I Need Not Lift a Finger's +X% additional Core damage while active and 4 s after. Provisional." },
+  { key: "yougaOther", heroes: /^youga-the-ultimate-one$/, label: "Youga: other clauses", status: "Not modeled",
+    rule: "A Youga clause this model has no reader for (a wording that differs from the TLIDB text)." },
   { key: "holyDomain", heroes: /^rosa-high-court-chariot$/, label: "Rosa: Holy Domain", status: "Not modeled",
     rule: "Murderous Intent (4 per second, 15 per Holy Domain) is defined, but how long a Holy Domain lasts is not, so the \"+44% additional damage while inside the Holy Domain\" uptime is undefined." },
   { key: "frostfire", heroes: /^gemma-ice-fire-fusion$/, label: "Gemma: Frostfire Rampage", status: "Not modeled",
@@ -76,7 +95,12 @@ const MODULE_LINES = {
   theaBlessings: /Divine Blessing|God's Boon|Divine Realm/i,
   holyDomain: /Holy Domain|Murderous Intent/i,
   frostfire: /Frostfire Rampage/i,
-  clockworkCore: /Clockwork Core|tangled|Tangle|Spell Burst|Recall|Stasis Vault|Supreme Descent|Selves of All Realms|Chains of Enslavement|Governance|Centralization/i,
+  yougaCore: { test: (text) => YOUGA_GROUPS[yougaClauseKey(text)] === "yougaCore" },
+  yougaRecall: { test: (text) => YOUGA_GROUPS[yougaClauseKey(text)] === "yougaRecall" },
+  yougaVault: { test: (text) => YOUGA_GROUPS[yougaClauseKey(text)] === "yougaVault" },
+  yougaChains: { test: (text) => YOUGA_GROUPS[yougaClauseKey(text)] === "yougaChains" },
+  yougaSelves: { test: (text) => YOUGA_GROUPS[yougaClauseKey(text)] === "yougaSelves" },
+  yougaOther: { test: (text) => !yougaClauseKey(text) && /Clockwork Core|tangled|Tangle|Spell Burst|Recall|Stasis Vault|Supreme Descent|Selves of All Realms|Chains of Enslavement|Governance|Centralization/i.test(text) },
   illusion: /Spacetime Illusion/i,
   purgatory: /Purgatory/i,
   crimsonTide: /Crimson Tide/i,
@@ -115,6 +139,14 @@ export function resolveHeroModules(modifierTexts = [], state = {}) {
     const module = moduleFor(line);
     if (!module) continue;
     if (module.status === "Not modeled") { entry(line, module, false, module.rule); continue; }
+    // Youga – The Ultimate One (src/youga-ultimate-one.js yougaLineStatus): each clause's status and reason from the Clockwork
+    // Core / trait-skill state (build-level before the hits, settled after them).
+    if (/^youga/.test(module.key)) {
+      const read = yougaLineStatus(state, yougaClauseKey(line.clean));
+      if (!read) { entry(line, { ...module, status: "Not modeled" }, false, "this Youga clause is not read"); continue; }
+      entries.push({ source: line.source, origin: "trait", text: line.clean, active: read.status === "In calc", conditionText: `${module.label}: ${read.reason}`, status: read.status, provisional: true, bodies: [], condition: "heroModule", group: null, module: module.key });
+      continue;
+    }
     let match;
     if (module.key === "ammo") {
       if ((match = line.clean.match(PATTERNS.ammoProjectile)) || (match = line.clean.match(PATTERNS.ammoDamage))) {

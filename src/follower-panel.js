@@ -4,7 +4,7 @@ import { combineStatuses, plannerEngines, refineCoverage } from "./line-coverage
 import {
   followers, followerRarities, followerById, followerRarityById, followerSelection, followerSkillSlots,
   followerSlotUnlockRarity, eligibleTartarusSkills, tartarusSkillByName, tartarusSkillDisplayName, tartarusKeyword, normalizeFollowerState,
-  followerLineStatus, plainFollowerLine, missingFollowerEngine, FOLLOWER_BUFFS, FOLLOWER_MAX_SLOTS, FOLLOWER_RARITY_SCHEME
+  followerLineStatus, plainFollowerLine, missingFollowerEngine, staticFollowerLineReading, FOLLOWER_BUFFS, FOLLOWER_MAX_SLOTS, FOLLOWER_RARITY_SCHEME
 } from "./follower-model.js";
 
 // The Hero panel's FOLLOWER tab (2026-10-15; design: the orchestrator's brief). The panel header is a HERO | FOLLOWER tab strip
@@ -56,8 +56,13 @@ export function followerLineCoverage(text, { skill = null, kind = "skill", plann
     // src/planner.js settles a buff the build cannot use (no damage over time, no Spell damage, no Steep Strike hit); a planner
     // that was not settled is checked here the same way.
     const missing = buff ? missingFollowerEngine(buff.engine, planner, plannerEngines(planner)) : "";
-    return missing ? { status: "Inactive", reason: `${entry.derivedText}: ${missing}` } : { status: "In calc", reason: `${entry.derivedText}: ${entry.reason}` };
+    return missing ? { status: "Inactive", reason: `${entry.derivedText}: ${missing}` } : { status: entry.status || "In calc", reason: `${entry.derivedText}: ${entry.reason}` };
   }
+  // 2026-10-17: the planner's reading of every other equipped line (own damage, marks on the dummy, skill-specific rules).
+  if (entry?.status) return { status: entry.status, reason: entry.reason };
+  // Not equipped: the same resolver on the skill alone (src/follower-model.js staticFollowerLineReading).
+  const reading = skill ? staticFollowerLineReading(text, skill) : null;
+  if (reading) return reading;
   if (buff) {
     const derived = buff.derive(text.match(buff.pattern));
     return { status: "In calc", reason: `${derived.summary} (best case when equipped; switch: Config tab, best-case assumptions)` };

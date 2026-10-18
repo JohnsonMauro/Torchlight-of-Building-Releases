@@ -3,6 +3,7 @@ import { supportEffectsFor } from "./support-effects.js";
 import { expectedStrongestApplication, windowAverageStrongest } from "./ailment-model.js";
 import { classifyDamageLine, routeDamageLine } from "./damage-line-classifier.js";
 import { normalizePercentageText } from "./percentage-text.js";
+import { AFFLICTION_DAMAGE_PER_POINT } from "./game-attribute-defaults.js";
 
 // Damage over time dealt by a skill itself (profile kind "dot", engine "skill-dot"): Wilting Beam.
 //
@@ -98,10 +99,9 @@ function typedLines(damageType, modifierTexts, { spell = false } = {}) {
     ["increased", new RegExp(`^\\+(\\d+(?:\\.\\d+)?)% ${T} Damage(?: Over Time)?$`, "i")],
     ["additional", new RegExp(`^([+-]?\\d+(?:\\.\\d+)?)% additional ${T} Damage(?: Over Time)?$`, "i")],
     ["taken", new RegExp(`^\\+(\\d+(?:\\.\\d+)?)% additional ${T} Damage taken$`, "i")],
-    // Spell Damage taken (Frail, keyword 10000102: "+15% additional Spell Damage taken") on a Spell skill's own DoT: the
-    // user-confirmed rule that Spell Damage reaches a Spell skill's own DoT (2026-10-11), read for the taken side too
-    // (frost-terra audit 2026-10-13; provisional). Ailments never read it (the shared DoT ledger keeps skill tags out).
-    ...(spell ? [["taken", /^\+(\d+(?:\.\d+)?)% additional Spell Damage taken$/i]] : [])
+    // Enemy "Spell Damage taken" debuffs (Frail, keyword 10000102; the follower's Lightning Beam) reach Spell HITS only, never
+    // a Spell skill's own DoT, ailments or Reaps (2026-10-18 user-supplied: Spell Damage taken is hit-only). The player's
+    // "+X% Spell Damage" still reaches a Spell skill's own DoT (user-confirmed 2026-10-11; spellLines below).
   ];
   const result = { increased: [], additional: [], taken: [] };
   for (const line of modifierTexts) {
@@ -208,7 +208,8 @@ export function calculateSkillDot({ setup, profile, modifierTexts: allModifierTe
   const increasedPercent = increased.reduce((sum, line) => sum + line.value, 0);
   const afflictionEffectPercent = shared?.afflictionEffectPercent || 0;
   const additionalAfflictionEffectFactor = (shared?.additionalAfflictionEffectFactor ?? 1) * product(supports.additionalAffliction.map((line) => line.value));
-  const afflictionFactor = (rating) => 1 + (Math.max(0, Math.min(100, rating)) / 100) * (1 + afflictionEffectPercent / 100) * additionalAfflictionEffectFactor;
+  // Damage per point of Affliction: config_attributes 5724 default 0.01 (2026-10-17 game attribute data).
+  const afflictionFactor = (rating) => 1 + Math.max(0, Math.min(100, rating)) * AFFLICTION_DAMAGE_PER_POINT * (1 + afflictionEffectPercent / 100) * additionalAfflictionEffectFactor;
   const resistanceFactor = Math.max(0, 1 - ((shared?.targetResistancePercent || 0) - (shared?.penetrationPercent || 0)) / 100);
   const takenFactor = product(taken.map((line) => line.value));
   const townFactor = (1 + increasedPercent / 100) * product(townAdditional.map((line) => line.value)) * afflictionFactor(shared?.townAfflictionRating ?? 0);

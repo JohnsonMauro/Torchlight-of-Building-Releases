@@ -18,7 +18,12 @@
 // Not read: "Life Regain is only effective when Life is lower than 50%", "Doubles Life Regain …", conversions to Restoration
 // Over Time, and whether an Energy Shield pool exists at all (Max Energy Shield is not totalled; provisional).
 
-export const REGAIN_BASE_INTERVAL_SECONDS = 0.5;
+// Base interval: config_attributes 1320 Life Regain Interval / 1610 Shield Regain Interval, default 0.5 s each (2026-10-17 game
+// attribute data; matches TLIDB).
+import { LIFE_REGAIN_INTERVAL_SECONDS, SHIELD_REGAIN_INTERVAL_SECONDS } from "./game-attribute-defaults.js";
+
+export const REGAIN_BASE_INTERVAL_SECONDS = LIFE_REGAIN_INTERVAL_SECONDS;
+const BASE_INTERVAL_BY_POOL = { life: LIFE_REGAIN_INTERVAL_SECONDS, energyShield: SHIELD_REGAIN_INTERVAL_SECONDS };
 export const REGAIN_CAP_PERCENT = 30;
 
 const round = (value) => Math.round(value * 10000) / 10000;
@@ -75,10 +80,10 @@ export function selfDrainSources({ modifierTexts = [], supportDrains = [], hasFe
   return drains;
 }
 
-const intervalSeconds = (stat) => {
+const intervalSeconds = (stat, base = REGAIN_BASE_INTERVAL_SECONDS) => {
   const increased = Number(stat?.increased) || 0;
   const additional = Number.isFinite(Number(stat?.additional)) && stat?.additional !== undefined ? Number(stat.additional) : 1;
-  return Math.max(0, REGAIN_BASE_INTERVAL_SECONDS * (1 + increased / 100) * additional);
+  return Math.max(0, base * (1 + increased / 100) * additional);
 };
 
 /**
@@ -97,7 +102,7 @@ export function resolveRegain({ modifierTexts = [], supportDrains = [], stats = 
   const pools = {};
   for (const key of ["life", "energyShield"]) {
     const amountPercent = Math.max(0, Number(stats[`${key}Regain`]?.value) || 0);
-    const interval = intervalSeconds(stats[`${key}RegainInterval`]);
+    const interval = intervalSeconds(stats[`${key}RegainInterval`], BASE_INTERVAL_BY_POOL[key]);
     const drainedBy = activeDrains.filter((drain) => drain.pools.includes(key));
     const missing = drainedBy.length > 0 || hitRecently !== false;
     const missingReason = drainedBy.length ? `self-drain: ${drainedBy.map((drain) => `${drain.source} (${drain.reason})`).join(", ")}` : hitRecently !== false ? "hit recently (best case; condition 'Hit or blocked recently')" : "no missing " + POOL_LABEL[key];

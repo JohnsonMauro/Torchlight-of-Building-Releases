@@ -36,7 +36,7 @@ export const BUFF_VALUES = Object.freeze({
   fervorPerPoint: 2, fervorMax: 100,
   fortitudeBaseMax: 3,
   frail: 15, infiltration: 13, paralysis: 15, paralysisDurationSeconds: 4, thrillBarrier: 20,
-  frostbiteBaseRating: 10, frostbiteMaxRating: 120, frostbiteFreezeAbove: 100, frostbiteTakenPerRating: 1,
+  frostbiteBaseRating: 10, frostbiteMaxRating: 120, frostbiteFreezeAt: 100, frostbiteTakenPerRating: 1,
   numbedPerStack: 5, numbedMaxStacks: 10
 });
 
@@ -47,7 +47,8 @@ const round = (value) => Math.round(value * 10000) / 10000;
 // Lines this module reads, by family (also the "handled" set for src/line-effects.js).
 const PATTERNS = {
   hasFervor: /^(?:Have|Has|Gains) Fervor(?: when there are enemies Nearby)?$/i,
-  fervorEffect: /^\+(\d+(?:\.\d+)?)% Fervor effect$/i,
+  // Negative values too (2026-10-17: the follower's Focused Slash "-5% Fervor Effect … for each Sweep Slash", src/follower-model.js).
+  fervorEffect: /^([+-]\d+(?:\.\d+)?)% Fervor effect$/i,
   fervorRatingOnHit: /^\+\d+% chance to gain \d+ Fervor rating on hit$/i,
   critDamagePerFervor: /^(\d+(?:\.\d+)?)% Critical Strike Damage per Fervor Rating$/i,
   movementPerFervor: /^\+\d+(?:\.\d+)?% Movement Speed per \d+ Fervor Rating$/i,
@@ -86,6 +87,8 @@ const PATTERNS = {
   coldInfiltrationFrozen: /^Inflicts Cold Infiltration when dealing damage to Frozen enemies$/i,
   // The same Elementalist node since the 2026-10-14 game patch (TLIDB tree text): Frostbitten instead of Frozen.
   coldInfiltrationFrostbitten: /^Inflicts Cold Infiltration when dealing damage to Frostbitten enemies$/i,
+  // Broken Dream (2026-10-18): "Inflicts Cold Infiltration on enemies cursed by Biting Cold": held while that curse skill is on the dummy.
+  infiltrationCursedBy: /^Inflicts (Fire|Cold|Lightning) Infiltration on enemies cursed by ([A-Z][\w' ]+?)$/i,
   penetrating: /^When dealing Fire, Lightning, or Cold Damage, inflicts Fire Infiltration, Lightning Infiltration, or Cold Infiltration respectively\.$/i,
   perInfiltrationType: /^Upon inflicting damage, \+(\d+(?:\.\d+)?)% additional Elemental Damage for each type of Infiltration Effect the enemy has$/i,
   paralysisAttacks: /^\+(\d+(?:\.\d+)?)% chance for Attacks to inflict Paralysis on hit$/i,
@@ -156,7 +159,8 @@ const PATTERNS = {
   witchCauldron: /^When at full Energy Shield, removes all Energy Shields, \+(\d+(?:\.\d+)?)% additional Max Mana, and \+(\d+(?:\.\d+)?)% additional Spell Damage for (\d+(?:\.\d+)?) ?s$/i,
   skyPiercer: /^\+\d+(?:\.\d+)?% Attack Horizontal Projectile Speed and \+(\d+(?:\.\d+)?)% additional Attack Horizontal Projectile Damage within (\d+(?:\.\d+)?) ?s after using a Mobility Skill$/i,
   flashFlood: /^(?:Halves Spell Burst Upper Limit|\+\d+(?:\.\d+)?% additional Attack and Cast Speed for every Spell Burst triggered recently, up to \d+%)$/i,
-  frostbiteEffect: /^\+(\d+(?:\.\d+)?)% Frostbite Effect$/i,
+  // Negative values too (2026-10-17: the follower's Icy Blade "-5% Frostbite Effect … for each Sweep Slash").
+  frostbiteEffect: /^([+-]\d+(?:\.\d+)?)% Frostbite Effect$/i,
   numbedEffect: /^\+(\d+(?:\.\d+)?)% Numbed Effect$/i,
   numbedExtra: /^Inflicts (\d+) additional stack\(s\) of Numbed$/i,
   numbedThreshold: /thresholds for inflicting Numbed$/i,
@@ -378,7 +382,7 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
   //   rates over time; provisional).
   const debuffs = { frail: false, infiltration: new Set(), paralysis: 0, frostbiteRating: 0, frozen: false, numbedStacks: 0 };
   const dealt = state.dealtTypes || new Set();
-  for (const line of find(PATTERNS.frail)) { const active = Boolean(state.dealsSpellDamage); debuffs.frail ||= active; entry(line, active, active ? "the build deals Spell Damage: Frail held on the dummy (duration not sourced; uptime 1, provisional)" : "the build deals no Spell Damage", { provisional: true }); }
+  for (const line of find(PATTERNS.frail)) { const active = Boolean(state.dealsSpellDamage); debuffs.frail ||= active; entry(line, active, active ? "the build deals Spell Damage: Frail held on the dummy (duration not sourced; uptime 1, provisional)" : "the build deals no Spell Damage", { provisional: true, bodies: [`+${BUFF_VALUES.frail}% additional Spell Damage taken`] }); }
   // "Nearby enemies within N m have Frail": an explicit radius holds at the chosen distance (src/dummy-target.js: close to the
   // dummy, or 6 m away in the Distant alternative). Before 2026-10-12 it needed N ≥ 10 (the 10 m stand-in).
   for (const line of find(PATTERNS.frailNearby)) { const radius = num(line.clean.match(PATTERNS.frailNearby)[1]); const active = explicitRadiusHolds(radius, state.nearTarget); debuffs.frail ||= active; entry(line, active, active ? `the player stands ${state.nearTarget === false ? `${DISTANT_STANDING_METERS} m away (Distant alternative)` : "close to the dummy (best case)"}, inside ${radius} m: Frail held` : `the Distant alternative stands ${DISTANT_STANDING_METERS} m away, outside ${radius} m`, { bodies: [`+${BUFF_VALUES.frail}% additional Spell Damage taken`] }); }
@@ -441,8 +445,16 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
   for (const line of find(PATTERNS.lightningInfiltrationCrit)) { const active = Boolean(state.canCrit) && dealt.has("Lightning"); if (active) debuffs.infiltration.add("Lightning"); entry(line, active, active ? "the build crits with Lightning Damage: Lightning Infiltration held (uptime 1, provisional)" : "no crit with Lightning Damage", { provisional: true }); }
   const frostbitten = (state.enemyAilments || []).includes("Frostbite");
   debuffs.frostbiteRating = frostbitten ? inflictedFrostbiteRating(modifierTexts) : 0;
-  debuffs.frozen = frostbitten && debuffs.frostbiteRating > BUFF_VALUES.frostbiteFreezeAbove;
-  for (const line of find(PATTERNS.coldInfiltrationFrozen)) { if (debuffs.frozen) debuffs.infiltration.add("Cold"); entry(line, debuffs.frozen, debuffs.frozen ? "the dummy is Frozen" : "the dummy is not Frozen (Frostbite Rating ≤ 100)"); }
+  // user-confirmed 2026-10-18: Frozen at 100 or higher (TLIDB says "more than 100").
+  debuffs.frozen = frostbitten && debuffs.frostbiteRating >= BUFF_VALUES.frostbiteFreezeAt;
+  for (const line of find(PATTERNS.coldInfiltrationFrozen)) { if (debuffs.frozen) debuffs.infiltration.add("Cold"); entry(line, debuffs.frozen, debuffs.frozen ? "the dummy is Frozen" : "the dummy is not Frozen (Frostbite Rating < 100)"); }
+  for (const line of find(PATTERNS.infiltrationCursedBy)) {
+    const [, type, curse] = line.clean.match(PATTERNS.infiltrationCursedBy);
+    const typeWord = type[0].toUpperCase() + type.slice(1).toLowerCase();
+    const active = (state.curseSkillNames || []).some((name) => name.toLowerCase() === curse.trim().toLowerCase());
+    if (active) debuffs.infiltration.add(typeWord);
+    entry(line, active, active ? `${curse} is on the dummy: ${typeWord} Infiltration held (uptime 1, provisional)` : `${curse} is not on the dummy (no active ${curse} curse within the curse limit)`, { provisional: true, enemyDebuff: true, bodies: [`+${BUFF_VALUES.infiltration}% additional ${typeWord} Damage taken`] });
+  }
   for (const line of find(PATTERNS.coldInfiltrationFrostbitten)) { if (frostbitten) debuffs.infiltration.add("Cold"); entry(line, frostbitten, frostbitten ? "the dummy is Frostbitten" : "the build inflicts no Frostbite"); }
   for (const line of find(PATTERNS.penetrating)) {
     const types = ["Fire", "Lightning", "Cold"].filter((type) => dealt.has(type));

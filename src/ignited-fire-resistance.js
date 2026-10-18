@@ -1,4 +1,5 @@
 import { normalizePercentageText } from "./percentage-text.js";
+import { MAX_RESISTANCE_DEFAULT_PERCENT } from "./game-attribute-defaults.js";
 
 // Sun's Embrace: "Additionally increases Ignited enemies' Fire Resistance by X%" (affix 11868477; research/residual-batch-2026-10-12.md
 // run 18, R-SUNS). Game data: an enemy-side row (node 111 → targets 8, then node 101) writes attr 5101 (target Fire Resistance)
@@ -12,15 +13,16 @@ import { normalizePercentageText } from "./percentage-text.js";
 //   research/additional-damage-buckets-2026-10-06.md). Scorch's −20 (affix 167394032), Fire's Allure's −10 per stack (6775109)
 //   and "−X% All Resistance when the enemy has max Affliction" (371197) all write 5101 with mod 1, so they are inside the flat
 //   sum this line multiplies.
-// - effective = min(stat, Max Resistance) (manual 1000010424); TLIDB: base Max Resistance 60%, capped at 90%. The dummy's own
-//   Max Fire Resistance is not traced (provisional: 60%). No lower bound was found in the client (fire-target-mitigation trace).
+// - effective = min(stat, Max Resistance) (manual 1000010424); Max Fire Resistance defaults to 60 (config_attributes 5127) and the
+//   panel caps it at 90 (row 30500; 2026-10-17 game attribute data). The dummy carries no traced Max Resistance modifier, so it
+//   reads the attribute default. No lower bound was found in the client (fire-target-mitigation trace).
 // - Resistance Penetration then lowers the effective resistance in the damage calculation without changing it, on every form
 //   of damage (Hit, DoT, Secondary, Reflect; manual 1000000920): it is subtracted afterwards and never multiplied.
 // - The client's Fire hit and Fire DoT branches read the same target Fire Resistance attribute (fire-target-mitigation trace), so
 //   the line reaches hits and Ignite alike; Reaps settle the post-resistance DoT (torturers-touch-and-allure-config).
 //
 // Not sourced (provisional): that the level-85 dummy's 30% sits in attr 5101 (and not in Elemental Resistance 5741, which the
-// client adds to it unmultiplied); the dummy's Max Fire Resistance.
+// client adds to it unmultiplied).
 
 export const IGNITED_FIRE_RESISTANCE_LINE = /^Additionally increases Ignited enemies' Fire Resistance by (\d+(?:\.\d+)?) ?%$/i;
 
@@ -32,7 +34,7 @@ export const IGNITED_FIRE_RESISTANCE_LINE = /^Additionally increases Ignited ene
 // - floor: as afterReductions, but the multiplied resistance does not go below a floor (no floor is sourced; comparison only);
 // - off: the line is recognized but not applied.
 export const IGNITED_FIRE_RESISTANCE_READINGS = Object.freeze(["afterReductions", "beforeReductions", "nonNegative", "hitsOnly", "floor", "off"]);
-export const DUMMY_MAX_FIRE_RESISTANCE_PERCENT = 60;
+export const DUMMY_MAX_FIRE_RESISTANCE_PERCENT = MAX_RESISTANCE_DEFAULT_PERCENT;
 
 let activeReading = "off";
 let activeFloorPercent = -Infinity;

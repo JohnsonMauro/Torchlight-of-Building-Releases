@@ -4,6 +4,7 @@ import { parseTalentEffects } from "./candidate-sources.js";
 import { parseKismetEffect } from "./kismet-effects.js";
 import { nativePactspiritNodeEffect } from "./pactspirit-levels.js";
 import { modeledCoreTalents } from "./core-talent-model.js";
+import { gameDamageLayer } from "./affix-bucket.js";
 
 // One classifier for the plain damage templates every source can carry
 // ("+X% [additional] <scope> Damage [Over Time]", "+X% <type> [Resistance] Penetration"),
@@ -81,7 +82,9 @@ export function classifyDamageLine(text) {
     const scope = parseScope(match[3]);
     if (!scope) return null;
     if (match[4]) { if (scope.flow === "hit") return null; scope.flow = "dot"; }
-    return { kind: "damage", value: number(match[1]), layer: match[2] ? "additional" : "increased", ...scope };
+    // The game bucket (recipe mod 3 / 4) wins for the shapes src/affix-bucket.js applies (2026-10-17 game bucket code;
+    // research/patch-ss14/bucket-conflicts.md); every other line keeps the wording rule.
+    return { kind: "damage", value: number(match[1]), layer: gameDamageLayer(text) ?? (match[2] ? "additional" : "increased"), ...scope };
   }
   // "Damage Penetrates 2% Elemental Resistance" (Dreamweaver pact nodes): the same stat as "+2% Elemental Resistance
   // Penetration" (frost-terra audit 2026-10-13; before, this wording matched no template). Conditional variants ("… of

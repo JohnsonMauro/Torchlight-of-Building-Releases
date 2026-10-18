@@ -6,8 +6,11 @@
 // - TOWER Sequence: 19 ids kept their game id and roll a new affix (src/data/changed-item-ids.js towerSequenceSs13Texts).
 //   A saved item with that towerSequenceId has its copy of the SS13 text replaced by the current entry's SS14 text.
 // - Legendary "Truth" → "I Am Truth" (rename; same modifiers): name, icon and source follow.
+// - Rare items on a legacy duplicate base (Lv66 Imperishable Black Robe, Lv61 Respected Tutor's Robe, Lv61 Divine
+//   Arbiter's Defense) move to the regular base of that name (src/legacy-rare-base-migration.js).
 import { towerSequencesSs13 } from "./data/gear/tower-sequences-ss13.generated.js";
 import { legendaryRenames, towerSequenceSs13Texts } from "./data/changed-item-ids.js";
+import { migrateLegacyRareBase } from "./legacy-rare-base-migration.js";
 
 function migrateTowerSequence(item) {
   const old = towerSequenceSs13Texts[item.towerSequenceId];
@@ -32,7 +35,7 @@ function migrateLegendaryRename(item) {
 /** One saved equipment item with the SS14 migrations applied (the same object when nothing changes). */
 export function migrateChangedItem(item) {
   if (!item || typeof item !== "object" || Array.isArray(item)) return item;
-  return migrateLegendaryRename(migrateTowerSequence(item));
+  return migrateLegacyRareBase(migrateLegendaryRename(migrateTowerSequence(item)));
 }
 
 /** equipmentOverrides ({ slot: item }) and equipmentInventory ([item]) migrated (same containers when unchanged). */

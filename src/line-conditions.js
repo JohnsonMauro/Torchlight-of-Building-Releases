@@ -73,6 +73,10 @@ const LINE_RULES = [
   // enemy with Elemental Damage recently. Stacks up to N times": held at N stacks while the build's modeled skill hits deal that
   // damage type (best case, as the other stacking buffs; provisional).
   [new RegExp(`^\\+?${N}% ((?:Elemental|Fire|Cold|Lightning|Erosion)(?: and Erosion)?) Resistance Penetration (?:when hitting an enemy|every time you hit an enemy) with (Elemental|Fire|Cold|Lightning|Erosion|Physical) Damage(?: recently)?[,.] (?:stacking|Stacks) up to (\\d+) times?$`, "i"), (m) => ({ body: `+${round(num(m[1]) * num(m[4]))}% ${m[2]} Resistance Penetration`, key: "hitsWithType", params: { type: m[3], stacks: num(m[4]) } })],
+  // On the Sublime (2026-10-18): "+X% additional Spell Projectile Damage for each Spell Projectile generated recently. Stacks up
+  // to N times": held at N stacks while a modeled skill hit generates (Spell) Projectiles (best case, as the other stacking
+  // buffs; the "recently" window is not sourced, provisional). It read Not modeled before.
+  [new RegExp(`^\\+?${N}% (.+?) for each (Spell )?Projectile generated recently\\. Stacks up to (\\d+) times?$`, "i"), (m) => ({ body: `+${round(num(m[1]) * num(m[4]))}% ${m[2]}`, key: "projectilesGenerated", params: { spell: Boolean(m[3]), stacks: num(m[4]) } })],
   [new RegExp(`^Damage penetrates ${N}% (Elemental|Fire|Cold|Lightning|Erosion) Resistance of (${STATE_WORDS}) enemies$`, "i"), (m) => ({ body: `+${m[1].replace(/^\+/, "")}% ${m[2]} Resistance Penetration`, key: "enemyState", params: { word: m[3] } })],
   [new RegExp(`^(.+?) (?:against|to) (${STATE_WORDS}) enemies$`), (m) => ({ body: m[1], key: "enemyState", params: { word: m[2] } })],
   [/^(.+?) (?:dealt )?to Nearby enemies$/, (m) => ({ body: m[1], key: "nearTarget" })],
@@ -190,6 +194,9 @@ const LINE_RULES = [
   [new RegExp(`^(Adds \\d+(?:\\.\\d+)? - \\d+(?:\\.\\d+)? (?:Physical|Fire|Cold|Lightning|Erosion) Damage to (?:Attacks and Spells|Attacks|Spells)) (?:per|for every) (\\d+) (${STAT_WORDS})$`), (m) => ({ body: m[1], key: "perStat", params: { every: num(m[2]), stat: m[3].toLowerCase() } })],
   [new RegExp(`^\\+${N}% (.+?) for every (\\d+) (${STAT_WORDS})$`), (m) => ({ body: `+${m[1]}% ${m[2]}`, key: "perStat", params: { per: num(m[1]), every: num(m[3]), stat: m[4].toLowerCase(), template: m[2] } })],
   [new RegExp(`^\\+${N}% (.+?) for every (\\d+) of the highest stat among Strength, Dexterity, and Intelligence$`), (m) => ({ body: `+${m[1]}% ${m[2]}`, key: "highestStat", params: { every: num(m[3]) } })],
+  // False God's Skin's stat buff rolls ("+1% damage per 16 of the lowest stat", TLIDB pool card): the lowest of the stat-sheet
+  // Strength / Dexterity / Intelligence totals, rounded down per step (as highestStat).
+  [new RegExp(`^\\+${N}% (.+?) per (\\d+) of the lowest stat$`), (m) => ({ body: `+${m[1]}% ${m[2]}`, key: "lowestStat", params: { every: num(m[3]) } })],
   // "+1% damage per 27 stats" (Destroyer's Amulet base affix; craft affixes per 6 / 8 / 12 / 16 / 24 stats; 2026-10-14):
   // "stats" read as Strength + Dexterity + Intelligence (the three main attributes "All Stats" raises; provisional), the
   // stat-sheet totals after % and additional multipliers, rounded down per step (provisional, as perStat).
@@ -390,6 +397,11 @@ function resolveKey(condition, state) {
       const hit = want.filter((type) => state.hitTypes?.has(type));
       return hit.length ? on(`the build's modeled skill hits deal ${hit.join("/")} Damage: ${params.stacks} stacks held (best case; provisional)`, { provisional: true }) : off(`no modeled skill hit deals ${params.type} Damage`);
     }
+    case "projectilesGenerated": {
+      const kind = params.spell ? "Spell Projectile" : "Projectile";
+      const skills = (state.projectileSkills || []).filter((skill) => !params.spell || skill.spell);
+      return skills.length ? on(`${skills.map((skill) => skill.name).join(", ")} generate${skills.length === 1 ? "s" : ""} ${kind}s on every use: ${params.stacks} stacks held (best case; the "recently" window is not sourced; provisional)`, { provisional: true }) : off(`no modeled skill hit generates ${kind}s`);
+    }
     case "dealtType": return state.dealtTypes?.has(params.type) ? on(`the build deals ${params.type} Damage`) : off(`the build deals no ${params.type} Damage`);
     case "statCompare": {
       const a = state.stats?.[params.stat] ?? 0, b = state.stats?.[params.other] ?? 0;
@@ -412,6 +424,11 @@ function resolveKey(condition, state) {
       const best = Math.max(0, ...["strength", "dexterity", "intelligence"].map((stat) => state.stats?.[stat] ?? 0));
       const steps = Math.floor(best / params.every);
       return steps > 0 ? on(`highest of Strength / Dexterity / Intelligence ${round(best)} ÷ ${params.every} = ${steps} (rounded down: provisional)`, { factor: steps, provisional: true }) : off(`highest stat ${round(best)}: below ${params.every}`);
+    }
+    case "lowestStat": {
+      const low = Math.max(0, Math.min(...["strength", "dexterity", "intelligence"].map((stat) => state.stats?.[stat] ?? 0)));
+      const steps = Math.floor(low / params.every + 1e-9);
+      return steps > 0 ? on(`lowest of Strength / Dexterity / Intelligence ${round(low)} ÷ ${params.every} = ${steps} (rounded down)`, { factor: steps }) : off(`lowest stat ${round(low)}: below ${params.every}`);
     }
     case "statAtLeast": {
       const total = state.stats?.[params.stat] ?? 0;

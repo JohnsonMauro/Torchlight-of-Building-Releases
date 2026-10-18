@@ -130,7 +130,7 @@ const DEFINITIONS = [
       ...slashStrike(411, 412),
       { key: "explosion", label: "Explosion", groupId: 413, perUse: 0.2 * 0.7, steep: { role: "steep", perSteep: 0.7 }, ...provisional("TLIDB: the Explosion is part of the Steep Strike and can hit the same enemy as it with a 70% Shotgun falloff: one Explosion per Steep Strike (0.2 per use) at ×0.7 as the second hit of the pair") }
     ],
-    notes: [CONVERSION_NOTE("Icy Blade", "Cold"), "Icy Blade: the extra Steep Strike attempts on Frozen enemies / on inflicting Freeze need Freeze (over 100 Frostbite Rating), which the dummy does not carry here, so they are not applied."] },
+    notes: [CONVERSION_NOTE("Icy Blade", "Cold"), "Icy Blade: the extra Steep Strike attempts on Frozen enemies / on inflicting Freeze need Freeze (100 or more Frostbite Rating), which the dummy does not carry here, so they are not applied."] },
   { name: "Frost Spike", delivery: "attack-melee", weaponScaling: { baseTypes: ["Physical"], restriction: restriction("Limited to One-Handed Swords, Claws and Daggers.") },
     conversion: convert("Cold"),
     components: [{ key: "thrust", label: "Thrust", groupId: 401, perUse: 1, ...text("one Thrust per use; the Icy Blade projectiles (group 402) launch backwards from the hit enemy's position and cannot hit the same unit (game description), so they miss a single dummy") }],

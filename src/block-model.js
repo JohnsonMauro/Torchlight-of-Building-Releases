@@ -7,15 +7,16 @@ import { kismetCatalogSs13 } from "./data/pacts/kismet-catalog-ss13.js";
 import { kismetAffixesWithRolls } from "./kismet-crafting.js";
 import { microFateEffectScale, scaleKismetAffix } from "./kismet-effects.js";
 import { fateExtraSlots } from "./fate-slot-unlocks.js";
-import { rareBaseItemsSs13 } from "./data/gear/rare-base-items-ss13.generated.js";
+import { rareBaseForItem } from "./rare-base-lookup.js";
 import { legendaryGearSs13 } from "./data/gear/legendary-gear-ss13.generated.js";
 import { defaultBaseForItem } from "./data/gear/corrosion-implicits-ss13.js";
 import { namedGearAffixLines } from "./named-gear-affixes.js";
+import { MAX_BLOCK_CHANCE_PERCENT } from "./game-attribute-defaults.js";
 
 const oneHandedWeaponTypes = new Set(["Claw", "Dagger", "One-Handed Sword", "One-Handed Hammer", "One-Handed Axe", "Wand", "Rod", "Scepter", "Cane", "Pistol"]);
 function isOneHandedWeapon(item) {
   if (!item) return false;
-  const rareBase = rareBaseItemsSs13.find(base => base.id === item.baseId || base.name === item.base);
+  const rareBase = rareBaseForItem(item, [item.base]);
   if (rareBase) return oneHandedWeaponTypes.has(rareBase.type);
   if (oneHandedWeaponTypes.has(item.base)) return true;
   const catalogItem = legendaryGearSs13.find(entry => entry.name === item.name || entry.id === item.baseId);
@@ -133,8 +134,9 @@ export function calculateBlock({ equipment, talents = [], slates = [], memories,
 function summarizeBlock(sources) {
   const sum = stat => sources.filter(source => source.stat === stat || (source.stat === "ratioAndCap" && (stat === "ratio" || stat === "ratioCap"))).reduce((sum, source) => sum + source.value, 0);
   const clamp = (value, cap) => Math.max(0, Math.min(cap, value));
-  const attackChance = sum("cannotAttack") ? 0 : clamp(sum("attackChance") + sum("bothChance"), 100);
-  const spellChance = sum("cannotSpell") ? 0 : clamp(sum("spellChance") + sum("bothChance"), 100);
+  // Max Block Chance: config_attributes 4804 default 100 (2026-10-17 game attribute data).
+  const attackChance = sum("cannotAttack") ? 0 : clamp(sum("attackChance") + sum("bothChance"), MAX_BLOCK_CHANCE_PERCENT);
+  const spellChance = sum("cannotSpell") ? 0 : clamp(sum("spellChance") + sum("bothChance"), MAX_BLOCK_CHANCE_PERCENT);
   const ratioCap = clamp(60 + sum("ratioCap"), 80);
   const uncappedRatio = 30 + sum("ratio");
   const ratio = sum("zeroRatio") ? 0 : clamp(uncappedRatio, ratioCap);

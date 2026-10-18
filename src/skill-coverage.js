@@ -27,15 +27,19 @@ const UNSUSTAINED_SKILLS = {
   "Speed Phantom": "Euphoria needs Remnant explosions (a dash, which interrupts channeling); one enemy gives 1 stack per explosion, at most 2 Remnants, so at best +5% additional Spell Damage for 1.2 s per cast; its Remnant hits (542–904 Spell Physical) have no hit model"
 };
 // Skills whose own effect the planner does not model (Not modeled, with the reason). Youga's trait skills (catalog entries
-// from scripts/import-tlidb-skill-catalog.mjs) deal no damage of their own; what they do acts through Youga's Clockwork Core,
-// which the planner does not have.
+// from scripts/import-tlidb-skill-catalog.mjs) deal no damage of their own; what they do acts through Youga's Clockwork Core
+// (src/youga-ultimate-one.js; yougaSkillCoverage below reads it). These reasons stand only without that state.
 const UNMODELED_SKILLS = {
   "Stasis Vault": "Youga trait skill: Slow in the vault and its Clockwork Core projectile effects (Penetrate, Recall) are not modeled",
   "Supreme Descent": "Youga trait skill: the teleport and its Chains of Enslavement links are not modeled",
   "Selves of All Realms": "Youga trait skill: the Alternate Spacetime effects it grants are not modeled"
 };
+// Badge reasons for support clauses on Stasis Vault (exported for tests; research/youga-recall-mechanics-2026-10-18.md).
+export const STASIS_VAULT_DAMAGE_REASON = "Stasis Vault deals no damage of its own; whether its supports reach Recalled hits is unconfirmed (game data favours no: a Recalled hit stays the bolt's own; see Open questions)";
+export const STASIS_VAULT_AREA_REASON = "widens Stasis Vault (TLIDB: 50% of Skill Area bonuses apply to its 10 m radius, up to 140%); the Recall count, the Recall cooldown and the Vault uptime do not depend on the radius, and the dummy stands inside the vault (best case), so no figure moves; whether it matters in game is unconfirmed (see Open questions)";
 // Supports whose effect only reaches an unmodeled part of the skill (Not modeled, with the reason). Clockwork Core is the
-// support Youga's base trait grants (src/trait-board-grants.js): it holds its socket, but none of its own clauses is read.
+// support Youga's base trait grants (src/trait-board-grants.js); its effects are read by src/youga-ultimate-one.js
+// (yougaCoreCoverage below), so its reason here stands only without that state.
 const UNMODELED_SUPPORTS = {
   "Clockwork Core": "Youga trait support (I Am the Ultimate One): the Core summon, the Spell Tangle attachment at Max Tangle Quantity, the cooldown reduction on Critical Strikes and the bonuses it shares with the skill are not modeled. The support it replaces is left out of the calculation",
   "Focus Acceleration": "Focus Pts speed only (orb cadence); the orb hits are not modeled"
@@ -220,11 +224,51 @@ function enemyAilmentFrom(planner, name) {
 // damage: a Not modeled clause that would change dummy damage (counts against the header badge).
 const result = (status, reason = "", damage = false) => (damage ? { status, reason, damage: true } : { status, reason });
 
+// Youga – The Ultimate One's trait skills and Clockwork Core (src/youga-ultimate-one.js, planner.yougaUltimateOne): what each
+// does on the dummy, from the settled state; null without that state (another hero), so the fixed reasons above stand.
+const pct = (value) => `${Math.round(value * 1000) / 10}%`;
+function yougaSkillCoverage(planner, skillName) {
+  const y = planner?.yougaUltimateOne;
+  const key = { "Stasis Vault": "vault", "Supreme Descent": "descent", "Selves of All Realms": "selves" }[skillName];
+  if (!y?.active || !key || !y.traitSkills?.[key]) return null;
+  const off = y.traitSkills?.pressed === false ? "never pressed (the Trait Skill switch on the Config tab is off)" : null;
+  if (skillName === "Stasis Vault") {
+    if (off) return result("Inactive", off);
+    if (!y.vault) return result("Inactive", "not active");
+    const recall = !y.core?.applied ? `no Recall (${y.core?.reason || "Clockwork Core supports no skill"})` : !y.projectile?.canRecall ? `no Recall (${y.main?.name} cannot Recall: ${y.projectile?.recallBlock})` : `Recall: ${Math.round((y.solved?.recallHitsPerUse || 0) * 1000) / 1000} extra hits per ${y.main.name} use${y.recallHits ? "" : " (Recalled hits switched off)"}`;
+    return result("In calc", `pressed on cooldown, up ${pct(y.vault.uptime)} (lasts ${Math.round(y.vault.baseDuration * 100) / 100} s, cooldown ${Math.round(y.vault.cooldown * 100) / 100} s${y.vault.permanent ? "; kept up by I Come to Claim My Due" : ""}); ${recall}; Slow: No DPS effect (provisional readings in the assumptions)`);
+  }
+  if (skillName === "Supreme Descent") {
+    if (off) return result("Inactive", off);
+    if (!y.governance) return result("No DPS effect", "teleport and Chains of Enslavement links: no damage of its own; the links only matter for I Command All's Governance (not picked) and for damage transfer (Not on dummy: one enemy)");
+    return result("In calc", `links the dummy (an Elite) with Chains of Enslavement, so I Command All's Governance is held at ${y.governanceStacks} stacks (+${y.governanceStacks}% additional Clockwork Core damage); link duration unpublished, held while pressed on cooldown (provisional)`);
+  }
+  if (off) return result("Inactive", off);
+  if (!y.selves) return result("Inactive", "not active");
+  const alt = y.alternate;
+  const effect = !alt ? (y.core?.reason || "Clockwork Core supports no skill") : alt.lines?.length ? `${alt.skill}: ${alt.lines.map((line) => `${line.text} (${line.working})`).join("; ")}` : `${alt.skill}'s Alternate Spacetime effect: ${alt.status} (${alt.reason})`;
+  const status = alt?.lines?.length || y.lift ? "In calc" : alt?.status === "Not modeled" ? "Not modeled" : "Inactive";
+  return result(status, `pressed on cooldown, up ${pct(y.selves.uptime)} (lasts ${Math.round(y.selves.duration * 100) / 100} s, cooldown ${Math.round(y.selves.cooldown * 100) / 100} s); ${effect}${y.lift ? `; I Need Not Lift a Finger +${y.lift.percent}% additional Core damage, up ${pct(y.selves.afterUptime)}` : ""}`, status === "Not modeled");
+}
+function yougaCoreCoverage(planner) {
+  const y = planner?.yougaUltimateOne;
+  if (!y?.active) return null;
+  if (!y.core?.applied) return result("Inactive", y.core?.reason || "Clockwork Core supports no skill");
+  const parts = [
+    y.tangles.reading ? `${y.tanglesUsed} Tangles on the Core each trigger ${y.main.name} at its casting interval (${Math.round((y.solved?.coreUsesPerSecond || 0) * 1000) / 1000} Clockwork Core triggers/s; Tangle casts cannot activate Spell Burst) (user-supplied 2026-10-18); only these Core triggers hit: the player's casts only summon or move the Core and fire nothing (user-decided 2026-10-18 from game-code evidence)` : "one use per casting interval (Tangle switch off)",
+    `-0.1 s Cooldown for all skills per crit: cooldowns ÷ ${Math.round((y.solved?.critFactor || 1) * 10000) / 10000}`,
+    "its bonuses (Youga's +X% additional Clockwork Core Damage lines) reach the skill's hits"
+  ];
+  return result("In calc", `${parts.join("; ")}. Provisional readings, listed in the assumptions. The support it replaces is left out of the calculation`);
+}
+
 function classifySkill(planner, skillName, setup) {
   const role = setup?.role;
   if (NON_DAMAGE_SKILLS[skillName]) return result("No DPS effect", NON_DAMAGE_SKILLS[skillName]);
   if (setup && planner?.activation?.activeNames && !planner.activation.activeNames.has(skillName)) return result("Inactive", "not active in the current Energy allocation");
   if (UNSUSTAINED_SKILLS[skillName]) return result("Not modeled", UNSUSTAINED_SKILLS[skillName]);
+  const youga = yougaSkillCoverage(planner, skillName);
+  if (youga) return youga;
   if (UNMODELED_SKILLS[skillName]) return result("Not modeled", UNMODELED_SKILLS[skillName]);
   if (role === "curse") {
     const excluded = (planner?.curseLimit?.excluded || []).some((entry) => (entry?.name ?? entry) === skillName);
@@ -250,7 +294,10 @@ function classifySkill(planner, skillName, setup) {
     // A profile that names parts of the skill it does not model (src/skill-damage-profiles.js / skill-hit-profiles.js `unmodeled`).
     const unmodeled = damageSource.profile.unmodeled || [];
     if (unmodeled.length) return result("Partly modeled", `${damageSource.profile.damageType} damage (${damageSource.profile.engine} engine); not modeled: ${unmodeled.join(", ")}`, true);
-    return result("In calc", `${damageSource.profile.damageType} damage over time (${damageSource.profile.engine} engine)${level ? `; ${signed(level.value)}% ${categoryText(level.category) || "damage"} from skill level` : ""}`);
+    // The engine names what is modeled: hits (skill-hit, the item-trigger and Main-Skill-trigger engines), damage over time
+    // (skill-dot) or Minion damage (2026-10-18: every engine read "damage over time", Homing Frost Bolt's hits included).
+    const kind = damageSource.profile.engine === "skill-dot" ? "damage over time" : damageSource.profile.engine === "minion" ? "Minion damage" : "hits";
+    return result("In calc", `${damageSource.profile.damageType} ${kind} (${damageSource.profile.engine} engine)${level ? `; ${signed(level.value)}% ${categoryText(level.category) || "damage"} from skill level` : ""}`);
   }
   if (role === "aura") {
     const entry = planner?.aura?.entries?.find((item) => item.name === skillName);
@@ -266,6 +313,15 @@ function classifySkill(planner, skillName, setup) {
   const ailment = enemyAilmentFrom(planner, skillName);
   if (role === "main") {
     const applied = [contributionReason(matches), ailment ? `inflicts ${ailment.name}` : ""].filter(Boolean).join(", ");
+    // A Mobility skill whose text deals no damage (Blink: "Casts the skill and moves in the target direction"): nothing of its own
+    // to model. On the board it is the build's Mobility Skill, so the "after using Mobility Skills" lines are held (user rule
+    // 2026-10-14, best-case switch mobilitySkillUsed). It read "Not modeled" before 2026-10-18.
+    const tags = new Set(setup?.tags || []);
+    const deals = (tlidbSkillCatalogSs13.find((entry) => entry.name === skillName)?.effects || []).some((text) => /\bDeals?\b|Damage\b/.test(String(text)));
+    if (!applied && tags.has("Mobility") && !deals) {
+      const held = (planner?.lineEffects?.lines || []).filter((line) => line.condition === "mobility" && line.active);
+      return held.length ? result("In calc", `no damage of its own; as the build's Mobility Skill it holds the "after using Mobility Skills" lines (best case, user rule 2026-10-14): ${held.map((line) => `${line.source}: ${line.text}`).join("; ")}`) : result("No DPS effect", "a Mobility skill with no damage of its own");
+    }
     return applied ? result("Partly modeled", `${applied}; its own damage is not modeled`) : result("Not modeled", "its own damage is not in the calculation");
   }
   if (matches.length || ailment) return result("In calc", [contributionReason(matches), ailment ? `inflicts ${ailment.name}` : ""].filter(Boolean).join(", "));
@@ -298,6 +354,8 @@ function classifySupport(planner, supportName, skillName, setup) {
   if (NON_DAMAGE_SKILLS[skillName]) return result("No DPS effect", `supports ${skillName} (${NON_DAMAGE_SKILLS[skillName]})`);
   if (NON_DAMAGE_SUPPORTS[supportName]) return result("No DPS effect", NON_DAMAGE_SUPPORTS[supportName]);
   if (UNSUSTAINED_SKILLS[skillName]) return result("Not modeled", `supports ${skillName}: ${UNSUSTAINED_SKILLS[skillName]}`);
+  const youga = supportName === "Clockwork Core" ? yougaCoreCoverage(planner) : null;
+  if (youga) return youga;
   if (UNMODELED_SUPPORTS[supportName]) return result("Not modeled", UNMODELED_SUPPORTS[supportName]);
   if (role === "aura") {
     const entry = planner?.aura?.entries?.find((item) => item.name === skillName);
@@ -447,6 +505,37 @@ function refineSupportClause(planner, setup, supportName, clause, base) {
   if (skillName === AEGIS_OF_FIRE) return aegisClauseStatus(planner, supportName, clause);
   if (setup?.role === "aura") { const status = auraClauseStatus(planner, setup, supportName, clause); if (status) return status; }
   if (setup?.role === "empower" && skillName === "Aim") return aimClauseStatus(planner, supportName, clause);
+  // Deepened Curse (src/support-effects.js curseTaken → src/planner.js): In calc while the planner carries its derived line.
+  if (clause.family === "curseTaken") {
+    const carried = (planner?.modifierTexts || []).find((line) => line.origin === "derived" && String(line.source || "").startsWith(`${skillName}: ${supportName} (curse on the dummy`));
+    return carried ? result("In calc", `${carried.text} on the dummy (skill hits; the DoT and ailment ledgers do not read it yet): the curse stays on it, so sustained figures hold it; the 5 s / 20 s windows and the recount start it ${clause.delaySeconds} s after engagement`) : result("Inactive", `${skillName} is not on the dummy (inactive, or over the curse limit)`);
+  }
+  // Youga's trait skills deal no damage of their own (TLIDB texts of Stasis Vault, Supreme Descent, Selves of All Realms), so a
+  // support's damage clauses on them change nothing (2026-10-18: Increased Area's "+X% additional damage" read Not modeled).
+  // Stasis Vault (research/youga-recall-mechanics-2026-10-18.md, "Increased Area on Stasis Vault"): game data agrees (no damage
+  // entry in its skill file, no modifiers on its buff), and the Recall routine keeps a Recalled hit the bolt's own, so the
+  // Vault's supports are not passed to Recalled hits; not tested in game (open question youga-stasis-vault-modifiers).
+  if (setup?.traitGranted && ["additional", "increased", "critOnlyAdditional", "dotAdditional", "perStack", "conditionalAdditional"].includes(clause.family) && !(tlidbSkillCatalogSs13.find((entry) => entry.name === skillName)?.effects || []).some((text) => /\bDeals?\b/.test(String(text)))) return result("No DPS effect", skillName === "Stasis Vault" ? STASIS_VAULT_DAMAGE_REASON : `${skillName} deals no damage of its own (TLIDB skill text)`);
+  // Skill Area on Stasis Vault widens the vault (TLIDB: 50% of Skill Area bonuses apply to its 10 m radius, up to 140%); the
+  // Recall count, the Recall cooldown and the Vault uptime do not read the radius, and the dummy stands inside it (best case).
+  if (setup?.traitGranted && skillName === "Stasis Vault" && /\bSkill Area\b/i.test(clause.text) && !/damage/i.test(clause.text)) return result("No DPS effect", STASIS_VAULT_AREA_REASON);
+  // Youga – I Will Hunt You Down (src/youga-ultimate-one.js): the Clockwork Core skill's Jumps raise its Max Recall Count and its
+  // Penetrations its Recalled-hit bonus, so those support clauses reach the dummy through Recall even though one dummy has no
+  // other enemy to Jump to or Penetrate into (2026-10-18: they read "no rule" / Not on dummy).
+  const youga = planner?.yougaUltimateOne;
+  const recall = youga?.core?.applied && youga.core.setupKey === setup?.setupKey ? youga.projectile : null;
+  if (recall && /\bJumps?\b/.test(clause.text) && (recall.jumps?.sources || []).some((line) => line.source === `Support: ${supportName}` && line.text === clause.text)) {
+    return recall.recallBonus > 0 && (youga.solved?.recallHitsPerUse || 0) > 0 ? result("In calc", `+${recall.recallBonus} Max Recall Count from ${recall.jumps.total} Jump${recall.jumps.total === 1 ? "" : "s"} (I Will Hunt You Down): ${recall.maxRecall} Recalls per projectile, each a full hit on the dummy; the Jump itself needs another enemy`) : result("Not on dummy", "a Jump goes to another enemy; no Recall bonus reads it in this build");
+  }
+  if (recall && /Penetrat/i.test(clause.text) && (recall.penetration?.sources || []).some((line) => line.source === `Support: ${supportName}` && line.text === clause.text)) {
+    return recall.penetrationBonus?.valuePercent > 0 && (youga.solved?.recallHitsPerUse || 0) > 0 ? result("In calc", `+${recall.penetrationBonus.valuePercent}% additional damage on Recalled hits (I Will Hunt You Down: +${recall.penetrationBonus.perPercent}% per Penetration × ${recall.penetration.total}, up to +${recall.penetrationBonus.capPercent}%)`) : result("Not on dummy", "Penetration needs another enemy behind the dummy; no Recall bonus reads it in this build");
+  }
+  // Gale-type conversions (src/skill-hit-model.js projectileSpeedState): the supported skill's Projectile Speed clause joins the
+  // increased Projectile Speed pool the conversion turns into Projectile Damage.
+  if (/% Projectile Speed for the supported skill$/i.test(clause.text)) {
+    const speedHit = (planner?.skillHits || []).find((item) => item.setupKey === setup?.setupKey && item.modeled && item.projectileSpeed?.lines?.length);
+    if (speedHit && speedHit.projectileSpeed.sources.some((line) => line.source === clause.source && line.text === clause.text)) return result("In calc", `joins ${skillName}'s +${round(speedHit.projectileSpeed.increasedPercent)}% increased Projectile Speed, which ${speedHit.projectileSpeed.converters.map((line) => `${line.source} (${line.share}%)`).join(", ")} turns into ${speedHit.projectileSpeed.lines.map((line) => line.text.split(" (")[0]).join(", ")}`);
+  }
   if (setup?.role === "curse" && noEngine) {
     if (/^[+-]?\d+(?:\.\d+)?% (?:additional )?Curse Effect/i.test(clause.text)) return base.status === "In calc" ? result("In calc", base.reason) : result("Not modeled", "curse effect from supports is not applied");
     return result("No DPS effect", ["trigger", "cooldown", "duration"].includes(clause.family) ? "duration/cooldown only; curse uptime is already continuous" : ["additional", "increased"].includes(clause.family) ? "applies only to the supported skill's own damage; the curse deals none" : "curse area / cast behaviour only; curse uptime is already continuous");
@@ -484,9 +573,10 @@ function refineSupportClause(planner, setup, supportName, clause, base) {
     return result("In calc", `Paralysis +${paralysis.value}% damage taken (manual rule 1002020420): ${item.reason}${combined}; ×${paralysis.factor} on every damage source in sustained figures. Freezing Point's Empower Effect on debuffs is not applied to it (open)`);
   }
   if (noEngine) {
-    if (NEUTRAL_STATUSES.has(base.status)) return result(base.status, base.reason);
-    // The resolver's own non-damage families hold whatever engine the setup has.
+    // The resolver's own non-damage families hold whatever engine the setup has (checked first, so a clause keeps its own
+    // reason rather than the support's summary).
     if (clause.family === "nonDamage") return result("No DPS effect", "no effect on damage to one dummy");
+    if (NEUTRAL_STATUSES.has(base.status)) return result(base.status, base.reason);
     if (clause.family === "notOnDummy") return result("Not on dummy", "needs an enemy to be defeated; the dummy never dies");
   }
   return keep;

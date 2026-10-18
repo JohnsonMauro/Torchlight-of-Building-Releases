@@ -279,6 +279,10 @@ export const SUPPORT_CLAUSE_RULES = [
   // Typed damage taken the supported skill inflicts on the enemy (Wilting Beam: Dispirit, Flame Jet: Scorched Earth,
   // Burning Shot: Ignition): a build-wide enemy debuff while the skill deals damage (uptime 1: provisional).
   { family: "targetTaken", pattern: new RegExp(`${N}% additional (Physical|Fire|Cold|Lightning|Erosion|Ignite) Damage taken (?:by (?:the enemy|enemies)|for enemies)`, "i"), build: (m) => ({ value: num(m[1]), typed: m[2][0].toUpperCase() + m[2].slice(1).toLowerCase() }) },
+  // Deepened Curse (TLIDB; leveled Lv1 4.05% … Lv21 5.05%): "Enemies take X% additional damage if affected by curses inflicted by
+  // the supported skill for at least N s": an enemy debuff on the dummy while the supported curse has been on it for N s
+  // (src/planner.js; 2026-10-18, it read No DPS effect before).
+  { family: "curseTaken", pattern: new RegExp(`^Enemies take ${N}% additional damage if affected by curses inflicted by the supported skill for at least ${N}\\s*s$`, "i"), build: (m) => ({ value: num(m[1]), delaySeconds: num(m[2]) }) },
   // Kill-driven lines (Feud's "+5% ... for every enemy defeated by the supported skill"): the dummy is never defeated.
   { family: "notOnDummy", pattern: /for every enemy defeated|on kill|when (?:the supported skill )?defeats? an enemy/i, build: () => ({}) },
   { family: "nonDamage", pattern: /Skill Area for the supported skill|Beam Length|Knockback|Evasion|Life will be consumed|Projectile Speed for the supported skill/i, build: () => ({}) }
@@ -391,6 +395,8 @@ function clauseStatus(clause, support, ctx) {
     if (clause.family === "cooldown") return s("Provisional", `shortens the cooldown that caps the use rate, and so raises the uptime of ${buff}`, ["empower"]);
     if (clause.family === "duration") return s("Provisional", `lengthens ${buff}, raising its uptime`, ["empower"]);
   }
+  // A curse support's enemy debuff (Deepened Curse): the planner adds it while the supported curse is on the dummy (src/planner.js).
+  if (clause.family === "curseTaken") return !tags.size || tags.has("Curse") ? s("Provisional", `+${clause.value}% additional damage taken by the dummy once the supported curse has been on it for ${clause.delaySeconds} s (skill hits; the 5 s / 20 s windows start it at ${clause.delaySeconds} s)`, ["planner"]) : s("Inactive", "the supported skill is not a Curse");
   if (!["scorching-beam", "skill-hit", "skill-dot", "minion"].includes(engine)) return s("Not modeled", "the setup's own damage has no engine that reads support clauses");
   // Residual (C) wordings with no dummy-damage effect (src/line-families.js; residual batch 2026-10-12 §6).
   const residual = residualNonDamageStatus(clause.text);
@@ -743,7 +749,7 @@ export function resolveSupportEffects(setup, ctx = {}) {
     additional: [], increased: [], critOnlyAdditional: [], perStack: [], added: [], conversion: [], addedAs: [],
     crit: [], speed: [], cooldown: [], duration: [], channel: { max: [], min: [] },
     ailment: { chance: [], base: [], extraStacks: [], additional: [], blocks: [], inflicts: [] },
-    dotAdditional: [], conditionalAdditional: [], trigger: [], triggerDetail: [], manualPenalty: [], multistrike: [], steepStrike: [], spellBurst: [], combo: [], selfDebuff: [], paralysis: [], targetTaken: [], minion: [], target: [], conditionalTyped: [], affliction: [], reaping: [], quantity: [], tags: { add: [], remove: [] },
+    dotAdditional: [], conditionalAdditional: [], trigger: [], triggerDetail: [], manualPenalty: [], multistrike: [], steepStrike: [], spellBurst: [], combo: [], selfDebuff: [], paralysis: [], targetTaken: [], curseTaken: [], minion: [], target: [], conditionalTyped: [], affliction: [], reaping: [], quantity: [], tags: { add: [], remove: [] },
     maxAfflictionDot: [], terraCharge: [], empower: [], allElementalAdditional: [], movementCharges: [],
     clauses: []
   };
@@ -795,6 +801,7 @@ export function resolveSupportEffects(setup, ctx = {}) {
         case "paralysis": if (clause.status !== "Not on dummy") effects.paralysis.push({ ...entry, chancePercent: clause.chancePercent, ...(clause.fissure ? { fissure: true, needsCurse: false } : {}) }); break;
         case "selfDebuff": effects.selfDebuff.push({ ...entry, value: clause.value, chancePercent: clause.chancePercent, durationSeconds: clause.durationSeconds }); break;
         case "targetTaken": effects.targetTaken.push({ ...entry, value: clause.value, typed: clause.typed }); break;
+        case "curseTaken": effects.curseTaken.push({ ...entry, value: clause.value, delaySeconds: clause.delaySeconds }); break;
         case "reaping": effects.reaping.push({ ...entry, value: clause.value, kind: clause.kind, ailment: clause.ailment ?? null }); break;
         case "beams": effects.quantity.push({ ...entry, value: clause.value, kind: "beams" }); break;
         case "tags": effects.tags[clause.kind].push({ ...entry, tag: clause.tag }); break;

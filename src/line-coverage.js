@@ -254,6 +254,8 @@ function takenBodyStatus(body, planner, engines = plannerEngines(planner)) {
   const hitTypes = (hit) => new Set([...(hit.dealtTypes || [hit.damageType]), ...(hit.components || []).flatMap((component) => [component.type, component.originalType])].filter(Boolean));
   const hitReads = engines.hits.some((hit) => !typed || (typed === "Spell" ? (planner.activation?.setups?.find((setup) => setup.setupKey === hit.setupKey)?.tags || []).includes("Spell") : hitTypes(hit).has(typed)));
   const dotReads = typed && engines.dotTypes.has(typed);
+  // "Spell Damage taken" (Frail, the follower's Lightning Beam) never reads on a DoT: dotTypes holds damage types only, so a
+  // DoT-only build reads Inactive (2026-10-18 user-supplied: Spell Damage taken is hit-only; not DoT, ailments or Reaps).
   // The beam (a Fire Spell) reads Spell Damage taken (Frail) and, with its Ignite, Fire Damage taken (Melting Flames; pact
   // scripted-effects batch 2026-10-13) through build-mechanics.
   const beamReads = /^(?:Spell|Fire)$/i.test(typed || "") && engines.beam;
@@ -520,6 +522,35 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   // Passive conversion / added-as / Multistrike / Projectile Quantity (src/passive-support-lines.js, gear-pact batch chunk 2):
   // In calc where a modeled hit uses it (a component of the source type, an attack that Multistrikes, a skill whose
   // projectiles can hit the same enemy), Inactive otherwise.
+  // Youga / Homing Frost Bolt audit (2026-10-18; research/youga-homing-frost-bolt-audit-2026-10-18.md): badges that read
+  // Not modeled or No DPS effect while the planner applied them (or could not apply them for a reason it knows).
+  if (planner?.activation) {
+    const clean = (value) => normalizePercentageText(String(value ?? "")).replace(/\s+/g, " ").trim();
+    // Gale-type conversion (src/skill-hit-model.js projectileSpeedState) and the "+X% Projectile Speed" lines it converts.
+    const speedHits = (planner.skillHits || []).filter((hit) => hit.modeled && hit.projectileSpeed?.lines?.length);
+    if (/^\d+(?:\.\d+)?% of the Projectile Speed bonus is also applied to (?:the additional bonus for )?Projectile Damage$/i.test(text)) return speedHits.length ? "In calc" : "Inactive";
+    if (/^[+-]?\d+(?:\.\d+)?% Projectile Speed$/i.test(text) && speedHits.some((hit) => hit.projectileSpeed.sources.some((line) => clean(line.text) === text))) return "In calc";
+    // "Inflicts <Ailment> when dealing Hit <Type> Damage" (Prophet; src/enemy-ailments.js reads it): the dummy carries the ailment
+    // when a skill dealing that hit type is active.
+    const inflicts = text.match(/^Inflicts (Frostbite|Numbed|Freeze|Ignite|Trauma|Wilt) when dealing Hit (?:Physical|Fire|Cold|Lightning|Erosion) Damage$/i);
+    if (inflicts && planner.mechanics?.enemyAilments) {
+      const name = inflicts[1].toLowerCase() === "freeze" ? "frozen" : inflicts[1].toLowerCase();
+      return (planner.mechanics.enemyAilments.types || []).some((type) => String(type?.name ?? type).toLowerCase() === name) ? "In calc" : "Inactive";
+    }
+    // "You can only deal <Type> Damage" (Extreme Coldness): nothing to remove when every modeled source already deals only that type.
+    const onlyType = text.match(/^You can only deal (Physical|Fire|Cold|Lightning|Erosion) Damage$/i);
+    if (onlyType) {
+      const engines = plannerEngines(planner);
+      const dealt = new Set([...(engines?.beam ? ["Fire"] : []), ...(engines?.hits || []).flatMap((hit) => hit.dealtTypes || (hit.damageType ? [hit.damageType] : [])), ...(engines?.dotTypes || [])]);
+      const minions = (planner.minions || []).some((minion) => minion.modeled);
+      return dealt.size && !minions && [...dealt].every((type) => type.toLowerCase() === onlyType[1].toLowerCase()) ? "No DPS effect" : "Not modeled";
+    }
+    // "+N to Parabolic Projectile Splits quantity" (Three Birds with One Stone): needs a Parabolic Projectile skill on the board.
+    if (/^\+\d+ to Parabolic Projectile Splits quantity$/i.test(text)) {
+      const active = planner.activation.activeNames || new Set();
+      if (!(planner.activation.setups || []).some((setup) => setup.enabled !== false && active.has(setup.name) && (setup.tags || []).includes("Parabolic"))) return "Inactive";
+    }
+  }
   const passive = classifyPassiveSupportLine(text);
   if (passive && planner?.activation) {
     const hits = (planner.skillHits || []).filter((hit) => hit.modeled);
@@ -611,7 +642,9 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     // A body with no damage effect (Movement Speed, Evasion, Resistance) changes no dummy damage whether or not its condition
     // holds (residual batch P3: such lines read Inactive when the condition was false).
     // (An enemy debuff's "… Damage taken" body is the dummy's, not a defence: an inactive one stays Inactive with its reason.)
-    if (lineEffect.status === "Inactive" && !lineEffect.enemyDebuff && lineEffect.bodies?.length && lineEffect.bodies.every((body) => isNonDamageBody(body.body))) return "No DPS effect";
+    // (An active line with such a body, "+20% Movement Speed when Focus Blessing reaches max stacks" on Grace Boots, read Not
+    // modeled for want of a reader before 2026-10-18: it is a stat line either way.)
+    if ((lineEffect.status === "Inactive" || lineEffect.status === "Not modeled") && !lineEffect.enemyDebuff && lineEffect.bodies?.length && lineEffect.bodies.every((body) => isNonDamageBody(body.body))) return lineEffect.status === "Not modeled" && lineEffect.active && lineEffect.bodies.every((body) => isCharacterStatLine(body.body)) ? "Counted in stats" : "No DPS effect";
     // A Minion body in a build without a modeled Minion (P9: "+2% Minion Fire Penetration against Ignited enemies").
     if (lineEffect.bodies?.length && lineEffect.bodies.every((body) => /\bMinions?\b/.test(body.body)) && !(planner?.minions || []).some((minion) => minion.modeled) && planner?.activation) return "Inactive";
     if (!lineEffect.active || lineEffect.status !== "In calc" && lineEffect.status !== "Partly modeled") return lineEffect.status;

@@ -5,7 +5,10 @@
 // corrodedModifierIndices are positions in item.modifiers; the editor works in catalog indexes and converts both ways.
 import { legendaryModifierSignature } from "./legendary-modifier-signature.js";
 import { folkloreRingModifier } from "./legendary-ring-options.js";
-import { placeholderTemplates } from "./legendary-placeholder-pools.js";
+import { placeholderPool, placeholderTemplates } from "./legendary-placeholder-pools.js";
+import { legendaryLineTiers, legendaryLowerTierTemplates } from "./legendary-affix-tiers.js";
+
+const placeholderText = (text) => /^<[^>]+>$/.test(String(text || "").trim());
 
 const RANGE = /\((-?\d+(?:\.\d+)?)\s*[–-]\s*(-?\d+(?:\.\d+)?)\)/g;
 const normalize = (text) => String(text || "").replace(/\s+%/g, "%").replace(/\s+/g, " ").trim().toLowerCase();
@@ -18,7 +21,15 @@ export function legendaryLineTemplates(source, index, corrodedLines = []) {
   if (source.id === "Folklore_of_Locking_Fingers" && index === 2) templates.push(folkloreRingModifier("left"), folkloreRingModifier("right"), folkloreRingModifier("left", true), folkloreRingModifier("right", true));
   // A "<Random …>" placeholder line can carry any roll of its pool (src/legendary-placeholder-pools.js).
   templates.push(...placeholderTemplates(source.id, index));
+  // A tiered line (Ice Pulse's Spell Damage) can carry a lower tier's roll (src/legendary-affix-tiers.js).
+  templates.push(...legendaryLowerTierTemplates(source.id, index));
   return [...new Set(templates.filter(Boolean))];
+}
+
+// The tier a tiered line's text was rolled in: the first (best) tier whose range holds its rolls, else null (a line with one
+// range, a corroded or out-of-range text). A roll inside two tiers' ranges reads as the better tier.
+export function legendaryTierForText(source, index, text) {
+  return legendaryLineTiers(source?.id, index)?.find((entry) => rollValuesFromText(entry.text, text))?.tier ?? null;
 }
 
 // Roll values of `text` read against `template`, or null when the text is not that template with in-range rolls.
@@ -86,6 +97,12 @@ export function legendaryEditorModel(item, source, { corrodedLines = [], special
   return { slots, fixedPositions: modifiers.map((_, position) => position).filter((position) => !used.has(position)), missing: slots.filter((slot) => slot.position < 0).map((slot) => slot.catalogIndex) };
 }
 
+// The catalog lines the editor shows: every line the item carries, plus every "<Random …>" placeholder line it lacks (an item
+// imported before its pool rolls were read, e.g. False God's Skin with only "+9% All Stats"), so a roll can be picked for it.
+export function editableLegendarySlots(model, source) {
+  return model.slots.filter((slot) => slot.position >= 0 || Boolean(placeholderPool(source?.id, slot.catalogIndex)));
+}
+
 // Applies edited catalog lines (texts: Map catalogIndex -> text; corrodedCatalog: Set of catalog indexes) in place. Other
 // lines keep their text, order and corrosion flag. A changed special line (Belt Blend, TOWER Sequence) replaces the old one;
 // an unchanged one stays where it is. Returns the new modifiers, corrodedModifierIndices and legendaryModifiers.
@@ -98,6 +115,19 @@ export function applyLegendaryEditorEdits(item, model, { texts = new Map(), corr
     record.slot = slot.catalogIndex;
     if (texts.has(slot.catalogIndex) && texts.get(slot.catalogIndex)) record.text = texts.get(slot.catalogIndex);
     record.corroded = corrodedCatalog.has(slot.catalogIndex);
+  }
+  // A missing catalog line given a real roll (a placeholder line the item lacked) is inserted after the nearest earlier
+  // catalog line (else before the nearest later one), so the item's lines keep the catalog order.
+  const inserted = [];
+  for (const slot of model.slots) {
+    if (slot.position >= 0) continue;
+    const text = texts.get(slot.catalogIndex);
+    if (!text || placeholderText(text)) continue;
+    const record = { text, corroded: corrodedCatalog.has(slot.catalogIndex), slot: slot.catalogIndex };
+    const before = records.reduce((best, entry, i) => (entry.slot !== null && entry.slot < slot.catalogIndex ? i : best), -1);
+    const after = records.findIndex((entry) => entry.slot !== null && entry.slot > slot.catalogIndex);
+    records.splice(before >= 0 ? before + 1 : after >= 0 ? after : records.length, 0, record);
+    inserted.push(record);
   }
   for (const { from, to } of specials) {
     if ((from || "") === (to || "")) continue;
@@ -116,6 +146,13 @@ export function applyLegendaryEditorEdits(item, model, { texts = new Map(), corr
       if (next === undefined || next === slot.text) continue;
       const at = legendaryModifiers.findIndex((text, i) => !replaced.has(i) && text === slot.text);
       if (at >= 0) { legendaryModifiers[at] = next; replaced.add(at); }
+    }
+    // Inserted lines take the same place among the legendary lines (catalog order of the lines around them).
+    for (const record of inserted) {
+      const catalogRecords = records.filter((entry) => entry.slot !== null);
+      const prior = catalogRecords.filter((entry) => entry.slot < record.slot && entry !== record).pop();
+      const at = prior ? legendaryModifiers.lastIndexOf(prior.text) : -1;
+      legendaryModifiers.splice(at >= 0 ? at + 1 : prior ? legendaryModifiers.length : 0, 0, record.text);
     }
   }
   return { modifiers, corrodedModifierIndices, ...(legendaryModifiers ? { legendaryModifiers } : {}) };

@@ -1,5 +1,6 @@
 import { escapeHtml } from "./html.js";
 import { formatShortNumber, toggleNumberMarkup } from "./dummy-recount-panel.js";
+import { BASE_CRITICAL_DAMAGE_PERCENT } from "./game-attribute-defaults.js";
 
 // Build-driven Damage path views. The options follow what the build actually
 // deals: beam hits, Ignite when it has a base, one view per modeled ailment
@@ -298,6 +299,15 @@ const heroValue = (final, format, id = final.label) => {
 };
 
 /**
+ * A collapsible extra section of a path (Damage components, Timing …; also the Open questions panel): chevron header with
+ * the title and the count right-aligned, then `body` (HTML) inside the panel. `attrs` is extra HTML attributes for the
+ * <details>.
+ */
+export function extraSectionMarkup({ title, count = null, open = false, body = "", className = "", attrs = "" }) {
+  return `<details class="stat-section damage-extra${className ? ` ${className}` : ""}"${open ? " open" : ""}${attrs ? ` ${attrs}` : ""}><summary><span class="stat-section-title">${escapeHtml(title)}</span>${count == null ? "" : `<span class="stat-section-count">${escapeHtml(String(count))}</span>`}</summary><div class="stat-section-body">${body}</div></details>`;
+}
+
+/**
  * Markup for one path model: summary card (title, final figure, chain, windows, assumptions), the
  * intro, one collapsible section per non-empty stage, optional extra sections and the footnotes.
  */
@@ -308,8 +318,9 @@ export function pathMarkup(model, { planner = null, format = (n) => String(n), n
   const windows = (model.windows || []).filter((item) => item && item.value != null && item.value !== "");
   const windowsMarkup = windows.length ? `<dl class="damage-path-windows">${windows.map((item) => `<div${item.emphasis ? ' class="emphasis"' : ""}><dt>${escapeHtml(item.label)}</dt><dd>${escapeHtml(item.value)}${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}</dd></div>`).join("")}</dl>` : "";
   const assumedMarkup = assumed.length ? `<div class="damage-path-assumed"><span>Assumes</span><ul>${assumed.map((tag) => `<li>${escapeHtml(tag)}</li>`).join("")}</ul></div>` : "";
-  const extras = (model.sections || []).map((section) => `<details class="stat-section damage-extra"${section.open ? " open" : ""}><summary><span class="stat-section-title">${escapeHtml(section.title)}</span><span class="stat-section-count">${section.rows.length}</span></summary><div class="stat-section-body">${section.rows.map((row) => `<div class="stat-sheet-row"${row.title ? ` title="${escapeHtml(row.title)}"` : ""}><span class="stat-row-label">${escapeHtml(row.label)}</span><strong class="stat-row-value">${escapeHtml(row.value)}${row.detail ? `<small>${escapeHtml(row.detail)}</small>` : ""}</strong></div>`).join("")}</div></details>`).join("");
-  const footnotes = (model.footnotes || []).filter(Boolean).map((note) => `<p class="damage-path-footnote">${note}</p>`).join("");
+  const extras = (model.sections || []).map((section) => extraSectionMarkup({ title: section.title, count: section.rows.length, open: section.open, body: section.rows.map((row) => `<div class="stat-sheet-row"${row.title ? ` title="${escapeHtml(row.title)}"` : ""}><span class="stat-row-label">${escapeHtml(row.label)}</span><strong class="stat-row-value">${escapeHtml(row.value)}${row.detail ? `<small>${escapeHtml(row.detail)}</small>` : ""}</strong></div>`).join("") })).join("");
+  const notes = (model.footnotes || []).filter(Boolean);
+  const footnotes = notes.length ? extraSectionMarkup({ title: "Notes", count: notes.length, open: false, className: "damage-path-notes", body: notes.map((note) => `<div class="stat-sheet-row"><span class="stat-row-label">${note}</span></div>`).join("") }) : "";
   return `<section class="damage-path-section" aria-label="${escapeHtml(model.ariaLabel || `${model.title} calculation`)}"><header class="stat-sheet-banner damage-path-summary"><h2>${escapeHtml(model.title)}${model.subtitle ? ` <small>${escapeHtml(model.subtitle)}</small>` : ""}</h2><div class="damage-path-hero"><span class="damage-path-hero-label">${escapeHtml(model.final.label)}</span><div class="damage-path-hero-figure">${heroValue(model.final, format, `${model.title}:${model.final.label}`)}</div>${model.final.note ? `<small class="damage-path-hero-note">${escapeHtml(model.final.note)}</small>` : ""}</div>${stageChainMarkup(model, format)}${windowsMarkup}${assumedMarkup}</header>${model.afterSummary || ""}${model.intro ? `<p class="damage-path-intro">${model.intro}</p>` : ""}<div class="damage-path-stages">${stages.map((stage, index) => stageMarkup(stage, index, { planner, format, names, open: openStages && stage.kind !== "info", connector: index ? connectorLabel(stage, model) : "" })).join("")}</div>${extras}${footnotes}</section>`;
 }
 
@@ -322,18 +333,18 @@ function criticalStrikeStep(ailment, { format }) {
   const crit = ailment.crit || {};
   const typed = ailment.sources.typed;
   const chance = crit.criticalChancePercent || 0;
-  const town = crit.criticalDamagePercent ?? 150;
+  const town = crit.criticalDamagePercent ?? BASE_CRITICAL_DAMAGE_PERCENT;
   const combat = crit.combatCriticalDamagePercent ?? town;
   const plus = (value) => signed(format, value);
   const inputs = [
-    { source: "Base spell Critical Strike Damage", display: `${format(crit.baseCriticalDamagePercent ?? 150)}%` },
+    { source: "Base spell Critical Strike Damage", display: `${format(crit.baseCriticalDamagePercent ?? BASE_CRITICAL_DAMAGE_PERCENT)}%` },
     ...(crit.increasedCriticalDamageSources || []).map((item) => ({ source: `${item.source}: Critical Strike Damage`, display: plus(item.value) })),
     ...(crit.fireResistanceSources || []).map((item) => ({ source: item.source, text: item.text, display: plus(item.value) })),
     ...(crit.conditionalSources || []).map((item) => ({ source: item.source, text: item.stacks != null ? `${item.text} — ${format(item.stacks)} expected stacks from ${item.reason || "recent Critical Strikes"} (combat only)` : `${item.text} (combat only)`, display: plus(item.value) })),
     { source: "Critical strike chance", text: `${format(crit.rating || 0)} rating · ${format(crit.critsPerSecond || 0)} crits/s`, display: `${format(chance)}%` }
   ].map((item) => ({ ...item, category: "crit input" }));
   const uses = [
-    ...(ailment.sources.perCritDamageCombat || []).map((item) => ({ source: item.source, text: `${item.text} → ${format(combat)}% combat crit damage (+${format(Math.max(0, combat - 150))}% above 150%)`, display: plus(item.value) })),
+    ...(ailment.sources.perCritDamageCombat || []).map((item) => ({ source: item.source, text: `${item.text} → ${format(combat)}% combat crit damage (+${format(Math.max(0, combat - BASE_CRITICAL_DAMAGE_PERCENT))}% above ${BASE_CRITICAL_DAMAGE_PERCENT}%)`, display: plus(item.value) })),
     ...typed.critOnlyAdditional.map((item) => ({ source: item.source, text: `${item.text} — applied to the ${format(chance)}% of applications that crit`, display: plus(item.value) })),
     ...ailment.combat.recentCritStacks.map((item) => ({ source: item.source, text: `${item.text} — ${format(item.stacks)} expected stacks`, display: `×${format(item.factor)}` }))
   ].map((item) => ({ ...item, category: "crit use" }));

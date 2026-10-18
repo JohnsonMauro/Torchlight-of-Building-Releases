@@ -321,11 +321,11 @@ function levelledLineState(heroId, traitName, line, planner = coverageContext())
 const danceLineState = (traitName, line, planner = coverageContext()) => levelledLineState(DANCE_OF_THE_DEEP_ID, traitName, line, planner);
 
 /** Why a base-trait "Artificial Moon:" line is Inactive (what is missing), or "" when it is not gated off. */
-// Youga – The Ultimate One's board lines (src/trait-board-grants.js): what the planner applies, and what stays unmodeled.
+// Youga – The Ultimate One's board lines (src/trait-board-grants.js): what the planner applies. The Clockwork Core line and the
+// trait skills' effects are read by src/youga-ultimate-one.js (the module's badge and the skill badges carry their reasons).
 function yougaBoardLineReason(line) {
   const text = squash(line), grant = TRAIT_SLOT_GRANTS[text];
-  if (grant) return `${text}: applied. ${grant.skill} (Lv. 20 trait skill; the skill takes no energy, supports added to it cost energy as usual) takes Active slot ${grant.row + 1}, and the skill placed there is left out of the calculation${text === "Spacetime Conqueror" ? "; -15% Movement Speed is read" : ""}. ${grant.skill}'s own effects are not modeled (see its skill badge).`;
-  if (/^Tanglable Main Active Spell Skills are supported by Clockwork Core/i.test(text)) return "Clockwork Core: the board change is applied (it takes the second support slot of a Tanglable skill in Active slot 1, and the support there is left out of the calculation; its socket costs energy like any support); Clockwork Core's own effects are not modeled.";
+  if (grant) return `${text}: applied. ${grant.skill} (Lv. 20 trait skill; the skill takes no energy, supports added to it cost energy as usual) takes Active slot ${grant.row + 1}, and the skill placed there is left out of the calculation${text === "Spacetime Conqueror" ? "; -15% Movement Speed is read" : ""}. What ${grant.skill} does on the dummy is on its skill badge (src/youga-ultimate-one.js).`;
   return "";
 }
 
@@ -355,9 +355,9 @@ export function heroTraitLineCoverage(heroId, traitName, line, selected) {
   // per engine (In calc, Inactive, No DPS effect, …) and the hero modules (src/hero-trait-modules.js) give their own status.
   // A line no module claims and that cannot change dummy damage (headers, trait controls: residual batch §6) is neutral.
   if (heroId === DANCE_OF_THE_DEEP_ID) return /^Artificial Moon:?$/i.test(squash(line)) ? "No DPS effect" : danceLineState(traitName, line).status;
-  if (LEVELLED_GENERIC_HEROES.has(heroId)) return /^Artificial Moon:?$/i.test(squash(line)) ? "No DPS effect" : levelledLineState(heroId, traitName, line).status;
   // Youga's Spacetime Dictator / Conqueror / Overlord: the slot replacement is applied (src/trait-board-grants.js).
   if (heroId === YOUGA_ULTIMATE_ONE_ID && TRAIT_SLOT_GRANTS[squash(line)]) return "In calc";
+  if (LEVELLED_GENERIC_HEROES.has(heroId)) return /^Artificial Moon:?$/i.test(squash(line)) ? "No DPS effect" : levelledLineState(heroId, traitName, line).status;
   if (heroId !== "selena-sing-with-the-tide") return heroModuleLineStatus(heroId, line, coverageContext()) ?? residualNonDamageStatus(normalizePercentageText(String(line || "")))?.status ?? refineCoverage("Not modeled", line);
   return selenaTideLineStatus(line, coverageContext());
 }

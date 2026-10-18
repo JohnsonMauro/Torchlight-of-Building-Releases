@@ -151,7 +151,7 @@ const DEFINITIONS = [
     notes: ["Flame Core: game group 840 (a Cold 50–75 row reached only through the stone's skill graph) is not the Core's hit and is left out. The game description for group 451 reads an older design (every 0.5 s for 4 s, 4 s cooldown); TLIDB's 1 s / 8 s text is used."] },
   { name: "Frost Core", delivery: "spell-sentry", useModel: sentry(), sentry: {},
     components: [{ key: "sentry", label: "Frost Core", groupId: 331, perUse: { perTick: 1, intervalSeconds: 1, castSpeedScaled: false, castFrequencyScaled: true }, ...text("TLIDB: deals damage once every 1 s for the 8 s the Sentry lasts (one projectile; not affected by Projectile Quantity bonuses)") }],
-    notes: ["Frost Core: \"+32% additional damage to Frozen enemies\" within 10 m needs Freeze (more than 100 Frostbite Rating), which the planner does not give the dummy; not applied. Its +2 Penetration changes nothing on one target."] },
+    notes: ["Frost Core: \"+32% additional damage to Frozen enemies\" within 10 m needs Freeze (100 or more Frostbite Rating), which the planner does not give the dummy; not applied. Its +2 Penetration changes nothing on one target."] },
   { name: "Thunder Core", delivery: "spell-sentry", useModel: sentry(), sentry: {},
     components: [{ key: "sentry", label: "Thunder Core", groupId: 850, perUse: { perTick: 1, intervalSeconds: 1, castSpeedScaled: false, castFrequencyScaled: true }, ...provisional("TLIDB: deals damage once every 1 s for the 8 s the Sentry lasts; within 10 m its casts can Jump at the same enemy repeatedly with a 70% Shotgun falloff, but the Jump count is unpublished, so one hit per cast is counted") }] },
 

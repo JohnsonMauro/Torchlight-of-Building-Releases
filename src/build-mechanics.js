@@ -48,7 +48,8 @@ const BASE_MIN_CHANNELED_STACKS = 1;
 const ENTANGLED_PAIN_LEVEL20_DOT_TAKEN = selenaCompleteSkillLoadoutSs13.setups.find((setup) => setup.name === "Entangled Pain")?.databaseLevel20?.cursedEnemyAdditionalDamageOverTimeTakenPercent ?? 39;
 // Curses whose effect on the dummy is modeled (named in the over-limit note).
 // Origins whose copies of talent / slate-total keys no total reads (gear-pact batch G8).
-const OTHER_ORIGINS = new Set(["gear", "kismet", "pact", "memory"]);
+// "follower" (2026-10-17): Tartarus: Black Hole's "+X% additional Affliction effect" (src/follower-model.js).
+const OTHER_ORIGINS = new Set(["gear", "kismet", "pact", "memory", "follower"]);
 const curseHasDummyEffect = (name) => name === "Entangled Pain" || Boolean(curseTakenEffect(name));
 // Supports whose effects other modules already model.
 // (The same list src/support-effects.js uses for the clause statuses.)
@@ -305,7 +306,8 @@ export function collectBuildMechanics({ main, setups = [], activeNames = new Set
   for (const line of modifierTexts) {
     let match = line.text.match(/^\+(\d+(?:\.\d+)?) Intelligence$/i);
     if (match) {
-      if (!["gear", "memory"].includes(line.origin)) { intelligence.extraFlat += number(match[1]) * line.multiplier; intelligence.sources.push({ source: line.source, text: line.text }); }
+      // A per-level gear line ("+3 Intelligence per 4 level(s)", resolved by the planner) is not in the gear ledger: counted here.
+      if (!["gear", "memory"].includes(line.origin) || line.lineEffect?.kind === "perLevel") { intelligence.extraFlat += number(match[1]) * line.multiplier; intelligence.sources.push({ source: line.source, text: line.text }); }
       mark(line, "Intelligence (main-stat damage)");
       continue;
     }

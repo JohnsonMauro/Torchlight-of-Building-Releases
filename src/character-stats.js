@@ -1,4 +1,5 @@
 import { normalizePercentageText } from "./percentage-text.js";
+import { gameDamageLayer } from "./affix-bucket.js";
 import { auraSpeedStatLines } from "./aura-gained-effects.js";
 import { heroById } from "./data/heroes/hero-catalog-ss13.js";
 import { allHeroTraitsSs13 } from "./data/heroes/all-hero-traits-ss13.generated.js";
@@ -202,6 +203,9 @@ export function parseCharacterStatClause(text) {
     const match = clean.match(pattern);
     if (!match) continue;
     const out = build(match, signed).filter((item) => item.stat && Number.isFinite(item.value));
+    // Game bucket for the shapes src/affix-bucket.js applies (2026-10-17 game bucket code); the wording rule otherwise.
+    const layer = out.length ? gameDamageLayer(text) : null;
+    if (layer) for (const item of out) if (item.bucket === "increased" || item.bucket === "additional") item.bucket = layer;
     if (out.length) return out;
   }
   return [];

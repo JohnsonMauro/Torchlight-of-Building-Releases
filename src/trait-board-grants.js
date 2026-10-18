@@ -98,7 +98,8 @@ function withClockworkCore(setup, order, grant, profile) {
   const supports = (setup.supports || []).map((support) => support === replaced
     ? { ...support, enabled: false, savedEnabled: support.enabled, traitReplaced: { by: CLOCKWORK_CORE.name, trait: grant.trait, slot: CLOCKWORK_CORE.slot } }
     : support);
-  // No effect lines for the engines (none of Clockwork Core's clauses is modeled); the tooltip shows the keyword text.
+  // No effect lines for the engines: Clockwork Core's clauses are read by src/youga-ultimate-one.js from the trait lines; the
+  // tooltip shows the keyword text.
   supports.push({
     name: CLOCKWORK_CORE.name, level: CLOCKWORK_CORE.level, baseLevel: CLOCKWORK_CORE.level, addedLevels: 0, effectiveLevel: CLOCKWORK_CORE.level, levelBonusSources: [],
     granted: true, grantSource: grant.trait, grantText: grant.source, enabled: true, effects: [], icon: CLOCKWORK_CORE.icon,

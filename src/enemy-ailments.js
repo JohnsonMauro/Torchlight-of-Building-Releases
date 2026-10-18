@@ -7,8 +7,8 @@ import { allSkillEffectsSs13 } from "./data/skills/all-skill-effects-ss13.genera
 
 // TLIDB Ailment page: Ailments are Ignite, Frostbite, Freeze, Shock, Numbed, Trauma, and Wilt.
 // Damaging ailments need a non-zero base. Numbed only raises Lightning damage taken (+5% per
-// stack); Frostbite raises Cold damage taken (+1% per Frostbite Rating, src/combat-states.js); Freeze needs more than
-// 100 Frostbite Rating.
+// stack); Frostbite raises Cold damage taken (+1% per Frostbite Rating, src/combat-states.js); Freeze needs 100 or more
+// Frostbite Rating (user-confirmed 2026-10-18; TLIDB says "more than 100").
 // Which ailments the target carries. Damaging ailments (Ignite, Trauma, Wilt) come
 // from the build's base sources; non-damaging elemental ailments (Frostbite, Numbed)
 // come from supports such as Glacial Freeze / High Voltage — "Inflicts <X> when the
@@ -85,7 +85,7 @@ export function collectEnemyAilments({ setups = [], activeNames = new Set(), mod
     if (dealer) add(match[1], false, line.source, `${dealer.name} deals Hit ${type} Damage`);
   }
   // Freeze (TLIDB keyword 707 / manual): "When a unit's Frostbite Rating exceeds 100, it becomes Frozen"; the build's
-  // inflicted rating is 10 + Max Frostbite Rating lines, capped at 120 (src/combat-states.js; provisional reading).
+  // inflicted rating is 10 + Max Frostbite Rating lines (user-confirmed 2026-10-18: Frozen at 100 or higher), capped at 120 (src/combat-states.js; provisional reading).
   // Inflicting Freeze also makes "Inflicts Frostbite when …" lines (e.g. the Prophet core Frostbitten) count.
   // ("Inflicts Frostbite when dealing Hit Cold Damage" is read above: it needs a skill that deals Cold.)
   for (const line of modifierTexts) {
@@ -100,9 +100,16 @@ export function collectEnemyAilments({ setups = [], activeNames = new Set(), mod
     if (/^Inflicts Frostbite on nearby enemies$/i.test(text)) add("Frostbite", false, line.source, "Frostbite on Nearby enemies (within 6 m)");
     if (/^Inflicts Paralysis, Blind, Weaken, Slow, Taunt, and Frostbite on hit$/i.test(text) && mainActive) add("Frostbite", false, line.source, "Inflicted on hit");
   }
+  // The follower's skills (src/follower-model.js FOLLOWER_MARKERS, 2026-10-17): "The Follower inflicts <Ailment> on the dummy" —
+  // the dummy carries an ailment the follower inflicts whoever deals the main damage (provisional: the follower casts at its
+  // cadence and keeps it applied).
+  for (const line of modifierTexts) {
+    const match = normalizePercentageText(String(line.text)).trim().match(/^The Follower inflicts (Trauma|Wilt|Ignite|Numbed|Frostbite) on the dummy$/i);
+    if (match) { const name = match[1][0].toUpperCase() + match[1].slice(1).toLowerCase(); add(name, damagingAilments.includes(name), line.source, "inflicted by the follower's skill"); }
+  }
   if (types.has("Frostbite")) {
     const rating = inflictedFrostbiteRating(modifierTexts);
-    if (rating > BUFF_VALUES.frostbiteFreezeAbove) add("Frozen", false, types.get("Frostbite").source, `Frostbite Rating ${rating} > ${BUFF_VALUES.frostbiteFreezeAbove}`);
+    if (rating >= BUFF_VALUES.frostbiteFreezeAt) add("Frozen", false, types.get("Frostbite").source, `Frostbite Rating ${rating} ≥ ${BUFF_VALUES.frostbiteFreezeAt}`);
   }
   // Build-wide "Cannot inflict X" (src/ailment-blocks.js) removes that ailment from the dummy.
   for (const name of [...types.keys()]) if (buildWideAilmentBlock(modifierTexts, name === "Frozen" ? "Freeze" : name)) types.delete(name);

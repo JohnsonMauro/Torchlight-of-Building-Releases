@@ -1,6 +1,11 @@
 import { additionalDamagePathSources } from "./damage-path-sources.js";
 import { neutralStatuses, refineCoverage, setCoverageContext, dazeStatus } from "./line-coverage.js";
 import { damagePathPanelMarkup } from "./damage-path-panel.js";
+import { OPEN_QUESTIONS, openQuestionsFor, openQuestionsText } from "./open-questions.js";
+import { bugAreaForView, platformName } from "./feedback-links.js";
+import { createFeedbackDialog } from "./feedback-dialog.js";
+import { calculationReportContext } from "./feedback-report-context.js";
+import { APP_VERSION } from "./app-version.js";
 import { createPlannerCache } from "./planner-cache.js";
 import { boostedKismetAffixHtml, microFateEffectScale, parseKismetEffect, starTrailNote } from "./kismet-effects.js";
 import { parseBlockModifier } from "./block-model.js";
@@ -15,7 +20,7 @@ import { aimUptimeAfterToggle } from "./aim-controls.js";
 import { configurationPanelMarkup } from "./configuration-panel.js";
 import { coverageBadge, gearLineCoverage, talentEffectCoverage, talentLineCoverage, slateLineCoverage, prismAffixCoverage, prismAffixCoverageReason, heroTraitCoverage, heroTraitCoverageReason } from "./calculation-coverage.js";
 import { scorchingBeamBaseHits, strippedBeamHitCoefficient } from "./scorching-beam-base-hit.js";
-import { renderStatSheet } from "./stat-sheet.js";
+import { damagePathControlsMarkup, renderStatSheet } from "./stat-sheet.js";
 import { fireHitMitigation, mitigateScorchingBeamCycle } from "./target-hit-mitigation.js";
 import { canDropGearInSlot } from "./gear-drag.js";
 import { folkloreRingModifier, folkloreRingOptionFromModifiers } from "./legendary-ring-options.js";
@@ -46,6 +51,7 @@ import { PEDIGREE_OF_GODS, pedigreeSlotTypes, normalizePedigreeAffixes } from ".
 import { selenaScorchingBeamGearSs13 } from "./data/gear/selena-scorching-beam-ss13.js";
 import { equipmentSlots, craftItemTypes, voraxItemTypes } from "./data/gear/crafting-catalog-ss13.js";
 import { rareBaseItemsSs13 } from "./data/gear/rare-base-items-ss13.generated.js";
+import { isLegacyRareBase, rareBaseById, rareBaseByName, rareBaseForItem } from "./rare-base-lookup.js";
 import { baseAffixesSs13, baseAffixTiersSs13 } from "./data/gear/base-affixes-ss13.generated.js";
 import { voraxBaseAffixSlotPool } from "./vorax-base-affixes.js";
 import { craftAffixesSs13 } from "./data/gear/craft-affixes-ss13.generated.js";
@@ -100,7 +106,8 @@ import { treeExtraRowMarkup, treeExtraRowTooltipHtml, EXTRA_ROW_NOTE } from "./h
 import { heroTraitLevelBonus } from "./character-stats.js";
 import { normalizeSunsEmbraceItem } from "./suns-embrace-normalization.js";
 import { legendaryModifierSignature, reconcileLegendaryModifiers } from "./legendary-modifier-signature.js";
-import { applyLegendaryEditorEdits, legendaryEditorModel, legendarySourceForItem, rollValuesFromText } from "./legendary-editor-model.js";
+import { applyLegendaryEditorEdits, editableLegendarySlots, legendaryEditorModel, legendarySourceForItem, legendaryTierForText, rollValuesFromText } from "./legendary-editor-model.js";
+import { legendaryLineTiers, legendaryTierTemplate } from "./legendary-affix-tiers.js";
 import { allPlaceholderTemplates, keywordRollParts, placeholderOption, placeholderOptionForText, placeholderOptionTemplate, placeholderPool } from "./legendary-placeholder-pools.js";
 import { itemCardRarity } from "./graft-legendaries.js";
 
@@ -193,6 +200,8 @@ let selectedLegendaryCorrodedModifiers = new Set();
 let selectedFolkloreRingOption = "left";
 // Chosen rolls of "<Random …>" placeholder lines (catalog index -> pool option id; src/legendary-placeholder-pools.js).
 let selectedLegendaryPlaceholderChoices = new Map();
+// Chosen tiers of tiered legendary lines (catalog index -> tier; src/legendary-affix-tiers.js). Unset = the best tier.
+let selectedLegendaryTierChoices = new Map();
 let equipmentSearch = "";
 let selectedInventoryItemId = null;
 let selectedPactspiritSlot = 0;
@@ -205,6 +214,7 @@ let selectedVoraxBaseName = "";
 let editingCorrodedModifierIndices = new Set();
 let editingFolkloreRingOption = "left";
 let editingPlaceholderChoices = new Map();
+let editingTierChoices = new Map();
 let editingLegendaryTexts = new Map();
 let selectedSlateId = null;
 let slateEditMode = false;
@@ -1646,7 +1656,7 @@ function itemDisplayRarity(item){
   if(displayItem?.rarity==="vorax"||/^Vorax Limb:/i.test(displayItem?.name||item?.name||"")||/^Vorax(?: Gear| Limb:)/i.test(displayItem?.base||item?.base||"")) return "vorax";
   const normalized=(item?.name||"").replace(/ - Priceless$/i,"").toLowerCase();
   if(displayItem?.rarity==="legendary"||legendaryGearSs13.some((entry)=>entry.name.toLowerCase()===normalized)) return "legendary";
-  const base=rareBaseItemsSs13.find((entry)=>entry.id===item?.baseId||entry.name.toLowerCase()===normalized||(item?.base&&entry.name.toLowerCase()===String(item.base).toLowerCase()));
+  const base=rareBaseForItem(item,[normalized,item?.base]);
   const implicitCount=base?.modifiers?.length||0;
   const affixCount=Number.isInteger(item?.affixCount)?item.affixCount:Math.max(0,(item?.modifiers?.length||0)-implicitCount)+(item?.corrosionModifiers?.length||0);
   return affixCount===0?"common":affixCount<=2?"magic":"epic";
@@ -1665,20 +1675,20 @@ function equipInventoryItem(item,targetSlot=null){
   for(const [equippedSlot,equipped] of Object.entries(plannerState.equipmentOverrides||{}))if(equippedSlot!==slot&&equipped.sourceInventoryId===id)delete plannerState.equipmentOverrides[equippedSlot];
   plannerState.equipmentOverrides[slot]={...structuredClone(override),sourceInventoryId:id}; disabledEquipmentSlots.delete(slot); selectedEquipmentSlot=slot; persistPlannerState(); renderCandidateViews(); showToast(`${escapeHtml(item.name)} equipped`);
 }
-function editingLegendaryModifierTemplate(source,index){ const corroded=editingCorrodedModifierIndices.has(index), choice=placeholderOption(source.id,index,editingPlaceholderChoices.get(index)); if(choice)return placeholderOptionTemplate(choice,corroded); if(source.id==="Folklore_of_Locking_Fingers"&&index===2)return folkloreRingModifier(editingFolkloreRingOption,corroded); return corroded?(legendaryCorrodedModifiersSs13[source.id]?.[index]||source.modifiers[index]):source.modifiers[index]; }
+function editingLegendaryModifierTemplate(source,index){ const corroded=editingCorrodedModifierIndices.has(index), choice=placeholderOption(source.id,index,editingPlaceholderChoices.get(index)); if(choice)return placeholderOptionTemplate(choice,corroded); if(source.id==="Folklore_of_Locking_Fingers"&&index===2)return folkloreRingModifier(editingFolkloreRingOption,corroded); const tierTemplate=corroded?null:legendaryTierTemplate(source.id,index,editingTierChoices.get(index)); if(tierTemplate)return tierTemplate; return corroded?(legendaryCorrodedModifiersSs13[source.id]?.[index]||source.modifiers[index]):source.modifiers[index]; }
 // Legendary (and captured legendary) items edit their catalog lines only; base implicits and other non-catalog lines are
 // found by text (src/legendary-editor-model.js), stay out of the controls and are kept as they are on save.
 function legendaryEditorSource(item){ if(!item||!["legendary","captured"].includes(item.rarity))return null; return legendarySourceForItem(item,legendaryGearSs13,legendaryCorrodedModifiersSs13); }
 function inventoryLegendaryModel(item,source=legendaryEditorSource(item)){ return source?legendaryEditorModel(item,source,{corrodedLines:legendaryCorrodedModifiersSs13[source.id],specialTexts:[beltBlendById(item?.beltBlendId)?.modifier,towerSequenceById(item?.towerSequenceId)?.modifier,...(item?.beltBlendModifiers||[])].filter(Boolean)}):null; }
 function editingLegendaryLineText(source,index){ if(editingLegendaryTexts.has(index))return editingLegendaryTexts.get(index); const template=editingLegendaryModifierTemplate(source,index), ranges=modifierRollRanges(template); return ranges.length?resolveModifierRolls(template,ranges.map(preferredModifierRoll)):template; }
-function inventoryEditingPreview(item){ const source=legendaryEditorSource(item); if(!source)return item; const model=inventoryLegendaryModel(item,source); return {...item,...applyLegendaryEditorEdits(item,model,{texts:new Map(model.slots.filter((slot)=>slot.position>=0).map((slot)=>[slot.catalogIndex,editingLegendaryLineText(source,slot.catalogIndex)])),corrodedCatalog:editingCorrodedModifierIndices})}; }
+function inventoryEditingPreview(item){ const source=legendaryEditorSource(item); if(!source)return item; const model=inventoryLegendaryModel(item,source); return {...item,...applyLegendaryEditorEdits(item,model,{texts:new Map(editableLegendarySlots(model,source).map((slot)=>[slot.catalogIndex,editingLegendaryLineText(source,slot.catalogIndex)])),corrodedCatalog:editingCorrodedModifierIndices})}; }
 function renderInventoryItemDialog(){
   const item=inventoryItems().find((entry)=>entry.id===selectedInventoryItemId); if(!item) return;
   $("#inventory-item-title").textContent=item.name;
   if(inventoryItemEditing){
     $("#inventory-item-dialog").classList.add("gear-editor-dialog");
     const weaponType=itemWeaponType(item), sequenceEntries=towerSequencesForType(weaponType);
-    $("#inventory-item-body").innerHTML=`<div class="gear-edit-layout"><section><div class="gear-edit-selected"><img src="${gearIcon(item)}" alt=""><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.base||titleCase(item.slot))}</small></span><button type="button" data-change-edit-item>Change</button></div><label>Name<input data-inventory-edit-name value="${escapeHtml(item.name)}"></label><div class="gear-edit-pair"><label>Item level<input type="number" min="1" max="100" data-inventory-edit-level value="${item.level||100}"></label>${equipmentEnergyAllowed(item.slot)?`<label>Equipment Energy<input type="number" min="0" data-inventory-edit-energy value="${item.energy||0}"></label>`:""}</div><label>Base item<input data-inventory-edit-base value="${escapeHtml(item.base||"")}"></label>${item.slot==="belt"?`<label>Belt Blend<select data-edit-belt-blend>${beltBlendOptions(item.beltBlendId)}</select></label>`:""}${sequenceEntries.length?`<label>TOWER Sequence<select data-edit-tower-sequence>${towerSequenceOptions(weaponType,item.towerSequenceId)}</select></label>`:""}<label>Corrosion Implicit<select data-edit-corrosion><option value="">None</option><option value="${escapeHtml((item.corrosionModifiers||[]).join(" | "))}" ${(item.corrosionModifiers||[]).length?"selected":""}>${(item.corrosionModifiers||[]).length?escapeHtml(item.corrosionModifiers.join(" · ")):"Corroded implicit"}</option></select></label><h3>${item.rarity==="legendary"?"Legendary Mods":legendaryEditorSource(item)?"Legendary affixes":"Prefixes and Suffixes"}</h3><div class="gear-mod-editor">${(legendaryEditorSource(item)?inventoryLegendaryModel(item).slots.filter((slot)=>slot.position>=0).map((slot)=>modifierEditorControl(item,slot.text,slot.catalogIndex)):modifiersWithoutSpecials(item).map((modifier,index)=>modifierEditorControl(item,modifier,index))).join("")||"<p>No modifiers configured.</p>"}${(item.corrosionModifiers||[]).map((modifier)=>`<div class="fixed-mod corrosion-affix"><b>Corroded</b><span>${escapeHtml(modifier)}</span></div>`).join("")}</div></section><aside><small>Preview</small>${equipmentPreview(inventoryEditingPreview(item))}</aside></div>`;
+    $("#inventory-item-body").innerHTML=`<div class="gear-edit-layout"><section><div class="gear-edit-selected"><img src="${gearIcon(item)}" alt=""><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.base||titleCase(item.slot))}</small></span><button type="button" data-change-edit-item>Change</button></div><label>Name<input data-inventory-edit-name value="${escapeHtml(item.name)}"></label><div class="gear-edit-pair"><label>Item level<input type="number" min="1" max="100" data-inventory-edit-level value="${item.level||100}"></label>${equipmentEnergyAllowed(item.slot)?`<label>Equipment Energy<input type="number" min="0" data-inventory-edit-energy value="${item.energy||0}"></label>`:""}</div><label>Base item<input data-inventory-edit-base value="${escapeHtml(item.base||"")}"></label>${item.slot==="belt"?`<label>Belt Blend<select data-edit-belt-blend>${beltBlendOptions(item.beltBlendId)}</select></label>`:""}${sequenceEntries.length?`<label>TOWER Sequence<select data-edit-tower-sequence>${towerSequenceOptions(weaponType,item.towerSequenceId)}</select></label>`:""}<label>Corrosion Implicit<select data-edit-corrosion><option value="">None</option><option value="${escapeHtml((item.corrosionModifiers||[]).join(" | "))}" ${(item.corrosionModifiers||[]).length?"selected":""}>${(item.corrosionModifiers||[]).length?escapeHtml(item.corrosionModifiers.join(" · ")):"Corroded implicit"}</option></select></label><h3>${item.rarity==="legendary"?"Legendary Mods":legendaryEditorSource(item)?"Legendary affixes":"Prefixes and Suffixes"}</h3><div class="gear-mod-editor">${(legendaryEditorSource(item)?editableLegendarySlots(inventoryLegendaryModel(item),legendaryEditorSource(item)).map((slot)=>modifierEditorControl(item,slot.text,slot.catalogIndex)):modifiersWithoutSpecials(item).map((modifier,index)=>modifierEditorControl(item,modifier,index))).join("")||"<p>No modifiers configured.</p>"}${(item.corrosionModifiers||[]).map((modifier)=>`<div class="fixed-mod corrosion-affix"><b>Corroded</b><span>${escapeHtml(modifier)}</span></div>`).join("")}</div></section><aside><small>Preview</small>${equipmentPreview(inventoryEditingPreview(item))}</aside></div>`;
     $("#inventory-item-dialog footer").innerHTML='<button class="button button-secondary" type="button" data-close-inventory-item>Cancel</button><button class="button" type="button" data-save-inventory-item>Save Changes</button>';
     $("#inventory-item-dialog footer").hidden=false;
   } else {
@@ -1701,11 +1711,13 @@ const capturedGearIcons={
   "Vorax Limb: Digits":"./src/assets/tli/gear/base-Vorax_Limb_Digits.webp"
 };
 function gearIcon(item){
+  // A rare item shows its own base's icon (by base id), so a stored icon from an older lookup cannot stick.
+  const ownBase=rareBaseById(item.baseId); if(ownBase) return ownBase.icon;
   if(item.icon) return item.icon;
   const normalizedName=(item.name||"").replace(/ - Priceless$/i,"").trim().toLowerCase();
   const normalizedBase=(item.base||"").trim().toLowerCase();
   return capturedGearIcons[item.name]
-    ||rareBaseItemsSs13.find((entry)=>entry.name.toLowerCase()===normalizedName||entry.name.toLowerCase()===normalizedBase)?.icon
+    ||(rareBaseByName(normalizedName)||rareBaseByName(normalizedBase))?.icon
     ||legendaryGearSs13.find((entry)=>entry.name.toLowerCase()===normalizedName)?.icon
     ||legendaryGearSs13.find((entry)=>entry.slot===compatibleEquipmentSlot(item))?.icon
     ||legendaryGearSs13[0]?.icon||"";
@@ -1726,7 +1738,7 @@ function resolvedRollValues(template,resolved){
   const result=String(resolved||"").match(new RegExp(`^${parts.join("")}${escape(template.slice(cursor))}$`,"i")); return result?result.slice(1).map(Number):[];
 }
 function tierMatchesResolved(tier,resolved){ const ranges=modifierRollRanges(tier.template); if(!ranges.length)return String(tier.template).replace(/\s+/g," ").trim().toLowerCase()===String(resolved).replace(/\s+/g," ").trim().toLowerCase(); const values=resolvedRollValues(tier.template,resolved); return modifierSignature(tier.template)===modifierSignature(resolved)&&values.length===ranges.length&&values.every((value,index)=>Number.isFinite(value)&&value>=ranges[index].min&&value<=ranges[index].max); }
-function legendaryModifierTemplate(item,index,corroded=selectedLegendaryCorrodedModifiers.has(index)){ const choice=placeholderOption(item.id,index,selectedLegendaryPlaceholderChoices.get(index)); if(choice)return placeholderOptionTemplate(choice,corroded); if(item.id==="Folklore_of_Locking_Fingers"&&index===2)return folkloreRingModifier(selectedFolkloreRingOption,corroded); return corroded?(legendaryCorrodedModifiersSs13[item.id]?.[index]||item.modifiers[index]):item.modifiers[index]; }
+function legendaryModifierTemplate(item,index,corroded=selectedLegendaryCorrodedModifiers.has(index)){ const choice=placeholderOption(item.id,index,selectedLegendaryPlaceholderChoices.get(index)); if(choice)return placeholderOptionTemplate(choice,corroded); if(item.id==="Folklore_of_Locking_Fingers"&&index===2)return folkloreRingModifier(selectedFolkloreRingOption,corroded); const tierTemplate=corroded?null:legendaryTierTemplate(item.id,index,selectedLegendaryTierChoices.get(index)); if(tierTemplate)return tierTemplate; return corroded?(legendaryCorrodedModifiersSs13[item.id]?.[index]||item.modifiers[index]):item.modifiers[index]; }
 function configuredLegendaryModifiers(){ const selected=legendaryGearSs13[selectedLegendaryIndex]; if(!selected) return []; return selected.modifiers.map((_,index)=>{ const template=legendaryModifierTemplate(selected,index), sliders=[...document.querySelectorAll(`[data-legendary-roll="${index}"]`)]; return sliders.length?resolveModifierRolls(template,sliders.map((slider)=>slider.value)):template; }); }
 function configuredLegendaryModifiersWithSpecials(){ const blend=beltBlendById(selectedLegendaryBeltBlendId), sequence=towerSequenceById(selectedLegendaryTowerSequenceId); return [...configuredLegendaryModifiers(),...(blend?[blend.modifier]:[]),...(sequence?[sequence.modifier]:[])]; }
 function maxRolledLegendaryModifiers(item){ return item.modifiers.map((_,index)=>{ const template=legendaryModifierTemplate(item,index), ranges=modifierRollRanges(template); return ranges.length?resolveModifierRolls(template,ranges.map(preferredModifierRoll)):template; }); }
@@ -1735,14 +1747,17 @@ function affixRollInputs(range,attributes,current){ const value=Number.isFinite(
 // shows its keyword in the revived-memory keyword style; holding Alt (body.revival-alt-held, setRevivalAltDetails) expands it into its effect lines, each with its own badge when `lineStatus` (line -> status) is given, else inline "Keyword: effect". Other lines are plain text.
 function modifierTextMarkup(text,lineStatus=null){ const clean=String(text??"").replace(/(\d)\s+%/g,"$1%"), parts=keywordRollParts(clean); if(!parts)return escapeHtml(clean); const effect=lineStatus?`<span class="keyword-roll-effect keyword-roll-lines">${parts.effect.map((line,lineIndex)=>{ const fixed=parts.statuses?.[lineIndex], status=fixed?.status||lineStatus(line); return `<span class="keyword-roll-line"><span>${escapeHtml(line)}</span><b class="${status==="In calc"?"calculated":neutralStatuses.has(status)?"neutral":"pending"}"${fullTextTitle(fixed?.reason)}>${escapeHtml(status)}</b></span>`; }).join("")}</span>`:`<span class="keyword-roll-effect">${parts.inline?` · ${escapeHtml(parts.keyword)}`:""}: ${escapeHtml(parts.effect.join("\n"))}</span>`; if(parts.inline)return `<span class="keyword-roll">${escapeHtml(parts.inline.before)}<span class="keyword-roll-name">${escapeHtml(parts.keyword)}</span>${escapeHtml(parts.inline.after)}${effect}</span>`; return `<span class="keyword-roll"><span class="keyword-roll-name">${escapeHtml(parts.keyword)}</span>${effect}</span>${parts.rest.map((line)=>`\n${escapeHtml(line)}`).join("")}`; }
 // A dropdown of the rolls a "<Random …>" placeholder line can take; empty when the line is not a resolved placeholder.
+// A tier dropdown for a tiered legendary line (src/legendary-affix-tiers.js, e.g. Ice Pulse's Spell Damage); it sets the line's
+// roll range. Empty for every other line, and while the line is corroded (the corroded form has its own range).
+function legendaryTierControl(sourceId,index,chosen,corroded,attribute){ const tiers=legendaryLineTiers(sourceId,index); if(!tiers||corroded)return ""; const current=tiers.some((entry)=>entry.tier===Number(chosen))?Number(chosen):tiers[0].tier; return `<label class="legendary-ring-choice">Tier<select ${attribute}="${index}">${tiers.map((entry)=>`<option value="${entry.tier}" ${entry.tier===current?"selected":""}>T${entry.tier} · ${escapeHtml(entry.text.replace(/(\d|\))\s+%/g,"$1%"))}</option>`).join("")}</select></label>`; }
 function placeholderChoiceControl(sourceId,index,chosen,attribute){ const pool=placeholderPool(sourceId,index); if(!pool)return ""; return `<label class="legendary-ring-choice">Random roll<select ${attribute}="${index}"><option value="">Not chosen · ${escapeHtml(pool.placeholder)}</option>${pool.options.map((option)=>`<option value="${escapeHtml(option.id)}" ${option.id===chosen?"selected":""}>${escapeHtml(option.label)}</option>`).join("")}</select></label>`; }
-function legendaryModifierControl(item,index){ const corroded=selectedLegendaryCorrodedModifiers.has(index), template=legendaryModifierTemplate(item,index,corroded), ranges=modifierRollRanges(template), values=ranges.map(preferredModifierRoll), resolved=ranges.length?resolveModifierRolls(template,values):template; const ringChoice=item.id==="Folklore_of_Locking_Fingers"&&index===2?`<label class="legendary-ring-choice">Ring effect<select data-legendary-ring-option><option value="left" ${selectedFolkloreRingOption==="left"?"selected":""}>Left Ring · regain Blur</option><option value="right" ${selectedFolkloreRingOption==="right"?"selected":""}>Right Ring · gain Blur Rating</option></select></label>`:""; return `<div class="legendary-mod-control ${corroded?"corrosion-affix":""}"><span><button type="button" data-toggle-legendary-corrosion="${index}" ${legendaryCorrodedModifiersSs13[item.id]?.[index]?"":"disabled"}>${corroded?"Corroded":"Normal"}</button><span data-legendary-mod="${index}">${modifierTextMarkup(resolved)}</span></span>${ringChoice}${placeholderChoiceControl(item.id,index,selectedLegendaryPlaceholderChoices.get(index),"data-legendary-placeholder")}${ranges.map((range,rangeIndex)=>`<label>${affixRollInputs(range,`data-legendary-roll="${index}" data-range-index="${rangeIndex}"`)}</label>`).join("")}</div>`; }
+function legendaryModifierControl(item,index){ const corroded=selectedLegendaryCorrodedModifiers.has(index), template=legendaryModifierTemplate(item,index,corroded), ranges=modifierRollRanges(template), values=ranges.map(preferredModifierRoll), resolved=ranges.length?resolveModifierRolls(template,values):template; const ringChoice=item.id==="Folklore_of_Locking_Fingers"&&index===2?`<label class="legendary-ring-choice">Ring effect<select data-legendary-ring-option><option value="left" ${selectedFolkloreRingOption==="left"?"selected":""}>Left Ring · regain Blur</option><option value="right" ${selectedFolkloreRingOption==="right"?"selected":""}>Right Ring · gain Blur Rating</option></select></label>`:""; return `<div class="legendary-mod-control ${corroded?"corrosion-affix":""}"><span><button type="button" data-toggle-legendary-corrosion="${index}" ${legendaryCorrodedModifiersSs13[item.id]?.[index]?"":"disabled"}>${corroded?"Corroded":"Normal"}</button><span data-legendary-mod="${index}">${modifierTextMarkup(resolved)}</span></span>${ringChoice}${placeholderChoiceControl(item.id,index,selectedLegendaryPlaceholderChoices.get(index),"data-legendary-placeholder")}${legendaryTierControl(item.id,index,selectedLegendaryTierChoices.get(index),corroded,"data-legendary-tier")}${ranges.map((range,rangeIndex)=>`<label>${affixRollInputs(range,`data-legendary-roll="${index}" data-range-index="${rangeIndex}"`)}</label>`).join("")}</div>`; }
 function interpolateCorrosionRoll(entry,percent=100){ if(entry.min===entry.max)return entry.min; const lows=[...entry.min.matchAll(/-?\d+(?:\.\d+)?/g)].map(m=>Number(m[0])), highs=[...entry.max.matchAll(/-?\d+(?:\.\d+)?/g)].map(m=>Number(m[0])); let i=0; return entry.min.replace(/-?\d+(?:\.\d+)?/g,(raw)=>{const lo=Number(raw),hi=highs[i]??lo;i+=1;const value=lo+(hi-lo)*(Number(percent)/100);return Number.isInteger(lo)&&Number.isInteger(hi)?String(Math.round(value)):String(Math.round(value*10)/10);}); }
 function configuredCorrosionModifier(){ const entry=corrosionImplicitsForBase(selectedLegendaryBase)[selectedCorrosionIndex]; if(!entry)return ""; return interpolateCorrosionRoll(entry,$("[data-corrosion-roll]")?.value??100); }
-function modifierEditorControl(item,modifier,index){ const source=legendaryEditorSource(item)||legendaryGearSs13.find((entry)=>entry.name.toLowerCase()===(item.name||"").replace(/ - Priceless$/i,"").toLowerCase()); if(legendaryEditorSource(item)){ const corroded=editingCorrodedModifierIndices.has(index), template=editingLegendaryModifierTemplate(source,index), ranges=modifierRollRanges(template), resolved=editingLegendaryLineText(source,index), values=rollValuesFromText(template,resolved)||ranges.map(preferredModifierRoll), ringChoice=source.id==="Folklore_of_Locking_Fingers"&&index===2?`<label class="legendary-ring-choice">Ring effect<select data-edit-legendary-ring-option><option value="left" ${editingFolkloreRingOption==="left"?"selected":""}>Left Ring · regain Blur</option><option value="right" ${editingFolkloreRingOption==="right"?"selected":""}>Right Ring · gain Blur Rating</option></select></label>`:""; return `<div class="legendary-mod-control ${corroded?"corrosion-affix":""}"><span><button type="button" data-toggle-edit-corrosion="${index}" ${legendaryCorrodedModifiersSs13[source.id]?.[index]?"":"disabled"}>${corroded?"Corroded":"Normal"}</button><span data-edit-modifier-text="${index}">${modifierTextMarkup(resolved)}</span><input type="hidden" data-edit-modifier="${index}" value="${escapeHtml(resolved)}"></span>${ringChoice}${placeholderChoiceControl(source.id,index,editingPlaceholderChoices.get(index),"data-edit-legendary-placeholder")}${ranges.map((range,rangeIndex)=>`<label>${affixRollInputs(range,`data-edit-legendary-roll="${index}" data-range-index="${rangeIndex}"`,values[rangeIndex])}</label>`).join("")}</div>`; } const range=modifierRollRange(source?.modifiers?.[index]||modifier); if(!range)return `<div class="fixed-mod"><b>Normal</b><input data-edit-modifier="${index}" value="${escapeHtml(modifier)}"></div>`; const value=Math.min(range.max,Math.max(range.min,Number(modifier.match(/-?\d+(?:\.\d+)?/)?.[0])||range.max)); return `<label><span><b>Normal</b><input data-edit-modifier="${index}" value="${escapeHtml(modifier)}"></span><span class="affix-roll-inputs"><input type="range" min="${range.min}" max="${range.max}" step="${modifierRollStep(range)}" value="${value}" data-modifier-roll><input class="affix-roll-number" type="number" min="${range.min}" max="${range.max}" step="${modifierRollStep(range)}" value="${value}" data-affix-roll-number></span><em>${range.min}–${range.max}</em></label>`; }
+function modifierEditorControl(item,modifier,index){ const source=legendaryEditorSource(item)||legendaryGearSs13.find((entry)=>entry.name.toLowerCase()===(item.name||"").replace(/ - Priceless$/i,"").toLowerCase()); if(legendaryEditorSource(item)){ const corroded=editingCorrodedModifierIndices.has(index), template=editingLegendaryModifierTemplate(source,index), ranges=modifierRollRanges(template), resolved=editingLegendaryLineText(source,index), values=rollValuesFromText(template,resolved)||ranges.map(preferredModifierRoll), ringChoice=source.id==="Folklore_of_Locking_Fingers"&&index===2?`<label class="legendary-ring-choice">Ring effect<select data-edit-legendary-ring-option><option value="left" ${editingFolkloreRingOption==="left"?"selected":""}>Left Ring · regain Blur</option><option value="right" ${editingFolkloreRingOption==="right"?"selected":""}>Right Ring · gain Blur Rating</option></select></label>`:""; return `<div class="legendary-mod-control ${corroded?"corrosion-affix":""}"><span><button type="button" data-toggle-edit-corrosion="${index}" ${legendaryCorrodedModifiersSs13[source.id]?.[index]?"":"disabled"}>${corroded?"Corroded":"Normal"}</button><span data-edit-modifier-text="${index}">${modifierTextMarkup(resolved)}</span><input type="hidden" data-edit-modifier="${index}" value="${escapeHtml(resolved)}"></span>${ringChoice}${placeholderChoiceControl(source.id,index,editingPlaceholderChoices.get(index),"data-edit-legendary-placeholder")}${legendaryTierControl(source.id,index,editingTierChoices.get(index),corroded,"data-edit-legendary-tier")}${ranges.map((range,rangeIndex)=>`<label>${affixRollInputs(range,`data-edit-legendary-roll="${index}" data-range-index="${rangeIndex}"`,values[rangeIndex])}</label>`).join("")}</div>`; } const range=modifierRollRange(source?.modifiers?.[index]||modifier); if(!range)return `<div class="fixed-mod"><b>Normal</b><input data-edit-modifier="${index}" value="${escapeHtml(modifier)}"></div>`; const value=Math.min(range.max,Math.max(range.min,Number(modifier.match(/-?\d+(?:\.\d+)?/)?.[0])||range.max)); return `<label><span><b>Normal</b><input data-edit-modifier="${index}" value="${escapeHtml(modifier)}"></span><span class="affix-roll-inputs"><input type="range" min="${range.min}" max="${range.max}" step="${modifierRollStep(range)}" value="${value}" data-modifier-roll><input class="affix-roll-number" type="number" min="${range.min}" max="${range.max}" step="${modifierRollStep(range)}" value="${value}" data-affix-roll-number></span><em>${range.min}–${range.max}</em></label>`; }
 function itemModifierSections(item){
   const modifiers=item.modifiers||[], used=new Set(), entries=(values,tone="",badges=[])=>(values||[]).map((text,position)=>{ const index=modifiers.findIndex((value,i)=>value===text&&!used.has(i)); if(index>=0)used.add(index); return {text,index,tone,badge:badges[position]||""}; });
-  const base=rareBaseItemsSs13.find((entry)=>entry.id===item.baseId||entry.name.toLowerCase()===String(item.base||"").toLowerCase());
+  const base=rareBaseForItem(item,[item.base]);
   const corrodedBase=(item.corrosionModifiers||[]).length>0, normalImplicit=item.implicitModifiers??base?.modifiers??[], implicit=corrodedBase?[]:normalImplicit;
   if(corrodedBase)entries(normalImplicit);
   const blend=beltBlendById(item.beltBlendId), blendModifiers=blend?[blend.modifier]:(item.beltBlendModifiers||[]), sequence=towerSequenceById(item.towerSequenceId);
@@ -1798,7 +1813,7 @@ function updateCraftAffixConfig(index,preferredTier=""){
 }
 function configuredCraftAffixes(body,indices=[0,1,2,3,4,5]){ return [...body.querySelectorAll("[data-craft-affix-family]")].filter((select)=>indices.includes(Number(select.dataset.craftAffixFamily))).map((select)=>{ const index=Number(select.dataset.craftAffixFamily), family=craftAffixFamily(body,index), tierValue=body.querySelector(`[data-craft-affix-tier="${index}"]`)?.value, tier=isVoraxLegendaryAffix(body,index)?family?.tiers[0]:family?.tiers.find((entry)=>entry.tier===tierValue); if(!tier)return ""; const sliders=[...body.querySelectorAll(`[data-craft-affix-roll="${index}"]`)]; return sliders.length?resolveModifierRolls(tier.template,sliders.map((slider)=>slider.value)):tier.template; }).filter(Boolean); }
 function towerSequenceAllowed(type){ return towerSequencesForType(type).length>0; }
-function rareBasesForType(type){ return rareBaseItemsSs13.filter((entry)=>entry.type===type).sort((a,b)=>b.level-a.level||a.name.localeCompare(b.name)); }
+function rareBasesForType(type){ return rareBaseItemsSs13.filter((entry)=>entry.type===type&&!isLegacyRareBase(entry)).sort((a,b)=>b.level-a.level||a.name.localeCompare(b.name)); }
 function rareBaseOptions(type){ return rareBasesForType(type).map((entry)=>`<option value="${escapeHtml(entry.id)}">Lv ${entry.level} · ${escapeHtml(entry.name)}</option>`).join(""); }
 function baseAffixOptions(type){ return `<option value="">None</option>${(baseAffixesSs13[type]||[]).map((affix)=>`<option value="${escapeHtml(affix)}" data-tier="${escapeHtml(baseAffixTiersSs13[type]?.[affix]||"")}">${escapeHtml(affix.replaceAll("\n"," / "))}</option>`).join("")}`; }
 function voraxBaseAffixOptions(type,slot){
@@ -1883,6 +1898,8 @@ function openInventoryItemEditor(item){
   editingFolkloreRingOption=folkloreRingOptionFromModifiers(item.legendaryModifiers||item.modifiers);
   const placeholderSource=legendaryEditorSource(item);
   editingPlaceholderChoices=new Map(legendaryModel&&placeholderSource?legendaryModel.slots.filter((slot)=>slot.position>=0).map((slot)=>[slot.catalogIndex,placeholderOptionForText(placeholderSource.id,slot.catalogIndex,slot.text,slot.corroded)?.option.id]).filter(([,id])=>id):[]);
+  // A tiered line keeps the tier its stored roll was rolled in (Ice Pulse "+29% Spell Damage" opens on T2); unset = the best tier.
+  editingTierChoices=new Map(legendaryModel&&placeholderSource?legendaryModel.slots.filter((slot)=>slot.position>=0&&!slot.corroded).map((slot)=>[slot.catalogIndex,legendaryTierForText(placeholderSource,slot.catalogIndex,slot.text)]).filter(([,tier])=>tier):[]);
   renderInventoryItemDialog();
   const dialog=$("#inventory-item-dialog");
   if(!dialog.open)dialog.showModal();
@@ -2499,7 +2516,7 @@ function renderCharacter() {
   $("#character-status-detail").textContent = inactive.map((entry) => `${entry.name} (${entry.status === "insufficient-energy" ? "insufficient Energy" : entry.status === "disabled" ? "disabled" : "Energy cost unknown"})`).join(" · ");
   $("#character-status").classList.toggle("warning", inactive.length > 0);
   $("#stat-sheet").innerHTML = renderStatSheet(planner, selectedStatSheetSkill, { life, energyShield, mana: 525, armour: equipment.defenses.armor || 0, evasion: equipment.defenses.evasion || 0 }, format, escapeHtml);
-  $("#damage-path").innerHTML = damageBucketDiagram(theoretical, planner);
+  $("#damage-path").innerHTML = damagePathControlsMarkup() + damageBucketDiagram(theoretical, planner);
   for (const tab of $("#stats-panel-options").querySelectorAll("[data-stats-panel]")) {
     const selected = tab.dataset.statsPanel === activeStatsPanel;
     tab.classList.toggle("active", selected);
@@ -2542,9 +2559,49 @@ function selectDamagePathTab(value, { focus = false } = {}) {
   }
   for (const view of $("#damage-path").querySelectorAll("[data-damage-path-view]")) view.hidden = view.dataset.damagePathView !== selectedDamagePath;
 }
+// Open questions "Copy questions" (src/open-questions-panel.js): plain text of the build's applicable questions.
+async function copyOpenQuestions(button) {
+  const planner = currentPlanner();
+  const text = openQuestionsText(openQuestionsFor(planner, planner?.state));
+  try { await navigator.clipboard.writeText(text); }
+  catch { showToast("Clipboard access was unavailable"); return; }
+  button.textContent = "Copied";
+  clearTimeout(button.copiedTimer);
+  button.copiedTimer = setTimeout(() => { button.textContent = "Copy questions"; }, 1600);
+}
+// Report buttons: each opens the in-planner feedback dialog (src/feedback-dialog.js) with its GitHub form's fields; "Send to
+// GitHub" copies the build code when it is included and opens the pre-filled issue form in a new tab (the desktop app hands
+// it to the system browser, electron/main.cjs setWindowOpenHandler). The build code never goes in the URL.
+const feedbackDialog = createFeedbackDialog({ dialog: $("#feedback-dialog"), toast: showToast });
+function currentBuildCode() {
+  try { return encodePlannerState(plannerState); } catch { return ""; }
+}
+function reportCalculation() {
+  persistPlannerState();
+  const context = calculationReportContext(currentPlanner(), selectedStatSheetSkill);
+  feedbackDialog.open("calculation", { ...context, version: APP_VERSION, platform: platformName(window), buildCode: currentBuildCode() });
+}
+for (const view of ["#stat-sheet", "#damage-path"]) $(view).addEventListener("click", (event) => {
+  if (event.target.closest("[data-report-calculation]")) reportCalculation();
+});
+$("[data-report-bug]").addEventListener("click", () => {
+  persistPlannerState();
+  feedbackDialog.open("bug", { area: bugAreaForView({ view: activeWorkspaceView, statsPanel: activeStatsPanel, slateMode: talentSlateMode }), version: APP_VERSION, platform: platformName(window), buildCode: currentBuildCode() });
+});
+$("#damage-path").addEventListener("click", (event) => {
+  const submit = event.target.closest("[data-submit-open-question]");
+  if (!submit) return;
+  event.preventDefault();
+  const entry = OPEN_QUESTIONS.find((item) => item.id === submit.dataset.submitOpenQuestion);
+  if (!entry) return;
+  persistPlannerState();
+  feedbackDialog.open("answer", { entry, version: APP_VERSION, platform: platformName(window), buildCode: currentBuildCode() });
+});
 $("#damage-path").addEventListener("click", (event) => {
   const tab = event.target.closest("[data-damage-path-tab]");
   if (tab) selectDamagePathTab(tab.dataset.damagePathTab);
+  const copy = event.target.closest("[data-copy-open-questions]");
+  if (copy) copyOpenQuestions(copy);
 });
 $("#damage-path").addEventListener("keydown", (event) => {
   const tab = event.target.closest("[data-damage-path-tab]");
@@ -3471,12 +3528,12 @@ $("#inventory-item-dialog").addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown",(event)=>{
-  if(event.target.matches("select")&&event.key.length===1&&!event.ctrlKey&&!event.metaKey&&!event.altKey){ event.preventDefault(); openSearchableSelect(event.target,event.key); return; }
+  if(event.target.matches("select:not([data-native-select])")&&event.key.length===1&&!event.ctrlKey&&!event.metaKey&&!event.altKey){ event.preventDefault(); openSearchableSelect(event.target,event.key); return; }
   if(!event.target.matches("#select-search-popover input"))return;
   if(event.key==="Escape"){ event.preventDefault(); closeSearchableSelect(); }
   if(event.key==="Enter"&&searchableSelectMatches.length){ event.preventDefault(); chooseSearchableOption(searchableSelectMatches[0].index); }
 });
-document.addEventListener("pointerdown",(event)=>{ if(event.target.matches("select")&&event.button===0){ event.preventDefault(); event.target.focus(); openSearchableSelect(event.target); } });
+document.addEventListener("pointerdown",(event)=>{ if(event.target.matches("select:not([data-native-select])")&&event.button===0){ event.preventDefault(); event.target.focus(); openSearchableSelect(event.target); } });
 document.addEventListener("input",(event)=>{ if(event.target.matches("#select-search-popover input"))renderSearchableSelectResults(event.target.value); });
 document.addEventListener("click",(event)=>{
   if(event.target.closest("[data-close-select-search]")){closeSearchableSelect();return;}
@@ -3753,7 +3810,7 @@ document.addEventListener("click", (event) => {
     } else renderEquipment();
   }
   const openEquipmentCraft=event.target.closest("[data-open-equipment-craft]");
-  if(openEquipmentCraft){ editingCraftItemId=null; equipmentCraftMode=openEquipmentCraft.dataset.openEquipmentCraft; selectedVoraxBaseName=""; selectedLegendaryIndex=-1; selectedLegendaryBase=""; selectedLegendaryBeltBlendId=""; selectedLegendaryTowerSequenceId=""; selectedCorrosionIndex=-1; selectedLegendaryCorrodedModifiers=new Set(); selectedLegendaryPlaceholderChoices=new Map(); selectedFolkloreRingOption="left"; equipmentSearch=""; renderEquipmentCrafter(); $("#equipment-crafter").showModal(); }
+  if(openEquipmentCraft){ editingCraftItemId=null; equipmentCraftMode=openEquipmentCraft.dataset.openEquipmentCraft; selectedVoraxBaseName=""; selectedLegendaryIndex=-1; selectedLegendaryBase=""; selectedLegendaryBeltBlendId=""; selectedLegendaryTowerSequenceId=""; selectedCorrosionIndex=-1; selectedLegendaryCorrodedModifiers=new Set(); selectedLegendaryPlaceholderChoices=new Map(); selectedLegendaryTierChoices=new Map(); selectedFolkloreRingOption="left"; equipmentSearch=""; renderEquipmentCrafter(); $("#equipment-crafter").showModal(); }
   const voraxBaseChoice=event.target.closest("[data-select-vorax-base]");
   if(voraxBaseChoice){ selectedVoraxBaseName=voraxBaseChoice.dataset.selectVoraxBase; renderEquipmentCrafter(); }
   if(event.target.closest("[data-change-vorax-base]")){ selectedVoraxBaseName=""; renderEquipmentCrafter(); }
@@ -3767,8 +3824,8 @@ document.addEventListener("click", (event) => {
   }
   if(event.target.closest("[data-close-equipment-craft]")){ editingCraftItemId=null; $("#equipment-crafter").close(); }
   const legendaryChoice=event.target.closest("[data-legendary-id]");
-  if(legendaryChoice){ selectedLegendaryIndex=legendaryGearSs13.findIndex((entry)=>entry.id===legendaryChoice.dataset.legendaryId); selectedLegendaryBase=defaultBaseForItem(legendaryGearSs13[selectedLegendaryIndex]); selectedLegendaryBeltBlendId=""; selectedLegendaryTowerSequenceId=""; selectedCorrosionIndex=-1; selectedLegendaryCorrodedModifiers=new Set(); selectedLegendaryPlaceholderChoices=new Map(); selectedFolkloreRingOption="left"; renderEquipmentCrafter(); }
-  if(event.target.closest("[data-change-legendary]")){ selectedLegendaryIndex=-1; selectedLegendaryBase=""; selectedLegendaryBeltBlendId=""; selectedLegendaryTowerSequenceId=""; selectedCorrosionIndex=-1; selectedLegendaryCorrodedModifiers=new Set(); selectedLegendaryPlaceholderChoices=new Map(); renderEquipmentCrafter(); }
+  if(legendaryChoice){ selectedLegendaryIndex=legendaryGearSs13.findIndex((entry)=>entry.id===legendaryChoice.dataset.legendaryId); selectedLegendaryBase=defaultBaseForItem(legendaryGearSs13[selectedLegendaryIndex]); selectedLegendaryBeltBlendId=""; selectedLegendaryTowerSequenceId=""; selectedCorrosionIndex=-1; selectedLegendaryCorrodedModifiers=new Set(); selectedLegendaryPlaceholderChoices=new Map(); selectedLegendaryTierChoices=new Map(); selectedFolkloreRingOption="left"; renderEquipmentCrafter(); }
+  if(event.target.closest("[data-change-legendary]")){ selectedLegendaryIndex=-1; selectedLegendaryBase=""; selectedLegendaryBeltBlendId=""; selectedLegendaryTowerSequenceId=""; selectedCorrosionIndex=-1; selectedLegendaryCorrodedModifiers=new Set(); selectedLegendaryPlaceholderChoices=new Map(); selectedLegendaryTierChoices=new Map(); renderEquipmentCrafter(); }
   const toggleLegendaryCorrosion=event.target.closest("[data-toggle-legendary-corrosion]");
   if(toggleLegendaryCorrosion){ const index=Number(toggleLegendaryCorrosion.dataset.toggleLegendaryCorrosion); if(selectedLegendaryCorrodedModifiers.has(index)) selectedLegendaryCorrodedModifiers.delete(index); else selectedLegendaryCorrodedModifiers.add(index); renderEquipmentCrafter(); }
   const addCraftedEquipment=event.target.closest("[data-add-crafted-equipment]");
@@ -3795,7 +3852,7 @@ document.addEventListener("click", (event) => {
   const toggleEditCorrosion=event.target.closest("[data-toggle-edit-corrosion]");
   if(toggleEditCorrosion){ const index=Number(toggleEditCorrosion.dataset.toggleEditCorrosion); if(editingCorrodedModifierIndices.has(index)) editingCorrodedModifierIndices.delete(index); else editingCorrodedModifierIndices.add(index); editingLegendaryTexts.delete(index); renderInventoryItemDialog(); }
   if(event.target.closest("[data-delete-inventory-item]")){ const item=inventoryItems().find((entry)=>entry.id===selectedInventoryItemId); if(item?.id.startsWith("captured-")){ plannerState.removedInventoryItemIds=[...new Set([...(plannerState.removedInventoryItemIds||[]),item.id])]; disabledEquipmentSlots.add(item.slot); } else plannerState.equipmentInventory=plannerState.equipmentInventory.filter((entry)=>entry.id!==selectedInventoryItemId); for(const [slot,override] of Object.entries(plannerState.equipmentOverrides)){ if(override.sourceInventoryId===selectedInventoryItemId){ delete plannerState.equipmentOverrides[slot]; disabledEquipmentSlots.add(slot); } } $("#inventory-item-dialog").close(); persistPlannerState(); renderCandidateViews(); showToast("Item deleted from Inventory"); }
-  if(event.target.closest("[data-save-inventory-item]")){ let item=plannerState.equipmentInventory.find((entry)=>entry.id===selectedInventoryItemId); const source=inventoryItems().find((entry)=>entry.id===selectedInventoryItemId); if(!item&&source){ item={...structuredClone(source),id:`gear-${Date.now()}-${Math.random().toString(36).slice(2,7)}`}; plannerState.equipmentInventory.push(item); selectedInventoryItemId=item.id; } if(item){ item.name=$("[data-inventory-edit-name]").value.trim()||item.name; item.level=Number($("[data-inventory-edit-level]").value)||item.level; item.energy=equipmentEnergyAllowed(item.slot)?Number($("[data-inventory-edit-energy]")?.value)||0:0; item.base=$("[data-inventory-edit-base]").value.trim()||item.base; const blend=item.slot==="belt"?beltBlendById($("[data-edit-belt-blend]")?.value):null, sequence=towerSequenceById($("[data-edit-tower-sequence]")?.value), editedModifiers=[...document.querySelectorAll("[data-edit-modifier]")].map((input)=>input.value.trim()).filter(Boolean); const legendarySource=legendaryEditorSource(item); if(legendarySource){ const texts=new Map([...document.querySelectorAll("[data-edit-modifier]")].map((input)=>[Number(input.dataset.editModifier),input.value.trim()]).filter(([,text])=>text)); Object.assign(item,applyLegendaryEditorEdits(item,inventoryLegendaryModel(item,legendarySource),{texts,corrodedCatalog:editingCorrodedModifierIndices,specials:[{from:beltBlendById(item.beltBlendId)?.modifier,to:blend?.modifier},{from:towerSequenceById(item.towerSequenceId)?.modifier,to:sequence?.modifier}]})); } else applyEditedModifierStructure(item,editedModifiers); if(blend)item.beltBlendId=blend.id;else delete item.beltBlendId; if(sequence)item.towerSequenceId=sequence.id;else delete item.towerSequenceId; if(!legendarySource){ item.modifiers=[...editedModifiers,...(item.rarity==="legendary"?item.implicitModifiers||[]:[])]; if(blend)item.modifiers.push(blend.modifier); if(sequence)item.modifiers.push(sequence.modifier); item.corrodedModifierIndices=[...editingCorrodedModifierIndices]; } item.corrosionModifiers=($("[data-edit-corrosion]")?.value||"").split(" | ").filter(Boolean); const base=rareBaseItemsSs13.find((entry)=>entry.id===item.baseId||entry.name.toLowerCase()===(item.name||"").replace(/ - Priceless$/i,"").toLowerCase()||entry.name.toLowerCase()===String(item.base||"").toLowerCase()); if(!legendarySource)item.affixCount=Math.max(0,item.modifiers.length-(base?.modifiers?.length||0))+item.corrosionModifiers.length; inventoryItemEditing=false; persistPlannerState(); renderCandidateViews(); renderInventoryItemDialog(); showToast("Inventory item updated"); } }
+  if(event.target.closest("[data-save-inventory-item]")){ let item=plannerState.equipmentInventory.find((entry)=>entry.id===selectedInventoryItemId); const source=inventoryItems().find((entry)=>entry.id===selectedInventoryItemId); if(!item&&source){ item={...structuredClone(source),id:`gear-${Date.now()}-${Math.random().toString(36).slice(2,7)}`}; plannerState.equipmentInventory.push(item); selectedInventoryItemId=item.id; } if(item){ item.name=$("[data-inventory-edit-name]").value.trim()||item.name; item.level=Number($("[data-inventory-edit-level]").value)||item.level; item.energy=equipmentEnergyAllowed(item.slot)?Number($("[data-inventory-edit-energy]")?.value)||0:0; item.base=$("[data-inventory-edit-base]").value.trim()||item.base; const blend=item.slot==="belt"?beltBlendById($("[data-edit-belt-blend]")?.value):null, sequence=towerSequenceById($("[data-edit-tower-sequence]")?.value), editedModifiers=[...document.querySelectorAll("[data-edit-modifier]")].map((input)=>input.value.trim()).filter(Boolean); const legendarySource=legendaryEditorSource(item); if(legendarySource){ const texts=new Map([...document.querySelectorAll("[data-edit-modifier]")].map((input)=>[Number(input.dataset.editModifier),input.value.trim()]).filter(([,text])=>text)); Object.assign(item,applyLegendaryEditorEdits(item,inventoryLegendaryModel(item,legendarySource),{texts,corrodedCatalog:editingCorrodedModifierIndices,specials:[{from:beltBlendById(item.beltBlendId)?.modifier,to:blend?.modifier},{from:towerSequenceById(item.towerSequenceId)?.modifier,to:sequence?.modifier}]})); } else applyEditedModifierStructure(item,editedModifiers); if(blend)item.beltBlendId=blend.id;else delete item.beltBlendId; if(sequence)item.towerSequenceId=sequence.id;else delete item.towerSequenceId; if(!legendarySource){ item.modifiers=[...editedModifiers,...(item.rarity==="legendary"?item.implicitModifiers||[]:[])]; if(blend)item.modifiers.push(blend.modifier); if(sequence)item.modifiers.push(sequence.modifier); item.corrodedModifierIndices=[...editingCorrodedModifierIndices]; } item.corrosionModifiers=($("[data-edit-corrosion]")?.value||"").split(" | ").filter(Boolean); const base=rareBaseForItem(item,[(item.name||"").replace(/ - Priceless$/i,""),item.base]); if(!legendarySource)item.affixCount=Math.max(0,item.modifiers.length-(base?.modifiers?.length||0))+item.corrosionModifiers.length; inventoryItemEditing=false; persistPlannerState(); renderCandidateViews(); renderInventoryItemDialog(); showToast("Inventory item updated"); } }
   const unequipItem=event.target.closest("[data-unequip-item]");
   if(unequipItem){ disabledEquipmentSlots.add(unequipItem.dataset.unequipItem); persistPlannerState(); renderCandidateViews(); showToast(`${titleCase(unequipItem.dataset.unequipItem)} unequipped`); }
   if(event.target.closest("[data-reset-equipment]")){ equipmentSlots.forEach(([slot])=>disabledEquipmentSlots.add(slot)); plannerState.equipmentOverrides={}; persistPlannerState(); renderCandidateViews(); showToast("Gear reset to empty"); }
@@ -4472,6 +4529,8 @@ $("#skill-selector-detail").addEventListener("change", (event) => { if (event.ta
 
 document.addEventListener("change", (event) => {
   if (event.target.checkValidity && !event.target.checkValidity()) { event.target.reportValidity(); return; }
+  if(event.target.matches("[data-legendary-tier]")){ selectedLegendaryTierChoices.set(Number(event.target.dataset.legendaryTier),Number(event.target.value)); renderEquipmentCrafter(); return; }
+  if(event.target.matches("[data-edit-legendary-tier]")){ const index=Number(event.target.dataset.editLegendaryTier); editingTierChoices.set(index,Number(event.target.value)); editingLegendaryTexts.delete(index); renderInventoryItemDialog(); return; }
   if(event.target.matches("[data-legendary-placeholder]")){ const index=Number(event.target.dataset.legendaryPlaceholder); if(event.target.value)selectedLegendaryPlaceholderChoices.set(index,event.target.value); else selectedLegendaryPlaceholderChoices.delete(index); renderEquipmentCrafter(); return; }
   if(event.target.matches("[data-edit-legendary-placeholder]")){ const index=Number(event.target.dataset.editLegendaryPlaceholder); if(event.target.value)editingPlaceholderChoices.set(index,event.target.value); else editingPlaceholderChoices.delete(index); editingLegendaryTexts.delete(index); renderInventoryItemDialog(); return; }
   if(event.target.matches("[data-legendary-ring-option]")){

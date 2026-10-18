@@ -1,6 +1,6 @@
 import { normalizePercentageText } from "./percentage-text.js";
 import { effectiveGearModifierTexts } from "./engine.js";
-import { rareBaseItemsSs13 } from "./data/gear/rare-base-items-ss13.generated.js";
+import { rareBaseForItem } from "./rare-base-lookup.js";
 import { legendaryGearSs13 } from "./data/gear/legendary-gear-ss13.generated.js";
 import { defaultBaseForItem } from "./data/gear/corrosion-implicits-ss13.js";
 
@@ -79,7 +79,7 @@ export function weaponRestriction(text) {
 /** The base type of an equipped item (rare base id / name, `base`, or the legendary catalog's icon). */
 export function weaponTypeOf(item) {
   if (!item) return null;
-  const rareBase = rareBaseItemsSs13.find((base) => base.id === item.baseId || base.name === item.base || base.name === item.name);
+  const rareBase = rareBaseForItem(item, [item.base, item.name]);
   if (rareBase) return rareBase.type;
   if (item.base && [...ONE_HANDED_WEAPON_TYPES, ...TWO_HANDED_WEAPON_TYPES, ...SHIELD_TYPES].includes(item.base)) return item.base;
   const catalogItem = legendaryGearSs13.find((entry) => entry.name === item.name || entry.id === item.baseId);

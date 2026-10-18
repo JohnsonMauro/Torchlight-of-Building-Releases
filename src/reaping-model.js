@@ -101,7 +101,10 @@ export function calculateMultiSourceReaping({ modifierTexts = [], dots = [], ext
     // Reap triggers are limited by the server tick (~30 Hz, community-tested; tlicompendium.com Reaping guide).
     const intervalSeconds = !triggered ? Infinity : Math.max(REAP_TICK_SECONDS, rawInterval(source, recoverySeconds, totalDotDps, successes, afflictionPerSecond));
     const perDot = dots.map((dot) => {
-      const seconds = source.baseDurationSeconds * (1 + (durationPercent + recentReapPercent + (dot.typedDurationPercent || 0)) / 100) * additionalDurationFactor;
+      // A Reap another unit deals (the follower's Scorching Pulse, src/follower-model.js followerReapSources: `ownDurationPercent`)
+      // lasts its own Reaping Duration; yours does not apply to it (2026-10-17, provisional).
+      const seconds = Number.isFinite(source.ownDurationPercent) ? source.baseDurationSeconds * (1 + source.ownDurationPercent / 100)
+        : source.baseDurationSeconds * (1 + (durationPercent + recentReapPercent + (dot.typedDurationPercent || 0)) / 100) * additionalDurationFactor;
       // Full-Affliction triggers settle the DoT at 100 Affliction rating. A Reap is True Damage: `trueDamageScale` takes the
       // DoT's "damage applied to Life" lines out (patch notes 2026-10-15; src/true-damage.js).
       const trueDamageScale = dot.trueDamageScale ?? 1;

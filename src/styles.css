@@ -1212,7 +1212,7 @@ body.revival-alt-held .planner-tooltip.slate-tooltip .core-slate-hint{display:no
 #equipment-grid .gear-drop-eligible,#equipment-inventory.gear-drop-eligible{outline:1px dashed #74c8ed;outline-offset:-3px}
 #equipment-grid .gear-drop-target,#equipment-inventory.gear-drop-target{outline:2px solid #68dcaa;outline-offset:-3px;box-shadow:inset 0 0 18px #44bd9666,0 0 16px #44bd9666}
 .stats-overview{padding:1.4rem;margin-bottom:1rem;border:1px solid #475563;border-radius:14px;background:radial-gradient(circle at 82% 0%,#203946 0%,transparent 35%),linear-gradient(145deg,#1c252f,#151b23);box-shadow:0 16px 40px #0005}
-.stats-panel-options{display:flex;gap:.5rem;margin:0 0 1rem}.stats-panel-options button{padding:.55rem .9rem;border:1px solid #425463;border-radius:7px;background:#18232e;color:#b8cad6;font-weight:700;cursor:pointer}.stats-panel-options button.active{border-color:#eaa667;background:#30251d;color:#ffd0a3}
+.stats-panel-options{display:flex;gap:.5rem;margin:0 0 1rem}.stats-panel-options button,.stat-sheet-controls .stat-sheet-report{padding:.55rem .9rem;border:1px solid #425463;border-radius:7px;background:#18232e;color:#b8cad6;font-weight:700;cursor:pointer}.stats-panel-options button.active{border-color:#eaa667;background:#30251d;color:#ffd0a3}
 .stat-sheet-controls{display:flex;align-items:center;gap:.65rem;margin-bottom:.8rem;color:#b9c8d3;font-size:.82rem}.stat-sheet-controls label{font-weight:700}.stat-sheet-controls select{min-width:180px;padding:.45rem .55rem;border:1px solid #b98345;border-radius:5px;background:#252b32;color:#f5d09d}.stat-sheet-controls>span{margin-left:auto;color:#8ec5a7}
 .stat-sheet-row input[type="checkbox"]{accent-color:#77cea8;vertical-align:middle;opacity:1;cursor:default}
 .stat-sheet-layout{display:grid;gap:.7rem;align-items:start;margin-bottom:.6rem}.stat-sheet-banner,.stat-sheet-card{border-left:3px solid #db9850;border-radius:4px;background:#222e3b;overflow:hidden}.stat-sheet-banner{display:grid;gap:.4rem;margin-bottom:.6rem;padding:0 12px 12px}.stat-sheet-banner h2,.stat-sheet-card h3{margin:0 -12px .4rem;padding:7px 12px;background:#303c49;color:#f1f5f8;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase}.stat-sheet-banner h2 small{color:#a9bac8;font-weight:400}.stat-sheet-banner strong{color:#ffbd82;font-size:1.15rem}.stat-sheet-banner span{color:#a8c3c0;font-size:.75rem;line-height:1.45}.stat-sheet-card{padding:0 12px 8px}.stat-sheet-card h3{margin-left:-12px;margin-right:-12px}.stat-sheet-row{display:flex;justify-content:space-between;gap:.6rem;padding:.28rem 0;border-bottom:1px solid #ffffff16;color:#bfcbd5;font-size:.74rem}.stat-sheet-row:last-child{border-bottom:0}.stat-sheet-row strong{color:#e9f4ff;text-align:right;white-space:nowrap}.stat-sheet-note{color:#9cadb9;font-size:.75rem;line-height:1.5}@media(max-width:850px){.stat-sheet-layout{grid-template-columns:1fr}}@media(max-width:560px){.stat-sheet-card-grid{grid-template-columns:1fr}.stat-sheet-controls{flex-wrap:wrap}.stat-sheet-controls>span{margin-left:0}}
@@ -1700,7 +1700,8 @@ body .site-header .header-actions #reset-build:focus-visible{
 }
 .reset-build-confirm [data-confirm-reset-build]{border-color:#c46b39;color:#ffbd8b;background:linear-gradient(180deg,#633025,#251a1c)}
 .reset-build-confirm button:hover,.reset-build-confirm button:focus-visible{filter:brightness(1.17)}
-body .loadout-status button[data-view="builds"]{
+body .loadout-status button[data-view="builds"],
+body .loadout-status button[data-report-bug]{
   border:1px solid #a67736;
   border-radius:3px;
   clip-path:none;
@@ -1712,7 +1713,9 @@ body .loadout-status button[data-view="builds"]{
   letter-spacing:normal;
 }
 body .loadout-status button[data-view="builds"]:hover,
-body .loadout-status button[data-view="builds"]:focus-visible{
+body .loadout-status button[data-view="builds"]:focus-visible,
+body .loadout-status button[data-report-bug]:hover,
+body .loadout-status button[data-report-bug]:focus-visible{
   border-color:#e7b35d;
   color:#fff1bd;
   background:linear-gradient(180deg,#604525 0%,#3c2f20 52%,#222329 100%);
@@ -3132,6 +3135,72 @@ body.unified-planner #skill-selector .selector-preview:not(.support):not(.aura) 
 .planner-tooltip.skill-tooltip:not(.support-tooltip):not(.aura-tooltip) .skill-tooltip-tags{background:rgba(12,38,52,.54)}
 .planner-tooltip.skill-tooltip:not(.support-tooltip):not(.aura-tooltip) .skill-tooltip-source{background:rgba(12,30,40,.56)}
 
+/* Silver artwork for Common gear and Normal memories. The art is light, so these cards use dark text. */
+.hero-memory-preview.memory-rarity-normal,
+.planner-tooltip.memory-tooltip[data-rarity="normal"],
+.equipment-preview.rarity-common:not(.item-level-100),
+.inventory-quick-actions.rarity-common:not(.priceless-item),
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100){
+  background-color:#c9ced3;
+  background-image:linear-gradient(rgba(255,255,255,.22),rgba(255,255,255,.22)),url("./assets/common-memory-gear-background.webp");
+  background-position:center top;
+  background-size:cover;
+  background-repeat:no-repeat;
+}
+.equipment-preview.rarity-common:not(.item-level-100)::before{display:none}
+.hero-memory-preview.memory-rarity-normal,
+.planner-tooltip.memory-tooltip[data-rarity="normal"]{--memory-accent:#454d55;color:#15191d}
+.hero-memory-preview.memory-rarity-normal header strong,
+.planner-tooltip.memory-tooltip[data-rarity="normal"] .memory-tooltip-head strong{color:#0f1215}
+.hero-memory-preview.memory-rarity-normal header small,
+.planner-tooltip.memory-tooltip[data-rarity="normal"] .memory-tooltip-head small,
+.planner-tooltip.memory-tooltip[data-rarity="normal"] .memory-tooltip-body>p,
+.planner-tooltip.memory-tooltip[data-rarity="normal"]>small{color:#2a3036}
+.hero-memory-preview.memory-rarity-normal h4,
+.planner-tooltip.memory-tooltip[data-rarity="normal"] .memory-tooltip-body h4{color:#2a3036}
+.hero-memory-preview.memory-rarity-normal [data-memory-trait-preview],
+.hero-memory-preview.memory-rarity-normal .memory-affix-row,
+.planner-tooltip.memory-tooltip[data-rarity="normal"] .memory-tooltip-body>p b,
+.planner-tooltip.memory-tooltip[data-rarity="normal"] .memory-tooltip-body section p,
+.planner-tooltip.memory-tooltip[data-rarity="normal"] .memory-affix-row{color:#15191d}
+.hero-memory-preview.memory-rarity-normal .memory-trait-bonus,
+.hero-memory-preview.memory-rarity-normal .memory-implicit.wax-applied,
+.planner-tooltip.memory-tooltip[data-rarity="normal"] .memory-tooltip-body>p:nth-child(2) b,
+.planner-tooltip.memory-tooltip[data-rarity="normal"] .memory-tooltip-body section.memory-implicit.wax-applied p{color:#0f5323}
+.planner-tooltip.memory-tooltip[data-rarity="normal"]>small{border-top-color:#7d858d}
+.equipment-preview.rarity-common:not(.item-level-100),
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100){border-color:#6f777f;color:#15191d}
+.equipment-preview.rarity-common:not(.item-level-100) p,
+.equipment-preview.rarity-common:not(.item-level-100) h3{color:#0f1215}
+.equipment-preview.rarity-common:not(.item-level-100) small{color:#2a3036}
+.equipment-preview.rarity-common:not(.item-level-100) ul{border-top-color:#7d858d}
+.equipment-preview.rarity-common:not(.item-level-100) a{color:#1c4a86}
+.equipment-preview.rarity-common:not(.item-level-100) .item-mod-section,
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .tooltip-mod-sections>section{border-color:rgba(61,69,77,.45);background:rgba(255,255,255,.22)}
+.equipment-preview.rarity-common:not(.item-level-100) .item-mod-section h4,
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .tooltip-mod-sections h4,
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .gear-tooltip-body h4{color:#2a3036}
+.equipment-preview.rarity-common:not(.item-level-100) .item-mod-section h4 small,
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .tooltip-mod-sections h4 small{color:#2a3036}
+.equipment-preview.rarity-common:not(.item-level-100) li,
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .gear-tooltip-body li,
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .gear-tooltip-body li>span,
+.planner-tooltip.memory-tooltip[data-rarity="normal"] .memory-affix-row>span{color:#15191d}
+.equipment-preview.rarity-common:not(.item-level-100) li.corrosion-affix,
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .gear-tooltip-body li.corrosion-affix,
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .gear-tooltip-body li.corrosion-affix>span{color:#5e2380!important}
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100){--gear-name-color:#0f1215;box-shadow:inset 0 -3px 0 #6f777f,0 14px 38px #000b}
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .gear-tooltip-head{border-color:#6f777f;background:transparent}
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .gear-tooltip-head::before{display:none}
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .gear-tooltip-body{background:transparent}
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .gear-tooltip-head span,
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .gear-tooltip-head em,
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .gear-level{border-color:#6f777f;color:#15191d;background:rgba(255,255,255,.3)}
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .gear-energy{border-color:#6f777f;color:#0b5566;background:rgba(255,255,255,.3)}
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100) .gear-tooltip-body li i{border-color:#5b636b;color:#2a3036}
+.planner-tooltip.gear-tooltip[data-rarity="common"]:not(.item-level-100)>small{border-top-color:#7d858d;color:#2a3036}
+body.unified-planner .inventory-quick-actions.rarity-common:not(.priceless-item){--item-name:#0f1215;--item-frame:#5b636b}
+
 /* Green artwork for Support Skill previews and tooltips. */
 body.unified-planner #skill-selector .selector-preview.support,
 .planner-tooltip.skill-tooltip.support-tooltip{
@@ -3199,6 +3268,40 @@ body.unified-planner #equipment-view .inventory-item .inventory-item-icon img[sr
 .game-log-skipped small{display:block;color:#a9b5c4}
 .import-game-log-dialog .game-log-provisional{margin-top:10px;color:#a9b5c4;font-size:.74rem}
 .reset-build-confirm [data-import-game-log-build]:disabled{opacity:.45;cursor:default;filter:none}
+/* Feedback dialog (src/feedback-dialog.js): the import-build dialog's look, with a scrolling body of form fields. */
+.feedback-dialog{width:min(600px,calc(100vw - 32px));max-height:calc(100vh - 32px);box-sizing:border-box;flex-direction:column;overflow:hidden}
+.feedback-dialog[open]{display:flex}
+.feedback-dialog>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.feedback-dialog>header h2{margin:0 0 10px;overflow-wrap:anywhere}
+.reset-build-confirm .feedback-close{min-height:0;padding:0 4px;border:0;color:#a9b5c4;background:none;font-size:1.5rem;line-height:1}
+.feedback-body{display:grid;gap:14px;min-height:0;margin:8px -6px 0 0;padding:4px 6px 4px 0;overflow-y:auto}
+.feedback-field{display:grid;gap:6px;min-width:0}
+.feedback-field>label{color:#f0c77e;font-size:.76rem;font-weight:700}
+.feedback-required{color:#ff6b5b}
+.reset-build-confirm .feedback-help{color:#a9b5c4;font-size:.74rem}
+.feedback-field input[type=text],.feedback-field select,.feedback-field textarea{box-sizing:border-box;width:100%;min-width:0;padding:9px 10px;border:1px solid #806341;border-radius:3px;color:#eee5d7;background:#111922;font:inherit;font-size:.82rem}
+.feedback-field select{color-scheme:dark}
+.feedback-field select option{background-color:#111922;color:#eee5d7}
+.feedback-field select option:checked{background-color:var(--gold);color:#111922}
+.feedback-field textarea{resize:vertical;min-height:64px}
+.feedback-field input[type=text]:focus-visible,.feedback-field select:focus-visible,.feedback-field textarea:focus-visible,.feedback-check input:focus-visible{outline:2px solid #f9ca65;outline-offset:2px}
+.feedback-field [aria-invalid=true]{border-color:#c46b39}
+.reset-build-confirm .feedback-error{color:#ffbd8b;font-size:.74rem}
+.feedback-error[hidden]{display:none}
+.feedback-code-row{display:flex;gap:8px;align-items:flex-start}
+.feedback-code-row textarea{flex:1;min-height:58px;color:#a9b5c4;font-family:Consolas,monospace;font-size:.72rem;word-break:break-all}
+.feedback-check{display:flex;align-items:center;gap:8px;color:#e9dfd0;font-size:.8rem;cursor:pointer}
+.feedback-check input:disabled+*{opacity:.45}
+.feedback-auto{padding:9px 11px;border:1px solid #3a4352;border-radius:3px;background:#111922;color:#a9b5c4;font-size:.72rem}
+.reset-build-confirm .feedback-auto p{margin:0 0 5px;font-size:.72rem;font-weight:700}
+.feedback-auto dl{display:grid;gap:3px;margin:0}
+.feedback-auto dl>div{display:flex;flex-wrap:wrap;gap:6px}
+.feedback-auto dt{color:#a9b5c4}
+.feedback-auto dd{margin:0;color:#e9dfd0;overflow-wrap:anywhere}
+.reset-build-confirm .feedback-note{margin-top:14px;color:#a9b5c4;font-size:.74rem}
+.feedback-dialog>.feedback-actions{margin-top:14px}
+.reset-build-confirm [data-feedback-send]:disabled{opacity:.45;cursor:default;filter:none}
+@media(max-width:480px){.feedback-dialog{padding:16px}.feedback-code-row{flex-direction:column;align-items:stretch}}
 
 /* Keep the slate workspace tied to the panel, regardless of parked slate count. */
 #talents-view.showing-slates>.talent-layout{height:var(--slate-panel-height,650px);min-height:0;overflow:hidden}
@@ -3517,7 +3620,7 @@ body.recovery-mode main.recovery-screen{display:block;width:auto;max-width:680px
   #character-view>.talent-page-heading .talent-total strong{font-size:1.1rem}
   #character-view #character-status-detail{margin-top:0}
   #character-view .stats-panel-options{margin-bottom:.5rem}
-  #character-view .stats-panel-options button{padding:.4rem .75rem;font-size:.82rem}
+  #character-view .stats-panel-options button,#character-view .stat-sheet-controls .stat-sheet-report{padding:.4rem .75rem;font-size:.82rem}
   #character-view .stat-sheet-controls{margin-bottom:.5rem}
   #character-view .stat-sheet-controls select{padding:.32rem .5rem}
   .stat-sheet-banner.stat-sheet-banner-wide{padding-bottom:8px;margin-bottom:.5rem}
@@ -3698,10 +3801,34 @@ body.recovery-mode main.recovery-screen{display:block;width:auto;max-width:680px
 .damage-path-footnote{margin:.6rem 0 0;color:#91a2ae;font-size:.7rem;line-height:1.5}
 .damage-path-summary-empty .damage-path-intro{margin-top:.2rem}
 .damage-extra{margin-top:.6rem}
+/* Open questions (src/open-questions-panel.js): the same .stat-section.damage-extra panel as Damage components / Timing. Its
+   body starts with the muted intro and the copy button (wraps under the line on narrow widths), then one collapsed
+   .stat-sheet-row <details> per question, with the coverage badge as its evidence pill and the body indented. */
+.open-questions-intro{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.35rem .75rem;padding:.3rem 0 .4rem;border-bottom:1px solid #ffffff12}
+.open-questions-intro p{flex:1 1 16rem;margin:0;color:#b7c3cd;font-size:.74rem;line-height:1.5}
+.open-questions-copy{flex:0 0 auto;min-height:0;padding:5px 10px;font-size:.62rem}
+.open-questions .open-question.stat-sheet-row{display:block}
+.open-question>summary{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .5rem;cursor:pointer;list-style:none}
+.open-question>summary::-webkit-details-marker{display:none}
+.open-question>summary:hover{color:#ffd39b}
+.open-question>summary:focus-visible{outline:2px solid #ffbd82;outline-offset:2px}
+.open-question-title{min-width:0;overflow-wrap:anywhere}
+.open-question .calc-coverage{display:inline-block;padding:2px 6px;border:1px solid #8a6f51;border-radius:4px;background:#382b20;color:#f2c58d;font:700 10px/1.3 Arial,sans-serif;white-space:nowrap}
+.open-question-body{display:grid;gap:.3rem;margin:.35rem 0 .2rem;padding-left:.85rem;color:#b7c3cd;line-height:1.5;overflow-wrap:anywhere}
+.open-question-body p{margin:0}
+.open-question-body strong{color:#bcd5e4;white-space:normal}
+.open-question-alternatives{margin:0;padding-left:1.1rem}
+.open-question-source{margin:0;color:#91a2ae;font-size:.7rem}
+.open-questions-intro .open-questions-note{flex:1 1 100%;color:#91a2ae;font-size:.7rem}
+.open-question-submit-row{margin:.15rem 0 0}
+.open-question-submit{display:inline-block;min-height:0;padding:5px 10px;font-size:.62rem;text-decoration:none}
 @media(min-width:1101px) and (max-height:1100px){
   /* The layout picker (Stat sheet / Damage path) pulls the next block up by 32 px for the stat sheet's
      controls row; the path tabs stay on their own row below it (user, 2026-10-11). */
   #damage-path>.damage-path-panel{margin-top:calc(32px + .5rem)}
+  /* "Report calculation" takes the Active skill select's place beside the picker; the panel below then needs no gap. */
+  #damage-path>.damage-path-controls{min-height:32px;margin-bottom:.5rem;padding-left:218px}
+  #damage-path>.damage-path-controls+.damage-path-panel{margin-top:0}
   .stat-sheet-banner.damage-path-summary{gap:.4rem;padding-bottom:8px}
   .damage-path-summary h2{padding:6px 14px;font-size:.78rem}
   .damage-path-hero{padding:.2rem 0}

@@ -4,6 +4,7 @@ import { activeKismetEffects } from "./kismet-effects.js";
 import { orderedPactspiritNodes, pactspiritEffectsAtLevel, pactspiritLevel } from "./pactspirit-levels.js";
 import { pactspiritTreesSs13 } from "./data/pacts/pactspirit-trees-ss13.js";
 import { prismAreaBounds, prismMutationDownside, prismNodeAffixes, inverseImageEffectMultiplier } from "./prism-crafting.js";
+import { MAX_RESISTANCE_DEFAULT_PERCENT, MAX_RESISTANCE_HARD_CAP_PERCENT } from "./game-attribute-defaults.js";
 
 const elements = ["Fire", "Cold", "Lightning", "Erosion"];
 export function parseResistanceModifier(text) {
@@ -73,8 +74,11 @@ export function calculateResistances({ equipment, talents = [], slates = [], mem
   const entries = elements.map(element => {
     const applicable = sources.filter(source => source.elements.includes(element));
     const total = applicable.filter(source => !source.maximum).reduce((sum, source) => sum + source.value, 0);
-    const maximum = 60 + applicable.filter(source => source.maximum).reduce((sum, source) => sum + source.value, 0);
-    return { element, total, maximum, effective: Math.min(total, maximum), sources: applicable };
+    // Max Resistance: config_attributes default 60 + the build's Max lines, capped at 90 by the panel formula (rows 30500–30800;
+    // 2026-10-17 game attribute data). uncappedMaximum keeps the raw sum.
+    const uncappedMaximum = MAX_RESISTANCE_DEFAULT_PERCENT + applicable.filter(source => source.maximum).reduce((sum, source) => sum + source.value, 0);
+    const maximum = Math.min(MAX_RESISTANCE_HARD_CAP_PERCENT, uncappedMaximum);
+    return { element, total, maximum, uncappedMaximum, effective: Math.min(total, maximum), sources: applicable };
   });
   return { entries, sources, unsupported };
 }

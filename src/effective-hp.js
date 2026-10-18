@@ -5,6 +5,7 @@ import { formatRecountInteger, toggleNumberMarkup } from "./dummy-recount-panel.
 import { blockWithAegisOfFire } from "./block-model.js";
 import { aegisOfFireState } from "./aegis-of-fire.js";
 import { legendaryBaseLinesNotApplied } from "./legendary-base-lines.js";
+import { DAMAGE_TAKEN_ATTRIBUTES, limitDamageTakenFactor, MAX_BLOCK_CHANCE_PERCENT } from "./game-attribute-defaults.js";
 
 // Effective HP banner for the Stats page (src/stat-sheet.js): usable Life + Energy Shield (+ Guard
 // Barrier) divided by the expected fraction of a reference hit that reaches the pools, per damage
@@ -339,6 +340,20 @@ export function damageTakenShares(conversions = [], type) {
 }
 
 // Type-scoped layers count toward the guaranteed figure; Attack / Spell layers only toward the matching expected figure.
+// Additional damage taken: each scope is its own game attribute (All 5720, Physical 5003, Fire 5120, Cold 5121, Lightning 5122,
+// Elemental 5123, Erosion 5408; the recipes' attribute writes) and each attribute's product stops at −90% (config_attributes
+// limit; 5408 has none; 2026-10-17 game attribute data). Scopes with no single attribute (Hit, Spell, Attack) multiply as written.
+function limitedTakenFactor(layers) {
+  const groups = new Map();
+  for (const layer of layers) {
+    const key = DAMAGE_TAKEN_ATTRIBUTES[layer.scope] ?? `scope:${layer.scope}`;
+    groups.set(key, (groups.get(key) ?? 1) * (1 + layer.percent / 100));
+  }
+  let product = 1;
+  for (const [key, factor] of groups) product *= typeof key === "number" ? limitDamageTakenFactor(factor, key) : factor;
+  return product;
+}
+
 const dotScopeApplies = (scope, type) => scope === "All" || scope === type || (scope === "Elemental" && ELEMENTAL.includes(type));
 const scopeApplies = (scope, type) => scope === "All" || scope === "Hit" || scope === type || (scope === "Elemental" && ELEMENTAL.includes(type));
 const kindApplies = (scope, spell) => (scope === "Spell" && spell) || (scope === "Attack" && !spell);
@@ -552,7 +567,7 @@ export function effectiveHpModel(planner, options = {}) {
   if (avoidPercent) provisional.push("Chance to avoid damage: no known cap (clamped at 100%)");
   if (blurAvoid) assumptions.push("Blur active at its best-case rating");
   const block = blockWithAegisOfFire(planner.block || { attackChance: 0, spellChance: 0, ratio: 30, ratioCap: 60, blockedHitTakenFactor: 0.7, sources: [] }, aegis);
-  const blockFactor = (spell) => 1 - clamp(spell ? block.spellChance : block.attackChance, 0, 100) / 100 * (1 - block.blockedHitTakenFactor);
+  const blockFactor = (spell) => 1 - clamp(spell ? block.spellChance : block.attackChance, 0, MAX_BLOCK_CHANCE_PERCENT) / 100 * (1 - block.blockedHitTakenFactor);
   const evade = { attack: round(evadeChance(evasion.value, enemyLevel), 4), spell: round(evadeChance(evasion.value, enemyLevel, { spell: true }), 4), accuracy: round(enemyAccuracy(enemyLevel), 1) };
   if (evasion.value) provisional.push(`Evasion: enemy Accuracy ${evade.accuracy} is a linear interpolation of TLIDB's 130–680 range by level (the game's character panel uses Accuracy 630)`);
   if (armor.value) provisional.push("Armor: TLIDB's \"double the Armor value\" rule is applied inside the formula (unverified against a hit test)");
@@ -566,7 +581,7 @@ export function effectiveHpModel(planner, options = {}) {
     const resistance = physical ? null : resistanceEntries.find((entry) => entry.element === type);
     const resistanceFactor = 1 - clamp(resistance?.effective || 0, -1000, 100) / 100;
     const layers = takenLayers.filter((layer) => layer.active && scopeApplies(layer.scope, type));
-    const additionalFactor = layers.reduce((product, layer) => product * (1 + layer.percent / 100), 1);
+    const additionalFactor = limitedTakenFactor(layers);
     return [type, { type, armorFactor, resistance, resistanceFactor, layers, additionalFactor, factor: armorFactor * resistanceFactor * additionalFactor }];
   }));
   const types = DAMAGE_TYPES.map((type) => {
@@ -599,10 +614,11 @@ export function effectiveHpModel(planner, options = {}) {
   if (dotLayers.some((layer) => !layer.additional && layer.active)) provisional.push("Ailment damage taken (non-additional, game mod 3): lines of one ailment are summed and floored at 0% taken; no cap is sourced");
   const checklistRows = immunityChecklist([...modifierTexts, ...aura.checklistLines]);
   const dotOnly = dotLayers.filter((layer) => layer.active && layer.scope === "DoT");
-  const dotOnlyFactor = dotOnly.reduce((product, layer) => product * (1 + layer.percent / 100), 1);
+  // "additional Damage Over Time taken" lines write attr 5720 (DoT tag), so they share the All-scope attribute and its −90% limit.
+  const dotOnlyAsAll = dotOnly.map((layer) => ({ ...layer, scope: "All" }));
   const dotTarget = Object.fromEntries(DAMAGE_TYPES.map((type) => {
     const generalLayers = takenLayers.filter((layer) => layer.active && dotScopeApplies(layer.scope, type));
-    const general = generalLayers.reduce((product, layer) => product * (1 + layer.percent / 100), 1) * dotOnlyFactor;
+    const general = limitedTakenFactor([...generalLayers, ...dotOnlyAsAll]);
     return [type, { generalLayers, general, factor: hitTarget[type].resistanceFactor * general }];
   }));
   for (const item of types) {

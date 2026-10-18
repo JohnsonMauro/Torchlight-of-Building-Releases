@@ -36,7 +36,7 @@
     <div class="loadout-strip" aria-label="Active loadout">
       <button class="rail-collapse" type="button" aria-label="Expand navigation">›</button>
       <div class="loadout-tab active" tabindex="0" title="Right-click to rename"><span>Active build</span><strong>Loading build…</strong></div><button type="button" class="qol-help" data-qol-help="builds" aria-label="Builds controls">?</button>
-      <div class="loadout-status"><i></i><span>Autosaved locally</span><button type="button" data-view="builds">Manage Loadouts</button></div>
+      <div class="loadout-status"><i></i><span>Autosaved locally</span><button type="button" data-view="builds">Manage Loadouts</button><button type="button" class="report-bug-button" data-report-bug title="Open a GitHub form to report a planner bug">Report bug</button></div>
     </div>
 
     <main>
@@ -304,7 +304,8 @@
       <label>Paste a build code<textarea id="import-build-code" rows="4" placeholder="Paste a Torchlight of Building build code"></textarea></label>
       <div><button type="button" data-cancel-import-build>Cancel</button><button type="button" data-import-build-code>Import Code</button></div>
     </dialog>
-    <dialog id="import-game-log-dialog" class="reset-build-confirm import-build-dialog import-game-log-dialog" aria-labelledby="import-game-log-title">
+    <dialog id="feedback-dialog" class="reset-build-confirm import-build-dialog feedback-dialog" aria-labelledby="feedback-dialog-title"></dialog>
+    <dialog id="import-game-log-dialog"class="reset-build-confirm import-build-dialog import-game-log-dialog" aria-labelledby="import-game-log-title">
       <h2 id="import-game-log-title">Import from game</h2>
       <p id="import-game-log-found" class="game-log-found" hidden></p>
       <p id="import-game-log-auto-privacy" class="game-log-privacy" hidden>Read from the game's log folder on this computer by the planner. Only build data is kept; nothing is uploaded or stored.</p>

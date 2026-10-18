@@ -1,3 +1,4 @@
+import { AFFLICTION_DAMAGE_PER_POINT } from "./game-attribute-defaults.js";
 const finite = (value, label) => {
   if (!Number.isFinite(value)) throw new TypeError(`${label} must be a finite number`);
   return value;
@@ -165,7 +166,8 @@ export function calculateTheoreticalIgnite(input) {
   const afflictionRating = Math.min(100, Math.max(0, finite(input.afflictionRating ?? 0, "Affliction rating")));
   const afflictionEffectPercent = sum(input.afflictionEffectPercents, "Affliction effect");
   const additionalAfflictionEffectFactor = product(input.additionalAfflictionEffectPercents, "additional Affliction effect");
-  const afflictionTakenFactor = 1 + (afflictionRating / 100) * (1 + afflictionEffectPercent / 100) * additionalAfflictionEffectFactor;
+  // Damage per point of Affliction: config_attributes 5724 default 0.01 (2026-10-17 game attribute data).
+  const afflictionTakenFactor = 1 + afflictionRating * AFFLICTION_DAMAGE_PER_POINT * (1 + afflictionEffectPercent / 100) * additionalAfflictionEffectFactor;
 
   const targetResistancePercent = finite(input.targetResistancePercent ?? 0, "target resistance");
   const penetrationPercent = sum(input.penetrationPercents, "resistance penetration");

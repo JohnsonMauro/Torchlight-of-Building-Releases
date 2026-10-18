@@ -1,6 +1,7 @@
 import { normalizePercentageText } from "./percentage-text.js";
 import { classifyDamageLine } from "./damage-line-classifier.js";
 import { dummyTarget, dummyTargetWord } from "./dummy-target.js";
+import { gameDamageLayer } from "./affix-bucket.js";
 
 // Modifier-line reader for the generic spell-hit engine (src/skill-hit-model.js).
 // Plain "+X% [additional] <scope> Damage" and "+X% <type> [Resistance] Penetration" templates go through
@@ -51,13 +52,29 @@ function scopeOf(phrase) {
   return hitScope(classifyDamageLine(`+1% ${phrase ? `${phrase.trim()} ` : ""}Damage`));
 }
 
+// Enemy states a "damage against <State> enemies" line names → the enemy-ailment model's names (src/enemy-ailments.js
+// ailmentStateNames; kept here to avoid an import cycle through src/combat-states.js).
+const ENEMY_STATE_AILMENTS = Object.freeze({ Ignited: "Ignite", Traumatized: "Trauma", Withered: "Wilt", Wilted: "Wilt", Frostbitten: "Frostbite", Numbed: "Numbed", Frozen: "Frozen" });
+const hasEnemyAilment = (enemyAilments, name) => typeof enemyAilments?.has === "function" ? Boolean(enemyAilments.has(name)) : (enemyAilments?.types || []).some((type) => type?.name === name);
+
 // "against Elites" / "against Bosses" hold on the dummy (Boss, so also Elite); "against Cursed enemies"
-// holds when the planner says the target is cursed. Anything else is a condition this module does not settle.
-function parseCondition(text, { targetCursed = false } = {}) {
+// holds when the planner says the target is cursed. "against <State> enemies" (Frozen, Frostbitten, Ignited, Numbed, …) and
+// "against enemies affected by Ailments" hold when the enemy-ailment model puts that state on the dummy (`enemyAilments`,
+// src/enemy-ailments.js), the rule src/build-mechanics.js already applies to the beam and Ignite ledgers. Before 2026-10-18
+// the generic skill hits left these lines out while their badge read In calc (Prophet's "+10% additional damage against
+// Frozen enemies" on Homing Frost Bolt). Only the plain "+X% [additional] damage against …" body is settled here: a scoped or
+// typed body ("+X% Cold Damage against Frostbitten enemies") resolves through src/line-effects.js (key enemyState), which
+// leaves the plain shape to src/build-mechanics.js (MECHANICS_TARGET) — reading it here as well would count it twice.
+// Anything else is a condition this module does not settle.
+function parseCondition(text, { targetCursed = false, enemyAilments = null, genericBody = false } = {}) {
   if (!text) return { ok: true, condition: null };
   const target = text.match(/^(Elites?|Bosses?|Boss)$/i);
   if (target) { const flag = dummyTargetWord(target[1]); return flag && dummyTarget[flag] ? { ok: true, condition: `against ${target[1]} (dummy counts as a Boss and an Elite)` } : { ok: false }; }
   if (/^Cursed enemies$/i.test(text)) return targetCursed ? { ok: true, condition: "against Cursed enemies (curse on the dummy)" } : { ok: false };
+  if (!genericBody) return { ok: false };
+  const state = text.match(/^(\w+) enemies$/);
+  if (state && ENEMY_STATE_AILMENTS[state[1]]) return hasEnemyAilment(enemyAilments, ENEMY_STATE_AILMENTS[state[1]]) ? { ok: true, condition: `against ${state[1]} enemies (enemy-ailment model: the dummy is ${state[1]})` } : { ok: false };
+  if (/^enemies affected by Ailments$/i.test(text)) return (enemyAilments?.count || 0) > 0 ? { ok: true, condition: "against enemies affected by Ailments (enemy-ailment model)" } : { ok: false };
   return { ok: false };
 }
 
@@ -74,25 +91,26 @@ export function classifyHitLine(text, options = {}) {
     return { kind: "added", min: number(match[1]), max: number(match[2]), type: match[3][0].toUpperCase() + match[3].slice(1).toLowerCase(), to: /spells/.test(to) ? "spells" : to ? "other" : "unspecified" };
   }
   match = clean.match(TAKEN_LINE);
-  if (match) { const scope = scopeOf(match[3]); return scope ? { kind: "taken", layer: match[2] ? "additional" : "increased", value: number(match[1]), scope } : null; }
+  if (match) { const scope = scopeOf(match[3]); return scope ? { kind: "taken", layer: gameDamageLayer(text) ?? (match[2] ? "additional" : "increased"), value: number(match[1]), scope } : null; }
   match = clean.match(MAX_DAMAGE_LINE);
   if (match) { const scope = scopeOf(`${match[2]}${match[3]}`); return scope ? { kind: "maxDamage", value: number(match[1]), scope } : null; }
   match = clean.match(MIN_DAMAGE_LINE);
   if (match) { const scope = scopeOf(`${match[2]}${match[3]}`); return scope ? { kind: "minDamage", value: number(match[1]), scope } : null; }
   match = clean.match(CAST_SPEED_LINE);
-  if (match) return { kind: "castSpeed", value: number(match[1]), additional: Boolean(match[2]) };
+  if (match) return { kind: "castSpeed", value: number(match[1]), additional: (gameDamageLayer(text) ?? (match[2] ? "additional" : "increased")) === "additional" };
   match = clean.match(COOLDOWN_LINE);
-  if (match) return { kind: "cooldownRecovery", value: number(match[1]), additional: Boolean(match[2]) };
+  if (match) return { kind: "cooldownRecovery", value: number(match[1]), additional: (gameDamageLayer(text) ?? (match[2] ? "additional" : "increased")) === "additional" };
   // Plain damage / penetration, with an optional settled condition.
   const conditional = clean.match(CONDITION_SUFFIX);
-  const condition = parseCondition(conditional?.[2], options);
+  const condition = parseCondition(conditional?.[2], { ...options, genericBody: /^\+?\d+(?:\.\d+)?% (?:additional )?damage$/i.test(conditional?.[1] || "") });
   if (!condition.ok) return null;
   const parsed = classifyDamageLine(conditional ? conditional[1] : clean);
   if (!parsed) return null;
   if (parsed.kind === "penetration") return conditional || parsed.minion ? null : { kind: "penetration", value: parsed.value, damageTypes: new Set(parsed.damageTypes) };
   if (parsed.kind === "armourPenetration") return conditional || parsed.minion ? null : { kind: "armourPenetration", value: parsed.value };
   const scope = hitScope(parsed);
-  return scope ? { kind: "damage", layer: parsed.layer, value: parsed.value, scope, condition: condition.condition } : null;
+  // The full line (condition included) is the game shape; src/affix-bucket.js applies its bucket where listed (2026-10-17 game bucket code).
+  return scope ? { kind: "damage", layer: gameDamageLayer(text) ?? parsed.layer, value: parsed.value, scope, condition: condition.condition } : null;
 }
 
 /**

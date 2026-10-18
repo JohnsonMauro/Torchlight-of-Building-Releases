@@ -9,7 +9,7 @@
 import { defaultPlannerState, normalizePlannerState } from "./planner-state.js";
 import { validatePlannerState } from "./state-validation.js";
 import { equipmentSlots } from "./data/gear/crafting-catalog-ss13.js";
-import { rareBaseItemsSs13 } from "./data/gear/rare-base-items-ss13.generated.js";
+import { rareBaseByGameId, rareBaseByName } from "./rare-base-lookup.js";
 import { baseAffixTiersSs13 } from "./data/gear/base-affixes-ss13.generated.js";
 import { craftAffixesSs13 } from "./data/gear/craft-affixes-ss13.generated.js";
 import { legendaryGearSs13 } from "./data/gear/legendary-gear-ss13.generated.js";
@@ -20,6 +20,8 @@ import { towerSequenceSs13Texts } from "./data/changed-item-ids.js";
 import { voraxCraftingSs13 } from "./data/gear/vorax-crafting-ss13.generated.js";
 import { selenaScorchingBeamGearSs13 } from "./data/gear/selena-scorching-beam-ss13.js";
 import { folkloreRingOptions } from "./legendary-ring-options.js";
+import { placeholderPool } from "./legendary-placeholder-pools.js";
+import { legendaryLowerTierTemplates, legendaryTierTextForAffixId } from "./legendary-affix-tiers.js";
 import { heroTraitTree, treeRules, treeMaxCapacity } from "./hero-trait-tree.js";
 import { allProfessionTalentCatalogueSs13 } from "./data/talents/all-profession-trees-ss13.generated.js";
 import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "./data/catalogs/tlidb-ss13.js";
@@ -344,6 +346,13 @@ export function blankPlannerState() {
 export const GEAR_INDEX_SLOTS = { 1: "helmet", 2: "mainHand", 3: "secondaryHand", 4: "chest", 5: "necklace", 6: "leftRing", 7: "rightRing", 8: "belt", 9: "gloves", 10: "boots" };
 const slotLabel = (slot) => equipmentSlots.find(([key]) => key === slot)?.[1] || slot;
 
+/** Resolves one logged item at gear index `index` ({ BaseId, UniqueItmId, Prefix, Suffix, … }): { item, report } (tests). */
+export function resolveLoggedGearItem(item, idMap, index = 5) {
+  const report = newReport();
+  const { inventory } = resolveGear({ bag: { wearItems: { 1: { Index: String(index), Item: item } } } }, idMap, report);
+  return { item: inventory[0] || null, report };
+}
+
 function resolveGear(tree, idMap, report) {
   const inventory = [], overrides = {};
   const byIndex = new Map(entries(tree.bag?.wearItems).map((entry) => [Number(entry.Index), entry.Item]));
@@ -352,7 +361,8 @@ function resolveGear(tree, idMap, report) {
     if (!item) continue;
     const label = slotLabel(slot);
     const [baseName, baseType] = idMap.itemBases[item.BaseId] || [];
-    const lineText = (affix, kinds) => { const entry = idMap.affixes[affix.Id]; return entry && (!kinds || kinds.includes(entry[0])) ? entry : null; };
+    // A tiered legendary line's tier-2 id is not in the id map (TLIDB lists tier 1 and the corroded tier only).
+    const lineText = (affix, kinds) => { const tierText = legendaryTierTextForAffixId(affix.Id), entry = idMap.affixes[affix.Id] || (tierText ? ["legendary", tierText] : null); return entry && (!kinds || kinds.includes(entry[0])) ? entry : null; };
     const unresolved = (what, affix, reason) => add(report, "gear", "unresolved", `${label}: ${what} ${affix.Id}${argsOf(affix).length ? ` = ${argsOf(affix).join(", ")}` : ""}`, reason);
     const blendAndTower = () => {
       const extra = { modifiers: [], fields: {} };
@@ -388,7 +398,9 @@ function resolveGear(tree, idMap, report) {
 }
 
 function resolveRare(item, baseName, baseType, label, idMap, report, unresolved, lineText) {
-  const base = rareBaseItemsSs13.find((entry) => entry.name === baseName && entry.type === baseType);
+  // By the logged game base id first: two bases can share a name (Imperishable Black Robe #3209 Lv70 / #3214 Lv66).
+  const byGameId = rareBaseByGameId(item.BaseId);
+  const base = byGameId && byGameId.name === baseName && byGameId.type === baseType ? byGameId : rareBaseByName(baseName, baseType);
   if (!base || !craftAffixesSs13[baseType]) return null;
   const implicitModifiers = [];
   for (const affix of [...entries(item.BaseAttrAffix), ...entries(item.FixedBaseAffix)]) {
@@ -493,8 +505,16 @@ function resolveLegendary(item, label, idMap, report, unresolved, lineText) {
   const options = (index) => {
     const list = [{ template: source.modifiers[index], corroded: false }, ...(corrodedTemplates[index] ? [{ template: corrodedTemplates[index], corroded: true }] : [])];
     if (isFolklore && index === 2) for (const side of ["left", "right"]) list.push({ template: folkloreRingOptions[side].normal, corroded: false }, { template: folkloreRingOptions[side].corroded, corroded: true });
+    // A "<Random …>" placeholder line (False God's Skin, Lone Walker's Boots, …) carries one roll of its pool (src/legendary-placeholder-pools.js).
+    // A keyword roll (Pantheon's Elegy's Dirges) is logged as the keyword alone (corroded: the keyword and its extra lines), so it
+    // matches by its first line and is saved as the pool's text: the keyword, its effect lines, then the logged extra lines.
+    for (const option of placeholderPool(source.id, index)?.options || []) list.push({ template: option.template, corroded: false, keyword: option.keyword, effect: option.effect }, ...(option.corrodedTemplate ? [{ template: option.corrodedTemplate, corroded: true, keyword: option.keyword, effect: option.effect }] : []));
+    // A tiered line's lower tier (Ice Pulse's tier-2 Spell Damage, src/legendary-affix-tiers.js).
+    for (const template of legendaryLowerTierTemplates(source.id, index)) list.push({ template, corroded: false, tier: true });
     return list;
   };
+  const firstLine = (text) => String(text).split("\n")[0].trim();
+  const matches = (option, text) => (option.keyword ? firstLine(text) === option.keyword : affixSignature(option.template) === affixSignature(text));
   const matched = new Map();
   for (const affix of [...entries(item.Prefix), ...entries(item.Suffix)]) {
     const entry = lineText(affix, ["legendary", "legendary-corroded"]);
@@ -503,12 +523,13 @@ function resolveLegendary(item, label, idMap, report, unresolved, lineText) {
     let hit = null;
     for (let index = 0; index < source.modifiers.length && !hit; index += 1) {
       if (matched.has(index)) continue;
-      const candidates = options(index).filter((option) => affixSignature(option.template) === affixSignature(entry[1]));
-      const option = candidates.find((candidate) => candidate.corroded === corrodedId) || candidates[0];
+      const candidates = options(index).filter((option) => matches(option, entry[1]));
+      const option = candidates.find((candidate) => candidate.tier && candidate.template === entry[1]) || candidates.find((candidate) => candidate.corroded === corrodedId) || candidates[0];
       if (option) hit = { index, option };
     }
     if (!hit) { unresolved("legendary line", affix, `"${entry[1].replace(/\n/g, " / ")}" is not a line of ${name} in the planner catalog`); continue; }
-    const filled = fillTemplate(hit.option.template, argsOf(affix));
+    const keywordLines = hit.option.keyword ? fillTemplate(entry[1], argsOf(affix)) : null;
+    const filled = keywordLines?.ok ? { ok: true, text: [hit.option.keyword, ...hit.option.effect, ...keywordLines.text.split("\n").slice(1)].join("\n") } : keywordLines || fillTemplate(hit.option.template, argsOf(affix));
     if (!filled.ok) { unresolved("legendary line", affix, filled.reason); continue; }
     matched.set(hit.index, { text: filled.text, corroded: hit.option.corroded || corrodedId });
   }

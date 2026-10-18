@@ -10,6 +10,7 @@
 // ailment's timer. The strongest application therefore persists while the chain of
 // successful applications continues.
 
+import { AFFLICTION_DAMAGE_PER_POINT, BASE_CRITICAL_DAMAGE_PERCENT } from "./game-attribute-defaults.js";
 export const ailmentDefinitions = Object.freeze({
   ignite: Object.freeze({ key: "ignite", name: "Ignite", damageType: "Fire", elemental: true, baseDurationSeconds: 4, defaultStackLimit: 1, stacking: "strongest" }),
   trauma: Object.freeze({ key: "trauma", name: "Trauma", damageType: "Physical", elemental: false, baseDurationSeconds: 4, defaultStackLimit: 1, stacking: "strongest" }),
@@ -254,8 +255,9 @@ export function calculateAilment({ ailmentKey, modifierTexts = [], shared, crit 
 
   // Crit-damage-scaled bonus (Instant Smash): counts Critical Strike Damage modifiers
   // above the 150% base. Assumption: the displayed bonus, not the 150% base, is counted.
-  const critBonusTown = Math.max(0, (crit.criticalDamagePercent ?? 150) - 150);
-  const critBonusCombat = Math.max(0, (crit.combatCriticalDamagePercent ?? crit.criticalDamagePercent ?? 150) - 150);
+  // Crit damage above the config_attributes 4803 default of 150% (2026-10-17 game attribute data).
+  const critBonusTown = Math.max(0, (crit.criticalDamagePercent ?? BASE_CRITICAL_DAMAGE_PERCENT) - BASE_CRITICAL_DAMAGE_PERCENT);
+  const critBonusCombat = Math.max(0, (crit.combatCriticalDamagePercent ?? crit.criticalDamagePercent ?? BASE_CRITICAL_DAMAGE_PERCENT) - BASE_CRITICAL_DAMAGE_PERCENT);
   const perCritDamage = (bonus) => typed.perCritDamageAdditional.map((line) => ({ source: line.source, text: line.text, value: line.value * bonus / line.per }));
   const recentCritStacks = (cap) => {
     const mean = Math.max(0, crit.critsPerSecond || 0) * 4;
@@ -272,7 +274,8 @@ export function calculateAilment({ ailmentKey, modifierTexts = [], shared, crit 
   const increasedPercent = (shared.increasedPercents || []).reduce((sum, value) => sum + value, 0) + typed.increased.reduce((sum, line) => sum + line.value, 0);
   const townAdditional = [...(shared.townAdditionalPercents || []), ...typed.additional.map((line) => line.value), ...perCritDamage(critBonusTown).map((line) => line.value)];
   const combatAdditional = [...(shared.combatAdditionalPercents || []), ...typed.additional.map((line) => line.value), ...perCritDamage(critBonusCombat).map((line) => line.value)];
-  const afflictionFactor = (rating) => 1 + (Math.max(0, Math.min(100, rating)) / 100) * (1 + (shared.afflictionEffectPercent || 0) / 100) * (shared.additionalAfflictionEffectFactor ?? 1);
+  // Damage per point of Affliction: config_attributes 5724 default 0.01 (2026-10-17 game attribute data).
+  const afflictionFactor = (rating) => 1 + Math.max(0, Math.min(100, rating)) * AFFLICTION_DAMAGE_PER_POINT * (1 + (shared.afflictionEffectPercent || 0) / 100) * (shared.additionalAfflictionEffectFactor ?? 1);
   const resistanceFactor = Math.max(0, 1 - ((shared.targetResistancePercent || 0) - (shared.penetrationPercent || 0)) / 100);
   const takenFactor = product([...(shared.additionalDamageTakenPercents || []), ...typed.taken.map((line) => line.value)]);
   // "(multiplies) for every type of Ailment": each type is its own multiplier.

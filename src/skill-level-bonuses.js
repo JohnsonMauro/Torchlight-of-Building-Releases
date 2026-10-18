@@ -10,7 +10,12 @@ function matchingBonus(text, skill) {
     const prefix = String(text).slice(0, match.index);
     if (/(?:for each|for every|per)\s*$/i.test(prefix)) continue;
     const category = match[2].toLowerCase();
-    const applies = category === "all" || category === "active" && skill.role !== "aura" && skill.role !== "support" || category === "passive" && skill.role === "aura" || category === "main" && skill.role === "main" || tags.has(category);
+    // A compound category names every tag the skill needs ("+1 Spell Projectile Skill Level", "+2 Attack Projectile Skill
+    // Level": Spell and Projectile skills); a multi-word tag ("Spirit Magus", "Synthetic Troop") matches whole first.
+    // Before 2026-10-18 a compound category matched no skill (On the Sublime's line read Inactive on Homing Frost Bolt).
+    const words = category.split(/\s+/);
+    const tagged = tags.has(category) || (words.length > 1 && words.every((word) => tags.has(word)));
+    const applies = category === "all" || category === "active" && skill.role !== "aura" && skill.role !== "support" || category === "passive" && skill.role === "aura" || category === "main" && skill.role === "main" || tagged;
     if (applies) total += Number(match[1]);
   }
   return total;

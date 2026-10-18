@@ -5,6 +5,7 @@ import { calibratedBeamTargetCycle } from "./target-hit-mitigation.js";
 import { recountSourceShares } from "./dummy-recount-panel.js";
 import { skillHitPathModel } from "./skill-hit-path.js";
 import { minionPathModel } from "./minion-path.js";
+import { openQuestionsPanelMarkup } from "./open-questions-panel.js";
 import { ailmentPathModel, combinedPathModel, compactNumber, damagePathOptions, emptyPathMarkup, hitLabel, illOmenCardMarkup, pathMarkup, perSourceRunning, reapingPathModel, resolveDamagePath, wholeFormat } from "./damage-path-views.js";
 
 // Damage path page (Character → Damage path): the build's damage paths as tabs (grouped by skill when
@@ -271,5 +272,6 @@ export function damagePathPanelMarkup({ theoretical, planner, selected = "hit", 
   const active = resolveDamagePath(selected, paths);
   const names = sourceNames(planner);
   const views = paths.map((path) => `<div class="damage-path-view" role="tabpanel" id="damage-path-view-${escapeHtml(path.value)}" aria-labelledby="damage-path-tab-${escapeHtml(path.value)}" data-damage-path-view="${escapeHtml(path.value)}"${path.value === active ? "" : " hidden"}>${path.model.empty ? emptyPathMarkup(path.model) : pathMarkup(path.model, { planner, format, names })}</div>`).join("");
-  return `<div class="damage-path-panel">${damagePathTabsMarkup(paths, active, format)}${views}</div>`;
+  // Open questions (src/open-questions.js): below every view, only those that apply to this build.
+  return `<div class="damage-path-panel">${damagePathTabsMarkup(paths, active, format)}${views}${openQuestionsPanelMarkup(planner)}</div>`;
 }
