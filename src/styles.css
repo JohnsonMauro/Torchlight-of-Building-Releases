@@ -1161,6 +1161,15 @@ body.unified-planner .talent-node.legendary-node.prism-affected-node:not(.alloca
 .compendium-skill-row .skill-primary-socket.trait-granted-socket{border:1px solid #75d8f6;box-shadow:0 0 0 2px #75d8f633,0 0 12px #4bbce555;touch-action:auto;cursor:default}
 .compendium-skill-row .skill-support-socket.trait-granted-socket{border-color:#75d8f6;box-shadow:0 0 0 2px #75d8f633,0 0 10px #4bbce555;touch-action:auto;cursor:default}
 .compendium-skill-row.trait-granted-row .skill-row-name small{color:#75d8f6}
+/* Curse past the curse limit (skill bar order, user-confirmed 2026-10-19): red outline in the energy-overused red, no fill. */
+/* Curse left out by the curse limit: a 3px red ring with a dark hairline (1px gap) and a red glow, plus a CURSE OFF badge. */
+.compendium-skill-row.curse-limit-row,#equipment-grid .equipment-item.curse-limit-item{outline:3px solid #e33349!important;outline-offset:1px!important;box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 12px 2px rgba(227,51,73,.75)!important}
+.compendium-skill-row.curse-limit-row .skill-primary-socket{box-shadow:0 0 0 2px #e33349}
+em.curse-off-badge{padding:3px 5px;border:1px solid #e33349;border-radius:3px;color:#fff;background:#e33349;box-shadow:0 1px 4px rgba(0,0,0,.65);font-size:.52rem;font-style:normal;font-weight:800;letter-spacing:.04em;line-height:1;text-transform:none;white-space:nowrap}
+body.unified-planner #equipment-view #equipment-grid .equipment-item>.curse-off-badge{position:absolute!important;z-index:4!important;top:5px;right:auto;bottom:auto;left:5px;pointer-events:auto}
+body.unified-planner #equipment-view #equipment-grid .equipment-item>.curse-off-badge{top:auto;bottom:6px;left:50%;transform:translateX(-50%)}
+.skill-row-name>.curse-off-badge{display:inline-block;margin-bottom:4px}
+.curse-limit-note{margin:0 0 6px;padding:5px 10px;color:#ff7d7d;font-size:.74rem;line-height:1.35}
 .planner-tooltip .trait-grant-note{margin:8px 0 0;padding:5px 8px;border-left:2px solid #75d8f6;color:#d8eaf0;background:#12232b;font-size:.68rem;line-height:1.4}
 /* A skill or support with no icon (Clockwork Core has no catalog art): no broken-image frame. */
 .skill-tooltip-head img[src=""]{visibility:hidden}
@@ -1239,7 +1248,7 @@ body.revival-alt-held .planner-tooltip.slate-tooltip .core-slate-hint{display:no
 .beam-hit-section{margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid #344a5a}.beam-hit-section h3,.ignite-flow-section>h3{margin:0 0 .55rem;color:#eff5f9;font-size:1rem}.beam-hit-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem}.beam-hit-grid article{display:grid;align-content:start;gap:.4rem;min-width:0;padding:1rem;border:1px solid #526777;border-radius:6px;background:#142431}.beam-hit-grid span{color:#bcd5e4;font-size:.73rem;font-weight:700}.beam-hit-grid strong{color:#a8eafb;font-size:1.45rem;overflow-wrap:anywhere}.beam-hit-grid small{color:#9bb1bf;font-size:.7rem;line-height:1.4}@media(max-width:750px){.beam-hit-grid{grid-template-columns:1fr}}
 .damage-path-content{padding:1rem;border:1px solid #35444f;border-radius:10px;background:#161e27}
 .damage-path-controls{display:flex;align-items:center;gap:.7rem;margin-bottom:1.25rem;color:#b9c8d3;font-size:.82rem}.damage-path-controls label{font-weight:700}.damage-path-controls select{min-width:210px;padding:.48rem .6rem;border:1px solid #b98345;border-radius:5px;background:#252b32;color:#f5d09d}
-.planner-tooltip .calc-coverage,.follower-skill-info .calc-coverage{display:inline-block;margin:3px 0 3px 6px;padding:2px 6px;border:1px solid #8a6f51;border-radius:4px;background:#382b20;color:#f2c58d;font:700 10px/1.3 Arial,sans-serif;white-space:nowrap;vertical-align:middle}.planner-tooltip .calc-coverage.calculated,.follower-skill-info .calc-coverage.calculated{border-color:#427f71;background:#19392f;color:#9ae0c5}.planner-tooltip .calc-coverage.neutral,.follower-skill-info .calc-coverage.neutral{border-color:#4f5a66;background:#20262d;color:#aab6c3}
+.planner-tooltip .calc-coverage{display:inline-block;margin:3px 0 3px 6px;padding:2px 6px;border:1px solid #8a6f51;border-radius:4px;background:#382b20;color:#f2c58d;font:700 10px/1.3 Arial,sans-serif;white-space:nowrap;vertical-align:middle}.planner-tooltip .calc-coverage.calculated{border-color:#427f71;background:#19392f;color:#9ae0c5}.planner-tooltip .calc-coverage.neutral{border-color:#4f5a66;background:#20262d;color:#aab6c3}
 .planner-tooltip.memory-tooltip .memory-affix-row{grid-template-columns:auto minmax(0,1fr) auto;align-items:start;column-gap:6px}
 .planner-tooltip.memory-tooltip .memory-affix-row>span{grid-column:2;grid-row:1}
 .planner-tooltip.memory-tooltip .memory-affix-row>.calc-coverage{grid-column:3;grid-row:1;margin:0;align-self:start}
@@ -1588,7 +1597,8 @@ body.unified-planner #talents-view .talent-divinity-link.active{
   color:#fff1bd;
   background:linear-gradient(180deg,#604525 0%,#3c2f20 52%,#222329 100%);
 }
-body.unified-planner .hero-identity>.change-hero-button{
+body.unified-planner .hero-identity>.change-hero-button,
+body.unified-planner .follower-identity .follower-special-effect{
   border:1px solid #a67736;
   border-radius:3px;
   color:#ffe0a0;
@@ -1599,7 +1609,9 @@ body.unified-planner .hero-identity>.change-hero-button{
   letter-spacing:normal;
 }
 body.unified-planner .hero-identity>.change-hero-button:hover,
-body.unified-planner .hero-identity>.change-hero-button:focus-visible{
+body.unified-planner .hero-identity>.change-hero-button:focus-visible,
+body.unified-planner .follower-identity .follower-special-effect:hover,
+body.unified-planner .follower-identity .follower-special-effect:focus-visible{
   border-color:#e7b35d;
   color:#fff1bd;
   background:linear-gradient(180deg,#604525 0%,#3c2f20 52%,#222329 100%);
@@ -3279,12 +3291,10 @@ body.unified-planner #equipment-view .inventory-item .inventory-item-icon img[sr
 .feedback-field>label{color:#f0c77e;font-size:.76rem;font-weight:700}
 .feedback-required{color:#ff6b5b}
 .reset-build-confirm .feedback-help{color:#a9b5c4;font-size:.74rem}
-.feedback-field input[type=text],.feedback-field select,.feedback-field textarea{box-sizing:border-box;width:100%;min-width:0;padding:9px 10px;border:1px solid #806341;border-radius:3px;color:#eee5d7;background:#111922;font:inherit;font-size:.82rem}
-.feedback-field select{color-scheme:dark}
-.feedback-field select option{background-color:#111922;color:#eee5d7}
-.feedback-field select option:checked{background-color:var(--gold);color:#111922}
+.feedback-field input[type=text],.feedback-field textarea{box-sizing:border-box;width:100%;min-width:0;padding:9px 10px;border:1px solid #806341;border-radius:3px;color:#eee5d7;background:#111922;font:inherit;font-size:.82rem}
+.feedback-field .planner-select{width:100%;padding:9px 30px 9px 10px;font-size:.82rem}
 .feedback-field textarea{resize:vertical;min-height:64px}
-.feedback-field input[type=text]:focus-visible,.feedback-field select:focus-visible,.feedback-field textarea:focus-visible,.feedback-check input:focus-visible{outline:2px solid #f9ca65;outline-offset:2px}
+.feedback-field input[type=text]:focus-visible,.feedback-field textarea:focus-visible,.feedback-check input:focus-visible{outline:2px solid #f9ca65;outline-offset:2px}
 .feedback-field [aria-invalid=true]{border-color:#c46b39}
 .reset-build-confirm .feedback-error{color:#ffbd8b;font-size:.74rem}
 .feedback-error[hidden]{display:none}
@@ -3929,17 +3939,20 @@ button.qol-help:hover,button.qol-help:focus-visible{border-color:var(--gold);col
 .hero-panel-content[hidden]{display:none}
 body.unified-planner .follower-identity:before{content:"FOLLOWER"}
 .follower-identity>small{display:block;margin:0 0 9px;font-size:.72rem;font-weight:700;letter-spacing:.04em}
-.follower-rarity.follower-rarity-rare{color:#50d0f4}
-.follower-rarity.follower-rarity-epic{color:#d96bf2}
+.follower-rarity.follower-rarity-normal{color:#d6dce2}
+.follower-rarity.follower-rarity-magic{color:#50d0f4}
+.follower-rarity.follower-rarity-rare{color:#d96bf2}
 .follower-rarity.follower-rarity-legendary{color:#ff993f}
-.follower-rarity.follower-rarity-origin{color:#ff635c}
+.follower-rarity.follower-rarity-ult{color:#ff635c}
 /* Follower rarity tints (2026-10-15 user request): the tooltip takes the hero-memory rarity colours (accent + tint, the planner's
-   rarity tooltip with an Ultimate variant; Rare = the magic blue, Origin = Ultimate); the card portrait and the picker cards take
-   the gear-tile rarity gradients (Origin: the Ultimate memory colours). */
-.follower-tint-rare,.planner-tooltip.follower-tooltip[data-rarity="rare"]{--follower-accent:#50d0f4;--follower-tint:#10384a;--follower-glow:rgba(29,185,239,.42);--follower-mid:rgba(8,91,133,.3);--follower-dark:rgba(12,24,35,.97);--follower-base:#0c1823;--follower-art:url("./assets/active-skill-rare-background.png");--follower-art-color:#122b38;--follower-head:rgba(15,53,70,.46)}
-.follower-tint-epic,.planner-tooltip.follower-tooltip[data-rarity="epic"]{--follower-accent:#d96bf2;--follower-tint:#392044;--follower-glow:rgba(190,61,230,.46);--follower-mid:rgba(101,25,133,.34);--follower-dark:rgba(26,16,36,.97);--follower-base:#1a1024;--follower-art:url("./assets/epic-gear-memory-aura-background.png");--follower-art-color:#1b1740;--follower-head:rgba(31,23,75,.45)}
+   rarity tooltip with an Ultimate variant); the card portrait and the picker cards take the gear-tile rarity gradients. Letter
+   rarities (2026-10-19): Normal the Normal memory / Common gear gray (a solid fill, no artwork), Magic the magic blue, Rare (tier
+   II) the epic purple, Legendary (III) orange, ULT the Ultimate memory red. */
+.follower-tint-normal,.planner-tooltip.follower-tooltip[data-rarity="normal"]{--follower-accent:#d6dce2;--follower-tint:#343b44;--follower-glow:rgba(190,198,207,.34);--follower-mid:rgba(89,98,108,.2);--follower-dark:rgba(17,24,33,.96);--follower-base:#111821;--follower-art:none;--follower-art-color:#30363d;--follower-head:rgba(52,59,68,.46)}
+.follower-tint-magic,.planner-tooltip.follower-tooltip[data-rarity="magic"]{--follower-accent:#50d0f4;--follower-tint:#10384a;--follower-glow:rgba(29,185,239,.42);--follower-mid:rgba(8,91,133,.3);--follower-dark:rgba(12,24,35,.97);--follower-base:#0c1823;--follower-art:url("./assets/active-skill-rare-background.png");--follower-art-color:#122b38;--follower-head:rgba(15,53,70,.46)}
+.follower-tint-rare,.planner-tooltip.follower-tooltip[data-rarity="rare"]{--follower-accent:#d96bf2;--follower-tint:#392044;--follower-glow:rgba(190,61,230,.46);--follower-mid:rgba(101,25,133,.34);--follower-dark:rgba(26,16,36,.97);--follower-base:#1a1024;--follower-art:url("./assets/epic-gear-memory-aura-background.png");--follower-art-color:#1b1740;--follower-head:rgba(31,23,75,.45)}
 .follower-tint-legendary,.planner-tooltip.follower-tooltip[data-rarity="legendary"]{--follower-accent:#ff993f;--follower-tint:#492714;--follower-glow:rgba(255,139,42,.5);--follower-mid:rgba(143,61,12,.34);--follower-dark:rgba(35,20,12,.97);--follower-base:#23140c;--follower-art:url("./assets/legendary-memory-gear-background.png");--follower-art-color:#2b1c13;--follower-head:rgba(49,30,17,.48)}
-.follower-tint-origin,.planner-tooltip.follower-tooltip[data-rarity="origin"]{--follower-accent:#ff635c;--follower-tint:#4b1f20;--follower-glow:rgba(255,99,92,.42);--follower-mid:rgba(75,31,32,.5);--follower-dark:rgba(30,14,15,.97);--follower-base:#1e0e0f;--follower-art:url("./assets/ultimate-memory-vorax-background.png");--follower-art-color:#2d1110;--follower-head:rgba(42,13,12,.52)}
+.follower-tint-ult,.planner-tooltip.follower-tooltip[data-rarity="ult"]{--follower-accent:#ff635c;--follower-tint:#4b1f20;--follower-glow:rgba(255,99,92,.42);--follower-mid:rgba(75,31,32,.5);--follower-dark:rgba(30,14,15,.97);--follower-base:#1e0e0f;--follower-art:url("./assets/ultimate-memory-vorax-background.png");--follower-art-color:#2d1110;--follower-head:rgba(42,13,12,.52)}
 .planner-tooltip.hero-trait-tooltip.follower-tooltip[data-rarity]{border:1px solid var(--follower-accent);background-color:var(--follower-art-color);background-image:var(--follower-art);background-position:center top;background-size:cover;background-repeat:no-repeat}
 .planner-tooltip.follower-tooltip[data-rarity] .hero-trait-tooltip-head{padding-bottom:8px;border-bottom:1px solid var(--follower-accent)}
 .planner-tooltip.follower-tooltip[data-rarity] .hero-trait-tooltip-head strong{color:var(--follower-accent)}
@@ -3952,15 +3965,48 @@ body.unified-planner .hero-portrait.follower-portrait[class*="follower-tint-"] i
 .follower-skill-slot-wrap{position:relative;min-width:0}
 .follower-skill-slot{width:100%;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .follower-skill-slot:not(:disabled):hover,.follower-skill-slot:not(:disabled):focus-visible{border-color:#e7b35d;outline:0;box-shadow:0 0 0 1px rgba(249,202,101,.17)}
-.follower-skill-slot.locked{opacity:.55;cursor:not-allowed}
 .follower-skill-art{display:grid;place-items:center}
 .follower-skill-art>b{display:grid;place-items:center;width:52px;height:52px;border:2px dashed #64717e;border-radius:50%;color:#8b98a5;font-size:1.15rem}
 .follower-skill-info{display:grid;gap:3px;justify-items:start;min-width:0}
 .follower-skill-info small{color:#8291a1;font-size:.55rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
 .follower-skill-info strong{color:#f6f8fa;font-family:Georgia,serif;font-size:.8rem;line-height:1.2;overflow-wrap:anywhere}
-.follower-skill-slot.empty .follower-skill-info strong,.follower-skill-slot.locked .follower-skill-info strong{color:#9aa7b4;font-family:inherit;font-size:.7rem}
-.follower-skill-info .calc-coverage{margin:2px 0 0}
-.follower-skill-select{position:absolute;inset:0;width:100%;height:100%;visibility:hidden;pointer-events:none}
+.follower-skill-slot.empty .follower-skill-info strong{color:#9aa7b4;font-family:inherit;font-size:.7rem}
+/* Shared native select (2026-10-19 design): the follower skill editor's Tier / Support affix selects and the feedback dialog.
+   Gold chevron (the unified planner's --gold, #f09a42), gold-tinted border, dark options; native (data-native-select), so no type-to-search popup. */
+.planner-select{box-sizing:border-box;max-width:100%;min-width:0;padding:6px 30px 6px 10px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);border-radius:4px;color:#eee5d7;--planner-select-bg:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23f09a42' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") right 10px center/10px 6px no-repeat,linear-gradient(180deg,#16212c,#111922);background:var(--planner-select-bg);font:inherit;line-height:1.2;color-scheme:dark;cursor:pointer;-webkit-appearance:none;-moz-appearance:none;appearance:none}
+/* The unified planner's generic select rule (body.unified-planner select, :focus) is more specific: restate the colours over it. */
+body.unified-planner .planner-select{border-color:color-mix(in srgb,var(--gold) 45%,transparent);color:#eee5d7;background:var(--planner-select-bg);box-shadow:none}
+.planner-select:hover,body.unified-planner .planner-select:hover,body.unified-planner .planner-select:focus{border-color:var(--gold);box-shadow:none}
+.planner-select:focus-visible,body.unified-planner .planner-select:focus-visible{border-color:var(--gold);outline:none;box-shadow:0 0 0 2px color-mix(in srgb,var(--gold) 30%,transparent)}
+.planner-select:disabled{opacity:.5;cursor:not-allowed}
+.planner-select option,.planner-select optgroup{background-color:#111922;color:#eee5d7}
+.planner-select option:checked{background-color:var(--gold);color:#111922}
+.planner-select option:disabled{color:#6f7a86}
+/* Follower skill tier and support affixes (src/follower-panel.js, 2026-10-19 user request): edited in the skill picker's preview
+   card (native .planner-select selects; affix label, select and effect text per slot); a slot row shows a summary. */
+.follower-skill-editor{display:grid;gap:10px;margin:10px 0 0;padding:10px 2px 0;border-top:1px solid #526070}
+.follower-skill-editor .follower-affix-block{display:grid;justify-content:normal;gap:6px;min-width:0;padding:0;color:inherit}
+.follower-affix-field{display:grid;gap:5px;min-width:0}
+.follower-affix-label{color:var(--muted);font-size:.62rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.follower-affix-field .planner-select{width:100%}
+.follower-skill-editor .follower-affix-text{display:block;padding:0 0 0 8px;border-left:2px solid color-mix(in srgb,var(--gold) 45%,transparent)}
+.follower-affix-text p{margin:0 0 4px;color:#eef1f5;font-size:.76rem;line-height:1.42;white-space:pre-line}
+.follower-affix-text p:last-child{margin-bottom:0}
+body.unified-planner #skill-selector .follower-skill-editor+a{display:inline-block;margin-top:10px}
+/* The preview card's "Tier:" fact row holds the Tier select, right-aligned where the value text was (2026-10-19 user decision). */
+body.unified-planner #skill-selector .selector-stat-rows>.follower-tier-row{align-items:center}
+.follower-tier-row .follower-tier-select{flex:0 0 auto;width:auto;min-width:150px;max-width:65%;height:28px;margin-left:auto;padding-top:0;padding-bottom:0}
+#skill-selector .planner-select{font-weight:700}
+.follower-skill-info .follower-skill-summary{font-weight:600;letter-spacing:0;text-transform:none;overflow-wrap:anywhere}
+/* A ULT letter's special effect on the follower card (2026-10-19 user feedback): a chip on the rarity line, right after
+   "ULT · Lion Queen", in the Change Follower button's look (its rule below, .hero-identity>.change-hero-button, takes this
+   selector too) at the line's size, with an upward chevron; one fixed effect per ULT letter, so no dropdown. It wraps under
+   the text only on narrow widths. Hover / focus shows the follower card tooltip. */
+.follower-identity>.follower-rarity-line{position:relative;z-index:3;display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px;margin:0 0 9px}
+.follower-identity>.follower-rarity-line>small{display:block;margin:0;font-size:.72rem;font-weight:700;letter-spacing:.04em}
+body.unified-planner .follower-identity .follower-special-effect{display:inline-flex;align-items:center;gap:4px;max-width:100%;margin:0;padding:2px 7px;font-size:.66rem;font-weight:700;line-height:1.25;text-transform:none;white-space:nowrap;cursor:default}
+body.unified-planner .follower-identity .follower-special-effect>span{display:inline;color:inherit;font-size:inherit;font-weight:inherit;letter-spacing:inherit;text-transform:none}
+.follower-special-effect-icon{flex:none;width:10px;height:10px}
 .planner-tooltip .hero-trait-effects .follower-keyword b{color:#f9ca65}
 .planner-tooltip .hero-trait-effects .follower-flavor{color:#9ba9b8;font-style:italic}
 body.unified-planner #follower-selector{border:1px solid #806037;border-radius:5px;background:linear-gradient(150deg,#1d2329,#111821 72%);box-shadow:0 26px 75px rgba(0,0,0,.7),inset 0 1px rgba(255,231,165,.12)}

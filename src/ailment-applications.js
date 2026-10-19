@@ -4,6 +4,7 @@ import { collectSkillScopedAilmentLines } from "./build-mechanics.js";
 import { skillLevelDamageMultiplier } from "./engine.js";
 import { normalizePercentageText } from "./percentage-text.js";
 import { buildWideAilmentBlock } from "./ailment-blocks.js";
+import { overlyModifiedLine } from "./sentry-cores.js";
 import { allSkillEffectsSs13 } from "./data/skills/all-skill-effects-ss13.generated.js";
 import { supportProgressionSs13 } from "./data/skills/support-progression-ss13.generated.js";
 
@@ -117,7 +118,7 @@ export function skillExtraAilmentStacks(setup, ailmentKey) {
   return { value: lines.reduce((sum, line) => sum + line.value * (line.chancePercent ?? 100) / 100, 0), sources: lines };
 }
 
-export function ailmentAppliersFor({ ailmentKey, candidates = [], modifierTexts = [], shared = {}, mainSetupKey = null, auraChancePercent = 0, globalChanceSources = null }) {
+export function ailmentAppliersFor({ ailmentKey, candidates = [], modifierTexts = [], shared = {}, mainSetupKey = null, auraChancePercent = 0, globalChanceSources = null, overlyModified = null }) {
   const globalChance = globalChanceSources || textGlobalChanceSources(ailmentKey, modifierTexts, auraChancePercent);
   const mainScopedFactor = shared.mainScopedFactor || 1;
   return candidates.map((candidate) => {
@@ -149,6 +150,11 @@ export function ailmentAppliersFor({ ailmentKey, candidates = [], modifierTexts 
       if (mainScopedFactor !== 1) scaleSources.push({ source: "Main skill layers removed", text: (shared.mainScopedLines || []).map((line) => line.source).join(", "), factor: 1 / mainScopedFactor });
       scale = own / mainScopedFactor;
     }
+    // Overly Modified (src/sentry-cores.js): an ailment inherits the inflicting skill's classification, +30% from a Sentry skill,
+    // -50% from another Active skill (user-supplied 2026-10-19, Google AI Mode answer, not tested in game); a Reap settles the
+    // scaled DoT, so it inherits it too.
+    const overly = overlyModified && candidate.setup ? overlyModifiedLine(overlyModified, candidate.setup) : null;
+    if (overly) { scale *= 1 + overly.value / 100; scaleSources.push({ source: overly.source, text: `${overly.text}; the ailment inherits the inflicting skill's classification (user-supplied 2026-10-19)`, factor: 1 + overly.value / 100, overlyModified: overly.overlyModified }); }
     for (const line of shared.tagGated || []) if (!tags.has(String(line.requiresSkillTag).toLowerCase())) { scale /= 1 + line.value / 100; scaleSources.push({ source: line.source, text: `needs an ${line.requiresSkillTag} skill; ${candidate.name} is not one`, factor: 1 / (1 + line.value / 100) }); }
     for (const line of shared.inactiveTagLines || []) if (tags.has(String(line.requiresSkillTag).toLowerCase())) { scale *= 1 + line.value / 100; scaleSources.push({ source: line.source, text: `needs an ${line.requiresSkillTag} skill; ${candidate.name} is one`, factor: 1 + line.value / 100 }); }
     // The main skill's chance stays null (calculateAilment's build-wide chance, whose modifierTexts already hold

@@ -27,7 +27,7 @@ import { resolveFollowerEffects } from "./follower-model.js";
 
 const NUMBER = /^([+-]?\d+(?:\.\d+)?)%/;
 const SPEED = /^([+-]?\d+(?:\.\d+)?)% (additional )?(Attack and Cast Speed|Cast Speed|Attack Speed)$/i;
-const MECHANICS_TARGET = /^\+(\d+(?:\.\d+)?)% (additional )?damage against (?:(\w+) enemies|enemies affected by Ailments|(Elites|Bosses))$/i;
+const MECHANICS_TARGET = /^\+(\d+(?:\.\d+)?)% (additional )?damage (?:against (?:(\w+) enemies|enemies affected by Ailments)|(?:against|to) (Elites|Bosses))$/i;
 
 export function handledElsewhere(text) {
   // Focus / Combo Damage Enhancement: summed by resolveDamageEnhancement below.
@@ -58,7 +58,8 @@ export function bodyReaders(body) {
   const readers = [];
   if (SPEED.test(body)) readers.push("speed");
   // Crit lines: the spell crit model (src/scorching-beam-critical.js) and the weapon model read derived crit lines.
-  if (/^[+-]?[\d.]+% (?:Spell |Attack )?Critical Strike (?:Rating|Damage)$/i.test(body)) readers.push("crit");
+  // "+X% additional Critical Strike Rating" (Cohesion; core audit batch B3) is its own multiplier on the rating in both models.
+  if (/^[+-]?[\d.]+% (?:Spell |Attack )?Critical Strike (?:Rating|Damage)$/i.test(body) || /^[+-]?[\d.]+% additional (?:Spell |Attack )?Critical Strike Rating$/i.test(body)) readers.push("crit");
   if (classifyDamageLine(body)) readers.push("damage");
   if (classifyHitLine(body)) readers.push("hit");
   if (classifyWeaponAttackLine(body)) readers.push("weapon");
@@ -122,6 +123,11 @@ export function resolveLineEffects(modifierTexts = [], state = null) {
   const follower = resolveFollowerEffects(state?.follower || null, state || {});
   combat.timedEffects.push(...follower.timedEffects);
   derived.push(...follower.derived);
+  // Hare's Agility: the cap of the stacks gained when exiting Stand Still, for the per-stack clause (src/line-conditions.js).
+  if (state) state.exitStandStillMaxStacks = modifierTexts.reduce((max, line) => {
+    const match = normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim().match(/^When exiting Stand Still, gains 1 stack of buff that lasts for [\d.]+ ?s, up to (\d+) times$/i);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
   for (const line of modifierTexts) {
     if (line.origin === "derived" || line.lineEffect) continue;
     const text = normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim();
@@ -130,12 +136,15 @@ export function resolveLineEffects(modifierTexts = [], state = null) {
     if (!split) continue;
     const resolved = resolveLineCondition(split.condition, state);
     const multiplier = line.multiplier ?? 1;
-    const bodies = split.bodies.map((body) => {
-      const derivedText = resolved.active ? scaleBody(body, resolved.factor, resolved.power, multiplier) : null;
+    // `bodyFactors` (optional): a per-body factor in place of `factor` (Hare's Agility: the damage per stack, the Attack Speed flat).
+    const bodies = split.bodies.map((body, index) => {
+      const derivedText = resolved.active ? scaleBody(body, resolved.bodyFactors?.[index] !== undefined ? resolved.bodyFactors[index] : resolved.factor, resolved.power, multiplier) : null;
       return { body, derivedText, readers: bodyReaders(body) };
     });
     const unread = bodies.filter((item) => !item.readers.length);
-    const status = resolved.notOnDummy ? "Not on dummy" : resolved.unmodeled ? "Not modeled" : resolved.active === null ? "Not modeled" : !resolved.active ? "Inactive" : unread.length === bodies.length ? "Not modeled" : unread.length ? "Partly modeled" : "In calc";
+    // A body-less condition (Hare's Agility's stack gain: its stacks are the next clause's factor) is In calc while it holds; a
+    // resolved `partial` (a part with no reading, named in the condition text) reads Partly modeled.
+    const status = resolved.notOnDummy ? "Not on dummy" : resolved.unmodeled ? "Not modeled" : resolved.active === null ? "Not modeled" : !resolved.active ? "Inactive" : !bodies.length ? "In calc" : unread.length === bodies.length ? "Not modeled" : unread.length || resolved.partial ? "Partly modeled" : "In calc";
     const entry = { source: line.source, origin: line.origin, text, condition: split.condition.key, params: split.condition.params, group: resolved.group, active: resolved.active === true, conditionText: resolved.conditionText, provisional: Boolean(resolved.provisional), factor: resolved.factor ?? null, bodies, status };
     lines.push(entry);
     if (!resolved.active) continue;
@@ -152,8 +161,9 @@ export function resolveLineEffects(modifierTexts = [], state = null) {
       if (item.readers.includes("blessing")) blessing.push({ text: item.derivedText, source: `${line.source} (${resolved.conditionText})` });
     }
   }
-  // Speed lines of the combat states join the cast-rate ledger like any derived line.
-  for (const line of combat.derived) {
+  // Speed lines of the combat states join the cast-rate ledger like any derived line, and so do the follower's (a support
+  // affix's "+X% Attack and Cast Speed", src/follower-model.js AFFIX_BUFFS, 2026-10-19).
+  for (const line of [...combat.derived, ...follower.derived]) {
     const speed = line.text.match(SPEED);
     if (speed && /Cast Speed/i.test(speed[3])) { const value = Number(speed[1]); if (speed[2]) castSpeed.additionalPercents.push(value); else castSpeed.increasedPercent += value; castSpeed.sources.push({ source: line.source, text: line.text, value, additional: Boolean(speed[2]) }); }
   }

@@ -1,5 +1,6 @@
 import { skillProgressionSs13 } from "./data/skills/skill-progression-ss13.generated.js";
 import { normalizePercentageText } from "./percentage-text.js";
+import { empowerAdditionalLines } from "./storm-command.js";
 
 // Empower Skill effects that reach the build's other damage (frost-terra audit 2026-10-13;
 // research/frost-terra-30t-audit-2026-10-13.md). Before this module, Ice Bond's Euphoria never reached another skill and
@@ -116,10 +117,16 @@ export function iceBondEuphoriaPercent(level) {
  * Empower Effect of one setup from its support clauses (src/support-effects.js family "empower") and the character's lines.
  * @returns {{ factor, increasedPercent, additionalFactor, sources }}
  */
-export function empowerEffectFactor(clauses = [], { globalIncreasedPercent = 0, globalSources = [], prebuiltSelfBuffs = true } = {}) {
+// `globalAdditional`: the character's "+X% additional Empower Skill (and Defensive Skill) Effect" lines (Storm's Command's -99%,
+// game affix 12665181 attr 3401 additional on Empower-tagged effects; core audit B8): { factor, sources }.
+export function empowerEffectFactor(clauses = [], { globalIncreasedPercent = 0, globalSources = [], prebuiltSelfBuffs = true, globalAdditional = null } = {}) {
   const empower = clauses.filter((clause) => clause.family === "empower");
   const sources = [...globalSources];
   let increasedPercent = globalIncreasedPercent, additionalFactor = 1;
+  for (const item of globalAdditional?.sources || []) {
+    additionalFactor *= Math.max(0, 1 + item.value / 100);
+    sources.push({ source: item.source, text: item.text, value: item.value, reading: "additional (multiplies; core audit B8)" });
+  }
   const chargeBonus = empower.filter((clause) => clause.kind === "charges").reduce((sum, clause) => sum + (clause.value || 0), 0);
   for (const clause of empower) {
     if (clause.kind === "perCharge") {
@@ -158,19 +165,20 @@ export function resolveEmpowerEffects({ setups = [], activeNames = new Set(), da
     if (match) globalSources.push({ source: line.source, text: line.text, value: Number(match[1]) * (line.multiplier ?? 1), reading: "increased" });
   }
   const globalIncreasedPercent = globalSources.reduce((sum, item) => sum + item.value, 0);
+  const globalAdditional = empowerAdditionalLines(modifierTexts);
   const frostbitten = enemyAilments.some((name) => FROSTBITTEN.has(name));
   for (const setup of setups) {
     if (setup.enabled === false || !activeNames.has(setup.name)) continue;
     const clauses = setup.supportEffects?.clauses || [];
     const empowerTag = (setup.tags || []).includes("Empower") || clauses.some((clause) => clause.family === "empower" && clause.kind === "becomes");
-    const effect = empowerEffectFactor(clauses, { globalIncreasedPercent, globalSources, prebuiltSelfBuffs });
+    const effect = empowerEffectFactor(clauses, { globalIncreasedPercent, globalSources, prebuiltSelfBuffs, globalAdditional });
     const factorText = `Empower Effect ×${round(effect.factor)} = (1 + ${effect.increasedPercent}%) × ${effect.additionalFactor}`;
     if (setup.name === "Ice Bond") {
       const base = iceBondEuphoriaPercent(setup.effectiveLevel);
       const factor = empowerTag ? effect.factor : 1;
       const value = round(base * factor);
       const active = frostbitten && value > 0;
-      entries.push({ setupKey: setup.setupKey, skill: setup.name, kind: "euphoria", base, factor: round(factor), value, active, sources: effect.sources,
+      entries.push({ setupKey: setup.setupKey, skill: setup.name, kind: "euphoria", base, factor: round(factor), value, active, empowerScaled: empowerTag, sources: effect.sources,
         text: `Ice Bond Lv.${Math.floor(setup.effectiveLevel || 20)} Euphoria: other skills +${base}% additional Cold Damage against Frostbitten enemies${empowerTag ? ` × ${factorText}` : ""} = +${value}%; ${active ? "the dummy is Frostbitten; uptime 1 (the Sentry is recast on expiry and stays by the character: best case, provisional)" : "inactive: the dummy is not Frostbitten"}.` });
       if (active) lines.push({ text: `+${value}% additional Cold Damage`, source: `Ice Bond: Euphoria (+${base}% × ${round(factor)} Empower Effect; other skills, Frostbitten dummy)`, origin: "derived", multiplier: 1, exceptSetupKey: setup.setupKey, empower: true });
     }
@@ -178,7 +186,7 @@ export function resolveEmpowerEffects({ setups = [], activeNames = new Set(), da
       const factor = empowerTag ? effect.factor : 1;
       const euphoria = bullsRageEuphoria({ setup, clauses, effect: { factor }, modifierTexts, multistrikeEventsPerSecond });
       const active = euphoria.average > 0;
-      entries.push({ setupKey: setup.setupKey, skill: setup.name, kind: "euphoria", base: euphoria.base, factor: round(factor), value: euphoria.average, uptime: euphoria.uptime, active, sources: effect.sources, euphoria,
+      entries.push({ setupKey: setup.setupKey, skill: setup.name, kind: "euphoria", base: euphoria.base, factor: round(factor), value: euphoria.average, uptime: euphoria.uptime, active, empowerScaled: empowerTag, sources: effect.sources, euphoria,
         text: `Bull's Rage Lv.${euphoria.level} Euphoria: Melee skills +${euphoria.base}% additional damage${empowerTag ? ` × ${factorText}` : ""} = +${euphoria.value}% for ${euphoria.durationSeconds} s${euphoria.durationLines.length ? ` (6 s × duration lines)` : ""}; ${euphoria.cadence}; uptime min(1, ${euphoria.durationSeconds} ÷ ${euphoria.periodSeconds}) = ${euphoria.uptime} → +${euphoria.average}% additional Melee Skill Damage on average (provisional).` });
       if (active) lines.push({ text: `+${euphoria.average}% additional Melee Skill Damage`, source: `Bull's Rage: Euphoria (+${euphoria.base}% × ${round(factor)} Empower Effect × ${euphoria.uptime} uptime)`, origin: "derived", multiplier: 1, empower: true });
     }
@@ -195,7 +203,7 @@ export function resolveEmpowerEffects({ setups = [], activeNames = new Set(), da
         for (const type of debuff.types || []) {
           lines.push({ text: `+${value}% additional ${type} Damage taken`, source: `${setup.name}: hit debuff (+${debuff.value}%${scaled ? ` × ${round(factor)} Empower Effect` : ""}${uptime < 1 ? ` × uptime ${round(uptime)}` : ""}; enemy debuff)`, origin: "derived", multiplier: 1, empower: scaled });
         }
-        entries.push({ setupKey: setup.setupKey, skill: setup.name, kind: "debuff", base: debuff.value, factor: round(factor), uptime: round(uptime), value, active: true, sources: scaled ? effect.sources : [],
+        entries.push({ setupKey: setup.setupKey, skill: setup.name, kind: "debuff", base: debuff.value, factor: round(factor), uptime: round(uptime), value, active: true, empowerScaled: scaled, sources: scaled ? effect.sources : [],
           text: `${setup.name} hit debuff: +${debuff.value}% additional ${(debuff.types || []).join("/")} Damage taken on the dummy${scaled ? ` × ${factorText} (debuffs Empower-scaled by Freezing Point)` : ""}${uptime < 1 ? ` × uptime ${round(uptime)}` : ""} = +${value}%; it lasts ${duration} s against a ${cooldown} s cooldown (uptime ${round(uptime)}; provisional), and reaches every ${(debuff.types || []).join("/")} source, not only ${setup.name}'s hits.` });
       }
       sharedDebuffSetupKeys.add(setup.setupKey);

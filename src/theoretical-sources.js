@@ -78,7 +78,16 @@ export function compileScorchingBeamIgniteSources({ blurEffects, blessings = { d
     if (talent.additionalDamageToLifePercent) additionalSources.push(entry("Talents: additional damage applied to Life", talent.additionalDamageToLifePercent, "Additional damage", "Target Life"));
     if (slate.additionalDamageToLifePercent) additionalSources.push(entry("Slates: additional damage applied to Life", slate.additionalDamageToLifePercent, "Additional damage", "Target Life"));
   }
-  additionalSources.push(...(extraSources.additional || []).map((line) => entry(line.source, line.value, "Additional damage", line.condition, { text: line.text })));
+  // Skill-tag-gated text lines ("+X% additional Ailment Damage dealt by attacks", Great Strength; src/damage-line-classifier.js
+  // `requiresSkillTag`) follow the Aura rule below: active with `requiresSkillTag` when the inflicting main skill has the tag,
+  // otherwise listed in `inactiveSources`; src/ailment-applications.js re-gates both per inflicting skill.
+  const inflictingTags = new Set((main?.tags || []).map((tag) => String(tag).toLowerCase()));
+  const inactiveSources = [];
+  for (const line of extraSources.additional || []) {
+    const tag = line.requiresSkillTag;
+    if (tag && !inflictingTags.has(tag.toLowerCase())) { inactiveSources.push({ source: line.source, text: line.text, value: line.value, category: "Additional damage", requiresSkillTag: tag, reason: `${main?.name || "the skill inflicting the ailment"} is not an ${tag} skill` }); continue; }
+    additionalSources.push(entry(line.source, line.value, "Additional damage", line.condition, { text: line.text, requiresSkillTag: tag }));
+  }
   // Spell-scoped Blessing lines (`skillTags`, e.g. Bunch) are hit-only: never Ignite (Spell Damage never reaches ailments).
   additionalSources.push(...blessings.damageSources.filter(line => !line.skillTags).map(line => entry(line.source, line.value, "Additional damage", "Maximum stacks with verified gain condition", line.text ? { text: line.text } : undefined)));
   increasedSources.push(...(blessings.increasedSources || []).map(line => entry(line.source, line.value, "Increased damage", "Maximum stacks with verified gain condition", { text: line.text })));
@@ -200,8 +209,6 @@ export function compileScorchingBeamIgniteSources({ blurEffects, blessings = { d
   // Beam: the planner applies every ailment at its use rate). Without the tag the line is listed in
   // `inactiveSources` with the reason; skill DoTs are not ailments and never read ailment lines.
   const igniteAuraSkillTags = { additionalAreaAilmentDamagePercent: "Area" };
-  const inflictingTags = new Set((main?.tags || []).map((tag) => String(tag).toLowerCase()));
-  const inactiveSources = [];
   for (const [name, auraEntry] of auraEntries) {
     if (!activeNames.has(name)) continue;
     for (const [stat, label] of Object.entries(igniteAuraStats)) {
@@ -391,11 +398,16 @@ export function compileScorchingBeamIgniteSources({ blurEffects, blessings = { d
   // The panel formula is retained above. The observed dummy DoT instead fits
   // directly added ailment base without Scorching Beam's hit coefficients.
   // Restrict this estimate to the verified one-stack case for now.
+  // Whole-run convention (user-decided 2026-10-19, "count the whole fight"): the held Ignite is the strongest of every
+  // attempt in a sustained run of sustainedWindowSeconds (default 20 s), the same run the generic ailment model
+  // (src/ailment-model.js sustainedSeconds) and the dummy recount's shared-timer chain count; it was the attempts of one
+  // Ignite duration.
+  const sustainedRunSeconds = Number(combat.sustainedWindowSeconds) || 20;
   const strongestOneStack = igniteLimit === 1 && enabled && baseRange.max > 0 ? (() => {
     const input = combatInput(combat.afflictionAverage, aimAverage);
     const ailmentOnly = calculateTheoreticalIgnite({ ...input, addedDamageEffectivenessPercent: 100, sourceCoefficientPercents: [] });
     const applicationRate = Math.max(0, reapingApplicationAttemptsPerSecond ?? input.applicationsPerSecond);
-    const applicationAttempts = input.durationSeconds * applicationRate;
+    const applicationAttempts = sustainedRunSeconds * applicationRate;
     const expectedBase = expectedStrongestAilmentBase({ min: baseRange.min, max: baseRange.max, chancePercent: input.applicationChancePercent, attempts: applicationAttempts });
     return {
       baseRange: { ...baseRange },
@@ -416,7 +428,7 @@ export function compileScorchingBeamIgniteSources({ blurEffects, blessings = { d
     const input = combatInput(combat.afflictionAverage, aimAverage);
     const applicationRate = Math.max(0, reapingApplicationAttemptsPerSecond ?? input.applicationsPerSecond);
     const modeled = calculateTheoreticalIgnite({ ...input, addedDamageEffectivenessPercent: 100, sourceCoefficientPercents: [], applicationsPerSecond: applicationRate });
-    const applicationAttempts = input.durationSeconds * applicationRate;
+    const applicationAttempts = sustainedRunSeconds * applicationRate;
     const expectedBaseSum = expectedRetainedAilmentBaseSum({ min: baseRange.min, max: baseRange.max, chancePercent: input.applicationChancePercent, attempts: applicationAttempts, stacksPerApplication: input.stacksPerApplication, maximumActiveStacks: igniteLimit });
     const damagePerBase = modeled.perStackDps.max / baseRange.max;
     const expectedDps = expectedBaseSum * damagePerBase;

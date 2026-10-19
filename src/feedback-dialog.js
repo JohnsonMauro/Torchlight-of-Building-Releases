@@ -39,7 +39,7 @@ export function feedbackDialogMarkup(formKey, { heading = "", values = {}, build
     const describedBy = [field.description ? `${id}-help` : "", field.required ? `${id}-error` : ""].filter(Boolean).join(" ");
     const attrs = `id="${id}" name="${field.id}" data-feedback-input="${field.id}"${field.required ? ` required aria-required="true"` : ""}${describedBy ? ` aria-describedby="${describedBy}"` : ""}${field.placeholder ? ` placeholder="${escapeHtml(field.placeholder)}"` : ""}`;
     let control;
-    if (field.type === "dropdown") control = `<select ${attrs} data-native-select><option value="">Select…</option>${field.options.map((option) => `<option${option === value ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select>`;
+    if (field.type === "dropdown") control = `<select class="planner-select" ${attrs} data-native-select><option value="">Select…</option>${field.options.map((option) => `<option${option === value ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select>`;
     else if (field.type === "textarea") control = `<textarea ${attrs} rows="${Math.min(6, Math.max(3, String(value).split("\n").length))}">${escapeHtml(value)}</textarea>`;
     else control = `<input type="text" ${attrs} value="${escapeHtml(value)}">`;
     const error = field.required ? `<p class="feedback-error" id="${id}-error" hidden>This field is required.</p>` : "";

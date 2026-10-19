@@ -49,7 +49,7 @@ export function calculateHeroMemories(hero = {}, options = {}) {
     const range = slot?.reductionRange || {min:0,max:0};
     const reduction = validBase && memory.id === base.id ? Math.max(range.min, Math.min(range.max, hero.baseTraitMemoryRoll ?? range.max)) : null;
     const reduce = text => reduction === null ? text : reduceBaseTraitMemoryStat(text, reduction);
-    const texts = [reduce(memoryScaledBaseStat(memory.baseStat, memory.type, memory.enhancementLevel, memory.waxAndWane)),
+    const texts = [reduce(memoryScaledBaseStat(memory.baseStat, memory.type, memory.enhancementLevel, memory.waxAndWane, memory.rarity)),
       ...(memory.fixedAffixes || []).map((_, index) => resolvedMemoryAffix(memory, "fixedAffixes", index)),
       ...(memory.randomAffixes || []).map((_, index) => reduce(resolvedMemoryAffix(memory, "randomAffixes", index))),
       // Regular revived affixes (TLIDB Memory Revival families with their text; gear-pact batch chunk 4) join the intake like

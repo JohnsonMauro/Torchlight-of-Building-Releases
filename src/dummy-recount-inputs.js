@@ -10,6 +10,7 @@
 // - Reaping: the Ignite ledger's sources (Ignite-only builds) or calculateMultiSourceReaping's
 //   20 s sources (damage-path builds), with their recovery, settled seconds and settle scales.
 import { retainedAilmentBaseSumForSuccesses } from "./theoretical-damage.js";
+import { expectedStrongestStacks } from "./ailment-model.js";
 import { averagedResistanceFactor } from "./max-affliction-resistance.js";
 import { normalizeRecountOptions, RECOUNT_STEP_SECONDS } from "./dummy-recount.js";
 
@@ -126,10 +127,17 @@ function otherAilment({ ailment, retention, count, critChancePercent, rate = 0, 
   const critFactor = ailment.combat.critOnlyFactor ?? 1;
   const crit = clampChance(critChancePercent);
   const averageApplication = ailment.combat.averageApplication ?? (ailment.base.min + ailment.base.max) / 2 * (1 + crit * (critFactor - 1));
+  // A limit above 1 (Trauma with Open Wounds, generic Ignite): the run keeps its strongest stacks, as the beam's Ignite chain does
+  // (user-confirmed 2026-10-19: a weaker application refreshes them without overwriting them; src/ailment-model.js expectedStrongestStacks).
+  const limit = Math.max(1, Number(ailment.stackLimit) || 1);
+  const stacks = Math.max(1, Number(ailment.stacksPerApplication) || 1);
+  const multi = limit > 1;
+  const roll = { min: ailment.base.min, max: ailment.base.max, critChancePercent, critFactor, chancePercent: 100 };
   const retainedBase = retention === "newest"
-    ? Array.from({ length: count + 1 }, (_, n) => n ? averageApplication : 0)
+    ? Array.from({ length: count + 1 }, (_, n) => n ? averageApplication * (multi ? Math.min(limit, n * stacks) : 1) : 0)
+    : multi ? Array.from({ length: count + 1 }, (_, n) => n ? expectedStrongestStacks({ streams: [{ ...roll, attempts: n }], stackLimit: limit, stacksPerApplication: stacks }) : 0)
     : strongestOfSuccesses({ min: ailment.base.min, max: ailment.base.max, critChancePercent, critFactor, count });
-  const retainedLimit = retention === "newest" ? averageApplication : ailment.base.max * (crit > 0 ? Math.max(1, critFactor) : 1);
+  const retainedLimit = (retention === "newest" ? averageApplication : ailment.base.max * (crit > 0 ? Math.max(1, critFactor) : 1)) * (multi ? limit : 1);
   return { ...common, stacking: "shared-timer", retainedBase, retainedLimit };
 }
 

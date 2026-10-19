@@ -3,6 +3,7 @@ import { supportClauseSummary, resolveSupportEffects } from "./support-effects.j
 import { aegisOfFireState, AEGIS_OF_FIRE } from "./aegis-of-fire.js";
 import { isFireOnlyLedgerLine } from "./ailment-shared.js";
 import { curseTakenEffect, NO_DUMMY_EFFECT_CURSES } from "./curse-effects.js";
+import { curseSlotSummary } from "./curse-limit.js";
 import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "./data/catalogs/tlidb-ss13.js";
 import { installedSupportRejected, supportRuleText } from "./support-compatibility.js";
 
@@ -270,15 +271,26 @@ function classifySkill(planner, skillName, setup) {
   const youga = yougaSkillCoverage(planner, skillName);
   if (youga) return youga;
   if (UNMODELED_SKILLS[skillName]) return result("Not modeled", UNMODELED_SKILLS[skillName]);
-  if (role === "curse") {
-    const excluded = (planner?.curseLimit?.excluded || []).some((entry) => (entry?.name ?? entry) === skillName);
-    if (excluded) return result("Inactive", "exceeds the curse limit");
-  }
+  // A curse skill past the curse limit (skill bar order, user-confirmed 2026-10-19; src/curse-limit.js) is not applied.
+  if ((planner?.curseLimit?.excluded || []).some((entry) => (entry?.name ?? entry) === skillName)) return result("Inactive", curseSlotSummary(planner).reason);
   if (role === "empower" && skillName === "Aim") {
     const aim = planner?.aim;
     if (!aim?.active) return result("Inactive", "Aim is turned off in combat conditions");
     const uptime = aim.damagePercent ? aim.averageDamagePercent / aim.damagePercent * 100 : 0;
     return result("In calc", `${signed(aim.damagePercent)}% additional damage while active (${signed(aim.averageDamagePercent)}% average); ${aim.uptimeLabel || `${round(uptime)}% uptime`}`);
+  }
+  // Elixir Skills (core audit B8, src/elixir-model.js): the Elixir Effect's value lines, time-averaged by the uptime that Charging
+  // Progress per second gives on the dummy (it is never defeated, so kill-based charging is 0 there).
+  const elixir = (setup?.tags || []).includes("Elixir") ? (planner?.lineEffects?.combat?.elixir?.setups || []).find((item) => item.name === skillName) : null;
+  if (elixir) {
+    if (elixir.kind === "restoration") return result("No DPS effect", "Restoration Elixir: restores Life / Mana");
+    if (!(elixir.uptime > 0)) return result("Not on dummy", `charged by defeating enemies (${elixir.progressPerCharge} Charging Progress per charge); the dummy is never defeated and no "Elixir Skills gain N Charging Progress every second" line recharges it`);
+    const fed = elixir.effectLines.filter((line) => line.derivedText && line.damage);
+    const unread = elixir.states.filter((line) => line.damage);
+    const uptime = `uptime ${round(elixir.uptime * 100)}% (${elixir.castsPerSecond} casts/s × ${elixir.durationSeconds} s; provisional)`;
+    if (!fed.length) return result(unread.length ? "Not modeled" : "No DPS effect", unread.length ? `${uptime}; not modeled: ${unread.map((line) => line.text).join("; ")}` : `${uptime}; its Elixir Effect changes no dummy damage`);
+    const reason = `${fed.map((line) => `${line.text} → ${line.derivedText} on average`).join("; ")}; ${uptime}`;
+    return unread.length ? result("Partly modeled", `${reason}; not modeled: ${unread.map((line) => line.text).join("; ")}`) : result("In calc", reason);
   }
   if (MODELED_MAIN_SKILLS.has(skillName)) {
     const level = matchingContributions(planner, skillName).find((entry) => /level/.test(entry.source));
@@ -297,7 +309,9 @@ function classifySkill(planner, skillName, setup) {
     // The engine names what is modeled: hits (skill-hit, the item-trigger and Main-Skill-trigger engines), damage over time
     // (skill-dot) or Minion damage (2026-10-18: every engine read "damage over time", Homing Frost Bolt's hits included).
     const kind = damageSource.profile.engine === "skill-dot" ? "damage over time" : damageSource.profile.engine === "minion" ? "Minion damage" : "hits";
-    return result("In calc", `${damageSource.profile.damageType} ${kind} (${damageSource.profile.engine} engine)${level ? `; ${signed(level.value)}% ${categoryText(level.category) || "damage"} from skill level` : ""}`);
+    // A random damage roll the DoT engine settled (src/skill-dot-model.js randomRoll: Voltaic Ripple's Voltage, Lucky or the average).
+    const randomRoll = damageSource.profile.randomRoll ? Object.values(planner?.ailments || {}).find((item) => item?.skillDot && item.name === skillName && item.randomRoll)?.randomRoll : null;
+    return result("In calc", `${damageSource.profile.damageType} ${kind} (${damageSource.profile.engine} engine)${randomRoll ? `; ${randomRoll.text}` : ""}${level ? `; ${signed(level.value)}% ${categoryText(level.category) || "damage"} from skill level` : ""}`);
   }
   if (role === "aura") {
     const entry = planner?.aura?.entries?.find((item) => item.name === skillName);

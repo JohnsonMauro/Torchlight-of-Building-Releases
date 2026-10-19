@@ -48,7 +48,11 @@ export function gameLogSummaryMarkup(report) {
   const list = sections.flatMap(([key, value]) => skippedOf(value).map((entry) => ({ section: SECTION_LABELS[key] || key, ...entry })));
   const changed = report.source?.changesAfter ? `<p class="game-log-changed">The build changed after this login. The game writes the build only at login, so log in again to import the current build.</p>` : "";
   const provisional = report.provisional.length ? `<p class="game-log-provisional">Provisional: ${report.provisional.map(escapeHtml).join("; ")}</p>` : "";
-  return `<p class="game-log-step">Snapshot from ${escapeHtml(gameLogLocalTime(report.source?.stamp))}</p><table class="game-log-counts"><thead><tr><th scope="col">Section</th><th scope="col">Imported</th><th scope="col">Not imported</th>${fromColumn ? `<th scope="col">From</th>` : ""}</tr></thead><tbody>${rows}</tbody></table>${changed}${list.length ? `<details class="game-log-skipped"><summary>Not imported (${list.length})</summary><ul>${list.map((entry) => `<li><b>${escapeHtml(entry.section)}</b> ${escapeHtml(entry.item)}${entry.reason ? `<small>${escapeHtml(entry.reason)}</small>` : ""}</li>`).join("")}</ul></details>` : ""}${provisional}`;
+  // A cut or dropped section changes the whole build (talents, gear…), so it also gets one line above the result.
+  const gapLabels = [...new Set((report.logGaps || []).map((gap) => gap.label))];
+  const gaps = gapLabels.length ? `<p class="game-log-changed">Some sections weren't in the game log: ${escapeHtml(gapLabels.join(", "))}. Log out and back in, then import again.</p>` : "";
+  const notices = (report.notices || []).map((text) => `<p class="game-log-provisional">${escapeHtml(text)}</p>`).join("");
+  return `${gaps}<p class="game-log-step">Snapshot from ${escapeHtml(gameLogLocalTime(report.source?.stamp))}</p><table class="game-log-counts"><thead><tr><th scope="col">Section</th><th scope="col">Imported</th><th scope="col">Not imported</th>${fromColumn ? `<th scope="col">From</th>` : ""}</tr></thead><tbody>${rows}</tbody></table>${changed}${list.length ? `<details class="game-log-skipped"><summary>Not imported (${list.length})</summary><ul>${list.map((entry) => `<li><b>${escapeHtml(entry.section)}</b> ${escapeHtml(entry.item)}${entry.reason ? `<small>${escapeHtml(entry.reason)}</small>` : ""}</li>`).join("")}</ul></details>` : ""}${notices}${provisional}`;
 }
 
 /**

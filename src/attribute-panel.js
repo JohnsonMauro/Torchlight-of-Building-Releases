@@ -45,7 +45,7 @@ const product = (values) => values.reduce((total, value) => total * (1 + value /
 // ---- Line classification ----------------------------------------------------------------------------------------------
 
 // Target-dependent and combat-only lines (scripts/compare-game-log.js conventions; the panel is a town sheet).
-const TARGET_DEPENDENT = /\bagainst\b.*\benemies\b|\bagainst (?:Elites|Bosses)\b|enemies affected by|damage taken|cursed target|target (?:ignited|cursed|frostbitten|numbed|shocked)/i;
+const TARGET_DEPENDENT = /\bagainst\b.*\benemies\b|\b(?:against|to) (?:Elites|Bosses)\b|enemies affected by|damage taken|cursed target|target (?:ignited|cursed|frostbitten|numbed|shocked)/i;
 const COMBAT_ONLY = /Tide Contact|On the Tide|Wave Aria|Idyll of the Tide|Focus Blessing|Fire Infiltration|Feud|Scorch\b|Curse|Vulnerability|Stealth Stab|Supercharge \(full channel\)|Entangled Pain/i;
 
 // The game attribute a damage line writes, from its text (else its source label): Elemental 5727, a damage type, or All

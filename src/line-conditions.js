@@ -58,6 +58,15 @@ const LINE_RULES = [
   [new RegExp(`^Projectiles deal up to \\+${N}% additional damage to enemies in [Pp]roximity, and this damage reduces with the distance traveled by the Projectiles$`), (m) => ({ body: `+${m[1]}% additional Projectile Damage`, key: "nearTarget", params: { upTo: true } })],
   [new RegExp(`^Deals up to \\+${N}% additional Attack Damage to enemies in proximity, and this damage reduces as the distance from the enemy grows$`), (m) => ({ body: `+${m[1]}% additional Attack Damage`, key: "nearTarget", params: { upTo: true } })],
   [new RegExp(`^Area Skills deal up to \\+${N}% additional damage to enemies at the center$`), (m) => ({ body: `+${m[1]}% additional Area Damage`, key: "center" })],
+  // Minion copies of player lines (core audit B7; src/minion-damage-model.js reads the bodies on the Minion skills):
+  // - Focused Strike: game affix 108494 writes the player version's field 2007120 on the Minions (Area Skills, same best case).
+  // - Dirty Tricks: game affix 9173989 gives the Minions the player version's seven "+12% additional Hit Damage" rows, one per
+  //   ailment type on the enemy (multiplies), so the count is the enemy-ailment model's, like the player's.
+  // - Reflection: game affix 79805904 gives the Minions the player version's per-Aura count (node 346 on Aura-tagged buffs): the
+  //   Minions are counted inside the player's Auras (best case: within the Aura radius; provisional).
+  [new RegExp(`^Minions' Area Skills deal up to \\+?${N}% additional damage to enemies at the center$`), (m) => ({ body: `+${m[1]}% additional Area Damage for Minions`, key: "center" })],
+  [new RegExp(`^When Minions deal damage, \\+${N}% additional Hit Damage \\(multiplies\\) for every type of Ailment the enemy has$`), (m) => ({ body: `+${m[1]}% additional Hit Damage for Minions`, key: "ailmentTypes", params: { multiplies: true } })],
+  [new RegExp(`^Minions \\+${N}% additional damage for each type of Aura they are affected by$`), (m) => ({ body: `+${m[1]}% additional damage for Minions`, key: "minionAuraCount", params: { per: num(m[1]) } })],
   [new RegExp(`^Upon inflicting damage, \\+${N}% (additional )?Hit Damage( \\(multiplies\\))? for every type of Ailment the enemy has$`), (m) => ({ body: `+${m[1]}% ${m[2] || ""}Hit Damage`, key: "ailmentTypes", params: { multiplies: Boolean(m[3]) } })],
   [new RegExp(`^Deals more Wilt Damage to enemies with more Life, up to \\+${N}% additional Wilt Damage$`), (m) => ({ body: `+${m[1]}% additional Wilt Damage`, key: "enemyLifeHigh" })],
   // Gear uniques round 2: the same count with "(multiplies)" at the end (Elemental Whirl), and the Elemental Ailment count
@@ -112,6 +121,11 @@ const LINE_RULES = [
   [/^(.+?) when Unarmed$/, (m) => ({ body: m[1], key: "unarmed" })],
   [/^(.+?) when your off-hand weapon slot is empty$/, (m) => ({ body: m[1], key: "offHandEmpty" })],
   [/^(.+?) when wielding a Wand or Tin Staff$/, (m) => ({ body: m[1], key: "wieldingWandOrStaff" })],
+  // Mind Blade (core audit batch B5): "Adds 30% Physical Damage as Cold Damage when not wielding a Wand or Tin Staff". User-supplied
+  // 2026-10-19 (not in-game tested): the 30% applies with any weapon, as the game record (affix 146061584) has no weapon condition
+  // node; only the other clause, "+25% additional Cold Damage when wielding a Wand or Tin Staff" (affix 518814688, which does check
+  // the weapon), needs a Wand or Tin Staff (wieldingWandOrStaff above). The text's weapon wording is not a condition.
+  [/^(.+?) when not wielding a Wand or Tin Staff$/, (m) => ({ body: m[1], key: "notWieldingWandOrStaff" })],
   // Full Life (the dummy never attacks; own Life is full unless sealed or the Life group picks Low Life). The pact
   // "Affliction … at Full Life" lines keep the planner's Full Life model (src/planner.js fullLife), so they are not read here.
   // "… when not at Full Life / Mana" (residual batch P1): before the Full rules, which would read the body as "… when not".
@@ -148,6 +162,14 @@ const LINE_RULES = [
   // ---- self state, events, timed ----
   [new RegExp(`^\\+${N}% additional damage every [\\d.]+ ?s while standing still, up to \\+${N}% additional damage$`), (m) => ({ body: `+${m[2]}% additional damage`, key: "standingStill", params: { rampCap: true } })],
   [/^(.+?) while standing still$/, (m) => ({ body: m[1], key: "standingStill" })],
+  // Hare's Agility (Ethereal Prism core; game affix 1525925, core audit batch B2): on leaving Stand Still (trigger 1000100) one stack
+  // of buff 20480 for 2 s, up to 5; on hit within 4 m (node 189 range 400) GetBuffStack(20480) × P1 additional damage (attr 5719
+  // mod 4, one additional term). Stand Still and leaving it are the Movement group's two alternatives (core audit Q10,
+  // user-confirmed 2026-10-18: best case by damage, listed in the assumptions): the moving alternative holds the stacks at the cap (user rule: movement buffs fully
+  // stacked), standing still holds none. The "+P2% Attack Speed" part (an empty effect row in the game record) is one flat bonus
+  // while the buff is up, not per stack (user-supplied 2026-10-19, Google AI Mode answer, not tested in game).
+  [new RegExp(`^When exiting Stand Still, gains 1 stack of buff that lasts for ${N} ?s, up to (\\d+) times$`), (m) => ({ bodies: [], key: "exitStandStillGain", params: { seconds: num(m[1]), stacks: num(m[2]) } })],
+  [new RegExp(`^\\+${N}% additional damage dealt to enemies in proximity for each stack of buff\\. \\+${N}% Attack Speed$`), (m) => ({ bodies: [`+${m[1]}% additional damage`, `+${m[2]}% Attack Speed`], key: "exitStandStillStacks", params: { attackSpeed: num(m[2]) } })],
   // "Recently moved" lines (Rushed): held in both movement choices (user rule 2026-10-14: "in the real game you are always
   // moving"), so they take their own best-case key instead of the Movement group.
   [/^(.+?) if you have recently moved more than (\d+) m$/, (m) => ({ body: m[1], key: "movedRecently", params: { meters: num(m[2]) } })],
@@ -172,6 +194,10 @@ const LINE_RULES = [
   [/^(.+?) if you have Regained in the last (\d+(?:\.\d+)?) ?s$/, (m) => ({ body: m[1], key: "regained", params: { seconds: num(m[2]) } })],
   [/^(.+?) for each time you have Regained in the last (\d+(?:\.\d+)?) ?s\. Stacks up to (\d+) time\(s\)$/, (m) => ({ body: m[1], key: "regained", params: { seconds: num(m[2]), stacks: num(m[3]) } })],
   [/^(.+?) for \d+ ?s after using Mobility Skills$/, (m) => ({ body: m[1], key: "mobility" })],
+  // Dark Advance (Ethereal Prism core; game affix 44099244, core audit B7): a 4 s buff on casting Dark Gate (src/minion-cores.js).
+  [/^(.+?) if a Dark Gate has been cast recently$/, (m) => ({ body: m[1], key: "darkGateRecently" })],
+  // Heat Up (Artisan core; game affix 178625: casting a Sentry skill starts a 4 s buff, "+30% additional Sentry Damage"; core audit B7).
+  [/^(.+?) if Sentry Skill has been cast recently$/, (m) => ({ body: m[1], key: "sentryCastRecently" })],
   [/^At max channeled stacks, (.+?) for (\d+(?:\.\d+)?) s$/, (m) => ({ body: m[1].replace(/ damage for Channeled Skills$/i, " Channeled Skill Damage"), key: "channelMax", params: { seconds: num(m[2]) } })],
   [/^Every ([\d.]+) s, (.+?) for the next Main Skill used$/, (m) => ({ body: m[2], key: "nextMainSkill", params: { interval: num(m[1]) } })],
   [/^(.+?) for the next Main Skill(?: used)? every ([\d.]+) s(?:\. .*)?$/, (m) => ({ body: m[1], key: "nextMainSkill", params: { interval: num(m[2]) } })],
@@ -186,6 +212,11 @@ const LINE_RULES = [
   // "+80% damage per stack of Max Spell Burst , up to +320%" (Law of Greed): the Max Spell Burst total the Spell Burst model reads.
   [new RegExp(`^\\+${N}% (.+?) per stack of Max Spell Burst ?, up to \\+?${N}%$`), (m) => ({ body: `+${m[1]}% ${m[2]}`, key: "maxSpellBurstPerStack", params: { per: num(m[1]), cap: num(m[3]) } })],
   [new RegExp(`^\\+${N}% additional damage for each type of Aura you are affected by$`), (m) => ({ body: `+${m[1]}% additional damage`, key: "auraCount", params: { per: num(m[1]) } })],
+  // Keen Intellect (Ethereal Prism core; game affixes 921811584 / 733359744 / 818140224, core audit batch B2): node 208 counts the
+  // equipped active skills with the tag (Empower 6001230, Curse 6000150, Mobility 6000010); "(multiplies)" lines are one
+  // additional factor per skill ((1 + X)^n), the penetration lines add per skill. The Defensive clause (+13% additional Max Mana)
+  // is left to the stat sheet.
+  [/^For every Active (Empower|Curse|Mobility) Skill equipped, (.+?)\.?$/, (m) => ({ bodies: splitAnd(m[2].replace(/\s*\(multiplies\)$/i, "")), key: "perEquippedSkill", params: { type: m[1], multiplies: /\(multiplies\)$/i.test(m[2]) } })],
   // ---- per-stat ----
   [new RegExp(`^\\+${N}% (.+?) per (\\d+) (${STAT_WORDS})$`), (m) => ({ body: `+${m[1]}% ${m[2]}`, key: "perStat", params: { per: num(m[1]), every: num(m[3]), stat: m[4].toLowerCase(), template: m[2] } })],
   // Residual batch A-2: added flat per stat on a named skill type ("Adds 2 - 2 Fire Damage to Attacks per 10 Strength"; both
@@ -230,9 +261,12 @@ const LINE_RULES = [
   // Resource consumed recently: needs each skill's cost per use and the "recently" window; neither is in the planner's data.
   [/^(.+?) for every (\d+) (Mana|Life) consumed recently(?:, up to .+)?$/, (m) => ({ body: m[1], key: "unmodeled", params: { reason: `needs ${m[3]} consumed per second (skill costs are not in the planner's data) and the length of "recently" (not sourced)` } })],
   [/^Every [\d.]+ s, (.+?) for enemies within (\d+) m\. Stacks up to (\d+) times$/, (m) => ({ body: m[1], key: "unmodeled", params: { reason: "a stacking enemy debuff (damage taken): debuffs are talent batch chunk 3" } })],
-  [/^Consumes all Agility Blessing every \d+ ?s\. (.+)$/, (m) => ({ body: m[1], key: "unmodeled", params: { reason: "consumes Agility Blessing stacks (Blessing consumption is not modeled)" } })],
-  [/^If you have Agility Blessing stacks when casting the Main Skill, consumes (.+)$/, (m) => ({ body: m[1], key: "unmodeled", params: { reason: "consumes Agility Blessing stacks (Blessing consumption is not modeled)" } })],
-  [/^While Blur is active, loses Blur after casting a Main Skill, and (.+)$/, (m) => ({ body: m[1], key: "unmodeled", params: { reason: "consumes Blur (the Blur uptime model holds Blur; consumption is not modeled)" } })],
+  // Consumption cores (core audit batch B3; src/consumption-procs.js, settled in src/planner.js as state.consumption): the share of
+  // Main Skill casts that find a stack = min(1, gain rate ÷ cast rate) (Q5, user-confirmed 2026-10-18); Waiting Attack holds the
+  // stacks it consumed for 8 s and the consumed Agility's own effect is lost (Q14, user-confirmed 2026-10-18).
+  [/^Consumes all Agility Blessing every (\d+(?:\.\d+)?) ?s\. For each stack consumed, (.+?) in the next (\d+(?:\.\d+)?) ?s$/, (m) => ({ body: m[2], key: "consumeAllAgility", params: { every: num(m[1]), seconds: num(m[3]) } })],
+  [/^If you have Agility Blessing stacks when casting the Main Skill, consumes (\d+) stack\(s\) of Agility Blessing to make that cast deal (.+)$/, (m) => ({ body: m[2], key: "consumeAgilityPerCast", params: { stacks: num(m[1]) } })],
+  [/^While Blur is active, loses Blur after casting a Main Skill, and (.+?)(?: for that cast)?$/, (m) => ({ body: m[1], key: "consumeBlurPerCast" })],
   [/^(.+?) for (?:the )?Triggered Skills$/, (m) => ({ body: m[1], key: "unmodeled", params: { reason: "scoped to triggered skills (no per-skill trigger scope yet)" } })],
   [/^(.+?) for skills cast by Spell Burst$/, (m) => ({ body: m[1], key: "unmodeled", params: { reason: "scoped to Spell Burst casts (read by the skill-hit Spell Burst model where it applies)" } })],
   // "+X% [additional] Attack Speed when performing Multistrikes" is read per skill by src/skill-hit-model.js (skills that can
@@ -255,7 +289,7 @@ export function splitCondition(text) {
 
 // Exclusive groups a condition key belongs to (src/planner.js compares their alternatives).
 export const CONDITION_GROUPS = {
-  standingStill: "movement", moving: "movement", hastenMoving: "movement",
+  standingStill: "movement", moving: "movement", hastenMoving: "movement", exitStandStillGain: "movement", exitStandStillStacks: "movement",
   nearTarget: "distance", distant: "distance", noneNear: "distance", nearbyEnemiesAtLeast: "distance",
   lowLife: "life", notLowLife: "life", perLifeLost: "life", lifeLost: "life", fullLife: "life", notFullLife: "life",
   fullMana: "mana", lowMana: "mana", notFullMana: "mana"
@@ -389,6 +423,22 @@ function resolveKey(condition, state) {
       const share = Math.min(1, 1 / (uses * params.interval));
       return on(`the next Main Skill every ${params.interval} s: ${round(share * 100)}% of uses at ${round(uses)} uses/s (estimate from the early cast/attack rate; share = min(1, use interval ÷ ${params.interval} s): provisional, Q11)`, { factor: share, provisional: true });
     }
+    case "consumeAgilityPerCast":
+    case "consumeBlurPerCast": {
+      const item = key === "consumeBlurPerCast" ? state.consumption?.blur : state.consumption?.agility;
+      if (!item) return off("consumption not resolved (no planner state)");
+      const pending = state.consumption.measured ? "" : "; the cast rate is the early estimate until the hit pass measures it";
+      if (item.active === null) return { active: false, unmodeled: true, conditionText: `Not modeled: ${item.reason}` };
+      if (!item.active) return off(item.reason);
+      return on(`${item.reason}; the cast that consumes it deals the bonus, so ×${round(item.share)} of the value (share = min(1, gain rate ÷ cast rate): Q5, user-confirmed 2026-10-18)${pending}`, { factor: item.share });
+    }
+    case "consumeAllAgility": {
+      const item = state.consumption?.waitingAttack;
+      if (!item) return off("consumption not resolved (no planner state)");
+      if (item.active === null) return { active: false, unmodeled: true, conditionText: `Not modeled: ${item.reason}` };
+      if (!item.active) return off(item.reason);
+      return on(item.reason, { factor: item.stacksConsumed });
+    }
     case "castChance": return on(`expected value: ${params.chance}% × +${params.value}% per cast, each line its own additional layer (independent rolls: provisional, Q12)`, { provisional: true });
     // Hidden Mastery: its "Gains Attack Aggression when casting an Attack Skill" clause sets the buff (src/combat-states.js).
     case "attackAggression": return (state.buffs ? state.buffs.hasAttackAggression : state.castsAttack) ? on("Attack Aggression held (gained by casting an Attack Skill)") : off("no Attack Aggression (no active Attack skill)");
@@ -402,11 +452,36 @@ function resolveKey(condition, state) {
       const skills = (state.projectileSkills || []).filter((skill) => !params.spell || skill.spell);
       return skills.length ? on(`${skills.map((skill) => skill.name).join(", ")} generate${skills.length === 1 ? "s" : ""} ${kind}s on every use: ${params.stacks} stacks held (best case; the "recently" window is not sourced; provisional)`, { provisional: true }) : off(`no modeled skill hit generates ${kind}s`);
     }
-    case "dealtType": return state.dealtTypes?.has(params.type) ? on(`the build deals ${params.type} Damage`) : off(`the build deals no ${params.type} Damage`);
+    case "dealtType": return (state.dealtDamageTypes || state.dealtTypes)?.has(params.type) ? on(`the build deals ${params.type} Damage`) : off(`the build deals no ${params.type} Damage`);
     case "statCompare": {
       const a = state.stats?.[params.stat] ?? 0, b = state.stats?.[params.other] ?? 0;
       return a >= b ? on(`${params.stat} ${round(a)} ≥ ${params.other} ${round(b)} (stat sheet totals)`) : off(`${params.stat} ${round(a)} < ${params.other} ${round(b)} (stat sheet totals)`);
     }
+    case "perEquippedSkill": {
+      const names = state.equippedSkillsByTag?.[params.type] || [];
+      const count = names.length;
+      return count > 0 ? on(`${count} active ${params.type} Skill${count === 1 ? "" : "s"} equipped (${names.join(", ")}; game node 208 counts equipped skills with the tag)${params.multiplies ? ", one factor per skill" : ""}`, { factor: params.multiplies ? null : count, power: params.multiplies ? count : null }) : off(`no active ${params.type} Skill equipped`);
+    }
+    case "exitStandStillGain":
+      return state.moving !== false ? on(`moving (movement group): leaving Stand Still keeps the buff at ${params.stacks} stacks (${params.seconds} s each; user rule: movement buffs fully stacked; standing still / moving exclusive group, user-confirmed 2026-10-18)`) : off("standing still (movement group): Stand Still is never left, so no stacks");
+    case "exitStandStillStacks": {
+      const stacks = state.exitStandStillMaxStacks ?? 0;
+      if (state.moving === false) return off("standing still (movement group): no stacks from leaving Stand Still");
+      if (!(stacks > 0)) return off("no line grants the stacks gained when exiting Stand Still");
+      const speedText = `+${params.attackSpeed}% Attack Speed once while the buff is up, not per stack (user-supplied 2026-10-19, Google AI Mode answer, not tested in game)`;
+      if (state.nearTarget === false) return on(`moving (movement group): the buff is up, so ${speedText}; the Distant alternative stands ${DISTANT_STANDING_METERS} m away, so the damage part (range 4 m in the game record) is off`, { factor: 0, bodyFactors: [0, 1], provisional: true });
+      return on(`moving (movement group) and within 4 m of the dummy: ${stacks} stacks held (best case; Movement group, user-confirmed 2026-10-18), one additional term; ${speedText}`, { factor: stacks, bodyFactors: [stacks, 1], provisional: true });
+    }
+    // Heat Up's 4 s buff: the Sentry skill recast within every 4 s (best case: the player has the time; the model's own recast on
+    // expiry every 8 s would hold it half the time; "recently" = 4 s, a recast every 4 s: user-supplied 2026-10-19, Google AI Mode answer, not tested in game).
+    case "sentryCastRecently": return (state.sentrySkills || []).length ? on(`a Sentry Skill (${state.sentrySkills.join(", ")}) recast within every 4 s (best case; provisional)`, { provisional: true }) : off("no modeled Sentry Skill on the skill board");
+    case "darkGateRecently": {
+      const gate = state.darkGate;
+      if (!gate?.active) return off("no Dark Gate on the skill board");
+      const why = `Dark Gate cast whenever ready (best case): a 4 s buff per ${round(gate.cooldownSeconds)} s cooldown (${gate.baseCooldownSeconds} s${gate.sources.length ? ` ÷ ${round(gate.baseCooldownSeconds / gate.cooldownSeconds)} from ${gate.sources.map((item) => item.source).join(", ")}` : ""}) → uptime ${round(gate.uptime * 100)}% (provisional)`;
+      return on(why, { factor: gate.uptime < 1 ? gate.uptime : null, provisional: true });
+    }
+    case "minionAuraCount": return state.auraCount > 0 ? on(`${state.auraCount} active Aura type${state.auraCount === 1 ? "" : "s"} affecting the Minions (they stand inside the player's Auras: best case, provisional)`, { factor: state.auraCount, provisional: true }) : off("no active Aura");
     case "auraCount": return state.auraCount > 0 ? on(`${state.auraCount} active Aura type${state.auraCount === 1 ? "" : "s"}`, { factor: state.auraCount }) : off("no active Aura");
     case "perStat": {
       const total = state.stats?.[params.stat] ?? 0;
@@ -473,6 +548,7 @@ function resolveKey(condition, state) {
     case "unarmed": return state.weapon?.unarmed ? on("no weapon held (Unarmed)") : off("a weapon is held");
     case "offHandEmpty": return state.weapon?.offHandEmpty ? on("the off-hand slot is empty") : off("the off-hand slot holds an item");
     case "wieldingWandOrStaff": return (state.weapon?.types || []).some((type) => /Wand|Tin Staff/i.test(type)) ? on("a Wand or Tin Staff is held") : off("no Wand or Tin Staff held");
+    case "notWieldingWandOrStaff": return on("applies with any weapon (user-supplied 2026-10-19: the game record has no weapon check; only Mind Blade's +25% additional Cold Damage needs a Wand or Tin Staff)");
     case "fullLife": return atFullLife(state) ? on("at Full Life: the dummy never attacks (best case)") : off(notFullLifeReason(state));
     case "notFullLife": return atFullLife(state) ? off("at Full Life: the dummy never attacks") : on(notFullLifeReason(state));
     case "notFullMana": return atFullMana(state) ? off(`at Full Mana (${state.manaReason})`) : on(notFullManaReason(state));

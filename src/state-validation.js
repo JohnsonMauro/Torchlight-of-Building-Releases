@@ -32,7 +32,7 @@ const support = (value, path) => {
   list(text)(value.effects, `${path}.effects`);
   if (value.custom !== true) fail(`${path}.custom`);
 };
-const customSetup = shape({ instanceId: text, role: text, name: text, baseLevel: number(1, 40, true), addedLevels: number(0, 30, true), sealedManaPercent: number(0, 100), supports: list(support, 5), enabledSupportSlots: number(0, 5, true), source: text, custom: bool });
+const customSetup = shape({ instanceId: text, role: text, name: text, baseLevel: number(1, 40, true), addedLevels: number(0, 30, true), sealedManaPercent: number(0, 100), supports: list(support, 5), enabledSupportSlots: number(0, 5, true), source: text, custom: bool, boardTab: text });
 const defenses = (value, path) => {
   map(number(0, 1000000))(value, path);
   if (Object.keys(value).some((key) => !/^[A-Za-z][A-Za-z0-9]*$/.test(key))) fail(path);
@@ -49,6 +49,11 @@ const craftedSlate = shape({ id:text, name:text, template:text, god:text, shape:
 const craftedMemory = shape({ id:text, name:text, type:text, rarity:text, baseStat:text, enhancementLevel:number(1,50,true), revivalMethod:text, waxAndWane:bool, risingMoon:bool, revivedAffix:text, revivedTier:number(1,3,true), revivedRoll:nullable(number(-1000,1000,true)), fixedAffixes:list(text,2), randomAffixes:list(text,2), fixedTiers:list(number(0,3,true),2), randomTiers:list(number(0,3,true),2), fixedRolls:list(nullable(number(-1000,1000,true)),2), randomRolls:list(nullable(number(-1000,1000,true)),2), traitLevelBonus:number(0,4,true) });
 const craftedPrism = shape({ id:text, type:text, base:text, radiusAffix:text, rareAffix:text, legendaryAffix:text, inverseRolls:shape({micro:number(-100,200,true),medium:number(-100,100,true),legendary:number(-100,50,true)}) });
 const heroLoadout = shape({ selectedTraits:map(text), memories:map(text), memoryTraitLevels:map(number(0,4,true)), equippedMemoryIds:map(text), baseTraitMemoryId:text, baseTraitMemoryRoll:nullable(number(-100,0,true)), sageScent:shape({elixir:text,damage:text,defense:text,functional:text}), carinoSpecialAmmoSupports:list(text,3), heroTraitSupports:map(text), heroTraitSupportLevels:map(number(1,40,true)), heroTraitSupportConfigs:map(specialSupportConfig), selenaDanceTraits:list(text,3) });
+// A follower skill slot (src/follower-model.js): a skill name, or { name, tier, affixes } once a tier or support affix is
+// stored (2026-10-19; affixes: one per affix slot, { id: game modifier id, rolls? } or null).
+const followerSkillAffix = shape({ id: number(0, 4294967295, true), rolls: list(number(-1000000, 1000000), 8) });
+const followerSkillShape = shape({ name: text, tier: text, affixes: list(nullable(followerSkillAffix), 6) });
+const followerSkillEntry = (value, path) => { if (typeof value === "string") text(value, path); else followerSkillShape(value, path); };
 const schema = shape({
   schemaVersion: number(1, 1, true),
   disabledEquipmentSlots: list(text, 20), disabledSupportNames: list(text), removedInventoryItemIds: list(text, 500), equippedSlateIds: nullable(list(text, 30)),
@@ -60,7 +65,7 @@ const schema = shape({
   talents: shape({ useCapturedRanks:bool, selectedTrees: list(text, 4), coreSelections: map(text), prismInventory:list(craftedPrism,200), installedPrisms:map(text), installedPrismNodes:map(text) }),
   slates: shape({ geometryVersion: number(0, 4, true), placements: nullable(map(placement)), parked:map(parkedSlate), affixOverrides: map(list(text)), inventory:list(craftedSlate,200) }),
   pacts: shape({ activeSpirits: map(bool), selectedSpirits: list(text,3), spiritLevels: map(number(1,6,true)), nativeNodeQuantities: map(number(0, 100, true)), kismetSlots: map(shape({name:text,rolls:list(number(-10000,10000),12)})), fateUnlocks:map(text), kismetSlotMode:bool, volcanoEnabled: list(bool, 4), reapingDurationQuantity: number(0, 5, true), spellBlockEnabled: list(bool, 1), attackBlockEnabled: list(bool, 2) }),
-  followers: shape({ followerId: nullable(text), rarity: nullable(text), skills: list(nullable(text), 10), rarityScheme: text }),
+  followers: shape({ followerId: nullable(text), rarity: nullable(text), skills: list(nullable(followerSkillEntry), 10), rarityScheme: text }),
   combat: shape({ conditionMode, auraAffectedAllies: number(0, 7, true), conditions: map(bool), bestCaseOverrides: map(bool), afflictionAverage: number(0, 100), afflictionPeak: number(0, 100), targetFireResistancePercent: number(-200, 200), aimUptimePercent: number(0, 100), idyllStacks: number(0, 15, true), extraMaxChanneledStacks: number(-20, 20, true), extraInitialChanneledStacks: number(-20, 20, true) })
 });
 

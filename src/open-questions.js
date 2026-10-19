@@ -49,6 +49,9 @@ export function openQuestionContext(planner, state = planner?.state) {
   };
 }
 
+// A core the build has from any place: the talent panel or an Ethereal Prism (origin core), a Pedigree of Gods slate or a
+// "[Core]" gear grant (`grantedCore`).
+const hasCore = (ctx, name) => ctx.cores.has(name) || ctx.texts.some((entry) => entry.grantedCore === name || (entry.origin === "slate" && new RegExp(`Core Talent: ${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(`${entry.source} ${entry.text} ${entry.bracketText || ""}`)));
 const youga = (ctx) => ctx.planner.yougaUltimateOne?.active ? ctx.planner.yougaUltimateOne : null;
 const coreApplied = (ctx) => Boolean(youga(ctx)?.core?.applied);
 const recalls = (ctx) => Boolean(youga(ctx)?.recallHits) && (youga(ctx)?.recallsPerProjectile || 0) > 0;
@@ -57,6 +60,12 @@ const activeEntries = (state) => (state?.entries || []).filter((entry) => entry?
 
 // Answered items stay out (e.g. Freeze at 100+ Frostbite Rating, user-confirmed 2026-10-18).
 const YOUGA_NOTES = "research/youga-recall-mechanics-2026-10-18.md; research/youga-homing-frost-bolt-audit-2026-10-18.md";
+// The follower's chosen Tartarus Skill support affixes (src/follower-model.js, 2026-10-19): [{ name, slot, skill }].
+const FOLLOWER_AFFIX_NOTES = "research/followers/tartarus-skill-affixes-2026-10-19.md";
+// The follower letter rework (2026-10-19): letter rarities, the initial skill, the ULT special effects.
+const FOLLOWER_LETTER_NOTES = "research/followers/tartarus-skill-affixes-2026-10-19.md (Letter rarities, initial skill and ULT special effects)";
+const followerAffixes = (ctx) => (ctx.planner.follower?.selection?.skills || []).flatMap((entry) => (entry.affixes || []).map((item) => ({ name: item.affix.name, slot: item.slot, skill: entry.skill.name })));
+const hasFollowerAffix = (ctx, name) => followerAffixes(ctx).some((item) => item.name === name);
 
 export const OPEN_QUESTIONS = Object.freeze([
   {
@@ -236,6 +245,101 @@ export const OPEN_QUESTIONS = Object.freeze([
     appliesWhen: (ctx) => ctx.cores.has("Impermanence")
   },
   {
+    id: "core-consumption-gain-rate",
+    title: "Consumption cores: how often is the stack gained?",
+    question: "Thunderclap, Waiting Attack and Stab In The Back spend an Agility Blessing stack or Blur. The build gains it from a source whose rate the planner does not model (Mobility Skill use, evading, Energy Shield charging, crowd control, movement per metre, max-stack grants). How often does that source fire against the dummy?",
+    evidence: "unknown",
+    current: "Not modeled: the core is left out (badge Not modeled, naming the source). With a modeled source (a timed gain, \"upon inflicting damage. Interval\", a chance on hit or crit, Blur on Reap or per Wilt stacks) the share of casts that find a stack is min(1, gain rate ÷ Main Skill cast rate) (user-confirmed 2026-10-18). What a cast consumes is answered (user-supplied 2026-10-19, Google AI Mode answer): Thunderclap 1 Agility stack per Main Skill cast, Stab In The Back the whole Blur; only the gain rate of these sources stays open.",
+    alternatives: [
+      { reading: "The source fires at least as often as the Main Skill is cast", effect: "the full bonus on every cast (Thunderclap +35% Lightning, Stab In The Back +30%)" },
+      { reading: "The source fires about once per its own cooldown", effect: "a share below 1: a fraction of the bonus" }
+    ],
+    test: "With the core and only that gain source, watch the Agility stack count (or the Blur icon) while casting the Main Skill at the dummy, and count how often a cast finds a stack.",
+    source: "research/core-talents-audit-2026-10-18.md §6 Q5; research/google-ai-mode-answers-2026-10-19.md; src/consumption-procs.js",
+    appliesWhen: (ctx) => {
+      const consumption = ctx.planner.lineEffects?.state?.consumption;
+      return Boolean(consumption) && [consumption.agility, consumption.blur, consumption.waitingAttack].some((item) => item && item.active === null);
+    }
+  },
+  {
+    id: "core-thunderclap-held-agility",
+    title: "Thunderclap: are Agility stacks held when the casts outpace the gain?",
+    question: "Thunderclap spends 1 Agility Blessing stack on each Main Skill cast that finds one. When the build casts faster than it gains Agility, does it still hold Agility stacks (and their +2% additional damage and +4% Attack and Cast Speed each) between casts?",
+    evidence: "provisional",
+    current: "Provisional (core audit batch B3): when the gain rate keeps up with the cast rate, Agility stays at max stacks; when it does not, each gained stack is spent by the next cast and none are held (Agility's own effect is lost). One stack per Main Skill cast is user-supplied 2026-10-19 (Google AI Mode answer); whether stacks are held between casts is still open.",
+    alternatives: [
+      { reading: "A gained stack is held until the next cast (half a cast interval on average)", effect: "a little Agility kept: slightly higher damage and speed" },
+      { reading: "Thunderclap never lowers the held stacks below 1", effect: "one stack's effect kept: higher damage" }
+    ],
+    test: "With Thunderclap and a slow Agility source (one stack per second), cast quickly at the dummy and watch the Agility stack count between casts.",
+    source: "research/core-talents-audit-2026-10-18.md §5 B3; src/consumption-procs.js",
+    appliesWhen: (ctx) => hasCore(ctx, "Thunderclap")
+  },
+  {
+    id: "core-juggernaut-stacks",
+    title: "Juggernaut: do your Minions' crits add stacks?",
+    question: "Juggernaut gives the enemy a stack on each of your Critical Strikes (8 s, up to 10). Do your Minions' Critical Strikes add stacks too?",
+    evidence: "game data (partial)",
+    current: "Provisional (core audit batch B4): only your own crits add stacks; Minion crits add none. Answered (user-supplied 2026-10-19): each stack keeps its own 8 s timer, and the Armor part compounds (Armor × 0.9 ^ stacks).",
+    alternatives: [
+      { reading: "Minion crits add stacks too", effect: "more stacks for Minion builds" }
+    ],
+    test: "With Juggernaut on a Minion build whose Minions crit, let only the Minions hit the dummy and watch whether its Juggernaut debuff icon gains stacks.",
+    source: "research/core-talents-audit-2026-10-18.md §4.4 (Juggernaut), §5 B4; src/combat-states.js",
+    appliesWhen: (ctx) => hasCore(ctx, "Juggernaut")
+  },
+  {
+    id: "core-towering-presence-weapon-damage",
+    title: "Towering Presence: which weapon damage reaches your Spells?",
+    question: "Towering Presence \"Adds 100% of the Main-Hand Weapon damage to Spells\" (game field 2006260, no other reader in the files). Is it the weapon's own damage (its base and local affixes) added as flat damage that the spell's damage effectiveness scales? And does the Scorching Beam take it?",
+    evidence: "provisional",
+    current: "Provisional: the main-hand weapon's own damage per type (base and local affixes, without the Two-Handed or Off-Hand bonuses) is added to every Spell skill hit as added flat damage, scaled by each skill's damage effectiveness. Attacks don't get it. The Scorching Beam ledger has no added Physical part, so the beam doesn't take it yet. The crit line (game record 838374) adds 75% of the weapon's final rating to each Spell skill's base rating.",
+    alternatives: [
+      { reading: "The weapon damage is added at full value, not scaled by the skill's damage effectiveness", effect: "higher spell hits for skills under 100% effectiveness" },
+      { reading: "The Two-Handed and main-hand bonuses count too", effect: "higher spell hits with a two-hander" }
+    ],
+    test: "With Towering Presence and a plain weapon, compare a spell's tooltip damage with and without the weapon equipped.",
+    source: "research/core-talents-audit-2026-10-18.md §5 B5; src/towering-presence.js",
+    appliesWhen: (ctx) => hasCore(ctx, "Towering Presence")
+  },
+  {
+    id: "core-stab-in-the-back-blur",
+    title: "Stab In The Back: how long is Blur up?",
+    question: "Stab In The Back ends Blur on each Main Skill cast made while Blur is active. Blur's own effects (Blur Rating, Daze, Stealth Stab, the Blur DoT lines) then hold only until the next cast. How much Blur uptime is left?",
+    evidence: "provisional",
+    current: "Provisional (core audit batch B3): the +30% applies to the share of casts that find Blur, min(1, Blur gain rate ÷ cast rate) (user-confirmed 2026-10-18); a cast consumes the whole Blur (user-supplied 2026-10-19, Google AI Mode answer); Blur's own effects still follow the Blur condition (held), not the consumption.",
+    alternatives: [{ reading: "Blur is up only between its gain and the next cast (uptime ≈ the same share)", effect: "lower damage where Blur's own effects matter (Daze, Blur DoT lines, Subtle Impact)" }],
+    test: "With Stab In The Back and a Blur source, cast the Main Skill repeatedly and watch how long the Blur icon stays between casts.",
+    source: "research/core-talents-audit-2026-10-18.md §5 B3; src/consumption-procs.js; src/blur-effects.js",
+    appliesWhen: (ctx) => hasCore(ctx, "Stab In The Back")
+  },
+  {
+    id: "core-three-birds-splits",
+    title: "Three Birds with One Stone: do the extra splits hit the dummy?",
+    question: "\"+2 to Parabolic Projectile Splits quantity\": do the split projectiles land on the same single target, and how many Splits does Thunderbolt Overload have before the +2?",
+    evidence: "user-supplied",
+    current: "User-supplied 2026-10-19 (Google AI Mode answer, not tested in game; uncertain): each landing parabolic projectile splits 2 more times, and the splits land as area explosions on the same target at the skill's after-split damage (−50% on Bombard, Corrosive Shot, Flame Jet's bombs), with no Shotgun falloff. Thunderbolt Overload's per-Split bonus is not applied: its base Split count is not in the data.",
+    alternatives: [
+      { reading: "The splits fly off and need other targets", effect: "no extra damage on one dummy (the reading before 2026-10-19)" },
+      { reading: "The splits take Shotgun falloff on the same target", effect: "less than 1 hit per split" }
+    ],
+    test: "Cast Bombard or Flame Jet at the dummy with and without the core, and count the damage numbers per cast.",
+    source: "research/google-ai-mode-answers-2026-10-19.md; src/skill-hit-model.js parabolicSplit",
+    appliesWhen: (ctx) => hasCore(ctx, "Three Birds with One Stone") && ctx.setups.some((setup) => (setup.tags || []).includes("Parabolic"))
+  },
+  // Core audit batch B7 (Minion): a reading still open, shown only with the core.
+  {
+    id: "core-rally-module-count",
+    title: "Rally: how many Module Minions?",
+    question: "Rally gives \"Synthetic Troop Minions summoned at a time +1\". A Module's Max Minion Quantity is a placeholder in the game text: does the extra Minion stay within it?",
+    evidence: "user-supplied",
+    current: "User-supplied 2026-10-19 (Google AI Mode answer, not tested in game; uncertain): +1 Minion per cast, Module summons included, up to the skill's max quantity. The planner counts 1 + 1 Module Minions (the Module's max is not in the data). Synthetic Troop summons with a published maximum are already at it.",
+    alternatives: [{ reading: "A Module's max quantity is 1", effect: "×0.5 on the Module's damage (no second Minion)" }],
+    test: "Summon a Module with Rally and count the Minions on the field.",
+    source: "research/google-ai-mode-answers-2026-10-19.md; src/minion-damage-model.js",
+    appliesWhen: (ctx) => hasCore(ctx, "Rally") && ctx.minions.some((minion) => minion.modeled && minion.family === "module")
+  },
+  {
     id: "joined-force-base",
     title: "Joined Force: 60% of what?",
     question: "Is Joined Force's 60% taken from the off-hand's local base damage (after its own local affixes) and added to the main hand before global multipliers?",
@@ -402,6 +506,86 @@ export const OPEN_QUESTIONS = Object.freeze([
     test: "A Scorching Beam dummy run in Bard with Scorch on and off.",
     source: "src/scorching-beam-delivery.js; research/dummy-54s-gap-2026-10-09.md",
     appliesWhen: (ctx) => ctx.heroId === "selena-sing-with-the-tide" && ctx.setupNames.has("Scorching Beam") && Boolean(ctx.planner.bardDelivery?.applicable) && Boolean(ctx.planner.bardDelivery?.extrapolatedConditions)
+  },
+  {
+    id: "follower-affix-third-slot",
+    title: "Tartarus Skill: what can the third support slot hold?",
+    question: "A tier III Tartarus Skill has two random support slots and an 'Empty Support Skill Slot or Random Support Skill'. Does that third slot roll from the skill's Drop pool when it drops, and does Tempering fill an empty one from the Forge pool only?",
+    evidence: "provisional",
+    current: "Provisional: the third slot takes either a Drop affix (rolled on drop) or a Forge affix (Tempering), so the planner offers both pools there and only the Drop pool in the first two slots (TLIDB pools; game text: Tempering has a 20% chance to fill the empty slot).",
+    alternatives: [
+      { reading: "The third slot only ever holds a Tempering (Forge) affix", effect: "Drop affixes leave the third slot's list" },
+      { reading: "Tempering can roll any affix of the skill", effect: "Forge affixes also join the first two slots' lists" }
+    ],
+    test: "Look at a few tier III Tartarus Skills that dropped with a filled third slot, and at one Tempered skill: which affixes appear in the third slot?",
+    source: FOLLOWER_AFFIX_NOTES,
+    appliesWhen: (ctx) => followerAffixes(ctx).some((item) => item.slot === 2)
+  },
+  {
+    id: "follower-affix-pain-amplification",
+    title: "Pain Amplification (follower): whose Affliction, and does the DoT taken reach you?",
+    question: "The follower skill's Pain Amplification clears 10 Affliction when it deals damage (every 2 s) and gives +12% additional Damage Over Time taken for 8 s. Does it clear your Affliction on the dummy, and does the +12% reach your damage over time?",
+    evidence: "unknown",
+    current: "Not modeled: neither the Affliction clear nor the +12% Damage Over Time taken is applied.",
+    alternatives: [
+      { reading: "+12% DoT taken reaches your DoT; the clear touches only the follower's own Affliction", effect: "about ×1.12 on your damage over time while the follower hits" },
+      { reading: "It also clears 10 of your Affliction every 2 s", effect: "your Affliction average drops; the net effect depends on your Affliction rate" }
+    ],
+    test: "Dummy run with a DoT build: the follower skill with and without Pain Amplification, comparing the Affliction readout and the damage.",
+    source: FOLLOWER_AFFIX_NOTES,
+    appliesWhen: (ctx) => hasFollowerAffix(ctx, "Pain Amplification")
+  },
+  {
+    id: "follower-scorching-pulse-stacks",
+    title: "Scorching Pulse (follower): how long does each Reaping Duration stack last, and how fast does the follower Reap?",
+    question: "Origin Tartarus: Scorching Pulse gives '+30% Reaping Duration for the Follower and allies for each Reaping dealt recently. Stacks up to 10'. Does each stack keep its own 4 s, or does a new stack refresh all of them? And are the follower's Reap sources read right: Rekindled Embers' extra cast (no cast time, cooldown untouched, nothing rolled inside its 1 s gate), Reaping Agony (one Reap per 1 s per copy while the follower's DoT is on the dummy) and Rising Heat (+3% per whole +5% of your Reaping Recovery Speed)?",
+    evidence: "game data (partial)",
+    current: "Game data: the stack affix (16649485) fires on the follower's own Reaping event (trigger 1000032), so your Reaps add none, and grants a 4 s stack (node 306, stacking mode 3, up to 10) to the follower and its allies. The planner reads each stack as keeping its own 4 s: stacks = min(10, the follower's Reaps in the last 4 s), with Reaps/s = its Scorching Pulse casts + Rekindled Embers' extra casts (20% per cast, p ÷ (1 + p × casts inside the 1 s gate)) + 1 per second per Reaping Agony while its DoT is up (ceil(DoT s ÷ 1 s) per DoT window otherwise). Base cadence: 1 stack (+30%). The 5 s / 20 s windows build the stacks from 0. Rising Heat adds min(300, 3 × whole 5% steps of your Reaping Recovery Speed) to the follower's Reap duration only.",
+    alternatives: [
+      { reading: "Each new stack refreshes all stacks", effect: "a follower that Reaps more often than every 4 s (Cooldown Reduction, Rekindled Embers, Reaping Agony) builds to 10 stacks: up to +300%" },
+      { reading: "Rekindled Embers' extra cast resets or uses the cooldown, or rolls again", effect: "fewer or more extra casts than 20% of the follower's casts" },
+      { reading: "Reaping Agony's 1 s gate is shared by all copies, or Reaps whenever any follower damage ticks", effect: "at most 1 Reap a second from Reaping Agony in total, or more than 1 per copy" },
+      { reading: "Rising Heat scales smoothly (3/5 per 1%) rather than per whole 5%", effect: "up to +2.4% more on the follower's Reap duration" }
+    ],
+    test: "Equip Origin Scorching Pulse on a Witch Rat and hit the dummy with a DoT build. Count the Reaping Duration buff stacks next to your buff bar: about 1 at the base cadence; then add Cooldown Reduction / Rekindled Embers / Reaping Agony (with a follower DoT such as Black Hole or Additional Ignite) and check whether the count matches 4 × the follower's Reaps per second or climbs to 10.",
+    source: "research/followers/scorching-pulse-2026-10-19.md",
+    appliesWhen: (ctx) => (ctx.planner.follower?.selection?.skills || []).some((entry) => entry.skill?.name === "Origin Tartarus: Scorching Pulse")
+  },
+  {
+    id: "follower-affix-catalyst",
+    title: "Catalyst (follower): whose Affliction rises?",
+    question: "Catalyst on a follower skill reads '+50 Affliction inflicted per second'. Is that the follower's own Affliction rate, or does it raise the Affliction on the dummy that your damage over time reads?",
+    evidence: "unknown",
+    current: "Not modeled: no Affliction is added.",
+    alternatives: [{ reading: "It adds to the dummy's Affliction your DoT reads", effect: "a higher Affliction average for your damage over time" }],
+    test: "Dummy run with a DoT build: the Affliction readout with the follower skill with and without Catalyst.",
+    source: FOLLOWER_AFFIX_NOTES,
+    appliesWhen: (ctx) => hasFollowerAffix(ctx, "Catalyst")
+  },
+  {
+    id: "follower-special-plague",
+    title: "Plague (ULT follower): whose Wilt gains the Non-Erosion Damage taken?",
+    question: "The Plague letter's special effect reads '-30% additional Wilt Duration' and 'Inflicted Wilt gains an additional effect: +1% additional Non-Erosion Damage taken (multiplies)'. Does it act on your Wilt on the dummy or only on Wilt the follower inflicts, and is the +1% per Wilt stack?",
+    evidence: "game data (partial)",
+    current: "Not modeled: neither line is applied (game modifier 600000008 stores -30 and 1; the follower's Witch Rat skills inflict no Wilt unless a support affix adds a Wilt chance).",
+    alternatives: [
+      { reading: "Your Wilt gains it, +1% per stack (multiplies)", effect: "up to about ×1.35 on your non-Erosion damage at 30 Wilt stacks, and your Wilt lasts 30% less" },
+      { reading: "Only the follower's own Wilt gains it", effect: "nothing for a build whose follower inflicts no Wilt" }
+    ],
+    test: "Dummy run with a Wilt build and a non-Erosion hit: the Plague follower against another Witch Rat letter, comparing the hit damage and the Wilt duration.",
+    source: FOLLOWER_LETTER_NOTES,
+    appliesWhen: (ctx) => ctx.planner.follower?.selection?.follower?.id === "plague"
+  },
+  {
+    id: "follower-special-barbarian-intimidation",
+    title: "Wild Barbarian King (ULT follower): whose Steep Strike inflicts Barbarian Intimidation?",
+    question: "The Wild Barbarian King letter's special effect 'Inflicts Barbarian Intimidation on enemies when Steep Strike hits an enemy' (game buff: +15% additional Critical Strike Damage taken for 5 s). Do your Steep Strikes inflict it, or only the follower's own (its Mammoth skills launch none)?",
+    evidence: "game data (partial)",
+    current: "Not modeled: no Critical Strike Damage taken is applied (the value is from the game's buff data; TLIDB does not publish it).",
+    alternatives: [{ reading: "Your Steep Strikes inflict it", effect: "+15% additional Critical Strike Damage taken on the crit share of your hits while you land Steep Strikes" }],
+    test: "Dummy run with a Steep Strike build and crits: the Wild Barbarian King follower against another Mammoth letter, comparing the crit damage.",
+    source: FOLLOWER_LETTER_NOTES,
+    appliesWhen: (ctx) => ctx.planner.follower?.selection?.follower?.id === "wild-barbarian-king"
   }
 ]);
 

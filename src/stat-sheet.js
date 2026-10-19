@@ -1,4 +1,5 @@
 import { blessingRecoverySources } from "./blessing-gear-effects.js";
+import { curseSlotSummary } from "./curse-limit.js";
 import { level85DummyDefenses } from "./target-hit-mitigation.js";
 import { collectNormalizedGearModifiers } from "./engine.js";
 import { recountTilesMarkup, recountDetailsMarkup, recountTotalModeledDps, toggleNumberMarkup } from "./dummy-recount-panel.js";
@@ -293,9 +294,10 @@ export function statSheetModel(planner, selectedKey, resources = {}) {
   ]) });
   if (planner.curseLimit) defense.push({ title: "Curse limit", tab: "offense", rows: [
     { label: "Maximum active curses", value: planner.curseLimit.maximum },
-    { label: "Applied curses", value: planner.curseLimit.active.join(", ") || "None" },
+    // Slot order (user-confirmed 2026-10-19): skill bar curses in bar order, then gear, then pacts and other triggers.
+    { label: "Applied curses (slot order)", value: curseSlotSummary(planner).applied.map((curse) => curse.kind === "skill" ? curse.name : `${curse.name} (${curse.source})`).join(", ") || "None" },
     ...planner.curseLimit.sources.map(source => ({ label: source.source + " · " + source.text, value: "+" + source.value })),
-    ...planner.curseLimit.excluded.map(name => ({ label: name, value: "Excluded · curse limit" }))
+    ...curseSlotSummary(planner).leftOut.map((curse) => ({ label: curse.kind === "skill" ? curse.name : `${curse.name} (${curse.source})`, value: "Not applied · curse limit" }))
   ] });
   if (planner.pact) defense.push({ title: "Pactspirit defenses", rows: [
     { label: "Elemental Resistance", value: planner.pact.totals.elementalResistancePercent, suffix: "%" },

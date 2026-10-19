@@ -108,12 +108,24 @@ export function scorchingBeamCritical({ main, talentSlate, equipment, pact, modi
     const text = String(line.text).trim();
     let match = text.match(/^([+-]?\d+(?:\.\d+)?)% (?:Spell )?Critical Strike Rating$/i);
     if (match) { lineCrit.rating += Number(match[1]) * (line.multiplier ?? 1); continue; }
+    // "+X% additional Critical Strike Rating" (Cohesion × its next-Main-Skill share; core audit batch B3, game node 624 on attr
+    // 4802): its own multiplier on the rating after the increased layer.
+    match = text.match(/^([+-]?\d+(?:\.\d+)?)% additional (?:Spell |Attack and Spell )?Critical Strike Rating$/i);
+    if (match) { lineCrit.additionalFactor = (lineCrit.additionalFactor ?? 1) * Math.max(0, 1 + Number(match[1]) * (line.multiplier ?? 1) / 100); continue; }
     // Flat rating from a derived line (Origin of Fire: "+115 Attack and Spell Critical Strike Rating"; residual batch A2-origin).
     match = text.match(/^\+(\d+(?:\.\d+)?) (?:Attack and )?Spell Critical Strike Rating$/i);
     if (match) { lineCrit.flat = (lineCrit.flat || 0) + Number(match[1]) * (line.multiplier ?? 1); continue; }
     match = text.match(/^([+-]?\d+(?:\.\d+)?)% (Spell )?Critical Strike Damage$/i);
     if (match) lineCrit.damage.push({ source: line.source, value: Number(match[1]) * (line.multiplier ?? 1), text: line.derivedFrom || text, ...(match[2] ? { spellOnly: true } : {}) });
   }
+  // A plain "+X% additional Critical Strike Rating" line (a Momentum legendary's second line) multiplies the rating the same way.
+  for (const line of modifierTexts.filter((item) => !item.lineEffect && item.origin !== "derived")) {
+    const match = String(line.text).trim().match(/^([+-]?\d+(?:\.\d+)?)% additional (?:Spell |Attack and Spell )?Critical Strike Rating$/i);
+    if (match) lineCrit.additionalFactor = (lineCrit.additionalFactor ?? 1) * Math.max(0, 1 + Number(match[1]) * (line.multiplier ?? 1) / 100);
+  }
+  // Towering Presence (src/towering-presence.js; core audit batch B5): a share of the main-hand weapon's rating joins the base rating
+  // of Spell skills (game affix 838374, node 339: flat 4802 tagged Spell), before the increased layer like the other flat rating.
+  if ((main?.tags || []).includes("Spell")) for (const line of modifierTexts) if (line.spellBaseCritRating?.value > 0) lineCrit.flat = (lineCrit.flat || 0) + line.spellBaseCritRating.value;
   const tagged = taggedCritLines(modifierTexts, main);
   const flatRating = value(gear, "spellCriticalStrikeRating:flat")
     + value(talent, "spellCriticalStrikeRating") + value(slate, "spellCriticalStrikeRating")
@@ -127,7 +139,7 @@ export function scorchingBeamCritical({ main, talentSlate, equipment, pact, modi
     + lineCrit.rating + tagged.ratingPercent
     // Control Spell's "-50% Critical Strike Rating for the supported skill" (support progression data).
     + ((main?.supports || []).some((support) => support.name === "Control Spell" && support.enabled !== false) ? controlSpellCriticalRatingPercent() : 0);
-  const rating = Math.max(0, (baseRating + flatRating) * Math.max(0, 1 + increasedRatingPercent / 100));
+  const rating = Math.max(0, (baseRating + flatRating) * Math.max(0, 1 + increasedRatingPercent / 100) * (lineCrit.additionalFactor ?? 1));
   // Lucky Critical Strike (manual "Lucky & Unlucky": rolled twice, the more favourable kept): 1 − (1 − p)².
   const luckyCrit = modifierTexts.some((line) => !line.lineEffect && /^Lucky Critical Strike$/i.test(String(line.text).trim()));
   const unluckyChance = Math.min(100, rating / 100);

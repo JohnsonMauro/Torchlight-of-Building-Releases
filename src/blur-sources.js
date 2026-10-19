@@ -1,5 +1,6 @@
 import { effectiveGearModifierTexts } from "./engine.js";
 import { allSkillEffectsSs13 } from "./data/skills/all-skill-effects-ss13.generated.js";
+import { withoutSlateCoreName } from "./granted-core-lines.js";
 
 export function parseBlurSource(text, source, { slot, hasReaping = false, inflictsWilt = true } = {}) {
   const line = String(text).trim();
@@ -34,7 +35,7 @@ export function collectBlurSources({ equipment, talents = [], slates = [], setup
   };
   for (const item of equipment?.candidateItems || []) for (const text of effectiveGearModifierTexts(item)) add(text, item.name, item.slot);
   for (const panel of talents) for (const node of panel.allocatedNodes || []) if (node.rank > 0 && !node.replacedBy && (node.inverseEffectMultiplier ?? 1) > 0) add(node.description, `${panel.name} · talent (${node.coordinate})`);
-  for (const slate of slates) for (const text of [...(slate.fixed || []), ...(slate.brands || []), ...(slate.copiedTalents || [])]) add(text, slate.name);
+  for (const slate of slates) for (const text of [...(slate.fixed || []), ...(slate.brands || []), ...(slate.copiedTalents || [])]) add(withoutSlateCoreName(text), slate.name);
   for (const setup of setups) if (setup.enabled && activeNames.has(setup.name)) for (const text of allSkillEffectsSs13[setup.name] || []) add(text, `Skill: ${setup.name}`);
   return result;
 }

@@ -55,9 +55,9 @@ const DEFINITIONS = [
   { name: "Fallen Star", delivery: "spell-terra", useModel: terra(6, "No duration is published for the Comet Terra; 6 s is assumed from the other Terra skills (provisional)"), terraCharge: TERRA_CHARGE,
     components: [{ key: "comets", label: "Comets", groupId: 1221, perUse: { perTick: 1, intervalSeconds: 0.8, castSpeedScaled: true, falloff: { count: 3, factor: 0.7, reach: "all" } }, ...provisional(`TLIDB: a wave every 0.8 s (cast-speed scaled), 3 comets per wave; ${SHOTGUN_NOTE(3, 0.7, "all")} (game data: the comets are fallen projectiles that all aim at the enemy, aimEmemyPercent 100); best case: every wave lands on the dummy`) }],
     notes: ["Fallen Star: \"80% of the damage increase per Barrage Wave is also applied to Comet Damage\" has no published per-wave value and is not modeled."] },
-  { name: "Flame Jet", delivery: "spell-terra", useModel: terra(), terraCharge: TERRA_CHARGE,
+  { name: "Flame Jet", delivery: "spell-terra", useModel: terra(), terraCharge: TERRA_CHARGE, parabolicSplit: { components: ["bombs"], additionalPercent: -50, text: "The skill's Projectiles' effect after splitting -50% additional damage (skill text)" },
     components: [
-      { key: "bombs", label: "Fire Bombs", groupId: 265, perUse: { perTick: 2, intervalSeconds: 0.7, castSpeedScaled: true }, ...provisional("TLIDB: 2 Fire Bombs every 0.7 s (cast-speed scaled) while the Terra lasts; best case assumes both land on the dummy. The \"-50% additional damage after splitting\" line is not applied (the bombs' split state is not described).") },
+      { key: "bombs", label: "Fire Bombs", groupId: 265, perUse: { perTick: 2, intervalSeconds: 0.7, castSpeedScaled: true }, ...provisional("TLIDB: 2 Fire Bombs every 0.7 s (cast-speed scaled) while the Terra lasts; best case assumes both land on the dummy. The \"-50% additional damage after splitting\" line applies to the split bombs only (Parabolic Projectile Splits; user-supplied 2026-10-19, provisional).") },
       { key: "eruption", label: "Fire Terra Eruption", groupId: 264, perUse: 1, ...text("game description: the eruption is the explosion when the Flame Terra ends, once per Terra") },
       { key: "terra-dot", label: "Flame Terra", groupId: 263, kind: "dot", durationSeconds: 2, appliedPerUse: true, ...text("TLIDB: 373 Persistent Fire Damage every second for 2 s; applied once per Terra cast, so 2 s of each 6 s Terra (Flame Jet Lv16 dummy run 2026-10-11: 21 s average 121 = hits + DoT × 2/6; a continuously refreshed status would read ~192)") }
     ],
@@ -276,6 +276,9 @@ function buildProfile(definition) {
     // src/skill-hit-model.js instead of the shared text rule) and "+X% additional Damage per +1 Projectile Quantity".
     projectileVolley: definition.projectileVolley || null,
     additionalPerProjectileQuantityPercent: definition.additionalPerProjectileQuantityPercent || 0,
+    // Parabolic Projectile Splits (Three Birds with One Stone; user-supplied 2026-10-19): the components a split lands as again and
+    // the skill's after-split damage (src/skill-hit-model.js).
+    parabolicSplit: definition.parabolicSplit || null,
     // Parts of the skill that would change dummy damage and are not modeled (src/skill-coverage.js: Partly modeled).
     unmodeled: definition.unmodeled || [],
     conversion,

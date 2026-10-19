@@ -2,6 +2,7 @@ import { normalizePercentageText } from "./percentage-text.js";
 import { dummyTarget, explicitRadiusHolds } from "./dummy-target.js";
 import { supportProgressionSs13 } from "./data/skills/support-progression-ss13.generated.js";
 import { parseProgressionCell } from "./support-effects.js";
+import { empowerAdditionalLines } from "./storm-command.js";
 
 // A linked support's per-level value from its TLIDB progression column (the first number of the cell at the support's
 // level, 1–40); the linear fallback only when the table has no cell. Mass Effect's step above Lv20 is lower since the
@@ -113,7 +114,11 @@ export function calculateAim(setup, { enabled = true, uptimePercent, charges, ba
   }
 
   const effectPercent = sources.reduce((sum, entry) => sum + entry.value, 0);
-  const damagePercent = base * (1 + effectPercent / 100);
+  // "+X% additional Empower Skill (and Defensive Skill) Effect" (Storm's Command's -99%, game affix 12665181 attr 3401 additional on
+  // Empower-tagged effects; core audit B8): Aim is an Empower Skill, so its damage bonus takes it; its -16% Attack and Cast Speed
+  // "is not affected by the effects of Empower Skills" (skill text) and stays.
+  const empowerAdditional = empowerAdditionalLines(modifierTexts);
+  const damagePercent = base * (1 + effectPercent / 100) * empowerAdditional.factor;
   const durationSeconds = baseDurationSeconds * Math.max(0, 1 + durationPercent / 100) * additionalDurationFactor;
   const cooldownSeconds = baseCooldownSeconds / Math.max(1e-9, (1 + cooldownRecoveryPercent / 100) * additionalCooldownRecoveryFactor);
   // A trigger fires at most once per cooldown; one slower than the cooldown sets the cadence.
@@ -132,7 +137,7 @@ export function calculateAim(setup, { enabled = true, uptimePercent, charges, ba
   // Damage and Ailment Damage lines target different damage types, not two
   // multipliers on the same Ignite packet.
   return {
-    active: true, level, baseDamagePercent: base, effectPercent, damagePercent, ailmentDamagePercent: damagePercent,
+    active: true, level, baseDamagePercent: base, effectPercent, empowerAdditionalFactor: empowerAdditional.factor, empowerAdditionalSources: empowerAdditional.sources, damagePercent, ailmentDamagePercent: damagePercent,
     averageDamagePercent: damagePercent * uptime, averageAilmentDamagePercent: damagePercent * uptime,
     castSpeedPercent: -16, averageCastSpeedPercent: -16 * uptime,
     durationSeconds, cooldownSeconds, recastSeconds, trigger, durationSources, cooldownSources,

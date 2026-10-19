@@ -12,6 +12,7 @@ import { legendaryGearSs13 } from "./data/gear/legendary-gear-ss13.generated.js"
 import { defaultBaseForItem } from "./data/gear/corrosion-implicits-ss13.js";
 import { namedGearAffixLines } from "./named-gear-affixes.js";
 import { MAX_BLOCK_CHANCE_PERCENT } from "./game-attribute-defaults.js";
+import { withoutSlateCoreName } from "./granted-core-lines.js";
 
 const oneHandedWeaponTypes = new Set(["Claw", "Dagger", "One-Handed Sword", "One-Handed Hammer", "One-Handed Axe", "Wand", "Rod", "Scepter", "Cane", "Pistol"]);
 function isOneHandedWeapon(item) {
@@ -86,7 +87,7 @@ export function calculateBlock({ equipment, talents = [], slates = [], memories,
     }
     for (const core of panel.activeCores || []) add(core.description, `Core talent: ${core.name}`);
   }
-  for (const slate of slates) for (const text of [...(slate.fixed || []), ...(slate.brands || []), ...(slate.copiedTalents || [])]) add(text, slate.name);
+  for (const slate of slates) for (const text of [...(slate.fixed || []), ...(slate.brands || []), ...(slate.copiedTalents || [])]) add(withoutSlateCoreName(text), slate.name);
   for (const line of [...(memories?.lines || []), ...(memories?.unsupported || [])]) add(line.text, line.source);
   if (pactState.kismetSlotMode) {
     for (const spirit of pactState.selectedSpirits || []) {

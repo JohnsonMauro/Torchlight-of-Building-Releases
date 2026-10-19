@@ -4,6 +4,8 @@ import { expectedStrongestApplication, windowAverageStrongest } from "./ailment-
 import { classifyDamageLine, routeDamageLine } from "./damage-line-classifier.js";
 import { normalizePercentageText } from "./percentage-text.js";
 import { AFFLICTION_DAMAGE_PER_POINT } from "./game-attribute-defaults.js";
+import { damageTypeRestriction, restrictionLine } from "./damage-type-restriction.js";
+import { luckyRollsFor, randomRollNote } from "./lucky-damage.js";
 
 // Damage over time dealt by a skill itself (profile kind "dot", engine "skill-dot"): Wilting Beam.
 //
@@ -150,8 +152,9 @@ function spellLines(profile, modifierTexts, auraEntries) {
  * @param {object} p.crit beam critical inputs (information only)
  * @param {number} [p.sustainedWindowSeconds]
  * @param {boolean} [p.triggered] an Activation Medium triggers the skill (src/trigger-interval.js): triggered-only lines apply
+ * @param {object} [p.lucky] the build's Lucky state (src/lucky-damage.js readLuckyDamage, via src/combat-states.js)
  */
-export function calculateSkillDot({ setup, profile, modifierTexts: allModifierTexts = [], shared, auraEntries = [], castsPerSecond = 0, crit = {}, aim = null, sustainedWindowSeconds = 20, extraAdditional = [], triggered = false }) {
+export function calculateSkillDot({ setup, profile, modifierTexts: allModifierTexts = [], shared, auraEntries = [], castsPerSecond = 0, crit = {}, aim = null, sustainedWindowSeconds = 20, extraAdditional = [], triggered = false, lucky = null }) {
   // A buff for the character's "other skills" (Ice Bond's Euphoria, src/empower-effects.js) skips the skill that grants it.
   const ownKey = setup?.setupKey || setup?.instanceId;
   const modifierTexts = allModifierTexts.filter((line) => !line.exceptSetupKey || line.exceptSetupKey !== ownKey);
@@ -198,7 +201,20 @@ export function calculateSkillDot({ setup, profile, modifierTexts: allModifierTe
   const enhancement = modifierTexts.filter((line) => { const kind = String(line.derivedFrom || "").match(/^(\w+) Damage Enhancement$/)?.[1]; return kind && tags.has(kind); })
     .map((line) => ({ source: line.source, text: `${line.text} (Damage Enhancement: one additional multiplier on the skill's damage, its own damage over time included; game manual and field 2006249)`, value: Number(String(line.text).match(/^\+?(\d+(?:\.\d+)?)%/)?.[1]) || 0, category: "Additional damage" }));
   // extraAdditional: skill-specific lines the caller settles (e.g. a Terra skill's Terra Charge bonus, src/skill-hit-profiles.js).
-  const townAdditional = [...sharedAdditional, ...typed.additional, ...spell.additional, ...supports.additional, ...levelLine, ...enhancement, ...extraAdditional];
+  // "You can only deal Cold Damage" (Extreme Coldness; src/damage-type-restriction.js, user-confirmed 2026-10-18): a DoT of another
+  // type deals 0 (a DoT's damage type is not converted: manual "Damage Over Time"), so its Reaps settle 0 too.
+  const typeRestriction = restrictionLine(damageTypeRestriction(modifierTexts), damageType, "damage over time");
+  // A random damage roll on the skill's own DoT (profile.randomRoll; Voltaic Ripple's Voltage "changes randomly between 50% and
+  // 150%"): the listed value is the midpoint; Lucky Damage (src/lucky-damage.js) keeps the best of two rolls (Very Lucky three),
+  // so the DoT takes E[best roll] ÷ midpoint. A scoped Lucky line counts only when it names this damage (type, Spell; a Hit
+  // scope never reaches a DoT).
+  const randomRoll = profile.randomRoll ? (() => {
+    const rolls = luckyRollsFor(lucky, { damageType, tags: profile.tags || [], hit: false });
+    const note = randomRollNote(profile.randomRoll.label, profile.randomRoll.minPercent, profile.randomRoll.maxPercent, rolls);
+    return { ...profile.randomRoll, rolls, factor: note.factor, text: note.text };
+  })() : null;
+  const randomRollLine = randomRoll ? [{ source: `${profile.name}: ${profile.randomRoll.label}`, text: randomRoll.text, value: (randomRoll.factor - 1) * 100, category: "Additional damage" }] : [];
+  const townAdditional = [...sharedAdditional, ...typed.additional, ...spell.additional, ...supports.additional, ...levelLine, ...enhancement, ...extraAdditional, ...randomRollLine, ...(typeRestriction ? [typeRestriction] : [])];
   const combatRating = shared?.combatAfflictionRating ?? 0;
   // Max Affliction lines (Pain Amplification) hold at a combat rating of 100 (the steady state of a build that fills Affliction).
   const atMaxAffliction = combatRating >= 100;
@@ -225,7 +241,7 @@ export function calculateSkillDot({ setup, profile, modifierTexts: allModifierTe
   const window = (seconds) => windowAverageStrongest({ ...roll, seconds, applicationsPerSecond: castsPerSecond }) * combatFactor * uptime;
   const key = `skill:${setup?.setupKey || setup?.instanceId || profile.name}`;
   return {
-    key, name: profile.name, damageType, skillDot: true, setupKey: setup?.setupKey, profile,
+    key, name: profile.name, damageType, skillDot: true, setupKey: setup?.setupKey, profile, typeRestriction, randomRoll,
     level, base, chancePercent: 100, rawChancePercent: 100, durationSeconds, stackLimit: 1, applicationsPerSecond: castsPerSecond,
     town: { perBaseFactor: townFactor, minimumDps: base.min * townFactor, maximumDps: base.max * townFactor },
     fullAfflictionScale: combatRating > 0 ? afflictionFactor(100) / afflictionFactor(combatRating) : 1,
@@ -251,7 +267,7 @@ export function calculateSkillDot({ setup, profile, modifierTexts: allModifierTe
       chance: [{ source: profile.name, text: "Applied by every use of the skill", value: 100 }], duration: [{ source: profile.name, text: `Lasts ${durationSeconds} s, refreshed by each use`, value: 0 }],
       increasedPercent, townAdditional: townAdditional.map((line) => line.value), combatAdditional: combatAdditional.map((line) => line.value), perCritDamageTown: [], perCritDamageCombat: []
     },
-    notes: supports.notes,
+    notes: randomRoll ? [...supports.notes, randomRoll.text] : supports.notes,
     // The Max Affliction share of the combat factor (Pain Amplification): the recount applies it once the simulated rating is 100.
     maxAfflictionAdditional: { factor: product(maxAfflictionLines.map((line) => line.value)), lines: maxAfflictionLines },
     // Modifier texts the Spell rule applied (normalized like build-mechanics' `recognized` keys), for the coverage badges.

@@ -10,7 +10,8 @@ import { allHeroTraitsSs13 } from "./data/heroes/all-hero-traits-ss13.generated.
 import { baseTraitDescriptionForLevel } from "./hero-memory-rules.js";
 import { artificialMoonGate } from "./hero-memory-rules.js";
 import { heroTraitSlotLevel } from "./character-stats.js";
-import { refineCoverage, neutralStatuses, routeStatus, coverageContext, combineStatuses, dazeStatus, heroModuleLineStatus, skillLevelLineStatus, intelligenceLineStatus, mainStatLineStatus } from "./line-coverage.js";
+import { refineCoverage, neutralStatuses, routeStatus, coverageContext, combineStatuses, dazeStatus, heroModuleLineStatus, skillLevelLineStatus, intelligenceLineStatus, mainStatLineStatus, nameReadCoreStatus } from "./line-coverage.js";
+import { isNameReadCoreClause, nameReadCoreGrant } from "./granted-core-lines.js";
 import { matchTalentTextClause, talentKeyRoute } from "./talent-text-effects.js";
 import { prismMutationDownside } from "./prism-crafting.js";
 import { residualNonDamageStatus } from "./line-families.js";
@@ -25,6 +26,10 @@ export function coverageBadge(status, title = "") {
 
 function baseGearLineCoverage(item, text, active, block, lowResources, blurEffects) {
   if (!active) return "Not equipped";
+  // A "[Core]" grant of a core the planner applies by name ("[Affliction] +30 Affliction inflicted per second"; core audit
+  // batch B1): the core tooltip's rule, as on the panel.
+  const nameRead = nameReadCoreGrant(String(text || "").split(/\r?\n/)[0]);
+  if (nameRead) return nameReadCoreStatus(nameRead.name);
   if (item.corrosionModifiers?.length && item.implicitModifiers?.includes(text)) return "Replaced by corrosion";
   if (/^\+[\d.]+\s*%\s+(?:damage|Critical Strike Rating) if you have Blocked recently$/i.test(text)) return block?.recentlyActive ? "In calc" : "Inactive";
   // Movement Speed is summed by the stat sheet; no reader turns it into damage (src/attack-hit-profiles.js: "no Movement
@@ -202,8 +207,10 @@ export function prismAffixCoverage(prism, kind, clause = null) {
   // roll as the ordinary roll x 1.75 (6% -> 10.5%), and its legendary affixes have no amplified
   // variants (user: Torment is not scaled). So the base affix is carried by the roll values.
   if (kind === "base" && prism?.type === "ethereal" && prism.base === "Phantasmagoria") return "In calc";
-  // A core the planner reads from its text (src/modifier-texts.js TEXT_PRISM_CORES, e.g. Unmatched Valor's fixed Fervor):
-  // the base affix takes the status of that granted core clause.
+  // Effortless Command (core audit Q12): no affix record in either season's game tables, so there is nothing to model yet.
+  if (kind === "base" && prism?.type === "ethereal" && prism.base === "Effortless Command") return "Not modeled";
+  // Every other base's text reaches the readers as "[Base] clause" lines (src/modifier-texts.js; core audit batch B1): the
+  // base affix combines the statuses of those clauses.
   if (kind === "base" && prism?.type === "ethereal") {
     const coreLines = (coverageContext()?.modifierTexts || []).filter((line) => line.grantedCore === prism.base && line.origin === "core");
     if (coreLines.length) return combineStatuses(coreLines.map((line) => refineCoverage("Not modeled", line.text)));
@@ -216,7 +223,9 @@ export function prismAffixCoverage(prism, kind, clause = null) {
 }
 
 // Badge tooltip for prism affixes whose status needs a reason.
+export const EFFORTLESS_COMMAND_REASON = "Not modeled: Effortless Command has no affix record in the SS13 or SS14 game tables (TLIDB shows only its id 1204411023), so there is nothing to model yet (core audit Q12).";
 export function prismAffixCoverageReason(prism, kind) {
+  if (kind === "base" && prism?.type === "ethereal" && prism.base === "Effortless Command") return EFFORTLESS_COMMAND_REASON;
   if (kind !== "legendaryAffix") return "";
   const downside = prismMutationDownside(prism);
   if (downside === "-30 to All Stats") return "Core kept and added: in calc. -30 to All Stats: the Intelligence part lowers main-stat damage in calc; Strength and Dexterity are not modeled.";
@@ -457,7 +466,22 @@ export function talentLineCoverage(text, active) {
 
 export function slateLineCoverage(text, active) {
   // The engine looks lines up by their bare text: strip each clause's "Class: <Talent type>:" prefix before refining
-  // (e.g. "Prophet: Legendary Medium Talent: +10% additional damage against Frozen enemies").
-  const body = String(text || "").split(/(\s+\|\s+|\s+·\s+)/).map((part) => part.replace(/^[^:|·]+:\s*[^:|·]*Talent[^:|·]*:\s*/i, "")).join("");
-  return refineCoverage(baseSlateLineCoverage(text, active), body, undefined, (clause) => baseSlateLineCoverage(clause, active));
+  // (e.g. "Prophet: Legendary Medium Talent: +10% additional damage against Frozen enemies"), and a Pedigree of Gods core's
+  // "Name — " lead ("Goddess of Hunting: Lv.2 Core Talent: Rushed — +30% additional damage …"). Before (core audit
+  // 2026-10-18 F4) the lead stayed on, so the clause missed its reader's status: 20 core clauses that move read Not modeled /
+  // No DPS effect, and 4 unmodeled ones read In calc from the slate table.
+  const raw = String(text || "");
+  const coreName = raw.match(/Core Talent:\s*([A-Z][^—|·]*?) — /)?.[1]?.trim() || null;
+  const body = raw.split(/(\s+\|\s+|\s+·\s+)/).map((part) => part.replace(/^[^:|·]+:\s*[^:|·]*Talent[^:|·]*:\s*/i, "").replace(/^[A-Z][^—|·:]*? — /, "")).join("");
+  if (coreName && active) {
+    // A Pedigree core's clauses read as the same core's on the panel (the core tooltip's per-clause rule): clauses the core
+    // applies by name (Affliction, Starfire's Ignite limit …; src/granted-core-lines.js) by the core rule, Daze by its Blur
+    // state, the rest by their readers over "Not independently modeled" (not the slate-table base, which read Last Stand's
+    // "Block Ratio is set to 0%" In calc from the slate while the panel's copy reads No DPS effect).
+    const clauses = body.split(/\s+\|\s+|\s+·\s+/).map((part) => part.trim()).filter(Boolean);
+    if (coreName === "Daze") return dazeStatus(coverageContext());
+    const statuses = clauses.map((clause) => isNameReadCoreClause(coreName, clause) ? nameReadCoreStatus(coreName) : refineCoverage("Not independently modeled", clause));
+    return statuses.length === 1 ? statuses[0] : combineStatuses(statuses);
+  }
+  return refineCoverage(baseSlateLineCoverage(body, active), body, undefined, (clause) => baseSlateLineCoverage(clause, active));
 }

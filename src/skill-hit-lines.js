@@ -19,7 +19,8 @@ const number = (text) => Number(String(text).replace("−", "-"));
 export const DAMAGE_TYPES = Object.freeze(["Physical", "Fire", "Cold", "Lightning", "Erosion"]);
 export const ELEMENTAL_TYPES = Object.freeze(["Fire", "Cold", "Lightning"]);
 
-const CONDITION_SUFFIX = /^(.*?[Dd]amage) (?:against|vs\.?) (.+)$/;
+// "damage to Elites / Bosses" (Ethereal Prism Crushing Blast; core audit batch B1) is the same condition as "against".
+const CONDITION_SUFFIX = /^(.*?[Dd]amage) (?:against|vs\.?|to(?= (?:Elites?|Bosses?)$)) (.+)$/;
 const TAKEN_LINE = new RegExp(`^${NUM}% (additional )?(.*?)[Dd]amage taken$`);
 // The scope may stand before or after the word ("Spell Max Damage", "Max Physical Damage": Impermanence's wording).
 const MAX_DAMAGE_LINE = new RegExp(`^${NUM}% additional (.*?)Max (.*?)Damage$`, "i");

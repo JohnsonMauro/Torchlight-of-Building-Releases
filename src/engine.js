@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "./percentage-text.js"; import { stripGrantedCore } from "./granted-core-lines.js"; import { averageRotatingBuffs, expandScriptedItemLine } from "./gear-unique-modules.js";
+import { normalizePercentageText } from "./percentage-text.js"; import { stripGrantedCore, carryNameReadBracket } from "./granted-core-lines.js"; import { averageRotatingBuffs, expandScriptedItemLine } from "./gear-unique-modules.js";
 import { matchTalentTextClause } from "./talent-text-effects.js";
 import { activeKismetEffects, parseKismetEffect } from "./kismet-effects.js";
 import { auraBaseEffects, auraSupportEffects, auraSupportSealedManaCompensation } from "./aura-effects.js";
@@ -267,7 +267,12 @@ export function auraSealedManaCompensation(setup, enabledSupports, options = {})
   const additionalPercents = [...support.additionalPercents, ...(setup.name === "Precise: Deep Pain" ? (options.deepPainCompensationPercents ?? [options.deepPainCompensationPercent]).filter(Number.isFinite) : [])];
   const globalPercent = Number(options.globalCompensationPercent) || 0;
   const additionalMultiplier = additionalPercents.reduce((factor, percent) => factor * (1 + percent / 100), 1);
-  return { globalPercent, localPercent: support.localPercent, additionalPercents, additionalMultiplier, ownPercent: (globalPercent + support.localPercent) * additionalMultiplier, sources: support.sources };
+  // "+X% Sealed Mana Compensation for <Tag> Skills" (core audit B7: Knowledgeable's Focus Skills, game affix 787774 attr 1304 mod 3 on
+  // the Focus tag 6000290; the Spirit Magus wording): the same SMC attribute, for the Auras that carry the tag (src/planner.js).
+  const tagged = (options.taggedCompensation || []).filter((item) => (setup.tags || []).includes(item.tag));
+  const taggedPercent = tagged.reduce((sum, item) => sum + item.percent, 0);
+  const localPercent = support.localPercent + taggedPercent;
+  return { globalPercent, localPercent, additionalPercents, additionalMultiplier, ownPercent: (globalPercent + localPercent) * additionalMultiplier, sources: [...support.sources, ...tagged.map((item) => ({ source: item.source, text: item.text, percent: item.percent, tag: item.tag }))], tagged };
 }
 
 export function calculateAuraLedger(setups, options) {
@@ -423,7 +428,7 @@ const modifierPatterns = [
 export function effectiveGearModifierTexts(item) {
   const modifiers=[...(item.modifiers||[])];
   if((item.corrosionModifiers||[]).length) for(const implicit of item.implicitModifiers||[]){ const index=modifiers.indexOf(implicit); if(index>=0)modifiers.splice(index,1); }
-  return [...modifiers,...(item.corrosionModifiers||[])].flatMap((text) => averageRotatingBuffs(text).split(/\r?\n/).map((line) => line.trim()).filter(Boolean)).flatMap((line) => expandScriptedItemLine(item.name, line)); // two-line rows of scripted uniques (gear-pact batch chunk 4)
+  return [...modifiers,...(item.corrosionModifiers||[])].flatMap((text) => carryNameReadBracket(averageRotatingBuffs(text).split(/\r?\n/).map((line) => line.trim()).filter(Boolean))).flatMap((line) => expandScriptedItemLine(item.name, line)); // two-line rows of scripted uniques (gear-pact batch chunk 4)
 }
 
 export function collectNormalizedGearModifiers(items, disabledSlots = []) {

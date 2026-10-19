@@ -76,6 +76,12 @@ export function classifyDamageLine(text) {
   const suffix = clean.match(/^([+-]?\d+(?:\.\d+)?% (?:additional )?)(.*?)([Dd]amage) (?:for|dealt by) (Attack|Spell|Melee|Projectile|Area|Fire|Cold|Lightning|Erosion|Physical|Terra) Skills$/);
   // (Ailment wordings keep their own readers: "Ailment Damage dealt by Area Skills" needs the inflicting skill's tag.)
   if (suffix && !/Ailment|Ignite|Trauma|Wilt/i.test(suffix[2])) clean = `${suffix[1]}${suffix[4]} Skill ${suffix[2]}${suffix[3]}`;
+  // "+X% additional Ailment Damage dealt by attacks" (Great Strength; game affix 938444: attr 3604 mod 4 on Ignite, Wilt and
+  // Trauma with the Attack tag 6001090): ailments inflicted by Attack skills only, the shape of the user-confirmed "dealt by
+  // Area Skills" rule (2026-10-11). `requiresSkillTag` is gated on the inflicting skill: the DoT ledger lists the line as
+  // inactive when the main skill lacks the tag (src/theoretical-sources.js) and src/ailment-applications.js re-gates it per skill.
+  const byAttacks = clean.match(/^([+-]?\d+(?:\.\d+)?)% additional Ailment Damage dealt by (?:attacks|Attack Skills)$/i);
+  if (byAttacks) return { kind: "damage", value: number(byAttacks[1]), layer: "additional", flow: "dot", damageTypes: null, skillTags: null, ailments: new Set(AILMENT_TAGS.Ailment), minion: false, requiresSkillTag: "Attack" };
   let match = clean.match(DAMAGE_LINE);
   if (match) {
     if (/\b(?:Gear|Double|Deterioration|Steep Strike|Critical Strike)\b/i.test(match[3])) return null;
@@ -215,7 +221,7 @@ export function collectGenericDamageLines({ modifierTexts = [], hitSkill = null,
     const route = { hit: hitRoute.hit, dot: dotRoute.dot, penetration: hitRoute.penetration };
     if (parsed.kind === "penetration" && !parsed.minion) route.penetrationTypes = [...parsed.damageTypes].filter((type) => type === "Fire" || dealtTypes.includes(type));
     if (!route.hit && !route.dot && !route.penetration && !route.penetrationTypes?.length) { inactive.push({ origin: line.origin, source: line.source, text: line.text, reason: dotRoute.reason || hitRoute.reason }); continue; }
-    applied.push({ origin: line.origin, source: line.source, text: line.text, value, layer: parsed.layer, kind: parsed.kind, ailments: parsed.ailments ? [...parsed.ailments] : null, ...route });
+    applied.push({ origin: line.origin, source: line.source, text: line.text, value, layer: parsed.layer, kind: parsed.kind, ailments: parsed.ailments ? [...parsed.ailments] : null, ...(parsed.requiresSkillTag ? { requiresSkillTag: parsed.requiresSkillTag } : {}), ...route });
   }
   return { applied, alreadyCounted, inactive };
 }

@@ -202,13 +202,13 @@ const DEFINITIONS = [
     conversion: convert("Cold"),
     components: [{ key: "lance", label: "Icy Lances", groupId: 21, perUse: 1, ...text("one projectile per shot; the Explosion (group 22) does not hit the unit the projectile hit (game description), so it misses a single dummy") }],
     notes: [CONVERSION_NOTE("Ice Shot", "Cold"), "Ice Shot: \"Inflicts Frostbite when this skill deals Hit Cold Damage\" is skill text the enemy-ailment model does not read (it reads supports); Frostbite only slows. The game description reads 50% Physical→Cold; TLIDB's 100% is used."] },
-  { name: "Bombard", delivery: "attack-ranged", weaponScaling: { baseTypes: ["Physical"], restriction: restriction("Limited to cannons") },
+  { name: "Bombard", delivery: "attack-ranged", parabolicSplit: { components: ["explosions"], additionalPercent: -50, text: "The skill's Projectiles' effect after splitting -50% additional damage (skill text)" }, weaponScaling: { baseTypes: ["Physical"], restriction: restriction("Limited to cannons") },
     conversion: convert("Fire"),
     components: [
       { key: "shells", label: "Cannon Shells", groupId: 81, perUse: 4, ...provisional("TLIDB: fires 4 projectiles in a row; game description: they pick different targets and repeat on the same target when there are not enough, so all 4 land on a single dummy; whether the shell's own hit (group 81) lands in addition to its explosion is not described — both are counted (best case)") },
       { key: "explosions", label: "Explosions", groupId: 82, perUse: 4, ...provisional("one explosion per shell (game description: each shell explodes on landing, radius 300); 4 per use on the dummy (best case)") }
     ],
-    notes: [CONVERSION_NOTE("Bombard", "Fire"), "Bombard: \"the Projectiles' effect after splitting -50% additional damage\" needs a split and is not applied."] },
+    notes: [CONVERSION_NOTE("Bombard", "Fire"), "Bombard: \"the Projectiles' effect after splitting -50% additional damage\" applies to the split explosions (Parabolic Projectile Splits; user-supplied 2026-10-19, provisional)."] },
   { name: "Marked Rain of Arrows", delivery: "attack-ranged", weaponScaling: { baseTypes: ["Physical"], restriction: restriction("Limited to Ranged weapons") },
     conversion: convert("Fire"),
     components: [
@@ -230,7 +230,7 @@ const DEFINITIONS = [
       { key: "lightning", label: "Lightning", groupId: 382, perUse: 3, ...provisional("game description (group 381): on hit, 3 lightning bolts strike enemies within 500 of the hit unit, and the developer note says the chain cannot exclude the hit unit — all 3 are taken to hit the dummy (best case)") }
     ],
     notes: [CONVERSION_NOTE("Lightning Shot", "Lightning")] },
-  { name: "Corrosive Shot", delivery: "attack-ranged", weaponScaling: { baseTypes: ["Physical"], restriction: restriction("Limited to guns and cannons") },
+  { name: "Corrosive Shot", delivery: "attack-ranged", parabolicSplit: { components: ["explosion"], additionalPercent: -50, text: "The skill's Projectiles' effect after splitting -50% additional damage (skill text)" }, weaponScaling: { baseTypes: ["Physical"], restriction: restriction("Limited to guns and cannons") },
     conversion: convert("Erosion"),
     terraCharge: { value: 26, dotOnly: true, text: "+26% additional damage dealt to enemies on the Terra for every Terra Charge consumed (TLIDB; max 1 stack, 1 per 0.5 s: observed on the in-game Frost Terra Lv16 tooltip 2026-10-12, so every shot at up to 2 shots/s consumes one); applied to the Corrosion Terra's DoT only" },
     components: [

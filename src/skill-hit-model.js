@@ -11,6 +11,7 @@ import { classifyHitLine, splitHitLineText, scopeApplies, scopeLabel, ELEMENTAL_
 import { skillHitBaseAtLevel, skillHitTiming } from "./skill-hit-profiles.js";
 import { castSpeedScaledTriggerInterval } from "./trigger-interval.js";
 import { BASE_CRITICAL_DAMAGE_PERCENT } from "./game-attribute-defaults.js";
+import { damageTypeRestriction, restrictionLine, removesType } from "./damage-type-restriction.js";
 
 // Generic spell-hit engine (profile kind "hit", engine "skill-hit"; src/skill-hit-profiles.js).
 //
@@ -50,7 +51,15 @@ const sum = (lines) => lines.reduce((total, line) => total + line.value, 0);
 export const SPELL_BURST_BASE_CHARGE_SECONDS = 2;
 // "+X% [additional] Attack Speed when performing Multistrikes" (Bladerunner talent; read per skill in calculateSkillHit).
 export const MULTISTRIKE_SPEED_LINE = /^([+-]?\d+(?:\.\d+)?)\s?% (additional )?Attack Speed when performing Multistrikes$/i;
-export const SPELL_BURST_CHARGE_PATTERN = /^([+-]?\d+(?:\.\d+)?)\s?% (additional )?Spell Burst Charge Speed$/i;
+// Core audit batch B6 (research/core-talents-audit-2026-10-18.md §4.4): Unstoppable Force, Play Safe's Cast Speed → Spell Burst
+// Charge Speed and Spell Ripple's Pulse (read in calculateSkillHit).
+export const UNSTOPPABLE_FORCE_LINE = /^When a Combo Finisher is in Multistrike, it is guaranteed to deal damage equal to the Max Multistrike Count$/i;
+export const CAST_SPEED_TO_CHARGE_LINE = /^(\d+(?:\.\d+)?)% of the bonuses and additional bonuses to Cast Speed is also applied to Spell Burst Charge Speed$/i;
+// Sweeping Fury (Ethereal Prism core; game affix 19348734) and its Projectile Quantity cap (555436864 / 101080025).
+export const SWEEPING_FURY_LINE = /^On hit, Main Ranged Horizontal Projectile Skills have a (\d+(?:\.\d+)?)% chance to cast an additional Main Skill, whose projectiles fire in a ring and deal ([+-]\d+(?:\.\d+)?)% additional damage\. Interval: (\d+(?:\.\d+)?)\s?s\.?(?: Does not affect Sentry Skills, Vertical Skills, and Channeled Skills\.?)?$/i;
+export const PROJECTILE_QUANTITY_LIMIT_LINE = /^Projectile Quantity Upper limit: (\d+)$/i;
+export const SPELL_RIPPLE_LINE = /^Main Spell Skills on hit have a (\d+(?:\.\d+)?)% chance to spawn a Pulse, dealing True Damage equal to (\d+(?:\.\d+)?)% of Hit Damage\. Interval: (\d+(?:\.\d+)?)\s?s$/i;
+export const SPELL_BURST_CHARGE_PATTERN =/^([+-]?\d+(?:\.\d+)?)\s?% (additional )?Spell Burst Charge Speed$/i;
 export function spellBurstChargeTime(lines = []) {
   const sources = [];
   let increasedPercent = 0, additionalFactor = 1;
@@ -65,6 +74,7 @@ export function spellBurstChargeTime(lines = []) {
   return { seconds: divisor > 0 ? SPELL_BURST_BASE_CHARGE_SECONDS / divisor : Infinity, increasedPercent, additionalFactor, sources };
 }
 const round = (value) => Math.round(value * 10000) / 10000;
+const PARABOLIC_SPLIT_LINE = /^\+(\d+(?:\.\d+)?) to Parabolic Projectile Splits quantity$/i;
 const average = (range) => (range.min + range.max) / 2;
 // Per-hand ranges of an alternate dual-wield component (src/skill-hit-profiles.js), scaled with the component's own share.
 const scaleHands = (hands, share) => hands ? hands.map((hand) => ({ ...hand, min: hand.min * share, max: hand.max * share })) : hands;
@@ -197,13 +207,16 @@ const falloffVolley = (falloff, nearTarget) => falloff ? shotgunVolley(falloff, 
 //   (user-confirmed 2026-10-14), so maxCountAdditionalPercent and the event count do not change. The max-count strike is the
 //   last attack's count (whole + 1 when the remainder may add one more, else whole); each repeat's other multipliers
 //   (Stalker's repeat bonus) are kept.
-export function multistrikeSequence({ chancePercent = 0, incrementPercent = 0, initialCountBonus = 0, repeatAdditionalPercent = 0, maxCountAdditionalPercent = 0, incrementAdditionalPercent = 0, skillIncrementAdditionalPercent = 0, catDiveChancePercent = 0 } = {}) {
+export function multistrikeSequence({ chancePercent = 0, incrementPercent = 0, initialCountBonus = 0, repeatAdditionalPercent = 0, maxCountAdditionalPercent = 0, incrementAdditionalPercent = 0, skillIncrementAdditionalPercent = 0, catDiveChancePercent = 0, firstAtMax = false } = {}) {
   const expected = Math.max(0, chancePercent) / 100, whole = Math.floor(expected), remainder = expected - whole;
   const increment = incrementPercent * (1 + (incrementAdditionalPercent + skillIncrementAdditionalPercent) / 100) / 100;
   const dive = Math.min(1, Math.max(0, catDiveChancePercent / 100));
   const maxIndex = remainder > 0 ? whole + 1 : whole;
   const plainStrike = (index) => (1 + (initialCountBonus + index) * increment) * (index >= 1 ? 1 + repeatAdditionalPercent / 100 : 1);
-  const strikeAt = (index) => index >= 1 && dive > 0 && index < maxIndex ? dive * plainStrike(maxIndex) + (1 - dive) * plainStrike(index) : plainStrike(index);
+  // `firstAtMax` (Unstoppable Force, user-supplied 2026-10-19): the first attack of the sequence takes the Max Multistrike Count
+  // increment too (without the repeat-only bonus); otherwise only the repeated attacks dive.
+  const maxIncrementFirst = () => 1 + (initialCountBonus + maxIndex) * increment;
+  const strikeAt = (index) => index === 0 && firstAtMax && dive > 0 && maxIndex > 0 ? dive * maxIncrementFirst() + (1 - dive) * plainStrike(0) : index >= 1 && dive > 0 && index < maxIndex ? dive * plainStrike(maxIndex) + (1 - dive) * plainStrike(index) : plainStrike(index);
   // The +X% on the attack that reaches the Max Multistrike Count (the last attack of the sequence) applies to whatever that
   // attack deals, a Cat Dive included; the dive itself never makes an earlier attack count as reaching it.
   const strike = strikeAt;
@@ -274,7 +287,8 @@ export function steepAttemptShare({ multistrike = null, perRepeats = 2, window =
 export function multistrikeStatesDamage(base, states = []) {
   const total = states.reduce((sum, state) => sum + (Number(state.weight) || 0), 0);
   if (!(total > 0)) return multistrikeSequence(base).damagePerCycle;
-  return states.reduce((sum, state) => sum + (Number(state.weight) || 0) / total * multistrikeSequence({ ...base, ...state }).damagePerCycle, 0);
+  // A state's initial Multistrike Count adds to the build's own ("+N initial Multistrike Count" lines, Preemptive Strike).
+  return states.reduce((sum, state) => sum + (Number(state.weight) || 0) / total * multistrikeSequence({ ...base, ...state, initialCountBonus: (base.initialCountBonus || 0) + (state.initialCountBonus || 0) }).damagePerCycle, 0);
 }
 
 /**
@@ -325,7 +339,7 @@ export function recalledProjectilesPerUse(component) {
  *   — each step's states are cumulative; each step becomes one additional-damage line (its factor over the previous step)
  * @param {object[]} p.extraCritOnly enemy crit-taken debuffs on the crit share ({ source, text, value }; Mark, src/mark-effect.js)
  */
-export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, setup, profile, modifierTexts = [], castSpeed = { factor: 1, sources: [] }, attackSpeed = null, weapon = null, crit = {}, auraEntries = [], aim = null, intelligenceAdditionalPercent = 0, intelligenceSource = null, mainStatPoints = null, target = {}, targetCursed = false, targetCurseCount = 0, enemyAilments = null, extraTaken = [], windows = [5, 20], nearTarget = true, multistrikeEffects = null, extraCritOnly = [], movedRecently = true, multistrikeEventsPerSecond = null, heroEffects = null } = {}) {
+export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, setup, profile, modifierTexts = [], castSpeed = { factor: 1, sources: [] }, attackSpeed = null, weapon = null, crit = {}, auraEntries = [], aim = null, intelligenceAdditionalPercent = 0, intelligenceSource = null, mainStatPoints = null, target = {}, targetCursed = false, targetCurseCount = 0, enemyAilments = null, extraTaken = [], windows = [5, 20], nearTarget = true, multistrikeEffects = null, extraCritOnly = [], movedRecently = true, multistrikeEventsPerSecond = null, heroEffects = null, triggeredSkillAdditional = [], tangleSkill = false, extraTriggeredUses = null } = {}) {
   // Hero effects on one skill (src/youga-ultimate-one.js: Clockwork Core's Tangle cadence, its shared bonuses, Recall hits,
   // the crit cooldown reduction, the Spell Burst rules, the Alternate Spacetime lines): skill-local plain lines join the
   // modifier lines read below.
@@ -429,7 +443,16 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
     else if (parsed.kind === "taken") { if (line.origin === "derived" || (parsed.value > 0 && parsed.scope.damageTypes)) takenLines.push({ ...entry, value: scaled(parsed.value), layer: parsed.layer, scope: parsed.scope, category: parsed.layer === "additional" ? "Additional damage taken" : "Increased damage taken" }); }
     else if (parsed.kind === "penetration") penetrationLines.push({ ...entry, value: scaled(parsed.value), damageTypes: parsed.damageTypes, category: "Penetration" });
     else if (parsed.kind === "armourPenetration") armourPenetrationLines.push({ ...entry, value: scaled(parsed.value), category: "Armor DMG Mitigation Penetration" });
-    else if (parsed.kind === "added") { if (parsed.to === "spells") addedLines.push({ ...entry, type: parsed.type, min: scaled(parsed.min), max: scaled(parsed.max) }); else if (parsed.to === "unspecified") unspecifiedAdded.push(entry); }
+    // Added flat damage by target: "… to Spells" reaches Spell skills only; "… to Attacks and Spells" reaches Spells, and attacks that
+    // have no weapon model (an attack with one takes it from weapon.addedToAttacks below, so it is not added twice). Before
+    // 2026-10-18 a plain "to Spells" line also reached attack hits and an "Attacks and Spells" line was added twice to attacks.
+    else if (parsed.kind === "added") {
+      if (parsed.to === "spells") {
+        const alsoAttacks = /\bAttacks\b/i.test(line.text);
+        const reaches = alsoAttacks ? !(attackProfile && weapon) : skillTags.has("Spell");
+        if (reaches) addedLines.push({ ...entry, type: parsed.type, min: scaled(parsed.min), max: scaled(parsed.max) });
+      } else if (parsed.to === "unspecified") unspecifiedAdded.push(entry);
+    }
     else if (parsed.kind === "cooldownRecovery") cooldownLines.push({ ...entry, value: scaled(parsed.value), additional: parsed.additional });
   }
   // Curse models the planner resolves itself (Scorch) and the skill's own hit debuffs (Blizzard) arrive as typed lines.
@@ -438,6 +461,8 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
   for (const line of profile.selfDebuffTaken || []) takenLines.push(typedTaken({ ...line, source: `${profile.name}: hit debuff` }, "skill"));
   for (const line of unspecifiedAdded) warnings.push(`${line.source}: "${line.text}" names no skill type (Spells / Attacks), so it is not added to ${profile.name}.`);
   addedLines.push(...supports.added.map((line) => ({ ...line, origin: "support" })));
+  // Towering Presence (src/towering-presence.js; core audit batch B5): the main-hand weapon's damage added to Spells, Spell skills only.
+  if (skillTags.has("Spell") && !attackProfile) for (const line of modifierTexts) if (line.weaponToSpells) addedLines.push({ source: line.source, text: line.weaponToSpells.note, origin: "derived", type: line.weaponToSpells.type, min: line.weaponToSpells.min, max: line.weaponToSpells.max });
   // Attack skills: "Adds X–Y <Type> Damage to Attacks [and Spells]" and the weapon model's handedness lines
   // ("+X% additional damage for Main-Hand Weapons", "… when holding a Two-Handed Weapon", "… while Dual Wielding").
   if (attackProfile && weapon) addedLines.push(...weapon.addedToAttacks.map((line) => ({ source: line.source, text: line.text, origin: line.origin, type: line.type, min: line.min, max: line.max })));
@@ -515,11 +540,15 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
   const triggered = triggerInterval > 0;
   if (triggered) {
     supports.additional.push(...supports.triggeredAdditional);
+    // Character lines for triggered skills (Hair-trigger, src/combat-states.js; core audit batch B3).
+    supports.additional.push(...triggeredSkillAdditional);
     notes.push(`${profile.name}: triggered by ${triggerLine.source.replace(/^Support: /, "")} every ${round(triggerInterval)} s (no use time); uses per second = 1 / max(${round(triggerInterval)} s, cooldown ${round(effectiveCooldown)} s${terra ? `, Terra ${terra.durationSeconds} s` : ""}) — user-confirmed 2026-10-12 (Q2: Frost Shield + Boss every 6 s, its cooldown)${terra ? "; the Terra-duration cap is provisional" : ""}. Only triggered uses are modeled, so the manual-use penalty does not apply.`);
   } else if (supports.manualPenalty.length) {
     supports.additional.push(...supports.manualPenalty);
     notes.push(`${profile.name}: no Activation Medium trigger applies to this skill here, so its uses are manual and take ${supports.manualPenalty.map((line) => `${line.value}%`).join(", ")} additional damage.`);
   }
+  // A skill a gear / pact line triggers (src/item-triggered-skills.js, role "item-trigger") is a triggered skill too.
+  if (!triggered && setup?.role === "item-trigger") supports.additional.push(...triggeredSkillAdditional);
   const intervalSeconds = triggered ? Math.max(triggerInterval, effectiveCooldown, terra?.durationSeconds || 0) : rateModel ? (rateModel.usesPerSecond > 0 ? 1 / rateModel.usesPerSecond : null) : release && useTime != null ? useTime * (channelState?.fullStacks ?? 5) : useTime != null ? Math.max(useTime, effectiveCooldown, terra?.durationSeconds || 0) : null;
   // Multistrike (Attack skills; TLIDB glossary: "Chance to perform an additional attack … If the chance exceeds 100%, one
   // additional attack will be performed with every 100% of the chance. +20% Attack Speed during Multistrikes … Mobility,
@@ -528,15 +557,22 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
   // attack; provisional reading of "increasing damage"); a cycle lasts 1 + E ÷ 1.2 attack intervals. Provisional.
   // Thunder Slash: Steep Strike chance → additional Multistrike damage increment (steepStrikeState), its own ledger line.
   const skillIncrementAdditionalPercent = canMultistrike ? steepStrike?.incrementAdditionalPercent || 0 : 0;
+  // "+N initial Multistrike Count" (Preemptive Strike, game affix 713584 field 2006252; src/passive-support-lines.js): every count
+  // of the sequence shifts by N (multistrikeSequence initialCountBonus; the user-accepted reading for Cat's Punches), so it moves
+  // damage only through the Multistrike damage increment. Its own ledger line.
+  const initialCountLines = canMultistrike ? supports.effects.multistrike.filter((line) => line.kind === "initial" && line.value > 0) : [];
+  const initialCountBonus = Math.floor(sum(initialCountLines));
   const plainMultistrike = canMultistrike ? multistrikeSequence({ chancePercent: multistrikeChance, incrementPercent: multistrikeIncrement }) : null;
-  const multistrike = canMultistrike ? multistrikeSequence({ chancePercent: multistrikeChance, incrementPercent: multistrikeIncrement, skillIncrementAdditionalPercent }) : null;
+  const initialMultistrike = canMultistrike ? multistrikeSequence({ chancePercent: multistrikeChance, incrementPercent: multistrikeIncrement, initialCountBonus }) : null;
+  const multistrike = canMultistrike ? multistrikeSequence({ chancePercent: multistrikeChance, incrementPercent: multistrikeIncrement, skillIncrementAdditionalPercent, initialCountBonus }) : null;
   if (multistrike) {
     supports.additional.push({ source: "Multistrike (supports)", text: `Multistrikes: ${round(plainMultistrike.expectedExtraAttacks)} extra attacks per attack at +${multistrikeIncrement}% increasing damage each; average ×${round(plainMultistrike.averageDamageFactor)} per strike (provisional)`, value: (plainMultistrike.averageDamageFactor - 1) * 100, category: "Additional damage" });
-    if (skillIncrementAdditionalPercent) supports.additional.push({ source: `${profile.name}: Steep Strike chance → Multistrike damage increment`, text: `+${steepStrike.perChance}% additional Multistrike damage increment per +1% Steep Strike chance × ${round(steepStrike.chancePercent)}% = +${round(skillIncrementAdditionalPercent)}%: increment ${multistrikeIncrement}% → ${round(multistrike.effectiveIncrementPercent)}% (TLIDB skill text; manual 1001020126; one additive pool with Cat's Scratch: user-supplied answer 2026-10-14; provisional)`, value: (multistrike.damagePerCycle / plainMultistrike.damagePerCycle - 1) * 100, category: "Additional damage" });
+    if (initialCountBonus && initialMultistrike.damagePerCycle !== plainMultistrike.damagePerCycle) supports.additional.push({ source: initialCountLines.map((line) => line.source).join(" + "), text: `+${initialCountBonus} initial Multistrike Count: every count of the sequence shifts by ${initialCountBonus} (counts ${1 + initialCountBonus}…${initialMultistrike.maxCount}), each strike +${initialCountBonus} × ${round(multistrike.effectiveIncrementPercent)}% increment (game affix 713584; shift reading user-accepted 2026-10-14)`, value: (initialMultistrike.damagePerCycle / plainMultistrike.damagePerCycle - 1) * 100, category: "Additional damage" });
+    if (skillIncrementAdditionalPercent) supports.additional.push({ source: `${profile.name}: Steep Strike chance → Multistrike damage increment`, text: `+${steepStrike.perChance}% additional Multistrike damage increment per +1% Steep Strike chance × ${round(steepStrike.chancePercent)}% = +${round(skillIncrementAdditionalPercent)}%: increment ${multistrikeIncrement}% → ${round(multistrike.effectiveIncrementPercent)}% (TLIDB skill text; manual 1001020126; one additive pool with Cat's Scratch: user-supplied answer 2026-10-14; provisional)`, value: (multistrike.damagePerCycle / initialMultistrike.damagePerCycle - 1) * 100, category: "Additional damage" });
     notes.push(`${profile.name}: Multistrike ${multistrikeChance}% → ${round(multistrike.expectedExtraAttacks)} extra attacks per attack (TLIDB glossary), cycle ${round(multistrike.cycleIntervals)} attack intervals (+20% Attack Speed during Multistrikes), strikes ×${round(multistrike.rateFactor)} per second; increasing damage read as +${multistrikeIncrement}% × count (provisional).`);
     // Hero states on the sequence (Erika: Stalker, initial Multistrike Count, Hunting Instinct; src/erika-wind-stalker.js): each
     // step's expected damage per sequence over the previous step's, as its own additional-damage line (the working).
-    const base = { chancePercent: multistrikeChance, incrementPercent: multistrikeIncrement, skillIncrementAdditionalPercent };
+    const base = { chancePercent: multistrikeChance, incrementPercent: multistrikeIncrement, skillIncrementAdditionalPercent, initialCountBonus };
     let previous = multistrike.damagePerCycle;
     for (const step of multistrikeEffects?.steps || []) {
       const damage = multistrikeStatesDamage(base, step.states);
@@ -579,8 +615,29 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
   // Vault is up; user-supplied answers 2026-10-18). Those uses are Triggered casts: they never activate Spell Burst.
   const heroTrigger = heroEffects?.triggerComponent && Number.isFinite(heroEffects.triggerComponent.perInterval) && heroEffects.triggerComponent.perInterval > 0 ? heroEffects.triggerComponent : null;
   const heroTriggerUsesPerSecond = heroTrigger && intervalSeconds > 0 && !inactiveReason ? heroTrigger.perInterval / intervalSeconds : 0;
-  const spellBurstCharge = spellBurstChargeTime([...modifierTexts, ...supports.effects.spellBurst.filter((line) => line.kind === "chargeIncreased" || line.kind === "chargeAdditional")
+  // Play Safe (game affix 8855: node 114 copies P1% of Cast Speed attr 60021 to Spell Burst Charge Speed attr 63601, mod 3
+  // increased → increased and mod 4 additional → additional): only the character's Cast Speed (the build's cast-rate ledger,
+  // increased and additional) joins the charge; the skill's own support lines ("+X% Cast Speed for the supported skill") do not
+  // (user decision 2026-10-19 on a Google AI Mode answer, not tested in game).
+  // `castSpeed.character` (planner): the same ledger without the setup's own support lines (Quick Decision).
+  const characterCast = castSpeed.character || castSpeed;
+  const castSpeedIncreasedPercent = Number.isFinite(characterCast.increasedPercent) ? characterCast.increasedPercent : ((castSpeed.factor || 1) - 1) * 100;
+  const castSpeedAdditionalFactor = Number.isFinite(characterCast.additionalFactor) ? characterCast.additionalFactor : 1;
+  const castToChargeLines = skillTags.has("Spell") ? modifierTexts.flatMap((line) => {
+    const match = normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim().match(CAST_SPEED_TO_CHARGE_LINE);
+    if (!match) return [];
+    const share = Number(match[1]) * (line.multiplier ?? 1) / 100;
+    const increased = share * castSpeedIncreasedPercent;
+    const additional = share * (castSpeedAdditionalFactor - 1) * 100;
+    const note = `(${line.source}: ${round(share * 100)}% of the character's Cast Speed, not the skill's support lines; game affix 8855; user decision 2026-10-19)`;
+    return [
+      ...(increased ? [{ source: line.source, text: `${round(increased)}% Spell Burst Charge Speed`, note: `+${round(increased)}% increased Cast Speed → Spell Burst Charge Speed ${note}`, castSpeedShare: true }] : []),
+      ...(additional ? [{ source: line.source, text: `${round(additional)}% additional Spell Burst Charge Speed`, note: `${round(additional)}% additional Cast Speed → additional Spell Burst Charge Speed ${note}`, castSpeedShare: true }] : [])
+    ];
+  }) : [];
+  const spellBurstCharge = spellBurstChargeTime([...modifierTexts, ...castToChargeLines, ...supports.effects.spellBurst.filter((line) => line.kind === "chargeIncreased" || line.kind === "chargeAdditional")
     .map((line) => ({ source: line.source, text: `${line.value}% ${line.kind === "chargeAdditional" ? "additional " : ""}Spell Burst Charge Speed` }))]);
+  spellBurstCharge.castSpeedShare = castToChargeLines.map((line) => ({ source: line.source, text: line.note }));
   const canSpellBurst = !spellBurstBlock && spellBurstStacks >= 1 && intervalSeconds > 0 && Number.isFinite(spellBurstCharge.seconds);
   if (spellBurstStacks >= 1 && skillTags.has("Spell") && spellBurstBlock) notes.push(`${profile.name}: cannot activate Spell Burst: ${spellBurstBlock}${/provisional/.test(spellBurstBlock) ? "" : spellBurstBlock === heroEffects?.spellBurstBlock ? ` (${heroEffects.spellBurstBlockSource || "trait text"})` : " (game manual)"}.`);
   const spellBurst = canSpellBurst ? (() => {
@@ -594,6 +651,14 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
     const share = burstCastsPerSecond / (1 / intervalSeconds + extraUsesPerSecond + heroTriggerUsesPerSecond);
     return { maxSpellBurst: spellBurstStacks, fullChargeSeconds: spellBurstCharge.seconds, chargeSpeed: spellBurstCharge, castsPerActivation: 1 + spellBurstStacks, automaticCastsPerActivation: spellBurstStacks, activationsPerSecond, extraUsesPerSecond, burstCastsPerSecond, bonusLines, bonusFactor, share, rateFactor: 1 + extraUsesPerSecond * intervalSeconds, averageDamageFactor: 1 + share * (bonusFactor - 1) };
   })() : null;
+  // A Tangle Skill's casts are triggered by its Tangles (and a Clockwork Core skill's by the Core's Tangles), so they take the
+  // triggered-skill lines (Hair-trigger); Spell Burst casts are not triggered and keep none of it, so the lines are scaled by the
+  // share of uses not cast by Spell Burst (user-supplied 2026-10-19, Google AI Mode answer, not tested in game;
+  // research/google-ai-mode-answers-2026-10-19.md).
+  if (!triggered && setup?.role !== "item-trigger" && tangleSkill && triggeredSkillAdditional.length) {
+    const tangleShare = 1 - (spellBurst?.share || 0);
+    supports.additional.push(...triggeredSkillAdditional.map((line) => tangleShare === 1 ? { ...line, text: `${line.text}; Tangle casts are triggered` } : { ...line, value: line.value * tangleShare, text: `${line.text}; Tangle casts are triggered, × ${round(tangleShare)} of uses not cast by Spell Burst` }));
+  }
   if (spellBurst) {
     if (spellBurst.averageDamageFactor !== 1) supports.additional.push({ source: "Spell Burst casts", text: `${round(spellBurst.share * 100)}% of casts are cast by Spell Burst (the activating cast + ${spellBurstStacks} automatic, game manual) at ×${round(spellBurst.bonusFactor)} (${spellBurst.bonusLines.map((line) => line.text).join("; ")}); average ×${round(spellBurst.averageDamageFactor)}`, value: (spellBurst.averageDamageFactor - 1) * 100, category: "Additional damage" });
     notes.push(`${profile.name}: Spell Burst ${spellBurstStacks} stack(s), fully charged in ${round(spellBurst.fullChargeSeconds)} s = 2 s ÷ ${round(1 + spellBurstCharge.increasedPercent / 100)} ÷ ${round(spellBurstCharge.additionalFactor)} (game manual), activated every ${round(1 / spellBurst.activationsPerSecond)} s = max(charge time, use interval ${round(intervalSeconds)} s); each activation is the activating cast + ${spellBurstStacks} automatic cast(s), all cast by Spell Burst (game manual); +${round(spellBurst.extraUsesPerSecond)} casts per second without player time (user-confirmed 2026-10-12: automatic casts take no manual cast time; the period is not rounded; additional Charge Speed shortens the charge).`);
@@ -606,7 +671,11 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
   // research/youga-recall-mechanics-2026-10-18.md R1), so only the trigger component deals hits.
   const manualHits = !(heroTrigger && heroTrigger.manualCasts === false);
   const manualUsesPerSecond = manualHits && intervalSeconds > 0 && !inactiveReason ? rateFactor * heroRateFactor / intervalSeconds : 0;
-  const usesPerSecond = manualUsesPerSecond + heroTriggerUsesPerSecond;
+  // Extra triggered uses from outside the skill (Miraculous Gain's Main Skill triggers, src/elixir-model.js; user-supplied
+  // 2026-10-19): added to the use rate as full uses of the skill.
+  const outsideTriggerUsesPerSecond = extraTriggeredUses?.usesPerSecond > 0 && !inactiveReason && intervalSeconds > 0 ? extraTriggeredUses.usesPerSecond : 0;
+  if (outsideTriggerUsesPerSecond) notes.push(`${profile.name}: + ${round(outsideTriggerUsesPerSecond)} uses/s from ${extraTriggeredUses.label}${extraTriggeredUses.note ? ` (${extraTriggeredUses.note})` : ""}.`);
+  const usesPerSecond = manualUsesPerSecond + heroTriggerUsesPerSecond + outsideTriggerUsesPerSecond;
   // The two rate components, kept apart for the working (Clockwork Core triggers vs manual casts).
   const rateComponents = heroTrigger ? [
     ...(manualHits ? [{ key: "manual", label: heroTrigger.manualLabel || "manual casts", usesPerSecond: manualUsesPerSecond }] : []),
@@ -666,11 +735,26 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
     for (const line of modifierTexts) {
       const match = String(line.text ?? "").replace(/\s+/g, " ").trim().match(/^(Cast|Attack) Speed bonus and (\d+(?:\.\d+)?)% of additional bonus are also applied to (Spell|Attack) Sentries' Cast Frequency$/i);
       if (!match || (match[3].toLowerCase() === "spell" ? !spellSentry : !attackSentry)) continue;
-      const factor = /^Cast$/i.test(match[1]) ? castSpeed?.factor ?? 1 : attackSpeed?.factor ?? 1;
+      // The Attack Speed *bonus* (core audit B7): the weapon model's `factor` is attacks per second (the weapon's base included), and
+      // an Attack Sentry's base Cast Frequency already is the weapon's attacks per second, so only the increased × additional bonus
+      // joins (game affix 255288: node 114 from attr 60011, mod 3 and mod 4, to the Cast Frequency attr 63211). Before 2026-10-18 the
+      // whole attacks-per-second figure was used (×1.5 Cast Frequency from a 1.5 Attack Speed weapon with no bonus).
+      const factor = /^Cast$/i.test(match[1]) ? castSpeed?.factor ?? 1 : attackSpeed ? Math.max(0, 1 + (attackSpeed.increasedPercent || 0) / 100) * (attackSpeed.additionalFactor ?? 1) : 1;
       if (factor !== 1) castFrequencyLines.push({ source: line.source, text: `${line.text} (×${round(factor)} ${match[1]} Speed; the "100% of additional bonus" share is read as the whole factor: provisional)`, origin: line.origin, value: (factor - 1) * 100, additional: true });
     }
   }
   const castFrequencyFactor = sentry ? Math.max(0.0001, 1 + sum(castFrequencyLines.filter((line) => !line.additional)) / 100) * product(castFrequencyLines.filter((line) => line.additional)) : 1;
+  // Sentry quantity (core audit B7; Sentry core "Max Sentry Quantity +1", game affix 104343: attr 6322 flat on the Sentry tag). Every
+  // modeled Sentry skill's max base Sentry quantity is 1 (TLIDB); each extra Max Sentry Quantity is another Sentry hitting the dummy,
+  // all of them held deployed (best case: recast before expiry, or deployed at once with Shared Fate;
+  // two Sentries double the damage on one target: user-supplied 2026-10-19, Google AI Mode answer, not tested in game). A support that limits the skill ("The supported skill can only deploy N Sentry(ies)") caps the count.
+  const sentryQuantityLines = sentry ? modifierTexts.flatMap((line) => String(line.text ?? "").split(/\r?\n/).flatMap((part) => {
+    const match = normalizePercentageText(part).replace(/\s+/g, " ").trim().match(/^(?:Max Sentry Quantity \+?(\d+)|\+?(\d+) (?:to )?Max Sentry Quantity)$/i);
+    return match ? [{ source: line.source, text: part.trim(), value: Number(match[1] ?? match[2]) * (line.multiplier ?? 1) }] : [];
+  })) : [];
+  const sentryDeployCap = sentry ? Math.min(Infinity, ...(setup?.supports || []).filter((support) => support && support.enabled !== false).flatMap((support) => support.effects || []).map((text) => Number(String(text).match(/The supported skill can only deploy (\d+) Sentr/i)?.[1])).filter((value) => value > 0)) : Infinity;
+  const sentryQuantity = sentry ? Math.max(1, Math.min(sentryDeployCap, (sentry.baseQuantity ?? 1) + Math.floor(sum(sentryQuantityLines)))) : 1;
+  if (sentry && sentryQuantity > 1) notes.push(`${profile.name}: ${sentryQuantity} Sentries held deployed (max base Sentry quantity ${sentry.baseQuantity ?? 1} + ${sentryQuantityLines.map((line) => `${line.text} (${line.source})`).join(", ")}): each hits the dummy (best case; provisional).`);
   const weaponAttacksPerSecond = attackSpeed?.weaponAttacksPerSecond ?? null;
   if (sentry) notes.push(`${profile.name}: ${sentry.note || "the Sentry's cadence follows Cast Frequency (manual rule 1001011724), not Attack / Cast Speed"}; Cast Frequency ×${round(castFrequencyFactor)}${castFrequencyLines.length ? ` (${castFrequencyLines.map((line) => line.text).join("; ")})` : " (no Cast Frequency lines)"}.`);
   if (sentry?.weaponAttackSpeed && attackProfile && !(weaponAttacksPerSecond > 0)) warnings.push(`${profile.name}: its base Cast Frequency is the weapon's Attack Speed and no weapon Attack Speed is available, so its rate is 0.`);
@@ -728,12 +812,32 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
   // extra projectiles the Projectile Quantity gives (Homing Frost Bolt: 1 per +2, up to +2).
   const volleyRule = profile.projectileVolley || null;
   const projectileQuantity = sum(supports.effects.quantity.filter((line) => line.kind === "projectiles"));
-  const extraProjectiles = volleyRule ? Math.min(volleyRule.maxExtra ?? Infinity, Math.floor(projectileQuantity / (volleyRule.perQuantity || 1))) : projectileQuantity;
+  // "Projectile Quantity Upper limit: N" (Sweeping Fury; user-supplied 2026-10-19 with the ring reading): the skill fires at most
+  // N projectiles, so the extra projectiles stop at N − its base count (the volley's own count, else 1).
+  const projectileLimitLines = modifierTexts.flatMap((line) => { const match = normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim().match(PROJECTILE_QUANTITY_LIMIT_LINE); return match ? [{ source: line.source, value: Number(match[1]) }] : []; });
+  const projectileLimit = projectileLimitLines.length && skillTags.has("Projectile") ? Math.min(...projectileLimitLines.map((line) => line.value)) : Infinity;
+  const baseProjectiles = Math.max(1, ...base.components.map((component) => component.perUse?.falloff?.count || 0));
+  const uncappedExtraProjectiles = volleyRule ? Math.min(volleyRule.maxExtra ?? Infinity, Math.floor(projectileQuantity / (volleyRule.perQuantity || 1))) : projectileQuantity;
+  const extraProjectiles = Math.max(0, Math.min(uncappedExtraProjectiles, projectileLimit - baseProjectiles));
+  if (extraProjectiles < uncappedExtraProjectiles) notes.push(`${profile.name}: Projectile Quantity Upper limit ${projectileLimit} (${projectileLimitLines.map((line) => line.source).join(", ")}): ${round(uncappedExtraProjectiles)} extra projectiles → ${round(extraProjectiles)} (base ${baseProjectiles}).`);
   const falloffFactor = extraProjectiles > 0 ? (volleyRule ? volleyRule.factor : projectileQuantityFalloff(profile.name)) : null;
   const projectileTargets = falloffFactor ? base.components.filter((component) => component.perUse?.falloff || (base.components.length === 1 && component.perUse != null)) : [];
   if (extraProjectiles > 0 && !falloffFactor) notes.push(`${profile.name}: +${extraProjectiles} Projectile Quantity — the skill text does not say its projectiles can hit the same enemy, so one reaches the dummy (Ice Lances run, 2026-10-12).`);
   if (falloffFactor && !projectileTargets.length) notes.push(`${profile.name}: +${extraProjectiles} Projectile Quantity — the projectile component is not identified in this profile, so the extra projectiles are not counted.`);
   const comboAmplification = supports.effects.combo.filter((line) => line.kind === "amplification");
+  // Unstoppable Force (Ethereal Prism core; game affix 273110144: field 2006255 = 100 on the Combo Finisher tag 6000412): "When a
+  // Combo Finisher is in Multistrike, it is guaranteed to deal damage equal to the Max Multistrike Count". Every Multistrike attack
+  // of the Finisher's sequence, the first included, takes the Max Multistrike Count attack's increment (user-supplied 2026-10-19,
+  // Google AI Mode answer, not tested in game): a 100% Cat Dive on the repeats (multistrikeSequence catDiveChancePercent) plus
+  // `firstAtMax` on the first attack.
+  // One additional factor on the Finisher components only. Needs a Combo skill that Multistrikes.
+  const unstoppableLine = multistrike && profile.cycle ? modifierTexts.find((line) => UNSTOPPABLE_FORCE_LINE.test(normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim())) : null;
+  const unstoppable = unstoppableLine ? (() => {
+    const guaranteed = multistrikeSequence({ chancePercent: multistrikeChance, incrementPercent: multistrikeIncrement, skillIncrementAdditionalPercent, initialCountBonus, catDiveChancePercent: 100, firstAtMax: true });
+    const factor = multistrike.damagePerCycle > 0 ? guaranteed.damagePerCycle / multistrike.damagePerCycle : 1;
+    return { source: unstoppableLine.source, text: unstoppableLine.text, factor, maxCount: guaranteed.maxCount };
+  })() : null;
+  if (unstoppable) multistrike.unstoppableForce = { source: unstoppable.source, factor: unstoppable.factor, maxCount: unstoppable.maxCount };
   // "+X% additional Steep Strike Damage" (gear, e.g. Shadowless Swordsman's Blade; user-supplied reading 2026-10-14): an
   // independent multiplier on Steep Strike hits only (the components marked steep role "steep"). The shared damage classifier
   // leaves these lines out (src/damage-line-classifier.js), so no other layer reads them.
@@ -783,7 +887,8 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
       const total = (own.amplification ?? own.value / CONSUMED_COMBO_POINTS) + sum(comboAmplification);
       extraAdditional[ownIndex] = { ...own, source: [own.source, ...comboAmplification.map((line) => line.source)].join(" + "), text: `${total}% Combo Finisher Amplification (skill ${own.amplification ?? own.value / CONSUMED_COMBO_POINTS}% + supports ${sum(comboAmplification)}%) × ${CONSUMED_COMBO_POINTS} consumed Combo Points (manual; points per Starter provisional)`, value: finisherAmplificationPercent(total), amplification: total };
     }
-    return { ...component, extraAdditional, hitsPerUse: perUse.hits, hitsDetail: perUse.detail, shotgun: perUse.shotgun ? { ...perUse.shotgun, extraProjectiles: projectileBoost ? extraProjectiles : 0 } : null, added: { min: 0, max: 0 }, addedSources: [] };
+    if (unstoppable && component.componentKey === "finisher" && Math.abs(unstoppable.factor - 1) > 1e-12) extraAdditional.push({ source: unstoppable.source, text: `${unstoppable.text}: each Multistrike of the Finisher at the Max Multistrike Count ${unstoppable.maxCount} (game affix 273110144; the first attack included: user-supplied 2026-10-19, provisional) = ×${round(unstoppable.factor)} on the Finisher`, value: (unstoppable.factor - 1) * 100 });
+    return { ...component, extraAdditional, hitsPerUse: perUse.hits * sentryQuantity, hitsDetail: sentryQuantity > 1 ? `${perUse.detail} × ${sentryQuantity} Sentries` : perUse.detail, shotgun: perUse.shotgun ? { ...perUse.shotgun, extraProjectiles: projectileBoost ? extraProjectiles : 0 } : null, added: { min: 0, max: 0 }, addedSources: [] };
   });
   // Recalled hits (src/youga-ultimate-one.js; provisional): the recalling hit group (its typed parts share a strike key) lands
   // again `hitsFactor` times per use on average, as its own strike, with the Recalled-only lines. Added flat damage and
@@ -800,6 +905,20 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
       components.push({ ...component, componentKey: key, strikeKey: `${component.strikeKey ?? component.componentKey}:recall`, label: `${component.label} (Recalled)`, hitsPerUse: projectiles * recall.hitsFactor, hitsDetail: `${round(projectiles)}${component.shotgun?.total > 0 ? ` projectile${projectiles === 1 ? "" : "s"} reaching the dummy (no Shotgun falloff on a Recall)` : ""} × ${round(recall.hitsFactor)} Recalls per use (${round(recall.recallsPerProjectile)} per projectile × ${round(recall.shareOfUses * 100)}% of uses inside Stasis Vault; provisional)`, shotgun: null, recalled: true, extraAdditional: [...(component.extraAdditional || []), ...(recall.additional || [])], added: { min: 0, max: 0 }, addedSources: [] });
     }
     if (group.length && recall.note) notes.push(`${profile.name}: ${recall.note}.`);
+  }
+  // Parabolic Projectile Splits (Three Birds with One Stone, "+N to Parabolic Projectile Splits quantity", game affix 101080024
+  // field 2006214): each landing parabolic projectile splits N times, and the splits land as area explosions that can hit the
+  // same single target (user-supplied 2026-10-19, Google AI Mode answer, not tested in game; still an open question). A profile's
+  // `parabolicSplit` names the landing components and the skill's own after-split damage ("The skill's Projectiles' effect after
+  // splitting -50% additional damage"); each split is one more hit of that component per landing, with no Shotgun falloff.
+  const parabolicSplits = profile.parabolicSplit && skillTags.has("Parabolic") ? modifierTexts.reduce((total, line) => { const match = normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim().match(PARABOLIC_SPLIT_LINE); return total + (match ? Number(match[1]) * (line.multiplier ?? 1) : 0); }, 0) : 0;
+  if (parabolicSplits > 0) {
+    const rule = profile.parabolicSplit;
+    const splitLine = rule.additionalPercent ? [{ source: `${profile.name}: after splitting`, text: rule.text, value: rule.additionalPercent }] : [];
+    for (const component of components.filter((item) => !item.addedOnly && !item.recalled && rule.components.includes(String(item.componentKey).split(/[+>:]/)[0]))) {
+      components.push({ ...component, componentKey: `${component.componentKey}:split`, strikeKey: `${component.strikeKey ?? component.componentKey}:split`, label: `${component.label} (parabolic splits)`, hitsPerUse: component.hitsPerUse * parabolicSplits, hitsDetail: `${component.hitsDetail} × ${round(parabolicSplits)} Parabolic Projectile Split${parabolicSplits === 1 ? "" : "s"} per landing, each an area explosion on the same target (no Shotgun falloff; user-supplied 2026-10-19, Google AI Mode answer, provisional)`, shotgun: null, parabolicSplit: true, extraAdditional: [...(component.extraAdditional || []), ...splitLine], added: { min: 0, max: 0 }, addedSources: [] });
+    }
+    notes.push(`${profile.name}: +${round(parabolicSplits)} Parabolic Projectile Splits: each landing projectile's ${rule.components.join(" / ")} lands ${round(parabolicSplits)} more time(s) on the dummy${rule.additionalPercent ? ` at ${rule.additionalPercent}% additional damage (${rule.text})` : ""} (user-supplied 2026-10-19, Google AI Mode answer, not tested in game).`);
   }
   const primaryComponent = components[0] || null;
   for (const line of addedLines) {
@@ -1010,6 +1129,10 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
     if (share > 0) supports.additional.push({ source: clause.source, text: `${clause.text} (Lv.${clause.level ?? "?"}) — moving at the assumed ${ASSUMED_MOVEMENT_METERS_PER_SECOND} m/s: min(1, (${ASSUMED_MOVEMENT_METERS_PER_SECOND} ÷ ${clause.meters}) × ${clause.uses} ÷ ${round(usesPerSecond)} uses/s) = ${round(share * 100)}% of uses buffed`, value: clause.value * share, category: "Additional damage", share });
   }
 
+  // "You can only deal Cold Damage" (Extreme Coldness; src/damage-type-restriction.js, user-confirmed 2026-10-18): a part whose
+  // final type (after conversion and "added as") is not the dealt type takes −100% additional, so it deals 0. A hit whose every part
+  // is removed deals nothing and is not modeled (no hits for on-hit effects, no ailment applications; user-confirmed 2026-10-19).
+  const typeRestriction = damageTypeRestriction(modifierTexts);
   // Per component.
   const perType = components.map((component) => {
     const types = component.scopeTypes || (component.converted ? [component.originalType, component.type] : [component.type]);
@@ -1019,7 +1142,7 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
     const componentIncreased = (component.extraIncreased || []).map((line) => ({ ...line, category: "Increased damage", origin: "skill" }));
     const increased = [...damageLines.filter((line) => line.layer === "increased" && applies(line)), ...supports.increased.filter((line) => applies(line)), ...(channelState?.increased || []), ...weaponIncreased, ...componentIncreased, ...galeLines.filter((line) => line.layer === "increased")];
     const componentLines = (component.extraAdditional || []).map((line) => ({ ...line, category: "Additional damage", origin: "skill" }));
-    const additional = [...damageLines.filter((line) => line.layer === "additional" && appliesAdditional(line)), ...supports.additional.filter((line) => !line.scopeTypes || line.scopeTypes.some((type) => additionalTypes.includes(type))), ...levelLine, ...terraLine, ...grantedLines, ...speedBonusLine.filter((line) => line.value > 0), ...galeLines.filter((line) => line.layer === "additional"), ...(channelState?.additional || []), ...componentLines, ...auraLines.filter((line) => !line.types || line.types.some((type) => additionalTypes.includes(type))), ...mainStatLines, ...doubleDamageLines, ...weaponAdditional.filter((line) => !(handCrits && line.hand === "main"))];
+    const additional = [...damageLines.filter((line) => line.layer === "additional" && appliesAdditional(line)), ...supports.additional.filter((line) => !line.scopeTypes || line.scopeTypes.some((type) => additionalTypes.includes(type))), ...levelLine, ...terraLine, ...grantedLines, ...speedBonusLine.filter((line) => line.value > 0), ...galeLines.filter((line) => line.layer === "additional"), ...(channelState?.additional || []), ...componentLines, ...auraLines.filter((line) => !line.types || line.types.some((type) => additionalTypes.includes(type))), ...mainStatLines, ...doubleDamageLines, ...weaponAdditional.filter((line) => !(handCrits && line.hand === "main")), ...(restrictionLine(typeRestriction, component.type, "hit damage") ? [restrictionLine(typeRestriction, component.type, "hit damage")] : [])];
     const combatAdditional = [...combatLines];
     const taken = takenLines.filter((line) => appliesAdditional(line));
     const maxOnly = maxLines.filter((line) => applies(line));
@@ -1064,9 +1187,13 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
     const townPerHitNoCrit = (handRolls ? handRolls.reduce((total, hand) => total + hand.share * hand.average, 0) : rollAverage) * increasedFactor * townAdditionalFactor * (attackProfile ? armourFactor * resistanceFactor : 1);
     const perHitBeforeTarget = handRolls ? critWeighted * increasedFactor * additionalFactor : rollAverage * increasedFactor * additionalFactor * critFactor;
     const perHit = perHitBeforeTarget * takenFactor * armourFactor * resistanceFactor;
-    return { key: component.componentKey, strikeKey: component.strikeKey ?? component.componentKey, label: component.label, ...(component.recalled ? { recalled: true } : {}), type: component.type, originalType: component.originalType, converted: component.converted, addedOnly: Boolean(component.addedOnly), splitPart: Boolean(component.splitPart), hitsPerUse: component.hitsPerUse, hitsDetail: component.hitsDetail, shotgun: component.shotgun || null, basis: component.basis, note: component.note, effectiveness: component.effectiveness, base: { min: component.min, max: component.max }, added: component.added, addedSources: component.addedSources, roll, increased, additional, combatAdditional, taken, maxOnly, minOnly, penetration, armourPenetration, armourPercent: armour.before, armourPenetrationPercent: armour.penetrationPercent, armourAfterPenetrationPercent: armour.after, increasedFactor, additionalFactor, townAdditionalFactor, takenFactor, penetrationPercent, resistancePercent, resistanceFactor, armourFactor, maxFactor, minFactor, handRolls, mainHandOnly: mainHandOnlyLines, townPerHit, townPerHitNoCrit, perHitBeforeTarget, perHit, perUse: perHit * component.hitsPerUse, townPerUse: townPerHit * component.hitsPerUse };
+    return { key: component.componentKey, strikeKey: component.strikeKey ?? component.componentKey, label: component.label, ...(component.recalled ? { recalled: true } : {}), ...(component.parabolicSplit ? { parabolicSplit: true } : {}), type: component.type, originalType: component.originalType, converted: component.converted, addedOnly: Boolean(component.addedOnly), splitPart: Boolean(component.splitPart), hitsPerUse: component.hitsPerUse, hitsDetail: component.hitsDetail, shotgun: component.shotgun || null, basis: component.basis, note: component.note, effectiveness: component.effectiveness, base: { min: component.min, max: component.max }, added: component.added, addedSources: component.addedSources, roll, increased, additional, combatAdditional, taken, maxOnly, minOnly, penetration, armourPenetration, armourPercent: armour.before, armourPenetrationPercent: armour.penetrationPercent, armourAfterPenetrationPercent: armour.after, increasedFactor, additionalFactor, townAdditionalFactor, takenFactor, penetrationPercent, resistancePercent, resistanceFactor, armourFactor, maxFactor, minFactor, handRolls, mainHandOnly: mainHandOnlyLines, townPerHit, townPerHitNoCrit, perHitBeforeTarget, perHit, perUse: perHit * component.hitsPerUse, townPerUse: townPerHit * component.hitsPerUse };
   });
 
+  if (typeRestriction) {
+    const removed = [...new Set(perType.filter((component) => removesType(typeRestriction, component.type)).map((component) => component.type))];
+    if (removed.length) notes.push(`${profile.name}: ${typeRestriction.label}: its ${removed.join(", ")} part${removed.length === 1 ? "" : "s"} deal${removed.length === 1 ? "s" : ""} 0${perType.some((component) => !removesType(typeRestriction, component.type)) ? `; the ${typeRestriction.type} parts (own, added or converted) stay` : "; nothing is left, so the skill deals no damage"}.`);
+  }
   // Hit events per use: one per strike (strikeHitsPerUse); damage still sums every typed part below.
   const hitsPerUse = strikeHitsPerUse(perType);
   const hitPerUse = perType.reduce((total, component) => total + component.perHit * component.hitsPerUse, 0);
@@ -1075,7 +1202,40 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
   const erosionPerUse = perType.filter((component) => component.type === "Erosion").reduce((total, component) => total + component.perHit * component.hitsPerUse, 0);
   const deteriorationFactor = deterioration && erosionPerUse > 0 ? deterioration.share * (deterioration.chancePercent / 100) * (1 + deterioration.extraStacks) * (1 + deterioration.increasedPercent / 100) * deterioration.additionalPercents.reduce((factor, value) => factor * (1 + value / 100), 1) : 0;
   const deteriorationPerUse = erosionPerUse * deteriorationFactor;
-  const perUse = hitPerUse + deteriorationPerUse;
+  // Spell Ripple (Ethereal Prism core; game affix 864131584): on a hit (trigger 1000030, tags Hit 5000003 + Spell 6001100 + Main
+  // Skill 6020000) a P1% chance (node 188) to cast the Pulse (node 1035, skill stone 210150), at most once per 0.03 s (node 206).
+  // The Pulse deals True Damage equal to P2% of the hit's damage. Read (user-supplied 2026-10-19, Google AI Mode answer, not tested in game): the
+  // hit's damage dealt to the dummy (after resistance, with its crit expectation), not mitigated again (True Damage, as for a
+  // Reap); one Pulse per qualifying hit event; the Pulse does not crit and is not itself counted as a hit of the skill.
+  // Pulses per second = min(chance × hits/s, 1 ÷ interval).
+  const rippleLine = skillTags.has("Spell") && setup?.role === "main" ? modifierTexts.map((line) => ({ line, match: normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim().match(SPELL_RIPPLE_LINE) })).find((item) => item.match) : null;
+  const spellRipple = rippleLine && hitPerUse > 0 && hitsPerUse > 0 && usesPerSecond > 0 ? (() => {
+    const chance = Math.min(1, Number(rippleLine.match[1]) / 100), percent = Number(rippleLine.match[2]) * (rippleLine.line.multiplier ?? 1), interval = Number(rippleLine.match[3]);
+    const hitsPerSecond = hitsPerUse * usesPerSecond;
+    const pulsesPerSecond = Math.min(chance * hitsPerSecond, interval > 0 ? 1 / interval : Infinity);
+    const pulsesPerUse = pulsesPerSecond / usesPerSecond;
+    const perPulse = percent / 100 * hitPerUse / hitsPerUse;
+    return { source: rippleLine.line.source, text: rippleLine.line.text, chancePercent: chance * 100, percent, intervalSeconds: interval, hitsPerSecond, pulsesPerSecond, capped: chance * hitsPerSecond > pulsesPerSecond + 1e-12, perPulse, perUse: perPulse * pulsesPerUse, dps: perPulse * pulsesPerSecond,
+      rule: `Spell Ripple: ${round(chance * 100)}% of ${round(hitsPerSecond)} hits/s${chance * hitsPerSecond > pulsesPerSecond + 1e-12 ? `, capped at 1 per ${interval} s` : ""} = ${round(pulsesPerSecond)} Pulses/s × ${percent}% of the average hit dealt (${round(hitPerUse / hitsPerUse)}) as True Damage (game affix 864131584; after resistance, not mitigated again, no crit: user-supplied 2026-10-19, not tested in game)` };
+  })() : null;
+  if (spellRipple) notes.push(spellRipple.rule);
+  // Sweeping Fury: on a hit of a Main Horizontal Projectile skill (not Sentry, Vertical, Channeled; not a hit of a ring copy) the
+  // Main Skill is cast again with its projectiles in a ring at -60% additional damage, at most once per 0.03 s (game affix
+  // 19348734; the cast checks the cooldown). Exactly 1 ring projectile hits a single boss per ring (user-supplied 2026-10-19,
+  // Google AI Mode answer, not tested in game): one extra projectile hit per ring at the average hit dealt × (1 − 60%). The
+  // ring hit is not counted as a hit of the skill (no on-hit chains from it).
+  const furyLine = setup?.role === "main" && skillTags.has("Projectile") && skillTags.has("Horizontal") && !skillTags.has("Vertical") && !channel && !sentry_ ? modifierTexts.map((line) => ({ line, match: normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim().match(SWEEPING_FURY_LINE) })).find((item) => item.match) : null;
+  const sweepingFury = furyLine && hitPerUse > 0 && hitsPerUse > 0 && usesPerSecond > 0 ? (() => {
+    const chance = Math.min(1, Number(furyLine.match[1]) / 100), additionalPercent = Number(furyLine.match[2]) * (furyLine.line.multiplier ?? 1), interval = Number(furyLine.match[3]);
+    const hitsPerSecond = hitsPerUse * usesPerSecond;
+    const caps = [interval > 0 ? 1 / interval : Infinity, effectiveCooldown > 0 ? 1 / effectiveCooldown : Infinity];
+    const ringsPerSecond = Math.min(chance * hitsPerSecond, ...caps);
+    const perRing = Math.max(0, 1 + additionalPercent / 100) * hitPerUse / hitsPerUse;
+    return { source: furyLine.line.source, text: furyLine.line.text, chancePercent: chance * 100, additionalPercent, intervalSeconds: interval, hitsPerSecond, ringsPerSecond, capped: chance * hitsPerSecond > ringsPerSecond + 1e-12, projectilesPerRingOnTarget: 1, perRing, perUse: perRing * ringsPerSecond / usesPerSecond, dps: perRing * ringsPerSecond,
+      rule: `Sweeping Fury: ${round(chance * 100)}% of ${round(hitsPerSecond)} hits/s${chance * hitsPerSecond > ringsPerSecond + 1e-12 ? `, capped at ${round(ringsPerSecond)} rings/s (${interval} s interval${effectiveCooldown > 0 ? `, ${round(effectiveCooldown)} s cooldown` : ""})` : ""} = ${round(ringsPerSecond)} ring casts/s × 1 ring projectile on the dummy × the average hit dealt (${round(hitPerUse / hitsPerUse)}) × ${round(1 + additionalPercent / 100)} (${additionalPercent}% additional; game affix 19348734; one ring projectile per ring on a single boss: user-supplied 2026-10-19, not tested in game)` };
+  })() : null;
+  if (sweepingFury) notes.push(sweepingFury.rule);
+  const perUse = hitPerUse + deteriorationPerUse + (spellRipple?.perUse || 0) + (sweepingFury?.perUse || 0);
   // Town / panel figure. For a channel skill the character panel reads one hit of the primary component per channel use
   // (Ring of Blades Lv16 runs 2026-10-11: panel 537 = 178.9 per hit × 3.003 uses/s, and × 1.245 with Quick Decision),
   // not the blades' landed hit rate; other skills read every hit of every component per use.
@@ -1137,14 +1297,17 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
   };
   return {
     key, name: profile.name, setupKey: setup?.setupKey, profile, skillHit: true, damageType: profile.damageType, dealtTypes,
+    // Extreme Coldness (src/damage-type-restriction.js): the typed parts this hit loses.
+    typeRestriction: typeRestriction ? { type: typeRestriction.type, label: typeRestriction.label, removedTypes: [...new Set(perType.filter((component) => removesType(typeRestriction, component.type)).map((component) => component.type))], keptTypes: [...new Set(perType.filter((component) => !removesType(typeRestriction, component.type)).map((component) => component.type))] } : null,
     level, baseLevel: base.level, effectiveness: primary?.effectiveness ?? base.effectiveness, components: perType, primary,
-    rate: { useTimeSeconds: baseUseTime, speedType, speedFactor, supportSpeedFactor, castFrequency: sentry ? { factor: castFrequencyFactor, sources: castFrequencyLines, weaponAttacksPerSecond: sentry.weaponAttackSpeed ? weaponAttacksPerSecond || 0 : null } : null, conversions: supports.conversion, addedAs: supports.addedAs, castSpeedSources: speedType === "attack-speed" ? [...(attackSpeed?.sources || []), ...supports.castSpeed, ...multistrikeSpeedLines, ...(ownSpeedLine ? [ownSpeedLine] : [])] : [...(castSpeed.sources || []), ...supports.castSpeed], attackSpeed: speedType === "attack-speed" ? attackSpeed : null, effectiveUseTimeSeconds: useTime, cooldownSeconds: timing?.cooldownSeconds || 0, charges: timing?.charges || 0, cooldownFactor, cooldownSources: cooldownRecovery, effectiveCooldownSeconds: effectiveCooldown, useModel: triggered ? `triggered (every ${round(triggerInterval)} s; provisional)` : terra ? `${terra.label || "terra"} (${terra.durationSeconds} s ${terra.label === "sentry" ? "sentry" : "ground effect"})` : release ? `channel and release (${channelState.maxStacks} stacks × ${round(useTime || 0)} s, ${round(intervalSeconds || 0)} s per cycle)` : channel ? `channel (${round(baseUseTime)} s interval, ${channelState.maxStacks} stacks held)` : rateModel ? `trigger rate (${round(usesPerSecond)} per second)` : profile.cycle ? "combo cycle" : "cast", terraDurationSeconds: terra?.durationSeconds ?? null, intervalSeconds, usesPerSecond, firstUseSeconds, hitsPerUse, hitsPerUseBasis: provisionalComponents.length ? "provisional" : "text", hitsPerUseNote: perType.filter((component) => !component.addedOnly).map((component) => `${component.label}: ${component.hitsDetail} — ${component.note}`).join(" · "), hitsPerSecond: usesPerSecond * hitsPerUse, source: timing?.source || null, tlidbCastSeconds: timing?.tlidbCastSeconds ?? null, demolisherShare, multistrike, spellBurst, rateComponents, extraProjectiles: falloffFactor && projectileTargets.length ? { count: extraProjectiles, falloff: falloffFactor } : null, trigger: triggered ? { source: triggerLine.source, text: triggerLine.text, intervalSeconds: triggerInterval, kind: triggerLine.kind, provisional: true } : null },
+    rate: { useTimeSeconds: baseUseTime, speedType, speedFactor, supportSpeedFactor, castFrequency: sentry ? { factor: castFrequencyFactor, sources: castFrequencyLines, weaponAttacksPerSecond: sentry.weaponAttackSpeed ? weaponAttacksPerSecond || 0 : null } : null, sentryQuantity: sentry ? { count: sentryQuantity, base: sentry.baseQuantity ?? 1, sources: sentryQuantityLines, deployCap: Number.isFinite(sentryDeployCap) ? sentryDeployCap : null } : null, conversions: supports.conversion, addedAs: supports.addedAs, castSpeedSources: speedType === "attack-speed" ? [...(attackSpeed?.sources || []), ...supports.castSpeed, ...multistrikeSpeedLines, ...(ownSpeedLine ? [ownSpeedLine] : [])] : [...(castSpeed.sources || []), ...supports.castSpeed], attackSpeed: speedType === "attack-speed" ? attackSpeed : null, effectiveUseTimeSeconds: useTime, cooldownSeconds: timing?.cooldownSeconds || 0, charges: timing?.charges || 0, cooldownFactor, cooldownSources: cooldownRecovery, effectiveCooldownSeconds: effectiveCooldown, useModel: triggered ? `triggered (every ${round(triggerInterval)} s; provisional)` : terra ? `${terra.label || "terra"} (${terra.durationSeconds} s ${terra.label === "sentry" ? "sentry" : "ground effect"})` : release ? `channel and release (${channelState.maxStacks} stacks × ${round(useTime || 0)} s, ${round(intervalSeconds || 0)} s per cycle)` : channel ? `channel (${round(baseUseTime)} s interval, ${channelState.maxStacks} stacks held)` : rateModel ? `trigger rate (${round(usesPerSecond)} per second)` : profile.cycle ? "combo cycle" : "cast", terraDurationSeconds: terra?.durationSeconds ?? null, intervalSeconds, usesPerSecond, firstUseSeconds, hitsPerUse, hitsPerUseBasis: provisionalComponents.length ? "provisional" : "text", hitsPerUseNote: perType.filter((component) => !component.addedOnly).map((component) => `${component.label}: ${component.hitsDetail} — ${component.note}`).join(" · "), hitsPerSecond: usesPerSecond * hitsPerUse, source: timing?.source || null, tlidbCastSeconds: timing?.tlidbCastSeconds ?? null, demolisherShare, multistrike, spellBurst, rateComponents, extraProjectiles: falloffFactor && projectileTargets.length ? { count: extraProjectiles, falloff: falloffFactor } : null, trigger: triggered ? { source: triggerLine.source, text: triggerLine.text, intervalSeconds: triggerInterval, kind: triggerLine.kind, provisional: true } : null },
     weapon: attackProfile ? { damageByType: weapon?.damageByType || {}, mainHand: weapon?.mainHand ? { name: weapon.mainHand.name, type: weapon.mainHand.type, hands: weapon.mainHand.hands } : null, dualWielding: Boolean(weapon?.dualWielding), dualWieldMode: weapon?.dualWieldMode || null, hands: weapon?.hands ? weapon.hands.map((hand) => ({ hand: hand.hand, name: hand.name, type: hand.type, share: hand.share, critRating: hand.critRating, attackSpeed: hand.attackSpeed })) : null, percents: base.weaponPercents } : null,
     crit: { ...crit, chancePercent: critChance * 100, townDamagePercent: townCritDamage * 100, combatDamagePercent: critDamage * 100, critOnlyFactor, critOnlySources, supportRating: supportCrit, factor: critFactor, townFactor: townCritFactor, hands: handCrits ?? crit.hands ?? null },
     town: { perUse: townPerUse, dps: townPerUse * usesPerSecond, perUseNoCrit: townPerUseNoCrit, dpsNoCrit: townPerUseNoCrit * usesPerSecond, hitsPerUse: strikeHitsPerUse(perType, townHits), formula: attackProfile ? "one hit of the primary component after the dummy's armour / resistance × attack speed × crit, without the Demolisher expectation (observed on the Hammer of Ash / Whirlwind / Split Shot Lv16 panels 2026-10-12: 298 / 358 / 472)" : channel ? "average hit × one hit per channel use × channel uses per second (cast-speed scaled); town layers only (Ring of Blades panel runs 2026-10-11: matched with the crit expectation, 537 = 178.9 × 3.003)" : "average hit (with crit) × hits per use × uses per second; town layers only (hypothesis for the character panel's skill DPS)" },
     combat: { perUse, perUseBeforeTarget, dps, dpsBeforeTarget: perUseBeforeTarget * usesPerSecond, fiveSecondAverageDps: windowDps(windows[0] ?? 5), twentySecondAverageDps: windowDps(windows[1] ?? 20) },
     steps: primary ? { increasedFactor: primary.increasedFactor, additionalFactor: primary.additionalFactor, critFactor, takenFactor: primary.takenFactor, armourFactor: primary.armourFactor, armourPercent: primary.armourPercent, armourPenetrationPercent: primary.armourPenetrationPercent, resistanceFactor: primary.resistanceFactor, resistancePercent: primary.resistancePercent, penetrationPercent: primary.penetrationPercent, maxFactor: primary.maxFactor, minFactor: primary.minFactor } : null,
     builtInReaping, ailmentInputs, channel: channelState,
+    spellRipple, sweepingFury, projectileLimit: Number.isFinite(projectileLimit) ? { limit: projectileLimit, baseProjectiles, extraBefore: uncappedExtraProjectiles, extraAfter: extraProjectiles, capped: extraProjectiles < uncappedExtraProjectiles } : null,
     deterioration: deteriorationPerUse > 0 ? { source: deterioration.source, erosionPerUse, factor: deteriorationFactor, perUse: deteriorationPerUse, dps: deteriorationPerUse * usesPerSecond, rule: "60% of each Erosion hit dealt, as True Damage when the 1 s stack ends (manual); chance × (1 + extra stacks) × (1 + increased) × Π(1 + additional); the delay is not in the windows (provisional)" } : null,
     luckyDamageRolls,
     ledger: {

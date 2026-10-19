@@ -1,3 +1,5 @@
+import { setupBoardTab } from "./magus-active-slot.js";
+
 const keyFor = (setup) => setup?.setupKey || setup?.instanceId || setup?.name || "";
 
 // The user's board: each row holds the user's own setup. A setup a hero trait set aside (src/trait-board-grants.js
@@ -15,7 +17,9 @@ export function skillBoardRows(setups, savedSlots, tab = "skills", { traitGrants
 }
 
 function userBoardRows(setups, savedSlots, tab, count) {
-  const enabled = setups.filter((setup) => (setup.enabled || setup.traitReplaced) && !setup.traitGranted && (tab === "auras" ? setup.role === "aura" : setup.role !== "aura"));
+  // A setup set aside by a board rule (`slotInactive`: src/magus-active-slot.js, a Spirit Magus in an active slot without Iris)
+  // keeps its row too; setupBoardTab puts an Iris active-slot Magus (`boardTab: "skills"`) on the skills tab.
+  const enabled = setups.filter((setup) => (setup.enabled || setup.traitReplaced || setup.slotInactive) && !setup.traitGranted && setupBoardTab(setup) === (tab === "auras" ? "auras" : "skills"));
   const saved = savedSlots?.[tab];
   if (!Array.isArray(saved) || !saved.length) return Array.from({length:count},(_,index)=>enabled[index] || null);
   const byKey = new Map(enabled.map((setup)=>[keyFor(setup),setup]));

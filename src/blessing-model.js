@@ -3,6 +3,7 @@ import { effectiveGearModifierTexts } from "./engine.js";
 import { prismAreaBounds, prismNodeAffixes } from "./prism-crafting.js";
 import { normalizePercentageText } from "./percentage-text.js";
 import { ailmentStateNames } from "./enemy-ailments.js";
+import { withoutSlateCoreName } from "./granted-core-lines.js";
 
 export const blessingNames = ["Tenacity", "Focus", "Agility"];
 
@@ -47,6 +48,11 @@ export function parseBlessingModifier(text) {
   // (residual batch): each stack adds that flat Physical Damage instead of Focus's +5% additional damage.
   match = raw.match(/Changes the base effect of (Tenacity|Focus|Agility) Blessing to: Adds Physical Damage equal to ([\d.]+)% of Max Mana to Attacks and Spells$/i);
   if (match) return { kind: "baseChange", name: match[1], addedPhysicalPercentOfMaxMana: Number(match[2]), text: raw };
+  // Sacrifice (core audit batch B2): "Changes the base effect of Tenacity Blessing to: +8% additional damage" (game affix 742576384,
+  // node 625: buff 340 → mode 2, whose record carries no values). Read as +X% additional damage per stack, all stacks in one
+  // additional term like the other per-stack base effects (core audit Q1, user-confirmed 2026-10-18).
+  match = raw.match(/Changes the base effect of (Tenacity|Focus|Agility) Blessing to: \+([\d.]+)% additional damage$/i);
+  if (match) return { kind: "baseChange", name: match[1], additionalDamagePerStack: Number(match[2]), text: raw };
   match = raw.match(/^Max stacks of each Blessing: (\d+)$/i);
   if (match) return { kind: "eachMax", names: [...blessingNames], value: Number(match[1]), text: raw };
   match = clean.match(new RegExp(`^([+-][\\d.]+)% (additional )?${NAME_LIST} Effect$`, "i"));
@@ -119,7 +125,7 @@ const statusKeys = (text) => {
   return [...new Set([clean, clean.replace(/^\[[^\]]+\]\s*/, ""), colon > 0 ? clean.slice(colon + 2) : clean])];
 };
 
-export function calculateBlessings({ mobilityUsed = false, tangleCasts = false, pactState = {}, equipment, talents = [], slates = [], talentState = {}, barrierSources = [], hasReaping = false, canUseNonMain = false, block, canHit = false, canCrit = false, moving = false, enemyAilments = [], igniteOnTarget = false, spellHitActive = true, extraLines = [], hitRecently = true, stackUsers = new Set(), stackUserTexts = [] } = {}) {
+export function calculateBlessings({ mobilityUsed = false, tangleCasts = false, pactState = {}, equipment, talents = [], slates = [], talentState = {}, barrierSources = [], hasReaping = false, canUseNonMain = false, block, canHit = false, canCrit = false, moving = false, enemyAilments = [], igniteOnTarget = false, spellHitActive = true, extraLines = [], hitRecently = true, stackUsers = new Set(), stackUserTexts = [], stackOverrides = {} , fillShare = 0, fillSource = null} = {}) {
   const result = Object.fromEntries(blessingNames.map(name => [name, { name, baseMax: 4, maxStacks: 4, stacks: 0, capSources: [], gainSources: [], effectSources: [], unsupported: [] }]));
   const replacements = [], eachMaxSources = [], perStackLines = [];
   const context = { canUseNonMain, barrierSources, hasReaping, block, canCrit, canHit, moving, enemyAilments, igniteOnTarget, hitRecently, mobilityUsed, tangleCasts };
@@ -178,7 +184,7 @@ export function calculateBlessings({ mobilityUsed = false, tangleCasts = false, 
       }
     }
   }
-  for (const slate of slates) for (const text of [...(slate.fixed || []), ...(slate.brands || []), ...(slate.copiedTalents || [])]) add(text, slate.name);
+  for (const slate of slates) for (const text of [...(slate.fixed || []), ...(slate.brands || []), ...(slate.copiedTalents || [])]) add(withoutSlateCoreName(text), slate.name);
   for (const line of activeKismetEffects(pactState)) add(line.text, line.source);
   // Conditional Blessing lines the shared resolver made active (src/line-effects.js; e.g. Deceiver's Might "+1 to Max
   // Focus Blessing Stacks if you have landed a Critical Strike or Reaped in the last 8s").
@@ -198,17 +204,25 @@ export function calculateBlessings({ mobilityUsed = false, tangleCasts = false, 
     blessing.maxStacks = Math.max(0, Math.floor(blessing.maxStacks));
     const cannotGain = blessing.unsupported.some(source => new RegExp(`(?:Unable to|Cannot) gain ${blessing.name} Blessing`, "i").test(source.text));
     blessing.stacks = !cannotGain && blessing.gainSources.some(source => source.available) ? blessing.maxStacks : 0;
+    // Miraculous Gain (Miraculous Touch; src/elixir-model.js miraculousGainState, user-supplied 2026-10-19): the Blessings sit at max
+    // for `fillShare` of the time; the time-averaged stacks fill the gap to max by that share.
+    if (fillShare > 0 && !cannotGain && blessing.stacks < blessing.maxStacks) { blessing.miraculousGain = { share: fillShare, from: blessing.stacks, source: fillSource }; blessing.stacks += (blessing.maxStacks - blessing.stacks) * fillShare; }
+    // Stacks a consumption core spends (core audit batch B3, src/consumption-procs.js: Thunderclap, Waiting Attack): the held
+    // average it leaves (Q5 / Q14, user-confirmed 2026-10-18).
+    const override = stackOverrides[blessing.name];
+    if (override && blessing.stacks > override.stacks) { blessing.heldBeforeConsumption = blessing.stacks; blessing.stacks = Math.max(0, override.stacks); blessing.consumedBy = override.reason; }
     // A named base-effect change without a parsed replacement stays unmodeled: never apply the original effect too.
     blessing.baseReplaced = Boolean(replacement) || Boolean(blessing.baseChange) || blessing.unsupported.some(source => /Changes the base effect/i.test(source.text));
     const increased = blessing.effectSources.filter(line => !line.additional).reduce((sum, line) => sum + line.value, 0);
     const additional = blessing.effectSources.filter(line => line.additional).reduce((product, line) => product * (1 + line.value / 100), 1);
     blessing.effectMultiplier = Math.max(0, (1 + increased / 100) * additional);
-    const base = replacement ? { additionalDamagePerStack: replacement.additionalDamagePerStack, attackAndCastSpeedPerStack: 0 } : blessing.baseReplaced ? { additionalDamagePerStack: 0, attackAndCastSpeedPerStack: 0 } : blessingBaseEffects[blessing.name];
-    blessing.baseEffect = { ...base, source: replacement ? `${replacement.source} · Divine Grace` : blessing.baseReplaced ? "Unmodeled base-effect change" : "Base Blessing effect" };
+    const changedDamage = !replacement && blessing.baseChange?.additionalDamagePerStack ? blessing.baseChange : null;
+    const base = replacement ? { additionalDamagePerStack: replacement.additionalDamagePerStack, attackAndCastSpeedPerStack: 0 } : changedDamage ? { additionalDamagePerStack: changedDamage.additionalDamagePerStack, attackAndCastSpeedPerStack: 0 } : blessing.baseReplaced ? { additionalDamagePerStack: 0, attackAndCastSpeedPerStack: 0 } : blessingBaseEffects[blessing.name];
+    blessing.baseEffect = { ...base, source: replacement ? `${replacement.source} · Divine Grace` : changedDamage ? `${changedDamage.source} · changed base effect (+${changedDamage.additionalDamagePerStack}% additional damage per stack, one additional term; user-confirmed 2026-10-18)` : blessing.baseReplaced ? "Unmodeled base-effect change" : "Base Blessing effect" };
     blessing.additionalDamagePercent = blessing.stacks * base.additionalDamagePerStack * blessing.effectMultiplier;
     blessing.attackAndCastSpeedPercent = blessing.stacks * base.attackAndCastSpeedPerStack * blessing.effectMultiplier;
     // The changed base effect: % of Max Mana as added Physical per stack (src/planner.js turns it into an added-flat line).
-    blessing.addedPhysicalPercentOfMaxMana = blessing.baseChange && !replacement ? blessing.stacks * blessing.baseChange.addedPhysicalPercentOfMaxMana * blessing.effectMultiplier : 0;
+    blessing.addedPhysicalPercentOfMaxMana = blessing.baseChange && !replacement ? blessing.stacks * (blessing.baseChange.addedPhysicalPercentOfMaxMana || 0) * blessing.effectMultiplier : 0;
   }
   const damageSources = [], increasedSources = [];
   for (const blessing of Object.values(result)) if (blessing.additionalDamagePercent) damageSources.push({ source: `${blessing.name} Blessing${replacement ? " (Divine Grace)" : ""}`, value: blessing.additionalDamagePercent });
@@ -235,7 +249,8 @@ export function calculateBlessings({ mobilityUsed = false, tangleCasts = false, 
     // and any other "per stack of … Blessing" line in the build (Reaping, Feline Steps).
     const stacksUsed = Boolean(blessing.baseEffect.additionalDamagePerStack || blessing.baseEffect.attackAndCastSpeedPerStack) || perStackLines.some((line) => line.names.includes(blessing.name) && (!line.skillTags || spellHitActive))
       || stackUsers.has(blessing.name) || stackUserTexts.some((text) => new RegExp(`(?:per|for each|for every) stack of (?:any |each )?(?:${blessing.name} )?Blessing`, "i").test(text));
-    for (const line of blessing.gainSources) mark(line.text, line.available && blessing.stacks ? (stacksUsed ? "In calc" : "No DPS effect") : /not on the dummy/.test(line.condition) ? "Not on dummy" : "Inactive");
+    // (Stacks a consumption core spends still feed it: the gain line counts while the stacks were held before consumption.)
+    for (const line of blessing.gainSources) mark(line.text, line.available && (blessing.stacks || blessing.heldBeforeConsumption) ? (stacksUsed || blessing.consumedBy ? "In calc" : "No DPS effect") : /not on the dummy/.test(line.condition) ? "Not on dummy" : "Inactive");
     for (const line of blessing.capSources) mark(line.text, !blessing.stacks || line.overriddenBy ? "Inactive" : stacksUsed ? "In calc" : "No DPS effect");
     for (const line of blessing.effectSources) mark(line.text, blessing.stacks && (blessing.baseEffect.additionalDamagePerStack || blessing.baseEffect.attackAndCastSpeedPerStack) ? "In calc" : "Inactive");
     // "Unable to gain Agility Blessing" (Varagon Shroud; gear uniques round 2): the stacks are held at 0 above. It changes damage
@@ -245,6 +260,9 @@ export function calculateBlessings({ mobilityUsed = false, tangleCasts = false, 
     }
   }
   for (const line of perStackLines) mark(line.clause, line.stacks && (!line.skillTags || spellHitActive) ? "In calc" : "Inactive");
+  // A changed base effect that is additional damage per stack (Sacrifice): In calc while the Blessing holds stacks (Divine Grace
+  // replaces every base effect, so the change then does nothing).
+  for (const blessing of Object.values(result)) if (blessing.baseChange?.additionalDamagePerStack) mark(blessing.baseChange.text, blessing.stacks && !replacement ? "In calc" : "Inactive");
   const anyStacks = Object.values(result).some(blessing => blessing.stacks);
   for (const line of replacements) mark(line.text, anyStacks ? "In calc" : "Inactive");
   // "Max stacks of each Blessing: N" only acts with Divine Grace (the hard cap above); on its own it changes nothing, and

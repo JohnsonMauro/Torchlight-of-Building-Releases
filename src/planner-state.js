@@ -98,8 +98,9 @@ export const defaultPlannerState = {
   skills: { setupOrder: null, boardSlots: {skills:[],auras:[]}, supportOrder: {}, setupEnabled: {}, skillLevels: {}, supportEnabled: {}, supportLevels: {}, specialSupportConfigs: {}, customSupports: {}, customSetups: [] },
   equippedSlateIds: null,
   slates: { geometryVersion: 4, placements: null, parked: {}, inventory: [] },
-  // The build's one follower (2026-10-15; src/follower-model.js): its id, rarity and one Tartarus Skill name (or null) per
-  // unlocked slot. Not part of the hero loadouts: the follower stays when the hero changes.
+  // The build's one follower (2026-10-15; src/follower-model.js): its id, rarity and one Tartarus Skill per unlocked slot (its
+  // name, or { name, tier, affixes } once support affixes are chosen, 2026-10-19; null when empty). Not part of the hero
+  // loadouts: the follower stays when the hero changes.
   followers: defaultFollowerState(),
   talentRanks: {},
   talents: {

@@ -153,6 +153,9 @@ const ATTACK_SPEED_DUAL = new RegExp(`^${NUM}% (additional )?Attack Speed while 
 const MAIN_HAND_SPEED = new RegExp(`^${NUM}% Main-Hand Weapon Attack Speed$`, "i");
 const CRIT_FLAT = new RegExp(`^\\+${NUM} (?:Attack|Attack and Spell) Critical Strike Rating$`, "i");
 const CRIT_PERCENT = new RegExp(`^${NUM}% (?:Attack |Attack and Spell )?Critical Strike Rating$`, "i");
+// "+X% additional Critical Strike Rating" (Cohesion's next-Main-Skill buff × its share, core audit batch B3; game node 624 on
+// attr 4802): its own multiplier on the rating after the increased layer.
+const CRIT_ADDITIONAL = new RegExp(`^${NUM}% additional (?:Attack |Attack and Spell )?Critical Strike Rating$`, "i");
 const CRIT_MAIN_HAND = new RegExp(`^${NUM}% Critical Strike Rating for the Main-Hand Weapon$`, "i");
 const CRIT_TWO_HANDED = new RegExp(`^${NUM}% Attack Critical Strike Rating when holding a Two-Handed Weapon$`, "i");
 const ADDED_ATTACKS = new RegExp(`^Adds ${NUM}\\s*[-–]\\s*${NUM} (Physical|Fire|Cold|Lightning|Erosion) Damage to (?:Attacks|Attacks and Spells|your Attacks and Spells|your and your Minions['’] Attacks and Spells)$`, "i");
@@ -183,6 +186,7 @@ export function classifyWeaponAttackLine(text) {
   if ((match = line.match(CRIT_FLAT))) return { kind: "critFlat", value: number(match[1]) };
   if ((match = line.match(CRIT_MAIN_HAND))) return { kind: "critMainHand", value: number(match[1]) };
   if ((match = line.match(CRIT_TWO_HANDED))) return { kind: "critTwoHanded", value: number(match[1]) };
+  if ((match = line.match(CRIT_ADDITIONAL))) return { kind: "critAdditional", value: number(match[1]) };
   if ((match = line.match(CRIT_PERCENT))) return /Spell Critical/i.test(line) && !/Attack and Spell/i.test(line) ? null : { kind: "critPercent", value: number(match[1]) };
   if ((match = line.match(ADDED_ATTACKS))) return { kind: "addedAttacks", type: match[3][0].toUpperCase() + match[3].slice(1).toLowerCase(), min: number(match[1]), max: number(match[2]), value: (number(match[1]) + number(match[2])) / 2 };
   if ((match = line.match(ADDED_MAIN_HAND))) return { kind: "addedMainHand", type: match[3][0].toUpperCase() + match[3].slice(1).toLowerCase(), min: number(match[1]), max: number(match[2]), value: (number(match[1]) + number(match[2])) / 2 };
@@ -232,6 +236,7 @@ export function calculateWeaponAttack({ equipment, disabledSlots = [], modifierT
       case "mainHandSpeed": mainHandSpeedPercent += value; break;
       case "critFlat": lines.crit.push({ ...entry, layer: "flat" }); break;
       case "critPercent": lines.crit.push({ ...entry, layer: "increased" }); break;
+      case "critAdditional": lines.crit.push({ ...entry, layer: "additional" }); break;
       case "critMainHand": mainHandCritPercent += value; break;
       case "critTwoHanded": if (twoHanded) lines.crit.push({ ...entry, layer: "increased", condition: "holding a Two-Handed Weapon" }); break;
       case "addedAttacks": lines.added.push({ ...entry, type: parsed.type, min: parsed.min * (line.multiplier ?? 1), max: parsed.max * (line.multiplier ?? 1) }); break;
@@ -318,15 +323,16 @@ export function calculateWeaponAttack({ equipment, disabledSlots = [], modifierT
   const weaponRating = mode === "alternate" && mainHand?.critRating != null && offHand?.critRating != null ? (mainHand.critRating * (1 + mainHandCritPercent / 100) + offHand.critRating) / 2 : mode === "off-hand" ? offHand?.critRating || 0 : (mainHand?.critRating || 0) * (1 + mainHandCritPercent / 100);
   const flatRating = lines.crit.filter((line) => line.layer === "flat").reduce((sum, line) => sum + line.value, 0);
   const increasedRatingPercent = lines.crit.filter((line) => line.layer === "increased").reduce((sum, line) => sum + line.value, 0);
-  const rating = Math.max(0, (weaponRating + flatRating) * Math.max(0, 1 + increasedRatingPercent / 100));
-  const crit = { weaponRating, flatRating, increasedRatingPercent, rating, chancePercent: Math.min(100, rating / 100), sources: lines.crit, rule: "100 Critical Strike Rating = 1% chance (the spell crit model's observed rule); increased Attack Critical Strike Rating multiplies weapon + flat rating" };
+  const additionalRatingFactor = lines.crit.filter((line) => line.layer === "additional").reduce((product, line) => product * Math.max(0, 1 + line.value / 100), 1);
+  const rating = Math.max(0, (weaponRating + flatRating) * Math.max(0, 1 + increasedRatingPercent / 100) * additionalRatingFactor);
+  const crit = { weaponRating, flatRating, increasedRatingPercent, additionalRatingFactor, rating, chancePercent: Math.min(100, rating / 100), sources: lines.crit, rule: "100 Critical Strike Rating = 1% chance (the spell crit model's observed rule); increased Attack Critical Strike Rating multiplies weapon + flat rating" };
   // Alternate dual wielding (user-confirmed 2026-10-14): each swing uses its own hand's local damage, crit rating and speed;
   // the game does not average the two weapons' crit. Each hand makes half the swings (the alternating harmonic rate above).
   // `hands` carries the per-hand inputs; `crit.hands` each hand's rating with the build-wide flat and increased lines, and
   // the swing-average chance (each hand capped on its own) replaces the averaged-rating chance.
   let hands = null;
   if (mode === "alternate") {
-    const handRating = (weaponRatingValue) => Math.max(0, (weaponRatingValue + flatRating) * Math.max(0, 1 + increasedRatingPercent / 100));
+    const handRating = (weaponRatingValue) => Math.max(0, (weaponRatingValue + flatRating) * Math.max(0, 1 + increasedRatingPercent / 100) * additionalRatingFactor);
     hands = [
       { hand: "main", name: mainHand.name, type: mainHand.type, share: 0.5, damageByType: mainDamage, critRating: (mainHand.critRating || 0) * (1 + mainHandCritPercent / 100), attackSpeed: mainSpeed },
       { hand: "off", name: offHand.name, type: offHand.type, share: 0.5, damageByType: offDamage, critRating: offHand.critRating || 0, attackSpeed: offSpeed }

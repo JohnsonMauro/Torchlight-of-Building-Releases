@@ -4,6 +4,11 @@ import { level85DummyDefenses, armourMitigationPercent } from "./target-hit-miti
 import { MINION_PROFILES } from "./minion-profiles.js";
 import { supportEffectsFor } from "./support-effects.js";
 import { classifyHitLine, scopeApplies } from "./skill-hit-lines.js";
+import { multistrikeSequence } from "./skill-hit-model.js";
+import { skillTimingSs13 } from "./data/skills/skill-timing-ss13.generated.js";
+
+import { BOND } from "./minion-cores.js";
+
 
 // Minion damage path (2026-10-11; research/base-damage-skills-2026-10-11.md). Minions are independent of the player:
 // "Only effects that explicitly increase Minion stats will be applied to Minions" (manual rule 1001011821), so this
@@ -45,12 +50,19 @@ const PATTERNS = [
   [new RegExp(`^${NUM}% Minion Damage$`, "i"), (m) => ({ kind: "increased", value: number(m[1]) })],
   [new RegExp(`^${NUM}% (?:damage and|Damage and) Minion Damage$`, "i"), (m) => ({ kind: "increased", value: number(m[1]) })],
   [new RegExp(`^${NUM}% additional Minion Damage$`, "i"), (m) => ({ kind: "additional", value: number(m[1]) })],
+  // Core audit B7 (2026-10-18): typed Minion copies of player lines (Frozen Lotus "+25% additional Minion Cold Damage", game affix
+  // 634876544 attr 5109; Brutality "+30% additional Minion Physical Damage", 174535344 attr 5002; both additional, Minion tag).
+  [new RegExp(`^${NUM}% additional Minion ${TYPE} Damage$`, "i"), (m) => ({ kind: "additional", value: number(m[1]), type: m[2] })],
   [new RegExp(`^${NUM}% additional damage(?: and ${NUM}% additional Minion Damage)$`, "i"), (m) => ({ kind: "additional", value: number(m[2]) })],
   [new RegExp(`^${NUM}% additional damage; ${NUM}% additional Minion Damage$`, "i"), (m) => ({ kind: "additional", value: number(m[2]) })],
   [new RegExp(`^${NUM}% ${TYPE} Damage for (?:you and your )?Minions$`, "i"), (m) => ({ kind: "increased", value: number(m[1]), type: m[2] })],
   [new RegExp(`^${NUM}% additional ${TYPE} Damage for (?:you and your )?Minions$`, "i"), (m) => ({ kind: "additional", value: number(m[1]), type: m[2] })],
   [new RegExp(`^${NUM}% additional damage for (?:you and your )?Minions$`, "i"), (m) => ({ kind: "additional", value: number(m[1]) })],
   [new RegExp(`^${NUM}% additional (?:Hit )?Damage for Minions$`, "i"), (m) => ({ kind: "additional", value: number(m[1]) })],
+  // Skill-tag scoped Minion lines (core audit B7): "+X% additional Area Damage for Minions" (Focused Strike's Minion copy, derived
+  // by src/line-conditions.js), "+X% additional Spell Damage for Minions" (Isomorphic Arms' wand clause, game affix 357249664: attr
+  // 5719 with tags Minion + Spell). They reach the Minion skills that carry the tag (TLIDB skill tags in src/minion-profiles.js).
+  [new RegExp(`^${NUM}% additional (Spell|Attack|Area|Melee|Projectile|Ranged) Damage for Minions$`, "i"), (m) => ({ kind: "additional", value: number(m[1]), skillTag: m[2][0].toUpperCase() + m[2].slice(1).toLowerCase() })],
   // Support lines on the summon setup (Servant Damage, a summon Magnificent / Noble star or roll, Activation Medium: Minion).
   [new RegExp(`^${NUM}% additional damage for Minions summoned by the supported skill$`, "i"), (m) => ({ kind: "additional", value: number(m[1]) })],
   // Spirit Magus skill lines (minion family "spirit-magus" only; the engine drops them for other Minions).
@@ -61,6 +73,9 @@ const PATTERNS = [
   [new RegExp(`^${NUM} Spirit Magi Critical Strike Rating$`, "i"), (m) => ({ kind: "critRating", value: number(m[1]), flat: true, spiritMagus: true })],
   [new RegExp(`^${NUM}% additional Attack and Cast Speed for Minions(?: summoned by the supported skill)?$`, "i"), (m) => ({ kind: "speed", value: number(m[1]), additional: true, attack: true, cast: true })],
   [new RegExp(`^${NUM}% Attack and Cast Speed for Minions(?: summoned by the supported skill)?$`, "i"), (m) => ({ kind: "speed", value: number(m[1]), additional: false, attack: true, cast: true })],
+  // Battle Trumpet (core audit B7): "-10% additional Minion Attack and Cast Speed" (game affix 96256: attr 6001 / 6002 additional,
+  // Minion tag).
+  [new RegExp(`^${NUM}% (?:additional )?Minion Attack and Cast Speed$`, "i"), (m, text) => ({ kind: "speed", value: number(m[1]), additional: /additional/i.test(text), attack: true, cast: true })],
   [new RegExp(`^${NUM}% (?:additional )?Minion Attack Speed$`, "i"), (m, text) => ({ kind: "speed", value: number(m[1]), additional: /additional/i.test(text), attack: true, cast: false })],
   [new RegExp(`^${NUM}% (?:additional )?Minion Cast Speed$`, "i"), (m, text) => ({ kind: "speed", value: number(m[1]), additional: /additional/i.test(text), attack: false, cast: true })],
   [new RegExp(`^${NUM}% Attack Speed for Minions(?: summoned by the supported skill)?$`, "i"), (m) => ({ kind: "speed", value: number(m[1]), additional: false, attack: true, cast: false })],
@@ -73,6 +88,13 @@ const PATTERNS = [
   // "+X% Armor DMG Mitigation Penetration for Minions" (game affix 467574 → char field 2006247 on the Minions): points off the
   // dummy's armour mitigation of Minion hits (src/target-hit-mitigation.js armourMitigationPercent).
   [new RegExp(`^${NUM}% Armor DMG Mitigation Penetration for Minions$`, "i"), (m) => ({ kind: "armourPenetration", value: number(m[1]) })],
+  // Minion Multistrike (core audit B7; game affixes 314249 "+X% Minion Multistrike chance" field 2006240 on Minions, 868709
+  // "Minions' Multistrikes deal X% increasing damage" attr 6350 flat on Minions (Quick Advancement's copy), 942960896 "The damage of
+  // Minion Multistrikes increments by an additional X%" attr 6350 additional). Read on Minion Attack skills like the player's
+  // Multistrike (src/skill-hit-model.js multistrikeSequence).
+  [new RegExp(`^${NUM}% Minion Multistrike chance$`, "i"), (m) => ({ kind: "multistrikeChance", value: number(m[1]) })],
+  [new RegExp(`^Minions' Multistrikes deal ${NUM}% increasing damage$`, "i"), (m) => ({ kind: "multistrikeIncrement", value: number(m[1]) })],
+  [new RegExp(`^The damage of Minion Multistrikes increments by an additional ${NUM}%$`, "i"), (m) => ({ kind: "multistrikeIncrementAdditional", value: number(m[1]) })],
   [new RegExp(`^${NUM}% ${TYPE} Penetration for Minions$`, "i"), (m) => ({ kind: "penetration", value: number(m[1]), types: m[2] === "Elemental" ? ELEMENTAL : [m[2]] })],
   [new RegExp(`^Minion Damage penetrates ${NUM}% Elemental Resistance$`, "i"), (m) => ({ kind: "penetration", value: number(m[1]), types: ELEMENTAL })],
   [new RegExp(`^Adds ${NUM}\\s*[–-]\\s*${NUM} (Physical|Fire|Cold|Lightning|Erosion) Damage to (?:your and your Minions['’] Attacks and Spells|Minions)$`, "i"), (m) => ({ kind: "added", min: number(m[1]), max: number(m[2]), type: m[3] })]
@@ -95,19 +117,36 @@ const GROWTH_PER_100 = /^For every 100 Growth a Spirit Magus has, it deals \+(\d
 const ENHANCED_CHANCE = /^\+?(\d+(?:\.\d+)?)% chance for Spirit Magi to use an Enhanced Skill$/i;
 const ENHANCED_FIXED = /chance for Spirit Magi to use an Enhanced Skill is fixed at (\d+(?:\.\d+)?)%/i;
 const GROWTH_MENTION = /\bGrowth\b|Spirit Mag(?:us|i)|Enhanced Skill|Nourishment|Full Bloom/i;
+// Talons of Abyss (core audit B7; game affix 375621824: Growth → attr 60011 / 60021 additional on the Ultimate tag 6000403): the
+// Ultimate is cast only in Full Bloom and stays out of the cycle (its cooldown is unpublished), so the line is read, not applied.
+const GROWTH_ULTIMATE_SPEED = /^For every (\d+) Growth a Spirit Magus has, it \+?(\d+(?:\.\d+)?)% additional Ultimate Attack and Cast Speed$/i;
+// Circle of Life (Ethereal Prism core; game affix 875331904): every 1 s, while a Spirit Magus is out (node 300: Spirit Magus count
+// > 0), the player's Growth (resource 12, buff 460) is set to P1% of the nearest Spirit Magus's Growth; "For every P2 Growth,
+// +P3% additional damage for Spirit Magi" reads the player's Growth. Its "Return Speed equal to Command" decay is not applied
+// (Command is not modeled); the Physique and Skill Area parts change no dummy damage.
+const CIRCLE_GAIN = /^Gains Growth equal to (\d+(?:\.\d+)?)% of the nearest Spirit Magus every 1 ?s(?:, and Growth gains Return Speed equal to Command)?$/i;
+const CIRCLE_DAMAGE = /^For every (\d+(?:\.\d+)?) Growth, \+?(\d+(?:\.\d+)?)% additional damage for Spirit Magi(?:, .+)?$/i;
+// Source (core audit B7; game affix 931211264: attr 3401 "inflicted status effect" additional with the Empower tag 5100311, on the
+// Spirit Magi): their Empower Skill's buff (Euphoria) is stronger; read as a multiplier on every value of that buff (provisional).
+const EMPOWER_EFFECT = /^Spirit Magi \+?([+-]?\d+(?:\.\d+)?)% (additional )?Empower Skill Effect$/i;
 
 /** Spirit Magus Growth, Stage and Enhanced-skill chance from the build's lines (manual rules 1001012024, 1001012029, 1001012031). */
 export function spiritMagusState(lines = []) {
-  const initial = [], perGrowth = [], per100 = [], chance = [], unread = [];
+  const initial = [], perGrowth = [], per100 = [], chance = [], unread = [], ultimateSpeed = [], circleGain = [], circleDamage = [], empowerEffect = [];
   let fixedChance = null;
   for (const line of lines) {
     const multiplier = line.multiplier ?? 1;
     for (const raw of String(line.text || "").split(/\r?\n/)) {
-      const text = clean(raw);
+      // An Ethereal Prism core's clause carries its "[Base]" label (src/modifier-texts.js).
+      const text = clean(raw).replace(/^\[[^\]]+\]\s*/, "");
       if (!text) continue;
       const entry = { source: line.source, text, origin: line.origin || "gear" };
       let match;
-      if ((match = text.match(GROWTH_INITIAL))) initial.push({ ...entry, value: number(match[1]) * multiplier });
+      if ((match = text.match(GROWTH_ULTIMATE_SPEED))) ultimateSpeed.push({ ...entry, per: number(match[1]), percent: number(match[2]) * multiplier });
+      else if ((match = text.match(CIRCLE_GAIN))) circleGain.push({ ...entry, percent: number(match[1]) * multiplier });
+      else if ((match = text.match(CIRCLE_DAMAGE))) circleDamage.push({ ...entry, per: number(match[1]), percent: number(match[2]) * multiplier });
+      else if ((match = text.match(EMPOWER_EFFECT))) empowerEffect.push({ ...entry, value: number(match[1]) * multiplier, additional: Boolean(match[2]) });
+      else if ((match = text.match(GROWTH_INITIAL))) initial.push({ ...entry, value: number(match[1]) * multiplier });
       else if ((match = text.match(GROWTH_PER))) perGrowth.push({ ...entry, per: number(match[1]), percent: number(match[2]) * multiplier, cap: match[3] != null ? number(match[3]) * multiplier : null });
       else if ((match = text.match(GROWTH_PER_100))) per100.push({ ...entry, percent: number(match[1]) * multiplier, speedPercent: number(match[2]) * multiplier });
       else if ((match = text.match(ENHANCED_CHANCE))) chance.push({ ...entry, value: number(match[1]) * multiplier });
@@ -117,16 +156,27 @@ export function spiritMagusState(lines = []) {
   }
   const growth = 100 + sum(initial);
   const stage = Math.max(1, Math.min(5, Math.floor(growth / 100)));
+  // Circle of Life: the player's Growth = P1% of the nearest Magus's Growth (every modeled Magus has the same Growth), read right
+  // after the 1 s update (no Return-Speed decay: 80% of the nearest Magus's Growth: user-supplied 2026-10-19, Google AI Mode answer, not tested in game).
+  const circleGainPercent = circleGain.length ? Math.max(...circleGain.map((line) => line.percent)) : 0;
+  const playerGrowth = growth * circleGainPercent / 100;
+  const circle = circleGain.length ? circleDamage.map((line) => ({ source: line.source, text: `${line.text} (player Growth ${round(playerGrowth)} = ${circleGainPercent}% of the Magus's ${growth}; Circle of Life, provisional)`, origin: line.origin, value: line.percent * Math.floor(playerGrowth / line.per + 1e-9) })).filter((line) => line.value !== 0) : [];
   const stageChance = stage >= 2 ? 30 : 0;
   const enhancedChancePercent = fixedChance != null ? fixedChance : Math.max(0, Math.min(100, stageChance + sum(chance)));
   const additional = [
     ...perGrowth.map((line) => ({ source: line.source, text: `${line.text} (${growth} Growth)`, origin: line.origin, value: Math.min(line.cap ?? Infinity, line.percent * Math.floor(growth / line.per)) })),
-    ...per100.map((line) => ({ source: line.source, text: `${line.text} (${growth} Growth)`, origin: line.origin, value: line.percent * Math.floor(growth / 100) }))
+    ...per100.map((line) => ({ source: line.source, text: `${line.text} (${growth} Growth)`, origin: line.origin, value: line.percent * Math.floor(growth / 100) })),
+    ...circle
   ].filter((line) => line.value !== 0);
+  // Whether the "+N initial Growth" lines change anything (core audit B7, Mighty Guard): a Stage above 1, a per-Growth line, Circle of
+  // Life (the player's Growth follows the Magus's).
+  const initialGrowthMatters = initial.length > 0 && (stage > 1 || perGrowth.length > 0 || per100.length > 0 || (circleGain.length > 0 && circleDamage.length > 0));
   const speed = per100.map((line) => ({ source: line.source, text: `${line.text} (${growth} Growth)`, origin: line.origin, value: line.speedPercent * Math.floor(growth / 100), additional: true, attack: true, cast: true })).filter((line) => line.value !== 0);
   return {
     growth, stage, enhancedChancePercent, fixedChance, stageChancePercent: stageChance,
-    sources: { initial, chance, perGrowth, per100 }, additional, speed, unread: unread.filter((line) => !line.read),
+    sources: { initial, chance, perGrowth, per100, ultimateSpeed, circleGain, circleDamage }, additional, speed, unread: unread.filter((line) => !line.read),
+    empowerEffect: { lines: empowerEffect, factor: Math.max(0, 1 + sum(empowerEffect.filter((line) => !line.additional)) / 100) * product(empowerEffect.filter((line) => line.additional)) },
+    initialGrowthMatters, ultimateSpeed, circle: circleGain.length ? { gainPercent: circleGainPercent, playerGrowth, applied: circle, damageLines: circleDamage } : null,
     growthRule: "Spirit Magi start at Stage 1 (100 Growth) and gain a Stage per 100 Growth up to Stage 5 (manual rule 1001012029); the build's \"+N initial Growth for Spirit Magi\" lines add to the 100",
     chanceRule: fixedChance != null ? `the Enhanced-skill chance is fixed at ${fixedChance}% (hero trait text)` : `Stage ${stage}: ${stageChance}% base Enhanced-skill chance (manual rule 1001012031: +30% at Stage 2; the Stage 1 base is not published and is read as 0%) + ${sum(chance)}% from lines`
   };
@@ -189,6 +239,14 @@ export function nourishmentState(lines = []) {
   return state;
 }
 
+// An Empower Skill buff with every value × `factor` (Spirit Magi Empower Skill Effect; core audit B7). Durations stay.
+function scaleBuff(buff, factor, lines = []) {
+  const scaled = { ...buff, empowerEffectFactor: factor, source: `${buff.source || "Empower Skill buff"} × ${round(factor)} Empower Skill Effect (${lines.map((line) => line.source).join(", ")})` };
+  for (const key of ["additionalPercent", "critRating", "critRatingPercent", "critDamagePercent", "attackSpeedAdditionalPercent"]) if (buff[key]) scaled[key] = buff[key] * factor;
+  if (buff.nextUses) scaled.nextUses = buff.nextUses.map((value) => value * factor);
+  return scaled;
+}
+
 const typeApplies = (lineType, componentTypes) => !lineType || (lineType === "Elemental" ? componentTypes.some((type) => ELEMENTAL.includes(type)) : componentTypes.includes(lineType));
 
 // Combine the self buffs active at a moment for one skill: additional factors multiply (typed buffs only for their types),
@@ -221,7 +279,7 @@ function combineBuffs(active, skillType) {
  *   the summon cast counts (the trait's "casting the Active Skill is considered as casting the Trait Skill"; open whether the
  *   Magus it creates receives the stacks), "none" = never.
  */
-export function calculateMinion({ profile, level = 20, modifierTexts = [], traitLines = [], target = {}, timelineSeconds = 60, setups = [], windows = [5, 20], extraTaken = [], traitSkill = "cooldown", extraCritOnly = [] } = {}) {
+export function calculateMinion({ profile, level = 20, modifierTexts = [], traitLines = [], target = {}, timelineSeconds = 60, setups = [], windows = [5, 20], extraTaken = [], traitSkill = "cooldown", extraCritOnly = [], handledTexts = null, extraLines = [], bond = null, summonCastSpeed = null } = {}) {
   const resolved = typeof profile === "string" ? MINION_PROFILES[profile] : profile;
   if (!resolved) return null;
   const capped = Math.max(1, Math.min(MINION_BASE_DAMAGE_FROZEN_LEVEL, Math.floor(level || 20)));
@@ -234,12 +292,15 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
   const isSpiritMagus = resolved.family === "spirit-magus";
 
   // Minion lines from the build and the hero's traits; other Minion-mentioning lines are listed as not read.
-  const lines = { increased: [], additional: [], speed: [], critRating: [], critDamage: [], penetration: [], armourPenetration: [], added: [], unread: [], support: [], maxDamage: [], minDamage: [] };
+  const lines = { increased: [], additional: [], speed: [], critRating: [], critDamage: [], penetration: [], armourPenetration: [], added: [], unread: [], support: [], maxDamage: [], minDamage: [], multistrikeChance: [], multistrikeIncrement: [], multistrikeIncrementAdditional: [], inactive: [] };
+  // Conditional lines the shared resolver reads (src/line-effects.js: an active one reaches this model as a derived plain line, an
+  // inactive one keeps its reason on the badge) are not "unread" here, nor are the originals of derived copies (core audit B7).
+  const handled = new Set([...[...(handledTexts || [])].map(clean), ...modifierTexts.filter((line) => line.derivedFrom).map((line) => clean(line.derivedFrom)), ...[...(bond?.readTexts || [])].map(clean)]);
   for (const line of [...modifierTexts, ...traitLines]) {
     const parsed = classifyMinionLine(line.text);
     const entry = { source: line.source, text: clean(line.text), origin: line.origin || "gear" };
     const multiplier = line.multiplier ?? 1;
-    if (!parsed) { if (/\bMinions?\b/i.test(line.text) && !/Minion Max Life|Minion Movement|Minion Life|Minion Energy Shield|Minion Armou?r|Minion Evasion|Skill Area for Minions|Duration for Minions|avoid damage|Aggressiveness|Max Minion|Minion Quantity|Summonable/i.test(line.text)) lines.unread.push(entry); continue; }
+    if (!parsed) { if (/\bMinions?\b/i.test(line.text) && !handled.has(clean(line.text)) &&!/Minion Max Life|Minion Movement|Minion Life|Minion Energy Shield|Minion Armou?r|Minion Evasion|Skill Area for Minions|Duration for Minions|avoid damage|Aggressiveness|Max Minion|Minion Quantity|Summonable/i.test(line.text)) lines.unread.push(entry); continue; }
     if (parsed.spiritMagus && !isSpiritMagus) continue;
     if (parsed.kind === "added") lines.added.push({ ...entry, type: parsed.type, min: parsed.min * multiplier, max: parsed.max * multiplier });
     else if (parsed.kind === "penetration") lines.penetration.push({ ...entry, value: parsed.value * multiplier, types: parsed.types });
@@ -262,6 +323,12 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
   for (const entry of supportLines.values()) lines[entry.kind].push(entry);
   lines.support = [...supportLines.values()];
   for (const line of lines.unread) warnings.push(`${line.source}: "${line.text}" names Minions but is not read by the Minion damage model (conditional or unmodeled).`);
+  // Planner-resolved Minion layers (core audit B7: Commander's Gambit's Blessings on the Minions, Bond): { kind, value, … } entries.
+  for (const line of extraLines) if (lines[line.kind]) lines[line.kind].push({ origin: "derived", ...line });
+  // Bond (core audit B7, src/minion-cores.js bondState): its full-stack layers join the Minion lines (own buffs pre-built); with
+  // prebuiltSelfBuffs off the cycle scales each use by the stacks held at that moment (bondRamp below).
+  const bondActive = Boolean(bond?.canObtain && bond.maxStacks > 0);
+  if (bondActive) for (const line of bond.layersAt(bond.maxStacks)) if (lines[line.kind]) lines[line.kind].push({ origin: "derived", ...line });
 
   // Spirit Magus Growth / Stage / Enhanced chance; Growth-based additional and speed lines join the Minion layers.
   const magus = isSpiritMagus ? spiritMagusState([...modifierTexts, ...traitLines]) : null;
@@ -274,18 +341,29 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
     for (const line of magus.unread.filter((item) => !nourish?.readTexts.has(item.text))) warnings.push(`${line.source}: "${line.text}" is a Spirit Magus line the Minion model does not read (Nourishment, Full Bloom, conditional Growth).`);
     assumptions.push({ id: `magusStage:${resolved.key}`, value: magus.stage, text: `${resolved.minion} Stage ${magus.stage} (${magus.growth} Growth: ${magus.growthRule}).` });
     assumptions.push({ id: `magusEnhancedChance:${resolved.key}`, value: magus.enhancedChancePercent, text: `${resolved.minion} Enhanced-skill chance ${round(magus.enhancedChancePercent)}% (${magus.chanceRule}).` });
+    if (magus.empowerEffect.factor !== 1) assumptions.push({ id: `magusEmpowerEffect:${resolved.key}`, value: round(magus.empowerEffect.factor), text: `${resolved.minion} Empower Skill Effect ×${round(magus.empowerEffect.factor)} (${magus.empowerEffect.lines.map((line) => line.text).join(", ")}): every value of its Empower Skill's buff is scaled (game affix 931211264; provisional reading).` });
+    if (magus.circle) assumptions.push({ id: `circleOfLife:${resolved.key}`, value: round(magus.circle.playerGrowth), text: `Circle of Life: your Growth ${round(magus.circle.playerGrowth)} = ${magus.circle.gainPercent}% of the ${resolved.minion}'s ${magus.growth} Growth, read right after each 1 s update (its Return Speed equal to Command is not applied: Command is not modeled; provisional).` });
     if (magus.stage >= 5) notes.push(`${resolved.summon}: Stage 5 grants an additional-damage bonus whose value is a placeholder in the game text (manual rule 1001012034); it is not applied.`);
   }
   const stage = magus?.stage ?? 1;
 
-  const count = resolved.count?.at(effectiveLevel) ?? 1;
-  if (resolved.count?.assumed) assumptions.push({ id: `minionCount:${resolved.key}`, value: count, text: `${resolved.summon}: ${resolved.count.source}.` });
+  // Rally ("Synthetic Troop Minions summoned at a time +N"): each cast summons N more, Module summons included, up to the skill's
+  // max quantity (user-supplied 2026-10-19, Google AI Mode answer, not tested in game). A Synthetic Troop summon's published
+  // maximum is already counted from the first cast; a Module's maximum is a placeholder in the game text, so its one assumed
+  // Minion becomes 1 + N (provisional; open question core-rally-module-count).
+  const rallyLines = resolved.family === "module" ? modifierTexts.flatMap((line) => { const match = clean(line.text).match(/^Synthetic Troop Minions summoned at a time \+?(\d+)$/i); return match ? [{ source: line.source, value: Number(match[1]) * (line.multiplier ?? 1) }] : []; }) : [];
+  const rallyExtra = rallyLines.reduce((total, line) => total + line.value, 0);
+  const count = (resolved.count?.at(effectiveLevel) ?? 1) + rallyExtra;
+  if (resolved.count?.assumed) assumptions.push({ id: `minionCount:${resolved.key}`, value: count, text: `${resolved.summon}: ${resolved.count.source}${rallyExtra ? `; + ${rallyExtra} from ${rallyLines.map((line) => line.source).join(", ")} ("Synthetic Troop Minions summoned at a time", Module summons included: user-supplied 2026-10-19, provisional; the Module's max quantity is not in the data)` : ""}.` });
   const perMinionAdditional = resolved.perMinionAdditionalPercent ? [{ source: `${resolved.summon}: per Minion summoned`, text: `+${resolved.perMinionAdditionalPercent}% additional damage for every ${resolved.minion} summoned (${count} summoned)`, value: resolved.perMinionAdditionalPercent * count, origin: "skill" }] : [];
   const levelLine = effectiveLevel > 20 ? [{ source: `${resolved.summon} level ${effectiveLevel}`, text: `+${round((levelFactor - 1) * 100)}% additional damage (TLIDB Skill Level: +10%/level 21–30, +8%/level 31+; applies to the skill and its Minions, rule 1001000822)`, value: (levelFactor - 1) * 100, origin: "skill" }] : [];
 
   // Speeds: the Minion's own attack / cast speed (base 1; player speed never applies).
   const speedFactor = (which) => { const relevant = lines.speed.filter((line) => line[which]); return Math.max(0.0001, 1 + sum(relevant.filter((line) => !line.additional)) / 100) * product(relevant.filter((line) => line.additional)); };
   const attackSpeedFactor = speedFactor("attack"), castSpeedFactor = speedFactor("cast");
+  // Minion Multistrike inputs (core audit B7): chance, increment ("Minions' Multistrikes deal X% increasing damage") and the
+  // additional increment multiplier.
+  const msChance = sum(lines.multistrikeChance), msIncrement = sum(lines.multistrikeIncrement), msIncrementAdditional = sum(lines.multistrikeIncrementAdditional);
 
   // Crit: Minion Base Stats (rating 500, damage 150) plus Minion crit lines; a special's self buff adds while it runs
   // (flat rating, "+X% Critical Strike Rating" of the Magus's rating, crit damage).
@@ -333,7 +411,8 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
     // Stage-dependent bonuses of a Spirit Magus skill (its own "When at Stage N or higher" lines).
     const stageBonus = entry.stageBonus ? entry.stageBonus(stage) : null;
     const stageAdditional = stageBonus?.additionalPercent ? [{ source: `${entry.name}: Stage ${stage}`, text: stageBonus.text, value: stageBonus.additionalPercent, origin: "skill" }] : [];
-    const additional = [...lines.additional.filter((line) => typeApplies(line.type, types)), ...levelLine, ...perMinionAdditional, ...(entry.extraAdditional || []).map((line) => ({ ...line, origin: "skill" })), ...stageAdditional];
+    const skillTags = new Set(entry.tags || []);
+    const additional = [...lines.additional.filter((line) => typeApplies(line.type, types) && (!line.skillTag || skillTags.has(line.skillTag))), ...levelLine, ...perMinionAdditional, ...(entry.extraAdditional || []).map((line) => ({ ...line, origin: "skill" })), ...stageAdditional];
     const penetration = lines.penetration.filter((line) => line.types.includes(entry.type));
     const increasedFactor = Math.max(0, 1 + sum(increased) / 100);
     const additionalFactor = product(additional);
@@ -345,7 +424,10 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
     const armourFactor = armour.factor;
     const taken = takenFactorFor(types);
     const base = baseDamage * percent / 100;
-    const selfBuff = typeof entry.selfBuff === "function" ? entry.selfBuff(stage) : entry.selfBuff || null;
+    const rawBuff = typeof entry.selfBuff === "function" ? entry.selfBuff(stage) : entry.selfBuff || null;
+    // "Spirit Magi +X% additional Empower Skill Effect" (Source; core audit B7): the Magus's Empower Skill buff values × the factor.
+    const empowerFactor = rawBuff && magus && skillTags.has("Empower") ? magus.empowerEffect.factor : 1;
+    const selfBuff = rawBuff && empowerFactor !== 1 ? scaleBuff(rawBuff, empowerFactor, magus.empowerEffect.lines) : rawBuff;
     // `buff` is a combined active-buff object (combineBuffs) or null; `extraAdditionalPercent` a next-use bonus (Frost Release).
     // "+X% additional Max / Min Damage for Minions" (2026-10-14): the roll's upper / lower end (base + added flat) before it is
     // averaged; the Minion base is one value, so both ends start from it. A negative Min total floors at 0.
@@ -358,7 +440,12 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
     const perHit = (buff, extraAdditionalPercent = 0) => beforeTargetNoCrit(buff, extraAdditionalPercent) * critFactor(buff) * taken.factor * armourFactor * resistanceFactor;
     const timing = entry.timing;
     const speed = timing?.speedType === "attack-speed" ? attackSpeedFactor : timing?.speedType === "cast-speed" ? castSpeedFactor : 1;
-    const useTime = timing ? timing.useTime / speed : null;
+    // Minion Multistrike (core audit B7): an Attack-tagged hit skill with Minion Multistrike chance repeats like the player's
+    // (TLIDB glossary: one extra attack per 100% chance, +20% Attack Speed during Multistrikes; the k-th repeat deals +k × increment,
+    // provisional reading of "increasing damage"). One use deals the whole sequence (×damagePerCycle) and lasts its cycle
+    // (×cycleIntervals use times). Mobility, Channeled and Sentry skills cannot Multistrike; no Minion skill carries those tags.
+    const multistrike = msChance > 0 && entry.kind === "hit" && !entry.buffOnly && skillTags.has("Attack") ? multistrikeSequence({ chancePercent: msChance, incrementPercent: msIncrement, incrementAdditionalPercent: msIncrementAdditional }) : null;
+    const useTime = timing ? timing.useTime / speed * (multistrike?.cycleIntervals ?? 1) : null;
     if (!timing) warnings.push(`${resolved.minion}: ${entry.name} has no use time (no Split file linked and no TLIDB fallback), so it is left out of the cycle.`);
     if (entry.basis === "provisional") assumptions.push({ id: `minionSkill:${entry.name}`, value: "best case", text: `${entry.name}: ${entry.note}.` });
     if (stageBonus?.note) notes.push(`${entry.name}: ${stageBonus.note}`);
@@ -366,18 +453,48 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
     return {
       name: entry.name, role: entry.role, kind: entry.kind, groupId: entry.groupId, type: entry.type, baseType: entry.baseType, converted: Boolean(entry.conversion), conversion: entry.conversion,
       buffOnly: Boolean(entry.buffOnly), percent, addedEffectiveness, base, added, addedAverage, maxOnly, minOnly, maxFactor, minFactor, rollAverage, increased, additional, penetration, armourPenetration, armourPercent: armour.before, armourPenetrationPercent: armour.penetrationPercent, increasedFactor, additionalFactor, taken: taken.lines, takenFactor: taken.factor, armourFactor, resistancePercent, penetrationPercent, resistanceFactor,
-      hitsPerUse: stageBonus?.hitsPerUse ?? entry.hitsPerUse ?? 1, hitsBasis: entry.basis, hitsNote: entry.note, persistentSeconds: entry.persistentSeconds || null,
+      // A Multistrike sequence per use: the strikes' summed damage (each strike `hitsPerUse` hits).
+      hitsPerUse: (stageBonus?.hitsPerUse ?? entry.hitsPerUse ?? 1) * (multistrike?.damagePerCycle ?? 1), multistrike: multistrike ? { ...multistrike, chancePercent: msChance, incrementPercent: msIncrement, incrementAdditionalPercent: msIncrementAdditional, strikesPerUse: 1 + multistrike.expectedExtraAttacks } : null, tags: [...skillTags], hitsBasis: entry.basis, hitsNote: entry.note, persistentSeconds: entry.persistentSeconds || null,
       selfBuff, timing, useTimeSeconds: timing?.useTime ?? null, effectiveUseTimeSeconds: useTime, cooldownSeconds: timing?.cooldown || 0, speedFactor: speed,
       perHitNoBuff: perHit(null), perHitBuffed: ownBuff ? perHit(ownBuff) : null, perHitBeforeTargetNoCrit: beforeTargetNoCrit(null),
       critChancePercent: critChance(null) * 100, critDamagePercent: critDamage(null) * 100, critFactor: critFactor(null),
-      perHit, usesInCycle: 0, hitsInCycle: 0, damageInCycle: 0
+      perHit, usesInCycle: 0, hitsInCycle: 0, damageInCycle: 0, increasedSum: sum(increased)
     };
   });
 
   // Cycle simulation: special skills when ready (longest cooldown first), the basic slot otherwise (Base Skill, replaced by
   // the Enhanced Skill at the Enhanced-skill chance as an expected-value blend); hits at the end of each use. Ultimates
   // (Full Bloom) stay out of the cycle.
-  const summonCast = resolved.summonCastSeconds ?? 1;
+  // The summon cast (the first use waits for it). "+X% Summon Skill Cast Speed" (Orders; core audit B7, src/minion-cores.js
+  // summonCastSpeed) shortens it for every Summon-tag skill the player casts by hand: Summon Machine Guard, Grim Phantom, Spider Tank
+  // and the Spirit Magi (user-supplied 2026-10-19, Google AI Mode answer, not tested in game; the Split's "fixed" flag on the Spirit
+  // Magus and Grim Phantom summons does not exempt them). A Module summon is not in that list and its stone is not in the data (not
+  // applied).
+  const summonSpeedType = skillTimingSs13[resolved.summon]?.speedType || null;
+  const summonCastBase = resolved.summonCastSeconds ?? 1;
+  const summonCastScaled = summonSpeedType === "cast-speed" || ["synthetic-troop", "spirit-magus"].includes(resolved.family);
+  const summonCastFactor = summonCastSpeed?.factor && summonCastSpeed.factor !== 1 && summonCastScaled ? summonCastSpeed.factor : 1;
+  const summonCast = summonCastBase / summonCastFactor;
+  if (summonCastFactor !== 1) notes.push(`${resolved.summon}: summon cast ${round(summonCastBase)} s ÷ ${round(summonCastFactor)} Summon Skill Cast Speed (${summonCastSpeed.sources.map((line) => line.source).join(", ")}) = ${round(summonCast)} s before the first use.`);
+  // Bond ramp (prebuiltSelfBuffs off): each use takes the stacks held when it lands (damage) or starts (speed), against the full
+  // stacks the layers above carry. The Bond crit-rating line stays at its full-stack value (provisional).
+  const bondRamp = bondActive && !bond.prebuilt;
+  const speedSums = { attack: sum(lines.speed.filter((line) => line.attack && !line.additional)), cast: sum(lines.speed.filter((line) => line.cast && !line.additional)) };
+  const bondAdditional = (stacks) => product(bond.layersAt(stacks).filter((line) => line.kind === "additional"));
+  const bondDamageRatio = (skill, at) => {
+    if (!bondRamp) return 1;
+    const stacks = bond.stacksAt(at, summonCast);
+    if (stacks >= bond.maxStacks) return 1;
+    const full = 1 + skill.increasedSum / 100, now = 1 + (skill.increasedSum - BOND.damagePerStack * (bond.maxStacks - stacks)) / 100;
+    return Math.max(0, now) / Math.max(1e-9, full) * bondAdditional(stacks) / bondAdditional(bond.maxStacks);
+  };
+  const bondSpeedRatio = (skill, at) => {
+    if (!bondRamp || !["attack-speed", "cast-speed"].includes(skill.timing?.speedType)) return 1;
+    const stacks = bond.stacksAt(at, summonCast);
+    if (stacks >= bond.maxStacks) return 1;
+    const inc = skill.timing.speedType === "attack-speed" ? speedSums.attack : speedSums.cast;
+    return Math.max(0.0001, 1 + (inc - BOND.speedPerStack * (bond.maxStacks - stacks)) / 100) / Math.max(0.0001, 1 + inc / 100);
+  };
   const horizon = Math.max(timelineSeconds, 80);
   const specials = skills.filter((item) => item.role === "special" && item.effectiveUseTimeSeconds != null).sort((a, b) => b.cooldownSeconds - a.cooldownSeconds);
   const basic = skills.find((item) => item.role === "basic" && item.effectiveUseTimeSeconds != null) || null;
@@ -393,7 +510,7 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
   const activeAt = (at) => buffs.filter((buff) => buff.from <= at + 1e-9 && at < buff.until - 1e-9);
   const useTimeOf = (skill, at) => {
     const speedBuff = combineBuffs(activeAt(at), skill.type).attackSpeedAdditionalFactor;
-    return skill.timing?.speedType === "attack-speed" ? skill.effectiveUseTimeSeconds / speedBuff : skill.effectiveUseTimeSeconds;
+    return (skill.timing?.speedType === "attack-speed" ? skill.effectiveUseTimeSeconds / speedBuff : skill.effectiveUseTimeSeconds) / bondSpeedRatio(skill, at);
   };
   // Nourishment on the Magus (src: the trait text above nourishmentState). Exact expected value over the stack count: a
   // probability vector over 0 … max stacks. Trait Skill casts grant their stacks (capped) when the Magus is out; every Magus
@@ -443,14 +560,14 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
       // seconds not already covered by the previous cast. Nourishment ("damage dealt by this skill") lifts every tick.
       const ticks = Math.max(1, Math.round(skill.persistentSeconds || 1));
       const covered = persistentCoveredUntil.get(skill.name) ?? -Infinity;
-      for (let tick = 0; tick < ticks; tick++) { const atTick = landAt + tick; if (atTick < horizon && atTick >= covered - 1e-9) events.push({ time: atTick, skill: skill.name, damage: skill.perHit(null) * count * weight * nourishment.factor, weight, buffed: false, ...nourishTag }); }
+      for (let tick = 0; tick < ticks; tick++) { const atTick = landAt + tick; if (atTick < horizon && atTick >= covered - 1e-9) events.push({ time: atTick, skill: skill.name, damage: skill.perHit(null) * count * weight * nourishment.factor * bondDamageRatio(skill, atTick), weight, buffed: false, ...nourishTag }); }
       persistentCoveredUntil.set(skill.name, landAt + ticks);
       return;
     }
     const active = activeAt(landAt).filter((buff) => buff.skill !== skill.name || buff.selfApplies !== false);
     const combined = active.length ? combineBuffs(active, skill.type) : null;
     const buffed = Boolean(combined && (combined.additionalFactor !== 1 || combined.critRating || combined.critRatingPercent || combined.critDamagePercent)) || extraAdditionalPercent > 0;
-    events.push({ time: landAt, skill: skill.name, damage: skill.perHit(combined, extraAdditionalPercent) * skill.hitsPerUse * count * weight * nourishment.factor, weight, buffed, buff: buffed ? combined?.labels.join(" + ") || "next-use bonus" : null, ...nourishTag });
+    events.push({ time: landAt, skill: skill.name, damage: skill.perHit(combined, extraAdditionalPercent) * skill.hitsPerUse * count * weight * nourishment.factor * bondDamageRatio(skill, landAt), weight, buffed, buff: buffed ? combined?.labels.join(" + ") || "next-use bonus" : null, ...nourishTag });
   };
   while (time < horizon && guard++ < 100000) {
     const special = specials.find((item) => ready.get(item.name) <= time + 1e-9);
@@ -492,9 +609,27 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
     const uses = own.reduce((total, event) => total + (event.weight ?? 1), 0);
     return { ...item, perHit: undefined, steadyDps: dps, steadyUsesPerSecond: (item.kind === "persistent" ? own.length : uses) / (steadyTo - steadyFrom), buffedShare: uses ? own.filter((event) => event.buffed).reduce((total, event) => total + (event.weight ?? 1), 0) / uses : 0, inCycle: item.role === "basic" || item.role === "special" || (item.role === "enhanced" && enhancedShare > 0) };
   });
+  // Typed and tag-scoped Minion lines no damage skill of the cycle takes (a Cold line on a Fire Minion, an Area line on a projectile
+  // Minion) and Multistrike lines with no Multistrike: listed as inactive with the reason, not as applied (core audit B7).
+  const usedSkills = perSkill.filter((item) => item.inCycle && !item.buffOnly && item.percent > 0);
+  for (const key of ["increased", "additional"]) {
+    lines[key] = lines[key].filter((line) => {
+      if (!line.type && !line.skillTag) return true;
+      if (usedSkills.some((item) => (item[key] || []).includes(line))) return true;
+      lines.inactive.push({ ...line, reason: line.skillTag ? `no ${line.skillTag} skill of the ${resolved.minion} in its cycle` : `the ${resolved.minion} deals no ${line.type} damage` });
+      return false;
+    });
+  }
+  const multistrikes = usedSkills.some((item) => item.multistrike);
+  if (!multistrikes) for (const key of ["multistrikeChance", "multistrikeIncrement", "multistrikeIncrementAdditional"]) {
+    lines.inactive.push(...lines[key].map((line) => ({ ...line, reason: msChance > 0 ? `the ${resolved.minion} has no Attack skill in its cycle (Multistrike is for Attacks)` : "no Minion Multistrike chance" })));
+    lines[key] = [];
+  }
+  if (multistrikes) notes.push(`${resolved.minion}: Minion Multistrike ${round(msChance)}% → ${round(msChance / 100)} extra attacks per attack at +${round(msIncrement * (1 + msIncrementAdditional / 100))}% increasing damage each on its Attack skills (${usedSkills.filter((item) => item.multistrike).map((item) => `${item.name} ×${round(item.multistrike.damagePerCycle)} damage per use over ${round(item.multistrike.cycleIntervals)} use times`).join(", ")}; TLIDB glossary, provisional reading as for the player).`);
   const slotLabel = basic ? (enhanced && enhancedShare > 0 ? `${basic.name} (${round((1 - enhancedShare) * 100)}%) or ${enhanced.name} (${round(enhancedShare * 100)}%, ${round(enhanced.effectiveUseTimeSeconds)} s use) every ${round(basic.effectiveUseTimeSeconds)} s` : `${basic.name} every ${round(basic.effectiveUseTimeSeconds)} s`) : "no basic skill";
   const cycle = {
-    summonCastSeconds: summonCast, summonCastSource: resolved.summonCastSource || null,
+    summonCastSeconds: summonCast, summonCastSource: resolved.summonCastSource || null, summonCastBaseSeconds: summonCastBase, summonSpeedType, summonCastFactor,
+    bond: bondActive ? { maxStacks: bond.maxStacks, intervalSeconds: bond.intervalSeconds, prebuilt: bond.prebuilt, fullAt: bond.prebuilt ? summonCast : summonCast + bond.maxStacks * bond.intervalSeconds } : null,
     rule: `${specials.length ? `${specials.map((item) => `${item.name} (${round(item.effectiveUseTimeSeconds)} s use, ${item.cooldownSeconds} s cooldown)`).join(", ")} whenever ready, otherwise ` : ""}${slotLabel}; hits land at the end of each use; the first use starts after the ${summonCast} s summon cast`,
     firstHitSeconds: events[0]?.time ?? null, enhancedShare
   };
@@ -528,8 +663,9 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
     setupKeys: setups.map((setup) => setup.setupKey), setupNames: setups.map((setup) => setup.name),
     baseDamage, baseDamageSource: resolved.family === "module" ? "shared Minion table; Lv.1 = 10 and Lv.20 = 300 confirmed in game on module tooltips (2026-10-11)" : "TLIDB summon Minion table (damage column)", levelFactor,
     count, countSource: resolved.count?.source || null,
-    magus: magus ? { growth: magus.growth, stage: magus.stage, enhancedChancePercent: magus.enhancedChancePercent, fixedChance: magus.fixedChance, growthRule: magus.growthRule, chanceRule: magus.chanceRule, sources: magus.sources, fullBloom: Boolean(fullBloomEntries.length), nourishment } : null,
-    lines: { increased: lines.increased, additional: lines.additional, speed: lines.speed, critRating: lines.critRating, critDamage: lines.critDamage, penetration: lines.penetration, armourPenetration: lines.armourPenetration, added: lines.added, unread: lines.unread, trait: traitLinesUsed, support: lines.support, ...(lines.maxDamage.length ? { maxDamage: lines.maxDamage } : {}), ...(lines.minDamage.length ? { minDamage: lines.minDamage } : {}) },
+    magus: magus ? { growth: magus.growth, stage: magus.stage, enhancedChancePercent: magus.enhancedChancePercent, fixedChance: magus.fixedChance, growthRule: magus.growthRule, chanceRule: magus.chanceRule, sources: magus.sources, fullBloom: Boolean(fullBloomEntries.length), nourishment,
+      initialGrowthMatters: magus.initialGrowthMatters, circle: magus.circle, ultimateSpeed: magus.ultimateSpeed, empowerEffect: { ...magus.empowerEffect, applied: magus.empowerEffect.factor !== 1 && skills.some((item) => item.selfBuff?.empowerEffectFactor) } } : null,
+    lines: { increased: lines.increased, additional: lines.additional, speed: lines.speed, critRating: lines.critRating, critDamage: lines.critDamage, penetration: lines.penetration, armourPenetration: lines.armourPenetration, added: lines.added, unread: lines.unread, inactive: lines.inactive, trait: traitLinesUsed, support: lines.support, ...(multistrikes ? { multistrikeChance: lines.multistrikeChance, multistrikeIncrement: lines.multistrikeIncrement, multistrikeIncrementAdditional: lines.multistrikeIncrementAdditional } : {}), ...(lines.maxDamage.length ? { maxDamage: lines.maxDamage } : {}), ...(lines.minDamage.length ? { minDamage: lines.minDamage } : {}) },
     speeds: { attackSpeedFactor, castSpeedFactor },
     crit: { rating: critRating(null), chancePercent: critChance(null) * 100, damagePercent: critDamage(null) * 100, factor: critFactor(null), baseRating: baseCritRating, baseDamagePercent: baseCritDamage, ...(extraCritOnly.length ? { critOnlyFactor, critOnlySources: extraCritOnly } : {}) },
     skills: perSkill, cycle, events: events.filter((event) => event.time < timelineSeconds),

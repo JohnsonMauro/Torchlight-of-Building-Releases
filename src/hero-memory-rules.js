@@ -100,53 +100,43 @@ export function reduceBaseTraitMemoryStat(text, reduction) {
   return String(text||"").replace(/([+-])(\d+(?:\.\d+)?)/g,(_,sign,value)=>`${sign}${Math.round(Number(value)*factor*100)/100}`);
 }
 
-// TLIDB (Memory_of_Origin / _Discipline / _Progress base-stat tables, checked
-// 2026-10-09) lists forty tiers per base stat, tier 1 = highest. Enhancement
-// level L (1-40) is tier 41 - L: all 600 tier values (15 stats x 40 levels)
-// match these formulas, including the irregular level 1-4 values. TLIDB stops
-// at tier 1 (level 40); levels 41-50 continue the same linear formulas, as the
-// user's in-game checks (2026-10-10) show: 50/50 ultimate Memory of Origin =
-// +110 Intelligence (2 x 50 + 10) and 50/50 Memory of Discipline =
-// +642 Max Energy Shield ((35 x 50 + 175) / 3). Rarity caps the level
-// (memoryMaxEnhancementForRarity); only Ultimate reaches 50.
-const memoryBaseStatMaxLevel = { "Memory of Origin": 50, "Memory of Discipline": 50, "Memory of Progress": 50 };
-const memoryBaseStatProgression = {
-  "Memory of Origin": { early: [10, 13, 15, 18], later: (level) => 2 * level + 10 },
-  "Memory of Discipline": {
-    "Max Life": { early: [37, 46, 55, 64], later: (level) => Math.round((22 * level + 110) / 3) },
-    "Max Mana": { early: [20, 25, 30, 35], later: (level) => 4 * level + 20 },
-    Armor: { early: [480, 600, 720, 840], later: (level) => 96 * level + 480 },
-    Evasion: { early: [480, 600, 720, 840], later: (level) => 96 * level + 480 },
-    "Max Energy Shield": { early: [58, 73, 88, 102], later: (level) => Math.round((35 * level + 175) / 3) },
-  },
-  "Memory of Progress": {
-    // Movement Speed stops at level 40 (+30%): user's in-game 50/50 Memory of Progress shows
-    // +30% Movement Speed (2026-10-10). Its other stats continue to level 50.
-    "Movement Speed": { maxLevel: 40, early: [3.3, 4.2, 5, 5.8], later: (level) => Math.round(((2 * level + 10) / 3) * 10) / 10 },
-    speed: { early: [4, 5, 6, 7], later: (level) => Math.round((0.8 * level + 4) * 10) / 10 },
-  },
-};
+// Base-stat values come from the game's config_modifier table (rows 4031 SS Q LL; scripts/build-memory-base-stat-values.mjs ->
+// src/data/heroes/hero-memory-base-stat-values-ss13.generated.js): one value per memory type, stat, rarity (Q) and
+// enhancement level (LL = 51 - enhancement). Checked 2026-10-19 against the user's game log: Legendary 40 Memory of Progress
+// +24.7% Movement Speed, Epic 30 Memory of Origin +70 Intelligence, Epic 30 Memory of Discipline +408 Max Energy Shield; and the
+// in-game Ultimate 50/50 checks (2026-10-10: +110 Intelligence, +642 Max Energy Shield, +30% Movement Speed). The value depends
+// on rarity at every enhancement level (Ultimate 40 Intelligence is +95, Legendary 40 is +90); past a rarity's cap the table
+// repeats the cap value. The earlier TLIDB-fitted formulas ignored rarity: they matched the data only at a rarity's own cap,
+// and Movement Speed only at Ultimate 50. A memory with no known rarity (states saved before rarity was imported) reads the
+// lowest rarity that reaches its enhancement (enhancement 30: Epic), which keeps the old values at enhancement 10 / 20 / 30 /
+// 40 / 50 for every stat but Movement Speed (the SS14 Wilting Beam fixture, Epic 30 in game, keeps its panel match). The
+// planner's "Minion Attack Speed" base stat is the game's "Minion Attack and Cast Speed" row (403114).
+import { heroMemoryBaseStatValuesSs13 } from "./data/heroes/hero-memory-base-stat-values-ss13.generated.js";
+const memoryBaseStatRarity = { normal: "normal", common: "normal", magic: "magic", epic: "epic", legendary: "legendary", ultimate: "ultimate" };
+const memoryBaseStatAliases = { "+#% Minion Attack Speed": "+#% Minion Attack and Cast Speed" };
 
 export function memoryBaseStatLabel(baseStat) {
   return String(baseStat || "").replace(/^([+-]?)\d+(?:\.\d+)?/, "$1#");
 }
 
-export function memoryScaledBaseStat(baseStat, memoryType, enhancementLevel, waxAndWane = false) {
+/** The data value of a memory base stat for its type, rarity and enhancement level, or null when the table has no row. */
+export function memoryBaseStatValue(baseStat, memoryType, enhancementLevel, rarity) {
+  const label = memoryBaseStatLabel(String(baseStat || "").trim());
+  const stats = heroMemoryBaseStatValuesSs13[memoryType];
+  const byRarity = stats?.[label] || stats?.[memoryBaseStatAliases[label]];
+  if (!byRarity) return null;
+  const level = clampMemoryEnhancement(enhancementLevel, rarity);
+  const key = memoryBaseStatRarity[String(rarity || "").toLowerCase()]
+    || ["normal", "magic", "epic", "legendary", "ultimate"].find((name) => memoryMaxEnhancementForRarity(name) >= level);
+  return byRarity[key][level - 1] ?? null;
+}
+
+export function memoryScaledBaseStat(baseStat, memoryType, enhancementLevel, waxAndWane = false, rarity = "") {
   const match = String(baseStat || "").match(/^([+-]?)(\d+(?:\.\d+)?)(.*)$/);
   if (!match) return baseStat;
-  const level = Math.max(1, Math.min(memoryBaseStatMaxLevel[memoryType] ?? 50, Math.round(Number(enhancementLevel) || 1)));
-  const typeProgression = memoryBaseStatProgression[memoryType];
-  const statName = match[3].replace(/^%\s*/, "").trim();
-  const progression = memoryType === "Memory of Origin"
-    ? typeProgression
-    : memoryType === "Memory of Progress"
-      ? statName === "Movement Speed" ? typeProgression["Movement Speed"] : typeProgression.speed
-      : typeProgression?.[statName];
-  if (!progression) return memoryImplicitText(baseStat, waxAndWane);
-  const statLevel = Math.min(level, progression.maxLevel ?? level);
-  const value = statLevel <= 4 ? progression.early[statLevel - 1] : progression.later(statLevel);
-  const scaled = `${match[1]}${value}${match[3]}`;
-  return memoryImplicitText(scaled, waxAndWane);
+  const value = memoryBaseStatValue(baseStat, memoryType, enhancementLevel, rarity);
+  if (value === null) return memoryImplicitText(baseStat, waxAndWane);
+  return memoryImplicitText(`${match[1]}${value}${match[3]}`, waxAndWane);
 }
 import { baseHeroTraitProgressionsSs13 } from "./data/heroes/base-hero-trait-progressions-ss13.generated.js";
 

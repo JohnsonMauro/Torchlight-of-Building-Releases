@@ -27,10 +27,16 @@ import { resolveSupportEffects, supportClauseSummary } from "./support-effects.j
 import { expandScriptedItemLine, grantedPreciseAuras } from "./gear-unique-modules.js";
 import { auraGainedLineStatus } from "./aura-gained-effects.js";
 import { classifyHitLine, splitHitLineText } from "./skill-hit-lines.js";
-import { MULTISTRIKE_SPEED_LINE } from "./skill-hit-model.js";
+import { MULTISTRIKE_SPEED_LINE, UNSTOPPABLE_FORCE_LINE, CAST_SPEED_TO_CHARGE_LINE, SPELL_RIPPLE_LINE, SWEEPING_FURY_LINE, PROJECTILE_QUANTITY_LIMIT_LINE } from "./skill-hit-model.js";
 import { markLineKind } from "./mark-effect.js";
 import { pureHeartLineStatus } from "./pure-heart.js";
 import { REGAIN_ENABLERS } from "./regain-model.js";
+import { ONLY_DAMAGE_TYPE_LINE } from "./damage-type-restriction.js";
+import { WEAPON_TO_SPELLS_LINE, WEAPON_CRIT_TO_SPELLS_LINE } from "./towering-presence.js";
+import { isTangleAttachLine, isTangleDurationLine, tangleAttachStatus, tangleDurationStatus } from "./tangle-model.js";
+import { EMPOWER_DEFENSIVE_EFFECT_LINE } from "./storm-command.js";
+import { COMMAND_FAMILIES } from "./minion-cores.js";
+import { setupBoardTab } from "./magus-active-slot.js";
 
 // Second opinion for tooltip coverage badges. The older per-panel checks know the
 // Ignite ledger; this one knows the generic ailment, Reaping, crit, support, curse,
@@ -77,6 +83,8 @@ const noDpsRules = [
   /Movement Speed/i, /Energy Shield/i, /\bDefense\b/i, /\bArmor\b/i, /\bEvasion\b/i, /Life Regeneration/i, /Life Regain|Energy Shield Regain/i,
   /^\+[\d.]+% (?:gear )?(?:Max )?Life$/i, /Max Mana$/i, /Mana Regeneration/i, /Injury Buffer/i, /Barrier of Radiance/i,
   /^Immune to /i, /are immune to/i, MINION_RULE, /Skill Area/i, /Projectile Speed/i, /Beam Length/i, /Skill Cost/i,
+  // A movement on cast (Dark Advance's "Moves in the target direction when casting Dark Gate"; core audit B7).
+  /^Moves in the target direction when casting /i,
   // No /Paralyze/ rule (2026-10-14): every "Paralyze" wording in the catalogs inflicts Paralysis (+15% damage taken, read by
   // src/combat-states.js) or scales damage against Paralyzed enemies, so none is a defence-only line.
   /Crowd Control/i, /damage taken (?:from|while|when|if)/i, /Damage taken to /i, /^Converts [\d.]+% of \w+ Damage taken/i,
@@ -247,6 +255,15 @@ function takenBodyStatus(body, planner, engines = plannerEngines(planner)) {
   if (!engines) return "In calc";
   const typed = body.match(/(Physical|Fire|Cold|Lightning|Erosion|Spell|Hit) Damage taken$/i)?.[1];
   if (typed && /^Hit$/i.test(typed)) return engines.anyHit ? "In calc" : "Inactive";
+  // "Hit <Type> Damage taken" (Open Wounds' derived body; core audit B4): skill hits with a part of that type (converted parts keep
+  // their original type) and Minion hits of that type; never a DoT, and the beam ledger does not read it.
+  const hitTyped = body.match(/\bHit (Physical|Fire|Cold|Lightning|Erosion) Damage taken$/i)?.[1];
+  if (hitTyped) {
+    const type = hitTyped[0].toUpperCase() + hitTyped.slice(1).toLowerCase();
+    const skillHit = engines.hits.some((hit) => [...(hit.dealtTypes || [hit.damageType]), ...(hit.components || []).flatMap((component) => [component.type, component.originalType])].includes(type));
+    const minionHit = (planner?.minions || []).some((minion) => minion.modeled && (minion.skills || []).some((skill) => [skill.type, skill.baseType].includes(type)));
+    return skillHit || minionHit ? "In calc" : "Inactive";
+  }
   // Untyped "additional damage taken" (an enemy debuff: build-mechanics puts it on the beam and DoT layers too).
   // (Paralysis's "+X% damage taken" too: build-mechanics reads both wordings since the pact scripted-effects batch.)
   if (!typed && /(?:additional )?damage taken$/i.test(body)) return engines.anyHit || engines.anyDot || (planner?.minions || []).some((minion) => minion.modeled) ? "In calc" : "Inactive";
@@ -279,6 +296,16 @@ function aimLineMoves(value, kind, planner) {
   const delta = carried ? -value : value;
   const now = uptime(duration, recovery);
   return Math.abs((kind === "duration" ? uptime(duration + delta, recovery) : uptime(duration, recovery + delta)) - now) > 1e-9;
+}
+
+/**
+ * Badge of a core clause the planner applies by the core's name (src/granted-core-lines.js NAME_READ_CORE_CLAUSES) when the
+ * core comes from a Pedigree of Gods slate or a "[Core]" gear grant (core audit batch B1): the core tooltip's rule
+ * (src/app.js .core-talent). Subtle Impact needs Blur active; the others read In calc like the panel's name-modeled cores.
+ */
+export function nameReadCoreStatus(name, planner = context) {
+  if (name === "Subtle Impact" && planner?.conditions && !planner.conditions.blur) return (planner.blurSources || []).some((source) => source.available) ? "Inactive" : "Missing Blur source";
+  return "In calc";
 }
 
 export function dazeStatus(planner = context) {
@@ -362,6 +389,10 @@ export function appliedByPlanner(text, planner = context) {
     return entries.some((entry) => {
       if (entry.text && normalizePercentageText(entry.text).trim() === text) return true;
       if (!Number.isFinite(value) || !value) return false;
+      // A core's own entry ("Core talent: Subtle Impact (Pedigree of Gods slate)") stands only for that core's clauses, not for
+      // another clause of the same slate with the same number (core audit batch B1: a Pedigree's second core line read In calc).
+      const entryCore = String(entry.source || "").match(/^Core talent: ([^(]+?) \(/)?.[1];
+      if (entryCore && line.grantedCore !== entryCore) return false;
       // An entry that carries (or shares source and value with an entry carrying) a different
       // text is a different line from the same source.
       if (!entry.text && !knownTexts.has(`${entry.source}|${round2(entry.value)}`) && round2(entry.value) === round2(value) && names.some((name) => namesSource(entry.source, name))) return true;
@@ -382,6 +413,16 @@ function copyRuleStatus(text, planner) {
 
 function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   if (!text) return null;
+  // Escalating Affliction's reworked Affliction (core audit B4, src/combat-states.js): it scales Affliction, so it is In calc where a
+  // modeled DoT (an ailment, a skill DoT or the beam's Ignite) runs with an Affliction rating on the dummy; otherwise Inactive.
+  if (/^Changes the effect of each point of Affliction to: /i.test(text) && planner?.activation) {
+    const rated = (entry) => entry && entry.modeled !== false && (entry.steps?.afflictionRating || 0) > 0 && (entry.combat?.steadyDps || 0) > 0;
+    const ignite = (planner.recountFiveSeconds?.igniteDps || 0) > 0 && planner.conditions?.affliction !== false && (planner.afflictionRating ? planner.afflictionRating.rating > 0 : true);
+    return (planner.skillDots || []).some(rated) || Object.values(planner.ailments || {}).some(rated) || ignite ? "In calc" : "Inactive";
+  }
+  // Cohesion's resolved body (core audit batch B3): its own multiplier on the rating in the spell and attack crit models, so In calc
+  // where the build has a modeled player hit (the beam or a skill hit); a Minion-only build does not crit with it.
+  if (/^\+[\d.]+% additional (?:Spell |Attack )?Critical Strike Rating$/i.test(text) && planner?.activation) return planner.activation.activeNames?.has("Scorching Beam") || (planner.skillHits || []).some((hit) => hit.modeled) ? "In calc" : "Inactive";
   // Ill Omen (src/ill-omen.js): Cumulative Efficiency and Reap Purification feed the best-case Ill Omen line of the dummy
   // figures and the "Ill Omen (beyond the dummy)" card when the build applies Ominous.
   const illOmen = illOmenLineStatus(text, planner);
@@ -396,12 +437,25 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   }
   // A row the gear intake splits for any item (src/gear-unique-modules.js, round 2: multi-type added damage, Magnus' Scar's two
   // sentences) is judged as the lines it becomes.
-  const parts = expandScriptedItemLine("", text);
+  // (Hare's Agility's per-stack clause is one resolver line, src/line-conditions.js exitStandStillStacks, not two sentences.)
+  const parts = /^\+[\d.]+% additional damage dealt to enemies in proximity for each stack of buff\. /i.test(text) ? [text] : expandScriptedItemLine("", text);
   if (parts.length > 1) {
     const statuses = parts.map((part) => engineLineStatus(part, planner) ?? "Not modeled");
     // One type the build cannot use (Physical added to Spells on the beam) does not make the row partly modeled.
     if (statuses.includes("In calc") && statuses.every((status) => status === "In calc" || status === "Inactive" || neutralStatuses.has(status))) return "In calc";
     return combineStatuses(statuses);
+  }
+  // Skill-tag-gated ailment lines ("+X% additional Ailment Damage dealt by attacks", Great Strength): In calc where an ailment
+  // with a base is inflicted by a skill carrying the tag (src/ailment-applications.js re-gates the line per inflicting skill).
+  const tagGatedAilment = planner?.activation ? classifyDamageLine(text) : null;
+  if (tagGatedAilment?.requiresSkillTag) {
+    const tag = tagGatedAilment.requiresSkillTag.toLowerCase();
+    const inflicts = ["ignite", "trauma", "wilt"].some((key) => {
+      const ailment = planner.ailments?.[key];
+      const based = key === "ignite" ? ailment?.base?.max > 0 || planner.theoretical?.totals?.baseIgniteDamage?.max > 0 : ailment?.base?.max > 0;
+      return based && (ailment?.appliers || []).some((applier) => !applier.blocked && (applier.tags || []).some((item) => String(item).toLowerCase() === tag));
+    }) || (planner.theoretical?.totals?.baseIgniteDamage?.max > 0 && (planner.mainSkill?.tags || []).some((item) => String(item).toLowerCase() === tag));
+    return inflicts ? "In calc" : "Inactive";
   }
   const note = planner?.mechanics?.recognized?.get?.(text);
   if (note && !recognizedOnIdleLedger(note, planner, text)) {
@@ -537,18 +591,60 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
       const name = inflicts[1].toLowerCase() === "freeze" ? "frozen" : inflicts[1].toLowerCase();
       return (planner.mechanics.enemyAilments.types || []).some((type) => String(type?.name ?? type).toLowerCase() === name) ? "In calc" : "Inactive";
     }
-    // "You can only deal <Type> Damage" (Extreme Coldness): nothing to remove when every modeled source already deals only that type.
-    const onlyType = text.match(/^You can only deal (Physical|Fire|Cold|Lightning|Erosion) Damage$/i);
-    if (onlyType) {
-      const engines = plannerEngines(planner);
-      const dealt = new Set([...(engines?.beam ? ["Fire"] : []), ...(engines?.hits || []).flatMap((hit) => hit.dealtTypes || (hit.damageType ? [hit.damageType] : [])), ...(engines?.dotTypes || [])]);
-      const minions = (planner.minions || []).some((minion) => minion.modeled);
-      return dealt.size && !minions && [...dealt].every((type) => type.toLowerCase() === onlyType[1].toLowerCase()) ? "No DPS effect" : "Not modeled";
+    // "You can only deal <Type> Damage" (Extreme Coldness; core audit batch B5, src/damage-type-restriction.js): In calc where the
+    // planner removed a part of another type (a hit part, the beam, an ailment or a skill DoT); No DPS effect when every modeled
+    // source already deals only that type. Player only (game affix 232826, target 1): Minions, followers and True Damage are not affected (user-confirmed 2026-10-19).
+    if (ONLY_DAMAGE_TYPE_LINE.test(text) && planner.damageTypeRestriction !== undefined) return planner.damageTypeRestriction?.removed?.length ? "In calc" : "No DPS effect";
+    // Towering Presence (core audit batch B5, src/towering-presence.js): the main-hand weapon's damage reaches modeled Spell skill
+    // hits (not attacks, not the Scorching Beam ledger, which has no added Physical part: Not modeled there); its crit rating reaches
+    // every Spell skill's crit (the beam's included). Inactive without a main-hand weapon or a Spell hit.
+    if (planner.weaponToSpells !== undefined && (WEAPON_TO_SPELLS_LINE.test(text) || WEAPON_CRIT_TO_SPELLS_LINE.test(text))) {
+      const spellHit = (planner.skillHits || []).some((hit) => hit.modeled && !hit.profile?.weaponScaling && (hit.profile?.tags || []).includes("Spell"));
+      const beam = Boolean(planner.activation.activeNames?.has("Scorching Beam"));
+      if (WEAPON_TO_SPELLS_LINE.test(text)) return planner.weaponToSpells?.damage?.length && spellHit ? "In calc" : planner.weaponToSpells?.damage?.length && beam ? "Not modeled" : "Inactive";
+      return planner.weaponToSpells?.critRating > 0 && (spellHit || beam) ? "In calc" : "Inactive";
     }
     // "+N to Parabolic Projectile Splits quantity" (Three Birds with One Stone): needs a Parabolic Projectile skill on the board.
+    // The splits land as area explosions that can hit the same single target (user-supplied 2026-10-19, Google AI Mode answer,
+    // not tested in game; open question core-three-birds-splits): In calc where a modeled hit carries split components (the
+    // profile's `parabolicSplit`, src/skill-hit-model.js). Thunderbolt Overload's own "+30% additional damage for each
+    // additional Split" above 3 needs its base Split count, which is not in the data: Not modeled there, and on any parabolic
+    // skill whose profile names no landing component.
     if (/^\+\d+ to Parabolic Projectile Splits quantity$/i.test(text)) {
       const active = planner.activation.activeNames || new Set();
-      if (!(planner.activation.setups || []).some((setup) => setup.enabled !== false && active.has(setup.name) && (setup.tags || []).includes("Parabolic"))) return "Inactive";
+      const parabolic = (planner.activation.setups || []).filter((setup) => setup.enabled !== false && active.has(setup.name) && (setup.tags || []).includes("Parabolic"));
+      if (!parabolic.length) return "Inactive";
+      const split = (planner.skillHits || []).some((hit) => hit.modeled && (hit.components || []).some((component) => component.parabolicSplit));
+      return split ? (parabolic.some((setup) => setup.name === "Thunderbolt Overload") ? "Partly modeled" : "In calc") : "Not modeled";
+    }
+    // Core audit batch B6 (src/skill-hit-model.js). "+N initial Multistrike Count" (Preemptive Strike): In calc where a modeled
+    // attack Multistrikes with a damage increment (or a Finisher takes Unstoppable Force); a Multistrike without increment gains
+    // nothing from the shifted counts.
+    if (/^\+\d+ (?:to the )?initial Multistrike Count$/i.test(text)) {
+      const multis = (planner.skillHits || []).filter((hit) => hit.modeled && hit.rate?.multistrike);
+      if (!multis.length) return "Inactive";
+      return multis.some((hit) => hit.rate.multistrike.effectiveIncrementPercent > 0) ? "In calc" : "No DPS effect";
+    }
+    // Unstoppable Force: In calc where a modeled Combo skill Multistrikes (its Finisher takes the Max Multistrike Count).
+    if (UNSTOPPABLE_FORCE_LINE.test(text)) {
+      const finishers = (planner.skillHits || []).filter((hit) => hit.modeled && hit.rate?.multistrike?.unstoppableForce);
+      if (!finishers.length) return "Inactive";
+      return finishers.some((hit) => Math.abs(hit.rate.multistrike.unstoppableForce.factor - 1) > 1e-12) ? "In calc" : "No DPS effect";
+    }
+    // Play Safe's Cast Speed → Spell Burst Charge Speed: In calc where a modeled Spell hit Spell Bursts with the converted share.
+    if (CAST_SPEED_TO_CHARGE_LINE.test(text)) return (planner.skillHits || []).some((hit) => hit.modeled && hit.rate?.spellBurst?.chargeSpeed?.castSpeedShare?.length) ? "In calc" : "Inactive";
+    // Spell Ripple: In calc where a modeled Main Spell hit spawns Pulses; Scorching Beam's own beam path does not read it yet.
+    if (SPELL_RIPPLE_LINE.test(text)) {
+      if ((planner.skillHits || []).some((hit) => hit.modeled && hit.spellRipple)) return "In calc";
+      return planner.nativeHitCycle || planner.activation.activeNames?.has("Scorching Beam") ? "Not modeled" : "Inactive";
+    }
+    // Sweeping Fury (user-supplied 2026-10-19: one ring projectile per ring hits a single boss): In calc where a modeled Main
+    // Horizontal Projectile hit casts rings; its Projectile Quantity cap is In calc where it cut a hit's extra projectiles, No
+    // DPS effect on a projectile skill under the cap.
+    if (SWEEPING_FURY_LINE.test(text)) return (planner.skillHits || []).some((hit) => hit.modeled && hit.sweepingFury) ? "In calc" : "Inactive";
+    if (PROJECTILE_QUANTITY_LIMIT_LINE.test(text)) {
+      const limited = (planner.skillHits || []).filter((hit) => hit.modeled && hit.projectileLimit);
+      return limited.some((hit) => hit.projectileLimit.capped) ? "In calc" : limited.length ? "No DPS effect" : "Inactive";
     }
   }
   const passive = classifyPassiveSupportLine(text);
@@ -611,6 +707,97 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     const took = (planner.minions || []).some((minion) => minion.modeled && (minion.skills || []).some((skill) => !skill.buffOnly && skill.inCycle && [...(skill.maxOnly || []), ...(skill.minOnly || [])].some((line) => cleanText(line.text) === cleanText(text))));
     return took ? "In calc" : "Inactive";
   }
+  // Minion damage, speed and Multistrike lines (src/minion-damage-model.js; core audit B7): where a Minion is modeled, In calc when
+  // a modeled Minion applied the line, Inactive when every one left it out (its damage type, skill tag or Multistrike has no taker
+  // in the cycle: `lines.inactive`). Without a modeled Minion the rules below decide.
+  if (minionRoll && ["additional", "increased", "speed", "multistrikeChance", "multistrikeIncrement", "multistrikeIncrementAdditional"].includes(minionRoll.kind)) {
+    const cleanText = (value) => normalizePercentageText(String(value)).replace(/\s+/g, " ").trim();
+    const minions = (planner.minions || []).filter((minion) => minion.modeled);
+    const listed = (keys) => minions.some((minion) => keys.some((key) => (minion.lines?.[key] || []).some((line) => cleanText(line.text) === cleanText(text))));
+    if (listed(["increased", "additional", "speed", "multistrikeChance", "multistrikeIncrement", "multistrikeIncrementAdditional"])) return "In calc";
+    if (minions.length && listed(["inactive"])) return "Inactive";
+  }
+  // Spirit Magus core clauses (core audit B7; src/minion-damage-model.js spiritMagusState). Without a modeled Spirit Magus they are
+  // Inactive. Talons of Abyss' Ultimate speed: the Ultimate needs Full Bloom and is not in the cycle (its cooldown is unpublished), so
+  // Not modeled with Full Bloom and No DPS effect without it. "+N initial Growth": In calc only where it changes something (a Stage,
+  // a per-Growth line, Circle of Life). Source's Empower Skill Effect: In calc where a Magus's Empower buff takes it. Circle of Life:
+  // In calc with a Magus (the player's Growth follows it).
+  const magi = (planner?.minions || []).filter((minion) => minion.modeled && minion.family === "spirit-magus");
+  if (planner?.activation && /^For every \d+ Growth a Spirit Magus has, it \+?[\d.]+% additional Ultimate Attack and Cast Speed$/i.test(text)) return !magi.length ? "Inactive" : magi.some((minion) => minion.magus?.fullBloom) ? "Not modeled" : "No DPS effect";
+  if (planner?.activation && /^\+?[\d.]+ initial Growth for Spirit Magi$/i.test(text)) return !magi.length ? "Inactive" : magi.some((minion) => minion.magus?.initialGrowthMatters) ? "In calc" : "No DPS effect";
+  if (planner?.activation && /^Spirit Magi \+?[\d.]+% (?:additional )?Empower Skill Effect$/i.test(text)) return magi.some((minion) => minion.magus?.empowerEffect?.applied) ? "In calc" : "Inactive";
+  // Bond (src/minion-cores.js bondState; core audit B7): its lines act where Bond can be gained ("Can obtain Bond") and a Minion is
+  // modeled; Bond Gaining Speed only shortens the build-up, which pre-built own buffs skip (No DPS effect then).
+  const minionsModeled = (planner?.minions || []).some((minion) => minion.modeled);
+  if (planner?.activation && /^Can obtain Bond$|^\+?\d+ (?:to )?Max Bond [Ss]tacks$|Minion Damage while having Bond$|Minion Damage at Max Bond stacks$|Minion Damage for each stack of Bond$|Minion Critical Strike Rating for every \d+ stacks? of Bond$|^\+?[\d.]+% Bond Gaining Speed$/i.test(text)) {
+    const bond = planner.minionCores?.bond;
+    // Without a modeled Minion a Bond line is a Minion-only effect, like the plain Minion lines: No DPS effect.
+    if (!minionsModeled) return "No DPS effect";
+    if (!bond?.canObtain) return "Inactive";
+    return /Bond Gaining Speed$/i.test(text) && bond.prebuilt ? "No DPS effect" : "In calc";
+  }
+  // Orders' Summon Skill Cast Speed (src/minion-damage-model.js summon cast): In calc where a hand-cast summon (Machine Guard, Grim
+  // Phantom, Spider Tank, the Spirit Magi; user-supplied 2026-10-19) took it; a Module summon is not in that list and its speed type
+  // is not in the data (Not modeled).
+  if (planner?.activation && /^\+?[\d.]+% (?:additional )?Summon Skill Cast Speed$/i.test(text)) {
+    const minions = (planner.minions || []).filter((minion) => minion.modeled);
+    if (!minions.length) return "Inactive";
+    if (minions.some((minion) => minion.cycle?.summonCastFactor && minion.cycle.summonCastFactor !== 1)) return "In calc";
+    return minions.some((minion) => !minion.cycle?.summonSpeedType) ? "Not modeled" : "No DPS effect";
+  }
+  // Rally's "+1 Synthetic Troop Minions summoned at a time" (Module summons included, up to the skill's max quantity: user-supplied
+  // 2026-10-19, Google AI Mode answer): the model already counts a Synthetic Troop summon's published maximum ("This skill summons
+  // up to N Minions") from the first cast, so it changes nothing there; a Module's maximum is a placeholder in the game text, so
+  // its one assumed Minion becomes 1 + N (src/minion-damage-model.js; provisional, open question core-rally-module-count).
+  if (planner?.activation && /^Synthetic Troop Minions summoned at a time \+?\d+$/i.test(text)) {
+    const troops = (planner.minions || []).filter((minion) => minion.modeled && ["synthetic-troop", "module"].includes(minion.family));
+    return !troops.length ? "Inactive" : troops.some((minion) => minion.family === "module") ? "In calc" : "No DPS effect";
+  }
+  // Minion defence ("-90% additional damage taken by Minions", Orders; Bond's own): the dummy never attacks the Minions.
+  if (planner?.activation && /^[+-]?[\d.]+% additional damage taken by Minions$/i.test(text)) return "No DPS effect";
+  // Overly Modified (src/sentry-cores.js; read per skill on its own hits and DoT, and on the ailments each skill inflicts, which
+  // Reaps settle: user-supplied 2026-10-19): In calc where a modeled hit, DoT or ailment applier took it; Partly modeled with
+  // Scorching Beam, whose hit ledger and Ignite path are not scaled per inflicting skill.
+  if (planner?.activation && /^\+?[\d.]+% additional Sentry Damage, [+-]?[\d.]+% non-Sentry Active Skill damage$/i.test(text)) {
+    const took = (entry) => entry.modeled !== false && (entry.profile?.grantedAdditional || []).some((line) => line.overlyModified);
+    const applierTook = Object.values(planner.ailments || {}).some((ailment) => ailment?.modeled && (ailment.appliers || []).some((applier) => (applier.scaleSources || []).some((line) => line.overlyModified)));
+    const applied = (planner.skillHits || []).some(took) || applierTook || (planner.skillDots || []).some((dot) => dot.modeled !== false && (dot.overlyModified || (dot.extraAdditional || []).some((line) => line.overlyModified)));
+    if (!applied) return "Inactive";
+    return planner.activation.activeNames?.has("Scorching Beam") ? "Partly modeled" : "In calc";
+  }
+  // Isomorphic Arms' "Minions gain the Main-Hand Weapon's bonuses." (game affix 103580002: node 358 copies the main-hand item, equip
+  // slot 2, to the Minions): the weapon's damage (base and local affixes) and its other affixes reach the Minions, not its base attack
+  // speed or base crit rating (user-supplied 2026-10-19, Google AI Mode answer; src/minion-cores.js isomorphicArmsState). In calc with
+  // a weapon and a modeled Minion; Partly modeled where a weapon affix has no Minion reading; nothing to copy without a weapon.
+  if (planner?.activation && /^Minions gain the Main-Hand Weapon's bonuses\.?$/i.test(text)) {
+    if (!minionsModeled) return "No DPS effect";
+    const arms = planner.minionCores?.isomorphicArms;
+    if (!planner.weaponAttack?.mainHand?.weapon || !arms?.weapon) return "Inactive";
+    return arms.unread?.length ? "Partly modeled" : "In calc";
+  }
+  // Max Sentry Quantity (src/skill-hit-model.js sentryQuantity): In calc where a modeled Sentry hit holds the extra Sentries; No DPS
+  // effect where a support caps the deploy count; Inactive without a modeled Sentry skill.
+  if (planner?.activation && /^(?:Max Sentry Quantity \+?\d+|\+?\d+ (?:to )?Max Sentry Quantity)$/i.test(text)) {
+    const sentries = (planner.skillHits || []).filter((hit) => hit.modeled && hit.rate?.castFrequency);
+    if (!sentries.length) return "Inactive";
+    return sentries.some((hit) => (hit.rate.sentryQuantity?.count || 1) > (hit.rate.sentryQuantity?.base || 1)) ? "In calc" : "No DPS effect";
+  }
+  // Shared Fate's re-cast trigger and deploy count: the model already holds every Sentry deployed for the whole window (recast before
+  // expiry; Max Sentry Quantity Sentries at once), so neither changes a figure; Inactive without a modeled Sentry skill.
+  if (planner?.activation && (/^Triggers the Sentry Main Skill when there are no Sentries within \d+ ?m\. Interval: [\d.]+ ?s$/i.test(text) || /^The number of Sentries that can be deployed at a time is equal to the Max Sentry Quantity$/i.test(text))) {
+    return (planner.skillHits || []).some((hit) => hit.modeled && hit.rate?.castFrequency) ? "No DPS effect" : "Inactive";
+  }
+  // Empower's one-Magus limit (src/minion-cores.js applySpiritMagiLimit): In calc where it left a Magus out, No DPS effect with one Magus.
+  if (planner?.activation && /^The number of Max Spirit Magi In Map is 1$/i.test(text)) { const limit = planner.minionCores?.spiritMagiLimit; return limit?.dropped?.length ? "In calc" : (limit?.magi ?? magi.length) >= 1 ? "No DPS effect" : "Inactive"; }
+  // Commander's Gambit on the Minions (src/minion-cores.js commanderGambitState): In calc where a modeled Minion holds one of your
+  // Blessings with a damage or speed effect; the tripled cap needs the sharing clause.
+  if (planner?.activation && /^When gaining any Blessing, Minions within \d+ ?m also gain it$|^Minions' Max Blessing Stacks are three times your own$/i.test(text)) {
+    const gambit = planner.minionCores?.commanderGambit;
+    const applied = (planner.minions || []).some((minion) => minion.modeled) && Boolean(gambit?.share) && (gambit?.blessings || []).some((entry) => entry.damage);
+    return applied ? "In calc" : "Inactive";
+  }
+  if (planner?.activation && /^Gains Growth equal to [\d.]+% of the nearest Spirit Magus every 1 ?s/i.test(text)) return magi.some((minion) => minion.magus?.circle) ? "In calc" : "Inactive";
+  if (planner?.activation && /^For every [\d.]+ Growth, \+?[\d.]+% additional damage for Spirit Magi/i.test(text)) return magi.some((minion) => minion.magus?.circle?.applied?.length) ? "In calc" : magi.some((minion) => minion.magus?.circle) ? "No DPS effect" : "Inactive";
   // "+X% additional Attack Speed when performing Multistrikes" (src/skill-hit-model.js, per skill that can Multistrike).
   if (MULTISTRIKE_SPEED_LINE.test(text) && planner?.activation) return (planner.skillHits || []).some((hit) => hit.modeled && hit.rate?.multistrike) ? "In calc" : "Inactive";
   // Mark on the dummy (src/mark-effect.js; best case, the targetMarked switch): sources and Mark Effect lines.
@@ -646,7 +833,9 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     // modeled for want of a reader before 2026-10-18: it is a stat line either way.)
     if ((lineEffect.status === "Inactive" || lineEffect.status === "Not modeled") && !lineEffect.enemyDebuff && lineEffect.bodies?.length && lineEffect.bodies.every((body) => isNonDamageBody(body.body))) return lineEffect.status === "Not modeled" && lineEffect.active && lineEffect.bodies.every((body) => isCharacterStatLine(body.body)) ? "Counted in stats" : "No DPS effect";
     // A Minion body in a build without a modeled Minion (P9: "+2% Minion Fire Penetration against Ignited enemies").
-    if (lineEffect.bodies?.length && lineEffect.bodies.every((body) => /\bMinions?\b/.test(body.body)) && !(planner?.minions || []).some((minion) => minion.modeled) && planner?.activation) return "Inactive";
+    // The Minion copies of player lines (core audit B7: Focused Strike, Dirty Tricks, Reflection; bodies "… for Minions") read like the
+    // plain Minion lines there (No DPS effect: no Minion of this build can take them), so a core whose player clause applies keeps In calc.
+    if (lineEffect.bodies?.length && lineEffect.bodies.every((body) => /\bMinions?\b/.test(body.body)) && !(planner?.minions || []).some((minion) => minion.modeled) && planner?.activation) return lineEffect.bodies.every((body) => / for Minions$/.test(body.body)) ? "No DPS effect" : "Inactive";
     if (!lineEffect.active || lineEffect.status !== "In calc" && lineEffect.status !== "Partly modeled") return lineEffect.status;
     // Focus / Combo / Terra Damage Enhancement (src/line-effects.js resolveDamageEnhancement): the summed derived line reaches
     // every modeled hit and own DoT of a skill with that tag (src/skill-dot-model.js reads it by tag), so the resolver's status
@@ -692,6 +881,15 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   if (/(?:at|on) Full Life\.?$/i.test(text) && planner?.fullLife && planner.fullLife.lines.some((line) => line.text === text)) return planner.fullLife.active ? "In calc" : "Inactive";
   // "+X% Sealed Mana Compensation for <Aura>" (residual batch A-2): Inactive without that aura; with it, the per-aura
   // compensation is not read by the aura ledger (it would change the sealed Mana, and so the Low / Full Mana states).
+  // "+X% Sealed Mana Compensation for Focus / Spirit Magus Skills" (core audit B7; src/engine.js auraSealedManaCompensation): In calc
+  // where an active Aura carrying the tag takes it in its reservation (like the global Sealed Mana Compensation line); the Focus wording
+  // reads Inactive without a Focus Aura (the Spirit Magus wording keeps its No DPS effect rule below).
+  const taggedSealed = text.match(/^[+-]?[\d.]+% Sealed Mana Compensation for (Focus|Spirit Magus) Skills$/i);
+  if (taggedSealed && planner?.activation) {
+    const took = (planner.aura?.entries || []).some((entry) => planner.activation.activeNames?.has(entry.name) && (entry.sealedManaCompensation?.sources || []).some((source) => source.tag && normalizePercentageText(String(source.text)).replace(/\s+/g, " ").trim().replace(/^\[[^\]]+\]\s*/, "") === text));
+    if (took) return "In calc";
+    if (/^Focus$/i.test(taggedSealed[1])) return "Inactive";
+  }
   const namedSealed = text.match(/^[+-]?[\d.]+% Sealed Mana Compensation for (?!Spirit Magus)(.+?)$/i);
   if (namedSealed && planner?.activation) {
     const name = namedSealed[1].trim();
@@ -733,7 +931,12 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     // An Elemental line ("+12% Elemental Damage") also writes Cold and Lightning (src/damage-line-classifier.js): without Ignite
     // the generic rule below judges it on the build's Cold / Lightning hits and DoTs (pact badge audit 2026-10-13: an unallocated
     // Elemental pact node read Inactive on a Cold build).
-    if (key === "ignite" && !(planner?.theoretical?.totals?.baseIgniteDamage?.max > 0) && [...(classifyDamageLine(text)?.damageTypes || [])].some((type) => type !== "Fire")) break;
+    // The same holds for a plain Fire line ("+25% additional Fire Damage", Translucent's derived body; core audit batch B2): without
+    // Ignite it still reaches Fire hits (an added-Fire component on a Cold spell), so the generic rule judges it.
+    // Likewise a plain Erosion or Physical line without Wilt / Trauma (Self-Delusion's derived "+X% additional Erosion Damage" on an
+    // added-Erosion attack; core audit batch B4): the generic rule judges it on the build's hits and DoTs of that type.
+    const ailmentPresent = key === "ignite" ? planner?.theoretical?.totals?.baseIgniteDamage?.max > 0 : planner?.ailments?.[key]?.base?.max > 0;
+    if ((key === "ignite" || planner?.activation) && !ailmentPresent && (classifyDamageLine(text)?.damageTypes?.size > 0)) break;
     if (key === "ignite") return planner?.theoretical?.totals?.baseIgniteDamage?.max > 0 ? "In calc" : "Inactive";
     return planner?.ailments?.[key]?.base?.max > 0 ? "In calc" : "Inactive";
   }
@@ -759,8 +962,9 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     const toSpells = /Spells/i.test(added[2]), toAttacks = /Attacks/i.test(added[2]);
     const hits = (planner.skillHits || []).filter((hit) => hit.modeled);
     const beamReads = toSpells && /^(?:Fire|Cold|Lightning)$/i.test(added[1]) && planner.beamAddedDamage?.sources?.length > 0;
-    // The skill-hit engine adds "to Spells" lines to every modeled hit it computes (spell and attack profiles alike).
-    const spellReads = toSpells && hits.length > 0;
+    // The skill-hit engine adds "to Spells" lines to Spell skill hits only, and "to Attacks and Spells" also to attacks
+    // (src/skill-hit-model.js; before 2026-10-18 "to Spells" reached attack hits too).
+    const spellReads = toSpells && hits.some((hit) => (hit.profile?.tags || []).includes("Spell") && !hit.profile?.weaponScaling);
     const attackReads = toAttacks && hits.some((hit) => hit.rate?.speedType === "attack-speed");
     if (beamReads || spellReads || attackReads) return "In calc";
     if (planner.activation.activeNames?.has("Scorching Beam") || hits.length) return "Inactive";
@@ -843,11 +1047,22 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   const sentryHits = (planner?.skillHits || []).filter((hit) => hit.modeled && hit.rate?.castFrequency);
   if (/^[+-]?[\d.]+% (?:additional )?(?:Attack and Cast|Cast|Attack) Speed for Sentry Skills$/i.test(text) && planner?.activation) return sentryHits.length ? "No DPS effect" : "Inactive";
   const sentryShare = text.match(/^(?:Cast|Attack) Speed bonus and [\d.]+% of additional bonus are also applied to (Spell|Attack) Sentries' Cast Frequency$/i);
-  if (sentryShare && planner?.activation) return sentryHits.some((hit) => (planner.activation.setups?.find((setup) => setup.setupKey === hit.setupKey)?.tags || []).includes(sentryShare[1][0].toUpperCase() + sentryShare[1].slice(1).toLowerCase())) ? "In calc" : "Inactive";
-  // Minion-family lines with no reader yet (talent batch chunk 4, §5.4), with the reason in the batch doc. Command (TLIDB keyword:
-  // +3% additional damage per point for Synthetic Troop Minions, −100…100, returns 13 points per second toward 0, gained by
-  // equipping a Synthetic Troop skill) stays Not modeled: how much Command equipping the skill grants is not sourced, and a
-  // "+3 Command per second" gain alone is below the 13 / s return (residual batch A2-command).
+  // Core audit B7: In calc where the share reached a Sentry's Cast Frequency (the build has a Cast / Attack Speed bonus); a Sentry of
+  // that kind with no bonus to share reads No DPS effect.
+  if (sentryShare && planner?.activation) {
+    const kind = sentryShare[1][0].toUpperCase() + sentryShare[1].slice(1).toLowerCase();
+    const own = sentryHits.filter((hit) => (planner.activation.setups?.find((setup) => setup.setupKey === hit.setupKey)?.tags || []).includes(kind));
+    if (!own.length) return "Inactive";
+    return own.some((hit) => (hit.rate.castFrequency.sources || []).some((line) => String(line.text || "").startsWith(text))) ? "In calc" : "No DPS effect";
+  }
+  // Command per second (Mighty Guard; src/minion-cores.js commandState): Command builds to its cap of 100 (user-supplied 2026-10-19,
+  // Google AI Mode answer): In calc where a modeled Synthetic Troop / Module Minion takes full Command (best case, switch
+  // fullCommand); Inactive without one or with the switch off.
+  if (planner?.activation && /^\+ ?\d+(?:\.\d+)? Command per second$/i.test(text)) {
+    const troops = (planner.minions || []).some((minion) => minion.modeled && COMMAND_FAMILIES.includes(minion.family));
+    return troops && planner.minionCores?.command?.value > 0 ? "In calc" : "Inactive";
+  }
+  // Minion-family lines with no reader yet (talent batch chunk 4, §5.4), with the reason in the batch doc.
   // ("Origin of Spirit Magus effect" lines are read by src/origin-of-spirit-magus.js through the line-effect entries above.)
   if (/Sentry Duration|Sentry Start Time|Sentry quantity|Command per second|Max Summonable Synthetic Troops|Max Spirit Magi In Map|Spirit Magus Ultimate Damage|Origin of Spirit Magus effect|if Sentry Skill is not used in the last/i.test(text)) return "Not modeled";
   if (/additional damage taken by Spirit Magi$|Sealed Mana Compensation for Spirit Magus Skills$/i.test(text)) return "No DPS effect";
@@ -874,6 +1089,19 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   // each inactivated Tangle" on the build's Tangle Skills. A carried line resolves through planner.lineEffects (with its reason);
   // this answers for an uncarried tooltip: In calc where the build has a Tangle Skill, Inactive otherwise.
   if (/^Has Dormant Entanglement$/i.test(text) && planner?.tangles) return planner.tangles.setups.length && planner.tangles.inactivated > 0 ? "In calc" : "Inactive";
+  // Core audit B8 (src/tangle-model.js): "You can apply N additional Tangle(s) to enemies" (Peculiar Vibe) activates more Tangles
+  // on the dummy (the cadence reading and the Dormant count read it); "±X% (additional) Tangle Duration" changes no dummy figure
+  // while the build recasts its Tangle Skill within the duration (best case).
+  if (planner?.tangles && isTangleAttachLine(text)) return tangleAttachStatus(planner.tangles).status;
+  if (planner?.tangles && isTangleDurationLine(text)) return tangleDurationStatus(planner.tangles).status;
+  // "-99% additional Empower Skill and Defensive Skill Effect" (Storm's Command; core audit B8, src/storm-command.js): the Empower
+  // half scales the Empower buffs the planner models (Aim's damage bonus, Ice Bond's and Bull's Rage's Euphoria, a Freezing Point
+  // debuff); Defensive Skill effects are defence only. In calc where such a buff is in the build, Inactive otherwise.
+  if (EMPOWER_DEFENSIVE_EFFECT_LINE.test(text) && planner?.activation) {
+    const aim = Boolean(planner.aim?.active && planner.aim.baseDamagePercent > 0);
+    const empower = (planner.empowerEffects?.entries || []).some((entry) => entry.active && entry.empowerScaled);
+    return aim || empower ? "In calc" : "Inactive";
+  }
   // Blessing duration (talent batch chunk 3): own buffs are pre-built and held (gain sources such as Reaps refresh them), so a
   // longer duration changes nothing: No DPS effect while the Blessing is held; Inactive when nothing holds it.
   const blessingDuration = text.match(/^\+[\d.]+% (Tenacity|Focus|Agility) Blessing Duration$/i);
@@ -923,6 +1151,16 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   // Elemental Resistance", Trinity; "+2% Lightning Penetration per +1% Lightning Resistance") is damage the planner does not
   // read: Not modeled, not the trailing-"Resistance" defence rule (survey 2026-10-13 §4.2).
   if (/\bPenetration\b/i.test(text) && /Resistances?$/i.test(text) && !/Armor DMG Mitigation/i.test(text)) return "Not modeled";
+  // Damage wordings the defence words below would catch (core audit 2026-10-18 F5 / F6): Ethereal Prism Juggernaut's enemy
+  // Armor / Resistance shred, Self-Delusion's damage per Crowd Control type, Keen Intellect's penetration per Curse skill,
+  // Circle of Life's Spirit Magus damage per Growth, and Play Safe's Cast Speed → Spell Burst Charge Speed (it shortens the
+  // charge time, src/skill-hit-model.js spellBurstChargeTime). No reader takes them yet. (Juggernaut and Self-Delusion are read by
+  // src/combat-states.js since core audit B4: with a planner their resolver entry decides above; this stays the planner-less fallback.)
+  if (/additional Armor and [+-]?[\d.]+% [\w ]*Resistance for enemies on Critical Strike/i.test(text)
+    || /additional \w+ Damage to an enemy for each type of Crowd Control/i.test(text)
+    || /^For every Active \w+ Skill equipped, .*Penetration/i.test(text)
+    || /additional damage for Spirit Magi/i.test(text)
+    || /bonuses to Cast Speed is also applied to Spell Burst Charge Speed/i.test(text)) return "Not modeled";
   if (noDpsRules.some((rule) => rule.test(text) && !(minionModeled && rule === MINION_RULE))) return "No DPS effect";
   return null;
 }
@@ -952,7 +1190,7 @@ function readerLineStatus(text, planner) {
   // are marked by build-mechanics (checked first); talent / slate copies by their totals (the parsed-key route above).
   const unreadOnly = (readers) => origins.size > 0 && ![...origins].some((origin) => readers.has(origin));
   if (/^\+?[\d.]+% additional damage applied to Life$/i.test(text)) {
-    if (unreadOnly(new Set([...READ_ORIGINS, "talent", "slate"]))) return "Not modeled";
+    if (unreadOnly(new Set([...READ_ORIGINS, "talent", "slate", "core"]))) return "Not modeled";
     if (planner?.conditions?.targetLife === false) return "Inactive";
     return routeStatus("damage", "additionalDamageToLifePercent", planner);
   }
@@ -979,8 +1217,8 @@ export function skillLevelLineStatus(text, planner = context) {
   const empty = emptySlotLevelLine(text);
   if (empty) {
     if (!planner?.activation) return "In calc";
-    const enabled = (planner.activation.setups || []).filter((setup) => setup.enabled !== false);
-    const slots = empty.slot === "passive" ? 4 - enabled.filter((setup) => setup.role === "aura").length : 5 - enabled.filter((setup) => setup.role !== "aura" && setup.role !== "support").length;
+    const enabled = (planner.activation.setups || []).filter((setup) => setup.enabled !== false || setup.slotInactive);
+    const slots = empty.slot === "passive" ? 4 - enabled.filter((setup) => setupBoardTab(setup) === "auras").length : 5 - enabled.filter((setup) => setupBoardTab(setup) === "skills" && setup.role !== "support").length;
     if (slots <= 0) return "Inactive";
     const active = planner.activation.activeNames || new Set();
     const modeledKeys = new Set((planner.damageSources || []).filter((source) => source.status === "modeled").map((source) => source.setupKey));

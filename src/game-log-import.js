@@ -8,6 +8,7 @@
 // Design and evidence: research/game-log-import-2026-10-12.md.
 import { defaultPlannerState, normalizePlannerState } from "./planner-state.js";
 import { validatePlannerState } from "./state-validation.js";
+import { defaultFollowerState } from "./follower-model.js";
 import { equipmentSlots } from "./data/gear/crafting-catalog-ss13.js";
 import { rareBaseByGameId, rareBaseByName } from "./rare-base-lookup.js";
 import { baseAffixTiersSs13 } from "./data/gear/base-affixes-ss13.generated.js";
@@ -26,7 +27,7 @@ import { heroTraitTree, treeRules, treeMaxCapacity } from "./hero-trait-tree.js"
 import { allProfessionTalentCatalogueSs13 } from "./data/talents/all-profession-trees-ss13.generated.js";
 import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "./data/catalogs/tlidb-ss13.js";
 import { selenaCompleteSkillLoadoutSs13 } from "./data/skills/selena-complete-skill-loadout-ss13.js";
-import { activationMediumAffixLines, isActivationMedium, progressionSupportHasStars, progressionSupportTierData, specialSupportTierData } from "./data/skills/special-support-tiers-ss13.js";
+import { activationMediumAffixLines, activationMediumGameLine, activationMediumGameRolls, isActivationMedium, progressionSupportHasStars, progressionSupportTierData, specialSupportTierData } from "./data/skills/special-support-tiers-ss13.js";
 import { selenaScorchingBeamPactsSs13 } from "./data/pacts/selena-scorching-beam-ss13.js";
 import { pactspiritCatalogSs13 } from "./data/pacts/pactspirit-catalog-ss13.js";
 import { pactspiritTreesSs13 } from "./data/pacts/pactspirit-trees-ss13.js";
@@ -39,10 +40,12 @@ import { heroMemoryAffixesSs13 } from "./data/heroes/hero-memory-affixes-ss13.js
 import { normalizeRevivedAffix } from "./data/heroes/memory-revival-ss13.js";
 import { memoryScaledBaseStat } from "./hero-memory-rules.js";
 import { memoryAffixTiersSs13, memoryRevivalAffixIdsSs13, observedGameAffixIdsSs13 } from "./data/game-import-tlidb-ss13.generated.js";
+import { activationMediumGameAffixesSs13 } from "./data/skills/activation-medium-game-affixes-ss13.generated.js";
 import { netherKingFixedAffixesSs13 } from "./data/nether-king-slate-affixes-ss13.js";
 import { netherKingUltimateAffixesSs13 } from "./data/nether-king-ultimate-affixes-ss13.js";
-import { legendarySlateShapes } from "./slate-judgment.js";
+import { craftedSlateShape, legendarySlateShapes } from "./slate-judgment.js";
 import { canPlaceSlate, slateOffsets, slateTransformRules } from "./slate-board.js";
+import { DEFAULT_GAME_DIRECTION, craftedSlateGod, craftedSlateShapeForId, gameDirectionTurn, plannerGodKey } from "./slate-shape-ids.js";
 import { isValidPedigreeAffix } from "./pedigree-slots.js";
 import { etherealPrismBases, prismAffixes } from "./prism-crafting.js";
 
@@ -152,7 +155,9 @@ export function scanGameLog(text, { accountGroups = new Map(), characterGroups =
         if (user && !accountGroups.has(user)) accountGroups.set(user, accountGroups.size + 1);
         const wornIds = entries(raw.bag?.wearItems).map((entry) => entry.Item?.Id).filter(Boolean);
         const cutSections = Object.keys(KEPT_SECTIONS).filter((section) => isWholeCut(raw[section]));
-        dumps.push({ stamp, account, accountGroup: user ? accountGroups.get(user) : null, wornIds, topLevelCut: "..." in raw, cutSections, tree: sanitizeTree(raw, tokens) });
+        // Past about 30 top-level tables the printer leaves the rest out entirely, key included (no "..." marker).
+        const droppedSections = Object.keys(KEPT_SECTIONS).filter((section) => !(section in raw));
+        dumps.push({ stamp, account, accountGroup: user ? accountGroups.get(user) : null, wornIds, topLevelCut: "..." in raw, cutSections, droppedSections, tree: sanitizeTree(raw, tokens) });
       }
       index = Math.max(index, end - 1);
       continue;
@@ -167,7 +172,7 @@ export function scanGameLog(text, { accountGroups = new Map(), characterGroups =
   for (const dump of dumps) {
     if (!dump.account) dump.character = dumps.find((other) => other.account && other.wornIds.some((id) => dump.wornIds.includes(id)))?.character ?? number({});
   }
-  const result = dumps.map((dump, index) => ({ id: `dump-${index + 1}`, stamp: dump.stamp, character: dump.character, accountGroup: dump.accountGroup, topLevelCut: dump.topLevelCut, cutSections: dump.cutSections, tree: dump.tree }));
+  const result = dumps.map((dump, index) => ({ id: `dump-${index + 1}`, stamp: dump.stamp, character: dump.character, accountGroup: dump.accountGroup, topLevelCut: dump.topLevelCut, cutSections: dump.cutSections, droppedSections: dump.droppedSections, tree: dump.tree }));
   // Change events carry no character; those before the next login (any character) belong to this dump's session.
   for (const dump of result) {
     const later = result.filter((other) => other.stamp > dump.stamp).map((other) => other.stamp).sort()[0] || null;
@@ -192,7 +197,7 @@ export function listSnapshots(scan, idMap) {
       level: player.Level ? Number(player.Level) : null,
       gear: entries(tree.bag?.wearItems).length, trees: entries(tree.geniusInfos?.info).length,
       skills: { found: [...expected].filter((slot) => found.has(slot)).length, expected: expected.size },
-      cuts, missingSections: sections, cutSections: dump.cutSections || [], topLevelCut: dump.topLevelCut,
+      cuts, missingSections: sections, cutSections: dump.cutSections || [], droppedSections: dump.droppedSections || [], topLevelCut: dump.topLevelCut,
       changesAfter: dump.changesAfter, attributeSnapshotAfter: dump.attributeSnapshotAfter
     };
   });
@@ -315,9 +320,11 @@ export function fillTemplate(template, args = []) {
 
 // ---------------------------------------------------------------- report
 
+/** Always shown with an import: the log never records the active follower (research/followers/game-log-follower-import-2026-10-19.md). */
+export const FOLLOWER_NOTICE = "Followers are not imported: the game log does not record your active follower. Set it in the Hero → Follower tab.";
 function newReport() {
   const section = () => ({ imported: [], unresolved: [], missing: [], notes: [] });
-  return { sections: { character: section(), gear: section(), talents: section(), skills: section(), slates: section(), pacts: section(), hero: section() }, provisional: [], merges: [], filledFrom: {}, replaced: {} };
+  return { sections: { character: section(), gear: section(), talents: section(), skills: section(), slates: section(), pacts: section(), hero: section() }, notices: [FOLLOWER_NOTICE], provisional: [], merges: [], filledFrom: {}, replaced: {}, gaps: new Set(), logGaps: [] };
 }
 const add = (report, section, kind, text, reason) => report.sections[section][kind].push(reason ? { item: text, reason } : { item: text });
 /** Records that `section` took entries from the dump logged at `stamp` (another dump than the chosen one). */
@@ -335,6 +342,7 @@ export function blankPlannerState() {
   state.skills = { setupOrder: [], boardSlots: { skills: [], auras: [] }, supportOrder: {}, setupEnabled: Object.fromEntries(selenaCompleteSkillLoadoutSs13.setups.map((setup) => [setup.name, false])), skillLevels: {}, supportEnabled: {}, supportLevels: {}, specialSupportConfigs: {}, customSupports: {}, customSetups: [] };
   state.equippedSlateIds = []; state.slates = { geometryVersion: 4, placements: {}, parked: {}, affixOverrides: {}, inventory: [] };
   state.talentRanks = {}; state.talents = { useCapturedRanks: false, selectedTrees: ["", "", "", ""], coreSelections: {}, prismInventory: [], installedPrisms: {}, installedPrismNodes: {} };
+  state.followers = defaultFollowerState(); // never carried over from the open build
   state.pacts = { activeSpirits: Object.fromEntries(selenaScorchingBeamPactsSs13.pactspirits.map((spirit) => [spirit.name, false])), selectedSpirits: ["", "", ""], spiritLevels: {}, nativeNodeQuantities: {}, kismetSlots: {}, fateUnlocks: {}, kismetSlotMode: true, volcanoEnabled: [false, false, false, false], reapingDurationQuantity: 0, spellBlockEnabled: [false], attackBlockEnabled: [false, false] };
   return state;
 }
@@ -588,7 +596,7 @@ export function talentFromId(talentId, idMap) {
 
 function resolveTalents(tree, idMap, report, state) {
   const infos = Object.entries(tree.geniusInfos?.info || {}).filter(([, info]) => info && typeof info === "object" && !("..." in info)).sort(([a], [b]) => Number(a) - Number(b)).map(([, info]) => info);
-  if (!infos.length) { add(report, "talents", "missing", "Talent trees", "the geniusInfos section is not in this dump or in another dump of the character"); return; }
+  if (!infos.length) { if (!report.gaps.has("geniusInfos")) add(report, "talents", "missing", "Talent trees", "the geniusInfos section is not in this dump or in another dump of the character"); return; }
   const selectedTrees = ["", "", "", ""];
   infos.slice(0, 4).forEach((info, slot) => {
     if (!info.geniusCareerId || info.geniusCareerId === "0") return; // empty tree slot
@@ -667,16 +675,38 @@ function specialSupportConfig(name, item, report, label) {
     if (!lines) return null;
     const configs = lines.map(() => ({ tier: null, rolls: [] }));
     let resolved = 0;
+    const fixedLines = []; // lines whose logged row has no rolled value: their tier follows the rolled lines (below)
     for (const affix of affixes) {
-      const id = String(affix.Id), observed = observedGameAffixIdsSs13[id];
-      let line = null, tier = null, provisional = false;
-      if (observed?.family === "activation-medium" && observed.support === name) { line = observed.line; tier = observed.tier; }
-      else if (name === "Activation Medium: Preparation" && /^7710000\d\d$/.test(id)) { line = Number(id[7]); tier = Number(id[8]); provisional = true; }
-      const option = line != null ? lines[line]?.options.find((entry) => entry.tier === tier) : null;
+      const id = String(affix.Id), observed = observedGameAffixIdsSs13[id], game = activationMediumGameAffixesSs13[id];
       const roll = argsOf(affix);
-      if (!option || roll.length !== option.ranges.length || !option.ranges.every((range, index) => roll[index] >= range.min && roll[index] <= range.max)) { add(report, "skills", "unresolved", `${label}: ${name} affix ${id}${roll.length ? ` = ${roll.join(", ")}` : ""}`, option ? "roll outside the TLIDB tier range" : "no Activation Medium line table for this id"); continue; }
-      configs[line] = { tier, rolls: roll }; resolved += 1;
-      if (provisional) report.provisional.push(`${label}: ${name} affix ${id} read as line ${line + 1}, tier ${tier} (7710000LT id layout, inferred from Preparation)`);
+      const label2 = `${label}: ${name} affix ${id}${roll.length ? ` = ${roll.join(", ")}` : ""}`;
+      // Pinned observations first (Preparation, 2026-10-12), then the game's own row text (config_modifier, 2026-10-18).
+      if (observed?.family === "activation-medium" && observed.support === name) {
+        const option = lines[observed.line]?.options.find((entry) => entry.tier === observed.tier);
+        if (option && roll.length === option.ranges.length && option.ranges.every((range, index) => roll[index] >= range.min && roll[index] <= range.max)) { configs[observed.line] = { tier: observed.tier, rolls: roll }; resolved += 1; continue; }
+        add(report, "skills", "unresolved", label2, option ? "roll outside the TLIDB tier range" : `TLIDB's ${name} table has no tier ${observed.tier} for line ${observed.line + 1}`); continue;
+      }
+      if (!game) { add(report, "skills", "unresolved", label2, "this affix id is not an Activation Medium row of the game's modifier table (gamedata 2026-10-18)"); continue; }
+      const [template, tier] = game;
+      const match = activationMediumGameLine(name, template);
+      if (!match) { add(report, "skills", "unresolved", label2, `the game line "${template.replace(/\n/g, " / ")}" is not a line of TLIDB's ${name} table`); continue; }
+      const line = lines[match.index];
+      if (!/\$[+-]?P\d+\$/.test(template)) { fixedLines.push({ index: match.index, tier, template, roll, match, label2 }); resolved += 1; continue; }
+      const option = line.options.find((entry) => entry.tier === tier);
+      if (!option) { add(report, "skills", "unresolved", label2, `TLIDB's ${name} table has no tier ${tier} for "${line.options[0].text}"`); continue; }
+      const rolls = activationMediumGameRolls(option, template, roll, match);
+      if (!rolls) { add(report, "skills", "unresolved", label2, `logged value(s) do not fit TLIDB's tier ${tier} "${option.text}"`); continue; }
+      configs[match.index] = { tier, rolls }; resolved += 1;
+    }
+    // A fixed line (no rolled value) is one game row for every tier; TLIDB repeats it per tier. Use the rolled lines' tier
+    // when TLIDB lists the line there, else the row's own tier, else any tier with the same text.
+    const rolledTier = configs.find((config) => config.tier != null)?.tier;
+    for (const { index, tier, template, roll, match, label2 } of fixedLines) {
+      const options = lines[index].options;
+      const option = options.find((entry) => entry.tier === rolledTier) || options.find((entry) => entry.tier === tier) || options[0];
+      const rolls = activationMediumGameRolls(option, template, roll, match);
+      if (!rolls) { add(report, "skills", "unresolved", label2, `logged value(s) do not fit TLIDB's tier ${option.tier} "${option.text}"`); resolved -= 1; continue; }
+      configs[index] = { tier: option.tier, rolls };
     }
     return resolved ? { lines: configs } : null;
   }
@@ -738,7 +768,7 @@ function resolveSkills(tree, others, idMap, report, state) {
       for (const support of capturedSetups.get(name).supports) skills.supportEnabled[`${key}:${support.name}`] = false;
     } else {
       key = `game-log-skill-${slotNumber}`;
-      skills.customSetups.push({ instanceId: key, role: catalog.role, name, baseLevel: level, addedLevels: 0, supports: [], enabledSupportSlots: 0, ...(Number.isFinite(catalog.sealedManaPercent) ? { sealedManaPercent: catalog.sealedManaPercent } : {}), source: catalog.source || "game-log", custom: true });
+      skills.customSetups.push({ instanceId: key, role: catalog.role, name, baseLevel: level, addedLevels: 0, supports: [], enabledSupportSlots: 0, ...(Number.isFinite(catalog.sealedManaPercent) ? { sealedManaPercent: catalog.sealedManaPercent } : {}), source: catalog.source || "game-log", custom: true, ...(role !== "aura" && catalog.role === "aura" ? { boardTab: "skills" } : {}) });
     }
     if (!entry.item) add(report, "skills", "notes", `${describe(slotNumber)}: ${name} level not logged; Lv ${level} assumed`);
     add(report, "skills", "imported", `${describe(slotNumber)}: ${name} Lv ${level}${mergedNote(entry)}`);
@@ -763,7 +793,7 @@ function resolveSkills(tree, others, idMap, report, state) {
       if (config) skills.specialSupportConfigs[stateKey] = config;
       order[position] = supportName;
       const configText = config?.stars ? `, ${config.stars}★${config.tier != null ? ` T${config.tier}` : ""}` : config?.lines ? `, ${config.lines.filter((line) => line.tier != null).map((line) => `T${line.tier} ${line.rolls.join("/")}`).join(", ")}` : "";
-      if (!support.item) add(report, "skills", "notes", starSupport ? `${label}: ${supportName} stars and roll not logged (the support item is not in the dump); the planner default for this support is kept, set it on the support card` : `${label}: ${supportName} level and rolls not logged`);
+      if (!support.item) add(report, "skills", "notes", starSupport ? `${label}: ${supportName} stars and roll not logged (the support item is not in the dump); the planner default for this support is kept, set it on the support card` : `${label}: ${supportName} level and rolls not logged (the support item is past the log's 30-entry cut of the skill-item table); imported at Lv ${supportLevel}, the catalog default`);
       add(report, "skills", "imported", `${label}: ${supportName}${hasStars ? "" : ` Lv ${supportLevel}`}${configText}${mergedNote(support)}`);
     });
     skills.supportOrder[key] = order;
@@ -777,7 +807,8 @@ function resolveSkills(tree, others, idMap, report, state) {
 
 // The game anchors a slate at one cell: the cell with the most neighbours in the shape (first such cell). Index =
 // column x 10 + row of that cell; Direction 2 is the unrotated shape and each step turns 90 degrees. Calibrated on the
-// user's nine slates (Fallen Starlight, A Corner of Divinity, Pedigree of Gods, Sparks, Prairie, Judgment).
+// user's nine slates (Fallen Starlight, A Corner of Divinity, Pedigree of Gods, Sparks, Prairie, Judgment). The same rule
+// places god-crafted slates (src/slate-shape-ids.js; research/slate-shape-import-2026-10-19.md).
 const CALIBRATED_SLATES = new Set(["Fallen Starlight", "A Corner of Divinity", "Pedigree of Gods", "Sparks of Moth Fire", "When Sparks Set the Prairie Ablaze", "Nether King's Divinity: Judgment"]);
 const anchorCell = (shape) => {
   const neighbours = (cell) => shape.filter((other) => Math.abs(other[0] - cell[0]) + Math.abs(other[1] - cell[1]) === 1).length;
@@ -785,6 +816,88 @@ const anchorCell = (shape) => {
   shape.forEach((cell, index) => { if (neighbours(cell) > neighbours(shape[best])) best = index; });
   return best;
 };
+const offsetKey = (offsets) => offsets.map((cell) => cell.join(",")).sort().join(" ");
+/**
+ * The planner orientation of a game turn. A slate the planner flips but never rotates (Pedigree of Gods) keeps a turn whose
+ * cells equal a mirror of its shape as that mirror: Pedigree is symmetric about its diagonal, so a quarter turn either way is
+ * a mirror. User's SS14 login (2026-10-19): Pedigree at game direction 1 fits the board at its logged cell only mirrored.
+ * Any other turn stays a rotation (refused later when the slate cannot rotate).
+ */
+function gameSlateOrientation(slate, shape, rotation, offsets) {
+  const rules = slateTransformRules(slate);
+  if (rotation && !rules.rotate && rules.flip) {
+    const target = offsetKey(offsets);
+    for (const [flipX, flipY] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+      if (offsetKey(slateOffsets({ shape }, 0, flipX, flipY)) === target) return { rotation: 0, flipX, flipY, mirrored: flipX !== 1 || flipY !== 1 };
+    }
+  }
+  return { rotation, flipX: 1, flipY: 1, mirrored: false };
+}
+
+/** The planner rotation / flip of a shape whose cells equal the game's offsets (unflipped and least turned first), or null. */
+function plannerOrientation(shape, offsets) {
+  const target = offsetKey(offsets);
+  for (const [flipX, flipY] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+    for (const rotation of [0, 90, 180, 270]) if (offsetKey(slateOffsets({ shape }, rotation, flipX, flipY)) === target) return { rotation, flipX, flipY, mirrored: flipX * flipY === -1 };
+  }
+  return null;
+}
+
+// The crafter's art for a god's planner shape (src/app.js craftedSlateIcon / the crafter's shape buttons).
+const GOD_SLATE_CAPTURES = { hunting: "goddess-of-hunting", knowledge: "goddess-of-knowledge", machines: "god-of-machines", might: "god-of-might", war: "god-of-war" };
+const craftedSlateIconPath = (godKey, index) => `./src/assets/tli/slates/game-captures/${index ? `${godKey}-${["Z1", "L1", "O1", "T1"][index]}.png` : godKey === "deception" ? "goddess-of-deception-divinity.webp" : `${GOD_SLATE_CAPTURES[godKey]}.svg`}`;
+const CRAFTED_SHAPE_RULE = "Crafted Divinity Slate shape ids 1021 / 1031 / 1051 are read as Z2 / L1 / O1 from TLIDB's shape order (1011 Z1, 1041 L2 and 1061 T1 are confirmed on a logged board)";
+const CRAFTED_DIRECTION_RULE = `A crafted Divinity Slate with no logged Direction is read as direction ${DEFAULT_GAME_DIRECTION}, the game's default turn (the only reading that fits the 2026-10-19 board)`;
+
+/**
+ * A god-crafted Divinity Slate: ShapeId names one of the god's six shapes, Direction its quarter turns (missing: 0), and the
+ * logged cell is its anchor, as for legendary slates. Fixed talents come from BaseTalentList (2), random ones from
+ * EnchantTalentList (3), the crafter's two groups. The planner draws one Z / L / O / T per god, so a game shape that is the
+ * mirror image of the planner's drawing (Z2 / L2, or Deception's Z1) is placed flipped. Never placed illegally: a shape
+ * that does not fit at its logged cell is parked beside the board.
+ */
+function resolveCraftedSlate({ entry, item, position, baseName, idMap, report, state, placements, boardSlates }) {
+  const god = craftedSlateGod(baseName), godKey = plannerGodKey(god), shapeInfo = craftedSlateShapeForId(item.ShapeId);
+  const label = `Slate at ${entry.Index} (${baseName}${shapeInfo ? ` ${shapeInfo.code}` : ""})`;
+  if (!godKey) { add(report, "slates", "unresolved", label, "the planner has no crafted slates for this god"); return; }
+  if (!shapeInfo) { add(report, "slates", "unresolved", label, `crafted slate shape id ${item.ShapeId ?? "none"} is not in the shape table yet (src/slate-shape-ids.js)`); return; }
+  const id = `game-log-slate-${position + 1}`;
+  const problems = [];
+  const talents = (list, count) => {
+    const ids = entries(list);
+    if (ids.length > count) problems.push(`${ids.length - count} talent(s) past the planner's ${count} slots`);
+    const values = ids.slice(0, count).map((talentId) => { const value = slateTalentAffix(talentId, idMap); if (!value) problems.push(`talent ${talentId}`); return value || ""; });
+    while (values.length < count) values.push("");
+    return values;
+  };
+  const fixed = talents(item.BaseTalentList, 2), random = talents(item.EnchantTalentList, 3);
+  for (const problem of problems) add(report, "slates", "unresolved", `${label}: ${problem}`, "no planner talent at that id");
+  const shape = `${godKey}-${shapeInfo.plannerIndex}`;
+  const plannerShape = craftedSlateShape(shape, god, god);
+  const turned = gameDirectionTurn(item.Direction);
+  const offsets = turned == null ? null : slateOffsets({ shape: shapeInfo.cells }, turned, 1, 1);
+  const orientation = offsets && plannerOrientation(plannerShape, offsets);
+  const { rotation, flipX, flipY, mirrored } = orientation || { rotation: 0, flipX: 1, flipY: 1, mirrored: false };
+  const crafted = { id, name: god, god, shape, rotation, flipX, flipY, affixes: [...fixed, ...random].filter(Boolean), affixGroups: { fixed, random }, rarity: "magic", icon: craftedSlateIconPath(godKey, shapeInfo.plannerIndex) };
+  state.slates.inventory.push(crafted);
+  if (!shapeInfo.confirmed && !report.provisional.includes(CRAFTED_SHAPE_RULE)) report.provisional.push(CRAFTED_SHAPE_RULE);
+  if (item.Direction == null || item.Direction === "") {
+    add(report, "slates", "notes", `${label}: no Direction logged; read as direction ${DEFAULT_GAME_DIRECTION}, the game's default turn`);
+    if (!report.provisional.includes(CRAFTED_DIRECTION_RULE)) report.provisional.push(CRAFTED_DIRECTION_RULE);
+  }
+  if (mirrored) add(report, "slates", "notes", `${label}: the planner draws this god's ${["Z", "L", "O", "T"][shapeInfo.plannerIndex]} shape as the mirror image of the game's ${shapeInfo.code}, so it is placed flipped`);
+  const anchor = offsets?.[anchorCell(shapeInfo.cells)];
+  const placement = anchor && { column: Math.floor(Number(entry.Index) / 10) - anchor[0], row: (Number(entry.Index) % 10) - anchor[1], rotation, flipX, flipY };
+  const boardSlate = { ...crafted, shape: plannerShape };
+  if (orientation && placement && placement.column >= 1 && placement.row >= 1 && canPlaceSlate(boardSlate, placement, placements, boardSlates)) {
+    placements[id] = placement; boardSlates.push(boardSlate); state.equippedSlateIds.push(id);
+    add(report, "slates", "imported", `${baseName} ${shapeInfo.code} at column ${placement.column}, row ${placement.row}${rotation ? `, rotated ${rotation}°` : ""}${mirrored ? ", mirrored" : ""}: ${crafted.affixes.length} talents`);
+    return;
+  }
+  state.slates.parked[id] = { x: 2, y: Math.min(90, 4 + position * 10), rotation, flipX, flipY };
+  const reason = turned == null ? `direction ${item.Direction} is not a quarter turn; parked beside the board` : !orientation ? "the planner's shape for this god does not match the game shape; parked beside the board" : "does not fit the board at the computed cell; parked beside the board";
+  add(report, "slates", "unresolved", `${baseName} ${shapeInfo.code} placement (game cell ${entry.Index}, direction ${item.Direction ?? "none"})`, reason);
+}
 
 function slateTalentAffix(talentId, idMap, pedigreeSlot = null) {
   const found = talentFromId(talentId, idMap);
@@ -806,7 +919,11 @@ function resolveSlates(tree, idMap, report, state) {
     const legendaryName = item.UniqueItmId && item.UniqueItmId !== "0" ? idMap.legendaries[item.UniqueItmId] : null;
     const name = legendaryName || idMap.itemBases[item.BaseId]?.[0] || "";
     const label = `Slate at ${entry.Index}${name ? ` (${name})` : ""}`;
-    if (!name || !legendarySlateShapes[name]) { add(report, "slates", "unresolved", label, name ? "the planner has no shape for this slate" : "Divinity Slates crafted from a god's pool are not mapped yet (shape id and rolls have no table)"); return; }
+    // A god's crafted slate ("Goddess of Deception's Divinity", base type "Divinity Slate", no legendary id) is named by its base.
+    const godCrafted = !legendaryName && idMap.itemBases[item.BaseId]?.[1] === "Divinity Slate";
+    if (!name) { add(report, "slates", "unresolved", label, "the slate's item id is not in the game id table"); return; }
+    if (godCrafted) { resolveCraftedSlate({ entry, item, position, baseName: name, idMap, report, state, placements, boardSlates }); return; }
+    if (!legendarySlateShapes[name]) { add(report, "slates", "unresolved", label, "the planner has no shape for this slate"); return; }
     const id = `game-log-slate-${position + 1}`;
     const isNether = name.startsWith("Nether King's Divinity");
     const affixes = [], problems = [];
@@ -833,20 +950,22 @@ function resolveSlates(tree, idMap, report, state) {
     for (const problem of problems) add(report, "slates", "unresolved", `${label}: ${problem}`, "no planner talent at that id");
     // Placement from the game's anchor cell.
     const shape = legendarySlateShapes[name];
-    const rotation = item.Direction != null ? ((Number(item.Direction) + 2) % 4) * 90 : 0;
-    const offsets = slateOffsets({ shape }, rotation, 1, 1);
+    const turned = item.Direction != null ? ((Number(item.Direction) + 2) % 4) * 90 : 0;
+    const offsets = slateOffsets({ shape }, turned, 1, 1);
     const anchor = offsets[anchorCell(shape)];
-    const placement = { column: Math.floor(Number(entry.Index) / 10) - anchor[0], row: (Number(entry.Index) % 10) - anchor[1], rotation, flipX: 1, flipY: 1 };
     const boardSlate = { ...crafted, shape, overlay: isNether && name.endsWith("Judgment") };
-    crafted.rotation = rotation;
+    const { rotation, flipX, flipY, mirrored } = gameSlateOrientation(boardSlate, shape, turned, offsets);
+    const placement = { column: Math.floor(Number(entry.Index) / 10) - anchor[0], row: (Number(entry.Index) % 10) - anchor[1], rotation, flipX, flipY };
+    Object.assign(crafted, { rotation, flipX, flipY });
     state.slates.inventory.push(crafted);
+    if (mirrored) add(report, "slates", "notes", `${name}: game direction ${item.Direction} is a quarter turn; the planner flips this slate instead of rotating it, and for its shape that turn is a mirror`);
     const rotationAllowed = rotation === 0 || slateTransformRules(boardSlate).rotate;
     const placeable = CALIBRATED_SLATES.has(name) && rotationAllowed && placement.column >= 1 && placement.row >= 1 && canPlaceSlate(boardSlate, placement, placements, boardSlates);
     if (placeable) {
       placements[id] = placement; boardSlates.push(boardSlate); state.equippedSlateIds.push(id);
-      add(report, "slates", "imported", `${name} at column ${placement.column}, row ${placement.row}${rotation ? `, rotated ${rotation}°` : ""}${affixes.length || isNether ? `: ${crafted.affixes.length} talents` : ""}`);
+      add(report, "slates", "imported", `${name} at column ${placement.column}, row ${placement.row}${rotation ? `, rotated ${rotation}°` : ""}${mirrored ? ", mirrored" : ""}${affixes.length || isNether ? `: ${crafted.affixes.length} talents` : ""}`);
     } else {
-      state.slates.parked[id] = { x: 2, y: Math.min(90, 4 + position * 10), rotation, flipX: 1, flipY: 1 };
+      state.slates.parked[id] = { x: 2, y: Math.min(90, 4 + position * 10), rotation, flipX, flipY };
       add(report, "slates", "unresolved", `${name} placement (game cell ${entry.Index}, direction ${item.Direction ?? "none"})`, CALIBRATED_SLATES.has(name) ? "does not fit the board at the computed cell; parked beside the board" : "anchor and rotation not calibrated for this shape; parked beside the board");
     }
   });
@@ -973,7 +1092,7 @@ function resolvePactBoard(contract, spirits, idMap, report, state, donors = []) 
 
 function resolvePacts(tree, idMap, report, state, pactDonors = []) {
   const contract = tree.ContractInfosV2;
-  if (!contract) { add(report, "pacts", "missing", "Pactspirits", "the ContractInfosV2 section is not in this dump or another dump of the character"); return; }
+  if (!contract) { if (!report.gaps.has("ContractInfosV2")) add(report, "pacts", "missing", "Pactspirits", "the ContractInfosV2 section is not in this dump or another dump of the character"); return; }
   const levels = new Map(entries(tree.ServantInfos?.servantData).map((entry) => [entry.servantId, entry]));
   const spirits = entries(contract.ContractDatas).map((entry) => ({ area: Number(entry.areaId), servantId: entry.servantId, name: idMap.servants[entry.servantId], planner: false })).sort((a, b) => a.area - b.area);
   let levelRuleUsed = false, accountUsed = false;
@@ -1002,7 +1121,14 @@ function resolvePacts(tree, idMap, report, state, pactDonors = []) {
 // ---------------------------------------------------------------- hero
 
 const TRAIT_TIERS = { 1: "level45", 2: "level60", 3: "level75" };
-const MEMORY_RARITY = { 5: "ultimate" }; // RareValue 5 = Ultimate (all three logged memories); other values are not mapped.
+// A memory's RareValue is its quality 1–5 (not the gear / letter item qualities 1 / 2 / 3 / 100 / 110). Evidence: the
+// 2026-10-12 fixture's three Ultimate 50 memories log 5; the user's SS14 memories (2026-10-19: two Epic, one Legendary in
+// game) log 3, 3, 4 at enhancement 30, 30, 40, the Epic and Legendary caps; the quality digit Q of every memory base-stat
+// id (4031 SS Q LL, config_modifier: 5 qualities per stat) equals RareValue. 1 / 2 = Normal / Magic follow that order
+// (no logged memory yet; listed as provisional when met).
+const MEMORY_RARITY = { 1: "normal", 2: "magic", 3: "epic", 4: "legendary", 5: "ultimate" };
+const INFERRED_MEMORY_RARITY = new Set(["1", "2"]);
+const MEMORY_RARITY_RULE = "Hero Memory quality 1 / 2 read as Normal / Magic (the game's 1–5 quality order; 3 Epic, 4 Legendary and 5 Ultimate are confirmed)";
 
 function memoryAffixLabel(type, kind, text) {
   const pool = heroMemoryAffixesSs13.filter((entry) => entry.type === type && entry.kind === kind);
@@ -1041,7 +1167,7 @@ function resolveHero(tree, idMap, report, state) {
   const purchase = idMap.heroPurchases[player.HeroPurchaseId];
   const hero = purchase && heroCatalogSs13.find((entry) => entry.trait === purchase[1] && purchase[0].includes(entry.name));
   if (player.Level) { state.hero.characterLevel = clampLevel(player.Level); add(report, "character", "imported", `Level ${state.hero.characterLevel}`); }
-  if (!hero) { add(report, "character", purchase ? "unresolved" : "missing", purchase ? `Hero ${purchase[0]}` : "Hero", purchase ? "not in the planner's hero catalog" : "the player section is not in this dump or another dump of the character"); return; }
+  if (!hero) { if (purchase || !report.gaps.has("player")) add(report, "character", purchase ? "unresolved" : "missing", purchase ? `Hero ${purchase[0]}` : "Hero", purchase ? "not in the planner's hero catalog" : "the player section is not in this dump or another dump of the character"); return; }
   state.hero.selectedHeroId = hero.id;
   add(report, "character", "imported", `Hero ${hero.name} · ${hero.trait}`);
   const overview = tree.heroCharacterv3OverView;
@@ -1064,7 +1190,8 @@ function resolveHero(tree, idMap, report, state) {
     const [type] = idMap.itemBases[detail.BaseId] || [];
     if (!tier || !type || !/^Memory of /.test(type)) { add(report, "hero", "unresolved", `Memory in slot ${entry.index}`, "unknown memory type or slot"); continue; }
     const memory = { id: `game-log-memory-${entry.index}`, name: type, type, rarity: MEMORY_RARITY[detail.RareValue] || "", baseStat: "", enhancementLevel: Math.max(1, Math.min(50, Number(detail.ReminiscenceLevel) || 1)), waxAndWane: false, risingMoon: false, revivedAffix: "", revivedTier: 1, revivedRoll: null, fixedAffixes: [], randomAffixes: [], fixedTiers: [], randomTiers: [], fixedRolls: [], randomRolls: [], traitLevelBonus: 0 };
-    if (!memory.rarity) add(report, "hero", "unresolved", `${type} rarity (game value ${detail.RareValue})`, "only Ultimate (5) is mapped");
+    if (!memory.rarity) add(report, "hero", "unresolved", `${type} rarity (game value ${detail.RareValue})`, "only the memory qualities 1–5 are mapped");
+    else if (INFERRED_MEMORY_RARITY.has(String(detail.RareValue)) && !report.provisional.includes(MEMORY_RARITY_RULE)) report.provisional.push(MEMORY_RARITY_RULE);
     const label = `${type} (${tier.replace("level", "Lv ")})`;
     // Base stat: by id (the game's config_modifier table names the stat of every 4031SSQLL id; the Help Manual cache lists a
     // few), else the roll must fit exactly one base stat at this enhancement. The logged value is the enhanced value.
@@ -1076,11 +1203,11 @@ function resolveHero(tree, idMap, report, state) {
       const cached = byId?.text || (idMap.affixes[affix.Id]?.[0] === "memory" ? idMap.affixes[affix.Id][1] : null);
       let match = cached ? candidates.filter((option) => statSignature(option.effect) === statSignature(cached)) : [];
       if (byId && !match.length) { add(report, "hero", "unresolved", `${label}: base stat ${affix.Id} = ${roll}`, `the game names it "${byId.text.replace("#", roll)}", which is not a planner base stat for ${type}`); continue; }
-      if (!match.length) match = candidates.filter((option) => Number(String(memoryScaledBaseStat(option.effect, type, memory.enhancementLevel)).match(/-?\d+(?:\.\d+)?/)?.[0]) === roll);
+      if (!match.length) match = candidates.filter((option) => Number(String(memoryScaledBaseStat(option.effect, type, memory.enhancementLevel, false, memory.rarity)).match(/-?\d+(?:\.\d+)?/)?.[0]) === roll);
       if (match.length === 1) {
         memory.baseStat = match[0].effect;
         add(report, "hero", "imported", `${label}: base stat ${match[0].effect}${byId ? " (by its game id)" : cached ? "" : " (matched by its value at this enhancement)"}`);
-        const planned = Number(String(memoryScaledBaseStat(match[0].effect, type, memory.enhancementLevel)).match(/-?\d+(?:\.\d+)?/)?.[0]);
+        const planned = Number(String(memoryScaledBaseStat(match[0].effect, type, memory.enhancementLevel, false, memory.rarity)).match(/-?\d+(?:\.\d+)?/)?.[0]);
         if (cached && Number.isFinite(roll) && Number.isFinite(planned) && Math.abs(planned - roll) > 0.05) add(report, "hero", "notes", `${label}: the game logs ${byId ? byId.text.replace("#", roll) : `${roll}`}; the planner's value for ${match[0].effect} at enhancement ${memory.enhancementLevel} is ${planned}`);
       }
       else add(report, "hero", "unresolved", `${label}: base stat ${affix.Id} = ${roll}`, match.length ? `the value fits ${match.map((option) => option.effect).join(", ")}` : "no text for this id and no base stat with this value");
@@ -1138,29 +1265,48 @@ function sectionSources(report, merged, tree) {
   }));
 }
 
-// A kept section the log printer replaced whole in the chosen dump ("+bag+...": a dump with 31 table-valued sections loses the
-// 31st in hash order; research/game-log-import-2026-10-12.md §2) and that no other dump of the character filled. Before
-// 2026-10-15 the import listed nothing: a Selena login whose bag was cut imported with no gear, so its skills fell short of
-// Energy (only the non-equipment Energy) and lost their skill levels from gear, with no word in the report.
-const CUT_SECTION_PARTS = {
+// The top-level sections the importer's readers expect, per report section: [report section, label, present(tree),
+// effect when absent, expected(tree) (default: always)]. The log printer loses them in two ways:
+// - cut: it replaces the section whole with "+<section>+..." (a dump with 31 table-valued sections loses the 31st in hash
+//   order; research/game-log-import-2026-10-12.md §2). Before 2026-10-15 the import listed nothing: a Selena login whose
+//   bag was cut imported with no gear, so its skills fell short of Energy and lost their skill levels from gear.
+// - dropped: past that table it leaves out every further table entirely, key included (research/followers/
+//   game-log-follower-import-2026-10-19.md, "corrected top-level cut"; both dumps of the 2026-10-19 session had no
+//   geniusInfos, so the import arrived without talents and said nothing specific).
+// Either is reported only when no other dump of the character filled the section (mergeDumps).
+const LOG_SECTION_PARTS = {
   player: [["character", "Hero and character level", (tree) => tree.player]],
   bag: [
     ["gear", "Equipped gear", (tree) => tree.bag?.wearItems, "the build has no gear Energy (skills may show as short of Energy) and no skill levels from gear"],
     ["slates", "Equipped slates", (tree) => tree.bag?.dressingTalentBlocks]
   ],
-  geniusInfos: [["talents", "Talent trees", (tree) => tree.geniusInfos]],
+  geniusInfos: [["talents", "Talent trees", (tree) => tree.geniusInfos, "the build has no talents"]],
   skillLayout: [["skills", "Skill board layout", (tree) => tree.skillLayout]],
   skills: [["skills", "Skill list", (tree) => tree.skills]],
-  talentBlockInfluence: [["slates", "Slate influence", (tree) => tree.talentBlockInfluence]],
+  // Slate influence exists only with equipped slates (the fixture's Iris login has neither).
+  talentBlockInfluence: [["slates", "Slate influence", (tree) => tree.talentBlockInfluence, null, (tree) => entries(tree.bag?.dressingTalentBlocks).length > 0]],
   SkillSlot: [["skills", "Skill slot list", (tree) => tree.SkillSlot]],
   ContractInfosV2: [["pacts", "Pact board", (tree) => tree.ContractInfosV2]],
   ServantInfos: [["pacts", "Pactspirit star levels", (tree) => tree.ServantInfos]],
   heroCharacterv3OverView: [["hero", "Hero traits and memories", (tree) => tree.heroCharacterv3OverView]]
 };
+/** Every top-level section the importer reads (the keys of KEPT_SECTIONS). */
+export const EXPECTED_LOG_SECTIONS = Object.keys(LOG_SECTION_PARTS);
 const CUT_SECTION_REASON = "the game's log printer cut this part of the login's data (it keeps 30 top-level sections) and no other login of this character in the logs has it; restart the game, log in to the character and import again";
-function reportCutSections(report, cutSections, tree) {
-  for (const section of cutSections || []) for (const [reportSection, label, present, effect] of CUT_SECTION_PARTS[section] || []) {
-    if (!present(tree)) add(report, reportSection, "missing", label, effect ? `${CUT_SECTION_REASON}. Without it ${effect}` : CUT_SECTION_REASON);
+const DROPPED_SECTION_PREFIX = "Not in the game log: ";
+const DROPPED_SECTION_REASON = "the game's log printer dropped it; log out and back in, then import again. Past about 30 top-level sections the printer leaves the rest out entirely, key included, and no other login of this character in the logs has this one";
+/**
+ * Reports the chosen dump's cut ("...") and dropped (absent) sections that merging did not fill; records their top-level
+ * keys in report.gaps (resolver dedupe, removed before return) and { label, kind } in report.logGaps (the dialog's top warning).
+ */
+function reportSectionGaps(report, { cutSections = [], droppedSections = [] }, tree) {
+  const gaps = [...cutSections.map((section) => [section, "cut"]), ...droppedSections.filter((section) => !cutSections.includes(section)).map((section) => [section, "dropped"])];
+  for (const [section, kind] of gaps) for (const [reportSection, label, present, effect, expected] of LOG_SECTION_PARTS[section] || []) {
+    if (present(tree) || (expected && !expected(tree))) continue;
+    const reason = kind === "cut" ? CUT_SECTION_REASON : DROPPED_SECTION_REASON;
+    add(report, reportSection, "missing", kind === "cut" ? label : `${DROPPED_SECTION_PREFIX}${label}`, effect ? `${reason}. Without it ${effect}` : reason);
+    report.gaps.add(section);
+    report.logGaps.push({ label, kind });
   }
 }
 
@@ -1176,7 +1322,7 @@ export function importSnapshot(scan, dumpId, idMap, { merge = true } = {}) {
     filledFrom(report, MERGE_SECTION[section], from);
     if (section !== "slateInfluence") report.replaced[MERGE_SECTION[section]] = true;
   }
-  reportCutSections(report, merged.chosen.cutSections, tree);
+  reportSectionGaps(report, merged.chosen, tree);
   const state = blankPlannerState();
   resolveHero(tree, idMap, report, state);
   const gear = resolveGear(tree, idMap, report);
@@ -1200,7 +1346,7 @@ export function importSnapshot(scan, dumpId, idMap, { merge = true } = {}) {
   };
   if (merged.chosen.changesAfter) report.sections.character.notes.push({ item: `${merged.chosen.changesAfter} gear, skill or slate change(s) were logged after this snapshot; the game only dumps the build at login, so re-log in to refresh it` });
   report.sources = sectionSources(report, merged, tree);
-  delete report.filledFrom; delete report.replaced;
+  delete report.filledFrom; delete report.replaced; delete report.gaps;
   report.counts = Object.fromEntries(Object.entries(report.sections).map(([section, value]) => [section, { imported: value.imported.length, unresolved: value.unresolved.length, missing: value.missing.length }]));
   return { state: normalized, report };
 }
@@ -1215,6 +1361,7 @@ export function importReportText(report) {
     for (const entry of value.missing) lines.push(`- missing: ${entry.item}${entry.reason ? ` (${entry.reason})` : ""}`);
     for (const entry of value.notes) lines.push(`- note: ${entry.item}`);
   }
+  for (const notice of report.notices || []) lines.push("", notice);
   if (report.provisional.length) lines.push("", "Provisional:", ...report.provisional.map((text) => `- ${text}`));
   for (const merge of report.merges) lines.push(`- merged: ${merge.detail}`);
   for (const [section, source] of Object.entries(report.sources || {})) for (const entry of source.stale) lines.push(`- ${section} filled from the ${timeLabel(entry.stamp)} dump: from an older login; may be outdated (${entry.reason})`);

@@ -99,6 +99,47 @@ export function activationMediumAffixLines(name) {
   if (choice.length < 2) return lines;
   return lines.map((line) => isChoiceLine(line.signature) ? { ...line, optional: true, choiceGroup: "cooldown-or-duration" } : line);
 }
+// The game's config_modifier template for an Activation Medium affix ("Auto-used supported skills $+P1$% additional
+// damage") matched to the planner line of that medium with the same wording (numbers and spacing ignored). TLIDB joins a
+// few lines the game keeps apart ("+1 Sentries … by the supported skill -30% Movement Speed"), so a template may also be
+// the start of a line (prefix: true); the rest of that line must then hold no rolled range.
+const templateSignature = (template) => lineSignature(String(template || "").replace(/\$[+-]?P\d+\$/g, "#"));
+const compact = (signature) => signature.replace(/\s+/g, "");
+export function activationMediumGameLine(name, template) {
+  const lines = activationMediumAffixLines(name);
+  if (!lines || !template) return null;
+  const signature = compact(templateSignature(template));
+  const whole = lines.findIndex((line) => compact(line.signature) === signature);
+  if (whole >= 0) return { index: whole, prefix: false };
+  const prefix = lines.findIndex((line) => compact(line.signature).startsWith(signature));
+  return prefix >= 0 ? { index: prefix, prefix: true } : null;
+}
+// The planner rolls for one TLIDB option from a logged affix: the template's $Pn$ values (args[n - 1]) are aligned with the
+// option's numbers in text order. Each value must sit in its TLIDB range (a range becomes a roll) or equal a fixed TLIDB
+// number (sign ignored: "+10%" logs 10). Numbers past the end of a prefix template must be fixed. Returns null when the
+// numbers do not line up or a value is out of range.
+const slotPattern = /\((-?\d+(?:\.\d+)?)\s*–\s*(-?\d+(?:\.\d+)?)\)|[+-]?\d+(?:\.\d+)?/g;
+const near = (a, b) => Math.abs(a - b) <= 1e-6 + 1e-9 * Math.abs(b);
+export function activationMediumGameRolls(option, template, args = [], { prefix = false } = {}) {
+  if (!option || !template) return null;
+  const optionSlots = [...tidy(option.text).matchAll(slotPattern)];
+  const gameSlots = [...String(template).matchAll(/\$[+-]?P(\d+)\$|[+-]?\d+(?:\.\d+)?/g)];
+  if (prefix ? optionSlots.length < gameSlots.length : optionSlots.length !== gameSlots.length) return null;
+  const rolls = [];
+  for (const [index, slot] of optionSlots.entries()) {
+    const placeholder = gameSlots[index]?.[1];
+    const isRange = slot[1] != null;
+    if (placeholder == null) { if (isRange) return null; continue; }
+    const value = Number(args[Number(placeholder) - 1]);
+    if (!Number.isFinite(value)) return null;
+    if (isRange) {
+      const min = Math.min(Number(slot[1]), Number(slot[2])), max = Math.max(Number(slot[1]), Number(slot[2]));
+      if (value < min - 1e-6 || value > max + 1e-6) return null;
+      rolls.push(value);
+    } else if (!near(Math.abs(value), Math.abs(Number(slot[0])))) return null;
+  }
+  return rolls.length === option.ranges.length ? rolls : null;
+}
 const isChoiceLine = (signature) => /additional cooldown recovery speed$|additional duration for the supported skill$/.test(signature);
 // Keep only one line of a choice group active: the preferred index, else the first active one.
 function enforceChoiceGroups(lines, configs, preferred = null) {

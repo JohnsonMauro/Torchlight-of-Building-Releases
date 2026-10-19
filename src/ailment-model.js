@@ -2,15 +2,17 @@
 //
 // Rules (TLIDB, 2026-10-08):
 //   Ignite — Fire DoT, 4 s, 1 stack by default (limit can rise); strongest N stacks act.
-//   Trauma — Physical DoT, 4 s, 1 stack; only the strongest acts, and weaker later
-//            applications do not shorten it.
+//   Trauma — Physical DoT, 4 s, 1 stack by default (limit can rise: Open Wounds); the same stack rules as Ignite.
 //   Wilt   — Erosion DoT, 1.5 s, up to 30 stacks with independent timers; new stacks
 //            replace the one with the shortest remaining duration.
 // User-confirmed in game: a successful Ignite or Trauma application restarts the
 // ailment's timer. The strongest application therefore persists while the chain of
-// successful applications continues.
+// successful applications continues. User-confirmed 2026-10-19: Trauma and Ignite stack the same way; at the stack limit a
+// weaker application refreshes the strongest stacks' duration without overwriting their higher values, so the held stacks are
+// the strongest applications of the run (expectedStrongestStacks).
 
 import { AFFLICTION_DAMAGE_PER_POINT, BASE_CRITICAL_DAMAGE_PERCENT } from "./game-attribute-defaults.js";
+import { damageTypeRestriction, restrictionLine } from "./damage-type-restriction.js";
 export const ailmentDefinitions = Object.freeze({
   ignite: Object.freeze({ key: "ignite", name: "Ignite", damageType: "Fire", elemental: true, baseDurationSeconds: 4, defaultStackLimit: 1, stacking: "strongest" }),
   trauma: Object.freeze({ key: "trauma", name: "Trauma", damageType: "Physical", elemental: false, baseDurationSeconds: 4, defaultStackLimit: 1, stacking: "strongest" }),
@@ -70,7 +72,8 @@ export function collectAilmentTypedSources(ailmentKey, modifierTexts = []) {
     // "+X% additional Physical Damage taken" (game affix 200000309, attr 5003): target layer, combat only.
     ["taken", new RegExp(`^\\+(\\d+(?:\\.\\d+)?)% additional (?:${A}|${T}) Damage taken$`, "i")],
     ["increased", new RegExp(`^\\+(\\d+(?:\\.\\d+)?)% (?:${A}|${T}) Damage(?: Over Time)?$`, "i")],
-    ["stackLimit", new RegExp(`^\\+(\\d+) ${A} limit$`, "i")],
+    // "+2 TraumaLimit" (Open Wounds, game affix 915433: attr 3440 flat with the Trauma tag; core audit B4) is the same line.
+    ["stackLimit", new RegExp(`^\\+(\\d+) ${A} ?limit$`, "i")],
     // Extra stacks per successful application (talent batch chunk 3): "6% chance to inflict 1 additional stack(s) of Wilt"
     // (Shadowmaster [5,0]) is an expected 0.06 extra stack. Ignite's "Inflicts N additional stack(s)" stays on the
     // Ignite ledger (src/theoretical-sources.js), so it is not read here.
@@ -180,6 +183,61 @@ export function expectedStrongestMixture(streams = [], steps = 400) {
   return total;
 }
 
+// Expected total base held by a shared-timer ailment at its stack limit (Ignite, Trauma). User-confirmed 2026-10-19: "Trauma
+// maximum stack mechanics work exactly like Ignite. When you have reached your maximum stack limit for either ailment, applying a
+// subsequent weaker hit will refresh the duration of your strongest active stacks, but it will not overwrite their higher damage
+// values." Every success restarts the one shared timer, so the run keeps its strongest applications: the held stacks are the top
+// ranks of every application in the run. Each success adds `stacksPerApplication` stacks sharing its one roll (as
+// theoretical-damage.js retainedAilmentBaseSumForSuccesses does for the beam's Ignite), so rank k holds
+// w_k = min(s, max(0, limit − s(k − 1))) stacks and the sum is Σ w_k E[k-th strongest application]. A failed attempt rolls 0.
+// E[k-th strongest] = ∫ P(at least k applications above x) dx, with the count above x a sum of per-stream binomials; a fractional
+// attempt count is a floor / ceil mixture (the linear interpolation expectedStrongestApplication uses). With one rank (limit 1,
+// or one application filling the limit) this is w_1 × expectedStrongestMixture, so those figures are unchanged.
+export function expectedStrongestStacks({ streams = [], stackLimit = 1, stacksPerApplication = 1, steps = 400 }) {
+  const limit = Math.max(0, Number(stackLimit) || 0);
+  const perApplication = Math.max(1e-9, Number(stacksPerApplication) || 1);
+  const weights = [];
+  for (let rank = 0; limit - perApplication * rank > 1e-12; rank++) weights.push(Math.min(perApplication, limit - perApplication * rank));
+  if (!weights.length) return 0;
+  const active = streams.filter((stream) => stream.attempts > 0 && stream.chancePercent > 0 && stream.max > 0);
+  if (!active.length) return 0;
+  if (weights.length === 1) return weights[0] * expectedStrongestMixture(active, steps);
+  const ranks = weights.length;
+  const clamp = (value) => Math.max(0, Math.min(1, value));
+  const cdfs = active.map((stream) => {
+    const chance = clamp(stream.chancePercent / 100), crit = clamp((stream.critChancePercent || 0) / 100);
+    const span = Math.max(0, stream.max - stream.min), factor = Math.max(1, stream.critFactor || 1);
+    const uniform = (value) => span === 0 ? (value >= stream.min ? 1 : 0) : clamp((value - stream.min) / span);
+    const whole = Math.floor(stream.attempts);
+    return { whole, fraction: stream.attempts - whole, cdf: (value) => (1 - chance) + chance * ((1 - crit) * uniform(value) + crit * uniform(value / factor)) };
+  });
+  // P(count = j) for j < ranks, n attempts each above x with probability q.
+  const binomialHead = (n, q) => {
+    const head = new Array(ranks).fill(0);
+    if (q >= 1) { if (n < ranks) head[n] = 1; return head; }
+    let term = (1 - q) ** n;
+    for (let j = 0; j < ranks && j <= n; j++) { head[j] = term; term *= (n - j) / (j + 1) * q / (1 - q); }
+    return head;
+  };
+  const top = Math.max(...active.map((stream) => stream.max * Math.max(1, stream.critFactor || 1)));
+  let total = 0;
+  for (let index = 0; index < steps; index++) {
+    const value = top * (index + 0.5) / steps;
+    let head = [1, ...new Array(ranks - 1).fill(0)];
+    for (const stream of cdfs) {
+      const q = clamp(1 - stream.cdf(value));
+      const low = binomialHead(stream.whole, q), high = stream.fraction > 0 ? binomialHead(stream.whole + 1, q) : low;
+      const own = low.map((probability, j) => probability * (1 - stream.fraction) + high[j] * stream.fraction);
+      const next = new Array(ranks).fill(0);
+      for (let a = 0; a < ranks; a++) for (let b = 0; a + b < ranks; b++) next[a + b] += head[a] * own[b];
+      head = next;
+    }
+    let below = 0;
+    for (let rank = 0; rank < ranks; rank++) { below += head[rank]; total += weights[rank] * Math.max(0, 1 - below) * top / steps; }
+  }
+  return total;
+}
+
 // Average strongest-application magnitude over a window that starts on a fresh
 // target, given a continuous chain of applications (timer refreshed by each success).
 export function windowAverageStrongest({ seconds, applicationsPerSecond, ...roll }) {
@@ -212,6 +270,12 @@ export function calculateAilment({ ailmentKey, modifierTexts = [], shared, crit 
   const definition = ailmentDefinitions[ailmentKey];
   const typed = collectAilmentTypedSources(ailmentKey, modifierTexts);
   if (overrides.skipTypedDamage) { typed.increased = []; typed.additional = []; typed.taken = []; }
+  // "You can only deal Cold Damage" (Extreme Coldness; src/damage-type-restriction.js, user-confirmed 2026-10-18): an ailment deals
+  // its own damage type (Ignite Fire, Trauma Physical, Wilt Erosion; TLIDB Ailment page), so it deals 0 under the restriction. It is
+  // still inflicted (the restriction removes damage, not the ailment). The generic Ignite path takes the line from the Ignite ledger
+  // (src/build-mechanics.js), so it is not added twice.
+  const typeRestriction = restrictionLine(damageTypeRestriction(modifierTexts), definition.damageType, `${definition.name} damage`);
+  if (typeRestriction && !overrides.skipTypedDamage) typed.additional.push(typeRestriction);
   // B8: with per-skill appliers, base lines scoped to one skill by their wording (`scopedText` differs from the unscoped
   // text: "… to the supported skill" / "… to this skill", src/build-mechanics.js collectSkillScopedAilmentLines) are not
   // build-wide; each applier adds its own (`baseExtra`). A main skill's unscoped own-text lines stay build-wide as before.
@@ -245,6 +309,9 @@ export function calculateAilment({ ailmentKey, modifierTexts = [], shared, crit 
   const stackLimit = overrides.stackLimit ?? definition.defaultStackLimit + typed.stackLimit.reduce((sum, line) => sum + line.value, 0);
   const extraTypedStacks = ailmentKey === "ignite" ? 0 : typed.extraStacks.reduce((total, line) => total + line.value, 0);
   const stacksPerApplication = Math.max(1, overrides.stacksPerApplication || 1) + extraTypedStacks;
+  // A Trauma limit above 1 (Open Wounds' "+2 TraumaLimit"; core audit B4, 2026-10-18) lets that many stacks deal damage, the same as
+  // Ignite stacks (user-confirmed 2026-10-19). Both keep one shared timer: the held stacks are the run's strongest applications
+  // (expectedStrongestStacks), and a weaker application refreshes them without overwriting them.
   const stacking = overrides.stacking || definition.stacking;
   // Application streams: one per inflicting skill (blocked skills — "cannot inflict" — apply nothing).
   const resolvedAppliers = (appliers || [{ key: "main", name: "Main skill", main: true, applicationsPerSecond, chancePercent: null, scale: 1 }])
@@ -291,7 +358,16 @@ export function calculateAilment({ ailmentKey, modifierTexts = [], shared, crit 
   // Per-stream roll: the base scaled by the inflicting skill's own layers, its chance and crit chance.
   const baseFor = (applier) => scopedPerApplier ? { min: globalBase.min + extraOf(applier).min, max: globalBase.max + extraOf(applier).max } : base;
   const rollFor = (applier) => ({ min: baseFor(applier).min * applier.scale, max: baseFor(applier).max * applier.scale, chancePercent: applier.chancePercent, critChancePercent: applier.critChancePercent, critFactor: critOnlyFactor });
-  const strongestAt = (attemptsFor) => expectedStrongestMixture(streams.map((applier) => ({ ...rollFor(applier), attempts: attemptsFor(applier) })));
+  // Stacks per success, pooled over the streams by success rate (each applier's expected extra stacks, B8).
+  const pooledStacksPerSuccess = () => {
+    const successes = streams.reduce((sum, applier) => sum + applier.successesPerSecond, 0);
+    return successes > 0 ? streams.reduce((sum, applier) => sum + applier.successesPerSecond * (stacksPerApplication + (applier.extraStacks || 0)), 0) / successes : stacksPerApplication;
+  };
+  // Shared-timer stacks (user-confirmed 2026-10-19): the strongest stacks of the run are held. With one rank (limit 1) this is
+  // expectedStrongestMixture exactly.
+  const heldStacks = (attemptsFor, unit = false) => expectedStrongestStacks({ stackLimit, stacksPerApplication: pooledStacksPerSuccess(),
+    streams: streams.map((applier) => ({ ...(unit ? { min: 1, max: 1, chancePercent: applier.chancePercent, critChancePercent: 0, critFactor: 1 } : rollFor(applier)), attempts: attemptsFor(applier) })) });
+  const strongestAt = (attemptsFor) => heldStacks(attemptsFor);
   // Independent stacks (Wilt): every successful application adds a stack with its
   // own timer, up to the stack limit. Average stack × active stacks. With several
   // inflicting skills the stack mix follows their success rates (a new stack replaces the
@@ -307,7 +383,10 @@ export function calculateAilment({ ailmentKey, modifierTexts = [], shared, crit 
     : ((base.min + base.max) / 2) * (1 + ((crit.criticalChancePercent || 0) / 100) * (critOnlyFactor - 1));
   const activeStacksAt = (time) => Math.min(stackLimit, stackRate * Math.min(time, durationSeconds));
   const anyBase = base.max > 0 || streams.some((applier) => baseFor(applier).max > 0);
-  const steadyActiveStacks = independent ? Math.min(stackLimit, stackRate * durationSeconds) : (anyBase && successesPerSecond > 0 ? 1 : 0);
+  // Shared-timer stacks above a limit of 1: the expected occupied stacks of a run of sustainedSeconds (unit-valued rolls).
+  const steadyActiveStacks = independent ? Math.min(stackLimit, stackRate * durationSeconds)
+    : !(anyBase && successesPerSecond > 0) ? 0
+    : stackLimit > 1 ? heldStacks((applier) => applier.applicationsPerSecond * sustainedSeconds, true) : 1;
   const windowStacks = (seconds) => { let total = 0; const slices = 80; for (let index = 0; index < slices; index++) total += activeStacksAt(seconds * (index + 0.5) / slices); return total / slices; };
   const windowStrongest = (seconds) => {
     if (!(seconds > 0) || !streams.length) return 0;
@@ -333,7 +412,7 @@ export function calculateAilment({ ailmentKey, modifierTexts = [], shared, crit 
     averageApplication: averageApplicationFor(applier), baseExtra: applier.baseExtra || null, extraStacks: applier.extraStacks || 0
   }));
   return {
-    key: ailmentKey, name: definition.name, damageType: definition.damageType,
+    key: ailmentKey, name: definition.name, damageType: definition.damageType, typeRestriction,
     base, chancePercent, rawChancePercent, durationSeconds, stackLimit, applicationsPerSecond: totalApplicationsPerSecond, stacksPerApplication,
     appliers: applierSummary,
     town: { perBaseFactor: townPerBase, minimumDps: base.min * townPerBase, maximumDps: base.max * townPerBase },

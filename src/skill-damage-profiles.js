@@ -122,7 +122,7 @@ function terraRecast(name) {
     perSecond: (castSpeedFactor = 1) => 1 / Math.max(speedType === "cast-speed" && castSpeedFactor > 0 ? useTimeSeconds / castSpeedFactor : useTimeSeconds, chargeIntervalSeconds)
   });
 }
-function dotProfile(name, { groupId, durationSeconds, delivery, channeled = false, castIntervalSeconds = null, refreshPerSecond = null, extraAdditional = [], perAdditionalMaxStackAdditionalPercent = null, notes = [], gameNote = "", unmodeled = [] }) {
+function dotProfile(name, { groupId, durationSeconds, delivery, channeled = false, castIntervalSeconds = null, refreshPerSecond = null, extraAdditional = [], perAdditionalMaxStackAdditionalPercent = null, notes = [], gameNote = "", unmodeled = [], randomRoll = null }) {
   const table = skillHitDamageSs13[name] || skillHitDamageNewSkills[name];
   const group = (table?.groups || []).find((item) => item.id === groupId) || null;
   const row = (level) => group?.levels?.[String(Math.max(1, Math.min(20, Math.floor(level || 20))))]?.entries?.[0] || null;
@@ -134,7 +134,7 @@ function dotProfile(name, { groupId, durationSeconds, delivery, channeled = fals
     delivery, castIntervalSeconds, channeled, beam: tags.includes("Beam"), maxChanneledStacks: channeled ? skillTimingSs13[name]?.channel?.maxStacks ?? 5 : null,
     dot: { durationSeconds, perSecondAtLevel, stacking: "strongest", referenceLevel: 20, referencePerSecond: perSecondAtLevel(20) },
     refreshPerSecond, recast: delivery === "spell-terra" ? terraRecast(name) : null, extraAdditional, perAdditionalMaxStackAdditionalPercent,
-    builtInReaping: null, canInflictHitAilments: false,
+    builtInReaping: null, canInflictHitAilments: false, randomRoll: randomRoll ? Object.freeze({ ...randomRoll }) : null,
     notes, unmodeled, reason: group ? null : `no game DoT row linked for ${name}`,
     sources: { tlidb: table?.tlidb || null, gameData: group ? `config_skill_damage group ${groupId} (levels 1–20, DoT row${gameNote ? `; ${gameNote}` : ""})` : null, timing: skillTimingSs13[name] ? `SkillEditor Split ${skillTimingSs13[name].splitId}` : null }
   });
@@ -163,8 +163,9 @@ const SKILL_DOT_PROFILES = Object.freeze(Object.fromEntries([
   // it ends (uptime 1; casting faster is not possible and Cooldown Recovery Speed cannot raise an uptime of 1).
   dotProfile("Voltaic Ripple", { groupId: 1261, durationSeconds: 2, delivery: "spell-terra", refreshPerSecond: 1 / 2,
     extraAdditional: [{ source: "Voltaic Ripple: Terra Charge", text: "+26% additional damage for the skill for every Terra Charge consumed (TLIDB; max 1 stack, 1 per 0.5 s, so every cast, one per 2 s cooldown, consumes one)", value: 26, category: "Additional damage" }],
-    unmodeled: ["Lucky Damage on Voltage's 50–150% roll"],
-    notes: ["Voltaic Ripple: \"This damage changes randomly between 50% and 150%\" averages to 100% (the midpoint), so the DoT uses the listed value; Lucky Damage on that roll is not applied. The dummy is read as inside the ring for the whole 2 s (best case). A faster cadence (Cooldown Recovery Speed, an Activation Medium trigger) cannot raise the uptime above 1."], gameNote: "Voltage, 2 s" })
+    // Voltage's random roll (src/lucky-damage.js, read by src/skill-dot-model.js): ×1 without Lucky, the best of two with Lucky Damage.
+    randomRoll: { label: "Voltage roll", minPercent: 50, maxPercent: 150 },
+    notes: ["Voltaic Ripple: \"This damage changes randomly between 50% and 150%\" averages to 100% (the midpoint), so the listed value is the plain average; with Lucky Damage the game rolls twice and keeps the higher (manual \"Lucky & Unlucky\"), 50% + 100% × 2/3 = 116.67%, ×1.1667 (Very Lucky: best of three, ×1.25). The dummy is read as inside the ring for the whole 2 s (best case). A faster cadence (Cooldown Recovery Speed, an Activation Medium trigger) cannot raise the uptime above 1."], gameNote: "Voltage, 2 s" })
 ].map((profile) => [profile.name, profile])));
 
 // Generic spell hits (engine "skill-hit", src/skill-hit-model.js): the batch-2a profiles from
