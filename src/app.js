@@ -265,6 +265,7 @@ import {
   plannerStorageStatus,
   reconcileExternalLibraryChange,
   restoreBuildsFromBackup,
+  revisionsTrimmedToFit,
   savePlannerState,
   setActiveBuild,
   openBuildChangedElsewhere,
@@ -1166,7 +1167,9 @@ function updateStorageStatus() {
       ? "Saved builds unreadable — changes not saved"
       : "Storage full — changes not saved. Export your build."
     : active
-      ? "Autosaved locally"
+      ? revisionsTrimmedToFit()
+        ? "Autosaved locally · older revisions removed to fit browser storage"
+        : "Autosaved locally"
       : "No build saved";
 }
 

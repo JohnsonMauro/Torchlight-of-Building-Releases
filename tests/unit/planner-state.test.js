@@ -30,6 +30,7 @@ import {
   recordShareCode,
   restoreBuildsFromBackup,
   restoreLatestRevision,
+  revisionsTrimmedToFit,
   savePlannerState,
   setActiveBuild,
   setCompareBuild,
@@ -496,4 +497,90 @@ test("diffPlannerStates counts the differing entries per area", () => {
     followers: 0,
     combat: 2,
   });
+});
+
+test("a restored build keeps the last 10 valid revisions and 5 share codes, like a loaded one", () => {
+  const revisions = [
+    ...Array.from({ length: 11 }, (_, index) => ({ timestamp: `t${index}`, state: {} })),
+    { timestamp: "bad", state: { hero: { characterLevel: 0 } } },
+  ];
+  const shareHistory = [
+    null,
+    "junk",
+    { code: "" },
+    ...Array.from({ length: 5 }, (_, index) => ({ timestamp: "t", code: `c${index}` })),
+  ];
+  restoreBuildsFromBackup({ builds: [{ id: "r", name: "R", state: {}, revisions, shareHistory }] });
+  const restored = stored().builds.find((build) => build.id === "r");
+  assert.deepEqual(
+    restored.revisions.map((revision) => revision.timestamp),
+    revisions.slice(1, 11).map((revision) => revision.timestamp),
+  );
+  assert.deepEqual(
+    restored.shareHistory.map((entry) => entry.code),
+    ["c0", "c1", "c2", "c3", "c4"],
+  );
+});
+
+test("share history entries that are not records are dropped on load, not the whole build", () => {
+  localStorage.setItem(
+    plannerLibraryStorageKey,
+    JSON.stringify({
+      builds: [{ id: "a", name: "A", state: {}, shareHistory: [null, 3, { timestamp: "t", code: "c" }] }],
+    }),
+  );
+  assert.deepEqual(activeBuild().shareHistory, [{ timestamp: "t", code: "c" }]);
+  assert.deepEqual(libraryLoadIssues().quarantinedBuilds, []);
+});
+
+// ---- Full storage ---------------------------------------------------------------------------------------------------
+
+const stateSize = JSON.stringify(normalizePlannerState(structuredClone(youga))).length;
+
+test("when storage is full, older revisions make room before the save gives up", () => {
+  globalThis.localStorage = new MemoryStorage({ quota: stateSize * 4 });
+  createBuild({ name: "A", state: youga });
+  const edit = loadPlannerState();
+  for (let stacks = 1; stacks <= 8; stacks++) {
+    edit.combat.idyllStacks = stacks;
+    savePlannerState(edit);
+  }
+  assert.equal(plannerStorageStatus(), "saved");
+  assert.equal(revisionsTrimmedToFit(), true);
+  const saved = stored().builds.find((build) => build.name === "A");
+  assert.equal(saved.state.combat.idyllStacks, 8);
+  assert.ok(saved.revisions.length < 8, `${saved.revisions.length} revisions kept`);
+  // The newest revisions are the ones kept, and the open library matches what was stored.
+  assert.equal(saved.revisions.at(-1).state.combat.idyllStacks, 7);
+  assert.deepEqual(
+    loadBuildLibrary().builds.map((build) => build.revisions.length),
+    stored().builds.map((build) => build.revisions.length),
+  );
+});
+
+test("a build too large even without revisions is kept in memory, revisions included", () => {
+  globalThis.localStorage = new MemoryStorage({ quota: Math.floor(stateSize / 2) });
+  createBuild({ name: "A", state: youga });
+  const edit = loadPlannerState();
+  edit.combat.idyllStacks = 1;
+  savePlannerState(edit);
+  assert.equal(plannerStorageStatus(), "unsaved");
+  assert.equal(revisionsTrimmedToFit(), false);
+  assert.equal(localStorage.getItem(plannerLibraryStorageKey), null);
+  assert.equal(activeBuild().revisions.length, 1);
+});
+
+test("a save that fits again clears the trimmed notice", () => {
+  globalThis.localStorage = new MemoryStorage({ quota: stateSize * 4 });
+  createBuild({ name: "A", state: youga });
+  const edit = loadPlannerState();
+  for (let stacks = 1; stacks <= 8; stacks++) {
+    edit.combat.idyllStacks = stacks;
+    savePlannerState(edit);
+  }
+  assert.equal(revisionsTrimmedToFit(), true);
+  localStorage.quota = Infinity;
+  edit.combat.idyllStacks = 9;
+  savePlannerState(edit);
+  assert.equal(revisionsTrimmedToFit(), false);
 });

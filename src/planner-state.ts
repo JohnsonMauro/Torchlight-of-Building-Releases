@@ -98,8 +98,17 @@ interface StoredBuildRecord {
   createdAt?: string;
   updatedAt?: string;
   state?: unknown;
-  revisions?: { timestamp?: string; label?: string; state?: unknown }[];
-  shareHistory?: { timestamp?: string; code?: string }[];
+  revisions?: StoredRevision[];
+  shareHistory?: StoredShareRecord[];
+}
+interface StoredRevision {
+  timestamp?: string;
+  label?: string;
+  state?: unknown;
+}
+interface StoredShareRecord {
+  timestamp?: string;
+  code?: string;
 }
 interface StoredLibrary {
   schemaVersion?: number;
@@ -394,6 +403,8 @@ export function normalizePlannerState(input: unknown = {}): PlannerState {
     slates: {
       ...defaults.slates,
       ...(value.slates || {}),
+      // A save without a geometry version predates the current slate board (4): src/app.js then ignores its placements
+      // and lays out the captured slates.
       geometryVersion: Number(value.slates?.geometryVersion || 0),
       placements:
         value.slates?.placements && typeof value.slates.placements === "object" ? value.slates.placements : null,
@@ -510,6 +521,25 @@ export function normalizePlannerState(input: unknown = {}): PlannerState {
   };
 }
 
+const MAX_REVISIONS = 10;
+const MAX_SHARE_CODES = 5;
+
+// Throws when the revision's state is invalid (or the revision is not a record).
+function normalizeRevision(revision: StoredRevision): BuildRevision {
+  return {
+    timestamp: revision.timestamp || now(),
+    label: String(revision.label || "Autosave"),
+    state: normalizePlannerState(revision.state),
+  };
+}
+// The last share codes; entries that are not records or have no code are dropped.
+function normalizeShareHistory(entries: unknown): ShareRecord[] {
+  return (Array.isArray(entries) ? (entries as (StoredShareRecord | null | undefined)[]) : [])
+    .slice(-MAX_SHARE_CODES)
+    .map((entry) => ({ timestamp: entry?.timestamp || now(), code: String(entry?.code || "") }))
+    .filter((entry) => entry.code);
+}
+
 function normalizeBuildRecord(build: StoredBuildRecord, index: number, fallbackState: unknown): LibraryBuild {
   return {
     id: String(build.id || makeId()),
@@ -518,15 +548,9 @@ function normalizeBuildRecord(build: StoredBuildRecord, index: number, fallbackS
     createdAt: build.createdAt || now(),
     updatedAt: build.updatedAt || now(),
     state: normalizePlannerState(build.state || fallbackState),
-    revisions: (Array.isArray(build.revisions) ? build.revisions : []).slice(-10).map((revision) => ({
-      timestamp: revision.timestamp || now(),
-      label: String(revision.label || "Autosave"),
-      state: normalizePlannerState(revision.state),
-    })),
-    shareHistory: (Array.isArray(build.shareHistory) ? build.shareHistory : [])
-      .slice(-5)
-      .map((entry) => ({ timestamp: entry.timestamp || now(), code: String(entry.code || "") }))
-      .filter((entry) => entry.code),
+    // An invalid revision sets the whole build aside (loadBuildLibrary), so nothing stored is lost.
+    revisions: (Array.isArray(build.revisions) ? build.revisions : []).slice(-MAX_REVISIONS).map(normalizeRevision),
+    shareHistory: normalizeShareHistory(build.shareHistory),
   };
 }
 
@@ -758,15 +782,15 @@ function storeBuildLibrary(normalized: BuildLibrary, { lastUsed = false }: Write
   }
   try {
     const storage = globalThis.localStorage;
-    const serialized = JSON.stringify(quarantinedBuilds.length ? { ...stored, quarantinedBuilds } : stored);
+    let serialized = serializeLibrary(stored);
     try {
       storage.setItem(libraryStorageKey, serialized);
-    } catch (error) {
+      revisionsTrimmed = false;
+    } catch {
       // Older versions kept a second full copy of the active build. Reclaim it
       // only when a library is already saved, then retry the authoritative write.
-      if (!storage.getItem(libraryStorageKey)) throw error;
-      storage.removeItem(storageKey);
-      storage.setItem(libraryStorageKey, serialized);
+      if (storage.getItem(libraryStorageKey)) storage.removeItem(storageKey);
+      serialized = storeWithFewerRevisions(storage, stored);
     }
     try {
       storage.removeItem(storageKey);
@@ -790,8 +814,49 @@ function storeBuildLibrary(normalized: BuildLibrary, { lastUsed = false }: Write
   return normalized;
 }
 
-export function saveBuildLibrary(library: StoredLibrary, options?: WriteOptions): BuildLibrary {
-  return writeBuildLibrary(normalizeBuildLibrary(library), options);
+const serializeLibrary = (library: BuildLibrary): string =>
+  JSON.stringify(quarantinedBuilds.length ? { ...library, quarantinedBuilds } : library);
+
+// Revisions kept per build, tried in turn when the browser refuses a write (its per-origin storage is full; about 5 MB
+// in Chromium, and every revision is a full copy of a build). The oldest go first.
+const revisionCapsWhenFull = [MAX_REVISIONS, 5, 2, 1, 0];
+let revisionsTrimmed = false;
+
+/** True when the last write fitted in storage only after dropping older revisions. */
+export function revisionsTrimmedToFit(): boolean {
+  return revisionsTrimmed;
+}
+
+// Writes `stored` with fewer revisions per build until the browser accepts it, and then drops the same revisions from
+// the in-memory library (its builds are shared with `stored`). Returns what was written; throws when not even a library
+// without revisions fits, leaving every revision in memory.
+function storeWithFewerRevisions(storage: Storage, stored: BuildLibrary): string {
+  const capped = (revisions: BuildRevision[], cap: number) => (cap ? revisions.slice(-cap) : []);
+  let lastError: unknown;
+  for (const cap of revisionCapsWhenFull) {
+    const serialized = serializeLibrary({
+      ...stored,
+      builds: stored.builds.map((build) => ({ ...build, revisions: capped(build.revisions, cap) })),
+    });
+    try {
+      storage.setItem(libraryStorageKey, serialized);
+    } catch (error) {
+      lastError = error;
+      continue;
+    }
+    revisionsTrimmed = stored.builds.some((build) => build.revisions.length > cap);
+    for (const build of stored.builds) build.revisions = capped(build.revisions, cap);
+    return serialized;
+  }
+  revisionsTrimmed = false;
+  throw lastError;
+}
+
+// Writes a library this module loaded and changed. Its builds are already normalized (loaded, or made by ownedState
+// and normalizeRevision), so only the open and compared ids are checked again; renormalizing every build and revision
+// cost ~40 ms per rename with 20 builds.
+function saveBuildLibrary(library: BuildLibrary, options?: WriteOptions): BuildLibrary {
+  return writeBuildLibrary(normalizeBuildLibrary(library, defaultPlannerState, library.builds), options);
 }
 
 export function loadPlannerState(): PlannerState {
@@ -873,7 +938,7 @@ export function savePlannerState(state: unknown): BuildLibrary {
     build.revisions = [
       ...build.revisions,
       { timestamp: now(), label: otherTab ? "Other tab version" : "Autosave", state: clone(build.state) },
-    ].slice(-10);
+    ].slice(-MAX_REVISIONS);
     build.state = next;
     build.updatedAt = now();
   } else if (!storageFailure) {
@@ -1044,19 +1109,15 @@ export function restoreBuildsFromBackup(backup: unknown): RestoreSummary {
       summary.skippedNames.push(name);
       return;
     }
-    const revisions = (Array.isArray(raw.revisions) ? raw.revisions : []).flatMap((revision) => {
-      try {
-        return [
-          {
-            timestamp: revision.timestamp || now(),
-            label: String(revision.label || "Autosave"),
-            state: normalizePlannerState(revision.state),
-          },
-        ];
-      } catch {
-        return [];
-      }
-    });
+    const revisions = (Array.isArray(raw.revisions) ? raw.revisions : [])
+      .flatMap((revision) => {
+        try {
+          return [normalizeRevision(revision)];
+        } catch {
+          return [];
+        }
+      })
+      .slice(-MAX_REVISIONS);
     let id = typeof raw.id === "string" && raw.id ? raw.id : makeId();
     let restoredName = name;
     if (ids.has(id)) {
@@ -1082,8 +1143,7 @@ export function restoreBuildsFromBackup(backup: unknown): RestoreSummary {
       updatedAt: raw.updatedAt || now(),
       state,
       revisions,
-      // Kept as read (not checked); normalizeBuildRecord cleans it on the next load.
-      shareHistory: (Array.isArray(raw.shareHistory) ? raw.shareHistory : []) as ShareRecord[],
+      shareHistory: normalizeShareHistory(raw.shareHistory),
     });
     summary.added++;
   });
@@ -1114,7 +1174,7 @@ export function recordShareCode(code: string): void {
   const library = loadBuildLibrary();
   const build = library.builds.find((entry) => entry.id === library.activeBuildId);
   if (!build) return;
-  build.shareHistory = [...build.shareHistory, { timestamp: now(), code }].slice(-5);
+  build.shareHistory = [...build.shareHistory, { timestamp: now(), code }].slice(-MAX_SHARE_CODES);
   saveBuildLibrary(library);
 }
 
