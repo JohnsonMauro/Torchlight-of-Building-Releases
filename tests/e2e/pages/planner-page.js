@@ -55,8 +55,13 @@ export class PlannerPage {
       );
     }
     await this.page.goto("./");
-    await this.page.waitForFunction(() => window.__plannerReady === true, null, { timeout: 15_000 });
+    await this.waitUntilReady();
     await expect(this.view("talents")).toBeVisible();
+  }
+
+  /** Waits for the boot flag to clear on the current load (the init script above runs again on every reload). */
+  async waitUntilReady() {
+    await this.page.waitForFunction(() => window.__plannerReady === true, null, { timeout: 15_000 });
   }
 
   view(name) {
