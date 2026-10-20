@@ -1778,7 +1778,7 @@ $("[data-cancel-import-build]").addEventListener("click", () => $("#import-build
 $("[data-import-build-code]").addEventListener("click", () => {
   importBuildText($("#import-build-code").value).catch(() => showToast("That build code could not be read"));
 });
-// Import from game. On open the planner asks its local reader for UE_game.log (scripts/serve.js
+// Import from game. On open the planner asks its local reader for UE_game.log (the pnpm dev server
 // /api/game-log/snapshots, or the desktop bridge); both return only sanitised build dumps (src/game-log-local.js).
 // Without it, or when the user asks, the picked log is read in the page. Everything is dropped with the dialog, and an
 // import always adds a new library entry.
@@ -1790,7 +1790,7 @@ const gameLogLocalServer = () =>
   /^https?:$/.test(location.protocol) && ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 const autoGameLogUnavailable = () =>
   gameLogLocalServer() || typeof window.tliDesktop?.gameLogSnapshots === "function"
-    ? "Automatic lookup needs the planner's local server (node scripts/serve.js) or the desktop app."
+    ? "Automatic lookup needs the planner's local dev server (pnpm dev) or the desktop app."
     : "Choose your UE_game.log.";
 function clearGameLogResults() {
   gameLogSources = new Map();
@@ -1820,7 +1820,7 @@ function resetGameLogImport() {
 }
 async function requestGameLogSnapshots() {
   if (typeof window.tliDesktop?.gameLogSnapshots === "function") return window.tliDesktop.gameLogSnapshots();
-  // Only the local server (node scripts/serve.js) has the reader; a static host (GitHub Pages) goes straight to the picker.
+  // Only the local dev server (pnpm dev) has the reader; a static host (GitHub Pages) goes straight to the picker.
   if (!gameLogLocalServer()) return null;
   const response = await fetch("api/game-log/snapshots", {
     cache: "no-store",

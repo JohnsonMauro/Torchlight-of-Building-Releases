@@ -1,5 +1,5 @@
 // Desktop update banner: a bar at the top of the page fed by the preload bridge (window.tliDesktop.updates, pushed by
-// electron/updater.cjs). In a plain browser there is no bridge and nothing is installed (src/boot.js only imports this
+// electron/updater.cjs). In a plain browser there is no bridge and nothing is installed (apps/web/src/boot.tsx only imports this
 // file when the bridge exists). Status text is set with textContent; nothing from the network is parsed as HTML.
 
 /** What the banner shows for one status: { text, actions: [{ id, label, primary }], progress } or null (hidden). */

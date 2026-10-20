@@ -6,31 +6,42 @@
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
-    "start": "node scripts/serve.js",
-    "dev": "vite",
-    "build:web": "vite build",
-    "preview": "vite preview",
-    "desktop": "electron .",
-    "build:win": "electron-builder --win nsis portable --publish never",
+    "dev": "vite --config apps/web/vite.config.ts",
+    "build:web": "vite build --config apps/web/vite.config.ts",
+    "preview": "vite preview --config apps/web/vite.config.ts",
+    "desktop": "pnpm build:web && electron .",
+    "build:win": "pnpm build:web && electron-builder --win nsis portable --publish never",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "typecheck": "tsc -p apps/web",
     "test": "node --test \"tests/**/*.test.js\"",
-    "test:e2e": "vite build && playwright test",
+    "test:e2e": "pnpm build:web && playwright test",
     "golden:update": "node tests/golden/update.js",
     "golden:diff": "node tests/golden/diff.js"
   },
   "dependencies": {
-    "electron-updater": "^6.8.9"
+    "electron-updater": "^6.8.9",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.64.1",
+    "@types/node": "24.9.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@typescript/native": "npm:typescript@7.0.2",
+    "@vitejs/plugin-react": "6.1.2",
     "electron": "^44.4.5",
     "electron-builder": "^26.15.3",
     "eslint": "10.13.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
     "globals": "17.13.0",
     "prettier": "3.9.10",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "typescript-eslint": "8.71.2",
     "vite": "8.3.4"
   },
   "build": {
@@ -42,8 +53,8 @@
     },
     "files": [
       "electron/**",
-      "index.html",
-      "src/**",
+      "dist-web/**",
+      "src/**/*.js",
       "package.json"
     ],
     "win": {

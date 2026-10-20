@@ -3,7 +3,7 @@
 //                         → .github/ISSUE_TEMPLATE/open-question-answer.yml, label open-question-answer
 //   calculationReportUrl  "Report calculation" beside the stat sheet's Active skill select (src/stat-sheet.js, src/app.js)
 //                         → calculation-report.yml, label calculation-bug
-//   bugReportUrl          "Report bug" beside Manage Loadouts (index.html, src/app.js) → planner-bug.yml, label planner-bug
+//   bugReportUrl          "Report bug" beside Manage Loadouts (apps/web/src/shell/LoadoutStrip.tsx, src/app.js) → planner-bug.yml, label planner-bug
 // Issue forms fill each field from the query parameter named after its id. Long text fields are trimmed with "…" so a
 // URL stays at or under ANSWER_URL_MAX characters. scripts/collect-submissions.mjs reads the issues back.
 // The buttons now open the in-planner dialog first (src/feedback-dialog.js), which builds its URL with issueFormUrlInfo

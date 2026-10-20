@@ -36,6 +36,7 @@ function reloadPlanner() {
   location.replace(url.toString());
 }
 
+/** @param {{ reason?: string, error?: unknown }} [options] */
 export function renderRecoveryScreen({ reason = "unfinished", error = null } = {}) {
   const session = store("sessionStorage"),
     local = store("localStorage");

@@ -64,6 +64,10 @@ const safeRemove = (storage, key) => {
 
 // The previous load of this tab set the flag and never cleared it (crash or
 // freeze before the first render finished), or the URL asks for recovery.
+/**
+ * @param {{ session?: Storage | null, local?: Storage | null, search?: string, now?: number }} [options]
+ * @returns {{ show: true, reason: "requested" | "unfinished" } | { show: false, reason: null }}
+ */
 export function shouldShowRecovery({ session, local = null, search = "", now = Date.now() } = {}) {
   if (new URLSearchParams(search).has("recover")) return { show: true, reason: "requested" };
   if (safeGet(session, BOOT_FLAG_KEY) !== null) return { show: true, reason: "unfinished" };
@@ -83,6 +87,11 @@ function readBootMarker(local) {
 }
 // Returns this load's token; clearBootMarker(local, token) removes the marker
 // only if no later load replaced it.
+/**
+ * @param {Storage | null} local
+ * @param {number} [now]
+ * @returns {string}
+ */
 export function markBootMarker(local, now = Date.now()) {
   const token = `${now}-${Math.random().toString(36).slice(2, 8)}`;
   try {
@@ -90,15 +99,24 @@ export function markBootMarker(local, now = Date.now()) {
   } catch {}
   return token;
 }
+/**
+ * @param {Storage | null} local
+ * @param {string | null} [token]
+ */
 export function clearBootMarker(local, token = null) {
   if (token !== null && readBootMarker(local)?.token !== token) return;
   safeRemove(local, BOOT_MARKER_KEY);
 }
+/**
+ * @param {Storage | null} session
+ * @param {number} [now]
+ */
 export function markBooting(session, now = Date.now()) {
   try {
     session?.setItem(BOOT_FLAG_KEY, String(now));
   } catch {}
 }
+/** @param {Storage | null} session */
 export function clearBootFlag(session) {
   safeRemove(session, BOOT_FLAG_KEY);
 }

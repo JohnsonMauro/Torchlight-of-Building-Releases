@@ -1,4 +1,4 @@
-// Node-only (scripts/serve.js and electron/main.cjs; the browser never imports this file). Reads the game's own
+// Node-only (apps/web/vite.config.ts and electron/main.cjs; the browser never imports this file). Reads the game's own
 // UE_game.log and its backups from one fixed folder, runs the importer's scan + sanitise (src/game-log-import.js)
 // and returns only the sanitised build dumps. The raw log text, tokens, account ids and names never leave here.
 import { open, readdir, stat } from "node:fs/promises";

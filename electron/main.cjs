@@ -30,7 +30,8 @@ function appFile(requestUrl) {
   } catch {
     return null;
   }
-  const root = app.getAppPath();
+  // The page is the Vite build of apps/web (pnpm build:web); the main process still reads src/ for the game log.
+  const root = path.join(app.getAppPath(), "dist-web");
   const file = path.resolve(root, `.${pathname === "/" ? "/index.html" : pathname}`);
   const relative = path.relative(root, file);
   if (
@@ -45,7 +46,7 @@ function appFile(requestUrl) {
 
 const fromApp = (event) => String(event.senderFrame?.url || "").startsWith(`${appOrigin}/`);
 
-// "Import from game": the same read-only reader as scripts/serve.js's /api/game-log/snapshots, reached through the
+// "Import from game": the same read-only reader as the dev server's /api/game-log/snapshots, reached through the
 // preload bridge because the app is served from planner://, not the local HTTP server.
 let gameLogReader = null;
 ipcMain.handle("game-log:snapshots", async (event) => {

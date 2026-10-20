@@ -2,7 +2,7 @@
 import { expect } from "@playwright/test";
 
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
-// src/boot.js sets this session key before loading the planner and removes it once the first render has painted.
+// apps/web/src/boot.tsx sets this session key before loading the planner and removes it once the first render has painted.
 const BOOT_FLAG_KEY = "tli-builder:booting";
 export const VIEWS = ["talents", "character", "configuration", "builds"];
 
