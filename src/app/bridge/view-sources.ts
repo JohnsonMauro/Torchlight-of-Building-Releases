@@ -16,6 +16,7 @@ import type { SkillSelectorView } from "./skill-selector-view.ts";
 import type { GameLogImportView } from "./game-log-import-view.ts";
 import type { HeroMemoryView } from "./hero-memory-view.ts";
 import type { PrismCrafterView } from "./prism-crafter-view.ts";
+import type { EquipmentCrafterView } from "./equipment-crafter-view.ts";
 
 /** The Config tab: the calculated build and the combat settings it was calculated with. */
 export interface ConfigurationSource {
@@ -131,6 +132,8 @@ export interface ViewSources {
   };
   /** The Prism crafter (src/app/bridge/prism-crafter-view.ts). */
   prismCrafter: PrismCrafterView;
+  /** The equipment crafter (src/app/bridge/equipment-crafter-view.ts). */
+  equipmentCrafter: EquipmentCrafterView;
   /** The hero memory dialog: the inventory, or the crafter (src/app/bridge/hero-memory-view.ts). */
   heroMemory: HeroMemoryView;
   /** The Import from game dialog: its opening and what it shows (src/app/bridge/game-log-import-view.ts). */

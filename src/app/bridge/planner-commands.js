@@ -175,6 +175,11 @@
  * @property {(id: string) => void} duplicateInventoryItem Adds a copy of an Inventory item ("<name> Copy").
  * @property {() => void} resetEquipment Unequips every slot (the Inventory stays).
  * @property {(mode: "rare" | "legendary" | "vorax") => void} openEquipmentCrafter Opens the crafter in that mode.
+ * @property {(change: import("../gear/equipment-craft.ts").CraftChange) => void} changeEquipmentCraft Equipment
+ *   crafter: a control's change to the draft (a toast when it is refused).
+ * @property {() => void} addCraftedEquipment Equipment crafter: Add to Inventory, or Save Changes on the edited item;
+ *   closes.
+ * @property {() => void} closeEquipmentCrafter Equipment crafter was closed: the edited item is let go.
  * @property {(drop: GearDrop) => void} dropGear The end of a gear drag on a slot the item fits, or on the Inventory.
  * @property {(slot: number) => void} openTalentTree Opens the tree in a tab (0–3), or the tree picker for an empty one.
  * @property {(slot: number) => boolean} removeTalentTree Right-click on a tab: empties it and every tab after it; false

@@ -17,15 +17,32 @@ export function beltBlendDescription(entry) {
   return text.startsWith(`${entry.label}\n`) ? text.slice(entry.label.length + 1).trim() : text;
 }
 
+/**
+ * The Belt Blend picker's groups, each option with its description (src/app/app.js openSearchableSelect searches it).
+ * @returns {{ group: string, options: { value: string, label: string, data: Record<string, string> }[] }[]}
+ */
+export function beltBlendChoices() {
+  return BELT_BLEND_CATEGORIES.map((category) => ({
+    group: category,
+    options: beltBlendsSs13
+      .filter((entry) => entry.category === category)
+      .map((entry) => {
+        const description = beltBlendDescription(entry);
+        return { value: entry.id, label: entry.label, data: description ? { optionDescription: description } : {} };
+      }),
+  }));
+}
+
 export function beltBlendOptions(selectedId = "") {
-  return `<option value="">None</option>${BELT_BLEND_CATEGORIES.map(
-    (category) =>
-      `<optgroup label="${category}">${beltBlendsSs13
-        .filter((entry) => entry.category === category)
-        .map((entry) => {
-          const description = beltBlendDescription(entry);
-          return `<option value="${entry.id}"${description ? ` data-option-description="${escapeHtml(description)}"` : ""} ${entry.id === selectedId ? "selected" : ""}>${escapeHtml(entry.label)}</option>`;
-        })
-        .join("")}</optgroup>`,
-  ).join("")}`;
+  return `<option value="">None</option>${beltBlendChoices()
+    .map(
+      ({ group, options }) =>
+        `<optgroup label="${group}">${options
+          .map(
+            ({ value, label, data }) =>
+              `<option value="${value}"${data.optionDescription ? ` data-option-description="${escapeHtml(data.optionDescription)}"` : ""} ${value === selectedId ? "selected" : ""}>${escapeHtml(label)}</option>`,
+          )
+          .join("")}</optgroup>`,
+    )
+    .join("")}`;
 }

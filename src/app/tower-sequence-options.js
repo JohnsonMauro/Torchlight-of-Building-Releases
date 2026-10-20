@@ -19,16 +19,35 @@ export function towerSequenceOptionParts(entry) {
   return { name: lines[0] || "", description: lines.slice(1).join("\n"), slots: towerSequenceSlots(entry) };
 }
 
+/**
+ * The TOWER Sequence picker's groups (by grade), each option with its description and slots.
+ * @returns {{ group: string, options: { value: string, label: string, data: Record<string, string> }[] }[]}
+ */
+export function towerSequenceChoices(entries) {
+  return ["Intermediate", "Advanced"].map((grade) => ({
+    group: `${grade} Sequences`,
+    options: entries
+      .filter((entry) => entry.grade === grade)
+      .map((entry) => {
+        const { name, description, slots } = towerSequenceOptionParts(entry);
+        return {
+          value: entry.id,
+          label: name,
+          data: { ...(description ? { optionDescription: description } : {}), ...(slots ? { optionMeta: slots } : {}) },
+        };
+      }),
+  }));
+}
+
 export function towerSequenceOptionMarkup(entries, selectedId = "") {
-  return `<option value="">None</option>${["Intermediate", "Advanced"]
+  return `<option value="">None</option>${towerSequenceChoices(entries)
     .map(
-      (grade) =>
-        `<optgroup label="${grade} Sequences">${entries
-          .filter((entry) => entry.grade === grade)
-          .map((entry) => {
-            const { name, description, slots } = towerSequenceOptionParts(entry);
-            return `<option value="${entry.id}"${description ? ` data-option-description="${escapeHtml(description)}"` : ""}${slots ? ` data-option-meta="${escapeHtml(slots)}"` : ""} ${entry.id === selectedId ? "selected" : ""}>${escapeHtml(name)}</option>`;
-          })
+      ({ group, options }) =>
+        `<optgroup label="${group}">${options
+          .map(
+            ({ value, label, data }) =>
+              `<option value="${value}"${data.optionDescription ? ` data-option-description="${escapeHtml(data.optionDescription)}"` : ""}${data.optionMeta ? ` data-option-meta="${escapeHtml(data.optionMeta)}"` : ""} ${value === selectedId ? "selected" : ""}>${escapeHtml(label)}</option>`,
+          )
           .join("")}</optgroup>`,
     )
     .join("")}`;

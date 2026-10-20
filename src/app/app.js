@@ -112,23 +112,34 @@ import { netherKingUltimateAffixesSs13 } from "../data/nether-king-ultimate-affi
 import { pedigreeCoreAffixesSs13 } from "../data/pedigree-core-affixes-ss13.js";
 import { PEDIGREE_OF_GODS, pedigreeSlotTypes, normalizePedigreeAffixes } from "../engine/talents/pedigree-slots.js";
 import { selenaScorchingBeamGearSs13 } from "../data/gear/selena-scorching-beam-ss13.js";
-import { equipmentSlots, craftItemTypes, voraxItemTypes } from "../data/gear/crafting-catalog-ss13.js";
+import { equipmentSlots, craftItemTypes } from "../data/gear/crafting-catalog-ss13.js";
 import { rareBaseItemsSs13 } from "../data/gear/rare-base-items-ss13.generated.js";
-import { isLegacyRareBase, rareBaseById, rareBaseByName, rareBaseForItem } from "../engine/gear/rare-base-lookup.js";
-import { baseAffixesSs13, baseAffixTiersSs13 } from "../data/gear/base-affixes-ss13.generated.js";
-import { voraxBaseAffixSlotPool } from "../engine/gear/vorax-base-affixes.js";
+import { rareBaseById, rareBaseByName, rareBaseForItem } from "../engine/gear/rare-base-lookup.js";
+import { baseAffixTiersSs13 } from "../data/gear/base-affixes-ss13.generated.js";
 import { craftAffixesSs13 } from "../data/gear/craft-affixes-ss13.generated.js";
 import { legendaryGearSs13 } from "../data/gear/legendary-gear-ss13.generated.js";
 import { legendaryCorrodedModifiersSs13 } from "../data/gear/legendary-corroded-modifiers-ss13.generated.js";
-import {
-  baseTypesForSlot,
-  corrosionImplicitsForBase,
-  defaultBaseForItem,
-} from "../data/gear/corrosion-implicits-ss13.js";
 import { beltBlendById, beltBlendOptions } from "./belt-blend-options.js";
-import { towerSequencesSs13 } from "../data/gear/tower-sequences-ss13.generated.js";
 import { towerSequenceOptionMarkup } from "./tower-sequence-options.js";
 import { voraxCraftingSs13 } from "../data/gear/vorax-crafting-ss13.generated.js";
+import {
+  modifierRollRange,
+  modifierRollRanges,
+  modifierRollStep,
+  negativeRollFill,
+  preferredModifierRoll,
+  resolveModifierRolls,
+  tierMatchesResolved,
+} from "./gear/affix-rolls.js";
+import { equipmentEnergyAllowed, towerSequenceById, towerSequencesForType } from "./gear/gear-rules.js";
+import {
+  changeEquipmentCraft as changeEquipmentCraftDraft,
+  craftedLegendaryItem,
+  craftedRareItem,
+  equipmentCraftFromItem,
+  newEquipmentCraft,
+} from "./gear/equipment-craft.ts";
+import { equipmentCrafterView, modifierTextView } from "./bridge/equipment-crafter-view.ts";
 import { selenaScorchingBeamPactsSs13 } from "../data/pacts/selena-scorching-beam-ss13.js";
 import { pactspiritCatalogSs13 } from "../data/pacts/pactspirit-catalog-ss13.js";
 import {
@@ -414,27 +425,15 @@ const exclusiveChoiceConditionIds = [
 ];
 let activeCoreThreshold = 12;
 let selectedEquipmentSlot = "helmet";
-let equipmentCraftMode = "rare";
-let selectedLegendaryIndex = -1;
-let selectedLegendaryBase = "";
-let selectedLegendaryBeltBlendId = "";
-let selectedLegendaryTowerSequenceId = "";
-let selectedCorrosionIndex = -1;
-let selectedLegendaryCorrodedModifiers = new Set();
-let selectedFolkloreRingOption = "left";
-// Chosen rolls of "<Random …>" placeholder lines (catalog index -> pool option id; src/engine/gear/legendary-placeholder-pools.js).
-let selectedLegendaryPlaceholderChoices = new Map();
-// Chosen tiers of tiered legendary lines (catalog index -> tier; src/engine/gear/legendary-affix-tiers.js). Unset = the best tier.
-let selectedLegendaryTierChoices = new Map();
-let equipmentSearch = "";
+// The equipment crafter's draft (src/app/gear/equipment-craft.ts); the session counts its openings.
+let equipmentCraft = newEquipmentCraft("rare");
+let equipmentCrafterSession = 0;
 let selectedInventoryItemId = null;
 let selectedPactspiritSlot = 0;
 let activeKismetSlot = null;
 let selectedKismetName = "";
 let selectedKismetRolls = [];
 let inventoryItemEditing = false;
-let editingCraftItemId = null;
-let selectedVoraxBaseName = "";
 let editingCorrodedModifierIndices = new Set();
 let editingFolkloreRingOption = "left";
 let editingPlaceholderChoices = new Map();
@@ -1660,6 +1659,11 @@ providePlannerCommands({
   duplicateInventoryItem,
   resetEquipment,
   openEquipmentCrafter,
+  changeEquipmentCraft,
+  addCraftedEquipment,
+  closeEquipmentCrafter: () => {
+    equipmentCraft = { ...equipmentCraft, editingId: null };
+  },
   dropGear,
   // Talent trees (apps/web/src/features/talents).
   openTalentTree,
@@ -1827,6 +1831,8 @@ provideViewSource("gameLogImport", gameLogImportSource);
 provideViewSource("heroMemory", heroMemorySource);
 // The Inventory item dialog.
 provideViewSource("inventoryItem", inventoryItemSource);
+// The equipment crafter.
+provideViewSource("equipmentCrafter", equipmentCrafterSource);
 // The Prism crafter.
 provideViewSource("prismCrafter", prismCrafterSource);
 // The Kismet crafter.
@@ -1904,7 +1910,8 @@ document.addEventListener("change", (event) => {
     }
     return;
   }
-  if (event.target.matches("[data-affix-roll-number]")) {
+  // The item editor's roll fields (the equipment crafter's are React's, apps/web/src/features/gear/RollInputs.tsx).
+  if (event.target.matches("[data-affix-roll-number]") && !event.target.closest("#equipment-crafter")) {
     const number = event.target,
       range = number.closest(".affix-roll-inputs")?.querySelector('input[type="range"]');
     if (range) {
@@ -3920,38 +3927,6 @@ function compatibleEquipmentSlot(item) {
   }
   return item.slot;
 }
-function equipmentEnergyAllowed(slot) {
-  return !["necklace", "belt", "leftRing", "rightRing"].includes(slot);
-}
-function maxEquipmentEnergy(itemLevel, slot, base = "") {
-  if (!equipmentEnergyAllowed(slot)) return 0;
-  const level = Number(itemLevel);
-  const singleHandCaps = [0, 9, 12, 15, 18, 21, 34, 48, 61];
-  const band = Number.isFinite(level) && level >= 45 ? Math.min(8, Math.floor((level - 45) / 5) + 1) : 0;
-  const twoHanded =
-    slot === "chest" ||
-    [
-      "Two-Handed Sword",
-      "Two-Handed Hammer",
-      "Two-Handed Axe",
-      "Tin Staff",
-      "Cudgel",
-      "Bow",
-      "Crossbow",
-      "Musket",
-      "Fire Cannon",
-    ].includes(base);
-  return singleHandCaps[band] * (twoHanded ? 2 : 1);
-}
-function selectedBeltBlend(root, selector = "[data-craft-belt-blend]") {
-  return beltBlendById(root?.querySelector(selector)?.value);
-}
-function towerSequencesForType(type) {
-  return towerSequencesSs13.filter((entry) => entry.weaponType === type);
-}
-function towerSequenceById(id) {
-  return towerSequencesSs13.find((entry) => entry.id === id);
-}
 function towerSequenceOptions(type, selectedId = "") {
   return towerSequenceOptionMarkup(towerSequencesForType(type), selectedId);
 }
@@ -4124,22 +4099,61 @@ function resetEquipment() {
   renderCandidateViews();
   showToast("Gear reset to empty");
 }
-function openEquipmentCrafter(mode) {
-  editingCraftItemId = null;
-  equipmentCraftMode = mode;
-  selectedVoraxBaseName = "";
-  selectedLegendaryIndex = -1;
-  selectedLegendaryBase = "";
-  selectedLegendaryBeltBlendId = "";
-  selectedLegendaryTowerSequenceId = "";
-  selectedCorrosionIndex = -1;
-  selectedLegendaryCorrodedModifiers = new Set();
-  selectedLegendaryPlaceholderChoices = new Map();
-  selectedLegendaryTierChoices = new Map();
-  selectedFolkloreRingOption = "left";
-  equipmentSearch = "";
-  renderEquipmentCrafter();
+// ---- Equipment crafter (apps/web/src/shell/dialogs/EquipmentCrafterDialog.tsx): the planner keeps its draft
+// (src/app/gear/equipment-craft.ts) and publishes the "equipmentCrafter" source; the controls are commands.
+function showEquipmentCrafter(craft) {
+  equipmentCraft = craft;
+  equipmentCrafterSession++;
+  viewSourceChanged("equipmentCrafter");
   $("#equipment-crafter").showModal();
+}
+function openEquipmentCrafter(mode) {
+  showEquipmentCrafter(newEquipmentCraft(mode));
+}
+function equipmentCrafterSource() {
+  return equipmentCrafterView(equipmentCraft, equipmentCrafterSession, equipmentPreviewView);
+}
+function changeEquipmentCraft(change) {
+  const { craft, notice } = changeEquipmentCraftDraft(equipmentCraft, change);
+  if (notice) showToast(notice);
+  if (craft === equipmentCraft) return;
+  equipmentCraft = craft;
+  viewSourceChanged("equipmentCrafter");
+}
+// Add to Inventory, or Save Changes on the item being edited (its equipped copies follow).
+function addCraftedEquipment() {
+  let item;
+  if (equipmentCraft.mode === "legendary") {
+    item = craftedLegendaryItem(equipmentCraft);
+    if (!item) {
+      showToast("Select a legendary item first");
+      return;
+    }
+  } else item = craftedRareItem(equipmentCraft);
+  item = definedItemFields(item);
+  const editingItem = equipmentCraft.editingId
+    ? plannerState.equipmentInventory.find((entry) => entry.id === equipmentCraft.editingId)
+    : null;
+  if (editingItem) {
+    const id = editingItem.id;
+    Object.keys(editingItem).forEach((key) => delete editingItem[key]);
+    Object.assign(editingItem, item, { id });
+    for (const [slot, override] of Object.entries(plannerState.equipmentOverrides || {})) {
+      if (override.sourceInventoryId === id) {
+        const { id: ignored, source, slot: sourceSlot, remoteIcon, ...updatedOverride } = editingItem;
+        plannerState.equipmentOverrides[slot] = { ...structuredClone(updatedOverride), sourceInventoryId: id };
+      }
+    }
+  } else {
+    item.id = `gear-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    plannerState.equipmentInventory.push(item);
+  }
+  const edited = Boolean(editingItem);
+  equipmentCraft = { ...equipmentCraft, editingId: null };
+  persistPlannerState();
+  $("#equipment-crafter").close();
+  renderCandidateViews();
+  showToast(`${escapeHtml(item.name)} ${edited ? "updated" : "added to Inventory"}`);
 }
 // The end of a gear drag (src/app/bridge/planner-commands.js GearDrop): on another slot the item equips there; dragged
 // out of a slot onto the Inventory, the slot is unequipped.
@@ -4285,51 +4299,11 @@ function gearIcon(item) {
     ""
   );
 }
-function modifierRollRange(text) {
-  const match = text.match(/\((-?\d+(?:\.\d+)?)\s*[–-]\s*(-?\d+(?:\.\d+)?)\)/);
-  return match ? { min: Number(match[1]), max: Number(match[2]) } : null;
-}
-function resolveModifierRoll(template, value) {
-  return template.replace(/\((-?\d+(?:\.\d+)?)\s*[–-]\s*(-?\d+(?:\.\d+)?)\)/, String(value));
-}
-function modifierRollRanges(text) {
-  return [...text.matchAll(/\((-?\d+(?:\.\d+)?)\s*[–-]\s*(-?\d+(?:\.\d+)?)\)/g)].map((match) => ({
-    min: Number(match[1]),
-    max: Number(match[2]),
-    token: match[0],
-  }));
-}
-function modifierRollStep(range) {
-  const decimals = Math.max(String(range.min).split(".")[1]?.length || 0, String(range.max).split(".")[1]?.length || 0);
-  return decimals ? 1 / 10 ** decimals : 1;
-}
-function preferredModifierRoll(range) {
-  return range.max <= 0 ? range.min : range.max;
-}
-function negativeRollFill(range, value) {
-  return range.max === range.min ? 100 : ((range.max - Number(value)) / (range.max - range.min)) * 100;
-}
 function updateNegativeRollVisual(range) {
   if (!range?.classList.contains("negative-roll-range")) return;
   const min = Number(range.min),
     max = Number(range.max);
   range.style.setProperty("--roll-fill", `${negativeRollFill({ min, max }, range.value)}%`);
-}
-function resolveModifierRolls(template, values) {
-  let index = 0;
-  return template
-    .replace(/\((-?\d+(?:\.\d+)?)\s*[–-]\s*(-?\d+(?:\.\d+)?)\)/g, (match, low, high, offset, whole) => {
-      const value = String(values[index++]);
-      /* a clause-leading range that spans zero ("(-1–1) Main Skill Level") carries no sign of its own: a positive roll is written "+N" so the signed readers see it */ return Number(
-        low,
-      ) <= 0 &&
-        Number(value) > 0 &&
-        !/^[+-]/.test(value) &&
-        (offset === 0 || /\n\s*$/.test(whole.slice(0, offset)))
-        ? `+${value}`
-        : value;
-    })
-    .replace(/(\d)\s+%/g, "$1%");
 }
 function modifierSignature(text) {
   return legendaryModifierSignature(text);
@@ -4352,72 +4326,6 @@ function legendaryKnownModifierSignatures(source) {
       ...allPlaceholderTemplates(source.id),
     ].map(modifierSignature),
   );
-}
-function resolvedRollValues(template, resolved) {
-  const range = /\((-?\d+(?:\.\d+)?)\s*[–-]\s*(-?\d+(?:\.\d+)?)\)/g,
-    escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+"),
-    parts = [];
-  let cursor = 0,
-    match;
-  while ((match = range.exec(template))) {
-    parts.push(escape(template.slice(cursor, match.index)), "(-?\\d+(?:\\.\\d+)?)");
-    cursor = match.index + match[0].length;
-  }
-  const result = String(resolved || "").match(new RegExp(`^${parts.join("")}${escape(template.slice(cursor))}$`, "i"));
-  return result ? result.slice(1).map(Number) : [];
-}
-function tierMatchesResolved(tier, resolved) {
-  const ranges = modifierRollRanges(tier.template);
-  if (!ranges.length)
-    return (
-      String(tier.template).replace(/\s+/g, " ").trim().toLowerCase() ===
-      String(resolved).replace(/\s+/g, " ").trim().toLowerCase()
-    );
-  const values = resolvedRollValues(tier.template, resolved);
-  return (
-    modifierSignature(tier.template) === modifierSignature(resolved) &&
-    values.length === ranges.length &&
-    values.every((value, index) => Number.isFinite(value) && value >= ranges[index].min && value <= ranges[index].max)
-  );
-}
-function legendaryModifierTemplate(item, index, corroded = selectedLegendaryCorrodedModifiers.has(index)) {
-  const choice = placeholderOption(item.id, index, selectedLegendaryPlaceholderChoices.get(index));
-  if (choice) return placeholderOptionTemplate(choice, corroded);
-  if (item.id === "Folklore_of_Locking_Fingers" && index === 2)
-    return folkloreRingModifier(selectedFolkloreRingOption, corroded);
-  const tierTemplate = corroded ? null : legendaryTierTemplate(item.id, index, selectedLegendaryTierChoices.get(index));
-  if (tierTemplate) return tierTemplate;
-  return corroded ? legendaryCorrodedModifiersSs13[item.id]?.[index] || item.modifiers[index] : item.modifiers[index];
-}
-function configuredLegendaryModifiers() {
-  const selected = legendaryGearSs13[selectedLegendaryIndex];
-  if (!selected) return [];
-  return selected.modifiers.map((_, index) => {
-    const template = legendaryModifierTemplate(selected, index),
-      sliders = [...document.querySelectorAll(`[data-legendary-roll="${index}"]`)];
-    return sliders.length
-      ? resolveModifierRolls(
-          template,
-          sliders.map((slider) => slider.value),
-        )
-      : template;
-  });
-}
-function configuredLegendaryModifiersWithSpecials() {
-  const blend = beltBlendById(selectedLegendaryBeltBlendId),
-    sequence = towerSequenceById(selectedLegendaryTowerSequenceId);
-  return [
-    ...configuredLegendaryModifiers(),
-    ...(blend ? [blend.modifier] : []),
-    ...(sequence ? [sequence.modifier] : []),
-  ];
-}
-function maxRolledLegendaryModifiers(item) {
-  return item.modifiers.map((_, index) => {
-    const template = legendaryModifierTemplate(item, index),
-      ranges = modifierRollRanges(template);
-    return ranges.length ? resolveModifierRolls(template, ranges.map(preferredModifierRoll)) : template;
-  });
 }
 function affixRollInputs(range, attributes, current) {
   const value = Number.isFinite(current) ? current : preferredModifierRoll(range),
@@ -4457,38 +4365,6 @@ function placeholderChoiceControl(sourceId, index, chosen, attribute) {
   const pool = placeholderPool(sourceId, index);
   if (!pool) return "";
   return `<label class="legendary-ring-choice">Random roll<select ${attribute}="${index}"><option value="">Not chosen · ${escapeHtml(pool.placeholder)}</option>${pool.options.map((option) => `<option value="${escapeHtml(option.id)}" ${option.id === chosen ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></label>`;
-}
-function legendaryModifierControl(item, index) {
-  const corroded = selectedLegendaryCorrodedModifiers.has(index),
-    template = legendaryModifierTemplate(item, index, corroded),
-    ranges = modifierRollRanges(template),
-    values = ranges.map(preferredModifierRoll),
-    resolved = ranges.length ? resolveModifierRolls(template, values) : template;
-  const ringChoice =
-    item.id === "Folklore_of_Locking_Fingers" && index === 2
-      ? `<label class="legendary-ring-choice">Ring effect<select data-legendary-ring-option><option value="left" ${selectedFolkloreRingOption === "left" ? "selected" : ""}>Left Ring · regain Blur</option><option value="right" ${selectedFolkloreRingOption === "right" ? "selected" : ""}>Right Ring · gain Blur Rating</option></select></label>`
-      : "";
-  return `<div class="legendary-mod-control ${corroded ? "corrosion-affix" : ""}"><span><button type="button" data-toggle-legendary-corrosion="${index}" ${legendaryCorrodedModifiersSs13[item.id]?.[index] ? "" : "disabled"}>${corroded ? "Corroded" : "Normal"}</button><span data-legendary-mod="${index}">${modifierTextMarkup(resolved)}</span></span>${ringChoice}${placeholderChoiceControl(item.id, index, selectedLegendaryPlaceholderChoices.get(index), "data-legendary-placeholder")}${legendaryTierControl(item.id, index, selectedLegendaryTierChoices.get(index), corroded, "data-legendary-tier")}${ranges.map((range, rangeIndex) => `<label>${affixRollInputs(range, `data-legendary-roll="${index}" data-range-index="${rangeIndex}"`)}</label>`).join("")}</div>`;
-}
-function interpolateCorrosionRoll(entry, percent = 100) {
-  if (entry.min === entry.max) return entry.min;
-  const lows = [...entry.min.matchAll(/-?\d+(?:\.\d+)?/g)].map((m) => Number(m[0])),
-    highs = [...entry.max.matchAll(/-?\d+(?:\.\d+)?/g)].map((m) => Number(m[0]));
-  let i = 0;
-  return entry.min.replace(/-?\d+(?:\.\d+)?/g, (raw) => {
-    const lo = Number(raw),
-      hi = highs[i] ?? lo;
-    i += 1;
-    const value = lo + (hi - lo) * (Number(percent) / 100);
-    return Number.isInteger(lo) && Number.isInteger(hi)
-      ? String(Math.round(value))
-      : String(Math.round(value * 10) / 10);
-  });
-}
-function configuredCorrosionModifier() {
-  const entry = corrosionImplicitsForBase(selectedLegendaryBase)[selectedCorrosionIndex];
-  if (!entry) return "";
-  return interpolateCorrosionRoll(entry, $("[data-corrosion-roll]")?.value ?? 100);
 }
 function modifierEditorControl(item, modifier, index) {
   const source =
@@ -4624,386 +4500,43 @@ function previewModifierSections(item) {
     )
     .join("");
 }
+// equipmentPreview as data, for the React crafter (src/app/bridge/equipment-crafter-view.ts ItemPreviewView).
+function equipmentPreviewView(item) {
+  const rarity = itemDisplayRarity(item),
+    corroded = new Set(item.corrodedModifierIndices || []);
+  return {
+    className: `equipment-preview rarity-${itemCardRarity(rarity, item)}${sixAffixClass(item)}${pricelessClass(item)}${itemLevel100Class(item)}`,
+    icon: gearIcon(item),
+    rarity: rarity === "vorax" ? "VORAX GEAR" : rarity.toUpperCase(),
+    ...displayTexts({
+      name: item.name,
+      detail: `${item.base || titleCase(item.slot)} · Require Lv.${item.level || 1}`,
+    }),
+    sections: itemModifierSections(item).map((section) => ({
+      ...displayTexts({ label: section.label, detail: section.detail || "" }),
+      entries: section.entries.map((entry) => {
+        const key = entry.badge?.toLowerCase().replace("+", "plus");
+        return {
+          className: `${entry.tone === "legendary" || entry.badge === "L" ? "legendary-affix " : ""}${entry.tone === "corrosion" || corroded.has(entry.index) ? "corrosion-affix" : ""}`,
+          badge: entry.badge ? displayTexts({ className: `affix-tier-badge tier-${key}`, text: entry.badge }) : null,
+          text: modifierTextView(entry.text),
+        };
+      }),
+    })),
+    source: item.source || "",
+  };
+}
 function equipmentPreview(item) {
   const rarity = itemDisplayRarity(item),
     rarityLabel = rarity === "vorax" ? "VORAX GEAR" : rarity.toUpperCase();
   return `<article class="equipment-preview rarity-${itemCardRarity(rarity, item)}${sixAffixClass(item)}${pricelessClass(item)}${itemLevel100Class(item)}"><img src="${gearIcon(item)}" alt=""><p>${rarityLabel}</p><h3>${escapeHtml(item.name)}</h3><small>${escapeHtml(item.base || titleCase(item.slot))} · Require Lv.${item.level || 1}</small><div class="item-mod-sections">${previewModifierSections(item) || "<p>Configure affixes to preview this item.</p>"}</div>${item.source ? `<a href="${item.source}" target="_blank" rel="noreferrer">Open TLIDB source</a>` : ""}</article>`;
 }
-function voraxModifierLabel(template) {
-  return template
-    .replace(/\((-?\d+(?:\.\d+)?)\s*–\s*(-?\d+(?:\.\d+)?)\)/g, (_, minimum, maximum) =>
-      Number(minimum) < 0 && Number(maximum) < 0 ? "-#" : "#",
-    )
-    .replace(/(-?)\d+(?:\.\d+)?/g, "$1#");
-}
-function voraxLegendaryAffixPool(type) {
-  return (voraxCraftingSs13.legendaryDonors[type] || []).flatMap((donor) =>
-    donor.modifiers.map((template, modifierIndex) => ({
-      id: `${donor.id}-mod-${modifierIndex}`,
-      label: `[${donor.name}] ${voraxModifierLabel(template)}`,
-      library: "Legendary",
-      donor: donor.name,
-      tiers: [{ tier: "L", level: donor.level || 1, template }],
-    })),
-  );
-}
-function isVoraxLegendaryAffix(body, index) {
-  return body?.querySelector(`[data-toggle-vorax-legendary="${index}"]`)?.dataset.legendaryActive === "true";
-}
-function craftAffixPool(type, index, body = $("#equipment-crafter-body")) {
-  if (equipmentCraftMode === "vorax" && isVoraxLegendaryAffix(body, index)) return voraxLegendaryAffixPool(type);
-  return (
-    (equipmentCraftMode === "vorax" ? voraxCraftingSs13.affixes[type] : craftAffixesSs13[type])?.[
-      index < 3 ? "prefix" : "suffix"
-    ] || []
-  );
-}
-function craftAffixFamilyOptions(type, index) {
-  return `<option value="">None</option>${craftAffixPool(type, index)
-    .map((family) => `<option value="${escapeHtml(family.id)}">${escapeHtml(family.label)}</option>`)
-    .join("")}`;
-}
-function craftAffixControl(label, index, type) {
-  return `<div class="craft-affix-control"><span>${equipmentCraftMode === "vorax" ? `<button type="button" class="vorax-legendary-toggle" data-toggle-vorax-legendary="${index}" data-legendary-active="false" aria-pressed="false" title="Use a Legendary item affix in this slot"><b>L</b><i></i></button>` : ""}<span>${label}</span></span><select data-craft-affix-family="${index}">${craftAffixFamilyOptions(type, index)}</select><div class="craft-affix-config" data-craft-affix-config="${index}"></div></div>`;
-}
-function craftAffixFamily(body, index) {
-  const type = body.querySelector("[data-craft-type]")?.value,
-    id = body.querySelector(`[data-craft-affix-family="${index}"]`)?.value;
-  return craftAffixPool(type, index).find((family) => family.id === id);
-}
-function eligibleCraftAffixTiers(body, family) {
-  const itemLevel = Number(body.querySelector("[data-craft-level]")?.value) || 100;
-  return (family?.tiers || []).filter((tier) => tier.level <= itemLevel);
-}
-function craftAffixRollControls(index, tier) {
-  return modifierRollRanges(tier?.template || "")
-    .map(
-      (range, rangeIndex) =>
-        `<label>${affixRollInputs(range, `data-craft-affix-roll="${index}" data-range-index="${rangeIndex}"`)}</label>`,
-    )
-    .join("");
-}
-function updateCraftAffixConfig(index, preferredTier = "") {
-  const body = $("#equipment-crafter-body"),
-    family = craftAffixFamily(body, index),
-    config = body?.querySelector(`[data-craft-affix-config="${index}"]`);
-  if (!config) return;
-  const tiers = eligibleCraftAffixTiers(body, family);
-  if (!family) {
-    config.innerHTML = "";
-    return;
-  }
-  if (!tiers.length) {
-    config.innerHTML = '<small class="affix-level-warning">No tiers available at this item level.</small>';
-    return;
-  }
-  const selected =
-    tiers.find((tier) => tier.tier === preferredTier) || tiers.find((tier) => tier.tier === "1") || tiers[0];
-  config.innerHTML = `${isVoraxLegendaryAffix(body, index) ? "" : `<label class="craft-tier-select">Tier<select data-craft-affix-tier="${index}">${tiers.map((tier) => `<option value="${escapeHtml(tier.tier)}" ${tier === selected ? "selected" : ""}>T${escapeHtml(tier.tier)} · Requires Lv.${tier.level}</option>`).join("")}</select></label>`}<div class="craft-tier-rolls" data-craft-affix-rolls="${index}">${craftAffixRollControls(index, selected)}</div>`;
-}
-function configuredCraftAffixes(body, indices = [0, 1, 2, 3, 4, 5]) {
-  return [...body.querySelectorAll("[data-craft-affix-family]")]
-    .filter((select) => indices.includes(Number(select.dataset.craftAffixFamily)))
-    .map((select) => {
-      const index = Number(select.dataset.craftAffixFamily),
-        family = craftAffixFamily(body, index),
-        tierValue = body.querySelector(`[data-craft-affix-tier="${index}"]`)?.value,
-        tier = isVoraxLegendaryAffix(body, index)
-          ? family?.tiers[0]
-          : family?.tiers.find((entry) => entry.tier === tierValue);
-      if (!tier) return "";
-      const sliders = [...body.querySelectorAll(`[data-craft-affix-roll="${index}"]`)];
-      return sliders.length
-        ? resolveModifierRolls(
-            tier.template,
-            sliders.map((slider) => slider.value),
-          )
-        : tier.template;
-    })
-    .filter(Boolean);
-}
-function towerSequenceAllowed(type) {
-  return towerSequencesForType(type).length > 0;
-}
-function rareBasesForType(type) {
-  return rareBaseItemsSs13
-    .filter((entry) => entry.type === type && !isLegacyRareBase(entry))
-    .sort((a, b) => b.level - a.level || a.name.localeCompare(b.name));
-}
-function rareBaseOptions(type) {
-  return rareBasesForType(type)
-    .map((entry) => `<option value="${escapeHtml(entry.id)}">Lv ${entry.level} · ${escapeHtml(entry.name)}</option>`)
-    .join("");
-}
-function baseAffixOptions(type) {
-  return `<option value="">None</option>${(baseAffixesSs13[type] || []).map((affix) => `<option value="${escapeHtml(affix)}" data-tier="${escapeHtml(baseAffixTiersSs13[type]?.[affix] || "")}">${escapeHtml(affix.replaceAll("\n", " / "))}</option>`).join("")}`;
-}
-function voraxBaseAffixOptions(type, slot) {
-  const pool = voraxBaseAffixSlotPool(type, slot);
-  return `<option value="">None</option>${pool.map((affix) => `<option value="${escapeHtml(affix.modifier)}" data-tier="${escapeHtml(affix.tier)}">T${escapeHtml(affix.tier)} · ${escapeHtml(affix.modifier.replaceAll("\n", " / "))}</option>`).join("")}`;
-}
-function baseAffixRollControls(index, template) {
-  const ranges = modifierRollRanges(template);
-  return ranges
-    .map(
-      (range, rangeIndex) =>
-        `<label class="base-affix-roll">${affixRollInputs(range, `data-base-affix-roll="${index}" data-range-index="${rangeIndex}"`)}</label>`,
-    )
-    .join("");
-}
-function configuredBaseAffixes(body) {
-  return [...body.querySelectorAll("[data-craft-base-affix]")]
-    .map((select, index) => {
-      const template = select.value.trim();
-      if (!template) return "";
-      const sliders = [...body.querySelectorAll(`[data-base-affix-roll="${index}"]`)];
-      return sliders.length
-        ? resolveModifierRolls(
-            template,
-            sliders.map((slider) => slider.value),
-          )
-        : template;
-    })
-    .filter(Boolean);
-}
 function definedItemFields(item) {
   return Object.fromEntries(Object.entries(item).filter(([, value]) => value !== undefined));
 }
-function currentCraftPreview() {
-  const body = $("#equipment-crafter-body"),
-    type = body?.querySelector("[data-craft-type]");
-  if (!type) return null;
-  const selected = type.selectedOptions[0],
-    baseAffixModifiers = configuredBaseAffixes(body),
-    prefixModifiers = configuredCraftAffixes(body, [0, 1, 2]),
-    suffixModifiers = configuredCraftAffixes(body, [3, 4, 5]),
-    modifiers = [...baseAffixModifiers, ...prefixModifiers, ...suffixModifiers];
-  const baseAffixTierIds = [...body.querySelectorAll("[data-craft-base-affix]")].map((select) =>
-    select.value ? select.selectedOptions[0]?.dataset.tier || "" : "",
-  );
-  const craftAffixFamilyIds = [0, 1, 2, 3, 4, 5].map(
-    (index) => body.querySelector(`[data-craft-affix-family="${index}"]`)?.value || "",
-  );
-  const craftAffixTierIds = [0, 1, 2, 3, 4, 5].map((index) =>
-    isVoraxLegendaryAffix(body, index) ? "L" : body.querySelector(`[data-craft-affix-tier="${index}"]`)?.value || "",
-  );
-  const craftAffixLegendary = [0, 1, 2, 3, 4, 5].map((index) => isVoraxLegendaryAffix(body, index));
-  const baseEntry =
-    equipmentCraftMode === "rare"
-      ? rareBaseItemsSs13.find((entry) => entry.id === body.querySelector("[data-craft-base]")?.value)
-      : equipmentCraftMode === "vorax"
-        ? voraxCraftingSs13.bases.find((entry) => entry.name === type.value)
-        : null;
-  const slot = baseEntry?.slot || selected.dataset.slot;
-  const blend = slot === "belt" ? selectedBeltBlend(body) : null;
-  if (blend) modifiers.push(blend.modifier);
-  const sequence = towerSequenceById(body.querySelector("[data-craft-sequence]")?.value);
-  if (sequence) modifiers.push(sequence.modifier);
-  return definedItemFields({
-    name:
-      body.querySelector("[data-craft-name]")?.value.trim() ||
-      baseEntry?.name ||
-      body.querySelector("[data-craft-base]")?.selectedOptions?.[0]?.textContent ||
-      `${equipmentCraftMode === "vorax" ? "Crafted" : "Rare"} ${type.value}`,
-    base: type.value,
-    baseId: baseEntry?.id,
-    beltBlendId: blend?.id,
-    towerSequenceId: sequence?.id,
-    implicitModifiers: [...(baseEntry?.modifiers || [])],
-    baseAffixModifiers,
-    baseAffixTierIds,
-    prefixModifiers,
-    suffixModifiers,
-    craftAffixFamilyIds,
-    craftAffixTierIds,
-    craftAffixLegendary,
-    slot,
-    level: baseEntry?.level || Number(body.querySelector("[data-craft-level]")?.value) || 100,
-    itemLevel: Number(body.querySelector("[data-craft-level]")?.value) || 100,
-    energy: equipmentEnergyAllowed(slot) ? Number(body.querySelector("[data-craft-energy]")?.value) || 0 : 0,
-    icon: baseEntry?.icon,
-    source: baseEntry?.source,
-    modifiers: [...(baseEntry?.modifiers || []), ...modifiers],
-    affixCount: modifiers.length,
-    defenses: {},
-    rarity: equipmentCraftMode,
-  });
-}
-function updateCraftPreview() {
-  const item = currentCraftPreview();
-  if (item && $("#crafted-equipment-preview"))
-    $("#crafted-equipment-preview").innerHTML = `<small>Preview</small>${equipmentPreview(item)}`;
-}
-function renderEquipmentCrafter() {
-  const body = $("#equipment-crafter-body");
-  $("#equipment-crafter-title").textContent =
-    equipmentCraftMode === "legendary"
-      ? "Craft Legendary"
-      : equipmentCraftMode === "vorax"
-        ? "Craft Vorax Item"
-        : "Craft Rare Item";
-  if (equipmentCraftMode === "vorax" && !selectedVoraxBaseName) {
-    body.innerHTML = `<div class="vorax-select-layout"><section><small>Select Limb</small><div class="vorax-base-grid">${voraxCraftingSs13.bases.map((base) => `<button type="button" data-select-vorax-base="${escapeHtml(base.name)}"><img src="${escapeHtml(base.icon)}" alt=""><span>${escapeHtml(base.label)}</span></button>`).join("")}</div></section><aside><small>Preview</small><div class="vorax-empty-preview">Select options to preview item</div></aside></div>`;
-    return;
-  }
-  if (equipmentCraftMode === "legendary") {
-    const entries = legendaryGearSs13.filter(
-      (entry) =>
-        !equipmentSearch ||
-        `${entry.name} ${entry.modifiers.join(" ")}`.toLowerCase().includes(equipmentSearch.toLowerCase()),
-    );
-    const selected = legendaryGearSs13[selectedLegendaryIndex];
-    const baseOptions = selected ? baseTypesForSlot(selected.slot) : [],
-      corrosionPool = selected ? corrosionImplicitsForBase(selectedLegendaryBase) : [],
-      corrosion = corrosionPool[selectedCorrosionIndex],
-      corrosionText = corrosion ? interpolateCorrosionRoll(corrosion, 100) : "";
-    const initialSequence = towerSequenceById(selectedLegendaryTowerSequenceId);
-    body.innerHTML = selected
-      ? `<div class="legendary-config-layout"><section><div class="gear-edit-selected"><img src="${selected.icon}" alt=""><span><strong>${escapeHtml(selected.name)}</strong><small>${titleCase(selected.slot)}</small></span><button type="button" data-change-legendary>Change</button></div><label>Base<select data-legendary-base>${baseOptions.map((base) => `<option value="${escapeHtml(base)}" ${base === selectedLegendaryBase ? "selected" : ""}>${escapeHtml(base)}</option>`).join("")}</select></label>${selected.slot === "belt" ? `<label>Belt Blend<select data-legendary-belt-blend>${beltBlendOptions(selectedLegendaryBeltBlendId)}</select></label>` : ""}${equipmentEnergyAllowed(selected.slot) ? `<label>Equipment Energy<input data-legendary-energy type="number" min="0" value="${maxEquipmentEnergy(100, selected.slot, selectedLegendaryBase)}"></label>` : ""}${towerSequenceAllowed(selectedLegendaryBase) ? `<label>TOWER Sequence<select data-legendary-tower-sequence>${towerSequenceOptions(selectedLegendaryBase, selectedLegendaryTowerSequenceId)}</select></label>` : ""}<label>Corrosion Implicit<select data-legendary-corrosion><option value="-1">None</option>${corrosionPool.map((entry, index) => `<option value="${index}" ${index === selectedCorrosionIndex ? "selected" : ""}>${escapeHtml(entry.label)}</option>`).join("")}</select></label>${corrosion ? `<div class="fixed-mod corrosion-affix"><b>Corroded</b><span data-corrosion-text>${escapeHtml(corrosionText)}</span>${corrosion.min !== corrosion.max ? `<input type="range" min="0" max="100" value="100" data-corrosion-roll>` : ""}</div>` : ""}<h3>Legendary Mods</h3><div class="gear-mod-editor">${selected.modifiers.map((_, index) => legendaryModifierControl(selected, index)).join("")}</div></section><aside id="legendary-config-preview"><small>Preview</small>${equipmentPreview({ ...selected, base: selectedLegendaryBase, corrodedModifierIndices: [...selectedLegendaryCorrodedModifiers], modifiers: [...maxRolledLegendaryModifiers(selected), ...(beltBlendById(selectedLegendaryBeltBlendId) ? [beltBlendById(selectedLegendaryBeltBlendId).modifier] : []), ...(initialSequence ? [initialSequence.modifier] : [])], corrosionModifiers: corrosionText ? [corrosionText] : [] })}</aside></div>`
-      : `<div class="legendary-craft-layout"><section><label class="gear-search">⌕<input type="search" data-legendary-search value="${escapeHtml(equipmentSearch)}" placeholder="Search legendary or @Mod…"></label><div class="legendary-results">${entries
-          .slice(0, 120)
-          .map(
-            (entry) =>
-              `<button type="button" class="legendary-choice" data-legendary-id="${entry.id}"><img src="${entry.icon}" alt=""><span><strong>${escapeHtml(entry.name)}</strong><small>${titleCase(entry.slot)} · Lv.${entry.level}</small></span></button>`,
-          )
-          .join(
-            "",
-          )}</div><small>${entries.length} legendary gear available${entries.length > 120 ? " · refine the search to see more" : ""}</small></section><aside><p>Select a legendary item to configure it.</p></aside></div>`;
-  } else {
-    const types =
-      equipmentCraftMode === "vorax"
-        ? voraxItemTypes.filter(([name]) => name === selectedVoraxBaseName)
-        : craftItemTypes;
-    const initialBases =
-      equipmentCraftMode === "rare"
-        ? rareBaseOptions(types[0][0])
-        : `<option value="${escapeHtml(types[0][0])}">${escapeHtml(types[0][0])}</option>`;
-    const initialBase =
-      equipmentCraftMode === "rare"
-        ? rareBasesForType(types[0][0])[0]
-        : equipmentCraftMode === "vorax"
-          ? voraxCraftingSs13.bases.find((entry) => entry.name === types[0][0])
-          : null;
-    body.innerHTML = `<div class="rare-craft-layout detailed-crafter"><section><div class="craft-name-level"><label>Name<input data-craft-name placeholder="Custom name (optional)"></label><label>Item Level<input data-craft-level type="number" min="1" max="100" value="100"></label></div><label>Item Type<select data-craft-type>${types.map(([name, slot]) => `<option value="${escapeHtml(name)}" data-slot="${slot}">${escapeHtml(name)}</option>`).join("")}</select></label><label>Base Item<select data-craft-base>${initialBases}</select></label><label data-belt-blend-field ${types[0][1] === "belt" ? "" : "hidden"}>Belt Blend<select data-craft-belt-blend>${beltBlendOptions()}</select></label><div class="base-affix-control"><label>Base Affix 1<select data-craft-base-affix="0">${equipmentCraftMode === "rare" ? baseAffixOptions(types[0][0]) : voraxBaseAffixOptions(types[0][0], 0)}</select></label><div class="base-affix-rolls" data-base-affix-rolls="0"></div></div><div class="base-affix-control"><label>Base Affix 2<select data-craft-base-affix="1">${equipmentCraftMode === "rare" ? baseAffixOptions(types[0][0]) : voraxBaseAffixOptions(types[0][0], 1)}</select></label><div class="base-affix-rolls" data-base-affix-rolls="1"></div></div><label>Corrosion Implicit<select><option>None</option><option>Corroded implicit</option></select></label><div class="craft-energy-row"><label data-equipment-energy-field ${equipmentEnergyAllowed(types[0][1]) ? "" : "hidden"}>Equipment Energy<input data-craft-energy type="number" min="0" value="${maxEquipmentEnergy(100, types[0][1], types[0][0])}"></label><label data-tower-sequence-field ${towerSequenceAllowed(types[0][0]) ? "" : "hidden"}>TOWER Sequence<select data-craft-sequence>${towerSequenceOptions(types[0][0])}</select></label></div><h3>${equipmentCraftMode === "vorax" ? "Organ affixes" : "Prefixes"}</h3>${[0, 1, 2].map((index) => craftAffixControl(`Prefix ${index + 1}`, index, types[0][0])).join("")}<h3>Suffixes</h3>${[3, 4, 5].map((index) => craftAffixControl(`Suffix ${index - 2}`, index, types[0][0])).join("")}</section><aside id="crafted-equipment-preview"><small>Preview</small>${equipmentPreview(initialBase ? { ...initialBase, base: initialBase.type, implicitModifiers: initialBase.modifiers, rarity: "rare", itemLevel: 100 } : { name: types[0][0], base: types[0][0], slot: types[0][1], level: 100, itemLevel: 100, modifiers: [] })}</aside></div>`;
-  }
-}
-function setCraftRollValues(containerSelector, attribute, values) {
-  const controls = [...document.querySelectorAll(containerSelector)];
-  controls.forEach((range, index) => {
-    if (values[index] === undefined) return;
-    range.value = String(values[index]);
-    updateNegativeRollVisual(range);
-    const numberInput = range.closest(".affix-roll-inputs")?.querySelector("[data-affix-roll-number]");
-    if (numberInput) numberInput.value = range.value;
-    range.closest("label")?.querySelector("em")?.replaceChildren(range.value);
-  });
-}
-function populateCraftEditor(item) {
-  const body = $("#equipment-crafter-body"),
-    type = body.querySelector("[data-craft-type]");
-  if (!body || !type) return;
-  type.value = item.base || itemWeaponType(item);
-  type.dispatchEvent(new Event("input", { bubbles: true }));
-  body.querySelector("[data-craft-name]").value = item.name || "";
-  body.querySelector("[data-craft-level]").value = item.itemLevel || item.level || 100;
-  const base = body.querySelector("[data-craft-base]");
-  if (base && item.baseId) base.value = item.baseId;
-  const energy = body.querySelector("[data-craft-energy]");
-  if (energy) energy.value = item.energy || 0;
-  const blend = body.querySelector("[data-craft-belt-blend]");
-  if (blend) blend.value = item.beltBlendId || "";
-  const sequence = body.querySelector("[data-craft-sequence]");
-  if (sequence) sequence.value = item.towerSequenceId || "";
-  (item.baseAffixModifiers || []).slice(0, 2).forEach((resolved, index) => {
-    const select = body.querySelector(`[data-craft-base-affix="${index}"]`),
-      template = [...select.options].find(
-        (option) => modifierSignature(option.value) === modifierSignature(resolved),
-      )?.value;
-    if (!template) return;
-    select.value = template;
-    select.dispatchEvent(new Event("input", { bubbles: true }));
-    setCraftRollValues(
-      `[data-base-affix-roll="${index}"]`,
-      "data-base-affix-roll",
-      resolvedRollValues(template, resolved),
-    );
-  });
-  const storedFamilies = item.craftAffixFamilyIds,
-    storedTiers = item.craftAffixTierIds;
-  (item.craftAffixLegendary || []).slice(0, 6).forEach((active, index) => {
-    if (!active) return;
-    const toggle = body.querySelector(`[data-toggle-vorax-legendary="${index}"]`);
-    if (!toggle) return;
-    toggle.dataset.legendaryActive = "true";
-    toggle.setAttribute("aria-pressed", "true");
-    toggle.closest(".craft-affix-control")?.classList.add("legendary-affix-active");
-    const select = body.querySelector(`[data-craft-affix-family="${index}"]`);
-    if (select) select.innerHTML = craftAffixFamilyOptions(type.value, index);
-  });
-  if (Array.isArray(storedFamilies) && storedFamilies.some(Boolean)) {
-    let prefixIndex = 0,
-      suffixIndex = 0;
-    storedFamilies.slice(0, 6).forEach((familyId, index) => {
-      if (!familyId) return;
-      const resolved =
-          index < 3 ? (item.prefixModifiers || [])[prefixIndex++] : (item.suffixModifiers || [])[suffixIndex++],
-        family = craftAffixPool(type.value, index).find((entry) => entry.id === familyId),
-        tier = isVoraxLegendaryAffix(body, index)
-          ? family?.tiers[0]
-          : family?.tiers.find((candidate) => String(candidate.tier) === String(storedTiers?.[index] || ""));
-      if (!family || !tier) return;
-      const select = body.querySelector(`[data-craft-affix-family="${index}"]`);
-      select.value = family.id;
-      updateCraftAffixConfig(index, tier.tier);
-      if (resolved)
-        setCraftRollValues(
-          `[data-craft-affix-roll="${index}"]`,
-          "data-craft-affix-roll",
-          resolvedRollValues(tier.template, resolved),
-        );
-    });
-  } else {
-    [
-      [item.prefixModifiers || [], 0],
-      [item.suffixModifiers || [], 3],
-    ].forEach(([resolvedModifiers, offset]) =>
-      resolvedModifiers.slice(0, 3).forEach((resolved, position) => {
-        const index = offset + position,
-          pool = craftAffixPool(type.value, index);
-        let family, tier;
-        for (const entry of pool) {
-          const found = entry.tiers.find((candidate) => tierMatchesResolved(candidate, resolved));
-          if (found) {
-            family = entry;
-            tier = found;
-            break;
-          }
-        }
-        if (!family || !tier) return;
-        const select = body.querySelector(`[data-craft-affix-family="${index}"]`);
-        select.value = family.id;
-        updateCraftAffixConfig(index, tier.tier);
-        setCraftRollValues(
-          `[data-craft-affix-roll="${index}"]`,
-          "data-craft-affix-roll",
-          resolvedRollValues(tier.template, resolved),
-        );
-      }),
-    );
-  }
-  updateCraftPreview();
-  $("#equipment-crafter-title").textContent = `Edit ${item.name}`;
-  const save = $("#equipment-crafter [data-add-crafted-equipment]");
-  if (save) save.textContent = "Save Changes";
-}
 function openCraftedItemEditor(item) {
-  editingCraftItemId = item.id;
-  equipmentCraftMode = item.rarity === "vorax" ? "vorax" : "rare";
-  selectedVoraxBaseName = equipmentCraftMode === "vorax" ? item.base || item.name : "";
-  renderEquipmentCrafter();
-  populateCraftEditor(item);
   $("#inventory-item-dialog").close();
-  $("#equipment-crafter").showModal();
+  showEquipmentCrafter(equipmentCraftFromItem(item, itemWeaponType(item)));
 }
 function openInventoryItemEditor(item) {
   if (!item) return;
@@ -7254,7 +6787,7 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("input", (event) => {
-  if (event.target.matches("[data-affix-roll-number]")) {
+  if (event.target.matches("[data-affix-roll-number]") && !event.target.closest("#equipment-crafter")) {
     const number = event.target,
       range = number.closest(".affix-roll-inputs")?.querySelector('input[type="range"]');
     if (range) {
@@ -7268,155 +6801,10 @@ document.addEventListener("input", (event) => {
     }
     return;
   }
-  if (
-    event.target.matches(
-      "[data-legendary-roll],[data-edit-legendary-roll],[data-modifier-roll],[data-base-affix-roll],[data-craft-affix-roll]",
-    )
-  ) {
+  if (event.target.matches("[data-edit-legendary-roll],[data-modifier-roll]")) {
     updateNegativeRollVisual(event.target);
     const number = event.target.closest(".affix-roll-inputs")?.querySelector("[data-affix-roll-number]");
     if (number) number.value = event.target.value;
-  }
-  if (event.target.matches("[data-legendary-search]")) {
-    equipmentSearch = event.target.value;
-    renderEquipmentCrafter();
-    const search = $("[data-legendary-search]");
-    search?.focus();
-    search?.setSelectionRange(equipmentSearch.length, equipmentSearch.length);
-  }
-  if (event.target.matches("[data-craft-type]")) {
-    const base = $("#equipment-crafter-body [data-craft-base]");
-    if (base)
-      base.innerHTML =
-        equipmentCraftMode === "rare"
-          ? rareBaseOptions(event.target.value)
-          : `<option value="${escapeHtml(event.target.value)}">${escapeHtml(event.target.value)}</option>`;
-    document
-      .querySelectorAll("#equipment-crafter-body [data-craft-base-affix]")
-      .forEach(
-        (select, index) =>
-          (select.innerHTML =
-            equipmentCraftMode === "rare"
-              ? baseAffixOptions(event.target.value)
-              : voraxBaseAffixOptions(event.target.value, index)),
-      );
-    document
-      .querySelectorAll("#equipment-crafter-body [data-base-affix-rolls]")
-      .forEach((container) => (container.innerHTML = ""));
-    document.querySelectorAll("#equipment-crafter-body [data-craft-affix-family]").forEach((select) => {
-      const index = Number(select.dataset.craftAffixFamily);
-      select.innerHTML = craftAffixFamilyOptions(event.target.value, index);
-      updateCraftAffixConfig(index);
-    });
-    const sequenceField = document.querySelector("#equipment-crafter-body [data-tower-sequence-field]"),
-      sequenceInput = sequenceField?.querySelector("[data-craft-sequence]");
-    if (sequenceField) sequenceField.hidden = !towerSequenceAllowed(event.target.value);
-    if (sequenceInput) sequenceInput.innerHTML = towerSequenceOptions(event.target.value);
-    const selectedSlot = event.target.selectedOptions[0]?.dataset.slot,
-      energyField = document.querySelector("#equipment-crafter-body [data-equipment-energy-field]"),
-      energyInput = energyField?.querySelector("[data-craft-energy]");
-    if (energyField) energyField.hidden = !equipmentEnergyAllowed(selectedSlot);
-    if (energyInput)
-      energyInput.value = String(
-        maxEquipmentEnergy(
-          document.querySelector("#equipment-crafter-body [data-craft-level]")?.value,
-          selectedSlot,
-          event.target.value,
-        ),
-      );
-    const blendField = document.querySelector("#equipment-crafter-body [data-belt-blend-field]"),
-      blendSelect = blendField?.querySelector("[data-craft-belt-blend]");
-    if (blendField) blendField.hidden = selectedSlot !== "belt";
-    if (blendSelect && selectedSlot !== "belt") blendSelect.value = "";
-  }
-  if (event.target.matches("[data-craft-base-affix]")) {
-    const index = Number(event.target.dataset.craftBaseAffix),
-      container = document.querySelector(`[data-base-affix-rolls="${index}"]`);
-    if (container) container.innerHTML = baseAffixRollControls(index, event.target.value);
-  }
-  if (event.target.matches("[data-craft-affix-family]")) {
-    updateCraftAffixConfig(Number(event.target.dataset.craftAffixFamily));
-    updateCraftPreview();
-  }
-  if (event.target.matches("[data-craft-affix-tier]")) {
-    const index = Number(event.target.dataset.craftAffixTier),
-      body = $("#equipment-crafter-body"),
-      family = craftAffixFamily(body, index),
-      tier = family?.tiers.find((entry) => entry.tier === event.target.value),
-      rolls = body.querySelector(`[data-craft-affix-rolls="${index}"]`);
-    if (rolls) rolls.innerHTML = craftAffixRollControls(index, tier);
-    updateCraftPreview();
-  }
-  if (event.target.matches("[data-craft-level]")) {
-    const body = document.querySelector("#equipment-crafter-body"),
-      energy = body?.querySelector("[data-craft-energy]"),
-      type = body?.querySelector("[data-craft-type]");
-    if (energy && type)
-      energy.value = String(maxEquipmentEnergy(event.target.value, type.selectedOptions[0]?.dataset.slot, type.value));
-  }
-  if (event.target.matches("[data-craft-level]"))
-    document.querySelectorAll("#equipment-crafter-body [data-craft-affix-family]").forEach((select) => {
-      const index = Number(select.dataset.craftAffixFamily),
-        tier = document.querySelector(`[data-craft-affix-tier="${index}"]`)?.value;
-      updateCraftAffixConfig(index, tier);
-    });
-  if (
-    event.target.matches(
-      "[data-craft-name],[data-craft-level],[data-craft-type],[data-craft-base],[data-craft-energy],[data-craft-base-affix],[data-craft-belt-blend],[data-craft-sequence]",
-    )
-  )
-    updateCraftPreview();
-  if (event.target.matches("[data-base-affix-roll]")) {
-    event.target.closest("label")?.querySelector("em")?.replaceChildren(event.target.value);
-    updateCraftPreview();
-  }
-  if (event.target.matches("[data-craft-affix-roll]")) {
-    event.target.closest("label")?.querySelector("em")?.replaceChildren(event.target.value);
-    updateCraftPreview();
-  }
-  if (event.target.matches("[data-legendary-base]")) {
-    selectedLegendaryBase = event.target.value;
-    if (towerSequenceById(selectedLegendaryTowerSequenceId)?.weaponType !== selectedLegendaryBase)
-      selectedLegendaryTowerSequenceId = "";
-    selectedCorrosionIndex = -1;
-    renderEquipmentCrafter();
-  }
-  if (event.target.matches("[data-legendary-belt-blend],[data-legendary-tower-sequence]")) {
-    if (event.target.matches("[data-legendary-belt-blend]")) selectedLegendaryBeltBlendId = event.target.value;
-    else selectedLegendaryTowerSequenceId = event.target.value;
-    const selected = legendaryGearSs13[selectedLegendaryIndex],
-      preview = $("#legendary-config-preview"),
-      corrosion = configuredCorrosionModifier();
-    if (preview)
-      preview.innerHTML = `<small>Preview</small>${equipmentPreview({ ...selected, base: selectedLegendaryBase, corrodedModifierIndices: [...selectedLegendaryCorrodedModifiers], modifiers: configuredLegendaryModifiersWithSpecials(), corrosionModifiers: corrosion ? [corrosion] : [] })}`;
-  }
-  if (event.target.matches("[data-legendary-corrosion]")) {
-    selectedCorrosionIndex = Number(event.target.value);
-    renderEquipmentCrafter();
-  }
-  if (event.target.matches("[data-legendary-roll]")) {
-    const index = Number(event.target.dataset.legendaryRoll),
-      selected = legendaryGearSs13[selectedLegendaryIndex],
-      control = event.target.closest(".legendary-mod-control"),
-      sliders = [...control.querySelectorAll("[data-legendary-roll]")],
-      text = resolveModifierRolls(
-        legendaryModifierTemplate(selected, index),
-        sliders.map((slider) => slider.value),
-      );
-    control.querySelector("[data-legendary-mod]").innerHTML = modifierTextMarkup(text);
-    event.target.closest("label").querySelector("em").textContent = event.target.value;
-    const preview = $("#legendary-config-preview"),
-      corrosion = configuredCorrosionModifier();
-    if (preview)
-      preview.innerHTML = `<small>Preview</small>${equipmentPreview({ ...selected, base: selectedLegendaryBase, corrodedModifierIndices: [...selectedLegendaryCorrodedModifiers], modifiers: configuredLegendaryModifiersWithSpecials(), corrosionModifiers: corrosion ? [corrosion] : [] })}`;
-  }
-  if (event.target.matches("[data-corrosion-roll]")) {
-    const text = configuredCorrosionModifier();
-    $("[data-corrosion-text]").textContent = text;
-    const selected = legendaryGearSs13[selectedLegendaryIndex],
-      preview = $("#legendary-config-preview");
-    if (preview)
-      preview.innerHTML = `<small>Preview</small>${equipmentPreview({ ...selected, base: selectedLegendaryBase, corrodedModifierIndices: [...selectedLegendaryCorrodedModifiers], modifiers: configuredLegendaryModifiersWithSpecials(), corrosionModifiers: [text] })}`;
   }
   if (event.target.matches("[data-edit-legendary-roll]")) {
     const index = Number(event.target.dataset.editLegendaryRoll),
@@ -7732,129 +7120,6 @@ document.addEventListener("click", (event) => {
     } catch (error) {
       showToast(error?.message || "A new library could not be started");
     }
-  }
-  const voraxBaseChoice = event.target.closest("[data-select-vorax-base]");
-  if (voraxBaseChoice) {
-    selectedVoraxBaseName = voraxBaseChoice.dataset.selectVoraxBase;
-    renderEquipmentCrafter();
-  }
-  const voraxLegendaryToggle = event.target.closest("[data-toggle-vorax-legendary]");
-  if (voraxLegendaryToggle) {
-    const index = Number(voraxLegendaryToggle.dataset.toggleVoraxLegendary),
-      activating = voraxLegendaryToggle.dataset.legendaryActive !== "true",
-      body = $("#equipment-crafter-body");
-    if (
-      activating &&
-      body.querySelectorAll('[data-toggle-vorax-legendary][data-legendary-active="true"]').length >= 2
-    ) {
-      showToast("A Vorax item can inherit up to two Legendary affixes");
-      return;
-    }
-    voraxLegendaryToggle.dataset.legendaryActive = String(activating);
-    voraxLegendaryToggle.setAttribute("aria-pressed", String(activating));
-    voraxLegendaryToggle.closest(".craft-affix-control")?.classList.toggle("legendary-affix-active", activating);
-    const select = body.querySelector(`[data-craft-affix-family="${index}"]`),
-      type = body.querySelector("[data-craft-type]")?.value;
-    if (select) {
-      select.innerHTML = craftAffixFamilyOptions(type, index);
-      select.value = "";
-    }
-    updateCraftAffixConfig(index);
-    updateCraftPreview();
-  }
-  if (event.target.closest("[data-close-equipment-craft]")) {
-    editingCraftItemId = null;
-    $("#equipment-crafter").close();
-  }
-  const legendaryChoice = event.target.closest("[data-legendary-id]");
-  if (legendaryChoice) {
-    selectedLegendaryIndex = legendaryGearSs13.findIndex((entry) => entry.id === legendaryChoice.dataset.legendaryId);
-    selectedLegendaryBase = defaultBaseForItem(legendaryGearSs13[selectedLegendaryIndex]);
-    selectedLegendaryBeltBlendId = "";
-    selectedLegendaryTowerSequenceId = "";
-    selectedCorrosionIndex = -1;
-    selectedLegendaryCorrodedModifiers = new Set();
-    selectedLegendaryPlaceholderChoices = new Map();
-    selectedLegendaryTierChoices = new Map();
-    selectedFolkloreRingOption = "left";
-    renderEquipmentCrafter();
-  }
-  if (event.target.closest("[data-change-legendary]")) {
-    selectedLegendaryIndex = -1;
-    selectedLegendaryBase = "";
-    selectedLegendaryBeltBlendId = "";
-    selectedLegendaryTowerSequenceId = "";
-    selectedCorrosionIndex = -1;
-    selectedLegendaryCorrodedModifiers = new Set();
-    selectedLegendaryPlaceholderChoices = new Map();
-    selectedLegendaryTierChoices = new Map();
-    renderEquipmentCrafter();
-  }
-  const toggleLegendaryCorrosion = event.target.closest("[data-toggle-legendary-corrosion]");
-  if (toggleLegendaryCorrosion) {
-    const index = Number(toggleLegendaryCorrosion.dataset.toggleLegendaryCorrosion);
-    if (selectedLegendaryCorrodedModifiers.has(index)) selectedLegendaryCorrodedModifiers.delete(index);
-    else selectedLegendaryCorrodedModifiers.add(index);
-    renderEquipmentCrafter();
-  }
-  const addCraftedEquipment = event.target.closest("[data-add-crafted-equipment]");
-  if (addCraftedEquipment) {
-    let item;
-    if (equipmentCraftMode === "legendary") {
-      const selected = legendaryGearSs13[selectedLegendaryIndex];
-      if (!selected) {
-        showToast("Select a legendary item first");
-        return;
-      }
-      const { remoteIcon, ...localItem } = structuredClone(selected),
-        blend = beltBlendById(selectedLegendaryBeltBlendId),
-        sequence = towerSequenceById(selectedLegendaryTowerSequenceId),
-        legendaryModifiers = configuredLegendaryModifiers();
-      item = {
-        ...localItem,
-        ...(blend ? { beltBlendId: blend.id } : {}),
-        ...(sequence ? { towerSequenceId: sequence.id } : {}),
-        legendaryModifiers,
-        itemLevel: 100,
-        energy: equipmentEnergyAllowed(selected.slot)
-          ? Number($("#equipment-crafter-body [data-legendary-energy]")?.value) || 0
-          : 0,
-        modifiers: [
-          ...legendaryModifiers,
-          ...(blend ? [blend.modifier] : []),
-          ...(sequence ? [sequence.modifier] : []),
-        ],
-        corrodedModifierIndices: [...selectedLegendaryCorrodedModifiers],
-        base: selectedLegendaryBase || defaultBaseForItem(selected),
-        rarity: "legendary",
-      };
-      const corrosion = configuredCorrosionModifier();
-      if (corrosion) item.corrosionModifiers = [corrosion];
-    } else item = currentCraftPreview();
-    item = definedItemFields(item);
-    const editingItem = editingCraftItemId
-      ? plannerState.equipmentInventory.find((entry) => entry.id === editingCraftItemId)
-      : null;
-    if (editingItem) {
-      const id = editingItem.id;
-      Object.keys(editingItem).forEach((key) => delete editingItem[key]);
-      Object.assign(editingItem, item, { id });
-      for (const [slot, override] of Object.entries(plannerState.equipmentOverrides || {})) {
-        if (override.sourceInventoryId === id) {
-          const { id: ignored, source, slot: sourceSlot, remoteIcon, ...updatedOverride } = editingItem;
-          plannerState.equipmentOverrides[slot] = { ...structuredClone(updatedOverride), sourceInventoryId: id };
-        }
-      }
-    } else {
-      item.id = `gear-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      plannerState.equipmentInventory.push(item);
-    }
-    const edited = Boolean(editingItem);
-    editingCraftItemId = null;
-    persistPlannerState();
-    $("#equipment-crafter").close();
-    renderCandidateViews();
-    showToast(`${escapeHtml(item.name)} ${edited ? "updated" : "added to Inventory"}`);
   }
   const toggleEditCorrosion = event.target.closest("[data-toggle-edit-corrosion]");
   if (toggleEditCorrosion) {
@@ -8659,23 +7924,11 @@ document.addEventListener("change", (event) => {
     event.target.reportValidity();
     return;
   }
-  if (event.target.matches("[data-legendary-tier]")) {
-    selectedLegendaryTierChoices.set(Number(event.target.dataset.legendaryTier), Number(event.target.value));
-    renderEquipmentCrafter();
-    return;
-  }
   if (event.target.matches("[data-edit-legendary-tier]")) {
     const index = Number(event.target.dataset.editLegendaryTier);
     editingTierChoices.set(index, Number(event.target.value));
     editingLegendaryTexts.delete(index);
     renderInventoryItemDialog();
-    return;
-  }
-  if (event.target.matches("[data-legendary-placeholder]")) {
-    const index = Number(event.target.dataset.legendaryPlaceholder);
-    if (event.target.value) selectedLegendaryPlaceholderChoices.set(index, event.target.value);
-    else selectedLegendaryPlaceholderChoices.delete(index);
-    renderEquipmentCrafter();
     return;
   }
   if (event.target.matches("[data-edit-legendary-placeholder]")) {
@@ -8684,19 +7937,6 @@ document.addEventListener("change", (event) => {
     else editingPlaceholderChoices.delete(index);
     editingLegendaryTexts.delete(index);
     renderInventoryItemDialog();
-    return;
-  }
-  if (event.target.matches("[data-legendary-ring-option]")) {
-    selectedFolkloreRingOption = event.target.value;
-    event.target
-      .closest(".legendary-mod-control")
-      ?.querySelector("[data-legendary-mod]")
-      ?.replaceChildren(folkloreRingModifier(selectedFolkloreRingOption, selectedLegendaryCorrodedModifiers.has(2)));
-    const selected = legendaryGearSs13[selectedLegendaryIndex],
-      preview = $("#legendary-config-preview"),
-      corrosion = configuredCorrosionModifier();
-    if (selected && preview)
-      preview.innerHTML = `<small>Preview</small>${equipmentPreview({ ...selected, base: selectedLegendaryBase, corrodedModifierIndices: [...selectedLegendaryCorrodedModifiers], modifiers: configuredLegendaryModifiersWithSpecials(), corrosionModifiers: corrosion ? [corrosion] : [] })}`;
     return;
   }
   if (event.target.matches("[data-edit-legendary-ring-option]")) {
