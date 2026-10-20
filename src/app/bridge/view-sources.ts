@@ -17,6 +17,7 @@ import type { GameLogImportView } from "./game-log-import-view.ts";
 import type { HeroMemoryView } from "./hero-memory-view.ts";
 import type { PrismCrafterView } from "./prism-crafter-view.ts";
 import type { EquipmentCrafterView } from "./equipment-crafter-view.ts";
+import type { InventoryItemEditorView } from "./inventory-item-editor-view.ts";
 
 /** The Config tab: the calculated build and the combat settings it was calculated with. */
 export interface ConfigurationSource {
@@ -80,13 +81,14 @@ export interface ViewSources {
   skillSelector: SkillSelectorView;
   /**
    * The Inventory item dialog: the open item (its name raw for the title, escaped-text name, rarity classes, art and
-   * whether it is equipped), and whether its editor shows (the planner writes the editor itself).
+   * whether it is equipped), and while editing, its editor (src/app/bridge/inventory-item-editor-view.ts).
    */
   inventoryItem: {
     id: string;
     title: string;
     editing: boolean;
     item: { name: string; classes: string; icon: string; equipped: boolean } | null;
+    editor: InventoryItemEditorView | null;
   };
   /** The slate editor: the board slate it is open for (`session` goes up at every drawing: opening, a rotation). */
   slateEditor: DialogSession & {

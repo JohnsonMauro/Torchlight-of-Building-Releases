@@ -6,9 +6,38 @@ import type { CraftChange } from "@legacy/app/gear/equipment-craft.ts";
 import type { EquipmentCrafterBody, LegendaryConfigView } from "@legacy/app/bridge/equipment-crafter-view.ts";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { CSSProperties } from "react";
-import { Choices, ItemPreview, ModifierText, Options, RollInputs } from "./crafter-parts";
+import { Choices, ItemPreview, LegendaryModControl, Options, type LegendaryLineChange } from "./crafter-parts";
 
 const change = (craftChange: CraftChange) => plannerCommands().changeEquipmentCraft(craftChange);
+const LINE_NAMES = {
+  toggle: "data-toggle-legendary-corrosion",
+  text: "data-legendary-mod",
+  ring: "data-legendary-ring-option",
+  placeholder: "data-legendary-placeholder",
+  tier: "data-legendary-tier",
+  roll: "data-legendary-roll",
+};
+function craftLineChange(index: number, lineChange: LegendaryLineChange): CraftChange {
+  switch (lineChange.kind) {
+    case "corrosion":
+      return { kind: "toggleLegendaryCorrosion", index };
+    case "ring":
+      return { kind: "legendaryRing", value: lineChange.value };
+    case "placeholder":
+      return { kind: "legendaryPlaceholder", index, value: lineChange.value };
+    case "tier":
+      return { kind: "legendaryTier", index, value: lineChange.value };
+    default:
+      return {
+        kind: "roll",
+        group: "legendary",
+        index,
+        rangeIndex: lineChange.rangeIndex,
+        value: lineChange.value,
+        commit: lineChange.commit,
+      };
+  }
+}
 
 export function LegendaryList({ list }: { list: Extract<EquipmentCrafterBody, { kind: "legendaryList" }> }) {
   return (
@@ -148,82 +177,12 @@ export function LegendaryConfig({ config }: { config: LegendaryConfigView }) {
         <h3>Legendary Mods</h3>
         <div className="gear-mod-editor">
           {config.lines.map((line) => (
-            <div key={line.index} className={`legendary-mod-control ${line.corroded ? "corrosion-affix" : ""}`}>
-              <span>
-                <button
-                  type="button"
-                  data-toggle-legendary-corrosion={line.index}
-                  disabled={!line.canCorrode}
-                  onClick={() => change({ kind: "toggleLegendaryCorrosion", index: line.index })}
-                >
-                  {line.corroded ? "Corroded" : "Normal"}
-                </button>
-                <span data-legendary-mod={line.index}>
-                  <ModifierText text={line.text} />
-                </span>
-              </span>
-              {line.ring ? (
-                <label className="legendary-ring-choice">
-                  Ring effect
-                  <select
-                    data-legendary-ring-option=""
-                    value={line.ring}
-                    onChange={(event) =>
-                      change({ kind: "legendaryRing", value: event.target.value === "right" ? "right" : "left" })
-                    }
-                  >
-                    <option value="left">Left Ring · regain Blur</option>
-                    <option value="right">Right Ring · gain Blur Rating</option>
-                  </select>
-                </label>
-              ) : null}
-              {line.placeholder ? (
-                <label className="legendary-ring-choice">
-                  Random roll
-                  <select
-                    data-legendary-placeholder={line.index}
-                    value={line.placeholder.value}
-                    onChange={(event) =>
-                      change({ kind: "legendaryPlaceholder", index: line.index, value: event.target.value })
-                    }
-                  >
-                    <Options options={line.placeholder.options} />
-                  </select>
-                </label>
-              ) : null}
-              {line.tier ? (
-                <label className="legendary-ring-choice">
-                  Tier
-                  <select
-                    data-legendary-tier={line.index}
-                    value={line.tier.value}
-                    onChange={(event) =>
-                      change({ kind: "legendaryTier", index: line.index, value: Number(event.target.value) })
-                    }
-                  >
-                    <Options options={line.tier.options} />
-                  </select>
-                </label>
-              ) : null}
-              {line.rolls.map((roll) => (
-                <label key={roll.rangeIndex}>
-                  <RollInputs
-                    roll={roll}
-                    attributes={{ "data-legendary-roll": line.index, "data-range-index": roll.rangeIndex }}
-                    onValue={(value, commit) =>
-                      change({
-                        kind: "roll",
-                        group: "legendary",
-                        index: line.index,
-                        rangeIndex: roll.rangeIndex,
-                        value,
-                        commit,
-                      })
-                    }
-                  />
-                </label>
-              ))}
-            </div>
+            <LegendaryModControl
+              key={line.index}
+              line={line}
+              names={LINE_NAMES}
+              onChange={(lineChange) => change(craftLineChange(line.index, lineChange))}
+            />
           ))}
         </div>
       </section>

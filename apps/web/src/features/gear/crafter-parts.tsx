@@ -1,9 +1,11 @@
 // Pieces the equipment crafter's views share (src/app/bridge/equipment-crafter-view.ts): a modifier line (a keyword roll
 // collapses to its keyword; holding Alt shows its effect, by CSS), the item preview, a select's options and groups (with
-// the data-* attributes the planner's searchable select reads), and a roll's slider and number field.
+// the data-* attributes the planner's searchable select reads), a roll's slider and number field, and a legendary line
+// with its controls (the crafter's and the item editor's differ by their data-* names).
 import type { CSSProperties, InputHTMLAttributes } from "react";
 import type {
   ItemPreviewView,
+  LegendaryLineView,
   ModifierTextView,
   OptionView,
   RollView,
@@ -138,5 +140,100 @@ export function RollInputs({
       </span>
       <em>{roll.value}</em>
     </>
+  );
+}
+
+/** The data-* names of a legendary line's controls. */
+export interface LegendaryLineNames {
+  toggle: string;
+  text: string;
+  ring: string;
+  placeholder: string;
+  tier: string;
+  roll: string;
+}
+export type LegendaryLineChange =
+  | { kind: "corrosion" }
+  | { kind: "ring"; value: "left" | "right" }
+  | { kind: "placeholder"; value: string }
+  | { kind: "tier"; value: number }
+  | { kind: "roll"; rangeIndex: number; value: number; commit?: boolean };
+
+/** A legendary line: Normal / Corroded, its text, and its ring effect, random roll, tier and rolls when it has them. */
+export function LegendaryModControl({
+  line,
+  names,
+  saved,
+  onChange,
+}: {
+  line: LegendaryLineView;
+  names: LegendaryLineNames;
+  /** A hidden field holding the line as saved (the item editor's). */
+  saved?: { name: string; value: string };
+  onChange: (change: LegendaryLineChange) => void;
+}) {
+  return (
+    <div className={`legendary-mod-control ${line.corroded ? "corrosion-affix" : ""}`}>
+      <span>
+        <button
+          type="button"
+          {...{ [names.toggle]: line.index }}
+          disabled={!line.canCorrode}
+          onClick={() => onChange({ kind: "corrosion" })}
+        >
+          {line.corroded ? "Corroded" : "Normal"}
+        </button>
+        <span {...{ [names.text]: line.index }}>
+          <ModifierText text={line.text} />
+        </span>
+        {saved ? <input type="hidden" {...{ [saved.name]: line.index }} value={saved.value} /> : null}
+      </span>
+      {line.ring ? (
+        <label className="legendary-ring-choice">
+          Ring effect
+          <select
+            {...{ [names.ring]: "" }}
+            value={line.ring}
+            onChange={(event) => onChange({ kind: "ring", value: event.target.value === "right" ? "right" : "left" })}
+          >
+            <option value="left">Left Ring · regain Blur</option>
+            <option value="right">Right Ring · gain Blur Rating</option>
+          </select>
+        </label>
+      ) : null}
+      {line.placeholder ? (
+        <label className="legendary-ring-choice">
+          Random roll
+          <select
+            {...{ [names.placeholder]: line.index }}
+            value={line.placeholder.value}
+            onChange={(event) => onChange({ kind: "placeholder", value: event.target.value })}
+          >
+            <Options options={line.placeholder.options} />
+          </select>
+        </label>
+      ) : null}
+      {line.tier ? (
+        <label className="legendary-ring-choice">
+          Tier
+          <select
+            {...{ [names.tier]: line.index }}
+            value={line.tier.value}
+            onChange={(event) => onChange({ kind: "tier", value: Number(event.target.value) })}
+          >
+            <Options options={line.tier.options} />
+          </select>
+        </label>
+      ) : null}
+      {line.rolls.map((roll) => (
+        <label key={roll.rangeIndex}>
+          <RollInputs
+            roll={roll}
+            attributes={{ [names.roll]: line.index, "data-range-index": roll.rangeIndex }}
+            onValue={(value, commit) => onChange({ kind: "roll", rangeIndex: roll.rangeIndex, value, commit })}
+          />
+        </label>
+      ))}
+    </div>
   );
 }

@@ -119,16 +119,16 @@ import { baseAffixTiersSs13 } from "../data/gear/base-affixes-ss13.generated.js"
 import { craftAffixesSs13 } from "../data/gear/craft-affixes-ss13.generated.js";
 import { legendaryGearSs13 } from "../data/gear/legendary-gear-ss13.generated.js";
 import { legendaryCorrodedModifiersSs13 } from "../data/gear/legendary-corroded-modifiers-ss13.generated.js";
-import { beltBlendById, beltBlendOptions } from "./belt-blend-options.js";
-import { towerSequenceOptionMarkup } from "./tower-sequence-options.js";
+import { beltBlendById, beltBlendChoices } from "./belt-blend-options.js";
+import { towerSequenceChoices } from "./tower-sequence-options.js";
 import { voraxCraftingSs13 } from "../data/gear/vorax-crafting-ss13.generated.js";
 import {
   modifierRollRange,
   modifierRollRanges,
   modifierRollStep,
-  negativeRollFill,
   preferredModifierRoll,
   resolveModifierRolls,
+  snappedModifierRoll,
   tierMatchesResolved,
 } from "./gear/affix-rolls.js";
 import { equipmentEnergyAllowed, towerSequenceById, towerSequencesForType } from "./gear/gear-rules.js";
@@ -139,7 +139,7 @@ import {
   equipmentCraftFromItem,
   newEquipmentCraft,
 } from "./gear/equipment-craft.ts";
-import { equipmentCrafterView, modifierTextView } from "./bridge/equipment-crafter-view.ts";
+import { equipmentCrafterView, modifierTextView, rollViews } from "./bridge/equipment-crafter-view.ts";
 import { selenaScorchingBeamPactsSs13 } from "../data/pacts/selena-scorching-beam-ss13.js";
 import { pactspiritCatalogSs13 } from "../data/pacts/pactspirit-catalog-ss13.js";
 import {
@@ -439,6 +439,8 @@ let editingFolkloreRingOption = "left";
 let editingPlaceholderChoices = new Map();
 let editingTierChoices = new Map();
 let editingLegendaryTexts = new Map();
+// The item editor's typed fields (src/app/bridge/inventory-item-editor-view.ts InventoryItemFields).
+let inventoryItemFields = null;
 let selectedSlateId = null;
 let slateEditMode = false;
 let slatePlacementTarget = null;
@@ -1650,7 +1652,7 @@ providePlannerCommands({
   copySelectedItem,
   deleteSelectedItem,
   saveInventoryItemEdit,
-  renderInventoryItemEditor,
+  changeInventoryItemEditor,
   openInventoryItem: (id) => {
     const item = inventoryItemById(id);
     if (item) openInventoryItemDialog(item);
@@ -1907,20 +1909,6 @@ document.addEventListener("change", (event) => {
         rolls,
       );
       renderSkillSelector();
-    }
-    return;
-  }
-  // The item editor's roll fields (the equipment crafter's are React's, apps/web/src/features/gear/RollInputs.tsx).
-  if (event.target.matches("[data-affix-roll-number]") && !event.target.closest("#equipment-crafter")) {
-    const number = event.target,
-      range = number.closest(".affix-roll-inputs")?.querySelector('input[type="range"]');
-    if (range) {
-      const typed = Number(number.value),
-        fallback = Number(range.value),
-        value = Math.min(Number(number.max), Math.max(Number(number.min), Number.isFinite(typed) ? typed : fallback));
-      number.value = String(value);
-      range.value = String(value);
-      range.dispatchEvent(new Event("input", { bubbles: true }));
     }
     return;
   }
@@ -3730,20 +3718,19 @@ function saveInventoryItemEdit() {
     selectedInventoryItemId = item.id;
   }
   if (item) {
-    item.name = $("[data-inventory-edit-name]").value.trim() || item.name;
-    item.level = Number($("[data-inventory-edit-level]").value) || item.level;
-    item.energy = equipmentEnergyAllowed(item.slot) ? Number($("[data-inventory-edit-energy]")?.value) || 0 : 0;
-    item.base = $("[data-inventory-edit-base]").value.trim() || item.base;
-    const blend = item.slot === "belt" ? beltBlendById($("[data-edit-belt-blend]")?.value) : null,
-      sequence = towerSequenceById($("[data-edit-tower-sequence]")?.value),
-      editedModifiers = [...document.querySelectorAll("[data-edit-modifier]")]
-        .map((input) => input.value.trim())
-        .filter(Boolean);
+    const fields = inventoryItemFields || inventoryItemFieldsFrom(source);
+    item.name = fields.name.trim() || item.name;
+    item.level = Number(fields.level) || item.level;
+    item.energy = equipmentEnergyAllowed(item.slot) ? Number(fields.energy) || 0 : 0;
+    item.base = fields.base.trim() || item.base;
+    const blend = item.slot === "belt" ? beltBlendById(fields.beltBlendId) : null,
+      sequence = towerSequenceById(fields.sequenceId),
+      editedModifiers = fields.texts.map((text) => text.trim()).filter(Boolean);
     const legendarySource = legendaryEditorSource(item);
     if (legendarySource) {
       const texts = new Map(
-        [...document.querySelectorAll("[data-edit-modifier]")]
-          .map((input) => [Number(input.dataset.editModifier), input.value.trim()])
+        editorLegendaryLines(item, legendarySource)
+          .map((line) => [line.index, line.value.trim()])
           .filter(([, text]) => text),
       );
       Object.assign(
@@ -3768,7 +3755,7 @@ function saveInventoryItemEdit() {
       if (sequence) item.modifiers.push(sequence.modifier);
       item.corrodedModifierIndices = [...editingCorrodedModifierIndices];
     }
-    item.corrosionModifiers = ($("[data-edit-corrosion]")?.value || "").split(" | ").filter(Boolean);
+    item.corrosionModifiers = fields.corrosion.split(" | ").filter(Boolean);
     const base = rareBaseForItem(item, [(item.name || "").replace(/ - Priceless$/i, ""), item.base]);
     if (!legendarySource)
       item.affixCount =
@@ -3926,9 +3913,6 @@ function compatibleEquipmentSlot(item) {
     return "mainHand";
   }
   return item.slot;
-}
-function towerSequenceOptions(type, selectedId = "") {
-  return towerSequenceOptionMarkup(towerSequencesForType(type), selectedId);
 }
 function itemWeaponType(item) {
   return (
@@ -4228,11 +4212,10 @@ function inventoryEditingPreview(item) {
 // (data-legacy-editor) once React shows the editor.
 function renderInventoryItemDialog() {
   viewSourceChanged("inventoryItem");
-  renderInventoryItemEditor();
 }
 function inventoryItemSource() {
   const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
-  if (!item) return { id: "", title: "Item", editing: false, item: null };
+  if (!item) return { id: "", title: "Item", editing: false, item: null, editor: null };
   return {
     id: item.id,
     title: item.name,
@@ -4243,15 +4226,185 @@ function inventoryItemSource() {
       icon: gearIcon(item),
       equipped: isItemEquipped(item),
     },
+    editor: inventoryItemEditing ? inventoryItemEditorView(item) : null,
   };
 }
-function renderInventoryItemEditor() {
+// ---- Item editor (apps/web/src/features/gear/InventoryItemEditor.tsx): Edit on a legendary or captured item. The
+// fields hold what was typed; the lines' tiers, random rolls, corroded forms and texts are the editing* state above.
+// The legacy editor printed values through escapeHtml, so the fields start from the item's texts as it printed them.
+function inventoryItemFieldsFrom(item) {
+  const sequences = towerSequencesForType(itemWeaponType(item));
+  return {
+    ...displayTexts({ name: item.name, base: item.base || "", corrosion: (item.corrosionModifiers || []).join(" | ") }),
+    level: String(item.level || 100),
+    energy: String(item.energy || 0),
+    beltBlendId: beltBlendById(item.beltBlendId) ? item.beltBlendId : "",
+    sequenceId: sequences.some((entry) => entry.id === item.towerSequenceId) ? item.towerSequenceId : "",
+    texts: legendaryEditorSource(item) ? [] : displayTexts(modifiersWithoutSpecials(item)),
+  };
+}
+// The editable catalog lines of a legendary (src/app/legendary-editor-model.js), each with its controls.
+function editorLegendaryLines(item, source) {
+  return editableLegendarySlots(inventoryLegendaryModel(item, source), source).map(({ catalogIndex: index }) => {
+    const corroded = editingCorrodedModifierIndices.has(index),
+      template = editingLegendaryModifierTemplate(source, index),
+      ranges = modifierRollRanges(template),
+      resolved = editingLegendaryLineText(source, index),
+      values = rollValuesFromText(template, resolved) || ranges.map(preferredModifierRoll),
+      pool = placeholderPool(source.id, index),
+      tiers = corroded ? null : legendaryLineTiers(source.id, index),
+      tier = tiers?.some((entry) => entry.tier === Number(editingTierChoices.get(index)))
+        ? Number(editingTierChoices.get(index))
+        : tiers?.[0].tier;
+    return {
+      index,
+      corroded,
+      canCorrode: Boolean(legendaryCorrodedModifiersSs13[source.id]?.[index]),
+      text: modifierTextView(resolved),
+      value: displayTexts(resolved),
+      ring: source.id === "Folklore_of_Locking_Fingers" && index === 2 ? editingFolkloreRingOption : null,
+      placeholder: pool
+        ? {
+            value: editingPlaceholderChoices.get(index) || "",
+            options: displayTexts([
+              { value: "", label: `Not chosen · ${pool.placeholder}` },
+              ...pool.options.map((option) => ({ value: option.id, label: option.label })),
+            ]),
+          }
+        : null,
+      tier: tiers
+        ? {
+            value: String(tier),
+            options: tiers.map((entry) => ({
+              value: String(entry.tier),
+              label: displayTexts(`T${entry.tier} · ${entry.text.replace(/(\d|\))\s+%/g, "$1%")}`),
+            })),
+          }
+        : null,
+      rolls: rollViews(template, values),
+    };
+  });
+}
+// A line of an item without a catalog legendary: a text field, with a slider when its catalog line has a range.
+function editorTextLine(item, modifier, index, value) {
+  const source = legendaryGearSs13.find(
+      (entry) => entry.name.toLowerCase() === (item.name || "").replace(/ - Priceless$/i, "").toLowerCase(),
+    ),
+    range = modifierRollRange(source?.modifiers?.[index] || modifier);
+  if (!range) return { kind: "text", index, value, range: null };
+  const roll = Math.min(range.max, Math.max(range.min, Number(modifier.match(/-?\d+(?:\.\d+)?/)?.[0]) || range.max));
+  return {
+    kind: "text",
+    index,
+    value,
+    range: { min: range.min, max: range.max, step: modifierRollStep(range), value: roll },
+  };
+}
+function inventoryItemEditorView(item) {
+  const source = legendaryEditorSource(item),
+    fields = inventoryItemFields || inventoryItemFieldsFrom(item),
+    sequences = towerSequencesForType(itemWeaponType(item)),
+    corrosion = item.corrosionModifiers || [];
+  return {
+    icon: gearIcon(item),
+    ...displayTexts({ name: item.name, detail: item.base || titleCase(item.slot) }),
+    fields: {
+      name: fields.name,
+      level: fields.level,
+      energy: equipmentEnergyAllowed(item.slot) ? fields.energy : null,
+      base: fields.base,
+      beltBlend: item.slot === "belt" ? { value: fields.beltBlendId, choices: displayTexts(beltBlendChoices()) } : null,
+      sequence: sequences.length
+        ? { value: fields.sequenceId, choices: displayTexts(towerSequenceChoices(sequences)) }
+        : null,
+      corrosion: {
+        value: fields.corrosion,
+        options: [
+          { value: "", label: "None" },
+          {
+            value: displayTexts(corrosion.join(" | ")),
+            label: corrosion.length ? displayTexts(corrosion.join(" · ")) : "Corroded implicit",
+          },
+        ],
+      },
+    },
+    heading: item.rarity === "legendary" ? "Legendary Mods" : source ? "Legendary affixes" : "Prefixes and Suffixes",
+    legendaryLines: source ? editorLegendaryLines(item, source) : [],
+    textLines: source
+      ? []
+      : modifiersWithoutSpecials(item).map((modifier, index) =>
+          editorTextLine(item, modifier, index, fields.texts[index] ?? ""),
+        ),
+    corrosionLines: displayTexts(corrosion),
+    preview: equipmentPreviewView(inventoryEditingPreview(item)),
+  };
+}
+// A change in the item editor. A tier, random roll or corroded-line change redraws the editor as the legacy one did:
+// the typed fields start again from the item.
+function changeInventoryItemEditor(change) {
   const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId),
-    body = $("#inventory-item-body");
-  if (!item || !inventoryItemEditing || !body?.hasAttribute("data-legacy-editor")) return;
-  const weaponType = itemWeaponType(item),
-    sequenceEntries = towerSequencesForType(weaponType);
-  body.innerHTML = `<div class="gear-edit-layout"><section><div class="gear-edit-selected"><img src="${gearIcon(item)}" alt=""><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.base || titleCase(item.slot))}</small></span><button type="button" data-change-edit-item>Change</button></div><label>Name<input data-inventory-edit-name value="${escapeHtml(item.name)}"></label><div class="gear-edit-pair"><label>Item level<input type="number" min="1" max="100" data-inventory-edit-level value="${item.level || 100}"></label>${equipmentEnergyAllowed(item.slot) ? `<label>Equipment Energy<input type="number" min="0" data-inventory-edit-energy value="${item.energy || 0}"></label>` : ""}</div><label>Base item<input data-inventory-edit-base value="${escapeHtml(item.base || "")}"></label>${item.slot === "belt" ? `<label>Belt Blend<select data-edit-belt-blend>${beltBlendOptions(item.beltBlendId)}</select></label>` : ""}${sequenceEntries.length ? `<label>TOWER Sequence<select data-edit-tower-sequence>${towerSequenceOptions(weaponType, item.towerSequenceId)}</select></label>` : ""}<label>Corrosion Implicit<select data-edit-corrosion><option value="">None</option><option value="${escapeHtml((item.corrosionModifiers || []).join(" | "))}" ${(item.corrosionModifiers || []).length ? "selected" : ""}>${(item.corrosionModifiers || []).length ? escapeHtml(item.corrosionModifiers.join(" · ")) : "Corroded implicit"}</option></select></label><h3>${item.rarity === "legendary" ? "Legendary Mods" : legendaryEditorSource(item) ? "Legendary affixes" : "Prefixes and Suffixes"}</h3><div class="gear-mod-editor">${(legendaryEditorSource(item) ? editableLegendarySlots(inventoryLegendaryModel(item), legendaryEditorSource(item)).map((slot) => modifierEditorControl(item, slot.text, slot.catalogIndex)) : modifiersWithoutSpecials(item).map((modifier, index) => modifierEditorControl(item, modifier, index))).join("") || "<p>No modifiers configured.</p>"}${(item.corrosionModifiers || []).map((modifier) => `<div class="fixed-mod corrosion-affix"><b>Corroded</b><span>${escapeHtml(modifier)}</span></div>`).join("")}</div></section><aside><small>Preview</small>${equipmentPreview(inventoryEditingPreview(item))}</aside></div>`;
+    source = legendaryEditorSource(item);
+  if (!item || !inventoryItemEditing) return;
+  const redraw = () => {
+    inventoryItemFields = inventoryItemFieldsFrom(item);
+  };
+  switch (change.kind) {
+    case "field":
+      inventoryItemFields = { ...(inventoryItemFields || inventoryItemFieldsFrom(item)), [change.field]: change.value };
+      break;
+    case "text": {
+      const fields = inventoryItemFields || inventoryItemFieldsFrom(item);
+      inventoryItemFields = {
+        ...fields,
+        texts: fields.texts.map((text, index) => (index === change.index ? change.value : text)),
+      };
+      break;
+    }
+    case "corrosion":
+      if (editingCorrodedModifierIndices.has(change.index)) editingCorrodedModifierIndices.delete(change.index);
+      else editingCorrodedModifierIndices.add(change.index);
+      editingLegendaryTexts.delete(change.index);
+      redraw();
+      break;
+    case "tier":
+      editingTierChoices.set(change.index, change.value);
+      editingLegendaryTexts.delete(change.index);
+      redraw();
+      break;
+    case "placeholder":
+      if (change.value) editingPlaceholderChoices.set(change.index, change.value);
+      else editingPlaceholderChoices.delete(change.index);
+      editingLegendaryTexts.delete(change.index);
+      redraw();
+      break;
+    case "ring":
+      editingFolkloreRingOption = change.value;
+      editingLegendaryTexts.set(
+        2,
+        folkloreRingModifier(editingFolkloreRingOption, editingCorrodedModifierIndices.has(2)),
+      );
+      break;
+    case "roll": {
+      if (!source) return;
+      const template = editingLegendaryModifierTemplate(source, change.index),
+        ranges = modifierRollRanges(template),
+        range = ranges[change.rangeIndex];
+      if (!range || !Number.isFinite(change.value)) return;
+      if (!change.commit && (change.value < range.min || change.value > range.max)) return;
+      const current = rollValuesFromText(template, editingLegendaryLineText(source, change.index)) || [],
+        values = ranges.map((entry, rangeIndex) =>
+          snappedModifierRoll(
+            entry,
+            rangeIndex === change.rangeIndex ? change.value : (current[rangeIndex] ?? preferredModifierRoll(entry)),
+          ),
+        );
+      editingLegendaryTexts.set(change.index, resolveModifierRolls(template, values));
+      break;
+    }
+    default:
+      return;
+  }
+  viewSourceChanged("inventoryItem");
 }
 function equippedSlotForInventoryItem(item) {
   const overrideSlot = Object.entries(plannerState.equipmentOverrides || {}).find(
@@ -4299,12 +4452,6 @@ function gearIcon(item) {
     ""
   );
 }
-function updateNegativeRollVisual(range) {
-  if (!range?.classList.contains("negative-roll-range")) return;
-  const min = Number(range.min),
-    max = Number(range.max);
-  range.style.setProperty("--roll-fill", `${negativeRollFill({ min, max }, range.value)}%`);
-}
 function modifierSignature(text) {
   return legendaryModifierSignature(text);
 }
@@ -4327,12 +4474,6 @@ function legendaryKnownModifierSignatures(source) {
     ].map(modifierSignature),
   );
 }
-function affixRollInputs(range, attributes, current) {
-  const value = Number.isFinite(current) ? current : preferredModifierRoll(range),
-    negativeOnly = range.max <= 0,
-    fill = negativeRollFill(range, value);
-  return `<span class="affix-roll-inputs${negativeOnly ? " negative-roll" : ""}"><input type="range" class="${negativeOnly ? "negative-roll-range" : ""}" min="${range.min}" max="${range.max}" step="${modifierRollStep(range)}" value="${value}" style="${negativeOnly ? `--roll-fill:${fill}%` : ""}" ${attributes}><input class="affix-roll-number" type="number" min="${range.min}" max="${range.max}" step="${modifierRollStep(range)}" value="${value}" data-affix-roll-number></span><em>${value}</em>`;
-}
 // A modifier line as HTML. A keyword roll (Pantheon's Elegy's Dirges) or a named gear affix (Wield My Sword, src/engine/text/named-gear-affixes.js)
 // shows its keyword in the revived-memory keyword style; holding Alt (body.revival-alt-held, setRevivalAltDetails) expands it into its effect lines, each with its own badge when `lineStatus` (line -> status) is given, else inline "Keyword: effect". Other lines are plain text.
 function modifierTextMarkup(text, lineStatus = null) {
@@ -4351,44 +4492,6 @@ function modifierTextMarkup(text, lineStatus = null) {
   if (parts.inline)
     return `<span class="keyword-roll">${escapeHtml(parts.inline.before)}<span class="keyword-roll-name">${escapeHtml(parts.keyword)}</span>${escapeHtml(parts.inline.after)}${effect}</span>`;
   return `<span class="keyword-roll"><span class="keyword-roll-name">${escapeHtml(parts.keyword)}</span>${effect}</span>${parts.rest.map((line) => `\n${escapeHtml(line)}`).join("")}`;
-}
-// A dropdown of the rolls a "<Random …>" placeholder line can take; empty when the line is not a resolved placeholder.
-// A tier dropdown for a tiered legendary line (src/engine/gear/legendary-affix-tiers.js, e.g. Ice Pulse's Spell Damage); it sets the line's
-// roll range. Empty for every other line, and while the line is corroded (the corroded form has its own range).
-function legendaryTierControl(sourceId, index, chosen, corroded, attribute) {
-  const tiers = legendaryLineTiers(sourceId, index);
-  if (!tiers || corroded) return "";
-  const current = tiers.some((entry) => entry.tier === Number(chosen)) ? Number(chosen) : tiers[0].tier;
-  return `<label class="legendary-ring-choice">Tier<select ${attribute}="${index}">${tiers.map((entry) => `<option value="${entry.tier}" ${entry.tier === current ? "selected" : ""}>T${entry.tier} · ${escapeHtml(entry.text.replace(/(\d|\))\s+%/g, "$1%"))}</option>`).join("")}</select></label>`;
-}
-function placeholderChoiceControl(sourceId, index, chosen, attribute) {
-  const pool = placeholderPool(sourceId, index);
-  if (!pool) return "";
-  return `<label class="legendary-ring-choice">Random roll<select ${attribute}="${index}"><option value="">Not chosen · ${escapeHtml(pool.placeholder)}</option>${pool.options.map((option) => `<option value="${escapeHtml(option.id)}" ${option.id === chosen ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></label>`;
-}
-function modifierEditorControl(item, modifier, index) {
-  const source =
-    legendaryEditorSource(item) ||
-    legendaryGearSs13.find(
-      (entry) => entry.name.toLowerCase() === (item.name || "").replace(/ - Priceless$/i, "").toLowerCase(),
-    );
-  if (legendaryEditorSource(item)) {
-    const corroded = editingCorrodedModifierIndices.has(index),
-      template = editingLegendaryModifierTemplate(source, index),
-      ranges = modifierRollRanges(template),
-      resolved = editingLegendaryLineText(source, index),
-      values = rollValuesFromText(template, resolved) || ranges.map(preferredModifierRoll),
-      ringChoice =
-        source.id === "Folklore_of_Locking_Fingers" && index === 2
-          ? `<label class="legendary-ring-choice">Ring effect<select data-edit-legendary-ring-option><option value="left" ${editingFolkloreRingOption === "left" ? "selected" : ""}>Left Ring · regain Blur</option><option value="right" ${editingFolkloreRingOption === "right" ? "selected" : ""}>Right Ring · gain Blur Rating</option></select></label>`
-          : "";
-    return `<div class="legendary-mod-control ${corroded ? "corrosion-affix" : ""}"><span><button type="button" data-toggle-edit-corrosion="${index}" ${legendaryCorrodedModifiersSs13[source.id]?.[index] ? "" : "disabled"}>${corroded ? "Corroded" : "Normal"}</button><span data-edit-modifier-text="${index}">${modifierTextMarkup(resolved)}</span><input type="hidden" data-edit-modifier="${index}" value="${escapeHtml(resolved)}"></span>${ringChoice}${placeholderChoiceControl(source.id, index, editingPlaceholderChoices.get(index), "data-edit-legendary-placeholder")}${legendaryTierControl(source.id, index, editingTierChoices.get(index), corroded, "data-edit-legendary-tier")}${ranges.map((range, rangeIndex) => `<label>${affixRollInputs(range, `data-edit-legendary-roll="${index}" data-range-index="${rangeIndex}"`, values[rangeIndex])}</label>`).join("")}</div>`;
-  }
-  const range = modifierRollRange(source?.modifiers?.[index] || modifier);
-  if (!range)
-    return `<div class="fixed-mod"><b>Normal</b><input data-edit-modifier="${index}" value="${escapeHtml(modifier)}"></div>`;
-  const value = Math.min(range.max, Math.max(range.min, Number(modifier.match(/-?\d+(?:\.\d+)?/)?.[0]) || range.max));
-  return `<label><span><b>Normal</b><input data-edit-modifier="${index}" value="${escapeHtml(modifier)}"></span><span class="affix-roll-inputs"><input type="range" min="${range.min}" max="${range.max}" step="${modifierRollStep(range)}" value="${value}" data-modifier-roll><input class="affix-roll-number" type="number" min="${range.min}" max="${range.max}" step="${modifierRollStep(range)}" value="${value}" data-affix-roll-number></span><em>${range.min}–${range.max}</em></label>`;
 }
 function itemModifierSections(item) {
   const modifiers = item.modifiers || [],
@@ -4491,16 +4594,7 @@ function affixTierBadge(badge) {
   const key = badge.toLowerCase().replace("+", "plus");
   return `<i class="affix-tier-badge tier-${escapeHtml(key)}">${escapeHtml(badge)}</i>`;
 }
-function previewModifierSections(item) {
-  const corroded = new Set(item.corrodedModifierIndices || []);
-  return itemModifierSections(item)
-    .map(
-      (section) =>
-        `<section class="item-mod-section"><h4>${escapeHtml(section.label)}${section.detail ? `<small>${escapeHtml(section.detail)}</small>` : ""}</h4>${section.entries.length ? `<ul>${section.entries.map((entry) => `<li class="${entry.tone === "legendary" || entry.badge === "L" ? "legendary-affix " : ""}${entry.tone === "corrosion" || corroded.has(entry.index) ? "corrosion-affix" : ""}">${affixTierBadge(entry.badge)}<span>${modifierTextMarkup(entry.text)}</span></li>`).join("")}</ul>` : ""}</section>`,
-    )
-    .join("");
-}
-// equipmentPreview as data, for the React crafter (src/app/bridge/equipment-crafter-view.ts ItemPreviewView).
+// An item's preview card as data, for the crafter and the item editor (src/app/bridge/equipment-crafter-view.ts).
 function equipmentPreviewView(item) {
   const rarity = itemDisplayRarity(item),
     corroded = new Set(item.corrodedModifierIndices || []);
@@ -4525,11 +4619,6 @@ function equipmentPreviewView(item) {
     })),
     source: item.source || "",
   };
-}
-function equipmentPreview(item) {
-  const rarity = itemDisplayRarity(item),
-    rarityLabel = rarity === "vorax" ? "VORAX GEAR" : rarity.toUpperCase();
-  return `<article class="equipment-preview rarity-${itemCardRarity(rarity, item)}${sixAffixClass(item)}${pricelessClass(item)}${itemLevel100Class(item)}"><img src="${gearIcon(item)}" alt=""><p>${rarityLabel}</p><h3>${escapeHtml(item.name)}</h3><small>${escapeHtml(item.base || titleCase(item.slot))} · Require Lv.${item.level || 1}</small><div class="item-mod-sections">${previewModifierSections(item) || "<p>Configure affixes to preview this item.</p>"}</div>${item.source ? `<a href="${item.source}" target="_blank" rel="noreferrer">Open TLIDB source</a>` : ""}</article>`;
 }
 function definedItemFields(item) {
   return Object.fromEntries(Object.entries(item).filter(([, value]) => value !== undefined));
@@ -4583,6 +4672,7 @@ function openInventoryItemEditor(item) {
           .filter(([, tier]) => tier)
       : [],
   );
+  inventoryItemFields = inventoryItemFieldsFrom(item);
   renderInventoryItemDialog();
   const dialog = $("#inventory-item-dialog");
   if (!dialog.open) dialog.showModal();
@@ -6786,48 +6876,6 @@ document.addEventListener("click", (event) => {
   }
 });
 
-document.addEventListener("input", (event) => {
-  if (event.target.matches("[data-affix-roll-number]") && !event.target.closest("#equipment-crafter")) {
-    const number = event.target,
-      range = number.closest(".affix-roll-inputs")?.querySelector('input[type="range"]');
-    if (range) {
-      const value = Number(number.value),
-        min = Number(number.min),
-        max = Number(number.max);
-      if (Number.isFinite(value) && value >= min && value <= max) {
-        range.value = String(value);
-        range.dispatchEvent(new Event("input", { bubbles: true }));
-      }
-    }
-    return;
-  }
-  if (event.target.matches("[data-edit-legendary-roll],[data-modifier-roll]")) {
-    updateNegativeRollVisual(event.target);
-    const number = event.target.closest(".affix-roll-inputs")?.querySelector("[data-affix-roll-number]");
-    if (number) number.value = event.target.value;
-  }
-  if (event.target.matches("[data-edit-legendary-roll]")) {
-    const index = Number(event.target.dataset.editLegendaryRoll),
-      item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId),
-      source =
-        legendaryEditorSource(item) ||
-        legendaryGearSs13.find(
-          (entry) => entry.name.toLowerCase() === (item?.name || "").replace(/ - Priceless$/i, "").toLowerCase(),
-        ),
-      control = event.target.closest(".legendary-mod-control"),
-      sliders = [...control.querySelectorAll("[data-edit-legendary-roll]")],
-      template = editingLegendaryModifierTemplate(source, index),
-      text = resolveModifierRolls(
-        template,
-        sliders.map((slider) => slider.value),
-      );
-    control.querySelector("[data-edit-modifier-text]").innerHTML = modifierTextMarkup(text);
-    control.querySelector("[data-edit-modifier]").value = text;
-    editingLegendaryTexts.set(index, text);
-    event.target.closest("label").querySelector("em").textContent = event.target.value;
-  }
-});
-
 function changeTalentRank(coordinate, delta, max = false) {
   const panel = currentTalentPanel();
   const displayNodes = talentDisplayNodes(panel);
@@ -7120,14 +7168,6 @@ document.addEventListener("click", (event) => {
     } catch (error) {
       showToast(error?.message || "A new library could not be started");
     }
-  }
-  const toggleEditCorrosion = event.target.closest("[data-toggle-edit-corrosion]");
-  if (toggleEditCorrosion) {
-    const index = Number(toggleEditCorrosion.dataset.toggleEditCorrosion);
-    if (editingCorrodedModifierIndices.has(index)) editingCorrodedModifierIndices.delete(index);
-    else editingCorrodedModifierIndices.add(index);
-    editingLegendaryTexts.delete(index);
-    renderInventoryItemDialog();
   }
   if (event.target.closest("[data-close-slate-inventory]")) $("#slate-inventory").close();
   if (event.target.closest("[data-back-slate-inventory]")) {
@@ -7922,33 +7962,6 @@ document.addEventListener("dragstart", (event) => {
 document.addEventListener("change", (event) => {
   if (event.target.checkValidity && !event.target.checkValidity()) {
     event.target.reportValidity();
-    return;
-  }
-  if (event.target.matches("[data-edit-legendary-tier]")) {
-    const index = Number(event.target.dataset.editLegendaryTier);
-    editingTierChoices.set(index, Number(event.target.value));
-    editingLegendaryTexts.delete(index);
-    renderInventoryItemDialog();
-    return;
-  }
-  if (event.target.matches("[data-edit-legendary-placeholder]")) {
-    const index = Number(event.target.dataset.editLegendaryPlaceholder);
-    if (event.target.value) editingPlaceholderChoices.set(index, event.target.value);
-    else editingPlaceholderChoices.delete(index);
-    editingLegendaryTexts.delete(index);
-    renderInventoryItemDialog();
-    return;
-  }
-  if (event.target.matches("[data-edit-legendary-ring-option]")) {
-    editingFolkloreRingOption = event.target.value;
-    const text = folkloreRingModifier(editingFolkloreRingOption, editingCorrodedModifierIndices.has(2)),
-      control = event.target.closest(".legendary-mod-control"),
-      item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
-    control?.querySelector("[data-edit-modifier-text]")?.replaceChildren(text);
-    if (control?.querySelector("[data-edit-modifier]")) control.querySelector("[data-edit-modifier]").value = text;
-    editingLegendaryTexts.set(2, text);
-    const preview = $("#inventory-item-body .gear-edit-layout aside");
-    if (item && preview) preview.innerHTML = `<small>Preview</small>${equipmentPreview(inventoryEditingPreview(item))}`;
     return;
   }
 });

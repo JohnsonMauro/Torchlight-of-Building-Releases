@@ -1,9 +1,10 @@
 // The Inventory item dialog (an Inventory card or an equipped slot opens it): the item with its rarity, Equip or
-// Unequip, Edit, Copy and Delete; a click outside closes it. Edit on a legendary shows the item editor here: React gives
-// the planner an empty body (data-legacy-editor, a new element per mode) and the planner writes the editor into it,
-// as before; the footer's Save Changes is a command that reads it. The planner announces the "inventoryItem" source.
-import { useLayoutEffect, useRef } from "react";
+// Unequip, Edit, Copy and Delete; a click outside closes it. Edit on a legendary or captured item shows the item editor
+// here (apps/web/src/features/gear/InventoryItemEditor.tsx); the footer's Save Changes saves it. The planner announces
+// the "inventoryItem" source.
+import { useRef } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import { InventoryItemEditor } from "../../features/gear/InventoryItemEditor";
 import { useViewSource } from "../../ui/use-view-source";
 
 export function InventoryItemDialog() {
@@ -11,9 +12,6 @@ export function InventoryItemDialog() {
   const dialog = useRef<HTMLDialogElement>(null);
   const editing = Boolean(view?.editing);
   const id = view?.id ?? "";
-  useLayoutEffect(() => {
-    if (editing) plannerCommands().renderInventoryItemEditor();
-  }, [editing, id]);
   const close = () => dialog.current?.close();
   return (
     <dialog
@@ -43,7 +41,9 @@ export function InventoryItemDialog() {
         </button>
       </header>
       {editing ? (
-        <div key={`edit:${id}`} id="inventory-item-body" data-legacy-editor="" />
+        <div key={`edit:${id}`} id="inventory-item-body">
+          {view?.editor ? <InventoryItemEditor editor={view.editor} /> : null}
+        </div>
       ) : (
         <div key="item" id="inventory-item-body">
           {view?.item ? (

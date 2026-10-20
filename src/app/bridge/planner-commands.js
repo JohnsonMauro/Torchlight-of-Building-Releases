@@ -50,8 +50,8 @@
  * @property {() => void} copySelectedItem Inventory item dialog: duplicates the open item; closes.
  * @property {() => void} deleteSelectedItem Inventory item dialog: deletes the open item (emptying its slot); closes.
  * @property {() => void} saveInventoryItemEdit Item editor: saves its fields to the item and comes back to the item.
- * @property {() => void} renderInventoryItemEditor Item editor: the planner writes the editor into the dialog body React
- *   gave it (data-legacy-editor).
+ * @property {(change: import("./inventory-item-editor-view.ts").InventoryItemEditorChange) => void}
+ *   changeInventoryItemEditor Item editor: a field typed or a line's control changed.
  * @property {(id: string) => void} toggleCraftedMemory Hero memories: equips a memory into its type's socket, or
  *   unequips it.
  * @property {(id: string) => void} toggleBaseMemory Hero memories, base trait slot: equips a fitting memory there (at its

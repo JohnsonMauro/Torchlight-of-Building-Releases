@@ -1,5 +1,3 @@
-import { escapeHtml } from "./html.js";
-
 // TOWER Sequence picker options for the shared searchable dropdown (src/app/app.js openSearchableSelect). The catalog has no
 // sequence names, so the first effect line is the option's name; any further effect lines are its description, and the slot
 // pattern ("3|4|7") is small secondary text ("Slots 3 · 4 · 7").
@@ -37,18 +35,4 @@ export function towerSequenceChoices(entries) {
         };
       }),
   }));
-}
-
-export function towerSequenceOptionMarkup(entries, selectedId = "") {
-  return `<option value="">None</option>${towerSequenceChoices(entries)
-    .map(
-      ({ group, options }) =>
-        `<optgroup label="${group}">${options
-          .map(
-            ({ value, label, data }) =>
-              `<option value="${value}"${data.optionDescription ? ` data-option-description="${escapeHtml(data.optionDescription)}"` : ""}${data.optionMeta ? ` data-option-meta="${escapeHtml(data.optionMeta)}"` : ""} ${value === selectedId ? "selected" : ""}>${escapeHtml(label)}</option>`,
-          )
-          .join("")}</optgroup>`,
-    )
-    .join("")}`;
 }

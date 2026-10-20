@@ -1,4 +1,3 @@
-import { escapeHtml } from "./html.js";
 import { beltBlendsSs13 } from "../data/gear/belt-blends-ss13.generated.js";
 
 export const BELT_BLEND_CATEGORIES = ["Medium Talent", "Core Talent", "Aromatic Talent"];
@@ -31,18 +30,4 @@ export function beltBlendChoices() {
         return { value: entry.id, label: entry.label, data: description ? { optionDescription: description } : {} };
       }),
   }));
-}
-
-export function beltBlendOptions(selectedId = "") {
-  return `<option value="">None</option>${beltBlendChoices()
-    .map(
-      ({ group, options }) =>
-        `<optgroup label="${group}">${options
-          .map(
-            ({ value, label, data }) =>
-              `<option value="${value}"${data.optionDescription ? ` data-option-description="${escapeHtml(data.optionDescription)}"` : ""} ${value === selectedId ? "selected" : ""}>${escapeHtml(label)}</option>`,
-          )
-          .join("")}</optgroup>`,
-    )
-    .join("")}`;
 }
