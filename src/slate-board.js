@@ -143,28 +143,3 @@ export function copiedSlateAffixes(
       return affix ? [{ source: source.name, affix }] : [];
     });
 }
-export function autoPlaceSlates(slates) {
-  const ordered = [...slates].sort(
-    (a, b) => (b.shape?.length || b.size?.[0] * b.size?.[1]) - (a.shape?.length || a.size?.[0] * a.size?.[1]),
-  );
-  const placements = {};
-  const search = (index) => {
-    if (index === ordered.length) return true;
-    const slate = ordered[index];
-    const rotations = slateTransformRules(slate).rotate
-      ? [slate.initialRotation || 0, 0, 90, 180, 270].filter((value, index, array) => array.indexOf(value) === index)
-      : [0];
-    for (const rotation of rotations)
-      for (let row = 1; row <= 6; row += 1)
-        for (let column = 1; column <= 6; column += 1) {
-          const candidate = { column, row, rotation };
-          if (!canPlaceSlate(slate, candidate, placements, ordered)) continue;
-          placements[slate.id] = candidate;
-          if (search(index + 1)) return true;
-          delete placements[slate.id];
-        }
-    return false;
-  };
-  search(0);
-  return placements;
-}

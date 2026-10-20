@@ -14,7 +14,6 @@ import { kismetAffixCoverage, pactEffectCoverage } from "./pact-coverage.js";
 import { modeledCoreTalents } from "./core-talent-model.js";
 import { heroMemoryLineCoverage, revivedAffixCoverage } from "./hero-memory-model.js";
 import { catsNightSafariStatus } from "./erika-wind-stalker.js";
-import { findSupportValidation } from "./data/stats/support-validation-2026-09-08.js";
 import { calculatePlanner } from "./planner.js";
 import { automaticCombatConditionIds } from "./combat-condition-mode.js";
 import { classifySkillCoverage, supportClauseCoverage, supportLineCoverage } from "./skill-coverage.js";
@@ -240,7 +239,6 @@ import { godTalentTreesSs13, talentFamiliesSs13, talentOptionsForSlot } from "./
 import {
   SLATE_BOARD_ROWS,
   adjacentSlateIds,
-  autoPlaceSlates,
   canPlaceSlate,
   isCopySlate,
   slateOffsets,
@@ -1791,10 +1789,6 @@ document.addEventListener("change", (event) => {
     return;
   }
 
-  if (event.target.matches("[data-condition]")) {
-    build.conditions[event.target.dataset.condition].enabled = event.target.checked;
-    render();
-  }
   if (event.target.id === "enemy-level") build.enemy.level = Number(event.target.value);
 });
 
@@ -5644,31 +5638,16 @@ const skillRoleLabels = {
   curse: "Curse",
   aura: "Precise aura",
 };
-const skillStatLabel = (key) =>
-  key
-    .replace(/Percent$/, "")
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (character) => character.toUpperCase());
-const skillStatValue = (key, value) => {
-  if (Array.isArray(value)) return `${value[0]}–${value[1]}`;
-  if (key.endsWith("Percent")) return `${value}%`;
-  if (key.endsWith("Seconds")) return `${value} s`;
-  return value;
-};
 
 function renderSkills() {
   const planner = currentPlanner();
   const activation = planner.activation;
-  const { profile, setups, energy, allocation, activeNames } = activation;
+  const { profile, setups, energy, activeNames } = activation;
   const activeIndexes = setups
     .map((setup, index) => (setup.enabled && !setup.traitGranted ? index : -1))
     .filter((index) => index >= 0);
   if (!setups[selectedSkillIndex]?.enabled || setups[selectedSkillIndex]?.traitGranted)
     selectedSkillIndex = activeIndexes[0] ?? 0;
-  const selected =
-    setups[selectedSkillIndex]?.enabled && !setups[selectedSkillIndex]?.traitGranted
-      ? setups[selectedSkillIndex]
-      : null;
   const auraLedger = planner.aura;
   const observedReservation = selenaCompleteSkillLoadoutSs13.observedReservation;
   const displayedAuraLedger = auraLedger.planned || auraLedger;
@@ -5699,41 +5678,6 @@ function renderSkills() {
   reservationStatus.innerHTML = reservationInvalid
     ? `<strong>Aura setup cannot be fully activated</strong><span>${[manaOverCapacity ? "Mana reservation reaches 100%" : "", lifeOverCapacity ? "Life reservation reaches 100%" : ""].filter(Boolean).join(" · ")}.</span>`
     : "";
-  $("#energy-total").textContent = `${allocation.knownAllocated}/${energy.available}`;
-  $("#energy-meter").style.setProperty(
-    "--energy-ratio",
-    `${Math.min(100, (allocation.knownAllocated / energy.available) * 100)}%`,
-  );
-  $("#energy-source-list").innerHTML =
-    `${energy.sources.map((source) => `<div class="energy-source ${source.enabled ? "" : "disabled"}"><span>${source.name}</span><strong>${source.enabled ? "+" : "−"}${source.value}</strong></div>`).join("")}<div class="energy-source"><span>Other captured character sources</span><strong>+${profile.nonEquipmentEnergy}</strong></div>`;
-  $("#energy-allocation").innerHTML = allocation.allocations
-    .map(
-      (entry) =>
-        `<div class="energy-allocation-row"><span>${entry.name}<small>${setups[entry.index].enabledSupportSlots} support slots</small></span><strong class="energy-${entry.status}">${entry.cost} · ${entry.status}</strong></div>`,
-    )
-    .join("");
-  const activationChanged =
-    setups.some((setup) => setup.supports.some((support) => !support.enabled)) ||
-    allocation.knownAllocated !== profile.observedUsed ||
-    allocation.allocations.some((entry) => entry.status !== "active");
-  $("#mana-reserved").textContent =
-    `${format(activationChanged ? auraLedger.manaReservedPercent : 100 - observedReservation.mana.unsealedPercent)}%`;
-  $("#mana-remaining").textContent = activationChanged
-    ? `${format(auraLedger.manaRemainingPercent)}% modeled unsealed`
-    : `${observedReservation.mana.unsealed}/${observedReservation.mana.maximum} unsealed · ${observedReservation.mana.unsealedPercent}%`;
-  $("#life-reserved").textContent =
-    `${format(activationChanged ? auraLedger.lifeReservedPercent : 100 - observedReservation.life.unsealedPercent)}%`;
-  $("#life-remaining").textContent = activationChanged
-    ? `${format(auraLedger.lifeRemainingPercent)}% modeled unsealed`
-    : `${observedReservation.life.unsealed}/${observedReservation.life.maximum} unsealed · ${observedReservation.life.unsealedPercent}%`;
-  $("#reservation-model-status").textContent =
-    `Model: ${format(auraLedger.manaReservedPercent)}% Mana · ${format(auraLedger.lifeReservedPercent)}% Life`;
-  $("#aura-ledger").innerHTML = auraLedger.entries
-    .map(
-      (entry) =>
-        `<article class="aura-ledger-card"><div><small>${entry.reservation.resource} reservation</small><h3>${entry.name}</h3></div><strong>${format(entry.reservation.reservedPercent)}%</strong>${entry.reservation.uncappedReservedPercent > 99.99 ? `<small>${format(entry.reservation.uncappedReservedPercent)}% requested before cap</small>` : ""}<dl><div><dt>Base seal</dt><dd>${entry.reservation.baseSealedPercent}%</dd></div><div><dt>Installed supports</dt><dd>${entry.reservation.installedSupportCount} × ${entry.reservation.fixedSupportMultiplierPercent}%</dd></div><div><dt>Normal compensation</dt><dd>+${entry.reservation.totalCompensationPercent}%</dd></div>${entry.reservation.additionalCompensationPercents.length ? `<div><dt>Additional penalties</dt><dd>${entry.reservation.additionalCompensationPercents.map((value) => `${value}%`).join(" × ")}</dd></div>` : ""}<div><dt>Aura Effect</dt><dd>+${entry.auraEffectPercent}%</dd></div></dl></article>`,
-    )
-    .join("");
   $("#skill-setup-count").textContent = activeIndexes.length;
   const groups = [
     ["Damage & empower", ["main", "empower"]],
@@ -5781,82 +5725,6 @@ function renderSkills() {
           ? ` · ${escapeHtml(skill.traitGranted.replaces ? `replaces ${skill.traitGranted.replaces}` : "trait skill")}`
           : "");
   });
-
-  if (!selected) {
-    $("#skill-inspector").innerHTML =
-      `<div class="comparison-empty"><strong>Select an active skill</strong><span>Its level and supports will appear here.</span></div>`;
-    $("#support-heading").textContent = "Selected skill supports";
-    $("#support-count").textContent = "0/0";
-    $("#support-grid").innerHTML =
-      `<div class="comparison-empty"><strong>No support slots available</strong><span>Add an active skill first.</span></div>`;
-    $("#skill-comparison").innerHTML = "";
-    return;
-  }
-  const damageProgression = leveledSkillDamage(selected);
-  const values = [
-    ...Object.entries(selected.observed || selected.databaseLevel20 || {}),
-    ...(damageProgression.additionalPercent !== null
-      ? [["additionalDamageFromLevelsPercent", damageProgression.additionalPercent]]
-      : []),
-    ...damageProgression.ranges.map(({ key, leveled }) => [
-      `levelScaled${key[0].toUpperCase()}${key.slice(1)}`,
-      leveled,
-    ]),
-  ];
-  $("#skill-inspector").innerHTML =
-    `<div class="skill-title">${artwork(tliArt.skills[selected.name], selected.name, "large-skill-glyph")}<div><small>${skillRoleLabels[selected.role]}</small><h2>${selected.name}</h2></div></div><button class="button button-secondary remove-skill-button" type="button" data-remove-skill="${escapeHtml(selected.name)}">Remove skill</button><div class="skill-edit-controls"><label><span>Base level</span><input type="number" min="1" max="40" data-skill-level="baseLevel" data-skill-name="${selected.name}" value="${selected.baseLevel}"></label><label><span>Added levels</span><input type="number" min="0" max="30" data-skill-level="addedLevels" data-skill-name="${selected.name}" value="${selected.addedLevels}"></label><div><button class="button button-secondary" type="button" data-skill-priority="up" data-skill-name="${selected.name}" ${selectedSkillIndex === 0 ? "disabled" : ""}>Move earlier</button><button class="button button-secondary" type="button" data-skill-priority="down" data-skill-name="${selected.name}" ${selectedSkillIndex === setups.length - 1 ? "disabled" : ""}>Move later</button></div></div><div class="effective-level"><span>Effective level</span><strong>${selected.effectiveLevel}</strong><small>Base ${selected.baseLevel} + ${selected.addedLevels}</small></div><dl class="effect-list skill-values">${values.map(([key, value]) => `<div><dt>${skillStatLabel(key)}</dt><dd>${skillStatValue(key, value)}</dd></div>`).join("")}</dl><p class="skill-source-note">Support affix values follow the TLIDB level tables where available. Damage estimates remain anchored to the captured support baseline; Scorching Beam level damage above 20 is modeled separately.</p>`;
-  const levelContributions = selected.levelBonusSources || [];
-  const levelIsManual = plannerState.skills.skillLevels[setupStateKey(selected)]?.manualAddedLevels;
-  const levelRows = levelContributions.length
-    ? levelContributions
-        .map(
-          ({ name, text, levels }) =>
-            `<div><dt>${escapeHtml(name)}<small>${escapeHtml(text || "")}</small></dt><dd>${levels > 0 ? "+" : ""}${levels}</dd></div>`,
-        )
-        .join("")
-    : `<div><dt>No equipped level bonuses</dt><dd>+0</dd></div>`;
-  $("#skill-inspector .effective-level").insertAdjacentHTML(
-    "afterend",
-    `<div class="skill-level-sources"><strong>Added level sources</strong>${levelIsManual ? `<p>Manually set to +${selected.addedLevels}; equipped sources are listed below.</p>` : ""}<dl>${levelRows}</dl></div>`,
-  );
-  $("#support-heading").textContent = `${selected.name} supports`;
-  $("#support-count").textContent =
-    `${selected.supports.filter((support) => support.enabled).length}/${selected.supports.length} enabled`;
-  $("#support-grid").innerHTML = `${
-    selected.supports.length
-      ? selected.supports
-          .map((support, index) => {
-            const calibrated =
-              selected.name === "Scorching Beam" &&
-              ["Additional Ignite", "Control Spell", "Guard", "Refracted Prism"].includes(support.name);
-            const supportCoverage = classifySkillCoverage(currentPlanner(), {
-                skillName: selected.name,
-                supportName: support.name,
-                enabled: selected.enabled !== false && support.enabled !== false,
-              }),
-              supportCoverageText = `${supportCoverage.status}${supportCoverage.reason ? `: ${supportCoverage.reason}` : ""}`;
-            const key = supportStateKey(setupStateKey(selected), support.name);
-            const catalog = tlidbSupportCatalogSs13.find((entry) => entry.name === support.name);
-            const display = catalog ? supportDisplaySs13(catalog, support.effectiveLevel || support.level) : null;
-            return `<article class="support-card ${support.enabled ? "" : "disabled"}${support.incompatible ? " incompatible" : ""}"><div><span>${index + 1}</span><label>Level <input type="number" min="1" max="40" data-support-level="${escapeHtml(key)}" value="${support.level}">${support.addedLevels ? `<small>${skillLevelLabel(support)}</small>` : ""}</label></div><div class="support-title">${artwork(tliArt.supports[support.name], support.name, "support-art")}<h3>${escapeHtml(support.name)}</h3></div>${support.manaCostMultiplierPercent !== 100 ? `<p class="support-cost">${support.manaCostMultiplierPercent}% mana multiplier</p>` : ""}<ul>${(display?.effects || support.displayEffects || support.effects).map((effect) => `<li>${escapeHtml(effect)}</li>`).join("")}</ul><label class="support-toggle"><span title="${escapeHtml(supportCoverageText)}">${support.custom && !support.incompatible ? "Custom effect: audit only" : escapeHtml(supportCoverageText)}${calibrated ? "; capture comparison below" : ""}</span><input type="checkbox" data-support-enabled="${escapeHtml(support.name)}" data-support-setup="${selected.name}" ${(support.incompatible ? support.savedEnabled !== false : support.enabled) ? "checked" : ""}${support.incompatible ? ` disabled title="${escapeHtml(supportCoverageText)}"` : ""}></label>${support.custom ? `<button class="remove-custom-support" type="button" data-remove-support="${escapeHtml(support.name)}" data-support-setup="${selected.name}">Remove custom support</button>` : ""}</article>`;
-          })
-          .join("")
-      : `<p class="muted">No linked supports captured.</p>`
-  }<article class="support-card add-support-card"><h3>Add custom support</h3><label><span>Name</span><input type="text" data-custom-support-name placeholder="Support name"></label><label><span>Level</span><input type="number" min="1" max="40" value="20" data-custom-support-level></label><label><span>Mana multiplier %</span><input type="number" min="1" value="100" data-custom-support-mana></label><label><span>Effects</span><textarea rows="4" data-custom-support-effects placeholder="One effect per line"></textarea></label><button class="button" type="button" data-add-support="${selected.name}" ${selected.enabledSupportSlots >= 5 ? "disabled" : ""}>Add support</button><small>Custom text is preserved in the share code; Energy is calculated immediately.</small></article>`;
-  const prediction = currentPlanner().townSupportPrediction;
-  const disabled = selected.supports.filter((support) => !support.enabled && !support.custom);
-  const baselineLevels = { "Refracted Prism": 30, Guard: 25, "Control Spell": 30, "Additional Ignite": 30 };
-  const usesCapturedLevels = selected.supports.every(
-    (support) => baselineLevels[support.name] === undefined || support.level === baselineLevels[support.name],
-  );
-  const observation =
-    selected.name === "Scorching Beam" && usesCapturedLevels
-      ? findSupportValidation(disabled.map((support) => support.name))
-      : null;
-  $("#skill-comparison").innerHTML =
-    selected.name === "Scorching Beam"
-      ? `<p class="comparison-warning">Town support-only estimate: holds gear, talents, auras, and skill level at the captured baseline. Combat estimates are shown in Character. Recorded values use the full-precision, zone-reset single-support series.</p><div class="comparison-grid"><div><span>Predicted Spell DPS</span><strong>${format(prediction.spellDps)}</strong>${observation ? `<small>Recorded ${format(observation.spellDps)} · error ${format((prediction.spellDps / observation.spellDps - 1) * 100)}%</small>` : ""}</div><div><span>Predicted Ignite DPS</span><strong>${format(prediction.igniteDps)}</strong>${observation ? `<small>Recorded ${format(observation.igniteDps)} · error ${format((prediction.igniteDps / observation.igniteDps - 1) * 100)}%</small>` : ""}</div></div>`
-      : "";
 }
 
 function selectorEntries() {
@@ -8340,11 +8208,6 @@ document.addEventListener("click", (event) => {
     refreshPactCandidate();
     return;
   }
-  const removePact = event.target.closest("[data-remove-pactspirit]");
-  if (removePact) {
-    removeSelectedPactspirit(Number(removePact.dataset.removePactspirit));
-    return;
-  }
   const heroDetailTab = event.target.closest("[data-hero-detail-tab]");
   if (heroDetailTab) {
     activeHeroDetailTab = heroDetailTab.dataset.heroDetailTab;
@@ -9007,10 +8870,6 @@ document.addEventListener("click", (event) => {
     selectedVoraxBaseName = voraxBaseChoice.dataset.selectVoraxBase;
     renderEquipmentCrafter();
   }
-  if (event.target.closest("[data-change-vorax-base]")) {
-    selectedVoraxBaseName = "";
-    renderEquipmentCrafter();
-  }
   const voraxLegendaryToggle = event.target.closest("[data-toggle-vorax-legendary]");
   if (voraxLegendaryToggle) {
     const index = Number(voraxLegendaryToggle.dataset.toggleVoraxLegendary),
@@ -9362,12 +9221,6 @@ document.addEventListener("click", (event) => {
     renderCandidateViews();
     showToast("Slate affixes saved");
   }
-  const slateEditButton = event.target.closest("[data-slate-edit]");
-  if (slateEditButton) {
-    slateEditMode = !slateEditMode;
-    slatePlacementTarget = slateEditMode ? selectedSlateId : null;
-    renderSlates();
-  }
   const slateInventoryButton = event.target.closest("[data-slate-inventory]");
   if (slateInventoryButton) {
     renderSlateInventory();
@@ -9615,16 +9468,6 @@ document.addEventListener("click", (event) => {
     renderSlateInventory();
     showToast("Slate removed from grid");
   }
-  const slateOptimizeButton = event.target.closest("[data-slate-optimize]");
-  if (slateOptimizeButton) {
-    slatePlacements = autoPlaceSlates(slatesForBoard());
-    parkedSlates = {};
-    equippedSlateIds.clear();
-    slatesForBoard().forEach((slate) => equippedSlateIds.add(slate.id));
-    persistPlannerState();
-    renderCandidateViews();
-    showToast("Slates arranged on valid cells");
-  }
   const slateRotateButton = event.target.closest("[data-slate-rotate]");
   if (slateRotateButton) {
     const slate = slatesForBoard().find((item) => item.id === slateRotateButton.dataset.slateRotate);
@@ -9704,26 +9547,6 @@ document.addEventListener("click", (event) => {
       persistPlannerState();
       renderCandidateViews();
     } else showToast("That slate overlaps or leaves the statue board");
-  }
-  const skillButton = event.target.closest("[data-skill-index]");
-  if (skillButton) {
-    selectedSkillIndex = Number(skillButton.dataset.skillIndex);
-    $("#skills-view").classList.add("editor-open");
-    renderSkills();
-  }
-  const removeSkillButton = event.target.closest("[data-remove-skill]");
-  if (removeSkillButton) {
-    const name = removeSkillButton.dataset.removeSkill;
-    const customIndex = plannerState.skills.customSetups.findIndex((setup) => setup.name === name);
-    if (customIndex >= 0) plannerState.skills.customSetups.splice(customIndex, 1);
-    else plannerState.skills.setupEnabled[name] = false;
-    delete plannerState.skills.customSupports[name];
-    delete plannerState.skills.supportOrder[name];
-    delete plannerState.skills.skillLevels[name];
-    selectedSkillIndex = 0;
-    persistPlannerState();
-    renderCandidateViews();
-    showToast(`${escapeHtml(name)} removed`);
   }
   if (event.target.closest("[data-reset-skills]")) {
     for (const setup of currentEditedSetups()) plannerState.skills.setupEnabled[setupStateKey(setup)] = false;
@@ -10099,108 +9922,6 @@ document.addEventListener("click", (event) => {
       .querySelectorAll("[data-skill-board-tab]")
       .forEach((button) => button.classList.toggle("active", button === skillBoardTab));
     renderSkills();
-  }
-  const saveEquipmentButton = event.target.closest("[data-save-equipment]");
-  if (saveEquipmentButton) {
-    const invalid = $("#equipment-inspector").querySelector(":invalid");
-    if (invalid) {
-      invalid.reportValidity();
-      return;
-    }
-    const slot = saveEquipmentButton.dataset.saveEquipment;
-    const editor = $("#equipment-inspector");
-    const defenses = Object.fromEntries(
-      [...editor.querySelectorAll("[data-item-defense]")]
-        .map((input) => [input.dataset.itemDefense, Number(input.value)])
-        .filter(([, value]) => value !== 0),
-    );
-    plannerState.equipmentOverrides[slot] = {
-      name: editor.querySelector("[data-item-name]").value.trim() || "Unnamed candidate item",
-      energy: Number(editor.querySelector("[data-item-energy]").value),
-      defenses,
-      modifiers: editor
-        .querySelector("[data-item-modifiers]")
-        .value.split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean),
-    };
-    disabledEquipmentSlots.delete(slot);
-    persistPlannerState();
-    renderCandidateViews();
-    showToast(`${titleCase(slot)} candidate saved`);
-  }
-  const restoreEquipmentButton = event.target.closest("[data-restore-equipment]");
-  if (restoreEquipmentButton) {
-    delete plannerState.equipmentOverrides[restoreEquipmentButton.dataset.restoreEquipment];
-    persistPlannerState();
-    renderCandidateViews();
-    showToast(`${titleCase(restoreEquipmentButton.dataset.restoreEquipment)} restored`);
-  }
-  const priorityButton = event.target.closest("[data-skill-priority]");
-  if (priorityButton) {
-    const order = currentEditedSetups().map((setup) => setup.name);
-    const index = order.indexOf(priorityButton.dataset.skillName);
-    const target = priorityButton.dataset.skillPriority === "up" ? index - 1 : index + 1;
-    if (target >= 0 && target < order.length) {
-      [order[index], order[target]] = [order[target], order[index]];
-      plannerState.skills.setupOrder = order;
-      selectedSkillIndex = target;
-      persistPlannerState();
-      renderSkills();
-      renderCharacter();
-      renderConfiguration();
-    }
-  }
-  const addSupportButton = event.target.closest("[data-add-support]");
-  if (addSupportButton) {
-    const invalid = $("#support-grid").querySelector(":invalid");
-    if (invalid) {
-      invalid.reportValidity();
-      return;
-    }
-    const setupName = addSupportButton.dataset.addSupport;
-    const panel = $("#support-grid");
-    const name = panel.querySelector("[data-custom-support-name]").value.trim();
-    if (!name) {
-      showToast("Enter a support name");
-    } else {
-      const supports = plannerState.skills.customSupports[setupName] || [];
-      if (
-        currentEditedSetups()
-          .find((setup) => setup.name === setupName)
-          .supports.some((support) => support.name === name)
-      )
-        showToast("That support name is already linked");
-      else {
-        supports.push({
-          name,
-          level: Number(panel.querySelector("[data-custom-support-level]").value),
-          manaCostMultiplierPercent: Number(panel.querySelector("[data-custom-support-mana]").value),
-          effects: panel
-            .querySelector("[data-custom-support-effects]")
-            .value.split(/\r?\n/)
-            .map((line) => line.trim())
-            .filter(Boolean),
-          custom: true,
-        });
-        plannerState.skills.customSupports[setupName] = supports;
-        persistPlannerState();
-        renderSkills();
-        renderCharacter();
-        showToast(`${escapeHtml(name)} added`);
-      }
-    }
-  }
-  const removeSupportButton = event.target.closest("[data-remove-support]");
-  if (removeSupportButton) {
-    const setupName = removeSupportButton.dataset.supportSetup;
-    plannerState.skills.customSupports[setupName] = (plannerState.skills.customSupports[setupName] || []).filter(
-      (support) => support.name !== removeSupportButton.dataset.removeSupport,
-    );
-    persistPlannerState();
-    renderSkills();
-    renderCharacter();
-    showToast("Custom support removed");
   }
 });
 
@@ -11101,60 +10822,6 @@ document.addEventListener("change", (event) => {
   if (event.target.matches("[data-pactspirit-category]")) {
     renderPactspiritSelector();
     return;
-  }
-  if (event.target.matches("[data-slate-equipped]")) {
-    const id = event.target.dataset.slateEquipped;
-    if (event.target.checked) equippedSlateIds.add(id);
-    else equippedSlateIds.delete(id);
-    persistPlannerState();
-    renderSlates();
-    render();
-    renderSkills();
-    renderConfiguration();
-  }
-  if (event.target.matches("[data-equipment-enabled]")) {
-    const slot = event.target.dataset.equipmentEnabled;
-    if (event.target.checked) disabledEquipmentSlots.delete(slot);
-    else disabledEquipmentSlots.add(slot);
-    persistPlannerState();
-    renderEquipment();
-    render();
-    renderSkills();
-  }
-  if (event.target.matches("[data-support-enabled]")) {
-    const name = event.target.dataset.supportEnabled;
-    const setupName = event.target.dataset.supportSetup || "Scorching Beam";
-    plannerState.skills.supportEnabled[supportStateKey(setupName, name)] = event.target.checked;
-    if (event.target.checked) disabledSupportNames.delete(name);
-    else disabledSupportNames.add(name);
-    persistPlannerState();
-    renderSkills();
-    render();
-    renderCharacter();
-    renderConfiguration();
-  }
-  if (event.target.matches("[data-setup-enabled]")) {
-    plannerState.skills.setupEnabled[event.target.dataset.setupEnabled] = event.target.checked;
-    persistPlannerState();
-    renderSkills();
-    render();
-    renderCharacter();
-    renderConfiguration();
-  }
-  if (event.target.matches("[data-skill-level]")) {
-    const name = event.target.dataset.skillName;
-    plannerState.skills.skillLevels[name] = {
-      ...(plannerState.skills.skillLevels[name] || {}),
-      [event.target.dataset.skillLevel]: Number(event.target.value),
-      ...(event.target.dataset.skillLevel === "addedLevels" ? { manualAddedLevels: true } : {}),
-    };
-    persistPlannerState();
-    renderSkills();
-  }
-  if (event.target.matches("[data-support-level]")) {
-    plannerState.skills.supportLevels[event.target.dataset.supportLevel] = Number(event.target.value);
-    persistPlannerState();
-    renderSkills();
   }
 });
 

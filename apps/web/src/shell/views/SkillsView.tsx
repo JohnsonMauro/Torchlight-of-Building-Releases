@@ -33,10 +33,6 @@ export function SkillsView() {
         <div id="energy-meter" className="energy-meter">
           <i />
         </div>
-        <div hidden>
-          <div id="energy-source-list" />
-          <div id="energy-allocation" />
-        </div>
       </section>
       <section className="panel compendium-skill-panel">
         <div className="compendium-tabs">
@@ -83,19 +79,6 @@ export function SkillsView() {
           </button>
         </footer>
       </section>
-      <div className="skill-calculation-data" hidden>
-        <div id="skill-inspector" />
-        <div id="support-heading" />
-        <div id="support-count" />
-        <div id="support-grid" />
-        <div id="skill-comparison" />
-        <div id="mana-reserved" />
-        <div id="mana-remaining" />
-        <div id="life-reserved" />
-        <div id="life-remaining" />
-        <div id="reservation-model-status" />
-        <div id="aura-ledger" />
-      </div>
     </section>
   );
 }
