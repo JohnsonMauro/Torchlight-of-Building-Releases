@@ -1,5 +1,6 @@
 // The planner's small picker dialogs, opened from the Build page: the hero selector (Change Hero), the follower
-// selector (Change Follower) and the Pactspirit selector (a pact slot). Each lists its
+// selector (Change Follower), the Pactspirit selector (a pact slot), and Sage's scent and Carino's Special Ammo
+// selectors (the HERO tab). Each lists its
 // choices, marks the current one, filters by the search box, and closes from its × button, from a click outside it and
 // from Escape, opening again with the search cleared. Written against the legacy dialogs before they move to React, so
 // both must pass it unchanged.
@@ -13,6 +14,8 @@ import { followerPickerOptions } from "../../src/app/follower-panel.js";
 import { PactsPage } from "./pages/pacts-page.js";
 import { pactspiritCatalogSs13 } from "../../src/data/pacts/pactspirit-catalog-ss13.js";
 import { sortPactspirits } from "../../src/engine/pacts/pactspirit-selection.js";
+import { sageElixirsSs13 } from "../../src/data/heroes/sage-scent-ss13.generated.js";
+import { sageScentIngredientsSs13 } from "../../src/data/heroes/sage-scent-options-ss13.js";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
@@ -194,6 +197,122 @@ test("the Pactspirit selector closes from × and Escape, and opens with its filt
   await expect(category).toHaveValue("All");
   await expect(dialog.locator(".pactspirit-choice")).toHaveCount(pactspiritCatalogSs13.length);
   await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await planner.expectNoErrors();
+});
+
+async function openHeroAs(page, heroId) {
+  const { planner, hero } = await openPlanner(page);
+  await hero.selectHero(heroId);
+  return { planner, hero };
+}
+
+test("Sage's scent selector lists elixirs or one kind of ingredient, searches, picks and clears", async ({ page }) => {
+  const { planner, hero } = await openHeroAs(page, "sage-licorice-note");
+  await hero.detailTab("Scent Bottle").click();
+  const dialog = hero.scentSelector();
+  const search = dialog.getByRole("searchbox", { name: "Search scent choices" });
+  const options = dialog.locator(".sage-scent-option");
+  await hero.tree().locator(".sage-basic-scent").click();
+  await expect(dialog.getByRole("heading", { name: "Select Elixir Skill" })).toBeVisible();
+  await expect(search).toBeFocused();
+  await expect(search).toHaveAttribute("placeholder", "Search skills...");
+  await expect(options).toHaveCount(sageElixirsSs13.length);
+  await expect(options.first().locator("small i").first()).toHaveText(sageElixirsSs13[0].tags[0]);
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toBeHidden();
+
+  await hero
+    .tree()
+    .getByRole("button", { name: /Damage Ingredient/ })
+    .click();
+  await expect(page.locator("#sage-scent-title")).toHaveText("Select Damage Ingredient");
+  await expect(search).toHaveAttribute("placeholder", "Search ingredients...");
+  const ingredients = sageScentIngredientsSs13.damage;
+  await expect(options).toHaveCount(ingredients.length);
+  await expect(options.first().locator("small")).toHaveText(ingredients[0].description.replace(/(\d) %/g, "$1%"));
+  const word = ingredients[0].name.split(" ")[0];
+  await search.fill(`  ${word.toUpperCase()}  `);
+  await expect(options).toHaveCount(
+    ingredients.filter((entry) => entry.name.toLowerCase().includes(word.toLowerCase())).length,
+  );
+  await search.fill("zzz");
+  await expect(dialog.locator(".hero-selector-empty")).toHaveText("No matching choices.");
+  await search.fill("");
+  await options.first().click();
+  await expect(dialog).toBeHidden();
+  await expect(hero.toast()).toHaveText(`${ingredients[0].name} selected`);
+  expect((await hero.stored()).sageScent.damage).toBe(ingredients[0].name);
+
+  await hero
+    .tree()
+    .getByRole("button", { name: /Damage Ingredient/ })
+    .click();
+  await expect(search).toHaveValue("");
+  await dialog.getByRole("button", { name: "Clear Slot" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(hero.toast()).toHaveText("Scent slot cleared");
+  expect((await hero.stored()).sageScent.damage).toBe("");
+  await hero
+    .tree()
+    .getByRole("button", { name: /Damage Ingredient/ })
+    .click();
+  await page.mouse.click(5, 5);
+  await expect(dialog).toBeHidden();
+  await hero
+    .tree()
+    .getByRole("button", { name: /Damage Ingredient/ })
+    .click();
+  await dialog.getByRole("button", { name: "Close selector" }).click();
+  await expect(dialog).toBeHidden();
+  await planner.expectNoErrors();
+});
+
+test("Carino's Special Ammo selector: slot title, Well Prepared help, installed supports, search, clear", async ({
+  page,
+}) => {
+  const { planner, hero } = await openHeroAs(page, "carino-ranger-of-glory");
+  const dialog = hero.ammoSelector();
+  const search = dialog.getByRole("searchbox", { name: "Search projectile supports" });
+  const help = dialog.locator(".carino-ammo-help");
+  await hero.button("Select support for Special Ammo slot 2").click();
+  await expect(page.locator("#carino-ammo-title")).toHaveText("Select Special Ammo Support · Slot 2");
+  await expect(dialog.locator(".eyebrow")).toHaveText("Ranger of Glory");
+  await expect(search).toBeFocused();
+  await expect(help).toHaveText(
+    "Choose a compatible regular Projectile support. Well Prepared unlocks Magnificent and Noble supports.",
+  );
+  const options = dialog.locator("[data-select-carino-ammo]");
+  const regular = await options.count();
+  expect(regular).toBeGreaterThan(0);
+  const first = await options.first().getAttribute("data-select-carino-ammo");
+  await options.first().click();
+  await expect(hero.toast()).toHaveText(`${first} installed`);
+  expect((await hero.stored()).carinoSpecialAmmoSupports[1]).toBe(first);
+
+  await hero.button("Select support for Special Ammo slot 1").click();
+  const installed = dialog.locator(`[data-select-carino-ammo="${first}"]`);
+  await expect(installed).toBeDisabled();
+  await expect(installed).toHaveClass(/\binstalled\b/);
+  await search.fill("zzz");
+  await expect(dialog.locator(".hero-selector-empty")).toHaveText("No matching Projectile supports.");
+  await search.fill(`  ${first.split(" ")[0]}  `);
+  await expect(installed).toBeVisible();
+  for (const text of await options.allTextContents()) expect(text.length).toBeGreaterThan(0);
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toBeHidden();
+
+  await hero.button("Well Prepared").click();
+  await hero.button(`Edit ${first}; right-click to remove`).click();
+  await expect(search).toHaveValue("");
+  await expect(help).toHaveText("Choose a compatible Projectile support that is not installed on the skill panel.");
+  expect(await options.count()).toBeGreaterThan(regular);
+  await dialog.getByRole("button", { name: "Clear Slot" }).click();
+  await expect(hero.toast()).toHaveText("Support slot cleared");
+  expect((await hero.stored()).carinoSpecialAmmoSupports[1]).toBe("");
+  await hero.button("Select support for Special Ammo slot 3").click();
+  await expect(page.locator("#carino-ammo-title")).toHaveText("Select Special Ammo Support · Slot 3");
+  await page.mouse.click(5, 5);
   await expect(dialog).toBeHidden();
   await planner.expectNoErrors();
 });
