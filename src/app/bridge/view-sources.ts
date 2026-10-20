@@ -10,6 +10,7 @@ import type { SlatesView } from "./slates-view-model.ts";
 import type { EquipmentView } from "./equipment-view-model.ts";
 import type { TalentsView } from "./talents-view-model.ts";
 import type { HeroTraitsView } from "./hero-traits-view-model.ts";
+import type { StatsView } from "./stats-view-model.ts";
 
 /** The Config tab: the calculated build and the combat settings it was calculated with. */
 export interface ConfigurationSource {
@@ -37,6 +38,8 @@ export interface ViewSources {
   talents: TalentsView;
   /** The HERO tab of the hero panel (src/app/bridge/hero-traits-view-model.ts). */
   heroTraits: HeroTraitsView;
+  /** The Stats view besides the damage path (src/app/bridge/stats-view-model.ts). */
+  stats: StatsView;
 }
 export type ViewSourceName = keyof ViewSources;
 

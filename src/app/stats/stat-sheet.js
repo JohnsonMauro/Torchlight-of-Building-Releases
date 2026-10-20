@@ -2,21 +2,16 @@ import { blessingRecoverySources } from "../../engine/defense/blessing-gear-effe
 import { curseSlotSummary } from "../../engine/skills/curse-limit.js";
 import { level85DummyDefenses } from "../../engine/combat/target-hit-mitigation.js";
 import { collectNormalizedGearModifiers } from "../../engine/engine.js";
-import {
-  recountTilesMarkup,
-  recountDetailsMarkup,
-  recountTotalModeledDps,
-  toggleNumberMarkup,
-} from "./dummy-recount-panel.js";
 import { characterStatTotals } from "../../engine/character-stats.js";
 import { effectiveHpModel } from "../../engine/defense/effective-hp.js";
-import { effectiveHpMarkup } from "./effective-hp-markup.js";
 import { hasActiveReaping } from "./damage-path-views.js";
-import { statSheetPanelModel, statSheetPanelMarkup } from "./stat-sheet-panel.js";
 const number = (value) => (Number.isFinite(value) ? value : null);
 
-// "Report calculation" (src/app/app.js reportCalculation): right after the Active skill select here, and alone in the Damage
-// path view's controls row (damagePathControlsMarkup), which has no skill select of its own.
+// What the Stats page's stat sheet shows (apps/web/src/features/stats, through src/app/bridge/stats-view-model.ts): the
+// picked skill's mechanic cards, its damage figures, the defence cards, the stat totals and the Effective HP model.
+
+// "Report calculation" (src/app/app.js reportCalculation), alone in the Damage path view's controls row
+// (damagePathControlsMarkup), which has no skill select of its own; the stat sheet's is React.
 export const REPORT_CALCULATION_BUTTON = `<button type="button" class="stat-sheet-report" data-report-calculation title="Copy the build code and open a GitHub form to report a damage figure that differs in game">Report calculation issue</button>`;
 export const damagePathControlsMarkup = () =>
   `<div class="stat-sheet-controls damage-path-controls">${REPORT_CALCULATION_BUTTON}</div>`;
@@ -29,31 +24,7 @@ export function statSheetSkillOptions(planner) {
 
 const sustainedModeledDps = ({ hitDps, dotDps, reapingDps }) => hitDps + dotDps + reapingDps;
 
-export function statSheetModel(planner, selectedKey, resources = {}) {
-  const memoryTotals = planner.heroMemories?.totals || {};
-  const bonus = (key) => memoryTotals[key] || 0;
-  const lifeIncrease = (planner.talentSlate?.talentDelta?.maxLifePercent || 0) / 100;
-  const shieldIncrease = (planner.talentSlate?.talentDelta?.maxEnergyShieldPercent || 0) / 100;
-  resources = {
-    ...resources,
-    life:
-      resources.life == null
-        ? null
-        : (resources.life / Math.max(0.001, 1 + lifeIncrease) + bonus("maxlife:flat")) *
-          Math.max(0, 1 + lifeIncrease + bonus("maxlife:increased") / 100),
-    energyShield:
-      resources.energyShield == null
-        ? null
-        : (resources.energyShield / Math.max(0.001, 1 + shieldIncrease) + bonus("maxEnergyShield:flat")) *
-          Math.max(0, 1 + shieldIncrease + bonus("maxenergyshield:increased") / 100),
-    mana: resources.mana == null ? null : resources.mana + bonus("maxmana:flat"),
-    armour:
-      resources.armour == null ? null : (resources.armour + bonus("armor:flat")) * (1 + bonus("armor:increased") / 100),
-    evasion:
-      resources.evasion == null
-        ? null
-        : (resources.evasion + bonus("evasion:flat")) * (1 + bonus("evasion:increased") / 100),
-  };
+export function statSheetModel(planner, selectedKey) {
   const options = statSheetSkillOptions(planner);
   // Without a saved choice, open on the skill that deals the build's modeled damage (not simply the first setup).
   const modeledNames = new Set(
@@ -598,13 +569,6 @@ export function statSheetModel(planner, selectedKey, resources = {}) {
         { label: entry.element + " · maximum", value: entry.maximum, suffix: "%" },
       ]),
     },
-    {
-      title: "Defenses",
-      rows: [
-        { label: "Gear armour", value: resources.armour ?? null },
-        { label: "Gear evasion", value: resources.evasion ?? null },
-      ],
-    },
   ];
   if (planner.resistances)
     defense.push({
@@ -800,51 +764,4 @@ export function statSheetModel(planner, selectedKey, resources = {}) {
     cards,
     defense,
   };
-}
-
-export function renderStatSheet(planner, selectedKey, resources, format, escapeHtml) {
-  const model = statSheetModel(planner, selectedKey, resources);
-  const dummyNote = model.paths
-    ? `Uncalibrated model: ${format(model.paths.twentySeconds.beamDps)} beam, ${model.paths.twentySeconds.dots.map((dot) => `${format(dot.dps)} ${dot.name}`).join(", ")}${hasActiveReaping(planner) ? `, ${format(model.paths.twentySeconds.reaping.reapingDps)} Reaping DPS` : ""}${model.paths.twentySeconds.illOmen?.dps ? `, ${format(model.paths.twentySeconds.illOmen.dps)} Ill Omen DPS (best case beyond the dummy)` : ""}. No dummy test exists for this build.`
-    : planner.firesAllure?.active
-      ? `Uncalibrated model: ${format(planner.recountOpening?.beamDps || 0)} beam, ${format(planner.recountOpening?.igniteDps || 0)} Scorch${hasActiveReaping(planner) ? `, ${format(planner.recountOpening?.reapingDps || 0)} Reaping DPS` : ""}. Compare with the same build and combat state in game.`
-      : "Average from an empty target and channel stack state; includes calibrated Bard delivery and Ignite buildup.";
-  const dummyLabel =
-    model.paths || planner.firesAllure?.active ? "20-second Dummy DPS · uncalibrated" : "20-second Dummy DPS";
-  const fiveSecondLabel =
-    model.paths || planner.firesAllure?.active ? "Five-second dummy damage · uncalibrated" : "Five-second dummy damage";
-  const fiveSecondEquivalentLabel =
-    model.paths || planner.firesAllure?.active
-      ? "Five-second equivalent from 20-second DPS · uncalibrated"
-      : "Five-second equivalent from 20-second DPS";
-  // The dummy recount (fixed 10 s span) replaces the older 5 s / 20 s tiles; those remain the fallback
-  // for a planner without a recount timeline.
-  const recountTiles = recountTilesMarkup(planner.dummyRecount, {
-    totalModeledDps: model.totalDps,
-    totalModeledParts: model.totalParts,
-  });
-  const dummyTiles =
-    recountTiles ||
-    `<div><span>${fiveSecondLabel}</span><strong>${model.dummyFiveSecondDamage === null ? "—" : format(model.dummyFiveSecondDamage)}</strong><small>Estimated total damage during the first five seconds, including buildup. This is damage, not DPS.</small></div>
-    <div><span>${fiveSecondEquivalentLabel}</span><strong>${model.dummyFiveSecondEquivalentFromTwentySecondDps === null ? "—" : format(model.dummyFiveSecondEquivalentFromTwentySecondDps)}</strong><small>20-second average DPS × 5 seconds. Compare this damage amount with the first five seconds above.</small></div>
-    <div><span>${dummyLabel}</span><strong>${model.dummyDps === null ? "—" : format(model.dummyDps)}</strong><small>${dummyNote}</small></div>`;
-  const totalModeled = `<span>Total modeled DPS</span>${model.totalDps === null ? "<strong>—</strong>" : toggleNumberMarkup("stat:totalModeledDps", recountTiles ? recountTotalModeledDps(planner.dummyRecount, model.totalDps, { parts: model.totalParts }) : model.totalDps)}<small>Theoretical source damage mix; this is not the level-85 dummy estimate.</small>`;
-  const beamLine = `<span>Beam and explosion: ${format(planner.nativeHitCycle?.expectedDps)} source DPS · ${format(planner.directHit?.toTarget)} target hit DPS.</span>`;
-  // With a recount timeline: the in-game-style panel is the focal point, and Total modeled DPS, the beam
-  // line and the details sit in a muted footer beneath it.
-  const dummyBlock = recountTiles
-    ? `${recountTiles}<footer class="dummy-recount-foot"><div class="dummy-recount-secondary">${totalModeled}</div>${model.beam ? beamLine : ""}${recountDetailsMarkup(planner.dummyRecount)}</footer>`
-    : `<div class="stat-sheet-dps-grid">
-    ${dummyTiles}
-    <div>${totalModeled}</div>
-  </div>${beamLine}`;
-  // Any modeled damage source (Scorching Beam, Wilting Beam, …) shows the build-wide recount panel.
-  const modeledSource = (planner.damageSources || []).some(
-    (source) => source.status === "modeled" && source.name === model.skill?.name,
-  );
-  const damage =
-    (model.beam && planner.nativeHitCycle) || (recountTiles && modeledSource)
-      ? dummyBlock
-      : `<strong>Damage not modeled</strong><span>Known mechanics for this skill are shown below; its damage is not included in the planner total.</span>`;
-  return `<div class="stat-sheet-controls"><label for="stat-sheet-skill">Active skill</label><select id="stat-sheet-skill">${model.options.map((skill) => `<option value="${escapeHtml(skill.setupKey || skill.name)}" ${skill === model.skill ? "selected" : ""}>${escapeHtml(skill.name)}</option>`).join("")}</select>${REPORT_CALCULATION_BUTTON}<span>${model.active ? "Active" : "Inactive · insufficient Energy"}</span></div><section class="stat-sheet-banner stat-sheet-banner-wide"><h2>${escapeHtml(model.skill?.name || "No active skill")} <small>Level ${model.skill?.effectiveLevel ?? "—"}</small></h2>${damage}</section>${effectiveHpMarkup(model.ehp)}<div class="stat-sheet-layout">${statSheetPanelMarkup(statSheetPanelModel(model, planner, format), escapeHtml)}</div><p class="stat-sheet-note">The Character stats panel lists only what the build has: stat totals sum every recognized stat line from gear, talents, cores, prisms, slates, pacts, kismets, hero memories and traits, including lines with no dummy-damage effect, and each row opens to its lines by source (sums for flat and increased, products for additional). Life, Mana, Energy Shield, Armor and Evasion combine those lines with TLIDB's per-level base values at the Effective HP banner's assumed character level. Resistances show the applied value with the uncapped total and maximum. Values with incomplete formulas are omitted.</p>`;
 }

@@ -1,10 +1,8 @@
 import { characterStatRows } from "../../engine/character-stats.js";
-import { readStoredStatTab } from "./stat-sheet-tabs.js";
-import { qolHelpButton } from "../qol-help.js";
 
-// Character stats panel for the Stats page (src/app/stats/stat-sheet.js). It arranges what statSheetModel
-// already computes (the stat totals of src/engine/character-stats.js, the Effective HP pools of
-// src/engine/defense/effective-hp.js and the skill-mechanic cards) the way the in-game character panel does:
+// Character stats panel for the Stats page (src/app/stats/stat-sheet.js; drawn by apps/web/src/features/stats). It
+// arranges what statSheetModel already computes (the stat totals of src/engine/character-stats.js, the Effective HP
+// pools of src/engine/defense/effective-hp.js and the skill-mechanic cards) the way the in-game character panel does:
 // category tabs → collapsible sections → label/value rows, and a row opens to the lines behind it,
 // grouped by where they come from (Gear, Talent, Slate, Pactspirit, Hero Memories, Hero Trait).
 // Rows the build does not have (zero, empty, "None") are left out, and each figure is listed once.
@@ -25,7 +23,6 @@ export const STAT_TABS = Object.freeze([
 const REPLACED_CARDS = new Set([
   "Life & resources",
   "Resistances",
-  "Defenses",
   "Resistance sources",
   "Gear attributes and immunity",
   "Slate attributes",
@@ -374,50 +371,4 @@ export function statSheetPanelModel(model, planner, format) {
   })).filter((tab) => tab.sections.length);
   for (const tab of tabs) tab.rowCount = tab.sections.reduce((sum, item) => sum + item.rows.length, 0);
   return { tabs };
-}
-
-const slug = (value) =>
-  String(value)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-
-function drillMarkup(item, escapeHtml) {
-  const { drill: detail } = item;
-  const groups = detail.groups
-    .map(
-      (group) =>
-        `<li class="stat-drill-group"><div class="stat-drill-group-head"><span>${escapeHtml(group.name)}</span><strong>${escapeHtml(group.total)}</strong></div><ul>${group.lines.map((line) => `<li><span>${escapeHtml(line.text)}</span><strong>${escapeHtml(line.value)}</strong></li>`).join("")}</ul></li>`,
-    )
-    .join("");
-  return `<div class="stat-drill"><p class="stat-drill-formula">${escapeHtml(detail.formula)}</p>${detail.notes.map((note) => `<p class="stat-drill-note">${escapeHtml(note)}</p>`).join("")}${groups ? `<ul class="stat-drill-groups">${groups}</ul>` : ""}</div>`;
-}
-
-function rowMarkup(item, escapeHtml) {
-  const title = item.title ? ` title="${escapeHtml(item.title)}"` : "";
-  const inner = `<span class="stat-row-label">${escapeHtml(item.label)}</span><strong class="stat-row-value">${escapeHtml(item.value)}${item.detail ? `<small>${escapeHtml(item.detail)}</small>` : ""}</strong>`;
-  if (!item.drill) return `<div class="stat-sheet-row"${title}>${inner}</div>`;
-  return `<details class="stat-sheet-row stat-sheet-row-drill"><summary${title}>${inner}</summary>${drillMarkup(item, escapeHtml)}</details>`;
-}
-
-/** Markup for `statSheetPanelModel`'s result; `selectedTab` falls back to the tab remembered for the session. */
-export function statSheetPanelMarkup(panel, escapeHtml, selectedTab = readStoredStatTab()) {
-  if (!panel.tabs.length) return "";
-  const selected =
-    panel.tabs.find((tab) => tab.key === selectedTab) ||
-    panel.tabs.find((tab) => tab.key === "offense") ||
-    panel.tabs[0]; // A hidden (empty) stored tab falls back to Offense.
-  const tabs = panel.tabs
-    .map(
-      (tab) =>
-        `<button type="button" role="tab" id="stat-tab-${tab.key}" aria-controls="stat-tabpanel-${tab.key}" aria-selected="${tab === selected}" tabindex="${tab === selected ? 0 : -1}" data-stat-tab="${tab.key}"${tab === selected ? ' class="active"' : ""}>${escapeHtml(tab.title)}<small>${tab.rowCount}</small></button>`,
-    )
-    .join("");
-  const panels = panel.tabs
-    .map(
-      (tab) =>
-        `<section role="tabpanel" id="stat-tabpanel-${tab.key}" aria-labelledby="stat-tab-${tab.key}" data-stat-tabpanel="${tab.key}"${tab === selected ? "" : " hidden"}>${tab.sections.map((item) => `<details class="stat-section" open data-stat-section="${escapeHtml(slug(item.key))}"><summary><span class="stat-section-title">${escapeHtml(item.title)}</span><span class="stat-section-count">${item.rows.length}</span></summary><div class="stat-section-body">${item.rows.map((row) => rowMarkup(row, escapeHtml)).join("")}</div></details>`).join("")}</section>`,
-    )
-    .join("");
-  return `<section class="stat-panel" aria-label="Character stats"><header class="stat-panel-head"><h2>Character stats${qolHelpButton("stats")}</h2><p>Only stats the build has are listed. Open a row for the lines behind it.</p></header><div class="stat-panel-tabs" role="tablist" aria-label="Stat categories">${tabs}</div>${panels}</section>`;
 }

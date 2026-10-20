@@ -1,4 +1,19 @@
+import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import type { StatsPanel } from "@legacy/app/bridge/stats-view-model.ts";
+import { StatSheet } from "../../features/stats/StatSheet";
+import { useViewSource } from "../../ui/use-view-source";
+
+const PANELS: { id: StatsPanel; label: string }[] = [
+  { id: "sheet", label: "Stat sheet" },
+  { id: "damage-path", label: "Damage path" },
+];
+
+// The Stats view: the build status, the Stat sheet / Damage path switch and the two panels, from the planner's "stats"
+// source (src/app/bridge/stats-view-model.ts). The damage path is still legacy markup that src/app/app.js renders into
+// #damage-path; React only shows or hides it.
 export function CharacterView() {
+  const view = useViewSource("stats");
+  const panel = view?.panel ?? "sheet";
   return (
     <section id="character-view" className="app-view" hidden>
       <div className="talent-page-heading">
@@ -11,20 +26,31 @@ export function CharacterView() {
         </div>
         <div className="talent-total">
           <span>Build status</span>
-          <strong id="character-status">—</strong>
-          <small id="character-status-detail" />
+          <strong id="character-status" className={view?.status.warning ? "warning" : undefined}>
+            {view?.status.text ?? "—"}
+          </strong>
+          <small id="character-status-detail">{view?.status.detail}</small>
         </div>
       </div>
       <div id="stats-panel-options" className="stats-panel-options" role="tablist" aria-label="Stats layout">
-        <button type="button" role="tab" data-stats-panel="sheet" aria-selected="true" className="active">
-          Stat sheet
-        </button>
-        <button type="button" role="tab" data-stats-panel="damage-path" aria-selected="false">
-          Damage path
-        </button>
+        {PANELS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            data-stats-panel={item.id}
+            aria-selected={item.id === panel}
+            className={item.id === panel ? "active" : undefined}
+            onClick={() => plannerCommands().setStatsPanel(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
-      <div id="stat-sheet" hidden />
-      <div id="damage-path" hidden />
+      <div id="stat-sheet" hidden={view?.panel !== "sheet"}>
+        {view ? <StatSheet sheet={view.sheet} /> : null}
+      </div>
+      <div id="damage-path" hidden={view?.panel !== "damage-path"} />
     </section>
   );
 }

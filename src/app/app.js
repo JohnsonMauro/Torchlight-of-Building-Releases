@@ -37,7 +37,9 @@ import {
   heroTraitCoverageReason,
 } from "./calculation-coverage.js";
 import { scorchingBeamBaseHits, strippedBeamHitCoefficient } from "../engine/skills/scorching-beam-base-hit.js";
-import { damagePathControlsMarkup, renderStatSheet } from "./stats/stat-sheet.js";
+import { damagePathControlsMarkup } from "./stats/stat-sheet.js";
+import { recountExcludedSources, setRecountSourceExcluded } from "./stats/dummy-recount-panel.js";
+import { prepareStatSheet, statsView } from "./bridge/stats-view-model.ts";
 import { fireHitMitigation, mitigateScorchingBeamCycle } from "../engine/combat/target-hit-mitigation.js";
 import { canDropGearInSlot } from "../engine/gear/gear-drag.js";
 import { equipmentView } from "./bridge/equipment-view-model.ts";
@@ -75,7 +77,6 @@ import { resolveTalentCandidate } from "../engine/candidate-sources.js";
 import {
   calculateTalentSlateCandidate,
   calculatePactCandidate,
-  calculateEquipmentCandidate,
   calculateAuraLedger,
   calculateAvailableEnergy,
   allocateSkillEnergy,
@@ -190,7 +191,6 @@ import {
   specialSupportStarBonus,
   specialSupportTierData,
 } from "../data/skills/special-support-tiers-ss13.js";
-import { selenaScorchingBeamObservedSnapshots } from "../data/stats/selena-scorching-beam-observed-snapshots.js";
 import { tliArt } from "../data/assets/tli-art.js";
 import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../data/catalogs/tlidb-ss13.js";
 import { heroCatalogSs13, heroById } from "../data/heroes/hero-catalog-ss13.js";
@@ -1634,6 +1634,26 @@ providePlannerCommands({
   removeCarinoAmmo,
   openHeroTraitSupport,
   removeHeroTraitSupport,
+  // Stats view (apps/web/src/features/stats).
+  setStatsPanel: (panel) => {
+    activeStatsPanel = panel;
+    saveWorkspaceLocation();
+    viewSourceChanged("stats");
+  },
+  selectStatSheetSkill: (key) => {
+    selectedStatSheetSkill = key;
+    saveWorkspaceLocation();
+    renderCharacter();
+  },
+  reportCalculation,
+  toggleRecountSource: (key) => {
+    setRecountSourceExcluded(key);
+    viewSourceChanged("stats");
+  },
+  showAllRecountSources: () => {
+    setRecountSourceExcluded(null);
+    viewSourceChanged("stats");
+  },
 });
 // The FOLLOWER tab's data (src/app/follower-panel.js).
 provideViewSource("follower", () => followerPanelView(plannerState));
@@ -1662,6 +1682,8 @@ provideViewSource("equipment", equipmentSource);
 provideViewSource("talents", talentsSource);
 // The HERO tab's data (src/app/bridge/hero-traits-view-model.ts).
 provideViewSource("heroTraits", () => heroTraitsView(plannerState.hero, activeHeroDetailTab));
+// The Stats view's data (src/app/bridge/stats-view-model.ts).
+provideViewSource("stats", statsSource);
 // The Config tab's data (src/app/bridge/view-sources.ts). Manual mode also needs the same build in automatic mode (which conditions
 // have a source); it is calculated only then.
 provideViewSource("configuration", () => {
@@ -5336,86 +5358,30 @@ function damageBucketDiagram(theoretical, planner) {
   return damagePathPanelMarkup({ theoretical, planner, selected: selectedDamagePath, format });
 }
 
+// The Stats view is React (apps/web/src/features/stats): the status, the panel switch and the stat sheet re-read their
+// source. The damage path is still rendered here, from a second calculation at 30% target Fire Resistance.
 function renderCharacter() {
   const planner = currentPlanner();
-  const activation = planner.activation;
-  const equipment = planner.equipment;
-  const talentSlate = planner.talentSlate;
-  const pact = planner.pact;
   const theoretical = calculatePlanner({
     ...capturePlannerState(),
     combat: { ...plannerState.combat, targetFireResistancePercent: 30 },
   }).theoretical;
-  const baselineEquipment = calculateEquipmentCandidate(
-    selenaScorchingBeamGearSs13.items,
-    {},
-    selenaScorchingBeamObservedSnapshots[0],
-  );
-  const defenseDelta = (key) => (equipment.defenses[key] || 0) - (baselineEquipment.defenses[key] || 0);
-  const esFlatDelta =
-    defenseDelta("maxEnergyShield") + defenseDelta("gearEnergyShield") + (equipment.delta["maxEnergyShield:flat"] || 0);
-  const gearResourceFactor = (stat) =>
-    (100 + (equipment.candidate[`${stat}:increased`] || 0)) / (100 + (equipment.baseline[`${stat}:increased`] || 0));
-  const energyShield = Math.max(
-    0,
-    (7377 + esFlatDelta) *
-      gearResourceFactor("maxEnergyShieldPercent") *
-      (1 + (talentSlate.talentDelta.maxEnergyShieldPercent || 0) / 100),
-  );
-  const life = Math.max(
-    0,
-    2150 * gearResourceFactor("maxLifePercent") * (1 + (talentSlate.talentDelta.maxLifePercent || 0) / 100),
-  );
-  const inactive = activation.allocation.allocations.filter(
-    (entry) => entry.status !== "active" && entry.status !== "disabled",
-  );
-  $("#character-status").textContent = inactive.length
-    ? `${inactive.length} inactive`
-    : `${activation.allocation.allocations.filter((entry) => entry.status === "active").length} active`;
-  $("#character-status-detail").textContent = inactive
-    .map(
-      (entry) =>
-        `${entry.name} (${entry.status === "insufficient-energy" ? "insufficient Energy" : entry.status === "disabled" ? "disabled" : "Energy cost unknown"})`,
-    )
-    .join(" · ");
-  $("#character-status").classList.toggle("warning", inactive.length > 0);
-  $("#stat-sheet").innerHTML = renderStatSheet(
-    planner,
-    selectedStatSheetSkill,
-    { life, energyShield, mana: 525, armour: equipment.defenses.armor || 0, evasion: equipment.defenses.evasion || 0 },
-    format,
-    escapeHtml,
-  );
   $("#damage-path").innerHTML = damagePathControlsMarkup() + damageBucketDiagram(theoretical, planner);
-  for (const tab of $("#stats-panel-options").querySelectorAll("[data-stats-panel]")) {
-    const selected = tab.dataset.statsPanel === activeStatsPanel;
-    tab.classList.toggle("active", selected);
-    tab.setAttribute("aria-selected", String(selected));
-  }
-  $("#stat-sheet").hidden = activeStatsPanel !== "sheet";
-  $("#damage-path").hidden = activeStatsPanel !== "damage-path";
+  viewSourceChanged("stats");
 }
-
-$("#stats-panel-options").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-stats-panel]");
-  if (!button) return;
-  activeStatsPanel = button.dataset.statsPanel;
-  saveWorkspaceLocation();
-  for (const tab of $("#stats-panel-options").querySelectorAll("[data-stats-panel]")) {
-    const selected = tab.dataset.statsPanel === activeStatsPanel;
-    tab.classList.toggle("active", selected);
-    tab.setAttribute("aria-selected", String(selected));
-  }
-  $("#stat-sheet").hidden = activeStatsPanel !== "sheet";
-  $("#damage-path").hidden = activeStatsPanel !== "damage-path";
-});
-
-$("#stat-sheet").addEventListener("change", (event) => {
-  if (event.target.id !== "stat-sheet-skill") return;
-  selectedStatSheetSkill = event.target.value;
-  saveWorkspaceLocation();
-  renderCharacter();
-});
+// The Stats view's data (src/app/bridge/stats-view-model.ts). The stat sheet is prepared once per calculated build and
+// picked skill: switching panels or leaving a recount source out of the view does not prepare it again.
+let preparedStatSheet = null;
+function statsSource() {
+  const planner = currentPlanner();
+  if (preparedStatSheet?.planner !== planner || preparedStatSheet.skill !== selectedStatSheetSkill)
+    preparedStatSheet = {
+      planner,
+      skill: selectedStatSheetSkill,
+      sheet: prepareStatSheet(planner, selectedStatSheetSkill, format),
+    };
+  return statsView(preparedStatSheet.sheet, { panel: activeStatsPanel, excluded: recountExcludedSources() });
+}
 
 function selectDamagePathTab(value, { focus = false } = {}) {
   selectedDamagePath = DAMAGE_PATH_KEY.test(value) ? value : "hit";
@@ -5467,10 +5433,9 @@ function reportCalculation() {
     buildCode: currentBuildCode(),
   });
 }
-for (const view of ["#stat-sheet", "#damage-path"])
-  $(view).addEventListener("click", (event) => {
-    if (event.target.closest("[data-report-calculation]")) reportCalculation();
-  });
+$("#damage-path").addEventListener("click", (event) => {
+  if (event.target.closest("[data-report-calculation]")) reportCalculation();
+});
 $("[data-report-bug]").addEventListener("click", () => {
   persistPlannerState();
   feedbackDialog.open("bug", {

@@ -4,7 +4,7 @@ import { escapeHtml } from "./html.js";
 // section header (hover, keyboard focus or a click / tap). All help text lives in this file;
 // each line was checked against the handler that implements it (src/app/app.js contextmenu,
 // pointerdown / drop, slate keys and wheel; src/app/slate-shortcuts.js; src/app/stats/dummy-recount-panel.js;
-// src/app/stats/stat-sheet-tabs.js; src/app/build-tab-rename.js).
+// apps/web/src/features/stats; src/app/build-tab-rename.js).
 export const SECTION_HELP = {
   hero: {
     title: "Hero",

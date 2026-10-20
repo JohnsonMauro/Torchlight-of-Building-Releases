@@ -20701,7 +20701,7 @@ body.recovery-mode main.recovery-screen {
 .ehp-check-status {
   justify-self: start;
 }
-/* Character stats panel (src/app/stats/stat-sheet-panel.js, src/app/stats/stat-sheet-tabs.js): the in-game character panel's
+/* Character stats panel (src/app/stats/stat-sheet-panel.js, apps/web/src/features/stats): the in-game character panel's
    layout: category tabs, collapsible sections, label/value rows, and a row that opens to its lines by
    source. Same frame and palette as the damage and Effective HP panels above it. */
 .stat-panel {
