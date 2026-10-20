@@ -648,10 +648,37 @@ export function followerSelectorInitialIndex(state, slot) {
 }
 
 /**
- * The picker's content for follower slot `slot`: { title, resultsHtml, detailHtml, confirmDisabled, confirmLabel }.
- * @param {{ state: object, slot: number, query?: string, choiceIndex?: number, artwork: Function }} p
+ * The picker's title and list for follower slot `slot` (apps/web/src/shell/dialogs/SkillSelectorDialog.tsx): the
+ * eligible skills grouped by kind, each with what the search box matches (name, short name, tags, lines; lower case).
  */
-export function followerSkillSelectorView({ state, slot, query = "", choiceIndex = -1, draft = null, artwork }) {
+export function followerSkillSelectorList(state, slot) {
+  const selection = followerSelection(state);
+  const entries = followerSelectorEntries(state, slot);
+  const initial = slot === 0 && selection ? followerInitialSkillRule(selection.rarity?.id) : null;
+  return {
+    title: `Select ${selection ? `${selection.follower.displayName} ${initial ? "initial skill" : `skill ${slot + 1}`}` : "Tartarus Skill"} · ${entries.length} available`,
+    groups: ["tartarus", "origin"].map((kind) => ({
+      heading: `${KIND_LABEL[kind]}s`,
+      results: entries
+        .map((entry, index) => ({ entry, index }))
+        .filter(({ entry }) => entry.kind === kind)
+        .map(({ entry, index }) => ({
+          index,
+          name: entry.name,
+          icon: entry.icon,
+          tags: [...entry.tags],
+          tintClass: tintClass({ id: tartarusSkillRarity(entry) }),
+          search: [entry.name, entry.shortName, ...entry.tags, ...entry.lines].join(" ").toLowerCase(),
+        })),
+    })),
+  };
+}
+
+/**
+ * The picker's detail for follower slot `slot` and the highlighted skill: { detailHtml, confirmDisabled, confirmLabel }.
+ * @param {{ state: object, slot: number, choiceIndex?: number, draft?: object | null, artwork: Function }} p
+ */
+export function followerSkillSelectorView({ state, slot, choiceIndex = -1, draft = null, artwork }) {
   const selection = followerSelection(state);
   const entries = followerSelectorEntries(state, slot);
   // Slot 1: the letter's initial skill (its tier defaults to the rarity's; user-selectable, 2026-10-19).
@@ -659,33 +686,9 @@ export function followerSkillSelectorView({ state, slot, query = "", choiceIndex
   const initial = rule ? { ...rule, rarityName: selection.rarity?.name || "" } : null;
   const chosen = normalizeFollowerState(state?.followers).skills.map(followerSkillEntryName);
   const others = new Set(chosen.filter((name, index) => name && index !== slot));
-  const needle = String(query || "")
-    .trim()
-    .toLowerCase();
-  const matches = entries
-    .map((entry, index) => ({ entry, index }))
-    .filter(
-      ({ entry }) =>
-        !needle ||
-        [entry.name, entry.shortName, ...entry.tags, ...entry.lines].join(" ").toLowerCase().includes(needle),
-    );
-  const row = ({ entry, index }) =>
-    `<button type="button" class="selector-result${tintClass({ id: tartarusSkillRarity(entry) })} ${index === choiceIndex ? "selected" : ""}" data-selector-choice="${index}">${artwork(entry.icon, entry.name, "support-art")}<span><strong>${escapeHtml(entry.name)}</strong><small>${entry.tags.map((tag) => `<em>${escapeHtml(tag)}</em>`).join("")}</small></span></button>`;
-  const resultsHtml =
-    ["tartarus", "origin"]
-      .map((kind) => {
-        const group = matches.filter(({ entry }) => entry.kind === kind);
-        return group.length
-          ? `<h4 class="follower-selector-group">${escapeHtml(KIND_LABEL[kind])}s</h4>${group.map(row).join("")}`
-          : "";
-      })
-      .join("") || `<p class="muted">No matching entries.</p>`;
-  const title = `Select ${selection ? `${selection.follower.displayName} ${initial ? "initial skill" : `skill ${slot + 1}`}` : "Tartarus Skill"} · ${entries.length} available`;
   const entry = entries[choiceIndex];
   if (!entry)
     return {
-      title,
-      resultsHtml,
       detailHtml: `<p>Select a skill to configure</p>`,
       confirmDisabled: true,
       confirmLabel: "Confirm",
@@ -709,8 +712,6 @@ export function followerSkillSelectorView({ state, slot, query = "", choiceIndex
   const headerTier = editorDraft?.tier || tartarusSkillTiers(entry).at(-1);
   const detailHtml = `<article class="selector-preview${tintClass({ id: tartarusSkillRarity(entry) })}"><div class="selector-preview-head">${artwork(entry.icon, entry.name, "support-art")}<h3>${escapeHtml(tartarusSkillTierName(entry, headerTier))}</h3><small>Lv. ${escapeHtml(String(entry.level ?? 20))}</small><div class="selector-tags">${entry.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div></div><div class="selector-facts"><div class="selector-stat-rows">${tierRow}${facts.map(([label, value]) => `<div><span>${escapeHtml(label)}:</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</div><div class="selector-effect-list"><h4>${escapeHtml(entry.name)}:</h4>${effects.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div>${editor}${entry.source ? `<a href="${escapeHtml(entry.source)}" target="_blank" rel="noreferrer">Open TLIDB source</a>` : ""}${installed ? `<p class="comparison-warning">${escapeHtml(entry.shortName || entry.name)} is already in another skill slot.</p>` : ""}${limitReached ? `<p class="comparison-warning">Max 1 Origin Tartarus Skill per follower: another slot already holds one.</p>` : ""}</div></article>`;
   return {
-    title,
-    resultsHtml,
     detailHtml,
     confirmDisabled: installed || limitReached,
     confirmLabel: installed ? "Installed" : limitReached ? "Limit reached" : "Confirm",

@@ -71,6 +71,18 @@ export interface ViewSources {
   };
   /** The Fate slot selector: the Pactspirit it is open for, its unlock, and every unlock. */
   fateSlotSelector: { spirit: string; selected: string; choices: { id: string; label: string }[] };
+  /** The skill selector's title and list (src/app/app.js skillSelectorSource); the dialog filters by its search box. */
+  skillSelector: DialogSession & {
+    title: string;
+    placeholder: string;
+    /** The highlighted choice's index; -1 for none. */
+    selected: number;
+    /** One group without a heading, or the follower picker's Tartarus / Origin groups. */
+    groups: {
+      heading: string | null;
+      results: { index: number; name: string; tags: string[]; icon: string; tintClass: string; search: string }[];
+    }[];
+  };
   /** The prism inventory: the tree slot it is open for, every crafted prism, and whether that tree has one installed. */
   prismInventory: {
     slot: number;

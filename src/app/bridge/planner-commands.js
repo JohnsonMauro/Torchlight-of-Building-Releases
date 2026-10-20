@@ -52,6 +52,8 @@
  * @property {(tab: "skills" | "auras") => void} setSkillBoardTab Shows the Skills or the Auras board.
  * @property {(row: number, supportSlot: number | null) => void} openSkillSelector Opens the skill selector for a row of
  *   the open board (supportSlot null), or the support selector for one of its sockets (0–4).
+ * @property {(index: number) => void} chooseSkillSelectorEntry Skill selector: highlights a choice of its list (with its
+ *   saved level and configuration when it is the slot's).
  * @property {(row: number) => boolean} removeSkill Takes the user's skill off a row; false when the row holds none.
  * @property {(row: number, slot: number) => boolean} removeSupport Takes the user's support out of a socket; false when
  *   the socket holds none.

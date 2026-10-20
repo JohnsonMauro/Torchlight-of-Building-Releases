@@ -62,6 +62,7 @@ import {
   followerTooltipHtml,
   followerTooltipRarity,
   followerSkillSelectorView,
+  followerSkillSelectorList,
   followerSelectorEntries,
   followerSelectorInitialIndex,
   pickFollower,
@@ -452,7 +453,7 @@ let selectedNetherSlateType = "Judgment";
 let selectedLegendarySlateName = "";
 let editingCraftedSlateId = null;
 let selectorKind = "skill";
-let selectorQuery = "";
+let skillSelectorSession = 0; // the skill selector's openings (apps/web/src/shell/dialogs/SkillSelectorDialog.tsx)
 let heroSelectorSession = 0; // the hero selector's openings (apps/web/src/shell/dialogs/HeroSelectorDialog.tsx)
 let activeHeroDetailTab = "traits";
 let pactspiritSelectorSession = 0; // the Pactspirit selector's openings (apps/web/src/shell/dialogs/PactspiritSelectorDialog.tsx)
@@ -1584,6 +1585,7 @@ providePlannerCommands({
     renderSkills();
   },
   openSkillSelector,
+  chooseSkillSelectorEntry,
   removeSkill: removeBoardSkill,
   removeSupport: removeBoardSupport,
   moveSkill: moveBoardSkill,
@@ -1746,6 +1748,8 @@ provideViewSource("carinoAmmoSelector", () => ({
     plannerState.hero.selectedTraits["carino-ranger-of-glory:level75"] === "Well Prepared",
   ),
 }));
+// The skill selector's title and list.
+provideViewSource("skillSelector", skillSelectorSource);
 // The prism inventory.
 provideViewSource("prismInventory", prismInventorySource);
 // The talent tree, core talent and Fate slot pickers.
@@ -2735,7 +2739,6 @@ function removeCarinoAmmo(index) {
 function openHeroTraitSupport(heroId) {
   activeHeroTraitSupportId = heroId;
   selectorKind = "hero-support";
-  selectorQuery = "";
   selectorChoiceIndex = -1;
   selectorSpecialConfig = null;
   const installed = selectorTargetSupport();
@@ -2747,7 +2750,7 @@ function openHeroTraitSupport(heroId) {
       ...(normalizeProgressionSupportConfig(installed.name, installed.specialConfig) || {}),
     };
   }
-  $("#skill-selector-search").value = "";
+  skillSelectorSession++;
   renderSkillSelector();
   $("#skill-selector").showModal();
   $("#skill-selector-search").focus();
@@ -2800,9 +2803,8 @@ function openFollowerSkillSelector(slot) {
   followerSelectorDraft = null;
   selectorTargetSetupName = null;
   selectorTargetSupportSlot = null;
-  selectorQuery = "";
   selectorChoiceIndex = followerSelectorInitialIndex(plannerState, slot);
-  $("#skill-selector-search").value = "";
+  skillSelectorSession++;
   renderSkillSelector();
   $("#skill-selector").showModal();
   $("#skill-selector-search").focus();
@@ -2816,14 +2818,10 @@ function renderFollowerSkillSelector() {
   const view = followerSkillSelectorView({
     state: plannerState,
     slot: followerSelectorSlot,
-    query: selectorQuery,
     choiceIndex: selectorChoiceIndex,
     draft: followerSelectorDraft,
     artwork,
   });
-  $("#skill-selector-title").textContent = view.title;
-  $("#skill-selector-search").placeholder = "Search skills…";
-  $("#skill-selector-results").innerHTML = view.resultsHtml;
   $("#skill-selector-detail").innerHTML = view.detailHtml;
   const confirm = $("[data-confirm-skill-selector]");
   confirm.disabled = view.confirmDisabled;
@@ -5162,6 +5160,33 @@ function selectorEntries() {
   });
 }
 
+// A click on the skill selector's list: highlights that choice, with its saved level and configuration when it is the
+// one in the slot.
+function chooseSkillSelectorEntry(index) {
+  selectorChoiceIndex = index;
+  if (selectorKind !== "follower-skill") {
+    const choice = selectorEntries()[selectorChoiceIndex];
+    const current = selectorTargetSupport();
+    selectorLevel = current?.name === choice?.name ? current.level : choice?.level || 20;
+    const targetSetup = selectorTargetSetup(),
+      saved =
+        selectorKind === "hero-support"
+          ? current?.name === choice?.name
+            ? plannerState.hero.heroTraitSupportConfigs?.[activeHeroTraitSupportId]
+            : null
+          : targetSetup
+            ? plannerState.skills.specialSupportConfigs[supportStateKey(setupStateKey(targetSetup), choice?.name)]
+            : null;
+    selectorSpecialConfig = {
+      ...defaultConfigurableSupportConfig(
+        choice?.name,
+        current?.name === choice?.name ? current.effects : choice?.effects,
+      ),
+      ...(saved || {}),
+    };
+  }
+  renderSkillSelector();
+}
 function selectorBoardSetups(traitGrants = false) {
   return skillBoardRows(currentEditedSetups(), plannerState.skills.boardSlots, activeSkillBoardTab, { traitGrants });
 }
@@ -5209,38 +5234,55 @@ function selectorTargetSupport() {
     }
   return slots[selectorTargetSupportSlot];
 }
-function renderSkillSelector() {
+// The skill selector's title and list (apps/web/src/shell/dialogs/SkillSelectorDialog.tsx); the dialog filters the
+// list by its search box. The detail beside it is still rendered here (renderSkillSelector).
+function skillSelectorSource() {
+  const result = (entry, index, tintClass = "") => ({
+    index,
+    ...displayTexts({ name: entry.name, tags: [...(entry.tags || ["Support"])] }),
+    icon: entry.icon,
+    tintClass,
+    search: [entry.name, ...(entry.tags || []), ...(entry.effects || [])].join(" ").toLowerCase(),
+  });
   if (selectorKind === "follower-skill") {
-    renderFollowerSkillSelector();
-    return;
+    const list = followerSkillSelectorList(plannerState, followerSelectorSlot);
+    return {
+      session: skillSelectorSession,
+      title: list.title,
+      placeholder: "Search skills…",
+      selected: selectorChoiceIndex,
+      groups: list.groups.map((group) => ({
+        heading: group.heading,
+        results: group.results.map((item) => ({ ...item, ...displayTexts({ name: item.name, tags: item.tags }) })),
+      })),
+    };
   }
   const entries = selectorEntries();
-  const query = selectorQuery.toLowerCase();
-  const selectedSetup = selectorTargetSetup();
-  const matches = entries
-    .map((entry, index) => ({ entry, index }))
-    .filter(
-      ({ entry }) =>
-        !query || [entry.name, ...(entry.tags || []), ...(entry.effects || [])].join(" ").toLowerCase().includes(query),
-    );
-  const supportSelector = selectorKind === "support" || selectorKind === "hero-support";
-  const selectorLabel =
+  const label =
     selectorKind === "skill"
       ? activeSkillBoardTab === "auras"
         ? "Passive Skill / Aura"
         : "Active Skill"
       : selectorKind === "hero-support"
         ? `Support for ${heroTraitSupportConfig[activeHeroTraitSupportId]?.skill || "trait skill"}`
-        : `Support for ${selectedSetup?.name || "active skill"}`;
-  $("#skill-selector-title").textContent = `Select ${selectorLabel} · ${entries.length} available`;
-  $("#skill-selector-search").placeholder = selectorKind === "skill" ? "Search skills…" : "Search supports…";
-  $("#skill-selector-results").innerHTML =
-    matches
-      .map(
-        ({ entry, index }) =>
-          `<button type="button" class="selector-result ${index === selectorChoiceIndex ? "selected" : ""}" data-selector-choice="${index}">${artwork(entry.icon, entry.name, "support-art")}<span><strong>${escapeHtml(entry.name)}</strong><small>${(entry.tags || ["Support"]).map((tag) => `<em>${escapeHtml(tag)}</em>`).join("")}</small></span></button>`,
-      )
-      .join("") || `<p class="muted">No matching entries.</p>`;
+        : `Support for ${selectorTargetSetup()?.name || "active skill"}`;
+  return {
+    session: skillSelectorSession,
+    title: displayTexts(`Select ${label} · ${entries.length} available`),
+    placeholder: selectorKind === "skill" ? "Search skills…" : "Search supports…",
+    selected: selectorChoiceIndex,
+    groups: [{ heading: null, results: entries.map((entry, index) => result(entry, index)) }],
+  };
+}
+function renderSkillSelector() {
+  viewSourceChanged("skillSelector");
+  if (selectorKind === "follower-skill") {
+    renderFollowerSkillSelector();
+    return;
+  }
+  const entries = selectorEntries();
+  const selectedSetup = selectorTargetSetup();
+  const supportSelector = selectorKind === "support" || selectorKind === "hero-support";
   const entry = entries[selectorChoiceIndex];
   if (!entry) {
     $("#skill-selector-detail").innerHTML = `<p>Select a ${selectorKind} to configure</p>`;
@@ -7920,19 +7962,7 @@ document.addEventListener("click", (event) => {
   if (slateFlipButton)
     transformSlate(slateFlipButton.dataset.slateFlip, { flip: slateFlipButton.dataset.slateFlipAxis });
   if (event.target.closest("[data-close-skill-selector]")) $("#skill-selector").close();
-  if (event.target.closest("[data-clear-skill-search]")) {
-    selectorQuery = "";
-    $("#skill-selector-search").value = "";
-    renderSkillSelector();
-    $("#skill-selector-search").focus();
-  }
   if (selectorKind === "follower-skill") {
-    const choice = event.target.closest("[data-selector-choice]");
-    if (choice) {
-      selectorChoiceIndex = Number(choice.dataset.selectorChoice);
-      renderSkillSelector();
-      return;
-    }
     if (event.target.closest("[data-clear-skill-slot]")) {
       $("#skill-selector").close();
       commitFollower(setFollowerSkill(plannerState, followerSelectorSlot, null), "Skill slot cleared");
@@ -8001,30 +8031,6 @@ document.addEventListener("click", (event) => {
     persistPlannerState();
     renderCandidateViews();
     showToast("Slot cleared");
-  }
-  const selectorChoice = event.target.closest("[data-selector-choice]");
-  if (selectorChoice) {
-    selectorChoiceIndex = Number(selectorChoice.dataset.selectorChoice);
-    const choice = selectorEntries()[selectorChoiceIndex];
-    const current = selectorTargetSupport();
-    selectorLevel = current?.name === choice?.name ? current.level : choice?.level || 20;
-    const targetSetup = selectorTargetSetup(),
-      saved =
-        selectorKind === "hero-support"
-          ? current?.name === choice?.name
-            ? plannerState.hero.heroTraitSupportConfigs?.[activeHeroTraitSupportId]
-            : null
-          : targetSetup
-            ? plannerState.skills.specialSupportConfigs[supportStateKey(setupStateKey(targetSetup), choice?.name)]
-            : null;
-    selectorSpecialConfig = {
-      ...defaultConfigurableSupportConfig(
-        choice?.name,
-        current?.name === choice?.name ? current.effects : choice?.effects,
-      ),
-      ...(saved || {}),
-    };
-    renderSkillSelector();
   }
   const specialTierButton = event.target.closest("[data-special-tier]");
   if (specialTierButton) {
@@ -8379,7 +8385,6 @@ function openSkillSelector(row, supportSlot) {
   selectorTargetSupportSlot = supportSlot;
   const target = selectorBoardSetups(selectorKind === "support")[selectorTargetRow];
   selectorTargetSetupName = target ? setupStateKey(target) : null;
-  selectorQuery = "";
   selectorChoiceIndex = -1;
   selectorLevel = 20;
   selectorSpecialConfig = null;
@@ -8409,7 +8414,7 @@ function openSkillSelector(row, supportSlot) {
       };
     }
   }
-  $("#skill-selector-search").value = "";
+  skillSelectorSession++;
   renderSkillSelector();
   $("#skill-selector").showModal();
   $("#skill-selector-search").focus();
@@ -8544,10 +8549,6 @@ document.addEventListener("dragstart", (event) => {
   if (event.target.closest(".pact-tree-node.has-kismet")) event.preventDefault();
 });
 
-$("#skill-selector-search").addEventListener("input", (event) => {
-  selectorQuery = event.target.value.trim();
-  renderSkillSelector();
-});
 $("#kismet-search").addEventListener("input", renderKismetChoices);
 $("#kismet-roll-controls").addEventListener("input", (event) => {
   const target = event.target.closest("[data-kismet-roll-range],[data-kismet-roll-number]");
