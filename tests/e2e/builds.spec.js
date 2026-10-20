@@ -114,7 +114,7 @@ test("deleting all builds leaves the empty state", async ({ page }) => {
   await expect(builds.deleteAllButton()).toBeDisabled();
   await expect(builds.loadoutTabName()).toHaveText("Start a new build");
 
-  await builds.emptyState().locator("[data-new-build]").click();
+  await builds.emptyStateNewBuildButton().click();
   await builds.expectToast("New build ready · Rename it in Build Library");
   await builds.open();
   await expect(builds.count()).toHaveText("1");

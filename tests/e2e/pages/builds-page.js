@@ -1,4 +1,5 @@
 // The Builds view (the "Notes" tab) and its confirm dialogs. Every selector the builds tests use lives here.
+// Buttons are found by role and accessible name, as a user finds them, not by the data-* hooks of one implementation.
 import { expect } from "@playwright/test";
 
 export class BuildsPage {
@@ -24,26 +25,35 @@ export class BuildsPage {
   emptyState() {
     return this.page.locator("#build-list .build-empty-state");
   }
+  button(name) {
+    return this.view().getByRole("button", { name, exact: true });
+  }
   newBuildButton() {
-    return this.view().locator(".builds-page-header [data-new-build]");
+    return this.button("New Build");
+  }
+  emptyStateNewBuildButton() {
+    return this.emptyState().getByRole("button", { name: "+ New Build", exact: true });
   }
   duplicateButton() {
-    return this.page.locator("[data-duplicate-build]");
+    return this.button("Duplicate current");
   }
   backupButton() {
-    return this.page.locator("[data-backup-builds]");
+    return this.button("Back up all builds");
   }
   deleteAllButton() {
-    return this.page.locator("[data-delete-all-builds]");
+    return this.button("Delete all builds");
+  }
+  editor() {
+    return this.page.locator("#build-editor");
   }
   nameInput() {
-    return this.page.locator("#build-editor input[data-build-name]");
+    return this.editor().getByRole("textbox", { name: "Build name", exact: true });
   }
   notesInput() {
-    return this.page.locator("#build-editor textarea[data-build-notes]");
+    return this.editor().getByRole("textbox", { name: "Notes", exact: true });
   }
   saveDetailsButton() {
-    return this.page.locator("#build-editor [data-save-build-meta]");
+    return this.editor().getByRole("button", { name: "Save details", exact: true });
   }
   editorSummaryName() {
     return this.page.locator("#build-editor .build-active-summary strong");
@@ -69,22 +79,28 @@ export class BuildsPage {
     await expect(this.view()).toBeVisible();
   }
   async openCard(name) {
-    await this.card(name).locator("[data-activate-build]").click();
+    await this.card(name)
+      .getByRole("button", { name: `Select ${name}`, exact: true })
+      .click();
   }
   async editCard(name) {
-    await this.card(name).locator("[data-edit-build]").click();
+    await this.card(name)
+      .getByRole("button", { name: `Edit ${name}`, exact: true })
+      .click();
   }
   async deleteCard(name) {
-    await this.card(name).locator("[data-delete-build]").click();
+    await this.card(name)
+      .getByRole("button", { name: `Delete ${name}`, exact: true })
+      .click();
   }
   async confirmDelete() {
-    await this.deleteDialog().locator("[data-confirm-delete-build]").click();
+    await this.deleteDialog().getByRole("button", { name: "Delete Build", exact: true }).click();
   }
   async cancelDelete() {
-    await this.deleteDialog().locator("[data-cancel-delete-build]").click();
+    await this.deleteDialog().getByRole("button", { name: "Keep Build", exact: true }).click();
   }
   async confirmDeleteAll() {
-    await this.deleteAllDialog().locator("[data-confirm-delete-all-builds]").click();
+    await this.deleteAllDialog().getByRole("button", { name: "Delete All Builds", exact: true }).click();
   }
   async expectToast(text) {
     await expect(this.toast()).toHaveText(text);
