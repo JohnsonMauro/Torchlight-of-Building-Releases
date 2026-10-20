@@ -1,7 +1,7 @@
 import { normalizePercentageText } from "./percentage-text.js";
 import { auraValuesAtLevel } from "./data/skills/aura-scaling-ss13.js";
 import { supportProgressionSs13 } from "./data/skills/support-progression-ss13.generated.js";
-import { parseProgressionCell } from "./support-effects.js";
+import { parseProgressionCell } from "./progression-cell.js";
 
 const supportLevel = (support) => Math.max(1, Math.min(40, support.effectiveLevel ?? support.level ?? 20));
 // TLIDB progression cells hold fractions at the anchor levels ("61/2" at Lv21); Number() read those as NaN.

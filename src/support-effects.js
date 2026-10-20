@@ -14,6 +14,7 @@ import { EMPOWER_MODELED_SKILLS, EMPOWER_BUFF_SKILLS } from "./empower-effects.j
 // Movement rate for per-metre support lines (Hunting Tempo, 2026-10-15 patch update): src/dummy-target.js, the same 6 m/s
 // placeholder as the Thunder Focus profile (no game figure fixes it).
 import { ASSUMED_MOVEMENT_METERS_PER_SECOND } from "./dummy-target.js";
+import { parseProgressionCell } from "./progression-cell.js";
 export { ASSUMED_MOVEMENT_METERS_PER_SECOND };
 
 /**
@@ -100,21 +101,6 @@ export function criticalStrikeRatingIncreasePercent(level) {
   );
   const table = effective <= 40 ? parseProgressionCell(column?.values?.[String(effective)])?.[0] : null;
   return Number.isFinite(table) ? table : 135 + 5 * (effective - 1);
-}
-
-/** One progression cell → its numbers ("a/b" fractions, "a,b" pairs), or null when the cell is not numeric. */
-export function parseProgressionCell(raw) {
-  if (raw == null) return null;
-  const parts = String(raw)
-    .replace(/−/g, "-")
-    .split(",")
-    .map((part) => part.trim());
-  const values = parts.map((part) => {
-    if (!/^[+-]?\d+(?:\.\d+)?(?:\/[+-]?\d+(?:\.\d+)?)?$/.test(part)) return NaN;
-    const [top, bottom] = part.split("/").map(Number);
-    return bottom ? top / bottom : top;
-  });
-  return values.length && values.every(Number.isFinite) ? values : null;
 }
 
 const tidy = (text) =>

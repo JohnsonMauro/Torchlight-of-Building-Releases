@@ -1,7 +1,7 @@
 import { normalizePercentageText } from "./percentage-text.js";
 import { requestedCombatConditions } from "./combat-condition-mode.js";
 import { supportProgressionSs13 } from "./data/skills/support-progression-ss13.generated.js";
-import { parseProgressionCell } from "./support-effects.js";
+import { parseProgressionCell } from "./progression-cell.js";
 
 // Aegis of Fire on the skill board (Effective HP only; defence audit 2026-10-13, research/frost-terra-defense-compare-2026-10-13.md).
 //

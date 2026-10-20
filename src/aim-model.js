@@ -1,7 +1,7 @@
 import { normalizePercentageText } from "./percentage-text.js";
 import { dummyTarget, explicitRadiusHolds } from "./dummy-target.js";
 import { supportProgressionSs13 } from "./data/skills/support-progression-ss13.generated.js";
-import { parseProgressionCell } from "./support-effects.js";
+import { parseProgressionCell } from "./progression-cell.js";
 import { empowerAdditionalLines } from "./storm-command.js";
 
 // A linked support's per-level value from its TLIDB progression column (the first number of the cell at the support's
