@@ -464,3 +464,15 @@ test("deleting the installed prism also takes it off its node", async ({ page })
   await expect(dialog.getByRole("button", { name: "Craft Prism", exact: true })).toBeVisible();
   await planner.expectNoErrors();
 });
+
+test("a prism installed in another tree cannot be installed from this one", async ({ page }) => {
+  const { planner, talents } = await openTree(page, "Tree 3");
+  const dialog = talents.prismInventory();
+  await talents.action("Install Prism").click();
+  await expect(dialog.locator("#prism-inventory-title")).toHaveText("Install Prism - Tree Slot 3");
+  const row = dialog.locator(".prism-inventory-item");
+  await expect(row.locator("small")).toHaveText("Ethereal Prism · 1x1 area · Installed in Lich");
+  await expect(row.getByRole("button", { name: "Install", exact: true })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "Unequip current Prism" })).toHaveCount(0);
+  await planner.expectNoErrors();
+});
