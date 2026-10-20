@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { goldenInputs, calculateGoldenCase } from "./cases.js";
 import { canonicalJson, resultSummary, sha256 } from "./canonical.js";
+import { resultShapeProblems } from "./result-shape.js";
 
 const expected = JSON.parse(readFileSync(new URL("./expected.json", import.meta.url), "utf8"));
 const inputs = goldenInputs();
@@ -20,6 +21,11 @@ for (const { id, state } of inputs) {
   test(`golden: ${id}`, () => {
     const result = calculateGoldenCase(state);
     const recorded = expected.cases[id];
+    assert.deepEqual(
+      resultShapeProblems(result),
+      [],
+      `${id}: result does not match PlannerResult (src/planner-api.ts)`,
+    );
     assert.ok(recorded, `no recorded result for ${id}; run pnpm golden:update`);
     assert.deepEqual(resultSummary(result), recorded.summary, `${id}: headline figures changed`);
     assert.equal(
