@@ -16,6 +16,8 @@ export default defineConfig({
   testIgnore: "desktop/**",
   outputDir: "test-results",
   fullyParallel: true,
+  // Locally at most 2 browsers at once, so a run does not take the whole CPU (games and the desktop keep running).
+  workers: process.env.CI ? undefined : 2,
   forbidOnly: Boolean(process.env.CI),
   reporter: process.env.CI ? "github" : "list",
   use: { channel: "chrome", trace: "retain-on-failure" },
