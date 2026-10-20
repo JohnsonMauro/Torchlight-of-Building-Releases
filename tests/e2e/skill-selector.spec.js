@@ -229,6 +229,35 @@ test("a progression support with stars shows its tiers, rolls and stars", async 
   await planner.expectNoErrors();
 });
 
+test("a roll slider's fill follows its range and value after a tier change", async ({ page }) => {
+  const { planner, skills } = await openSkills(page, youga);
+  await skills.socket("Replace Homing Frost Bolt: Deep Chill (Noble)").click();
+  const config = detail(skills).locator(".special-support-config");
+  const fill = () =>
+    config
+      .locator('input[type="range"]')
+      .first()
+      .evaluate((range) => {
+        const min = Number(range.min),
+          max = Number(range.max),
+          value = Number(range.value);
+        const expected = max > min ? Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100)) : 0;
+        return { shown: range.style.getPropertyValue("--range-fill"), expected: `${expected}%` };
+      });
+  const tiers = config.locator(".special-tier-buttons button");
+  for (const index of [0, (await tiers.count()) - 1]) {
+    await tiers.nth(index).click();
+    await expect(tiers.nth(index)).toHaveClass(/\bactive\b/);
+    await expect
+      .poll(async () => {
+        const { shown, expected } = await fill();
+        return shown === expected;
+      })
+      .toBe(true);
+  }
+  await planner.expectNoErrors();
+});
+
 test("an aura on another row reads Installed and cannot be confirmed again", async ({ page }) => {
   const { planner, skills } = await openSkills(page);
   await skills.tab("Auras").click();
