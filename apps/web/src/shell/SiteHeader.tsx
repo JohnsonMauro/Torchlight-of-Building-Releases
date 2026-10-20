@@ -63,6 +63,7 @@ export function SiteHeader() {
           className="button button-secondary command-button"
           type="button"
           title="Import a build from the game log"
+          onClick={() => plannerCommands().openGameLogImport()}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M6 3h8l4 4v6M14 3v4h4M6 3v18h6" />

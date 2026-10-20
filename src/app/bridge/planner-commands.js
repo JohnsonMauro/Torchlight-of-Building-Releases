@@ -18,6 +18,16 @@
  * @property {() => Promise<void>} exportBuild Copies the open build's code to the clipboard (a toast says how it went).
  * @property {(text: string) => void} importBuild Adds a pasted build code as a new active build and opens the Builds view;
  *   a toast says when the code cannot be read (the Import dialog then stays open).
+ * @property {() => void} openGameLogImport Opens Import from game and looks for the game log through the local reader.
+ * @property {(file: File | null) => void} chooseGameLogFile Import from game: reads a chosen log in the page and lists
+ *   its logins (none chosen), or says why it cannot.
+ * @property {() => void} showGameLogPicker Import from game: "Choose a different file…" (shows the file picker).
+ * @property {(id: string) => void} selectGameLogSnapshot Import from game: turns a login into a build and shows its
+ *   summary.
+ * @property {() => void} importGameLogBuild Import from game: adds the chosen login's build as a new active build, closes
+ *   the dialog and opens the Builds view.
+ * @property {() => void} closeGameLogImport Import from game was closed: drops the log, its logins and any read under
+ *   way.
  * @property {(auto: boolean) => void} setBestCaseMode Config tab: Best case (automatic conditions) on, or manual.
  * @property {(id: string, on: boolean) => void} setCombatCondition Switches a combat condition (or own buffs built before
  *   the fight, `prebuiltSelfBuffs`).

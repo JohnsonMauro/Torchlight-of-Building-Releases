@@ -13,6 +13,7 @@ import type { HeroTraitsView } from "./hero-traits-view-model.ts";
 import type { CarinoAmmoSelectorView, SageScentSelectorView } from "./hero-dialogs-view-model.ts";
 import type { StatsView } from "./stats-view-model.ts";
 import type { SkillSelectorView } from "./skill-selector-view.ts";
+import type { GameLogImportView } from "./game-log-import-view.ts";
 
 /** The Config tab: the calculated build and the combat settings it was calculated with. */
 export interface ConfigurationSource {
@@ -74,6 +75,8 @@ export interface ViewSources {
   fateSlotSelector: { spirit: string; selected: string; choices: { id: string; label: string }[] };
   /** The skill selector (src/app/bridge/skill-selector-view.ts). */
   skillSelector: SkillSelectorView;
+  /** The Import from game dialog: its opening and what it shows (src/app/bridge/game-log-import-view.ts). */
+  gameLogImport: DialogSession & GameLogImportView;
   /** The prism inventory: the tree slot it is open for, every crafted prism, and whether that tree has one installed. */
   prismInventory: {
     slot: number;

@@ -280,12 +280,12 @@ import {
 import {
   gameLogAutoSnapshots,
   gameLogBuildName,
-  gameLogFileStatusMarkup,
-  gameLogFoundMarkup,
-  gameLogListFailedMarkup,
-  gameLogSnapshotListMarkup,
-  gameLogSummaryMarkup,
-} from "./game-log-import-view.js";
+  gameLogFileStatus,
+  gameLogFound,
+  gameLogListFailedStatus,
+  gameLogLogins,
+  gameLogSummary,
+} from "./bridge/game-log-import-view.ts";
 import {
   heroTraitTree,
   heroTreeRules,
@@ -1660,6 +1660,13 @@ providePlannerCommands({
   resetBuild,
   exportBuild,
   importBuild,
+  // Import from game (apps/web/src/shell/dialogs/ImportGameLogDialog.tsx).
+  openGameLogImport,
+  chooseGameLogFile,
+  showGameLogPicker: () => setGameLogView({ chooseOther: false, picker: true }),
+  selectGameLogSnapshot,
+  importGameLogBuild,
+  closeGameLogImport: resetGameLogImport,
   // HERO tab (apps/web/src/features/hero).
   setHeroDetailTab: (tab) => {
     activeHeroDetailTab = tab;
@@ -1764,6 +1771,8 @@ provideViewSource("carinoAmmoSelector", () => ({
 provideViewSource("skillSelector", skillSelectorSource);
 // The prism inventory.
 provideViewSource("prismInventory", prismInventorySource);
+// The Import from game dialog.
+provideViewSource("gameLogImport", gameLogImportSource);
 // The talent tree, core talent and Fate slot pickers.
 provideViewSource("talentPicker", talentPickerSource);
 provideViewSource("corePicker", corePickerSource);
@@ -2001,45 +2010,55 @@ async function importBuildText(text) {
 function importBuild(text) {
   importBuildText(text).catch(() => showToast("That build code could not be read"));
 }
-// Import from game. On open the planner asks its local reader for UE_game.log (the pnpm dev server
-// /api/game-log/snapshots, or the desktop bridge); both return only sanitised build dumps (src/game-log/game-log-local.js).
-// Without it, or when the user asks, the picked log is read in the page. Everything is dropped with the dialog, and an
-// import always adds a new library entry.
+// Import from game (apps/web/src/shell/dialogs/ImportGameLogDialog.tsx shows the "gameLogImport" source). On open the
+// planner asks its local reader for UE_game.log (the pnpm dev server /api/game-log/snapshots, or the desktop bridge);
+// both return only sanitised build dumps (src/game-log/game-log-local.js). Without it, or when the user asks, the picked
+// log is read in the page. Everything is dropped with the dialog, and an import always adds a new library entry.
 let gameLogSources = new Map(),
   gameLogRows = [],
   gameLogImport = null,
-  gameLogReadToken = 0;
+  gameLogReadToken = 0,
+  gameLogSession = 0;
+const CLOSED_GAME_LOG_VIEW = {
+  found: null,
+  chooseOther: false,
+  picker: false,
+  reason: "",
+  status: null,
+  selectedId: null,
+};
+let gameLogView = CLOSED_GAME_LOG_VIEW;
 const gameLogLocalServer = () =>
   /^https?:$/.test(location.protocol) && ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 const autoGameLogUnavailable = () =>
   gameLogLocalServer() || typeof window.tliDesktop?.gameLogSnapshots === "function"
     ? "Automatic lookup needs the planner's local dev server (pnpm dev) or the desktop app."
     : "Choose your UE_game.log.";
+function gameLogImportSource() {
+  return {
+    session: gameLogSession,
+    ...displayTexts({
+      ...gameLogView,
+      logins: gameLogLogins(gameLogRows),
+      summary: gameLogImport ? gameLogSummary(gameLogImport.report) : null,
+    }),
+  };
+}
+function setGameLogView(changes) {
+  gameLogView = { ...gameLogView, ...changes };
+  viewSourceChanged("gameLogImport");
+}
 function clearGameLogResults() {
   gameLogSources = new Map();
   gameLogRows = [];
   gameLogImport = null;
-  $("#import-game-log-snapshots").innerHTML = "";
-  $("#import-game-log-summary").innerHTML = "";
-  $("[data-import-game-log-build]").disabled = true;
-}
-function showGameLogPicker(show) {
-  document.querySelectorAll("#import-game-log-dialog .game-log-picker").forEach((node) => {
-    node.hidden = !show;
-  });
+  gameLogView = { ...gameLogView, selectedId: null };
 }
 function resetGameLogImport() {
   gameLogReadToken += 1;
   clearGameLogResults();
-  $("#import-game-log-file").value = "";
-  $("#import-game-log-status").textContent = "";
-  $("#import-game-log-found").hidden = true;
-  $("#import-game-log-found").innerHTML = "";
-  $("#import-game-log-auto-privacy").hidden = true;
-  $("#import-game-log-dialog .game-log-choose").hidden = true;
-  $("#import-game-log-reason").hidden = true;
-  $("#import-game-log-reason").textContent = "";
-  showGameLogPicker(false);
+  gameLogView = CLOSED_GAME_LOG_VIEW;
+  viewSourceChanged("gameLogImport");
 }
 async function requestGameLogSnapshots() {
   if (typeof window.tliDesktop?.gameLogSnapshots === "function") return window.tliDesktop.gameLogSnapshots();
@@ -2054,7 +2073,7 @@ async function requestGameLogSnapshots() {
 }
 async function findGameLog() {
   const token = gameLogReadToken;
-  $("#import-game-log-status").textContent = "Looking for UE_game.log…";
+  setGameLogView({ status: { text: "Looking for UE_game.log…" } });
   let result = null;
   try {
     result = await requestGameLogSnapshots();
@@ -2062,67 +2081,50 @@ async function findGameLog() {
     result = null;
   }
   if (token !== gameLogReadToken) return;
-  $("#import-game-log-status").textContent = "";
   const auto = result?.found && Array.isArray(result.files) ? gameLogAutoSnapshots(result.files) : null;
   if (!auto?.rows.length) {
-    showGameLogPicker(true);
-    $("#import-game-log-reason").textContent =
-      result && result.found === false && result.reason ? result.reason : autoGameLogUnavailable();
-    $("#import-game-log-reason").hidden = false;
+    setGameLogView({
+      status: null,
+      picker: true,
+      reason: result && result.found === false && result.reason ? result.reason : autoGameLogUnavailable(),
+    });
     return;
   }
   gameLogSources = auto.sources;
   gameLogRows = auto.rows;
-  $("#import-game-log-found").innerHTML = gameLogFoundMarkup(result.files[0]);
-  $("#import-game-log-found").hidden = false;
-  $("#import-game-log-auto-privacy").hidden = false;
-  $("#import-game-log-dialog .game-log-choose").hidden = false;
+  setGameLogView({ status: null, found: gameLogFound(result.files[0]), chooseOther: true });
   await selectGameLogSnapshot(gameLogRows[0].id);
 }
 async function selectGameLogSnapshot(id) {
   const source = gameLogSources.get(id),
     token = gameLogReadToken;
   if (!source) return;
-  $("#import-game-log-snapshots").innerHTML = gameLogSnapshotListMarkup(gameLogRows, id);
+  setGameLogView({ selectedId: id });
   try {
     const idMap = await loadGameIdMap();
     if (token !== gameLogReadToken) return;
     gameLogImport = importSnapshot(source.scan, source.dumpId, idMap);
-    $("#import-game-log-status").textContent = "";
-    $("#import-game-log-summary").innerHTML = gameLogSummaryMarkup(gameLogImport.report);
-    $("[data-import-game-log-build]").disabled = false;
+    setGameLogView({ status: null });
   } catch {
     if (token !== gameLogReadToken) return;
     gameLogImport = null;
-    $("#import-game-log-summary").innerHTML = "";
-    $("[data-import-game-log-build]").disabled = true;
-    $("#import-game-log-status").textContent = "This snapshot could not be turned into a build.";
+    setGameLogView({ status: { text: "This snapshot could not be turned into a build." } });
   }
 }
-$("#import-game-log").addEventListener("click", () => {
+function openGameLogImport() {
   resetGameLogImport();
+  gameLogSession += 1;
   $("#import-game-log-dialog").showModal();
   findGameLog();
-});
-$("[data-cancel-import-game-log]").addEventListener("click", () => $("#import-game-log-dialog").close());
-$("#import-game-log-dialog").addEventListener("close", resetGameLogImport);
-$("[data-game-log-choose-file]").addEventListener("click", () => {
-  $("#import-game-log-dialog .game-log-choose").hidden = true;
-  showGameLogPicker(true);
-  $("#import-game-log-file").focus();
-});
-$("#import-game-log-file").addEventListener("change", async (event) => {
-  const file = event.target.files?.[0],
-    token = ++gameLogReadToken;
+}
+async function chooseGameLogFile(file) {
+  const token = ++gameLogReadToken;
   clearGameLogResults();
   if (!file) {
-    $("#import-game-log-status").textContent = "";
+    setGameLogView({ status: null });
     return;
   }
-  $("#import-game-log-found").hidden = true;
-  $("#import-game-log-auto-privacy").hidden = true;
-  $("#import-game-log-reason").hidden = true;
-  $("#import-game-log-status").textContent = "Reading the log…";
+  setGameLogView({ found: null, reason: "", status: { text: "Reading the log…" } });
   // Read in this browser only (readGameLogFile never throws; its status says which problem it was); nothing is
   // uploaded or stored. A failure after a good read (id map, listing) is the planner's, not the file's.
   const idMapPromise = loadGameIdMap();
@@ -2130,7 +2132,7 @@ $("#import-game-log-file").addEventListener("change", async (event) => {
   const read = await readGameLogFile(file);
   if (token !== gameLogReadToken) return;
   if (read.status !== "ok") {
-    $("#import-game-log-status").innerHTML = gameLogFileStatusMarkup(read, file.name);
+    setGameLogView({ status: gameLogFileStatus(read, file.name) });
     return;
   }
   try {
@@ -2139,21 +2141,15 @@ $("#import-game-log-file").addEventListener("change", async (event) => {
     if (token !== gameLogReadToken) return;
     gameLogSources = new Map(scan.dumps.map((dump) => [dump.id, { scan, dumpId: dump.id }]));
     gameLogRows = listSnapshots(scan, idMap).sort((a, b) => (a.stamp < b.stamp ? 1 : -1));
-    $("#import-game-log-status").innerHTML = gameLogFileStatusMarkup(read, file.name);
-    $("#import-game-log-snapshots").innerHTML = gameLogSnapshotListMarkup(gameLogRows);
+    setGameLogView({ status: gameLogFileStatus(read, file.name) });
   } catch (error) {
     if (token === gameLogReadToken) {
       clearGameLogResults();
-      $("#import-game-log-status").innerHTML = gameLogListFailedMarkup(error, file.name);
+      setGameLogView({ status: gameLogListFailedStatus(error, file.name) });
     }
   }
-});
-$("#import-game-log-snapshots").addEventListener("click", (event) => {
-  const choice = event.target.closest("[data-game-log-snapshot]");
-  if (!choice) return;
-  selectGameLogSnapshot(choice.dataset.gameLogSnapshot);
-});
-$("[data-import-game-log-build]").addEventListener("click", () => {
+}
+function importGameLogBuild() {
   if (!gameLogImport) return;
   persistPlannerState();
   const { state, report } = gameLogImport;
@@ -2168,7 +2164,7 @@ $("[data-import-game-log-build]").addEventListener("click", () => {
   $("#import-game-log-dialog").close();
   activateWorkspaceView("builds", { scroll: false });
   showToast(`${imported.name} imported and active`);
-});
+}
 let toastTimer;
 function showToast(message) {
   clearTimeout(toastTimer);
