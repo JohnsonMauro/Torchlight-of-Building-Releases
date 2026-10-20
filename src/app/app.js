@@ -20,7 +20,7 @@ import { classifySkillCoverage, supportClauseCoverage, supportLineCoverage } fro
 import { curseSlotSummary } from "../engine/skills/curse-limit.js";
 import { aimUptimeAfterToggle } from "./aim-controls.js";
 import { provideViewSource, viewSourceChanged } from "./bridge/view-sources.ts";
-import { pactsView } from "./bridge/pacts-view-model.ts";
+import { pactsView, pactspiritSelectorView } from "./bridge/pacts-view-model.ts";
 import { skillsView } from "./bridge/skills-view-model.ts";
 import { slatesView } from "./bridge/slates-view-model.ts";
 import { clampCombatNumber, combatNumberLimits } from "../engine/state/state-validation.ts";
@@ -172,7 +172,7 @@ import {
 } from "../engine/pacts/kismet-crafting.js";
 import { transferKismetSlot } from "../engine/pacts/kismet-slot-transfer.js";
 import { pactspiritTreesSs13 } from "../data/pacts/pactspirit-trees-ss13.js";
-import { activeCapturedPactspirits, selectPactspirit, sortPactspirits } from "../engine/pacts/pactspirit-selection.js";
+import { activeCapturedPactspirits, selectPactspirit } from "../engine/pacts/pactspirit-selection.js";
 import { selenaScorchingBeamSlatesSs13 } from "../data/slates/selena-scorching-beam-ss13.js";
 import { selenaCompleteSkillLoadoutSs13 } from "../data/skills/selena-complete-skill-loadout-ss13.js";
 import {
@@ -453,6 +453,7 @@ let selectorKind = "skill";
 let selectorQuery = "";
 let heroSelectorSession = 0; // the hero selector's openings (apps/web/src/shell/dialogs/HeroSelectorDialog.tsx)
 let activeHeroDetailTab = "traits";
+let pactspiritSelectorSession = 0; // the Pactspirit selector's openings (apps/web/src/shell/dialogs/PactspiritSelectorDialog.tsx)
 let followerSelectorSession = 0; // the follower selector's openings (apps/web/src/shell/dialogs/FollowerSelectorDialog.tsx)
 let sageScentSelectorKind = "elixir";
 let sageScentQuery = "";
@@ -1510,16 +1511,23 @@ providePlannerCommands({
   // Pactspirits section (apps/web/src/features/pacts).
   openPactspiritSelector: (slot) => {
     selectedPactspiritSlot = slot;
-    $("[data-pactspirit-search]").value = "";
-    $("[data-pactspirit-category]").innerHTML = [
-      "All",
-      ...new Set(pactspiritCatalogSs13.map((entry) => entry.category)),
-    ]
-      .map((category) => `<option value="${category}">${category}</option>`)
-      .join("");
-    renderPactspiritSelector();
+    pactspiritSelectorSession++;
+    viewSourceChanged("pactspiritSelector");
     $("#pactspirit-selector").showModal();
     $("[data-pactspirit-search]").focus();
+  },
+  selectPactspirit: (name) => {
+    plannerState.pacts.selectedSpirits = selectPactspirit(
+      plannerState.pacts.selectedSpirits,
+      selectedPactspiritSlot,
+      name,
+    );
+    plannerState.pacts.activeSpirits = activeCapturedPactspirits(
+      plannerState.pacts.selectedSpirits,
+      selenaScorchingBeamPactsSs13.pactspirits.map((spirit) => spirit.name),
+    );
+    $("#pactspirit-selector").close();
+    refreshPactCandidate();
   },
   removePactspirit: removeSelectedPactspirit,
   // A level change is saved without recalculating the page (as before); the section shows the new level.
@@ -1696,6 +1704,8 @@ provideViewSource("equipment", equipmentSource);
 provideViewSource("talents", talentsSource);
 // The HERO tab's data (src/app/bridge/hero-traits-view-model.ts).
 provideViewSource("heroTraits", () => heroTraitsView(plannerState.hero, activeHeroDetailTab));
+// The Pactspirit selector's data (src/app/bridge/pacts-view-model.ts).
+provideViewSource("pactspiritSelector", () => ({ session: pactspiritSelectorSession, ...pactspiritSelectorView() }));
 // The follower selector's data (apps/web/src/shell/dialogs/FollowerSelectorDialog.tsx).
 provideViewSource("followerSelector", () => ({
   session: followerSelectorSession,
@@ -4515,30 +4525,6 @@ function slateCraftedAffixGroups(slate) {
   return { fixed: affixes.slice(0, fixedCount), brand: affixes.slice(fixedCount) };
 }
 
-function renderPactspiritSelector() {
-  const search = $("[data-pactspirit-search]")?.value.trim().toLowerCase() || "",
-    category = $("[data-pactspirit-category]")?.value || "All";
-  const entries = pactspiritCatalogSs13.filter(
-    (entry) =>
-      (category === "All" || entry.category === category) &&
-      (!search || `${entry.name} ${entry.description}`.toLowerCase().includes(search)),
-  );
-  const groups = [...new Set(entries.map((entry) => entry.category))];
-  $("#pactspirit-selector-results").innerHTML =
-    groups
-      .map(
-        (group) =>
-          `<section class="pactspirit-selector-group"><h3>${escapeHtml(group)} <small>(${entries.filter((entry) => entry.category === group).length})</small></h3><div class="pactspirit-selector-grid">${sortPactspirits(
-            entries.filter((entry) => entry.category === group),
-          )
-            .map(
-              (entry) =>
-                `<button type="button" class="pactspirit-choice rarity-${entry.rarity.toLowerCase()}" data-select-pactspirit="${escapeHtml(entry.name)}"><img src="${entry.icon}" alt=""><span><strong>${escapeHtml(entry.name)}</strong><small>${entry.rarity} · ${entry.category}</small><em>${escapeHtml(entry.description)}</em></span></button>`,
-            )
-            .join("")}</div></section>`,
-      )
-      .join("") || '<p class="pactspirit-no-results">No Pactspirits match your search.</p>';
-}
 function openFateSlotSelector(name) {
   const dialog = $("#fate-slot-selector"),
     selected = plannerState.pacts.fateUnlocks?.[name];
@@ -6542,10 +6528,6 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("input", (event) => {
-  if (event.target.matches("[data-pactspirit-search]")) {
-    renderPactspiritSelector();
-    return;
-  }
   if (event.target.matches("[data-affix-roll-number]")) {
     const number = event.target,
       range = number.closest(".affix-roll-inputs")?.querySelector('input[type="range"]');
@@ -7115,25 +7097,6 @@ document.addEventListener("click", (event) => {
   if (event.target.closest("[data-close-kismet-crafter]")) {
     $("#kismet-crafter").close();
     activeKismetSlot = null;
-    return;
-  }
-  if (event.target.closest("[data-close-pactspirit-selector]")) {
-    $("#pactspirit-selector").close();
-    return;
-  }
-  const pactChoice = event.target.closest("[data-select-pactspirit]");
-  if (pactChoice) {
-    plannerState.pacts.selectedSpirits = selectPactspirit(
-      plannerState.pacts.selectedSpirits,
-      selectedPactspiritSlot,
-      pactChoice.dataset.selectPactspirit,
-    );
-    plannerState.pacts.activeSpirits = activeCapturedPactspirits(
-      plannerState.pacts.selectedSpirits,
-      selenaScorchingBeamPactsSs13.pactspirits.map((spirit) => spirit.name),
-    );
-    $("#pactspirit-selector").close();
-    refreshPactCandidate();
     return;
   }
   if (event.target.closest("[data-close-sage-scent]")) {
@@ -8897,10 +8860,6 @@ document.addEventListener("change", (event) => {
     editingLegendaryTexts.set(2, text);
     const preview = $("#inventory-item-body .gear-edit-layout aside");
     if (item && preview) preview.innerHTML = `<small>Preview</small>${equipmentPreview(inventoryEditingPreview(item))}`;
-    return;
-  }
-  if (event.target.matches("[data-pactspirit-category]")) {
-    renderPactspiritSelector();
     return;
   }
 });

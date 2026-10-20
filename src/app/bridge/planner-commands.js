@@ -24,6 +24,8 @@
  * @property {(auto: boolean) => void} setAimUptimeAuto Aim uptime derived from the build, or manual.
  * @property {(key: string, value: string) => void} setCombatValue Sets an Advanced number as typed (combat[key]).
  * @property {(slot: number) => void} openPactspiritSelector Opens the Pactspirit selector for pact slot 0–2.
+ * @property {(name: string) => void} selectPactspirit Pactspirit selector: puts that Pactspirit in the slot it was opened for
+ *   (swapping when it sits in another slot).
  * @property {(slot: number) => void} removePactspirit Empties pact slot 0–2.
  * @property {(name: string, level: number) => void} setPactspiritLevel Sets a Pactspirit's level (1–6).
  * @property {(name: string, nodeIndex: number) => void} togglePactNode Kismet slot mode: allocates or refunds a node

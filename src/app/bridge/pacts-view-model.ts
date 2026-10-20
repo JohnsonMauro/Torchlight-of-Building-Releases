@@ -9,7 +9,9 @@ import { orderedPactspiritNodes, pactspiritLevel } from "../../engine/pacts/pact
 import { kismetKindForRing, kismetSlotKey } from "../../engine/pacts/kismet-crafting.js";
 import { fateExtraSlots, fateSlotChoice } from "../../engine/pacts/fate-slot-unlocks.js";
 import { equippedKismetSummary } from "../../engine/pacts/pact-kismet-summary.js";
+import { sortPactspirits } from "../../engine/pacts/pactspirit-selection.js";
 import type { PlannerState } from "../../engine/state/planner-state.ts";
+import { displayTexts } from "./display-text.ts";
 
 export type KismetKind = "micro" | "medium";
 
@@ -174,4 +176,47 @@ export function pactsView(pacts: Pacts): PactsView {
       mediumMax: summary.mediumMax,
     },
   };
+}
+
+/** A Pactspirit of the Pactspirit selector (apps/web/src/shell/dialogs/PactspiritSelectorDialog.tsx). */
+export interface PactspiritChoiceView {
+  name: string;
+  category: string;
+  rarity: string;
+  icon: string;
+  description: string;
+  /** What the search box matches (name and description), lower case. */
+  search: string;
+  /** Its place within its category (rarity, then name). */
+  rank: number;
+}
+export interface PactspiritSelectorView {
+  /** Every category in catalog order. */
+  categories: string[];
+  /** Every Pactspirit in catalog order. */
+  choices: PactspiritChoiceView[];
+}
+
+let selectorView: PactspiritSelectorView | null = null;
+/** The Pactspirit selector's choices; the dialog filters them and groups them by category in catalog order. */
+export function pactspiritSelectorView(): PactspiritSelectorView {
+  if (selectorView) return selectorView;
+  const categories = [...new Set(pactspiritCatalogSs13.map((entry) => entry.category))];
+  const rank = new Map<string, number>();
+  for (const category of categories)
+    sortPactspirits(pactspiritCatalogSs13.filter((entry) => entry.category === category)).forEach(
+      (entry: { name: string }, index: number) => rank.set(entry.name, index),
+    );
+  selectorView = {
+    categories,
+    choices: pactspiritCatalogSs13.map((entry) => ({
+      ...displayTexts({ name: entry.name, description: entry.description }),
+      category: entry.category,
+      rarity: entry.rarity,
+      icon: entry.icon,
+      search: `${entry.name} ${entry.description}`.toLowerCase(),
+      rank: rank.get(entry.name) ?? 0,
+    })),
+  };
+  return selectorView;
 }

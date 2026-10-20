@@ -3,7 +3,7 @@
 // is read again only then (and only while a view subscribes). Edits go the other way, through src/app/bridge/planner-commands.js.
 import type { PlannerResult } from "../../engine/planner-api.ts";
 import type { PlannerState } from "../../engine/state/planner-state.ts";
-import type { PactsView } from "./pacts-view-model.ts";
+import type { PactsView, PactspiritSelectorView } from "./pacts-view-model.ts";
 import type { FollowerPanelView, FollowerPickerCard } from "../follower-panel.js";
 import type { SkillsView } from "./skills-view-model.ts";
 import type { SlatesView } from "./slates-view-model.ts";
@@ -49,6 +49,8 @@ export interface ViewSources {
   heroSelector: DialogSession & { selectedHeroId: string };
   /** The follower selector: its opening and its cards (src/app/follower-panel.js followerPickerView). */
   followerSelector: DialogSession & { cards: FollowerPickerCard[] };
+  /** The Pactspirit selector: its opening and every Pactspirit (src/app/bridge/pacts-view-model.ts). */
+  pactspiritSelector: DialogSession & PactspiritSelectorView;
 }
 export type ViewSourceName = keyof ViewSources;
 
