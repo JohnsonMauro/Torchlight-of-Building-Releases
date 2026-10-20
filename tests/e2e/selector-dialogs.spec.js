@@ -97,7 +97,8 @@ test("the follower selector lists each follower per rarity, marks the current on
   await expect(current).toHaveClass(/\bfollower-tint-ult\b/);
   await expect(current.locator("small")).toHaveText(/^ULT · \d skill slots?$/);
   const search = dialog.getByRole("searchbox", { name: "Search followers" });
-  await search.fill(" Lion ");
+  // Two spaces around the word: only a trimmed search matches it.
+  await search.fill("  Lion  ");
   await expect(followerCards(dialog)).toHaveCount(followerPickerOptions("lion").length);
   await search.fill("legendary");
   await expect(followerCards(dialog)).toHaveCount(followerPickerOptions("legendary").length);
