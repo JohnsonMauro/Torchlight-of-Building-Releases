@@ -68,5 +68,6 @@
       "releaseType": "release"
     }
   },
-  "license": "MIT"
+  "license": "MIT",
+  "packageManager": "pnpm@12.11.2"
 }
