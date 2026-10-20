@@ -177,6 +177,54 @@ test("the editor opens on the stored corrosion: a corroded line and a corrosion 
   await planner.expectNoErrors();
 });
 
+test("a captured item (the default build's): its lines are text fields, saved as typed into an Inventory copy", async ({
+  page,
+}) => {
+  const planner = new PlannerPage(page);
+  await planner.open();
+  await planner.showView("talents");
+  const gear = new GearPage(page);
+  const name = "Long Night Sorcerer's Robe - Priceless";
+  await gear.cardButton(name).click();
+  await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
+  const editor = gear.itemDialog().locator("#inventory-item-body");
+  await expect(editor.locator("h3").first()).toHaveText("Prefixes and Suffixes");
+  const first = editor.locator('.fixed-mod [data-edit-modifier="0"]');
+  await expect(first).toHaveValue("+8% Aura Effect");
+  await expect(editor.locator(".fixed-mod input[data-edit-modifier]")).toHaveCount(7);
+  await first.fill("+9% Aura Effect");
+  await gear.itemDialog().getByRole("textbox", { name: "Name", exact: true }).fill("Edited Robe");
+  await gear.itemDialog().locator("footer").getByRole("button", { name: "Save Changes", exact: true }).click();
+  await expect(gear.toast()).toHaveText("Inventory item updated");
+  await expect(gear.itemDialogTitle()).toHaveText("Edited Robe");
+  const saved = (await gear.stored()).inventory.find((item) => item.name === "Edited Robe");
+  expect(saved.id).toMatch(/^gear-/);
+  expect(saved.modifiers[0]).toBe("+9% Aura Effect");
+  expect(saved.modifiers).toContain("+24% Fire Resistance");
+  await planner.expectNoErrors();
+});
+
+test("the editor's Belt Blend and fields of a captured belt are saved", async ({ page }) => {
+  const planner = new PlannerPage(page);
+  await planner.open();
+  await planner.showView("talents");
+  const gear = new GearPage(page);
+  await gear.cardButton("Elder Sage Girdle - Priceless").click();
+  await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
+  const blend = gear.itemDialog().getByRole("combobox", { name: "Belt Blend", exact: true });
+  await expect(blend).toHaveValue("");
+  await expect(gear.itemDialog().getByRole("spinbutton", { name: "Equipment Energy", exact: true })).toHaveCount(0);
+  await blend.selectOption("belt-blend-005");
+  await gear.itemDialog().getByRole("textbox", { name: "Base item", exact: true }).fill("Belt");
+  await gear.itemDialog().getByRole("spinbutton", { name: "Item level", exact: true }).fill("95");
+  await gear.itemDialog().locator("footer").getByRole("button", { name: "Save Changes", exact: true }).click();
+  await expect(gear.toast()).toHaveText("Inventory item updated");
+  const saved = (await gear.stored()).inventory.find((item) => item.name === "Elder Sage Girdle - Priceless");
+  expect(saved).toMatchObject({ beltBlendId: "belt-blend-005", level: 95, base: "Belt" });
+  expect(saved.modifiers).toContain("Immune to Ignite\nMinions are immune to Fire Damage");
+  await planner.expectNoErrors();
+});
+
 test("Edit on a crafted rare opens the crafter instead", async ({ page }) => {
   const { planner, gear } = await openItem(page, "Arcanist Girdle");
   await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
