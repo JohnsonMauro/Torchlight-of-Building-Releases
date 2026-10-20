@@ -21,6 +21,7 @@ import { curseSlotSummary } from "./curse-limit.js";
 import { aimUptimeAfterToggle } from "./aim-controls.js";
 import { provideViewSource, viewSourceChanged } from "./view-sources.ts";
 import { pactsView } from "./pacts-view-model.ts";
+import { skillsView } from "./skills-view-model.ts";
 import { clampCombatNumber, combatNumberLimits } from "./state-validation.ts";
 import {
   coverageBadge,
@@ -74,7 +75,6 @@ import {
   allocateSkillEnergy,
   applyCapturedEnergyCosts,
   energyCostForSupportSlots,
-  energyCostForSupportPositions,
   collectNormalizedGearModifiers,
   aggregateNormalizedModifiers,
 } from "./engine.js";
@@ -89,12 +89,7 @@ import { divinitySlateAffixesSs13, divinitySlateTreeFamiliesSs13 } from "./data/
 import { netherKingFixedAffixesSs13 } from "./data/nether-king-slate-affixes-ss13.js";
 import { assignSkillBoardSlot, moveSkillBoardSlot, skillBoardRows } from "./skill-board-slots.js";
 import { heroCanPlaceMagusInActiveSlot, isSpiritMagusSkill } from "./magus-active-slot.js";
-import {
-  supportSlotsForSetup,
-  supportFitsSlot,
-  transferSupportSlot,
-  userInstalledSupports,
-} from "./support-slot-transfer.js";
+import { supportFitsSlot, transferSupportSlot, userInstalledSupports } from "./support-slot-transfer.js";
 import { gameRuleDecides, supportCanSupportSkill } from "./support-compatibility.js";
 import {
   judgmentAffectedSlateIds,
@@ -402,11 +397,6 @@ let prismEditingId = null;
 let pendingPrismPlacement = null;
 let prismDrag = null;
 let suppressPrismClick = false;
-let skillDrag = null;
-let suppressSkillClick = false;
-let supportDrag = null;
-let suppressSupportClick = false;
-let suppressSupportContextMenu = false;
 let gearDrag = null;
 let suppressGearClick = false;
 let selenaDanceDrag = null; // trait-tree drag (every tree hero: src/hero-trait-tree.js)
@@ -464,7 +454,6 @@ let selectedSlateGod = "Goddess of Deception";
 let selectedNetherSlateType = "Judgment";
 let selectedLegendarySlateName = "";
 let editingCraftedSlateId = null;
-let selectedSkillIndex = 0;
 let selectorKind = "skill";
 let selectorQuery = "";
 let heroSelectorQuery = "";
@@ -1420,7 +1409,6 @@ providePlannerCommands({
   newBuild: () => {
     createBuild({ name: "New build", state: emptyPlannerState() });
     applyPlannerState(loadPlannerState());
-    selectedSkillIndex = 0;
     renderCandidateViews();
     activateWorkspaceView("talents", { scroll: false });
     showToast("New build ready · Rename it in Build Library");
@@ -1584,11 +1572,24 @@ providePlannerCommands({
     hidePlannerTooltip();
     commitFollower(setFollowerSkill(plannerState, slot, null), "Skill slot cleared");
   },
+  // Skills section (apps/web/src/features/skills).
+  setSkillBoardTab: (tab) => {
+    activeSkillBoardTab = tab === "auras" ? "auras" : "skills";
+    renderSkills();
+  },
+  openSkillSelector,
+  removeSkill: removeBoardSkill,
+  removeSupport: removeBoardSupport,
+  moveSkill: moveBoardSkill,
+  moveSupport: moveBoardSupport,
+  resetSkills,
 });
 // The FOLLOWER tab's data (src/follower-panel.js).
 provideViewSource("follower", () => followerPanelView(plannerState));
 // The Pactspirits section's data (src/pacts-view-model.ts).
 provideViewSource("pacts", () => pactsView(plannerState.pacts));
+// The Skills section's data (src/skills-view-model.ts) for the open board tab.
+provideViewSource("skills", () => skillsView(currentPlanner(), plannerState.skills, activeSkillBoardTab));
 // The Config tab's data (src/view-sources.ts). Manual mode also needs the same build in automatic mode (which conditions
 // have a source); it is calculated only then.
 provideViewSource("configuration", () => {
@@ -1920,7 +1921,6 @@ $("[data-confirm-reset-build]").addEventListener("click", () => {
   $("#reset-build-confirm").close();
   const empty = emptyPlannerState();
   applyPlannerState(empty);
-  selectedSkillIndex = 0;
   persistPlannerState();
   renderCandidateViews();
   showToast("Build reset to empty");
@@ -2113,7 +2113,6 @@ $("[data-import-game-log-build]").addEventListener("click", () => {
     activate: true,
   });
   applyPlannerState(loadPlannerState());
-  selectedSkillIndex = 0;
   renderCandidateViews();
   $("#import-game-log-dialog").close();
   activateWorkspaceView("builds", { scroll: false });
@@ -5639,92 +5638,9 @@ const skillRoleLabels = {
   aura: "Precise aura",
 };
 
+// The Skills section (apps/web/src/features/skills) re-reads its source (src/skills-view-model.ts).
 function renderSkills() {
-  const planner = currentPlanner();
-  const activation = planner.activation;
-  const { profile, setups, energy, activeNames } = activation;
-  const activeIndexes = setups
-    .map((setup, index) => (setup.enabled && !setup.traitGranted ? index : -1))
-    .filter((index) => index >= 0);
-  if (!setups[selectedSkillIndex]?.enabled || setups[selectedSkillIndex]?.traitGranted)
-    selectedSkillIndex = activeIndexes[0] ?? 0;
-  const auraLedger = planner.aura;
-  const observedReservation = selenaCompleteSkillLoadoutSs13.observedReservation;
-  const displayedAuraLedger = auraLedger.planned || auraLedger;
-  const maximumMana = observedReservation.mana.maximum;
-  const maximumLife = observedReservation.life.maximum;
-  const sealedMana = (maximumMana * displayedAuraLedger.manaReservedPercent) / 100;
-  const sealedLife = (maximumLife * displayedAuraLedger.lifeReservedPercent) / 100;
-  const manaDemandPercent = displayedAuraLedger.manaDemandPercent ?? displayedAuraLedger.manaReservedPercent;
-  const lifeDemandPercent = displayedAuraLedger.lifeDemandPercent ?? displayedAuraLedger.lifeReservedPercent;
-  const manaOverCapacity = manaDemandPercent >= 100;
-  const lifeOverCapacity = lifeDemandPercent >= 100;
-  const reservationInvalid = manaOverCapacity || lifeOverCapacity;
-  const reservationSummary = $("#aura-reservation-summary");
-  reservationSummary.hidden = activeSkillBoardTab !== "auras";
-  reservationSummary.classList.toggle("over-capacity", reservationInvalid);
-  reservationSummary.classList.toggle("mana-over-capacity", manaOverCapacity);
-  reservationSummary.classList.toggle("life-over-capacity", lifeOverCapacity);
-  $("#aura-sealed-mana").textContent = `${format(sealedMana)} / ${format(maximumMana)}`;
-  $("#aura-mana-percent").textContent =
-    `${format(displayedAuraLedger.manaReservedPercent)}% sealed${manaOverCapacity ? ` · ${format(manaDemandPercent)}% requested before cap` : ` · ${format(Math.max(0, maximumMana - sealedMana))} usable`}`;
-  $("#aura-mana-meter").style.width = `${Math.min(100, displayedAuraLedger.manaReservedPercent)}%`;
-  $("#aura-sealed-life").textContent = `${format(sealedLife)} / ${format(maximumLife)}`;
-  $("#aura-life-percent").textContent =
-    `${format(displayedAuraLedger.lifeReservedPercent)}% sealed${lifeOverCapacity ? ` · ${format(lifeDemandPercent)}% requested before cap` : ` · ${format(Math.max(0, maximumLife - sealedLife))} usable`}`;
-  $("#aura-life-meter").style.width = `${Math.min(100, displayedAuraLedger.lifeReservedPercent)}%`;
-  const reservationStatus = $("#aura-reservation-status");
-  reservationStatus.hidden = !reservationInvalid;
-  reservationStatus.innerHTML = reservationInvalid
-    ? `<strong>Aura setup cannot be fully activated</strong><span>${[manaOverCapacity ? "Mana reservation reaches 100%" : "", lifeOverCapacity ? "Life reservation reaches 100%" : ""].filter(Boolean).join(" · ")}.</span>`
-    : "";
-  $("#skill-setup-count").textContent = activeIndexes.length;
-  const groups = [
-    ["Damage & empower", ["main", "empower"]],
-    ["Utility & curses", ["elixir", "curse"]],
-    ["Precise auras", ["aura"]],
-  ];
-  const boardSetups = skillBoardRows(setups, plannerState.skills.boardSlots, activeSkillBoardTab, {
-    traitGrants: true,
-  });
-  const supportSlots = (setup) =>
-    supportSlotsForSetup(setup, plannerState.skills.supportOrder[setupStateKey(setup)], { traitGrants: true });
-  const slotEnergy = (setup) =>
-    energyCostForSupportPositions(setup.role, setup.occupiedSupportSlots || supportSlots(setup).map(Boolean), profile);
-  const dynamicEnergyUsed = setups.filter((setup) => setup.enabled).reduce((sum, setup) => sum + slotEnergy(setup), 0);
-  $("#energy-total").textContent = `${dynamicEnergyUsed}/${energy.available}`;
-  $("#energy-meter").style.setProperty(
-    "--energy-ratio",
-    `${Math.min(100, (dynamicEnergyUsed / energy.available) * 100)}%`,
-  );
-  $("#energy-meter")
-    .closest(".energy-panel")
-    .classList.toggle("overused", dynamicEnergyUsed > energy.available);
-  const boardRows = Array.from(
-    { length: activeSkillBoardTab === "auras" ? 4 : 5 },
-    (_, row) => boardSetups[row] || null,
-  );
-  $("#skill-groups").innerHTML = boardRows
-    .map((skill, row) => {
-      const supports = skill ? supportSlots(skill) : [];
-      return `<article class="compendium-skill-row${skill?.traitGranted ? " trait-granted-row" : ""}${skill?.slotInactive ? " curse-limit-row" : ""}${activeSkillBoardTab !== "auras" && curseSkillLeftOut(skill?.name) ? " curse-limit-row" : ""}" data-skill-board-row="${row}"><button type="button" class="skill-primary-socket ${skill ? "" : "empty-skill-slot"}${skill?.traitGranted ? " trait-granted-socket" : ""}" ${skill?.traitGranted ? "" : 'data-open-catalog="skill"'} data-selector-row="${row}" ${skill ? `data-skill-tooltip="${escapeHtml(skill.name)}"` : ""} ${skill ? "" : `title="Select skill"`} aria-label="${skill?.traitGranted ? `${escapeHtml(skill.name)}, granted by ${escapeHtml(skill.traitGranted.trait)}` : skill ? `Replace ${escapeHtml(skill.name)}` : `Select ${activeSkillBoardTab === "auras" ? "Aura" : "Active"} ${row + 1}`}">${skill ? artwork(tliArt.skills[skill.name], skill.name, "skill-glyph") : "−"}</button><div class="skill-row-name" ${skill ? `data-skill-tooltip="${escapeHtml(skill.name)}"` : ""}>${activeSkillBoardTab !== "auras" && curseSkillLeftOut(skill?.name) ? curseOffBadge(curseLimitState()?.reason) : ""}${skill?.slotInactive ? `<em class="curse-off-badge" title="${escapeHtml(skill.slotInactive)}" aria-label="${escapeHtml(skill.slotInactive)}">INACTIVE</em>` : ""}<strong>${skill ? escapeHtml(skill.name) : `${activeSkillBoardTab === "auras" ? "Aura" : "Active"} ${row + 1}`}</strong>${skill ? `<small>Lv.${skill.effectiveLevel}</small>` : ""}</div><div class="skill-support-sockets">${Array.from(
-        { length: 5 },
-        (_, slot) => {
-          const support = supports[slot];
-          return `<button type="button" class="skill-support-socket ${support ? "" : "empty-support-socket"}${support?.traitGranted ? " trait-granted-socket" : ""}" ${support?.traitGranted ? "" : 'data-open-catalog="support"'} data-selector-row="${row}" data-selector-support-slot="${slot}" ${support ? `data-support-tooltip="${escapeHtml(support.name)}" data-parent-skill="${escapeHtml(skill?.name || "")}"` : ""} ${skill ? "" : "disabled"} title="${support?.traitGranted ? `Granted by ${escapeHtml(support.traitGranted.trait)}` : support ? "Drag to move · right-click while dragging to duplicate" : "Add support"}" aria-label="${support ? `Replace ${escapeHtml(support.name)}` : `Add support ${slot + 1} to ${escapeHtml(skill?.name || "empty skill")}`}">${support ? artwork(tliArt.supports[support.name], support.name, "lane-support-art") : skill ? "+" : ""}</button>`;
-        },
-      ).join("")}</div><strong class="skill-row-energy">${skill ? slotEnergy(skill) : "−"}</strong></article>`;
-    })
-    .join("");
-  document.querySelectorAll("#skill-groups .skill-row-name small").forEach((label, index) => {
-    const skill = boardRows.filter(Boolean)[index];
-    if (skill)
-      label.innerHTML =
-        skillLevelLabel(skill) +
-        (skill.traitGranted
-          ? ` · ${escapeHtml(skill.traitGranted.replaces ? `replaces ${skill.traitGranted.replaces}` : "trait skill")}`
-          : "");
-  });
+  viewSourceChanged("skills");
 }
 
 function selectorEntries() {
@@ -7255,49 +7171,6 @@ document.addEventListener("pointermove", (event) => {
       gearDrag.target?.classList.add("gear-drop-target");
     }
   }
-  if (skillDrag && event.pointerId === skillDrag.pointerId) {
-    const dx = event.clientX - skillDrag.startX,
-      dy = event.clientY - skillDrag.startY;
-    if (!skillDrag.moved && Math.hypot(dx, dy) >= 5) {
-      skillDrag.moved = true;
-      skillDrag.element.classList.add("skill-dragging");
-      hidePlannerTooltip();
-    }
-    if (skillDrag.moved) {
-      event.preventDefault();
-      skillDrag.element.style.transform = `translate(${dx}px, ${dy}px)`;
-      const target = document
-        .elementFromPoint(event.clientX, event.clientY)
-        ?.closest("#skill-groups [data-skill-board-row]");
-      skillDrag.target?.classList.remove("skill-drop-target");
-      skillDrag.target = target || null;
-      skillDrag.target?.classList.add("skill-drop-target");
-    }
-  }
-  if (supportDrag && event.pointerId === supportDrag.pointerId) {
-    const dx = event.clientX - supportDrag.startX,
-      dy = event.clientY - supportDrag.startY;
-    if (!supportDrag.moved && Math.hypot(dx, dy) >= 5) {
-      supportDrag.moved = true;
-      document.body.classList.add("support-dragging");
-      supportDrag.element.classList.toggle("support-drag-source", !supportDrag.duplicate);
-      supportDrag.ghost = supportDrag.element.cloneNode(true);
-      supportDrag.ghost.className = `support-drag-ghost${supportDrag.duplicate ? " copying" : ""}`;
-      document.body.append(supportDrag.ghost);
-      hidePlannerTooltip();
-    }
-    if (supportDrag.moved) {
-      event.preventDefault();
-      supportDrag.ghost.style.left = `${event.clientX}px`;
-      supportDrag.ghost.style.top = `${event.clientY}px`;
-      const target = document
-        .elementFromPoint(event.clientX, event.clientY)
-        ?.closest("#skill-groups .skill-support-socket:not(:disabled)");
-      supportDrag.target?.classList.remove("support-drop-target");
-      supportDrag.target = target || null;
-      supportDrag.target?.classList.add("support-drop-target");
-    }
-  }
   if (selenaDanceDrag && event.pointerId === selenaDanceDrag.pointerId) {
     const dx = event.clientX - selenaDanceDrag.startX,
       dy = event.clientY - selenaDanceDrag.startY;
@@ -7775,18 +7648,6 @@ function clearTalentTreeState(name) {
 }
 
 document.addEventListener("contextmenu", (event) => {
-  if (supportDrag) {
-    event.preventDefault();
-    supportDrag.duplicate = true;
-    suppressSupportContextMenu = true;
-    supportDrag.ghost?.classList.add("copying");
-    supportDrag.element.classList.remove("support-drag-source");
-    return;
-  }
-  if (suppressSupportContextMenu) {
-    event.preventDefault();
-    return;
-  }
   if (slateDrag) {
     event.preventDefault();
     const slate = slatesForBoard().find((item) => item.id === slateDrag.id);
@@ -7985,58 +7846,6 @@ document.addEventListener("contextmenu", (event) => {
   if (inventoryItem) {
     event.preventDefault();
     equipInventoryItem(inventoryItems().find((item) => item.id === inventoryItem.dataset.equipInventory));
-    return;
-  }
-  const skillSocket = event.target.closest('[data-open-catalog="skill"]');
-  if (skillSocket) {
-    const board = selectorBoardSetups();
-    const setup = board[Number(skillSocket.dataset.selectorRow)];
-    if (!setup) return;
-    event.preventDefault();
-    plannerState.skills.boardSlots = assignSkillBoardSlot(
-      plannerState.skills.boardSlots,
-      activeSkillBoardTab,
-      board,
-      Number(skillSocket.dataset.selectorRow),
-      "",
-    );
-    const setupKey = setupStateKey(setup),
-      customIndex = plannerState.skills.customSetups.findIndex((item) => (item.instanceId || item.name) === setupKey);
-    if (customIndex >= 0) plannerState.skills.customSetups.splice(customIndex, 1);
-    else plannerState.skills.setupEnabled[setupKey] = false;
-    delete plannerState.skills.customSupports[setupKey];
-    delete plannerState.skills.supportOrder[setupKey];
-    delete plannerState.skills.skillLevels[setupKey];
-    persistPlannerState();
-    renderCandidateViews();
-    showToast(`${escapeHtml(setup.name)} removed`);
-    return;
-  }
-  const supportSocket = event.target.closest('[data-open-catalog="support"]');
-  if (supportSocket) {
-    const board = selectorBoardSetups(true);
-    const setup = board[Number(supportSocket.dataset.selectorRow)];
-    const slot = Number(supportSocket.dataset.selectorSupportSlot);
-    if (!setup) return;
-    const setupKey = setupStateKey(setup),
-      order = [
-        ...(plannerState.skills.supportOrder[setupKey] || userInstalledSupports(setup).map((support) => support.name)),
-      ];
-    const name = order[slot];
-    const support = setup.supports.find((item) => item.enabled && item.name === name);
-    if (!support) return;
-    event.preventDefault();
-    if (support.custom)
-      plannerState.skills.customSupports[setupKey] = (plannerState.skills.customSupports[setupKey] || []).filter(
-        (item) => item.name !== support.name,
-      );
-    else plannerState.skills.supportEnabled[supportStateKey(setupKey, support.name)] = false;
-    while (order.length < 5) order.push("");
-    order[slot] = "";
-    plannerState.skills.supportOrder[setupKey] = order.slice(0, 5);
-    persistPlannerState();
-    renderCandidateViews();
-    showToast(`${escapeHtml(support.name)} removed`);
     return;
   }
   const slate = event.target.closest("[data-slate-id]");
@@ -9548,71 +9357,6 @@ document.addEventListener("click", (event) => {
       renderCandidateViews();
     } else showToast("That slate overlaps or leaves the statue board");
   }
-  if (event.target.closest("[data-reset-skills]")) {
-    for (const setup of currentEditedSetups()) plannerState.skills.setupEnabled[setupStateKey(setup)] = false;
-    plannerState.skills.customSetups = [];
-    plannerState.skills.customSupports = {};
-    plannerState.skills.supportOrder = {};
-    plannerState.skills.skillLevels = {};
-    plannerState.skills.supportLevels = {};
-    plannerState.skills.specialSupportConfigs = {};
-    plannerState.skills.supportEnabled = {};
-    plannerState.skills.setupOrder = null;
-    plannerState.skills.boardSlots = { skills: [], auras: [] };
-    disabledSupportNames.clear();
-    selectedSkillIndex = 0;
-    persistPlannerState();
-    renderCandidateViews();
-    showToast("Skills reset to empty");
-  }
-  const openCatalogButton = event.target.closest("[data-open-catalog]");
-  if (openCatalogButton) {
-    selectorKind = openCatalogButton.dataset.openCatalog;
-    selectorTargetRow = Number(openCatalogButton.dataset.selectorRow || 0);
-    selectorTargetSupportSlot =
-      openCatalogButton.dataset.selectorSupportSlot === undefined
-        ? null
-        : Number(openCatalogButton.dataset.selectorSupportSlot);
-    const board = selectorBoardSetups(selectorKind === "support");
-    const target = board[selectorTargetRow];
-    if (target)
-      selectedSkillIndex = currentEditedSetups().findIndex((setup) => setupStateKey(setup) === setupStateKey(target));
-    selectorTargetSetupName = target ? setupStateKey(target) : null;
-    selectorQuery = "";
-    selectorChoiceIndex = -1;
-    selectorLevel = 20;
-    selectorSpecialConfig = null;
-    if (selectorKind === "skill" && target) {
-      selectorChoiceIndex = selectorEntries().findIndex((entry) => entry.name === target.name);
-      // The selector edits the saved base level; "+N level" sources are added on top by the planner.
-      selectorLevel = selectorBaseLevel(target);
-    } else if (selectorKind === "support" && target && selectorTargetSupportSlot !== null) {
-      const enabled = userInstalledSupports(target);
-      const byName = new Map(enabled.map((support) => [support.name, support]));
-      const slots = Array.from({ length: 5 }, () => null);
-      (plannerState.skills.supportOrder[setupStateKey(target)] || []).slice(0, 5).forEach((name, index) => {
-        slots[index] = byName.get(name) || null;
-        byName.delete(name);
-      });
-      for (const support of byName.values()) {
-        const index = slots.indexOf(null);
-        if (index >= 0) slots[index] = support;
-      }
-      const installed = slots[selectorTargetSupportSlot];
-      if (installed) {
-        selectorChoiceIndex = selectorEntries().findIndex((entry) => entry.name === installed.name);
-        selectorLevel = installed.level;
-        selectorSpecialConfig = {
-          ...defaultConfigurableSupportConfig(installed.name, installed.effects),
-          ...(normalizeProgressionSupportConfig(installed.name, installed.specialConfig) || {}),
-        };
-      }
-    }
-    $("#skill-selector-search").value = "";
-    renderSkillSelector();
-    $("#skill-selector").showModal();
-    $("#skill-selector-search").focus();
-  }
   if (event.target.closest("[data-close-skill-selector]")) $("#skill-selector").close();
   if (event.target.closest("[data-clear-skill-search]")) {
     selectorQuery = "";
@@ -9692,7 +9436,6 @@ document.addEventListener("click", (event) => {
       plannerState.skills.supportOrder[selectedKey] = order.slice(0, 5);
     }
     $("#skill-selector").close();
-    selectedSkillIndex = 0;
     persistPlannerState();
     renderCandidateViews();
     showToast("Slot cleared");
@@ -9867,7 +9610,6 @@ document.addEventListener("click", (event) => {
         selectorTargetSetupName,
       );
       persistPlannerState();
-      selectedSkillIndex = currentEditedSetups().findIndex((setup) => setupStateKey(setup) === selectorTargetSetupName);
       showToast(`${escapeHtml(entry.name)} setup added`);
     } else {
       if (!selected) return;
@@ -9915,25 +9657,9 @@ document.addEventListener("click", (event) => {
     $("#skill-selector").close();
     renderCandidateViews();
   }
-  const skillBoardTab = event.target.closest("[data-skill-board-tab]");
-  if (skillBoardTab) {
-    activeSkillBoardTab = skillBoardTab.dataset.skillBoardTab;
-    document
-      .querySelectorAll("[data-skill-board-tab]")
-      .forEach((button) => button.classList.toggle("active", button === skillBoardTab));
-    renderSkills();
-  }
 });
 
 document.addEventListener("pointerdown", (event) => {
-  if (supportDrag && event.button === 2) {
-    event.preventDefault();
-    supportDrag.duplicate = true;
-    suppressSupportContextMenu = true;
-    supportDrag.ghost?.classList.add("copying");
-    supportDrag.element.classList.remove("support-drag-source");
-    return;
-  }
   const selenaDancePick = event.target.closest("#hero-trait-tree [data-selena-dance-pick]");
   if (selenaDancePick && event.button === 0) {
     const from = Number(selenaDancePick.dataset.selenaDancePick),
@@ -9981,52 +9707,6 @@ document.addEventListener("pointerdown", (event) => {
         startX: event.clientX,
         startY: event.clientY,
         moved: false,
-        target: null,
-        ghost: null,
-      };
-    }
-    return;
-  }
-  const skillSocket = event.target.closest(
-    "#skill-groups .skill-primary-socket:not(.empty-skill-slot):not(.trait-granted-socket)",
-  );
-  if (skillSocket && event.button === 0) {
-    const row = Number(skillSocket.dataset.selectorRow);
-    if (selectorBoardSetups()[row]) {
-      skillSocket.setPointerCapture?.(event.pointerId);
-      skillDrag = {
-        pointerId: event.pointerId,
-        element: skillSocket,
-        from: row,
-        tab: activeSkillBoardTab,
-        startX: event.clientX,
-        startY: event.clientY,
-        moved: false,
-        target: null,
-      };
-    }
-    return;
-  }
-  const supportSocket = event.target.closest(
-    "#skill-groups .skill-support-socket:not(.empty-support-socket):not(.trait-granted-socket)",
-  );
-  if (supportSocket && event.button === 0) {
-    const row = Number(supportSocket.dataset.selectorRow),
-      slot = Number(supportSocket.dataset.selectorSupportSlot),
-      setup = selectorBoardSetups(true)[row];
-    if (setup && supportSlotsForSetup(setup, plannerState.skills.supportOrder[setupStateKey(setup)])[slot]) {
-      supportSocket.setPointerCapture?.(event.pointerId);
-      supportDrag = {
-        pointerId: event.pointerId,
-        element: supportSocket,
-        fromRow: row,
-        fromSlot: slot,
-        setupKey: setupStateKey(setup),
-        tab: activeSkillBoardTab,
-        startX: event.clientX,
-        startY: event.clientY,
-        moved: false,
-        duplicate: false,
         target: null,
         ghost: null,
       };
@@ -10312,80 +9992,125 @@ function finishGearDrag(event, cancelled = false) {
   }
   showToast("Invalid drop · item returned to its original place");
 }
-function finishSkillDrag(event, cancelled = false) {
-  if (!skillDrag || event.pointerId !== skillDrag.pointerId) return;
-  const drag = skillDrag;
-  skillDrag = null;
-  drag.target?.classList.remove("skill-drop-target");
-  drag.element.classList.remove("skill-dragging");
-  drag.element.style.transform = "";
-  if (!drag.moved) return;
-  suppressSkillClick = true;
-  setTimeout(() => {
-    suppressSkillClick = false;
-  }, 0);
-  const target = cancelled
-    ? null
-    : document.elementFromPoint(event.clientX, event.clientY)?.closest("#skill-groups [data-skill-board-row]");
-  const to = target ? Number(target.dataset.skillBoardRow) : -1;
-  if (drag.tab !== activeSkillBoardTab || to < 0) {
+// Skills section commands (apps/web/src/features/skills): rows and sockets of the open board tab (activeSkillBoardTab).
+// The skill selector dialog stays here (the follower's skill picker shares it).
+function openSkillSelector(row, supportSlot) {
+  selectorKind = supportSlot === null ? "skill" : "support";
+  selectorTargetRow = row;
+  selectorTargetSupportSlot = supportSlot;
+  const target = selectorBoardSetups(selectorKind === "support")[selectorTargetRow];
+  selectorTargetSetupName = target ? setupStateKey(target) : null;
+  selectorQuery = "";
+  selectorChoiceIndex = -1;
+  selectorLevel = 20;
+  selectorSpecialConfig = null;
+  if (selectorKind === "skill" && target) {
+    selectorChoiceIndex = selectorEntries().findIndex((entry) => entry.name === target.name);
+    // The selector edits the saved base level; "+N level" sources are added on top by the planner.
+    selectorLevel = selectorBaseLevel(target);
+  } else if (selectorKind === "support" && target) {
+    const enabled = userInstalledSupports(target);
+    const byName = new Map(enabled.map((support) => [support.name, support]));
+    const slots = Array.from({ length: 5 }, () => null);
+    (plannerState.skills.supportOrder[setupStateKey(target)] || []).slice(0, 5).forEach((name, index) => {
+      slots[index] = byName.get(name) || null;
+      byName.delete(name);
+    });
+    for (const support of byName.values()) {
+      const index = slots.indexOf(null);
+      if (index >= 0) slots[index] = support;
+    }
+    const installed = slots[selectorTargetSupportSlot];
+    if (installed) {
+      selectorChoiceIndex = selectorEntries().findIndex((entry) => entry.name === installed.name);
+      selectorLevel = installed.level;
+      selectorSpecialConfig = {
+        ...defaultConfigurableSupportConfig(installed.name, installed.effects),
+        ...(normalizeProgressionSupportConfig(installed.name, installed.specialConfig) || {}),
+      };
+    }
+  }
+  $("#skill-selector-search").value = "";
+  renderSkillSelector();
+  $("#skill-selector").showModal();
+  $("#skill-selector-search").focus();
+}
+// Right-click on a skill: false when the row holds none of the user's skills (the browser menu opens instead).
+function removeBoardSkill(row) {
+  const board = selectorBoardSetups();
+  const setup = board[row];
+  if (!setup) return false;
+  plannerState.skills.boardSlots = assignSkillBoardSlot(
+    plannerState.skills.boardSlots,
+    activeSkillBoardTab,
+    board,
+    row,
+    "",
+  );
+  const setupKey = setupStateKey(setup),
+    customIndex = plannerState.skills.customSetups.findIndex((item) => (item.instanceId || item.name) === setupKey);
+  if (customIndex >= 0) plannerState.skills.customSetups.splice(customIndex, 1);
+  else plannerState.skills.setupEnabled[setupKey] = false;
+  delete plannerState.skills.customSupports[setupKey];
+  delete plannerState.skills.supportOrder[setupKey];
+  delete plannerState.skills.skillLevels[setupKey];
+  persistPlannerState();
+  renderCandidateViews();
+  showToast(`${escapeHtml(setup.name)} removed`);
+  return true;
+}
+// Right-click on a support: false when the socket holds none of the user's supports.
+function removeBoardSupport(row, slot) {
+  const setup = selectorBoardSetups(true)[row];
+  if (!setup) return false;
+  const setupKey = setupStateKey(setup),
+    order = [
+      ...(plannerState.skills.supportOrder[setupKey] || userInstalledSupports(setup).map((support) => support.name)),
+    ];
+  const name = order[slot];
+  const support = setup.supports.find((item) => item.enabled && item.name === name);
+  if (!support) return false;
+  if (support.custom)
+    plannerState.skills.customSupports[setupKey] = (plannerState.skills.customSupports[setupKey] || []).filter(
+      (item) => item.name !== support.name,
+    );
+  else plannerState.skills.supportEnabled[supportStateKey(setupKey, support.name)] = false;
+  while (order.length < 5) order.push("");
+  order[slot] = "";
+  plannerState.skills.supportOrder[setupKey] = order.slice(0, 5);
+  persistPlannerState();
+  renderCandidateViews();
+  showToast(`${escapeHtml(support.name)} removed`);
+  return true;
+}
+// A skill dropped on another row of its tab: the two swap places (or the skill moves to the empty row).
+function moveBoardSkill(tab, from, to) {
+  if (tab !== activeSkillBoardTab) {
     showToast("Invalid drop · skill returned to its original slot");
     return;
   }
-  if (to === drag.from) return;
+  if (to === from) return;
   const rows = selectorBoardSetups();
-  plannerState.skills.boardSlots = moveSkillBoardSlot(plannerState.skills.boardSlots, drag.tab, rows, drag.from, to);
+  plannerState.skills.boardSlots = moveSkillBoardSlot(plannerState.skills.boardSlots, tab, rows, from, to);
   persistPlannerState();
   renderCandidateViews();
-  const label = drag.tab === "auras" ? "Auras" : "Active skills";
+  const label = tab === "auras" ? "Auras" : "Active skills";
   showToast(rows[to] ? `${label} swapped` : `${label} moved`);
 }
-function finishSupportDrag(event, cancelled = false) {
-  if (
-    !supportDrag ||
-    event.pointerId !== supportDrag.pointerId ||
-    (!cancelled && event.pointerType === "mouse" && event.button !== 0)
-  )
-    return;
-  const drag = supportDrag;
-  supportDrag = null;
-  document.body.classList.remove("support-dragging");
-  if (drag.duplicate)
-    setTimeout(() => {
-      suppressSupportContextMenu = false;
-    }, 300);
-  drag.target?.classList.remove("support-drop-target");
-  drag.element.classList.remove("support-drag-source");
-  drag.ghost?.remove();
-  if (!drag.moved) return;
-  suppressSupportClick = true;
-  setTimeout(() => {
-    suppressSupportClick = false;
-  }, 400);
-  const target = cancelled
-    ? null
-    : document
-        .elementFromPoint(event.clientX, event.clientY)
-        ?.closest("#skill-groups .skill-support-socket:not(:disabled)");
-  if (!target || drag.tab !== activeSkillBoardTab) {
+// A support dropped on a socket of its tab: moved, swapped with the support there, or (duplicate) copied.
+function moveBoardSupport({ tab, fromRow, fromSlot, setupKey, toRow, toSlot, duplicate }) {
+  if (tab !== activeSkillBoardTab) {
     showToast("Invalid drop · support returned to its slot");
     return;
   }
   const rows = selectorBoardSetups(true),
-    fromSetup = rows[drag.fromRow],
-    toSetup = rows[Number(target.dataset.selectorRow)];
-  if (!fromSetup || !toSetup || setupStateKey(fromSetup) !== drag.setupKey) {
+    fromSetup = rows[fromRow],
+    toSetup = rows[toRow];
+  if (!fromSetup || !toSetup || setupStateKey(fromSetup) !== setupKey) {
     showToast("The skill board changed during the drag");
     return;
   }
-  const result = transferSupportSlot(
-    plannerState.skills,
-    fromSetup,
-    drag.fromSlot,
-    toSetup,
-    Number(target.dataset.selectorSupportSlot),
-    { duplicate: drag.duplicate },
-  );
+  const result = transferSupportSlot(plannerState.skills, fromSetup, fromSlot, toSetup, toSlot, { duplicate });
   if (result.error) {
     showToast(result.error);
     return;
@@ -10395,8 +10120,24 @@ function finishSupportDrag(event, cancelled = false) {
   persistPlannerState();
   renderCandidateViews();
   showToast(
-    `${drag.duplicate ? "Support duplicated" : result.action === "swapped" ? "Supports swapped" : "Support moved"} to ${escapeHtml(toSetup.name)}`,
+    `${duplicate ? "Support duplicated" : result.action === "swapped" ? "Supports swapped" : "Support moved"} to ${escapeHtml(toSetup.name)}`,
   );
+}
+function resetSkills() {
+  for (const setup of currentEditedSetups()) plannerState.skills.setupEnabled[setupStateKey(setup)] = false;
+  plannerState.skills.customSetups = [];
+  plannerState.skills.customSupports = {};
+  plannerState.skills.supportOrder = {};
+  plannerState.skills.skillLevels = {};
+  plannerState.skills.supportLevels = {};
+  plannerState.skills.specialSupportConfigs = {};
+  plannerState.skills.supportEnabled = {};
+  plannerState.skills.setupOrder = null;
+  plannerState.skills.boardSlots = { skills: [], auras: [] };
+  disabledSupportNames.clear();
+  persistPlannerState();
+  renderCandidateViews();
+  showToast("Skills reset to empty");
 }
 function finishSelenaDanceDrag(event, cancelled = false) {
   if (!selenaDanceDrag || event.pointerId !== selenaDanceDrag.pointerId) return;
@@ -10499,29 +10240,23 @@ function finishPrismDrag(event, cancelled = false) {
 }
 document.addEventListener("pointerup", (event) => {
   finishGearDrag(event);
-  finishSkillDrag(event);
-  finishSupportDrag(event);
   finishPrismDrag(event);
   finishSlateDrag(event);
   finishSelenaDanceDrag(event);
 });
 document.addEventListener("pointercancel", (event) => {
   finishGearDrag(event, true);
-  finishSkillDrag(event, true);
-  finishSupportDrag(event, true);
   finishPrismDrag(event, true);
   finishSlateDrag(event, true);
   finishSelenaDanceDrag(event, true);
 });
 document.addEventListener("lostpointercapture", (event) => {
-  if (skillDrag?.pointerId === event.pointerId) finishSkillDrag(event, true);
-  if (supportDrag?.pointerId === event.pointerId) finishSupportDrag(event, true);
   if (selenaDanceDrag?.pointerId === event.pointerId) finishSelenaDanceDrag(event, true);
 });
 document.addEventListener("dragstart", (event) => {
   if (
     event.target.closest(
-      "#talent-stage .installed-prism-node,#equipment-grid,#equipment-inventory,#skill-groups .skill-support-socket,.pact-tree-node.has-kismet,#hero-trait-tree [data-selena-dance-pick]",
+      "#talent-stage .installed-prism-node,#equipment-grid,#equipment-inventory,.pact-tree-node.has-kismet,#hero-trait-tree [data-selena-dance-pick]",
     )
   )
     event.preventDefault();
@@ -10530,27 +10265,6 @@ document.addEventListener(
   "click",
   (event) => {
     if (suppressPrismClick && event.target.closest("#talent-stage")) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }
-  },
-  true,
-);
-document.addEventListener(
-  "click",
-  (event) => {
-    if (suppressSkillClick && event.target.closest("#skill-groups")) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }
-  },
-  true,
-);
-document.addEventListener(
-  "click",
-  (event) => {
-    if (suppressSupportClick && event.target.closest("#skill-groups")) {
-      suppressSupportClick = false;
       event.preventDefault();
       event.stopImmediatePropagation();
     }

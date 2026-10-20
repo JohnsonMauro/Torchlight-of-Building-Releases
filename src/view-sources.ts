@@ -5,6 +5,7 @@ import type { PlannerResult } from "./planner-api.ts";
 import type { PlannerState } from "./planner-state.ts";
 import type { PactsView } from "./pacts-view-model.ts";
 import type { FollowerPanelView } from "./follower-panel.js";
+import type { SkillsView } from "./skills-view-model.ts";
 
 /** The Config tab: the calculated build and the combat settings it was calculated with. */
 export interface ConfigurationSource {
@@ -22,6 +23,8 @@ export interface ViewSources {
   pacts: PactsView;
   /** The hero panel's FOLLOWER tab (src/follower-panel.js followerPanelView). */
   follower: FollowerPanelView;
+  /** The Skills section of the Build page (src/skills-view-model.ts). */
+  skills: SkillsView;
 }
 export type ViewSourceName = keyof ViewSources;
 

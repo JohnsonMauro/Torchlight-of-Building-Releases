@@ -39,6 +39,28 @@
  * @property {() => void} openFollowerSelector Opens the follower selector.
  * @property {(slot: number) => void} openFollowerSkillSelector Opens the skill picker for a follower skill slot.
  * @property {(slot: number) => void} clearFollowerSkill Empties a follower skill slot.
+ * @property {(tab: "skills" | "auras") => void} setSkillBoardTab Shows the Skills or the Auras board.
+ * @property {(row: number, supportSlot: number | null) => void} openSkillSelector Opens the skill selector for a row of
+ *   the open board (supportSlot null), or the support selector for one of its sockets (0–4).
+ * @property {(row: number) => boolean} removeSkill Takes the user's skill off a row; false when the row holds none.
+ * @property {(row: number, slot: number) => boolean} removeSupport Takes the user's support out of a socket; false when
+ *   the socket holds none.
+ * @property {(tab: "skills" | "auras", from: number, to: number) => void} moveSkill Moves a skill to another row of its
+ *   board tab, swapping with the skill there.
+ * @property {(move: SupportMove) => void} moveSupport Moves (or copies) a support to another socket of the same board tab,
+ *   swapping with the support there.
+ * @property {() => void} resetSkills Empties both board tabs.
+ */
+
+/**
+ * @typedef {object} SupportMove
+ * @property {"skills" | "auras"} tab
+ * @property {number} fromRow
+ * @property {number} fromSlot
+ * @property {string} setupKey The dragged support's setup (the move is refused if the row changed during the drag).
+ * @property {number} toRow
+ * @property {number} toSlot
+ * @property {boolean} duplicate
  */
 
 /** @type {PlannerCommands | null} */
