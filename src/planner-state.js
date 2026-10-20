@@ -559,11 +559,36 @@ export function loadBuildLibrary() {
   }
 }
 
+const libraryListeners = new Set();
+
+/**
+ * Calls `listener` after every write of the build library from this tab (stored, or kept in memory when storage
+ * fails). Changes made by other tabs arrive as `storage` events instead. Returns the unsubscribe function.
+ * @param {() => void} listener
+ * @returns {() => void}
+ */
+export function subscribeBuildLibrary(listener) {
+  libraryListeners.add(listener);
+  return () => libraryListeners.delete(listener);
+}
+
+function writeBuildLibrary(normalized, options) {
+  const written = storeBuildLibrary(normalized, options);
+  for (const listener of libraryListeners) {
+    try {
+      listener();
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  return written;
+}
+
 // `normalized.activeBuildId` is this tab's build. It becomes the stored
 // "last used" build only when this tab explicitly opens, creates or deletes a
 // build (`lastUsed`); ordinary saves keep the stored value, so a background tab
 // never moves another tab's (or a new tab's) starting build.
-function writeBuildLibrary(normalized, { lastUsed = false } = {}) {
+function storeBuildLibrary(normalized, { lastUsed = false } = {}) {
   const tabId = normalized.activeBuildId;
   rememberTabActiveBuildId(tabId);
   const keepStored =
