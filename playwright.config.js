@@ -13,6 +13,7 @@ const vite = (command, port) => `vite ${command} --config apps/web/vite.config.t
 export default defineConfig({
   testDir: "tests/e2e",
   testMatch: "**/*.spec.js",
+  testIgnore: "desktop/**",
   outputDir: "test-results",
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),

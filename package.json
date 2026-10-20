@@ -9,7 +9,7 @@
     "dev": "vite --config apps/web/vite.config.ts",
     "build:web": "vite build --config apps/web/vite.config.ts",
     "preview": "vite preview --config apps/web/vite.config.ts",
-    "desktop": "pnpm build:web && electron .",
+    "desktop": "pnpm build:web && node scripts/electron.js",
     "build:win": "pnpm build:web && electron-builder --win nsis portable --publish never",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -17,6 +17,7 @@
     "typecheck": "tsc -p apps/web",
     "test": "node --test \"tests/**/*.test.js\"",
     "test:e2e": "pnpm build:web && playwright test",
+    "test:desktop": "pnpm build:web && playwright test -c playwright.desktop.config.js",
     "golden:update": "node tests/golden/update.js",
     "golden:diff": "node tests/golden/diff.js"
   },
