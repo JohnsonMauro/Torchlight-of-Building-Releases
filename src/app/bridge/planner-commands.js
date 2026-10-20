@@ -18,6 +18,15 @@
  * @property {() => Promise<void>} exportBuild Copies the open build's code to the clipboard (a toast says how it went).
  * @property {(text: string) => void} importBuild Adds a pasted build code as a new active build and opens the Builds view;
  *   a toast says when the code cannot be read (the Import dialog then stays open).
+ * @property {(name: string) => void} selectKismetChoice Kismet crafter: chooses a Kismet (at its best values).
+ * @property {(index: number, value: number) => void} setKismetRoll Kismet crafter: a value as typed or slid (kept only
+ *   while in range).
+ * @property {(index: number, text: string) => void} commitKismetRoll Kismet crafter: a typed value committed (snapped
+ *   to its step and range).
+ * @property {() => void} confirmKismet Kismet crafter: installs the chosen Kismet in the slot (a toast when the kind's
+ *   slots are full) and closes.
+ * @property {() => void} clearKismetCrafterSlot Kismet crafter: empties the slot and closes.
+ * @property {() => void} closeKismetCrafter Kismet crafter was closed: forgets the slot it was open for.
  * @property {(type: "ethereal" | "inverse") => void} setPrismType Prism crafter: a new draft of that type.
  * @property {(base: string) => void} setPrismBase Prism crafter: the base (keeping only the affixes it can roll).
  * @property {(kind: string, value: string) => void} setPrismAffix Prism crafter: a random affix (radius, rare,

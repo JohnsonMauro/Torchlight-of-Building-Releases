@@ -8,7 +8,7 @@ import { calculationReportContext } from "./feedback/feedback-report-context.js"
 import { APP_VERSION } from "./app-version.js";
 import { createPlannerCache } from "./planner-cache.js";
 import { microFateEffectScale, parseKismetEffect, starTrailNote } from "../engine/pacts/kismet-effects.js";
-import { boostedKismetAffixHtml } from "./kismet-markup.js";
+import { boostedKismetAffixHtml, boostedKismetAffixParts } from "./kismet-markup.js";
 import { parseBlockModifier } from "../engine/defense/block-model.js";
 import { kismetAffixCoverage, pactEffectCoverage } from "./pact-coverage.js";
 import { modeledCoreTalents } from "../engine/talents/core-talent-model.js";
@@ -1552,6 +1552,15 @@ providePlannerCommands({
     refreshPactCandidate();
   },
   openKismetCrafter,
+  // The Kismet crafter (apps/web/src/shell/dialogs/KismetCrafterDialog.tsx).
+  selectKismetChoice,
+  setKismetRoll,
+  commitKismetRoll,
+  confirmKismet: () => saveKismetSlot(),
+  clearKismetCrafterSlot: () => saveKismetSlot(true),
+  closeKismetCrafter: () => {
+    activeKismetSlot = null;
+  },
   clearKismetSlot: clearKismetNode,
   openFateSlotSelector,
   clearFateSlots,
@@ -1811,6 +1820,8 @@ provideViewSource("heroMemory", heroMemorySource);
 provideViewSource("inventoryItem", inventoryItemSource);
 // The Prism crafter.
 provideViewSource("prismCrafter", prismCrafterSource);
+// The Kismet crafter.
+provideViewSource("kismetCrafter", kismetCrafterSource);
 // The talent tree, core talent and Fate slot pickers.
 provideViewSource("talentPicker", talentPickerSource);
 provideViewSource("corePicker", corePickerSource);
@@ -5028,80 +5039,97 @@ function clearKismetNode(key) {
   hidePlannerTooltip();
   refreshPactCandidate();
 }
-function kismetChoices() {
+// The Kismet crafter (apps/web/src/shell/dialogs/KismetCrafterDialog.tsx) shows the "kismetCrafter" source for the slot
+// it is open for: its kind's Kismets (the dialog searches them), the chosen one's values and preview.
+let kismetCrafterSession = 0,
+  kismetCrafterKind = "micro";
+function kismetChoices(kind = activeKismetSlot?.kind) {
   return kismetCatalogSs13
-    .filter((item) => item.kind === activeKismetSlot?.kind)
+    .filter((item) => item.kind === kind)
     .sort(
       (a, b) =>
         (a.rarity === "Legendary" ? -1 : 1) - (b.rarity === "Legendary" ? -1 : 1) || a.name.localeCompare(b.name),
     );
 }
-function renderKismetChoices() {
-  const query = $("#kismet-search").value.trim().toLowerCase();
-  const choices = kismetChoices().filter(
-    (item) => !query || `${item.name} ${item.affixes.join(" ")}`.toLowerCase().includes(query),
-  );
-  $("#kismet-choice-list").innerHTML = choices.length
-    ? choices
-        .map(
-          (item) =>
-            `<button type="button" class="kismet-choice ${item.name === selectedKismetName ? "selected" : ""}" data-select-kismet="${escapeHtml(item.name)}"><img src="${item.icon}" alt=""><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.affixes.join(" · "))}</small></span><em class="${item.rarity.toLowerCase()}">${item.rarity}</em></button>`,
+function kismetCrafterSource() {
+  const kindLabel = kismetCrafterKind === "micro" ? "Micro" : "Medium",
+    entry = kismetCatalogSs13.find((item) => item.name === selectedKismetName),
+    controls = entry ? kismetRollControls(entry) : [];
+  const previewBoost =
+    entry && activeKismetSlot
+      ? microFateEffectScale(
+          {
+            ...plannerState.pacts,
+            kismetSlots: { ...plannerState.pacts.kismetSlots, [activeKismetSlot.key]: { name: entry.name } },
+          },
+          activeKismetSlot.key,
         )
-        .join("")
-    : '<p class="kismet-no-results">No matching kismets.</p>';
-}
-function renderKismetPreview() {
-  const entry = kismetCatalogSs13.find((item) => item.name === selectedKismetName),
-    previewBoost =
-      entry && activeKismetSlot
-        ? microFateEffectScale(
-            {
-              ...plannerState.pacts,
-              kismetSlots: { ...plannerState.pacts.kismetSlots, [activeKismetSlot.key]: { name: entry.name } },
-            },
-            activeKismetSlot.key,
-          )
-        : null;
-  $("#kismet-preview").innerHTML = entry
-    ? `<div class="kismet-preview-head"><img src="${entry.icon}" alt=""><div><strong>${escapeHtml(entry.name)}</strong><small>${entry.rarity} · ${entry.kind === "micro" ? "Micro" : "Medium"} Kismet${starTrailNote(previewBoost) ? ` · ${starTrailNote(previewBoost)}` : ""}</small></div></div><ul>${kismetAffixesWithRolls(
-        entry,
-        selectedKismetRolls,
-      )
-        .map((affix) => `<li>${boostedKismetAffixHtml(affix, previewBoost)}</li>`)
-        .join("")}</ul><p>Install to replace this ${entry.kind === "micro" ? "Micro" : "Medium"} node.</p>`
-    : "";
-}
-function renderKismetDetails() {
-  const entry = kismetCatalogSs13.find((item) => item.name === selectedKismetName);
-  const controls = entry ? kismetRollControls(entry) : [];
-  $("#kismet-roll-controls").innerHTML = controls.length
-    ? controls
-        .map(
-          (control, index) =>
-            `<label class="kismet-roll-row"><span>Value ${index + 1}: <strong data-kismet-roll-output="${index}">${selectedKismetRolls[index]}</strong></span><div><input type="range" data-kismet-roll-range="${index}" min="${control.min}" max="${control.max}" step="${control.step}" value="${selectedKismetRolls[index]}"><input type="number" data-kismet-roll-number="${index}" min="${control.min}" max="${control.max}" step="${control.step}" value="${selectedKismetRolls[index]}" aria-label="Value ${index + 1}"></div><small>${escapeHtml(entry.affixes[control.affixIndex])}</small></label>`,
-        )
-        .join("")
-    : '<p class="kismet-fixed-roll">This Kismet has fixed effects.</p>';
-  renderKismetPreview();
+      : null;
+  return {
+    session: kismetCrafterSession,
+    title: `Select ${kindLabel} Kismet`,
+    selected: selectedKismetName,
+    choices: kismetChoices(kismetCrafterKind).map((item) => ({
+      name: item.name,
+      search: `${item.name} ${item.affixes.join(" ")}`.toLowerCase(),
+      icon: item.icon,
+      rarity: item.rarity,
+      ...displayTexts({ label: item.name, affixes: item.affixes.join(" · ") }),
+    })),
+    rolls: controls.map((control, index) => ({
+      index,
+      min: control.min,
+      max: control.max,
+      step: control.step,
+      value: selectedKismetRolls[index],
+      affix: displayTexts(entry.affixes[control.affixIndex]),
+    })),
+    preview: entry
+      ? {
+          icon: entry.icon,
+          ...displayTexts({
+            name: entry.name,
+            detail: `${entry.rarity} · ${entry.kind === "micro" ? "Micro" : "Medium"} Kismet${starTrailNote(previewBoost) ? ` · ${starTrailNote(previewBoost)}` : ""}`,
+            affixes: kismetAffixesWithRolls(entry, selectedKismetRolls).map((affix) =>
+              boostedKismetAffixParts(affix, previewBoost),
+            ),
+            install: `Install to replace this ${entry.kind === "micro" ? "Micro" : "Medium"} node.`,
+          }),
+        }
+      : null,
+  };
 }
 function selectKismetChoice(name) {
   const entry = kismetCatalogSs13.find((item) => item.name === name && item.kind === activeKismetSlot?.kind);
   if (!entry) return;
   selectedKismetName = name;
   selectedKismetRolls = normalizeKismetRolls(entry);
-  renderKismetChoices();
-  renderKismetDetails();
+  viewSourceChanged("kismetCrafter");
+}
+// A value as typed: kept while it is in range (a value out of range waits for setKismetRoll's commit).
+function setKismetRoll(index, value) {
+  const entry = kismetCatalogSs13.find((item) => item.name === selectedKismetName),
+    control = entry && kismetRollControls(entry)[index];
+  if (!control || !Number.isFinite(value) || value < control.min || value > control.max) return;
+  selectedKismetRolls = Object.assign([...selectedKismetRolls], { [index]: value });
+  viewSourceChanged("kismetCrafter");
+}
+// A typed value committed (leaving the field): snapped to its step and range.
+function commitKismetRoll(index, text) {
+  const entry = kismetCatalogSs13.find((item) => item.name === selectedKismetName);
+  if (!entry) return;
+  selectedKismetRolls = normalizeKismetRolls(entry, Object.assign([...selectedKismetRolls], { [index]: text }));
+  viewSourceChanged("kismetCrafter");
 }
 function openKismetCrafter(key, kind) {
   activeKismetSlot = { key, kind };
+  kismetCrafterKind = kind;
   const saved = plannerState.pacts.kismetSlots?.[key],
     entry = kismetCatalogSs13.find((item) => item.name === saved?.name && item.kind === kind) || kismetChoices()[0];
   selectedKismetName = entry?.name || "";
   selectedKismetRolls = entry ? normalizeKismetRolls(entry, saved?.name === entry.name ? saved.rolls : []) : [];
-  $("#kismet-crafter-title").textContent = `Select ${kind === "micro" ? "Micro" : "Medium"} Kismet`;
-  $("#kismet-search").value = "";
-  renderKismetChoices();
-  renderKismetDetails();
+  kismetCrafterSession++;
+  viewSourceChanged("kismetCrafter");
   $("#kismet-crafter").showModal();
   $("#kismet-search").focus();
 }
@@ -7564,24 +7592,6 @@ document.querySelector(".loadout-tab")?.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", (event) => {
-  const kismetChoice = event.target.closest("[data-select-kismet]");
-  if (kismetChoice) {
-    selectKismetChoice(kismetChoice.dataset.selectKismet);
-    return;
-  }
-  if (event.target.closest("[data-confirm-kismet]")) {
-    saveKismetSlot();
-    return;
-  }
-  if (event.target.closest("[data-clear-kismet-slot]")) {
-    saveKismetSlot(true);
-    return;
-  }
-  if (event.target.closest("[data-close-kismet-crafter]")) {
-    $("#kismet-crafter").close();
-    activeKismetSlot = null;
-    return;
-  }
   const heroPanelTab = event.target.closest("[data-hero-panel-tab]");
   if (heroPanelTab) {
     writeHeroPanelTab(activeBuildViewId(), heroPanelTab.dataset.heroPanelTab);
@@ -8625,45 +8635,6 @@ function moveKismet(fromKey, toKey, kind, duplicate) {
 }
 document.addEventListener("dragstart", (event) => {
   if (event.target.closest(".pact-tree-node.has-kismet")) event.preventDefault();
-});
-
-$("#kismet-search").addEventListener("input", renderKismetChoices);
-$("#kismet-roll-controls").addEventListener("input", (event) => {
-  const target = event.target.closest("[data-kismet-roll-range],[data-kismet-roll-number]");
-  if (!target) return;
-  const index = Number(target.dataset.kismetRollRange ?? target.dataset.kismetRollNumber),
-    entry = kismetCatalogSs13.find((item) => item.name === selectedKismetName),
-    control = entry && kismetRollControls(entry)[index];
-  if (!control) return;
-  const value = Number(target.value);
-  if (!Number.isFinite(value) || value < control.min || value > control.max) return;
-  selectedKismetRolls[index] = value;
-  const companion = $(
-    target.matches("[data-kismet-roll-range]")
-      ? `[data-kismet-roll-number="${index}"]`
-      : `[data-kismet-roll-range="${index}"]`,
-  );
-  if (companion) companion.value = value;
-  const output = $(`[data-kismet-roll-output="${index}"]`);
-  if (output) output.textContent = value;
-  renderKismetPreview();
-});
-$("#kismet-roll-controls").addEventListener("change", (event) => {
-  const target = event.target.closest("[data-kismet-roll-number]");
-  if (!target) return;
-  const entry = kismetCatalogSs13.find((item) => item.name === selectedKismetName);
-  if (!entry) return;
-  const index = Number(target.dataset.kismetRollNumber),
-    rolls = [...selectedKismetRolls];
-  rolls[index] = target.value;
-  selectedKismetRolls = normalizeKismetRolls(entry, rolls);
-  target.value = selectedKismetRolls[index];
-  $(`[data-kismet-roll-range="${index}"]`).value = selectedKismetRolls[index];
-  $(`[data-kismet-roll-output="${index}"]`).textContent = selectedKismetRolls[index];
-  renderKismetPreview();
-});
-$("#kismet-crafter").addEventListener("close", () => {
-  activeKismetSlot = null;
 });
 
 document.addEventListener("change", (event) => {

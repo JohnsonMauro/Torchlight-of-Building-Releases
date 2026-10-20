@@ -87,6 +87,22 @@ export interface ViewSources {
     editing: boolean;
     item: { name: string; classes: string; icon: string; equipped: boolean } | null;
   };
+  /** The Kismet crafter: its opening, the slot kind's Kismets, the chosen one's values and preview. */
+  kismetCrafter: DialogSession & {
+    title: string;
+    selected: string;
+    /** `search`: the name and effects as typed text, lowercase; `label` and `affixes`: as shown. */
+    choices: { name: string; search: string; icon: string; rarity: string; label: string; affixes: string }[];
+    rolls: { index: number; min: number; max: number; step: number; value: number; affix: string }[];
+    preview: {
+      icon: string;
+      name: string;
+      detail: string;
+      /** Each effect; with a Star Trail boost, `effective` replaces the rolled number (src/app/kismet-markup.js). */
+      affixes: { before: string; effective: string | null; title: string; after: string }[];
+      install: string;
+    } | null;
+  };
   /** The Prism crafter (src/app/bridge/prism-crafter-view.ts). */
   prismCrafter: PrismCrafterView;
   /** The hero memory dialog: the inventory, or the crafter (src/app/bridge/hero-memory-view.ts). */
