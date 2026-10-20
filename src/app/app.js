@@ -1636,6 +1636,10 @@ providePlannerCommands({
   openPrismInventory,
   cancelPrismPlacement,
   dropPrism,
+  // Header build actions (apps/web/src/shell/SiteHeader.tsx and its dialogs).
+  resetBuild,
+  exportBuild,
+  importBuild,
   // HERO tab (apps/web/src/features/hero).
   setHeroDetailTab: (tab) => {
     activeHeroDetailTab = tab;
@@ -1940,17 +1944,16 @@ function activateWorkspaceView(viewName, { scroll = true, remember = true } = {}
   if (remember) saveWorkspaceLocation();
 }
 
-$("#reset-build").addEventListener("click", () => $("#reset-build-confirm").showModal());
-$("[data-cancel-reset-build]").addEventListener("click", () => $("#reset-build-confirm").close());
-$("[data-confirm-reset-build]").addEventListener("click", () => {
-  $("#reset-build-confirm").close();
+// The header's Reset Build (confirmed in apps/web/src/shell/dialogs/ResetBuildConfirmDialog.tsx): the open build empties.
+function resetBuild() {
   const empty = emptyPlannerState();
   applyPlannerState(empty);
   persistPlannerState();
   renderCandidateViews();
   showToast("Build reset to empty");
-});
-$("#export-build").addEventListener("click", async () => {
+}
+// The header's Export: the open build's code to the clipboard.
+async function exportBuild() {
   persistPlannerState();
   try {
     await navigator.clipboard.writeText(encodePlannerState(plannerState));
@@ -1958,7 +1961,7 @@ $("#export-build").addEventListener("click", async () => {
   } catch {
     showToast("Clipboard access was unavailable");
   }
-});
+}
 // Import accepts the Export code and the compact "TLB3:" and "TLB2:" codes (src/engine/state/build-code-compact.js), which expand to the former.
 async function importBuildText(text) {
   const code = await expandBuildCode(text);
@@ -1970,11 +1973,10 @@ async function importBuildText(text) {
   activateWorkspaceView("builds", { scroll: false });
   showToast(`${escapeHtml(imported.name)} imported and active`);
 }
-$("#import-build").addEventListener("click", () => $("#import-build-dialog").showModal());
-$("[data-cancel-import-build]").addEventListener("click", () => $("#import-build-dialog").close());
-$("[data-import-build-code]").addEventListener("click", () => {
-  importBuildText($("#import-build-code").value).catch(() => showToast("That build code could not be read"));
-});
+// The Import dialog's Import Code (apps/web/src/shell/dialogs/ImportBuildDialog.tsx).
+function importBuild(text) {
+  importBuildText(text).catch(() => showToast("That build code could not be read"));
+}
 // Import from game. On open the planner asks its local reader for UE_game.log (the pnpm dev server
 // /api/game-log/snapshots, or the desktop bridge); both return only sanitised build dumps (src/game-log/game-log-local.js).
 // Without it, or when the user asks, the picked log is read in the page. Everything is dropped with the dialog, and an

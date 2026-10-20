@@ -1,3 +1,6 @@
+import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import { openDialog } from "../ui/dialog-registry";
+
 export function SiteHeader() {
   return (
     <header className="site-header">
@@ -67,7 +70,13 @@ export function SiteHeader() {
           </svg>
           Import from game
         </button>{" "}
-        <button id="import-build" className="button button-secondary command-button" type="button" title="Import build">
+        <button
+          id="import-build"
+          className="button button-secondary command-button"
+          type="button"
+          title="Import build"
+          onClick={() => openDialog("import-build-dialog")}
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4" />
           </svg>
@@ -78,13 +87,19 @@ export function SiteHeader() {
           className="button button-secondary command-button"
           type="button"
           title="Copy build code to clipboard"
+          onClick={() => plannerCommands().exportBuild()}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 16V4m-4 4 4-4 4 4M4 17v4h16v-4" />
           </svg>
           Export
         </button>{" "}
-        <button id="reset-build" className="button command-button" type="button">
+        <button
+          id="reset-build"
+          className="button command-button"
+          type="button"
+          onClick={() => openDialog("reset-build-confirm")}
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 11a8 8 0 1 1 2.3 6M4 4v7h7" />
           </svg>

@@ -14,6 +14,10 @@
  * @property {() => void} deleteAllBuilds Deletes every saved build (already confirmed by the user).
  * @property {() => void} backupBuilds Downloads every saved build as a JSON backup.
  * @property {() => void} restoreBuilds Asks for a backup file and restores the builds in it.
+ * @property {() => void} resetBuild Empties the open build (already confirmed by the user).
+ * @property {() => Promise<void>} exportBuild Copies the open build's code to the clipboard (a toast says how it went).
+ * @property {(text: string) => void} importBuild Adds a pasted build code as a new active build and opens the Builds view;
+ *   a toast says when the code cannot be read (the Import dialog then stays open).
  * @property {(auto: boolean) => void} setBestCaseMode Config tab: Best case (automatic conditions) on, or manual.
  * @property {(id: string, on: boolean) => void} setCombatCondition Switches a combat condition (or own buffs built before
  *   the fight, `prebuiltSelfBuffs`).
