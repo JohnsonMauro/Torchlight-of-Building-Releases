@@ -18,6 +18,32 @@
  * @property {() => Promise<void>} exportBuild Copies the open build's code to the clipboard (a toast says how it went).
  * @property {(text: string) => void} importBuild Adds a pasted build code as a new active build and opens the Builds view;
  *   a toast says when the code cannot be read (the Import dialog then stays open).
+ * @property {(id: string) => void} toggleCraftedMemory Hero memories: equips a memory into its type's socket, or
+ *   unequips it.
+ * @property {(id: string) => void} toggleBaseMemory Hero memories, base trait slot: equips a fitting memory there (at its
+ *   best roll), or unequips it.
+ * @property {() => void} clearBaseMemory Hero memories: empties the base trait slot.
+ * @property {() => void} clearHeroMemorySlot Hero memories: empties the socket the dialog was opened for.
+ * @property {(id: string) => void} memoryContextMenu Hero memories, right-click: unequips the memory, or equips it into an
+ *   open compatible slot (a toast says when there is none).
+ * @property {(id: string) => void} copyCraftedMemory Hero memories: adds a copy of a memory.
+ * @property {(id: string) => void} editCraftedMemory Hero memories: opens the crafter on a memory.
+ * @property {(id: string) => void} deleteCraftedMemory Hero memories: deletes a memory (emptying its socket).
+ * @property {() => void} startMemoryCraft Hero memories: opens the crafter on a new memory of the socket's type.
+ * @property {() => void} cancelMemoryCraft Memory crafter: drops the draft and comes back to the inventory.
+ * @property {() => void} saveMemoryCraft Memory crafter: saves the draft (Craft / Save Changes) and comes back.
+ * @property {(field: string, value: string | number | boolean) => void} setMemoryField Memory crafter: a control's value
+ *   (baseStat, enhancementLevel, waxAndWane, risingMoon, revivedAffix, revivedRoll, fixedAffixes.N, randomAffixes.N,
+ *   fixedRolls.N, randomRolls.N).
+ * @property {(type: string) => void} setMemoryType Memory crafter: the memory type (clears the base stat).
+ * @property {(rarity: string) => void} setMemoryRarity Memory crafter: the rarity (caps the enhancement level).
+ * @property {(tier: number) => void} setRevivedTier Memory crafter: the revived affix's tier (its best roll).
+ * @property {(group: string, index: number, tier: number) => void} setMemoryAffixTier Memory crafter: an affix line's
+ *   tier (its best roll).
+ * @property {(group: string, index: number, position: number) => void} setMemoryTierPosition Memory crafter: the tier
+ *   slider of a line whose tiers differ by a number only.
+ * @property {(group: string, index: number, text: string) => void} setMemoryTierValue Memory crafter: that line's typed
+ *   value (the closest tier).
  * @property {() => void} openGameLogImport Opens Import from game and looks for the game log through the local reader.
  * @property {(file: File | null) => void} chooseGameLogFile Import from game: reads a chosen log in the page and lists
  *   its logins (none chosen), or says why it cannot.

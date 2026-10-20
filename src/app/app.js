@@ -466,6 +466,8 @@ let activeHeroTraitSupportId = "";
 let activeHeroMemoryTier = "";
 let memoryDraft = null;
 let editingMemoryId = null;
+// "inventory" or "craft": what the hero memory dialog shows.
+let heroMemoryMode = "inventory";
 let selectorChoiceIndex = -1;
 let selectorLevel = 20;
 let selectorSpecialConfig = null;
@@ -1675,6 +1677,25 @@ providePlannerCommands({
   openHeroSelector,
   selectHero,
   openMemorySocket,
+  // Hero memory dialog (apps/web/src/shell/dialogs/HeroMemorySelectorDialog.tsx).
+  toggleCraftedMemory,
+  toggleBaseMemory,
+  clearBaseMemory,
+  clearHeroMemorySlot: () => unequipHeroMemory(activeHeroMemoryTier),
+  memoryContextMenu,
+  copyCraftedMemory,
+  editCraftedMemory,
+  deleteCraftedMemory,
+  startMemoryCraft: () => startHeroMemoryCraft(),
+  cancelMemoryCraft,
+  saveMemoryCraft,
+  setMemoryField,
+  setMemoryType,
+  setMemoryRarity,
+  setRevivedTier,
+  setMemoryAffixTier,
+  setMemoryTierPosition,
+  setMemoryTierValue,
   removeMemory,
   pickHeroTrait,
   toggleTraitPathNode,
@@ -1773,6 +1794,8 @@ provideViewSource("skillSelector", skillSelectorSource);
 provideViewSource("prismInventory", prismInventorySource);
 // The Import from game dialog.
 provideViewSource("gameLogImport", gameLogImportSource);
+// The hero memory dialog.
+provideViewSource("heroMemory", heroMemorySource);
 // The talent tree, core talent and Fate slot pickers.
 provideViewSource("talentPicker", talentPickerSource);
 provideViewSource("corePicker", corePickerSource);
@@ -2873,17 +2896,9 @@ function memoryRevivalBadge(memory) {
     ? '<span class="memory-revival-badge"><span aria-hidden="true">☾</span> Revived</span>'
     : "";
 }
-function memoryRevivedDetailsMarkup(details) {
-  const lines = details
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const effects = lines.filter((line) => !/^Hero Trait Exclusive:/i.test(line));
-  const exclusive = lines.find((line) => /^Hero Trait Exclusive:/i.test(line));
-  const trait = exclusive?.replace(/^Hero Trait Exclusive:\s*/i, "").split(/\s*\|\s*/);
-  return `<div class="memory-revived-detail"><ul>${effects.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>${trait ? `<div class="memory-revived-exclusive"><small>Hero trait exclusive</small><span>${escapeHtml(trait.filter(Boolean).join(" · "))}</span></div>` : ""}</div>`;
-}
-function memoryRevivedAffixMarkup(memory) {
+// A revived affix as the crafter's preview and the memory tooltip show it: its tier, effect, and a Lunar Phase affix's
+// details (its effects and hero trait exclusive) for Alt.
+function memoryRevivedEffectView(memory) {
   const name = normalizeRevivedAffix(memory.revivedAffix),
     special = lunarPhaseRevivedAffixesSs13.includes(name);
   const effect = revivedAffixForMemoryType(memory.revivedAffix, memory.type, memory.revivedTier, memory.revivedRoll);
@@ -2895,7 +2910,35 @@ function memoryRevivedAffixMarkup(memory) {
         "",
       )
     : rawDetails;
-  return `<div class="memory-revived-effect ${special ? "special" : ""}">${Number.isInteger(tier) ? affixTierBadge(`T${tier}`) : ""}<span class="memory-revived-name">${escapeHtml(effect)}</span>${details ? `<small class="memory-revived-hint">Hold Alt for details</small>${memoryRevivedDetailsMarkup(details)}` : ""}</div>`;
+  const lines = (details || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const exclusive = lines.find((line) => /^Hero Trait Exclusive:/i.test(line));
+  return {
+    tierBadge: Number.isInteger(tier) ? `T${tier}` : null,
+    effect,
+    special,
+    details: details
+      ? {
+          effects: lines.filter((line) => !/^Hero Trait Exclusive:/i.test(line)),
+          exclusive: exclusive
+            ? exclusive
+                .replace(/^Hero Trait Exclusive:\s*/i, "")
+                .split(/\s*\|\s*/)
+                .filter(Boolean)
+                .join(" · ")
+            : null,
+        }
+      : null,
+  };
+}
+function memoryRevivedAffixMarkup(memory) {
+  const view = memoryRevivedEffectView(memory);
+  const details = view.details
+    ? `<small class="memory-revived-hint">Hold Alt for details</small><div class="memory-revived-detail"><ul>${view.details.effects.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>${view.details.exclusive !== null ? `<div class="memory-revived-exclusive"><small>Hero trait exclusive</small><span>${escapeHtml(view.details.exclusive)}</span></div>` : ""}</div>`
+    : "";
+  return `<div class="memory-revived-effect ${view.special ? "special" : ""}">${view.tierBadge ? affixTierBadge(view.tierBadge) : ""}<span class="memory-revived-name">${escapeHtml(view.effect)}</span>${details}</div>`;
 }
 function otherEquippedRevivedMemory(memory) {
   const equippedIds = [
@@ -2964,27 +3007,62 @@ function openHeroMemorySlot(memory, preferBase = false) {
   if (regularOpen) return tier;
   return baseOpen ? "base" : null;
 }
+// The hero memory dialog (apps/web/src/shell/dialogs/HeroMemorySelectorDialog.tsx) shows the "heroMemory" source: the
+// inventory, or the crafter while a draft is open.
 function renderHeroMemoryInventory() {
+  heroMemoryMode = "inventory";
+  viewSourceChanged("heroMemory");
+}
+function heroMemorySource() {
+  return heroMemoryMode === "craft" && memoryDraft ? heroMemoryCrafterView() : heroMemoryInventoryView();
+}
+function heroMemoryInventoryView() {
   const inventory = plannerState.hero.memoryInventory || [];
   const equipped = plannerState.hero.equippedMemoryIds || {};
-  const baseMode = activeHeroMemoryTier === "base",
-    requiredType = equippedBaseTraitSlot(plannerState.hero)?.memoryType?.replace(/^Memory of /, "") || "";
-  $("#hero-memory-title").textContent = baseMode ? "Hero Memories · Base Trait Slot" : "Hero Memories";
-  $("#hero-memory-content").innerHTML =
-    `<div class="hero-memory-inventory"><div class="hero-memory-list">${baseMode ? `<p class="hero-memory-slot-hint">This slot accepts Memory of ${escapeHtml(requiredType)}. Right-click any memory to equip it in an open compatible slot.</p>` : ""}${
-      inventory.length
-        ? inventory
-            .map((memory) => {
-              const tier = Object.keys(equipped).find((key) => equipped[key] === memory.id),
-                baseEquipped = plannerState.hero.baseTraitMemoryId === memory.id,
-                compatible = canEquipBaseTraitMemory(memory),
-                disabled = baseMode ? !compatible && !baseEquipped : !tier && otherEquippedRevivedMemory(memory),
-                available = tier || baseEquipped || openHeroMemorySlot(memory, baseMode);
-              return `<article class="hero-memory-item memory-rarity-${escapeHtml(memory.rarity)} ${available ? "" : "incompatible"}" data-memory-inventory-id="${escapeHtml(memory.id)}"><img src="${heroMemoryIcon(memory.type)}" alt=""><div><strong>${escapeHtml(memory.name)}</strong><small>${escapeHtml(memory.type)} · ${escapeHtml(memory.rarity)}${tier ? ` · Equipped at Lv.${tier.match(/level(\d+)$/)?.[1]}` : ""}${baseEquipped ? " · Base trait slot" : ""}</small></div><button type="button" ${baseMode ? `data-equip-base-memory="${escapeHtml(memory.id)}" ${disabled ? 'disabled title="Only a matching, unequipped memory fits this base trait slot"' : ""}` : `data-equip-crafted-memory="${escapeHtml(memory.id)}" ${disabled ? 'disabled title="Only one revived memory can be equipped"' : ""}`}>${baseMode ? (baseEquipped ? "Unequip" : compatible ? "Equip" : "Unavailable") : tier ? "Unequip" : "Equip"}</button><button type="button" data-copy-crafted-memory="${escapeHtml(memory.id)}" aria-label="Copy ${escapeHtml(memory.name)}">Copy</button><button type="button" data-edit-crafted-memory="${escapeHtml(memory.id)}" aria-label="Edit ${escapeHtml(memory.name)}">✎</button><button type="button" data-delete-crafted-memory="${escapeHtml(memory.id)}" aria-label="Delete ${escapeHtml(memory.name)}">×</button></article>`;
-            })
-            .join("")
-        : '<div class="hero-memory-empty">No memories crafted yet<br><button type="button" class="button" data-craft-hero-memory>Craft your first Memory</button></div>'
-    }</div><div class="hero-memory-inventory-footer">${baseMode ? (plannerState.hero.baseTraitMemoryId ? '<button type="button" class="button button-secondary" data-clear-base-memory>Unequip slot</button>' : "") : plannerState.hero.memories?.[activeHeroMemoryTier] ? '<button type="button" class="button button-secondary" data-clear-hero-memory>Unequip slot</button>' : ""}<button type="button" class="button" data-craft-hero-memory>Craft Memory</button></div></div>`;
+  const baseMode = activeHeroMemoryTier === "base";
+  return {
+    mode: "inventory",
+    title: baseMode ? "Hero Memories · Base Trait Slot" : "Hero Memories",
+    baseType: baseMode
+      ? displayTexts(equippedBaseTraitSlot(plannerState.hero)?.memoryType?.replace(/^Memory of /, "") || "")
+      : null,
+    items: inventory.map((memory) => {
+      const tier = Object.keys(equipped).find((key) => equipped[key] === memory.id),
+        baseEquipped = plannerState.hero.baseTraitMemoryId === memory.id,
+        compatible = canEquipBaseTraitMemory(memory),
+        disabled = Boolean(baseMode ? !compatible && !baseEquipped : !tier && otherEquippedRevivedMemory(memory));
+      return {
+        id: memory.id,
+        icon: heroMemoryIcon(memory.type),
+        available: Boolean(tier || baseEquipped || openHeroMemorySlot(memory, baseMode)),
+        ...displayTexts({
+          name: memory.name,
+          rarity: memory.rarity,
+          detail: `${memory.type} · ${memory.rarity}${tier ? ` · Equipped at Lv.${tier.match(/level(\d+)$/)?.[1]}` : ""}${baseEquipped ? " · Base trait slot" : ""}`,
+        }),
+        action: {
+          label: baseMode
+            ? baseEquipped
+              ? "Unequip"
+              : compatible
+                ? "Equip"
+                : "Unavailable"
+            : tier
+              ? "Unequip"
+              : "Equip",
+          disabled,
+          title: !disabled
+            ? null
+            : baseMode
+              ? "Only a matching, unequipped memory fits this base trait slot"
+              : "Only one revived memory can be equipped",
+        },
+      };
+    }),
+    unequipSlot: Boolean(
+      baseMode ? plannerState.hero.baseTraitMemoryId : plannerState.hero.memories?.[activeHeroMemoryTier],
+    ),
+  };
 }
 function startHeroMemoryCraft(memory = null) {
   editingMemoryId = memory?.id || null;
@@ -3076,7 +3154,7 @@ function memoryResolvedAffix(group, index) {
     range && Number.isFinite(roll) ? Math.max(range.min, Math.min(range.max, roll)) : roll,
   );
 }
-function memoryAffixControl(group, index, value, entries, label) {
+function memoryAffixLineView(group, index, value, entries, label) {
   const tierGroup = group === "fixedAffixes" ? "fixedTiers" : "randomTiers",
     rollGroup = group === "fixedAffixes" ? "fixedRolls" : "randomRolls",
     tiers = memoryTierOptions(group, value),
@@ -3094,49 +3172,52 @@ function memoryAffixControl(group, index, value, entries, label) {
     0,
     tiers.findIndex((entry) => entry.tier === activeTier),
   );
-  const controls = range
-    ? `<div class="memory-roll-controls"><input type="range" min="${range.min}" max="${range.max}" value="${roll}" data-memory-field="${rollGroup}.${index}" aria-label="${label} roll slider"><input type="number" min="${range.min}" max="${range.max}" step="1" value="${roll}" data-memory-field="${rollGroup}.${index}" aria-label="${label} roll value"></div>`
-    : numericTiers
-      ? `<div class="memory-roll-controls"><input type="range" min="0" max="${tiers.length - 1}" step="1" value="${tierIndex}" data-memory-tier-slider="${group}.${index}" aria-label="${label} tier value slider"><input type="number" min="${Math.min(...tierValues)}" max="${Math.max(...tierValues)}" step="any" value="${tierValues[tierIndex]}" data-memory-tier-value="${group}.${index}" aria-label="${label} tier value"></div>`
-      : "";
-  return `<label>${label}<select data-memory-field="${group}.${index}" aria-label="${label}"><option value="">None</option>${entries.map((entry) => `<option value="${escapeHtml(entry.effect)}" ${value === entry.effect ? "selected" : ""}>${escapeHtml(entry.effect)}</option>`).join("")}</select>${tiers.length > 1 ? `<span class="memory-tier-row">${tiers.map((entry) => `<button type="button" class="${entry.tier === activeTier ? "active" : ""}" data-memory-tier-choice="${group}.${index}.${entry.tier}">T${entry.tier}</button>`).join("")}</span>` : ""}${controls}</label>`;
+  return {
+    group,
+    index,
+    label,
+    value,
+    options: entries.map((entry) => entry.effect),
+    tiers: tiers.length > 1 ? tiers.map((entry) => ({ tier: entry.tier, active: entry.tier === activeTier })) : [],
+    roll: range ? { min: range.min, max: range.max, value: roll } : null,
+    tierValue: numericTiers
+      ? {
+          index: tierIndex,
+          count: tiers.length,
+          value: tierValues[tierIndex],
+          min: Math.min(...tierValues),
+          max: Math.max(...tierValues),
+        }
+      : null,
+  };
 }
-function focusMemoryRollValue(field) {
-  const input = Array.from(document.querySelectorAll('#hero-memory-content input[type="number"]')).find(
-    (element) => element.dataset.memoryField === field || element.dataset.memoryTierValue === field,
-  );
-  if (input) {
-    input.focus();
-    input.select();
-  }
-}
-function memoryRevivalControls(draft) {
-  const regular = regularRevivedAffixNamesSs13
-    .map(
-      (name) =>
-        `<option value="${escapeHtml(name)}" data-revived-description="${escapeHtml(revivedAffixTiers(name)[0].effect)}" ${draft.revivedAffix === name ? "selected" : ""}>${escapeHtml(name)}</option>`,
-    )
-    .join("");
-  const lunar = lunarPhaseRevivedAffixesSs13
-    .map(
-      (name) =>
-        `<option value="${escapeHtml(name)}" ${draft.revivedAffix === name ? "selected" : ""}>${escapeHtml(name)}</option>`,
-    )
-    .join("");
+function memoryRevivedControlsView(draft) {
   const known =
     regularRevivedAffixNamesSs13.includes(draft.revivedAffix) ||
     lunarPhaseRevivedAffixesSs13.includes(draft.revivedAffix);
-  const saved =
-    draft.revivedAffix && !known
-      ? `<option value="${escapeHtml(draft.revivedAffix)}" selected>Saved effect</option>`
-      : "";
   const tiers = revivedAffixTiers(draft.revivedAffix),
     active = tiers.find((entry) => entry.tier === draft.revivedTier) || tiers[0],
-    range = revivedAffixRollRange(active?.effect),
-    roll = range ? Math.max(range.min, Math.min(range.max, draft.revivedRoll ?? range.max)) : null;
-  return `<h3>Memory Revival</h3><label class="memory-wax"><span>Wax and Wane (+30% base stat)</span><input type="checkbox" data-memory-field="waxAndWane" ${draft.waxAndWane ? "checked" : ""}></label><label class="memory-wax"><span>Rising Moon (T0 fixed affixes)</span><input type="checkbox" data-memory-field="risingMoon" ${draft.risingMoon ? "checked" : ""}></label><label>Revived Affix<select data-memory-field="revivedAffix" aria-label="Revived affix"><option value="">None</option><optgroup label="Regular Revived Affixes">${regular}</optgroup><optgroup label="Lunar Phase">${lunar}</optgroup>${saved}</select></label>${active ? `<div class="memory-revived-controls"><span class="memory-tier-row">${tiers.map((entry) => `<button type="button" class="${entry.tier === active.tier ? "active" : ""}" data-revived-tier="${entry.tier}">T${entry.tier}</button>`).join("")}</span>${range ? `<div class="memory-roll-controls"><input type="range" min="${range.min}" max="${range.max}" value="${roll}" data-memory-field="revivedRoll" aria-label="Revived affix roll slider"><input type="number" min="${range.min}" max="${range.max}" step="1" value="${roll}" data-memory-field="revivedRoll" aria-label="Revived affix roll value"></div>` : ""}</div>` : ""}`;
+    range = revivedAffixRollRange(active?.effect);
+  return {
+    value: draft.revivedAffix,
+    regular: regularRevivedAffixNamesSs13.map((name) => ({ name, description: revivedAffixTiers(name)[0].effect })),
+    lunar: [...lunarPhaseRevivedAffixesSs13],
+    saved: Boolean(draft.revivedAffix && !known),
+    tiers: active ? tiers.map((entry) => ({ tier: entry.tier, active: entry.tier === active.tier })) : null,
+    roll: range
+      ? {
+          min: range.min,
+          max: range.max,
+          value: Math.max(range.min, Math.min(range.max, draft.revivedRoll ?? range.max)),
+        }
+      : null,
+  };
 }
 function renderHeroMemoryCraft() {
+  heroMemoryMode = "craft";
+  viewSourceChanged("heroMemory");
+}
+function heroMemoryCrafterView() {
   const draft = memoryDraft,
     maxEnhancement = memoryMaxEnhancementForRarity(draft.rarity),
     pool = (kind) => {
@@ -3154,49 +3235,72 @@ function renderHeroMemoryCraft() {
           ]
         : base;
     },
-    select = (field, value, entries, label) =>
-      `<select data-memory-field="${field}" aria-label="${label}"><option value="">None</option>${entries.map((entry) => `<option value="${escapeHtml(entry.effect)}" ${value === entry.effect ? "selected" : ""}>${escapeHtml(entry.label || entry.effect)}</option>`).join("")}</select>`;
-  $("#hero-memory-title").textContent = editingMemoryId ? "Edit Memory" : "Craft Memory";
-  $("#hero-memory-content").innerHTML =
-    `<div class="hero-memory-craft"><section class="hero-memory-form"><label>Memory Type</label><div class="hero-memory-choice-row memory-types">${Object.values(
-      memoryTypesByTier,
-    )
-      .map(
-        (type) =>
-          `<button type="button" class="${draft.type === type ? "active" : ""}" data-memory-type="${type}"><img src="${heroMemoryIcon(type)}" alt="">${type}</button>`,
-      )
-      .join(
-        "",
-      )}</div><label>Crafting Rarity *</label><div class="hero-memory-choice-row rarities">${["Normal", "Magic", "Epic", "Legendary", "Ultimate"].map((rarity) => `<button type="button" class="memory-rarity-${rarity.toLowerCase()} ${draft.rarity === rarity.toLowerCase() ? "active" : ""}" data-memory-rarity="${rarity.toLowerCase()}">${rarity}</button>`).join("")}</div><label>Base Stat *${select(
-      "baseStat",
-      draft.baseStat,
-      pool("Base Stats").map((entry) => ({ ...entry, label: memoryBaseStatLabel(entry.effect) })),
-      "Base stat",
-    )}</label><label>Enhancement Level <strong>Lv.${draft.enhancementLevel}</strong><span class="memory-roll-controls memory-enhancement-controls"><input type="range" min="1" max="${maxEnhancement}" value="${draft.enhancementLevel}" data-memory-field="enhancementLevel" aria-label="Enhancement level slider"><input type="number" min="1" max="${maxEnhancement}" step="1" value="${draft.enhancementLevel}" data-memory-field="enhancementLevel" aria-label="Enhancement level value"></span></label>${memoryRevivalControls(draft)}<h3>Fixed Affixes (${draft.fixedAffixes.filter(Boolean).length}/2)</h3>${draft.fixedAffixes.map((value, index) => memoryAffixControl("fixedAffixes", index, value, pool("Fixed Affix"), `Fixed ${index + 1}`)).join("")}<h3>Random Affixes (${draft.randomAffixes.filter(Boolean).length}/2)</h3>${draft.randomAffixes.map((value, index) => memoryAffixControl("randomAffixes", index, value, pool("Random Affix"), `Random ${index + 1}`)).join("")}</section><aside><span>Preview</span><div class="hero-memory-preview memory-rarity-${escapeHtml(draft.rarity || "normal")}">${draft.baseStat ? `<header><img src="${heroMemoryIcon(draft.type)}" alt=""><div><strong>${escapeHtml(draft.type)}</strong><small>${escapeHtml(draft.rarity || "normal")} · HERO MEMORY</small></div></header>${memoryRevivalBadge(draft)}<p><span data-memory-enhancement-preview>Enhancement Level ${draft.enhancementLevel}/${maxEnhancement}</span><br><span data-memory-trait-preview>Trait Level +${traitLevelBonusForEnhancement(draft.enhancementLevel)}</span></p><h4>Implicit</h4><div class="memory-implicit ${draft.waxAndWane ? "wax-applied" : ""}">${escapeHtml(memoryScaledBaseStat(draft.baseStat, draft.type, draft.enhancementLevel, draft.waxAndWane, draft.rarity))}</div>${draft.waxAndWane ? `<h4>Memory Revival</h4><div>Wax and Wane · +30% base stat</div>` : ""}${draft.revivedAffix ? `<h4>Revived Affix${lunarPhaseRevivedAffixesSs13.includes(draft.revivedAffix) ? " · Lunar Phase" : ""}</h4>${memoryRevivedAffixMarkup(draft)}` : ""}${draft.fixedAffixes.some(Boolean) ? `<h4>Fixed Affixes</h4>${draft.fixedAffixes.map((value, index) => (value ? `<div data-memory-preview-affix="fixedAffixes.${index}">${escapeHtml(memoryResolvedAffix("fixedAffixes", index))}</div>` : "")).join("")}` : ""}${draft.randomAffixes.some(Boolean) ? `<h4>Random Affixes</h4>${draft.randomAffixes.map((value, index) => (value ? `<div data-memory-preview-affix="randomAffixes.${index}">${escapeHtml(memoryResolvedAffix("randomAffixes", index))}</div>` : "")).join("")}` : ""}` : '<p class="hero-memory-preview-empty">Select a base stat to preview memory</p>'}</div><div class="hero-memory-craft-actions"><button type="button" class="button button-secondary" data-back-hero-memory>Cancel</button><button type="button" class="button" data-save-crafted-memory ${draft.rarity && draft.baseStat ? "" : "disabled"}>${editingMemoryId ? "Save Changes" : "Craft"}</button></div></aside></div>`;
-  const traitPreview = $("#hero-memory-content [data-memory-trait-preview]");
-  if (traitPreview)
-    traitPreview.innerHTML = `Trait Level <b class="memory-trait-bonus">+${memoryDraft.traitLevelBonus}</b>`;
-  $("#hero-memory-content")
-    .querySelectorAll("[data-memory-preview-affix]")
-    .forEach((preview) => {
-      const [group, indexText] = preview.dataset.memoryPreviewAffix.split("."),
-        index = Number(indexText);
-      preview.classList.add("memory-affix-row");
-      preview.innerHTML = memoryAffixRowContent(
-        memoryResolvedAffix(group, index),
-        memoryDraft[group === "fixedAffixes" ? "fixedTiers" : "randomTiers"][index],
-      );
-    });
+    previewRows = (group) =>
+      draft[group].flatMap((value, index) => {
+        const tier = draft[group === "fixedAffixes" ? "fixedTiers" : "randomTiers"][index];
+        return value
+          ? [{ index, tier: Number.isInteger(tier) ? tier : null, text: memoryResolvedAffix(group, index) }]
+          : [];
+      });
+  return displayTexts({
+    mode: "craft",
+    title: editingMemoryId ? "Edit Memory" : "Craft Memory",
+    types: Object.values(memoryTypesByTier).map((type) => ({
+      type,
+      icon: heroMemoryIcon(type),
+      active: draft.type === type,
+    })),
+    rarities: ["Normal", "Magic", "Epic", "Legendary", "Ultimate"].map((label) => ({
+      value: label.toLowerCase(),
+      label,
+      active: draft.rarity === label.toLowerCase(),
+    })),
+    baseStat: draft.baseStat,
+    baseStats: pool("Base Stats").map((entry) => ({ value: entry.effect, label: memoryBaseStatLabel(entry.effect) })),
+    enhancement: { level: draft.enhancementLevel, max: maxEnhancement },
+    waxAndWane: Boolean(draft.waxAndWane),
+    risingMoon: Boolean(draft.risingMoon),
+    revived: memoryRevivedControlsView(draft),
+    fixed: draft.fixedAffixes.map((value, index) =>
+      memoryAffixLineView("fixedAffixes", index, value, pool("Fixed Affix"), `Fixed ${index + 1}`),
+    ),
+    random: draft.randomAffixes.map((value, index) =>
+      memoryAffixLineView("randomAffixes", index, value, pool("Random Affix"), `Random ${index + 1}`),
+    ),
+    preview: draft.baseStat
+      ? {
+          type: draft.type,
+          icon: heroMemoryIcon(draft.type),
+          rarity: draft.rarity || "normal",
+          revived: heroMemoryIsRevived(draft),
+          enhancement: `Enhancement Level ${draft.enhancementLevel}/${maxEnhancement}`,
+          traitBonus: draft.traitLevelBonus,
+          implicit: memoryScaledBaseStat(
+            draft.baseStat,
+            draft.type,
+            draft.enhancementLevel,
+            draft.waxAndWane,
+            draft.rarity,
+          ),
+          waxAndWane: Boolean(draft.waxAndWane),
+          revivedAffix: draft.revivedAffix
+            ? {
+                lunar: lunarPhaseRevivedAffixesSs13.includes(draft.revivedAffix),
+                effect: memoryRevivedEffectView(draft),
+              }
+            : null,
+          fixed: previewRows("fixedAffixes"),
+          random: previewRows("randomAffixes"),
+        }
+      : null,
+    previewRarity: draft.rarity || "normal",
+    canSave: Boolean(draft.rarity && draft.baseStat),
+    saveLabel: editingMemoryId ? "Save Changes" : "Craft",
+  });
 }
-function updateMemoryDraftField(input) {
+// A crafter control's new value: a checkbox's boolean, a slider's or number's number, a select's text.
+function updateMemoryDraftField(field, value) {
   if (!memoryDraft) return;
-  const field = input.dataset.memoryField;
-  const value =
-    input.type === "checkbox"
-      ? input.checked
-      : input.type === "range" || input.type === "number"
-        ? Number(input.value)
-        : input.value;
   if (/^(fixedAffixes|randomAffixes|fixedRolls|randomRolls)\./.test(field || "")) {
     const [group, indexText] = field.split("."),
       index = Number(indexText);
@@ -3244,117 +3348,209 @@ function updateMemoryDraftField(input) {
   if (field === "enhancementLevel")
     memoryDraft.traitLevelBonus = traitLevelBonusForEnhancement(memoryDraft.enhancementLevel);
 }
-function updateMemoryAffixPreview(group, index) {
-  const preview = $("#hero-memory-content .hero-memory-preview")?.querySelector(
-    `[data-memory-preview-affix="${group}.${index}"]`,
+// ---- Hero memory dialog commands (apps/web/src/shell/dialogs/HeroMemorySelectorDialog.tsx and HeroMemoryCrafter.tsx).
+const findMemory = (id) => plannerState.hero.memoryInventory?.find((item) => item.id === id);
+// Equip / Unequip of a memory in the inventory.
+function toggleCraftedMemory(id) {
+  const memory = findMemory(id);
+  if (!memory) return;
+  const tier = Object.keys(plannerState.hero.equippedMemoryIds || {}).find(
+    (key) => plannerState.hero.equippedMemoryIds[key] === memory.id,
   );
-  if (preview)
-    preview.innerHTML = memoryAffixRowContent(
-      memoryResolvedAffix(group, index),
-      memoryDraft[group === "fixedAffixes" ? "fixedTiers" : "randomTiers"][index],
-    );
+  if (tier) unequipHeroMemory(tier);
+  else equipHeroMemory(memory);
 }
-document.addEventListener("input", (event) => {
-  const tierSlider = event.target.closest("#hero-memory-content [data-memory-tier-slider]");
-  if (tierSlider) {
-    const [group, indexText] = tierSlider.dataset.memoryTierSlider.split("."),
-      index = Number(indexText),
-      tiers = memoryTierOptions(group, memoryDraft[group][index]),
-      entry = tiers[Number(tierSlider.value)];
-    if (entry) {
-      memoryDraft[group === "fixedAffixes" ? "fixedTiers" : "randomTiers"][index] = entry.tier;
-      memoryDraft[group === "fixedAffixes" ? "fixedRolls" : "randomRolls"][index] = null;
-      const number = tierSlider.parentElement.querySelector("[data-memory-tier-value]");
-      if (number) number.value = memoryTierNumericValue(entry.effect);
-      tierSlider
-        .closest("label")
-        .querySelectorAll("[data-memory-tier-choice]")
-        .forEach((button) =>
-          button.classList.toggle("active", Number(button.dataset.memoryTierChoice.split(".")[2]) === entry.tier),
-        );
-      updateMemoryAffixPreview(group, index);
-    }
-    return;
+// Equip / Unequip of a memory in the base trait slot's mode.
+function toggleBaseMemory(id) {
+  const memory = findMemory(id),
+    slot = equippedBaseTraitSlot(plannerState.hero);
+  if (!slot || (!canEquipBaseTraitMemory(memory) && plannerState.hero.baseTraitMemoryId !== memory?.id)) return;
+  if (plannerState.hero.baseTraitMemoryId === memory.id) {
+    plannerState.hero.baseTraitMemoryId = "";
+    plannerState.hero.baseTraitMemoryRoll = null;
+  } else {
+    plannerState.hero.baseTraitMemoryId = memory.id;
+    plannerState.hero.baseTraitMemoryRoll = slot.reductionRange.max;
   }
-  if (!event.target.matches("#hero-memory-content [data-memory-field]")) return;
-  if (event.target.type === "number" && event.target.value === "") return;
-  updateMemoryDraftField(event.target);
-  const roll = event.target.dataset.memoryField?.match(/^(fixedRolls|randomRolls)\.(\d+)$/);
-  if (roll) {
-    event.target
-      .closest(".memory-roll-controls")
-      ?.querySelectorAll(`[data-memory-field="${roll[1]}.${roll[2]}"]`)
-      .forEach((control) => {
-        if (control !== event.target) control.value = memoryDraft[roll[1]][Number(roll[2])];
-      });
-    updateMemoryAffixPreview(roll[1] === "fixedRolls" ? "fixedAffixes" : "randomAffixes", Number(roll[2]));
-  }
-  if (event.target.dataset.memoryField === "revivedRoll") {
-    event.target
-      .closest(".memory-roll-controls")
-      ?.querySelectorAll('[data-memory-field="revivedRoll"]')
-      .forEach((control) => {
-        if (control !== event.target) control.value = memoryDraft.revivedRoll;
-      });
-    const preview = $("#hero-memory-content .memory-revived-effect .memory-revived-name");
-    if (preview)
-      preview.textContent = revivedAffixForMemoryType(
-        memoryDraft.revivedAffix,
-        memoryDraft.type,
-        memoryDraft.revivedTier,
-        memoryDraft.revivedRoll,
-      );
-  }
-  if (event.target.dataset.memoryField === "enhancementLevel") {
-    event.target
-      .closest(".memory-enhancement-controls")
-      ?.querySelectorAll('[data-memory-field="enhancementLevel"]')
-      .forEach((control) => {
-        if (control !== event.target) control.value = memoryDraft.enhancementLevel;
-      });
-    const label = event.target.closest("label")?.querySelector("strong");
-    if (label) label.textContent = `Lv.${memoryDraft.enhancementLevel}`;
-    const level = $("#hero-memory-content [data-memory-enhancement-preview]"),
-      trait = $("#hero-memory-content [data-memory-trait-preview]");
-    if (level)
-      level.textContent = `Enhancement Level ${memoryDraft.enhancementLevel}/${memoryMaxEnhancementForRarity(memoryDraft.rarity)}`;
-    if (trait) trait.innerHTML = `Trait Level <b class="memory-trait-bonus">+${memoryDraft.traitLevelBonus}</b>`;
-    const implicit = $("#hero-memory-content .memory-implicit");
-    if (implicit)
-      implicit.textContent = memoryScaledBaseStat(
-        memoryDraft.baseStat,
-        memoryDraft.type,
-        memoryDraft.enhancementLevel,
-        memoryDraft.waxAndWane,
-        memoryDraft.rarity,
-      );
-  }
-});
-document.addEventListener("change", (event) => {
-  const tierControl = event.target.closest(
-    "#hero-memory-content [data-memory-tier-slider],#hero-memory-content [data-memory-tier-value]",
+  persistPlannerState();
+  renderHeroTraitTree();
+  renderHeroMemoryInventory();
+}
+function clearBaseMemory() {
+  plannerState.hero.baseTraitMemoryId = "";
+  plannerState.hero.baseTraitMemoryRoll = null;
+  persistPlannerState();
+  renderHeroTraitTree();
+  renderHeroMemoryInventory();
+}
+// A right-click on a memory: unequips it, or equips it into an open compatible slot (the base trait slot first in that
+// slot's mode).
+function memoryContextMenu(id) {
+  const memory = findMemory(id);
+  if (!memory) return;
+  const tier = Object.keys(plannerState.hero.equippedMemoryIds || {}).find(
+    (key) => plannerState.hero.equippedMemoryIds[key] === id,
   );
-  if (tierControl) {
-    const id = tierControl.dataset.memoryTierSlider || tierControl.dataset.memoryTierValue,
-      [group, indexText] = id.split("."),
-      index = Number(indexText),
-      tiers = memoryTierOptions(group, memoryDraft[group][index]);
-    const entry =
-      tierControl.dataset.memoryTierValue !== undefined
-        ? closestMemoryTier(tiers, tierControl.value)
-        : tiers[Number(tierControl.value)];
-    if (entry) memoryDraft[group === "fixedAffixes" ? "fixedTiers" : "randomTiers"][index] = entry.tier;
-    const scroll = $("#hero-memory-content .hero-memory-form")?.scrollTop || 0;
-    renderHeroMemoryCraft();
-    $("#hero-memory-content .hero-memory-form").scrollTop = scroll;
+  if (tier) {
+    unequipHeroMemory(tier);
     return;
   }
-  if (!event.target.matches("#hero-memory-content [data-memory-field]")) return;
-  updateMemoryDraftField(event.target);
-  const scroll = $("#hero-memory-content .hero-memory-form")?.scrollTop || 0;
+  if (plannerState.hero.baseTraitMemoryId === id) {
+    plannerState.hero.baseTraitMemoryId = "";
+    plannerState.hero.baseTraitMemoryRoll = null;
+    hidePlannerTooltip();
+    persistPlannerState();
+    renderHeroTraitTree();
+    renderHeroMemoryInventory();
+    showToast("Base trait memory unequipped");
+    return;
+  }
+  const openSlot = openHeroMemorySlot(memory, activeHeroMemoryTier === "base");
+  if (openSlot === "base") {
+    const slot = equippedBaseTraitSlot(plannerState.hero);
+    plannerState.hero.baseTraitMemoryId = id;
+    plannerState.hero.baseTraitMemoryRoll = slot.reductionRange.max;
+    hidePlannerTooltip();
+    persistPlannerState();
+    renderHeroTraitTree();
+    renderHeroMemoryInventory();
+    showToast(`${escapeHtml(memory.name)} equipped in base trait slot`);
+  } else if (openSlot) equipHeroMemory(memory);
+  else showToast("No open compatible memory slot");
+}
+function copyCraftedMemory(id) {
+  const original = findMemory(id);
+  if (!original) return;
+  const copy = {
+    ...structuredClone(original),
+    id: globalThis.crypto?.randomUUID?.() || `memory-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  };
+  plannerState.hero.memoryInventory.push(copy);
+  persistPlannerState();
+  renderHeroMemoryInventory();
+  showToast(`${escapeHtml(original.name)} copied`);
+}
+function editCraftedMemory(id) {
+  const memory = findMemory(id);
+  if (memory) startHeroMemoryCraft(memory);
+}
+function deleteCraftedMemory(id) {
+  plannerState.hero.memoryInventory = (plannerState.hero.memoryInventory || []).filter((memory) => memory.id !== id);
+  for (const [tier, equippedId] of Object.entries(plannerState.hero.equippedMemoryIds || {}))
+    if (equippedId === id) {
+      delete plannerState.hero.equippedMemoryIds[tier];
+      plannerState.hero.memories[tier] = "";
+      plannerState.hero.memoryTraitLevels[tier] = 0;
+    }
+  clearInvalidBaseTraitMemory();
+  persistPlannerState();
+  renderHeroTraitTree();
+  renderHeroMemoryInventory();
+  showToast("Memory deleted");
+}
+function cancelMemoryCraft() {
+  memoryDraft = null;
+  editingMemoryId = null;
+  renderHeroMemoryInventory();
+}
+function setMemoryField(field, value) {
+  if (!memoryDraft) return;
+  updateMemoryDraftField(field, value);
   renderHeroMemoryCraft();
-  $("#hero-memory-content .hero-memory-form").scrollTop = scroll;
-});
+}
+function setMemoryType(type) {
+  if (!memoryDraft || memoryDraft.type === type) return;
+  memoryDraft.type = type;
+  memoryDraft.name = type;
+  memoryDraft.baseStat = "";
+  renderHeroMemoryCraft();
+}
+function setMemoryRarity(rarity) {
+  if (!memoryDraft) return;
+  memoryDraft.rarity = rarity;
+  memoryDraft.enhancementLevel = clampMemoryEnhancement(memoryDraft.enhancementLevel, memoryDraft.rarity);
+  memoryDraft.traitLevelBonus = traitLevelBonusForEnhancement(memoryDraft.enhancementLevel);
+  renderHeroMemoryCraft();
+}
+// A revived affix's tier: its roll goes to the tier's best.
+function setRevivedTier(tier) {
+  if (!memoryDraft) return;
+  memoryDraft.revivedTier = tier;
+  memoryDraft.revivedRoll =
+    revivedAffixRollRange(revivedAffixTiers(memoryDraft.revivedAffix).find((entry) => entry.tier === tier)?.effect)
+      ?.max ?? null;
+  renderHeroMemoryCraft();
+}
+// An affix line's tier button: its roll goes to the tier's best.
+function setMemoryAffixTier(group, index, tier) {
+  if (!memoryDraft) return;
+  const tierGroup = group === "fixedAffixes" ? "fixedTiers" : "randomTiers",
+    rollGroup = group === "fixedAffixes" ? "fixedRolls" : "randomRolls";
+  memoryDraft[tierGroup][index] = tier;
+  memoryDraft[rollGroup][index] =
+    memoryRollRange(
+      memoryTierOptions(group, memoryDraft[group][index]).find((entry) => entry.tier === tier)?.effect || "",
+    )?.max ?? null;
+  renderHeroMemoryCraft();
+}
+// A line whose tiers differ by a number only: its tier slider (a position among the tiers, best last)…
+function setMemoryTierPosition(group, index, position) {
+  if (!memoryDraft) return;
+  const entry = memoryTierOptions(group, memoryDraft[group][index])[position];
+  if (!entry) return;
+  memoryDraft[group === "fixedAffixes" ? "fixedTiers" : "randomTiers"][index] = entry.tier;
+  memoryDraft[group === "fixedAffixes" ? "fixedRolls" : "randomRolls"][index] = null;
+  renderHeroMemoryCraft();
+}
+// …or a typed value (the closest tier).
+function setMemoryTierValue(group, index, text) {
+  if (!memoryDraft) return;
+  const entry = closestMemoryTier(memoryTierOptions(group, memoryDraft[group][index]), text);
+  if (entry) memoryDraft[group === "fixedAffixes" ? "fixedTiers" : "randomTiers"][index] = entry.tier;
+  renderHeroMemoryCraft();
+}
+function saveMemoryCraft() {
+  if (!memoryDraft?.rarity || !memoryDraft.baseStat) return;
+  if (
+    editingMemoryId &&
+    (Object.values(plannerState.hero.equippedMemoryIds || {}).includes(editingMemoryId) ||
+      plannerState.hero.baseTraitMemoryId === editingMemoryId) &&
+    otherEquippedRevivedMemory(memoryDraft)
+  ) {
+    showToast("Only one revived memory can be equipped");
+    return;
+  }
+  plannerState.hero.memoryInventory ||= [];
+  const enhancementLevel = clampMemoryEnhancement(memoryDraft.enhancementLevel, memoryDraft.rarity),
+    memory = {
+      ...memoryDraft,
+      enhancementLevel,
+      traitLevelBonus: traitLevelBonusForEnhancement(enhancementLevel),
+      id: editingMemoryId || globalThis.crypto?.randomUUID?.() || `memory-${Date.now()}`,
+      name: memoryDraft.type,
+    };
+  const index = plannerState.hero.memoryInventory.findIndex((item) => item.id === memory.id);
+  if (index >= 0) plannerState.hero.memoryInventory[index] = memory;
+  else plannerState.hero.memoryInventory.push(memory);
+  for (const [tier, equippedId] of Object.entries(plannerState.hero.equippedMemoryIds || {}))
+    if (equippedId === memory.id) {
+      if (memory.type !== heroMemoryTypeForTier(tier)) {
+        delete plannerState.hero.equippedMemoryIds[tier];
+        plannerState.hero.memories[tier] = "";
+        plannerState.hero.memoryTraitLevels[tier] = 0;
+      } else {
+        plannerState.hero.memories[tier] = memory.name;
+        plannerState.hero.memoryTraitLevels[tier] = traitLevelBonusForEnhancement(memory.enhancementLevel);
+      }
+    }
+  clearInvalidBaseTraitMemory();
+  memoryDraft = null;
+  editingMemoryId = null;
+  persistPlannerState();
+  renderHeroTraitTree();
+  renderHeroMemoryInventory();
+  showToast(`${escapeHtml(memory.name)} saved`);
+}
 
 const titleCase = (value) => value.replace(/([A-Z])/g, " $1").replace(/^./, (character) => character.toUpperCase());
 
@@ -7043,43 +7239,6 @@ function clearTalentTreeState(name) {
 }
 
 document.addEventListener("contextmenu", (event) => {
-  const memoryRow = event.target.closest("[data-memory-inventory-id]");
-  if (memoryRow) {
-    event.preventDefault();
-    const id = memoryRow.dataset.memoryInventoryId,
-      memory = plannerState.hero.memoryInventory?.find((item) => item.id === id);
-    if (!memory) return;
-    const tier = Object.keys(plannerState.hero.equippedMemoryIds || {}).find(
-      (key) => plannerState.hero.equippedMemoryIds[key] === id,
-    );
-    if (tier) {
-      unequipHeroMemory(tier);
-      return;
-    }
-    if (plannerState.hero.baseTraitMemoryId === id) {
-      plannerState.hero.baseTraitMemoryId = "";
-      plannerState.hero.baseTraitMemoryRoll = null;
-      hidePlannerTooltip();
-      persistPlannerState();
-      renderHeroTraitTree();
-      renderHeroMemoryInventory();
-      showToast("Base trait memory unequipped");
-      return;
-    }
-    const openSlot = openHeroMemorySlot(memory, activeHeroMemoryTier === "base");
-    if (openSlot === "base") {
-      const slot = equippedBaseTraitSlot(plannerState.hero);
-      plannerState.hero.baseTraitMemoryId = id;
-      plannerState.hero.baseTraitMemoryRoll = slot.reductionRange.max;
-      hidePlannerTooltip();
-      persistPlannerState();
-      renderHeroTraitTree();
-      renderHeroMemoryInventory();
-      showToast(`${escapeHtml(memory.name)} equipped in base trait slot`);
-    } else if (openSlot) equipHeroMemory(memory);
-    else showToast("No open compatible memory slot");
-    return;
-  }
   const craftedSlateInventory = event.target.closest("[data-crafted-slate-inventory]");
   if (craftedSlateInventory) {
     event.preventDefault();
@@ -7302,201 +7461,6 @@ document.addEventListener("click", (event) => {
     } catch (error) {
       showToast(error?.message || "A new library could not be started");
     }
-  }
-  if (event.target.closest("[data-close-hero-memory]")) {
-    $("#hero-memory-selector").close();
-    return;
-  }
-  if (event.target.closest("[data-clear-base-memory]")) {
-    plannerState.hero.baseTraitMemoryId = "";
-    plannerState.hero.baseTraitMemoryRoll = null;
-    persistPlannerState();
-    renderHeroTraitTree();
-    renderHeroMemoryInventory();
-    return;
-  }
-  const equipBaseMemoryButton = event.target.closest("[data-equip-base-memory]");
-  if (equipBaseMemoryButton) {
-    const memory = plannerState.hero.memoryInventory?.find(
-        (item) => item.id === equipBaseMemoryButton.dataset.equipBaseMemory,
-      ),
-      slot = equippedBaseTraitSlot(plannerState.hero);
-    if (!slot || (!canEquipBaseTraitMemory(memory) && plannerState.hero.baseTraitMemoryId !== memory?.id)) return;
-    if (plannerState.hero.baseTraitMemoryId === memory.id) {
-      plannerState.hero.baseTraitMemoryId = "";
-      plannerState.hero.baseTraitMemoryRoll = null;
-    } else {
-      plannerState.hero.baseTraitMemoryId = memory.id;
-      plannerState.hero.baseTraitMemoryRoll = slot.reductionRange.max;
-    }
-    persistPlannerState();
-    renderHeroTraitTree();
-    renderHeroMemoryInventory();
-    return;
-  }
-  if (event.target.closest("[data-clear-hero-memory]")) {
-    unequipHeroMemory(activeHeroMemoryTier);
-    return;
-  }
-  if (event.target.closest("[data-craft-hero-memory]")) {
-    startHeroMemoryCraft();
-    return;
-  }
-  if (event.target.closest("[data-back-hero-memory]")) {
-    memoryDraft = null;
-    editingMemoryId = null;
-    renderHeroMemoryInventory();
-    return;
-  }
-  const memoryTypeButton = event.target.closest("[data-memory-type]");
-  if (memoryTypeButton) {
-    const nextType = memoryTypeButton.dataset.memoryType;
-    if (memoryDraft.type === nextType) return;
-    const scroll = $("#hero-memory-content .hero-memory-form")?.scrollTop || 0;
-    memoryDraft.type = nextType;
-    memoryDraft.name = nextType;
-    memoryDraft.baseStat = "";
-    renderHeroMemoryCraft();
-    $("#hero-memory-content .hero-memory-form").scrollTop = scroll;
-    return;
-  }
-  const memoryRarityButton = event.target.closest("[data-memory-rarity]");
-  if (memoryRarityButton) {
-    memoryDraft.rarity = memoryRarityButton.dataset.memoryRarity;
-    memoryDraft.enhancementLevel = clampMemoryEnhancement(memoryDraft.enhancementLevel, memoryDraft.rarity);
-    memoryDraft.traitLevelBonus = traitLevelBonusForEnhancement(memoryDraft.enhancementLevel);
-    renderHeroMemoryCraft();
-    return;
-  }
-  const revivedTierButton = event.target.closest("[data-revived-tier]");
-  if (revivedTierButton) {
-    memoryDraft.revivedTier = Number(revivedTierButton.dataset.revivedTier);
-    memoryDraft.revivedRoll =
-      revivedAffixRollRange(
-        revivedAffixTiers(memoryDraft.revivedAffix).find((entry) => entry.tier === memoryDraft.revivedTier)?.effect,
-      )?.max ?? null;
-    const scroll = $("#hero-memory-content .hero-memory-form")?.scrollTop || 0;
-    renderHeroMemoryCraft();
-    $("#hero-memory-content .hero-memory-form").scrollTop = scroll;
-    focusMemoryRollValue("revivedRoll");
-    return;
-  }
-  const memoryTierButton = event.target.closest("[data-memory-tier-choice]");
-  if (memoryTierButton) {
-    const [group, index, tier] = memoryTierButton.dataset.memoryTierChoice.split("."),
-      tierGroup = group === "fixedAffixes" ? "fixedTiers" : "randomTiers",
-      rollGroup = group === "fixedAffixes" ? "fixedRolls" : "randomRolls";
-    memoryDraft[tierGroup][Number(index)] = Number(tier);
-    memoryDraft[rollGroup][Number(index)] =
-      memoryRollRange(
-        memoryTierOptions(group, memoryDraft[group][Number(index)]).find((entry) => entry.tier === Number(tier))
-          ?.effect || "",
-      )?.max ?? null;
-    const scroll = $("#hero-memory-content .hero-memory-form")?.scrollTop || 0;
-    renderHeroMemoryCraft();
-    $("#hero-memory-content .hero-memory-form").scrollTop = scroll;
-    focusMemoryRollValue(`${rollGroup}.${index}`);
-    if (document.activeElement?.dataset.memoryField !== `${rollGroup}.${index}`)
-      focusMemoryRollValue(`${group}.${index}`);
-    return;
-  }
-  const editMemoryButton = event.target.closest("[data-edit-crafted-memory]");
-  if (editMemoryButton) {
-    const memory = plannerState.hero.memoryInventory?.find(
-      (item) => item.id === editMemoryButton.dataset.editCraftedMemory,
-    );
-    if (memory) startHeroMemoryCraft(memory);
-    return;
-  }
-  const copyMemoryButton = event.target.closest("[data-copy-crafted-memory]");
-  if (copyMemoryButton) {
-    const original = plannerState.hero.memoryInventory?.find(
-      (item) => item.id === copyMemoryButton.dataset.copyCraftedMemory,
-    );
-    if (!original) return;
-    const copy = {
-      ...structuredClone(original),
-      id: globalThis.crypto?.randomUUID?.() || `memory-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    };
-    plannerState.hero.memoryInventory.push(copy);
-    persistPlannerState();
-    renderHeroMemoryInventory();
-    showToast(`${escapeHtml(original.name)} copied`);
-    return;
-  }
-  const equipMemoryButton = event.target.closest("[data-equip-crafted-memory]");
-  if (equipMemoryButton) {
-    const memory = plannerState.hero.memoryInventory?.find(
-      (item) => item.id === equipMemoryButton.dataset.equipCraftedMemory,
-    );
-    if (memory) {
-      const tier = Object.keys(plannerState.hero.equippedMemoryIds || {}).find(
-        (key) => plannerState.hero.equippedMemoryIds[key] === memory.id,
-      );
-      if (tier) unequipHeroMemory(tier);
-      else equipHeroMemory(memory);
-    }
-    return;
-  }
-  const deleteMemoryButton = event.target.closest("[data-delete-crafted-memory]");
-  if (deleteMemoryButton) {
-    const id = deleteMemoryButton.dataset.deleteCraftedMemory;
-    plannerState.hero.memoryInventory = (plannerState.hero.memoryInventory || []).filter((memory) => memory.id !== id);
-    for (const [tier, equippedId] of Object.entries(plannerState.hero.equippedMemoryIds || {}))
-      if (equippedId === id) {
-        delete plannerState.hero.equippedMemoryIds[tier];
-        plannerState.hero.memories[tier] = "";
-        plannerState.hero.memoryTraitLevels[tier] = 0;
-      }
-    clearInvalidBaseTraitMemory();
-    persistPlannerState();
-    renderHeroTraitTree();
-    renderHeroMemoryInventory();
-    showToast("Memory deleted");
-    return;
-  }
-  if (event.target.closest("[data-save-crafted-memory]")) {
-    if (!memoryDraft?.rarity || !memoryDraft.baseStat) return;
-    if (
-      editingMemoryId &&
-      (Object.values(plannerState.hero.equippedMemoryIds || {}).includes(editingMemoryId) ||
-        plannerState.hero.baseTraitMemoryId === editingMemoryId) &&
-      otherEquippedRevivedMemory(memoryDraft)
-    ) {
-      showToast("Only one revived memory can be equipped");
-      return;
-    }
-    plannerState.hero.memoryInventory ||= [];
-    const enhancementLevel = clampMemoryEnhancement(memoryDraft.enhancementLevel, memoryDraft.rarity),
-      memory = {
-        ...memoryDraft,
-        enhancementLevel,
-        traitLevelBonus: traitLevelBonusForEnhancement(enhancementLevel),
-        id: editingMemoryId || globalThis.crypto?.randomUUID?.() || `memory-${Date.now()}`,
-        name: memoryDraft.type,
-      };
-    const index = plannerState.hero.memoryInventory.findIndex((item) => item.id === memory.id);
-    if (index >= 0) plannerState.hero.memoryInventory[index] = memory;
-    else plannerState.hero.memoryInventory.push(memory);
-    for (const [tier, equippedId] of Object.entries(plannerState.hero.equippedMemoryIds || {}))
-      if (equippedId === memory.id) {
-        if (memory.type !== heroMemoryTypeForTier(tier)) {
-          delete plannerState.hero.equippedMemoryIds[tier];
-          plannerState.hero.memories[tier] = "";
-          plannerState.hero.memoryTraitLevels[tier] = 0;
-        } else {
-          plannerState.hero.memories[tier] = memory.name;
-          plannerState.hero.memoryTraitLevels[tier] = traitLevelBonusForEnhancement(memory.enhancementLevel);
-        }
-      }
-    clearInvalidBaseTraitMemory();
-    memoryDraft = null;
-    editingMemoryId = null;
-    persistPlannerState();
-    renderHeroTraitTree();
-    renderHeroMemoryInventory();
-    showToast(`${escapeHtml(memory.name)} saved`);
-    return;
   }
   const voraxBaseChoice = event.target.closest("[data-select-vorax-base]");
   if (voraxBaseChoice) {
