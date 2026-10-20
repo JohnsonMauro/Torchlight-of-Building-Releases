@@ -89,6 +89,7 @@ export class SlatesPage {
         equipped: build.state.equippedSlateIds,
         placements: build.state.slates.placements,
         parked: build.state.slates.parked,
+        inventory: build.state.slates.inventory,
       };
     }, LIBRARY_STORAGE_KEY);
   }
