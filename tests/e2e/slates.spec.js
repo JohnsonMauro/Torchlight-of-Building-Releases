@@ -242,7 +242,10 @@ test("the slate editor's Rotate turns the slate on the board and draws the edito
   const turned = await rotation();
   // The editor is drawn again from the slate: what was typed and not saved is gone.
   await expect(affixInputs(slates).first()).toHaveValue(before);
+  // ↻ turns a quarter clockwise, ↶ back.
+  await editor.getByRole("button", { name: "↻ Rotate" }).click();
+  await expect.poll(rotation).toBe((turned + 90) % 360);
   await editor.getByRole("button", { name: "↶ Rotate back" }).click();
-  await expect.poll(rotation).toBe((turned + 270) % 360);
+  await expect.poll(rotation).toBe(turned);
   await planner.expectNoErrors();
 });
