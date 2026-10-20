@@ -1,7 +1,9 @@
 // Type-level checks for the normalized PlannerState and the BuildLibrary, run by `pnpm typecheck` (tsc -p .). Every
 // expected error must happen: if a type loosens (any, unknown, all optional), tsc reports the unused directive.
-import { defaultPlannerState, loadBuildLibrary, normalizePlannerState } from "../../src/planner-state.ts";
-import type { BuildLibrary, ExternalLibraryChange, PlannerState } from "../../src/planner-state.ts";
+import { defaultPlannerState, normalizePlannerState } from "../../src/planner-state.ts";
+import { loadBuildLibrary } from "../../src/build-library.ts";
+import type { PlannerState } from "../../src/planner-state.ts";
+import type { BuildLibrary, ExternalLibraryChange } from "../../src/build-library.ts";
 
 const state: PlannerState = normalizePlannerState({});
 const library: BuildLibrary = loadBuildLibrary();

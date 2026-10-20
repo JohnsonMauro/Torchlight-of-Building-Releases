@@ -9,7 +9,8 @@ import {
   toggleNumberMarkup,
 } from "./dummy-recount-panel.js";
 import { characterStatTotals } from "./character-stats.js";
-import { effectiveHpModel, effectiveHpMarkup } from "./effective-hp.js";
+import { effectiveHpModel } from "./effective-hp.js";
+import { effectiveHpMarkup } from "./effective-hp-markup.js";
 import { hasActiveReaping } from "./damage-path-views.js";
 import { statSheetPanelModel, statSheetPanelMarkup } from "./stat-sheet-panel.js";
 const number = (value) => (Number.isFinite(value) ? value : null);

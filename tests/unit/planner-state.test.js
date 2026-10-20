@@ -1,4 +1,5 @@
-// Characterization of src/planner-state.ts: what normalizePlannerState and normalizeBuildLibrary return, and how the
+// Characterization of src/planner-state.ts and src/build-library.ts (one module until 2026-10-20): what
+// normalizePlannerState and normalizeBuildLibrary return, and how the
 // library is loaded, saved, shared between tabs, quarantined, restored and shared as a code. Written against the
 // JavaScript module before it moved to TypeScript; the behaviour recorded here is what its types describe.
 import { test, beforeEach } from "node:test";
@@ -6,15 +7,18 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { MemoryStorage } from "./memory-storage.js";
 import {
-  createBuild,
   decodePlannerState,
   defaultPlannerState,
+  diffPlannerStates,
+  encodePlannerState,
+  normalizePlannerState,
+} from "../../src/planner-state.ts";
+import {
+  createBuild,
   deleteAllBuilds,
   deleteBuild,
-  diffPlannerStates,
   dismissOpenBuildChange,
   duplicateActiveBuild,
-  encodePlannerState,
   importBuildCode,
   libraryLoadIssues,
   libraryQuarantinePrefix,
@@ -22,7 +26,6 @@ import {
   loadPlannerState,
   markPlannerStateClean,
   normalizeBuildLibrary,
-  normalizePlannerState,
   openBuildChangedElsewhere,
   plannerLibraryStorageKey,
   plannerStorageStatus,
@@ -36,7 +39,7 @@ import {
   setCompareBuild,
   startNewLibrary,
   updateActiveBuildMetadata,
-} from "../../src/planner-state.ts";
+} from "../../src/build-library.ts";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),

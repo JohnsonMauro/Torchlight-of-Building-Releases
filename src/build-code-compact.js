@@ -319,7 +319,7 @@ function originalCode(version, inflated, table) {
 
 /**
  * The original build code for a compact one (exactly what Export wrote for that state); other text is returned trimmed,
- * so the result can go straight to src/planner-state.ts importBuildCode / decodePlannerState.
+ * so the result can go straight to src/build-library.ts importBuildCode / src/planner-state.ts decodePlannerState.
  */
 export async function expandBuildCode(text) {
   const trimmed = String(text ?? "").trim();

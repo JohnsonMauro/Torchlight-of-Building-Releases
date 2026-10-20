@@ -1,5 +1,4 @@
 import { normalizePercentageText } from "./percentage-text.js";
-import { escapeHtml } from "./html.js";
 import { kismetCatalogSs13 } from "./data/pacts/kismet-catalog-ss13.js";
 import { pactspiritTreesSs13 } from "./data/pacts/pactspirit-trees-ss13.js";
 import { orderedPactspiritNodes } from "./pactspirit-levels.js";
@@ -94,23 +93,6 @@ export function boostedKismetAffixText(text, boost) {
 export function starTrailNote(boost) {
   if (!boost || !(boost.scale > 0) || boost.scale === 1) return "";
   return `Star Trail +${Math.round(boost.percent * 10000) / 10000}%`;
-}
-
-/**
- * HTML for a kismet affix in a tooltip or the crafter preview: with a Star Trail boost the effective value replaces the rolled
- * one and shows in the green used for raised skill and support values (`skill-level-bonus`), e.g. "+<span>7.05%</span> Aura
- * Effect", with the rolled value and the boost in its title. The stored roll is unchanged. Without a boost: the escaped text.
- */
-export function boostedKismetAffixHtml(text, boost) {
-  const rolled = String(text ?? "");
-  if (!boost || !(boost.scale > 0) || boost.scale === 1) return escapeHtml(rolled);
-  const match = rolled.match(/(-?)(\d+(?:\.\d+)?)(%?)/);
-  if (!match) return escapeHtml(rolled);
-  const effective = `${Math.round(Number(match[2]) * boost.scale * 10000) / 10000}${match[3]}`;
-  const before = rolled.slice(0, match.index) + match[1];
-  const after = rolled.slice(match.index + match[0].length);
-  const title = `Rolled ${match[1] || (/^\+/.test(before) ? "+" : "")}${match[2]}${match[3]}, ${starTrailNote(boost)}`;
-  return `${escapeHtml(before)}<span class="skill-level-bonus" title="${escapeHtml(title)}">${escapeHtml(effective)}</span>${escapeHtml(after)}`;
 }
 
 /** The display texts of the kismet in `key` (rolled values, with the Star Trail effective value where boosted). */

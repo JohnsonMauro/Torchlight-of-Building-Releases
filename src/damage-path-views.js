@@ -1,5 +1,6 @@
 import { escapeHtml } from "./html.js";
-import { formatShortNumber, toggleNumberMarkup } from "./dummy-recount-panel.js";
+import { toggleNumberMarkup } from "./dummy-recount-panel.js";
+import { formatShortNumber } from "./number-format.js";
 import { BASE_CRITICAL_DAMAGE_PERCENT } from "./game-attribute-defaults.js";
 
 // Build-driven Damage path views. The options follow what the build actually
