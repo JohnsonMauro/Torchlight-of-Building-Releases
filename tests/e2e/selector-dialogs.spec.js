@@ -12,6 +12,7 @@ import { FollowerPage } from "./pages/follower-page.js";
 import { followerPickerOptions } from "../../src/app/follower-panel.js";
 import { PactsPage } from "./pages/pacts-page.js";
 import { pactspiritCatalogSs13 } from "../../src/data/pacts/pactspirit-catalog-ss13.js";
+import { sortPactspirits } from "../../src/engine/pacts/pactspirit-selection.js";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
@@ -166,6 +167,10 @@ test("the Pactspirit selector groups every Pactspirit by category and filters by
     `${firstGroup} (${pactMatches("", firstGroup).length})`,
   );
   await expect(dialog.getByRole("button", { name: /^Dreamweaver\b/ })).toContainText("Dreamweaver");
+  // Within a group: by rarity, then by name.
+  await expect(dialog.locator(".pactspirit-selector-group").first().locator(".pactspirit-choice strong")).toHaveText(
+    sortPactspirits(pactMatches("", firstGroup)).map((entry) => entry.name),
+  );
   await search.fill("  FIRE ");
   await expect(dialog.locator(".pactspirit-choice")).toHaveCount(pactMatches("fire").length);
   await category.selectOption("Fire");
