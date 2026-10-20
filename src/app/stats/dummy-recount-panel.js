@@ -1,82 +1,16 @@
-import { escapeHtml } from "../html.js";
 import {
   summarizeRecount,
   windowTotals,
   excludeRecountSources,
   excludedSteadyDps,
 } from "../../engine/combat/dummy-recount.js";
-import { DASH, formatRecountInteger, formatShortNumber } from "../../engine/text/number-format.js";
+import { DASH, formatRecountInteger } from "../../engine/text/number-format.js";
 
 // The training dummy recount of the stat sheet's damage banner: the in-game recount fields over a fixed 10 s span of the
 // planner's 60 s dummy timeline (planner.dummyRecount), each source's share, and the sources left out of the view. The
-// banner is React (apps/web/src/features/stats, data from src/app/bridge/stats-view-model.ts); the click-to-expand
-// number markup below still serves the legacy damage path view.
+// banner is React (apps/web/src/features/stats, data from src/app/bridge/stats-view-model.ts).
 
 export const RECOUNT_SPAN_SECONDS = 10;
-// Click-to-expand numbers: which toggles show the full integer, kept in memory for the session so
-// re-renders keep each value's state. No storage.
-const expandedNumbers = new Set();
-const SHORT_HINT = "Click to show the full number";
-const FULL_HINT = "Click to shorten";
-
-const UNIT_WORD = /^(.*) (Thousand|Million|Billion|Trillion|Quadrillion)$/;
-/** Short text as HTML; with `unitClass`, a trailing unit word sits in its own span so it keeps that class's styling. */
-function shortHtml(short, unitClass) {
-  const match = unitClass ? UNIT_WORD.exec(short) : null;
-  return match
-    ? `${escapeHtml(match[1])} <span class="${escapeHtml(unitClass)}">${match[2]}</span>`
-    : escapeHtml(short);
-}
-
-/**
- * A large figure that toggles between the truncated form (default) and the full integer on click,
- * Enter or Space. `id` names the toggle so its state survives re-renders; `className` keeps the styling.
- * `short`/`full` override the two texts (ranges); `unitClass` styles the unit word separately (Damage-path hero).
- */
-export function toggleNumberMarkup(
-  id,
-  value,
-  { className = "", tag = "strong", unitClass = "", short: shortText, full: fullText } = {},
-) {
-  const short = shortText ?? formatShortNumber(value);
-  const full = fullText ?? formatRecountInteger(value);
-  if (short === full || (!Number.isFinite(value) && shortText === undefined))
-    return `<${tag}${className ? ` class="${className}"` : ""}>${escapeHtml(full)}</${tag}>`;
-  const expanded = expandedNumbers.has(id);
-  const text = expanded ? full : short;
-  const hint = expanded ? FULL_HINT : SHORT_HINT;
-  return `<${tag} class="${className ? `${className} ` : ""}number-toggle" role="button" tabindex="0" data-number-toggle="${escapeHtml(id)}" data-short="${escapeHtml(short)}" data-full="${escapeHtml(full)}"${unitClass ? ` data-unit-class="${escapeHtml(unitClass)}"` : ""} aria-expanded="${expanded}" title="${hint}" aria-label="${escapeHtml(`${text}. ${hint}`)}">${expanded ? escapeHtml(full) : shortHtml(short, unitClass)}</${tag}>`;
-}
-
-/** Flip one toggle element in place and remember its state. */
-export function flipNumberToggle(element) {
-  const id = element?.dataset?.numberToggle;
-  if (!id) return;
-  const expanded = !expandedNumbers.has(id);
-  if (expanded) expandedNumbers.add(id);
-  else expandedNumbers.delete(id);
-  const text = expanded ? element.dataset.full : element.dataset.short;
-  const hint = expanded ? FULL_HINT : SHORT_HINT;
-  if (!expanded && element.dataset.unitClass) element.innerHTML = shortHtml(text, element.dataset.unitClass);
-  else element.textContent = text;
-  element.title = hint;
-  element.setAttribute("aria-label", `${text}. ${hint}`);
-  element.setAttribute("aria-expanded", String(expanded));
-}
-
-if (typeof document !== "undefined" && document.addEventListener) {
-  document.addEventListener("click", (event) => {
-    const target = event.target?.closest?.("[data-number-toggle]");
-    if (target) flipNumberToggle(target);
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    const target = event.target?.closest?.("[data-number-toggle]");
-    if (!target) return;
-    event.preventDefault();
-    flipNumberToggle(target);
-  });
-}
 
 // Click-to-exclude sources on the recount card (view-only what-if): the excluded source keys, in memory for
 // the session so re-renders keep them; never saved to the build and never read by the planner's figures.

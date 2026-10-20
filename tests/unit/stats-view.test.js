@@ -1,19 +1,34 @@
-// What the Stats view shows (src/app/bridge/stats-view-model.ts and the helpers it uses), on the golden-master Youga
-// build: the status, the skill picker, the recount with sources left out of the view, a skill whose damage is not
-// modeled, the Effective HP banner, the Character stats tabs, and texts printed as the legacy markup printed them.
+// What the Stats view shows (src/app/bridge/stats-view-model.ts, damage-path-view-model.ts and the helpers they use), on
+// the golden-master Youga build: the status, the skill picker, the recount with sources left out of the view, a skill
+// whose damage is not modeled, the Effective HP banner, the Character stats tabs, the damage path tabs, sections and
+// open questions, and texts printed as the legacy markup printed them.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { calculateGoldenCase, goldenInputs } from "../golden/cases.js";
 import { prepareStatSheet, statsView } from "../../src/app/bridge/stats-view-model.ts";
+import { prepareDamagePath } from "../../src/app/bridge/damage-path-view-model.ts";
 import { displayTexts } from "../../src/app/bridge/display-text.ts";
 import { numberText } from "../../src/app/stats/number-text.ts";
 
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const format = (value) => number.format(value);
 const state = (id) => goldenInputs().find((input) => input.id === id).state;
-const youga = calculateGoldenCase(state("youga-l94"));
-const view = (planner, skill, excluded = []) =>
-  statsView(prepareStatSheet(planner, skill, format), { panel: "sheet", excluded });
+// The damage path also reads the build at 30% target Fire Resistance (src/app/app.js statsSource).
+const calculated = (id) => {
+  const input = state(id);
+  const theoretical = calculateGoldenCase({
+    ...input,
+    combat: { ...input.combat, targetFireResistancePercent: 30 },
+  }).theoretical;
+  return { planner: calculateGoldenCase(input), theoretical };
+};
+const yougaBuild = calculated("youga-l94");
+const youga = yougaBuild.planner;
+const view = (planner, skill, excluded = [], { theoretical = yougaBuild.theoretical, path = "hit" } = {}) =>
+  statsView(
+    { sheet: prepareStatSheet(planner, skill, format), damagePath: prepareDamagePath(theoretical, planner, format) },
+    { panel: "sheet", path, excluded },
+  );
 
 test("a figure toggles between its short and full texts unless they are the same", () => {
   assert.deepEqual(numberText(1593002745.4), { full: "1,593,002,745", short: "1.59 Billion" });
@@ -103,8 +118,56 @@ test("the Effective HP banner and the Character stats tabs", () => {
 });
 
 test("hero trait lines with a spaced percent sign print it closed", () => {
-  const erika = calculateGoldenCase(state("hero/erika-wind-stalker/first"));
-  const text = JSON.stringify(view(erika, "").sheet);
+  const erika = calculated("hero/erika-wind-stalker/first");
+  const text = JSON.stringify(view(erika.planner, "", [], { theoretical: erika.theoretical }));
   assert.match(text, /Hero trait: Wind Stalker \(Lv 1\): \+26% Movement Speed/);
   assert.doesNotMatch(text, /\d %/);
+});
+
+test("the damage path tabs, grouped by skill, and the path a stale pick falls back to", () => {
+  const { damagePath } = view(youga, "");
+  assert.equal(damagePath.grouped, true);
+  assert.deepEqual(
+    damagePath.tabs.map((tab) => [tab.value, tab.figure]),
+    [
+      ["hit:game-log-skill-1", "1.63 B"],
+      ["hit:game-log-skill-2", "554 K"],
+      ["hit:game-log-skill-3", "50.8 K"],
+      ["minion:thunder-magus", "10.0 K"],
+      ["combined", "1.62 B"],
+    ],
+  );
+  assert.equal(damagePath.active, "hit:game-log-skill-1");
+  assert.equal(view(youga, "", [], { path: "combined" }).damagePath.active, "combined");
+});
+
+test("a path's summary, stages and sections", () => {
+  const { paths, openQuestions } = view(youga, "").damagePath;
+  const frostBolt = paths[0].section;
+  assert.equal(frostBolt.empty, false);
+  assert.equal(frostBolt.hero.value.short, "1.63 Billion");
+  assert.match(frostBolt.hero.value.full, /^1,6\d\d,\d{3},\d{3}$/);
+  assert.equal(frostBolt.hero.unit, "DPS");
+  assert.deepEqual(frostBolt.chain.at(-1), {
+    kind: "result",
+    op: "=",
+    label: "Hit DPS",
+    value: "1.63 B",
+    unit: "DPS",
+    result: true,
+  });
+  assert.equal(frostBolt.chain[0].op, null);
+  const [base, flat] = frostBolt.stages;
+  assert.deepEqual(
+    [base.step, base.title, base.connector, base.open],
+    ["01", "Homing Frost Bolt · base hit", "", true],
+  );
+  assert.equal(flat.connector, "× added, then multiplied");
+  assert.equal(flat.running.label, "Running value");
+  assert.equal(base.feeders[0].source, "Homing Frost Bolt · Frost Bolt Lv.20");
+  const combined = paths.find((path) => path.value === "combined").section;
+  assert.equal(combined.sections[0].title, "Share by source over 10 s (recount)");
+  assert.equal(combined.illOmen, null);
+  assert.equal(openQuestions.length, 5);
+  assert.ok(openQuestions.every((entry) => entry.id && entry.title && entry.alternatives.length));
 });

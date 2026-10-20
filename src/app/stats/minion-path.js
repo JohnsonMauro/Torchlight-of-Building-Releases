@@ -1,4 +1,3 @@
-import { escapeHtml } from "../html.js";
 import { wholeFormat } from "./damage-path-views.js";
 
 // Damage path model for a Minion (src/engine/minions/minion-damage-model.js), in the stage layout the other paths use
@@ -36,7 +35,7 @@ export function minionPathModel(minion, { format: rawFormat, recountDps = null }
     chainLabel: "Base",
     value: format(minion.baseDamage),
     rawValue: minion.baseDamage,
-    rule: `Minion Base Stats at summon level ${minion.baseLevel} (${escapeHtml(minion.baseDamageSource)}); frozen past Lv.20`,
+    rule: `Minion Base Stats at summon level ${minion.baseLevel} (${minion.baseDamageSource}); frozen past Lv.20`,
     sources: [
       {
         source: `${minion.summon} Lv.${minion.level}`,
@@ -59,7 +58,7 @@ export function minionPathModel(minion, { format: rawFormat, recountDps = null }
         sources: [
           {
             source: `${primary.name} Lv.${minion.baseLevel}`,
-            text: `${format(primary.percent)}% of Base Damage${primary.converted ? ` · ${escapeHtml(primary.conversion.source)}` : ""}`,
+            text: `${format(primary.percent)}% of Base Damage${primary.converted ? ` · ${primary.conversion.source}` : ""}`,
             value: primary.percent,
           },
         ],
@@ -159,7 +158,7 @@ export function minionPathModel(minion, { format: rawFormat, recountDps = null }
       rows: minion.skills.map((item) => ({
         label: `${item.name} · ${item.role} · ${item.converted ? `${item.baseType} → ` : ""}${item.type}`,
         value: `${format(item.steadyDps)} DPS`,
-        detail: `${format(item.percent)}% × ${format(minion.baseDamage)} = ${format(item.base)} base · ${format(item.perHitNoBuff)} per hit to the dummy${item.perHitBuffed ? ` (${format(item.perHitBuffed)} under its own buff)` : ""} · ${item.useTimeSeconds != null ? `${format(item.useTimeSeconds)} s use${item.speedFactor !== 1 ? ` ÷ ×${format(item.speedFactor)}` : ""}` : "no use time"}${item.cooldownSeconds ? ` · ${format(item.cooldownSeconds)} s cooldown` : ""} · ${format(item.steadyUsesPerSecond)} uses/s${item.hitsPerUse !== 1 ? ` × ${format(item.hitsPerUse)} hits` : ""} (${item.hitsBasis}: ${escapeHtml(item.hitsNote || "")})`,
+        detail: `${format(item.percent)}% × ${format(minion.baseDamage)} = ${format(item.base)} base · ${format(item.perHitNoBuff)} per hit to the dummy${item.perHitBuffed ? ` (${format(item.perHitBuffed)} under its own buff)` : ""} · ${item.useTimeSeconds != null ? `${format(item.useTimeSeconds)} s use${item.speedFactor !== 1 ? ` ÷ ×${format(item.speedFactor)}` : ""}` : "no use time"}${item.cooldownSeconds ? ` · ${format(item.cooldownSeconds)} s cooldown` : ""} · ${format(item.steadyUsesPerSecond)} uses/s${item.hitsPerUse !== 1 ? ` × ${format(item.hitsPerUse)} hits` : ""} (${item.hitsBasis}: ${item.hitsNote || ""})`,
       })),
     },
     {
@@ -168,17 +167,17 @@ export function minionPathModel(minion, { format: rawFormat, recountDps = null }
         {
           label: "Pattern",
           value: `${format(minion.count)} Minion${minion.count === 1 ? "" : "s"}`,
-          detail: escapeHtml(minion.cycle.rule),
+          detail: minion.cycle.rule,
         },
         {
           label: "First hit",
           value: `${format(minion.cycle.firstHitSeconds ?? 0)} s`,
-          detail: `after the ${format(minion.cycle.summonCastSeconds)} s summon cast (${escapeHtml(minion.cycle.summonCastSource || "assumed")})`,
+          detail: `after the ${format(minion.cycle.summonCastSeconds)} s summon cast (${minion.cycle.summonCastSource || "assumed"})`,
         },
         {
           label: "Steady DPS to the dummy",
           value: format(minion.combat.dps),
-          detail: `${format(minion.combat.perMinionDps)} per Minion · ${escapeHtml(minion.countSource || "")}`,
+          detail: `${format(minion.combat.perMinionDps)} per Minion · ${minion.countSource || ""}`,
         },
       ],
     },
@@ -189,7 +188,7 @@ export function minionPathModel(minion, { format: rawFormat, recountDps = null }
       rows: minion.lines.unread.map((line) => ({
         label: line.source,
         value: "not read",
-        detail: escapeHtml(line.text),
+        detail: line.text,
       })),
     });
   return {
@@ -224,12 +223,12 @@ export function minionPathModel(minion, { format: rawFormat, recountDps = null }
       },
       { label: "Town panel", value: "0", note: minion.town.note },
     ],
-    intro: `${escapeHtml(minion.name)} is a Minion: it has its own Base Damage and only Minion-named lines reach it (manual rule 1001011821). Each stage follows ${escapeHtml(primary?.name || "its skill")}; the other skills and the use cycle are listed below. Minion hits do not apply the build's ailments here.`,
+    intro: `${minion.name} is a Minion: it has its own Base Damage and only Minion-named lines reach it (manual rule 1001011821). Each stage follows ${primary?.name || "its skill"}; the other skills and the use cycle are listed below. Minion hits do not apply the build's ailments here.`,
     stages,
     sections,
     footnotes: [
       "Minion damage path (2026-10-11): Base Damage, skill percentages and use times are game data; the use pattern, the summon cast delay, the Minion count for modules and the dummy mitigation for Minion hits are assumptions (listed in the Config tab).",
-      ...(minion.notes || []).map((note) => escapeHtml(note)),
+      ...(minion.notes || []).map((note) => note),
     ],
   };
 }

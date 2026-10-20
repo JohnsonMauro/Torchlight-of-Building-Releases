@@ -18,6 +18,7 @@ import type {
 import type { NumberText } from "@legacy/app/stats/number-text.ts";
 import { EffectiveHp } from "./EffectiveHp";
 import { NumberToggle } from "./NumberToggle";
+import { tabKeyTarget } from "./tab-keys";
 
 const INCLUDED_HINT = "Click to leave this source out of the view";
 const EXCLUDED_HINT = "Click to include it again";
@@ -291,13 +292,6 @@ function StatRow({ row }: { row: StatRowView }) {
   );
 }
 
-const TAB_KEYS: Record<string, (index: number, count: number) => number> = {
-  ArrowRight: (index, count) => (index + 1) % count,
-  ArrowLeft: (index, count) => (index - 1 + count) % count,
-  Home: () => 0,
-  End: (_index, count) => count - 1,
-};
-
 /** The Character stats panel; the open tab is remembered for the session (src/app/stats/stat-sheet-tabs.js). */
 function StatPanel({ tabs }: { tabs: StatTabView[] }) {
   const [stored, setStored] = useState(() => readStoredStatTab());
@@ -337,7 +331,7 @@ function StatPanel({ tabs }: { tabs: StatTabView[] }) {
             className={tab === selected ? "active" : undefined}
             onClick={() => select(tab.key)}
             onKeyDown={(event) => {
-              const next = TAB_KEYS[event.key]?.(index, tabs.length);
+              const next = tabKeyTarget(event.key, index, tabs.length);
               if (next === undefined) return;
               event.preventDefault();
               select(tabs[next].key);
@@ -397,7 +391,8 @@ export function StatSheet({ sheet }: { sheet: StatSheetView }) {
       </div>
       <section className="stat-sheet-banner stat-sheet-banner-wide">
         <h2>
-          {sheet.skillName} <small>Level {sheet.skillLevel}</small>
+          {`${sheet.skillName} `}
+          <small>{`Level ${sheet.skillLevel}`}</small>
         </h2>
         <Damage damage={sheet.damage} />
       </section>

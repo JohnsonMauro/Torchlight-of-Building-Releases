@@ -1,5 +1,6 @@
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { StatsPanel } from "@legacy/app/bridge/stats-view-model.ts";
+import { DamagePath } from "../../features/stats/DamagePath";
 import { StatSheet } from "../../features/stats/StatSheet";
 import { useViewSource } from "../../ui/use-view-source";
 
@@ -9,8 +10,7 @@ const PANELS: { id: StatsPanel; label: string }[] = [
 ];
 
 // The Stats view: the build status, the Stat sheet / Damage path switch and the two panels, from the planner's "stats"
-// source (src/app/bridge/stats-view-model.ts). The damage path is still legacy markup that src/app/app.js renders into
-// #damage-path; React only shows or hides it.
+// source (src/app/bridge/stats-view-model.ts).
 export function CharacterView() {
   const view = useViewSource("stats");
   const panel = view?.panel ?? "sheet";
@@ -50,7 +50,9 @@ export function CharacterView() {
       <div id="stat-sheet" hidden={view?.panel !== "sheet"}>
         {view ? <StatSheet sheet={view.sheet} /> : null}
       </div>
-      <div id="damage-path" hidden={view?.panel !== "damage-path"} />
+      <div id="damage-path" hidden={view?.panel !== "damage-path"}>
+        {view ? <DamagePath view={view.damagePath} /> : null}
+      </div>
     </section>
   );
 }

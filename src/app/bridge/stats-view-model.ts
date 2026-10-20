@@ -1,9 +1,10 @@
-// What the Stats view shows besides the damage path (apps/web/src/features/stats): the build status, which of the Stat
-// sheet / Damage path panels is open, and the stat sheet: the active skill picker, the skill's damage banner (the
-// training dummy recount, or the older 5 s / 20 s tiles, or "Damage not modeled"), the Effective HP banner and the
-// Character stats tabs. src/app/app.js publishes it (src/app/bridge/view-sources.ts "stats").
-// prepareStatSheet does the work that depends on the calculated build and the picked skill; statsView adds what changes
-// without a recalculation (the open panel, the recount sources left out of the view). Every text is as the legacy
+// What the Stats view shows (apps/web/src/features/stats): the build status, which of the Stat sheet / Damage path
+// panels is open, the stat sheet (the active skill picker, the skill's damage banner: the training dummy recount, or
+// the older 5 s / 20 s tiles, or "Damage not modeled"; the Effective HP banner and the Character stats tabs) and the
+// damage path (src/app/bridge/damage-path-view-model.ts). src/app/app.js publishes it (src/app/bridge/view-sources.ts
+// "stats"). prepareStatSheet and prepareDamagePath do the work that depends on the calculated build (and the picked
+// skill); statsView adds what changes without a recalculation (the open panel and path, the recount sources left out
+// of the view). Every text is as the legacy
 // markup printed it (src/app/bridge/display-text.ts). Pure.
 import { statSheetModel } from "../stats/stat-sheet.js";
 import { statSheetPanelModel } from "../stats/stat-sheet-panel.js";
@@ -20,6 +21,7 @@ import { formatRecountInteger } from "../../engine/text/number-format.js";
 import { effectiveHpView, type EffectiveHpModel, type EffectiveHpView } from "../stats/effective-hp-view.ts";
 import { numberText, type NumberText } from "../stats/number-text.ts";
 import { displayTexts } from "./display-text.ts";
+import { damagePathView, type DamagePathView, type PreparedDamagePath } from "./damage-path-view-model.ts";
 
 export type StatsPanel = "sheet" | "damage-path";
 
@@ -119,6 +121,7 @@ export interface StatsView {
   status: StatusView;
   panel: StatsPanel;
   sheet: StatSheetView;
+  damagePath: DamagePathView;
 }
 
 // The calculated build as read here (src/engine/planner-api.ts PlannerResult; the stat sheet reads much more of it).
@@ -273,14 +276,18 @@ function damageView({ planner, model, format }: PreparedStatSheet, excluded: rea
   };
 }
 
-/** The Stats view with `panel` open and the recount sources `excluded` (keys) left out of the view. */
+/**
+ * The Stats view with `panel` open, the damage path `path` picked and the recount sources `excluded` (keys) left out of
+ * the view.
+ */
 export function statsView(
-  prepared: PreparedStatSheet,
-  { panel, excluded }: { panel: StatsPanel; excluded: readonly string[] },
+  { sheet, damagePath }: { sheet: PreparedStatSheet; damagePath: PreparedDamagePath },
+  { panel, path, excluded }: { panel: StatsPanel; path: string; excluded: readonly string[] },
 ): StatsView {
   return {
-    status: prepared.status,
+    status: sheet.status,
     panel,
-    sheet: { ...prepared.sheet, damage: displayTexts(damageView(prepared, excluded)) },
+    sheet: { ...sheet.sheet, damage: displayTexts(damageView(sheet, excluded)) },
+    damagePath: damagePathView(damagePath, path),
   };
 }

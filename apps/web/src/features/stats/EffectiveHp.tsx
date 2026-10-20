@@ -62,16 +62,16 @@ export function EffectiveHp({ view }: { view: EffectiveHpView }) {
   return (
     <section className="stat-sheet-banner stat-sheet-banner-wide stat-sheet-ehp-banner" aria-label="Effective HP">
       <h2>
-        Effective HP <small>Level {view.enemyLevel} hits</small>
+        Effective HP <small>{`Level ${view.enemyLevel} hits`}</small>
       </h2>
       <section className="dummy-recount-panel ehp-panel">
         <header className="dummy-recount-head">
-          <span className="dummy-recount-tab">Defense (Level {view.enemyLevel})</span>
+          <span className="dummy-recount-tab">{`Defense (Level ${view.enemyLevel})`}</span>
           <span
             className="dummy-recount-duration"
             title="Character level is not stored in the build; it sets base Life and Evasion"
           >
-            Character <strong>Lv.{view.characterLevel}</strong> assumed
+            Character <strong>{`Lv.${view.characterLevel}`}</strong> assumed
           </span>
         </header>
         <div className="ehp-body">

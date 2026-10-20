@@ -1,4 +1,3 @@
-import { escapeHtml } from "../html.js";
 import { additionalDamagePathSources } from "./damage-path-sources.js";
 import {
   findScorchingBeamSetup,
@@ -9,19 +8,14 @@ import { calibratedBeamTargetCycle } from "../../engine/combat/target-hit-mitiga
 import { recountSourceShares } from "./dummy-recount-panel.js";
 import { skillHitPathModel } from "./skill-hit-path.js";
 import { minionPathModel } from "./minion-path.js";
-import { openQuestionsPanelMarkup } from "./open-questions-panel.js";
 import {
   ailmentPathModel,
   combinedPathModel,
   compactNumber,
   damagePathOptions,
-  emptyPathMarkup,
   hitLabel,
-  illOmenCardMarkup,
-  pathMarkup,
   perSourceRunning,
   reapingPathModel,
-  resolveDamagePath,
   wholeFormat,
 } from "./damage-path-views.js";
 
@@ -82,7 +76,7 @@ export function hitPathModel(planner, { format: rawFormat, recountDps = null }) 
       empty: true,
       intro:
         planner.mainSkill && !hitActive
-          ? `${escapeHtml(planner.mainSkill.name)} has no hit model yet. Its damage over time, Reaping and combined windows have their own paths above.`
+          ? `${planner.mainSkill.name} has no hit model yet. Its damage over time, Reaping and combined windows have their own paths above.`
           : "Scorching Beam is not active in this build, so its hit packets are not shown.",
     };
   }
@@ -202,7 +196,7 @@ export function hitPathModel(planner, { format: rawFormat, recountDps = null }) 
     chainLabel: "Aim",
     noMath: true,
     value: `×${format(aimHitFactor)}`,
-    rule: `Aim damage × uptime · ${escapeHtml(planner.aim?.uptimeLabel || "Aim inactive")}`,
+    rule: `Aim damage × uptime · ${planner.aim?.uptimeLabel || "Aim inactive"}`,
     sources: aimSources,
     sourceValue: (item) => `${item.value >= 0 ? "+" : ""}${format(item.value)}%`,
     running: packets(),
@@ -500,7 +494,7 @@ export function ignitePathModel(theoretical, planner, { format: rawFormat, recou
       chainLabel: "Aim",
       noMath: true,
       value: `×${format(aimFactor)}`,
-      rule: `While active: +${format(planner.aim?.ailmentDamagePercent || 0)}% Ailment Damage applies once to Ignite; averaged over uptime · ${escapeHtml(planner.aim?.uptimeLabel || "Aim inactive")}. Aim's Damage line applies to hits.`,
+      rule: `While active: +${format(planner.aim?.ailmentDamagePercent || 0)}% Ailment Damage applies once to Ignite; averaged over uptime · ${planner.aim?.uptimeLabel || "Aim inactive"}. Aim's Damage line applies to hits.`,
       sources: aimSources,
       sourceValue: valueOf,
       factor: aimFactor,
@@ -617,8 +611,7 @@ export function ignitePathModel(theoretical, planner, { format: rawFormat, recou
           }
         : null,
     ],
-    afterSummary:
-      !planner.damagePaths && planner.illOmen ? illOmenCardMarkup(planner.illOmen, { format: rawFormat }) : "",
+    illOmen: !planner.damagePaths && planner.illOmen ? planner.illOmen : null,
     intro:
       "Base Ignite Damage is independent of the spell hits. It is 0 when no source adds Base Ignite Damage; the beam and explosion can still hit. Each stage below changes the Ignite figure only.",
     stages,
@@ -737,7 +730,7 @@ function legacyReapingModel(theoretical, { format: rawFormat, recountDps }) {
       rawValue: reaping.activeDotDps,
       chip: `${compactNumber(reaping.activeDotDps.min, format)}–${compactNumber(reaping.activeDotDps.max, format)} DPS`,
       value: `${range(reaping.activeDotDps.min, reaping.activeDotDps.max)} DPS`,
-      rule: `Current target DoT · ${escapeHtml(reaping.activeDotSource)}`,
+      rule: `Current target DoT · ${reaping.activeDotSource}`,
       running: `${range(reaping.activeDotDps.min, reaping.activeDotDps.max)} DPS`,
     },
     {
@@ -791,7 +784,7 @@ function legacyReapingModel(theoretical, { format: rawFormat, recountDps }) {
           `${range(source.minimum.reapingDps, source.maximum.reapingDps)} DPS (${Number.isFinite(source.minimum.triggerIntervalSeconds) ? `${format(source.minimum.triggerIntervalSeconds)}s interval` : "rate unknown"})`,
       ),
       sources: sourceAffixes,
-      sourceValue: (item) => escapeHtml(item.value.trigger),
+      sourceValue: (item) => item.value.trigger,
     },
   ];
   return {
@@ -823,52 +816,4 @@ function legacyReapingModel(theoretical, { format: rawFormat, recountDps }) {
       "The target's complete active DoT pool and exact trigger timing are not exposed, so this is a theoretical estimate.",
     ],
   };
-}
-
-const tabFigure = (model, format) =>
-  model.empty
-    ? ""
-    : model.final.raw && typeof model.final.raw === "object"
-      ? compactNumber(model.final.raw.max, format)
-      : compactNumber(model.final.raw, format);
-
-/**
- * The tab row: one button per path. When several skills deal damage the tabs sit in per-skill groups (spacing and a
- * divider only); the group name labels were removed at the user's request (2026-10-13).
- */
-export function damagePathTabsMarkup(paths, active, format) {
-  const groups = [...new Set(paths.map((path) => path.group))];
-  const grouped = groups.length > 2 || (groups.length === 2 && !groups.includes("Build"));
-  const tab = (path) =>
-    `<button type="button" role="tab" id="damage-path-tab-${escapeHtml(path.value)}" aria-controls="damage-path-view-${escapeHtml(path.value)}" aria-selected="${path.value === active}" tabindex="${path.value === active ? 0 : -1}" data-damage-path-tab="${escapeHtml(path.value)}"${path.value === active ? ' class="active"' : ""}>${escapeHtml(path.label)}${tabFigure(path.model, format) ? `<small>${escapeHtml(tabFigure(path.model, format))}</small>` : ""}</button>`;
-  const tabs = grouped
-    ? groups
-        .map(
-          (group) =>
-            `<div class="damage-path-tab-group" role="presentation" data-group="${escapeHtml(group)}">${paths
-              .filter((path) => path.group === group)
-              .map(tab)
-              .join("")}</div>`,
-        )
-        .join("")
-    : paths.map(tab).join("");
-  return `<div class="damage-path-tabs stat-panel-tabs" role="tablist" aria-label="Damage paths">${tabs}</div>`;
-}
-
-/**
- * The whole Damage path page: path tabs (grouped by skill when several skills deal damage), the
- * selected path's section and the others hidden. `selected` falls back to the first path.
- */
-export function damagePathPanelMarkup({ theoretical, planner, selected = "hit", format }) {
-  const paths = damagePathModels(theoretical, planner, { format });
-  const active = resolveDamagePath(selected, paths);
-  const names = sourceNames(planner);
-  const views = paths
-    .map(
-      (path) =>
-        `<div class="damage-path-view" role="tabpanel" id="damage-path-view-${escapeHtml(path.value)}" aria-labelledby="damage-path-tab-${escapeHtml(path.value)}" data-damage-path-view="${escapeHtml(path.value)}"${path.value === active ? "" : " hidden"}>${path.model.empty ? emptyPathMarkup(path.model) : pathMarkup(path.model, { planner, format, names })}</div>`,
-    )
-    .join("");
-  // Open questions (src/app/stats/open-questions.js): below every view, only those that apply to this build.
-  return `<div class="damage-path-panel">${damagePathTabsMarkup(paths, active, format)}${views}${openQuestionsPanelMarkup(planner)}</div>`;
 }

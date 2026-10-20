@@ -1,6 +1,3 @@
-import { escapeHtml } from "../html.js";
-import { toggleNumberMarkup } from "./dummy-recount-panel.js";
-import { formatShortNumber } from "../../engine/text/number-format.js";
 import { BASE_CRITICAL_DAMAGE_PERCENT } from "../../engine/game-attribute-defaults.js";
 
 // Build-driven Damage path views. The options follow what the build actually
@@ -97,7 +94,7 @@ export function compactNumber(value, format = (n) => String(n)) {
   return `${scaled >= 100 ? scaled.toFixed(0) : scaled >= 10 ? scaled.toFixed(1) : scaled.toFixed(2)} ${unit[1]}`;
 }
 
-const compactRange = (range, format) =>
+export const compactRange = (range, format) =>
   range && typeof range === "object"
     ? Math.abs(range.min - range.max) < 1e-9
       ? compactNumber(range.max, format)
@@ -283,7 +280,7 @@ export function stageEmpty(stage) {
   return stage.factor === 1 || /^×1(?:\.0+)?$/.test(String(stage.value || "").trim());
 }
 
-const chipFor = (stage, format) =>
+export const chipFor = (stage, format) =>
   stage.chip ?? (stage.kind === "base" ? compactRange(stage.rawValue, format) : stage.value);
 
 // ---------------------------------------------------------------------------------------------
@@ -373,48 +370,15 @@ export function stageArithmetic(stage, { names = {}, format = (n) => String(n) }
 
 /**
  * A running value made of one figure per Reaping source: `value` lists the figures, `detail` the full
- * "Source: figure · …" text. Both are HTML (source names escaped).
+ * "Source: figure · …" text.
  */
 export const perSourceRunning = (sources, render) => ({
   value: sources.map((source) => render(source)).join(" · "),
-  detail: sources.map((source) => `${escapeHtml(source.source)}: ${render(source)}`).join(" · "),
+  detail: sources.map((source) => `${source.source}: ${render(source)}`).join(" · "),
 });
 
-const feederRow = (row) =>
-  `<li class="damage-feed" tabindex="0" data-damage-source="${escapeHtml(row.source)}" data-damage-category="${escapeHtml(row.category)}"${row.share != null ? ` style="--share:${(row.share * 100).toFixed(1)}%"` : ""}><span class="damage-feed-name">${escapeHtml(row.source)}${row.text ? `<small>${escapeHtml(row.text)}</small>` : ""}</span><em class="damage-feed-tag">${escapeHtml(row.group)}</em><strong class="damage-feed-value">${row.value}</strong></li>`;
-
-// One bucket of the pipeline: header (step, name, how it combines, factor, running value after it),
-// then the rule, the assumed conditions and the feeders ranked by contribution.
-function stageMarkup(stage, index, { planner, format, names, open, connector }) {
-  const kind = STAGE_KINDS[stage.kind] || STAGE_KINDS.multiply;
-  const rows = rankedFeeders(stage, { names });
-  const { math, byOrigin } = stageArithmetic(stage, { names, format });
-  const assumptions = stageAssumptions(stage, planner);
-  const feeders = rows.length
-    ? `<ol class="damage-feeders" aria-label="Sources feeding this bucket">${rows.map(feederRow).join("")}</ol>`
-    : "";
-  // The running value after the bucket; left out when it only repeats the bucket's own figure (base buckets).
-  // A per-source running value ({ value, detail }) shows the figures prominently and the full source text on one
-  // muted, ellipsized line (whole text in the title).
-  const runningValue = stage.running && typeof stage.running === "object" ? stage.running.value : stage.running;
-  const runningDetail = stage.running && typeof stage.running === "object" ? stage.running.detail : "";
-  const running =
-    runningValue && runningValue !== stage.value
-      ? `<span class="damage-stage-after"><span>${stage.kind === "base" ? "Starting value" : "Running value"}</span><strong${runningDetail ? ` title="${runningDetail}"` : ""}>${runningValue}</strong>${runningDetail ? `<small class="damage-stage-after-detail" title="${runningDetail}">${runningDetail}</small>` : ""}</span>`
-      : "";
-  const notes = (stage.notes || []).map((note) => `<p class="stat-drill-note">${note}</p>`).join("");
-  const chips = assumptions.length
-    ? `<ul class="damage-stage-assumptions" aria-label="Conditions assumed">${assumptions.map((tag) => `<li>${escapeHtml(tag)}</li>`).join("")}</ul>`
-    : "";
-  const link = connector
-    ? `<div class="damage-stage-link ${escapeHtml(stage.kind)}" aria-hidden="true"><span>${escapeHtml(connector)}</span></div>`
-    : "";
-  const head = `<span class="damage-stage-step">${String(index + 1).padStart(2, "0")}</span><span class="damage-stage-head"><span class="stat-section-title">${stage.title}</span>${math ? `<span class="damage-stage-math">${escapeHtml(math)}</span>` : `<span class="damage-stage-kind">${escapeHtml(stage.action || kind.label)}</span>`}</span><strong class="damage-stage-value">${stage.value}</strong>${running}`;
-  return `${link}<details class="stat-section damage-stage ${escapeHtml(stage.kind)}"${open ? " open" : ""} data-damage-stage="${escapeHtml(stage.key || stage.title)}"><summary>${head}</summary><div class="stat-section-body">${byOrigin ? `<p class="damage-stage-origins">${escapeHtml(byOrigin)}</p>` : ""}<p class="stat-drill-formula damage-stage-rule">${stage.rule || ""}</p>${notes}${chips}${feeders}</div></details>`;
-}
-
 // The connector label between two buckets: what the next bucket does to the running value.
-const connectorLabel = (stage, model) => {
+export const connectorLabel = (stage, model) => {
   if (stage.connector) return stage.connector;
   if (stage.op === "→") return "→ replaces the roll";
   const op = model.chainOp || STAGE_KINDS[stage.kind]?.op || "×";
@@ -425,101 +389,6 @@ const connectorLabel = (stage, model) => {
   if (stage.kind === "stacks") return "× stacks";
   return "× multiplied";
 };
-
-/** The chain of stage chips: Base → ×increased → ×additional … = result. */
-export function stageChainMarkup(model, format) {
-  const stages = model.stages.filter((stage) => !stageEmpty(stage) && stage.kind !== "info");
-  const chips = stages.map((stage) => {
-    const op = stage.op || model.chainOp || STAGE_KINDS[stage.kind]?.op || "×";
-    return `<li class="damage-chain-stage ${escapeHtml(stage.kind)}"${stage.kind === "base" ? "" : ` data-op="${op}"`}><span>${escapeHtml(stage.chainLabel || stage.title.replace(/<[^>]+>/g, ""))}</span><strong>${chipFor(stage, format)}</strong></li>`;
-  });
-  chips.push(
-    `<li class="damage-chain-stage result" data-op="="><span>${escapeHtml(model.final.chainLabel || "Result")}</span><strong>${model.final.compact || compactRange(model.final.raw, format)}${model.final.unit ? `<small>${escapeHtml(model.final.unit)}</small>` : ""}</strong></li>`,
-  );
-  return `<ol class="damage-chain" aria-label="How the stages combine">${chips.join("")}</ol>`;
-}
-
-// Large figures are truncated ("21.84 Trillion") and expand to the full integer on click (2026-10-13); the unit
-// word keeps the hero-magnitude styling. A preset `final.text` is shown as given.
-const heroValue = (final, format, id = final.label) => {
-  const raw = final.raw;
-  const whole = wholeFormat(format);
-  const range = Boolean(raw && typeof raw === "object" && !(Math.abs(raw.min - raw.max) < 1e-9));
-  const single = range ? null : raw && typeof raw === "object" ? raw.max : raw;
-  const full = final.text || (range ? `${whole(raw.min)}–${whole(raw.max)}` : whole(single));
-  const short =
-    final.text ||
-    (range
-      ? `${formatShortNumber(raw.min)}–${formatShortNumber(raw.max)}`
-      : Number.isFinite(single) && Math.abs(single) >= 1000
-        ? formatShortNumber(single)
-        : full);
-  const value = range ? raw.max : single;
-  const figure =
-    short === full
-      ? `<strong class="damage-path-hero-value">${escapeHtml(full)}</strong>`
-      : toggleNumberMarkup(`path:${id}`, value, {
-          className: "damage-path-hero-value",
-          unitClass: "damage-path-hero-magnitude",
-          short,
-          full,
-        });
-  return `${figure}${final.unit ? `<span class="damage-path-hero-unit">${escapeHtml(final.unit)}</span>` : ""}`;
-};
-
-/**
- * A collapsible extra section of a path (Damage components, Timing …; also the Open questions panel): chevron header with
- * the title and the count right-aligned, then `body` (HTML) inside the panel. `attrs` is extra HTML attributes for the
- * <details>.
- */
-export function extraSectionMarkup({ title, count = null, open = false, body = "", className = "", attrs = "" }) {
-  return `<details class="stat-section damage-extra${className ? ` ${className}` : ""}"${open ? " open" : ""}${attrs ? ` ${attrs}` : ""}><summary><span class="stat-section-title">${escapeHtml(title)}</span>${count == null ? "" : `<span class="stat-section-count">${escapeHtml(String(count))}</span>`}</summary><div class="stat-section-body">${body}</div></details>`;
-}
-
-/**
- * Markup for one path model: summary card (title, final figure, chain, windows, assumptions), the
- * intro, one collapsible section per non-empty stage, optional extra sections and the footnotes.
- */
-export function pathMarkup(model, { planner = null, format = (n) => String(n), names = {}, openStages = true } = {}) {
-  const stages = model.stages.filter((stage) => !stageEmpty(stage));
-  const stageAssumed = new Set(stages.flatMap((stage) => stageAssumptions(stage, planner)));
-  const assumed = [...new Set([...(model.assumptions || []), ...stageAssumed])];
-  const windows = (model.windows || []).filter((item) => item && item.value != null && item.value !== "");
-  const windowsMarkup = windows.length
-    ? `<dl class="damage-path-windows">${windows.map((item) => `<div${item.emphasis ? ' class="emphasis"' : ""}><dt>${escapeHtml(item.label)}</dt><dd>${escapeHtml(item.value)}${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}</dd></div>`).join("")}</dl>`
-    : "";
-  const assumedMarkup = assumed.length
-    ? `<div class="damage-path-assumed"><span>Assumes</span><ul>${assumed.map((tag) => `<li>${escapeHtml(tag)}</li>`).join("")}</ul></div>`
-    : "";
-  const extras = (model.sections || [])
-    .map((section) =>
-      extraSectionMarkup({
-        title: section.title,
-        count: section.rows.length,
-        open: section.open,
-        body: section.rows
-          .map(
-            (row) =>
-              `<div class="stat-sheet-row"${row.title ? ` title="${escapeHtml(row.title)}"` : ""}><span class="stat-row-label">${escapeHtml(row.label)}</span><strong class="stat-row-value">${escapeHtml(row.value)}${row.detail ? `<small>${escapeHtml(row.detail)}</small>` : ""}</strong></div>`,
-          )
-          .join(""),
-      }),
-    )
-    .join("");
-  const notes = (model.footnotes || []).filter(Boolean);
-  const footnotes = notes.length
-    ? extraSectionMarkup({
-        title: "Notes",
-        count: notes.length,
-        open: false,
-        className: "damage-path-notes",
-        body: notes
-          .map((note) => `<div class="stat-sheet-row"><span class="stat-row-label">${note}</span></div>`)
-          .join(""),
-      })
-    : "";
-  return `<section class="damage-path-section" aria-label="${escapeHtml(model.ariaLabel || `${model.title} calculation`)}"><header class="stat-sheet-banner damage-path-summary"><h2>${escapeHtml(model.title)}${model.subtitle ? ` <small>${escapeHtml(model.subtitle)}</small>` : ""}</h2><div class="damage-path-hero"><span class="damage-path-hero-label">${escapeHtml(model.final.label)}</span><div class="damage-path-hero-figure">${heroValue(model.final, format, `${model.title}:${model.final.label}`)}</div>${model.final.note ? `<small class="damage-path-hero-note">${escapeHtml(model.final.note)}</small>` : ""}</div>${stageChainMarkup(model, format)}${windowsMarkup}${assumedMarkup}</header>${model.afterSummary || ""}${model.intro ? `<p class="damage-path-intro">${model.intro}</p>` : ""}<div class="damage-path-stages">${stages.map((stage, index) => stageMarkup(stage, index, { planner, format, names, open: openStages && stage.kind !== "info", connector: index ? connectorLabel(stage, model) : "" })).join("")}</div>${extras}${footnotes}</section>`;
-}
 
 // ---------------------------------------------------------------------------------------------
 // Ailment paths (Trauma, Wilt, skill damage over time)
@@ -760,7 +629,7 @@ export function ailmentPathModel(ailment, { format: rawFormat, recountDps = null
       chainLabel: "Applied by",
       noMath: true,
       value: `${format(ailment.applicationsPerSecond)} applications/s`,
-      rule: `Every hitting skill applies ${escapeHtml(ailment.name)} at its own hit rate and chance; the streams are pooled on the target. A skill's own supports and level bonus replace the main skill's; "dealt by Area Skills" lines follow each skill's tags.`,
+      rule: `Every hitting skill applies ${ailment.name} at its own hit rate and chance; the streams are pooled on the target. A skill's own supports and level bonus replace the main skill's; "dealt by Area Skills" lines follow each skill's tags.`,
       sources: appliers.map((applier) => ({
         source: applier.name,
         text: applier.blocked
@@ -800,7 +669,7 @@ export function ailmentPathModel(ailment, { format: rawFormat, recountDps = null
       running: `${format(ailment.combat.steadyDps)} DPS`,
     });
   }
-  const name = escapeHtml(ailment.name);
+  const name = ailment.name;
   return {
     key: `ailment:${ailment.key}`,
     title: `${ailment.name} damage path`,
@@ -840,10 +709,6 @@ export function ailmentPathModel(ailment, { format: rawFormat, recountDps = null
     intro: `${name} is ${ailment.damageType} damage over time, separate from the spell hits. Each stage below changes the ${name} figure only.`,
     stages,
   };
-}
-
-export function ailmentPathMarkup(ailment, { format, planner = null, names = {}, recountDps = null } = {}) {
-  return pathMarkup(ailmentPathModel(ailment, { format, recountDps }), { planner, format, names });
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -892,7 +757,7 @@ export function reapingPathModel(window, { format: rawFormat, label = "20-second
       chainLabel: "Active DoT",
       chip: `${compactNumber(reaping.totalDotDps, format)} DPS`,
       value: `${format(reaping.totalDotDps)} DPS`,
-      rule: `Every active damage over time is Reaped: ${dots.map((dot) => escapeHtml(dot.name)).join(", ") || "none"}`,
+      rule: `Every active damage over time is Reaped: ${dots.map((dot) => dot.name).join(", ") || "none"}`,
       sources: dots.map((dot) => ({ source: dot.name, value: dot.dps })),
       sourceValue: (item) => `${format(item.value)} DPS`,
       running: `${format(reaping.totalDotDps)} DPS`,
@@ -911,9 +776,7 @@ export function reapingPathModel(window, { format: rawFormat, label = "20-second
         ...typedDuration,
       ],
       sourceValue: percent,
-      running: perSource((source) =>
-        source.perDot.map((dot) => `${escapeHtml(dot.name)} ${format(dot.seconds)}s`).join(", "),
-      ),
+      running: perSource((source) => source.perDot.map((dot) => `${dot.name} ${format(dot.seconds)}s`).join(", ")),
     },
   ];
   if (reaping.additionalDurationFactor !== 1)
@@ -968,7 +831,7 @@ export function reapingPathModel(window, { format: rawFormat, label = "20-second
       value: `${format(reaping.reapingDps)} DPS`,
       rule: "Damage per Reap ÷ trigger interval; independent sources add together",
       sources: sourceAffixes,
-      sourceValue: (item) => escapeHtml(item.value.trigger),
+      sourceValue: (item) => item.value.trigger,
       running: perSource(
         (source) =>
           `${format(source.reapingDps)} DPS (${Number.isFinite(source.intervalSeconds) ? `every ${format(source.intervalSeconds)}s` : "not triggered"})`,
@@ -1001,23 +864,9 @@ export function reapingPathModel(window, { format: rawFormat, label = "20-second
       "Each Reaping source has its own trigger and recovery against the target and settles a duration of every active damage over time at once.",
     stages,
     footnotes: [
-      `The damage over time used here is the ${escapeHtml(label)} of each ailment. Exact trigger timing is not exposed, so this is a theoretical estimate.`,
+      `The damage over time used here is the ${label} of each ailment. Exact trigger timing is not exposed, so this is a theoretical estimate.`,
     ],
   };
-}
-
-export function multiReapingPathMarkup(
-  window,
-  { format, label = "20-second average", planner = null, names = {}, recountDps = null } = {},
-) {
-  const model = reapingPathModel(window, { format, label, recountDps });
-  if (model.empty) return emptyPathMarkup(model);
-  return pathMarkup(model, { planner, format, names });
-}
-
-/** A path with nothing to show (no Reaping source, no hit model): the summary frame with the note. */
-export function emptyPathMarkup(model) {
-  return `<section class="damage-path-section" aria-label="${escapeHtml(model.ariaLabel || model.title)}"><header class="stat-sheet-banner damage-path-summary damage-path-summary-empty"><h2>${escapeHtml(model.title)}${model.subtitle ? ` <small>${escapeHtml(model.subtitle)}</small>` : ""}</h2><p class="damage-path-intro">${model.intro}</p></header></section>`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1054,7 +903,7 @@ export function combinedPathModel(
         key: `part:${index}`,
         kind: "sum",
         action: "Added",
-        title: escapeHtml(name),
+        title: name,
         chainLabel: name,
         chip: `${compactNumber(dps, format)}`,
         value: `${format(dps)} DPS`,
@@ -1124,7 +973,7 @@ export function combinedPathModel(
     ],
     stages,
     sections,
-    afterSummary: illOmenCardMarkup(illOmen, { format: rawFormat }),
+    illOmen,
     footnotes: [
       "Not calibrated against a dummy test for this build. Lines the planner does not model yet are listed in the calculation warnings.",
     ],
@@ -1132,32 +981,29 @@ export function combinedPathModel(
 }
 
 /**
- * "Ill Omen (beyond the dummy)" card (src/engine/ailments/ill-omen.js): the Ominous source, Cumulative Efficiency and Reap Purification,
- * three target tiers (Normal / Magic, Rare / Elite, Boss execute) and the working. "" when the build applies no Ominous.
+ * "Ill Omen (beyond the dummy)" card (src/engine/ailments/ill-omen.js): the Ominous source, Cumulative Efficiency and Reap
+ * Purification, three target tiers (Normal / Magic, Rare / Elite, Boss execute) and the working. null when the build
+ * applies no Ominous.
  */
-export function illOmenCardMarkup(illOmen, { format = (n) => String(n) } = {}) {
-  if (!illOmen) return "";
+export function illOmenCard(illOmen, { format = (n) => String(n) } = {}) {
+  if (!illOmen) return null;
   const efficiency = illOmen.efficiency;
-  const tag = illOmen.main?.applied
-    ? "Theoretical · Elite loop in the dummy figures (best case)"
-    : "Theoretical · not in dummy figures";
-  const subline = [
-    `Ominous: ${illOmen.ominousSource}`,
-    `Cumulative Efficiency ${efficiency.rawPercent >= 0 ? "+" : ""}${format(efficiency.rawPercent)}%${efficiency.capped ? " (capped at 100%)" : ""}`,
-    `Reap Purification ${illOmen.reapPurification?.active ? "active" : "inactive"}`,
-  ].join(" · ");
-  const tiles = illOmen.tiles
-    .map(
-      (tile) =>
-        `<div${tile.key === "elite" && illOmen.main?.applied ? ' class="emphasis"' : ""} data-ill-omen-tile="${escapeHtml(tile.key)}"><dt>${escapeHtml(tile.label)}</dt><dd>${escapeHtml(tile.value)}<small>${escapeHtml(tile.explanation)}</small></dd></div>`,
-    )
-    .join("");
-  return `<section class="damage-path-section ill-omen-card" aria-label="Ill Omen beyond the dummy" data-ill-omen-card><header class="stat-sheet-banner damage-path-summary"><h2>Ill Omen (beyond the dummy) <small>${escapeHtml(tag)}</small></h2><p class="damage-path-intro">${escapeHtml(subline)}</p><dl class="damage-path-windows">${tiles}</dl><p class="damage-path-footnote">Working: ${escapeHtml(illOmen.working)}</p></header></section>`;
-}
-
-export function combinedPathMarkup(
-  paths,
-  { format, planner = null, names = {}, recountTotalDps = null, recountShares = [] } = {},
-) {
-  return pathMarkup(combinedPathModel(paths, { format, recountTotalDps, recountShares }), { planner, format, names });
+  return {
+    tag: illOmen.main?.applied
+      ? "Theoretical · Elite loop in the dummy figures (best case)"
+      : "Theoretical · not in dummy figures",
+    subline: [
+      `Ominous: ${illOmen.ominousSource}`,
+      `Cumulative Efficiency ${efficiency.rawPercent >= 0 ? "+" : ""}${format(efficiency.rawPercent)}%${efficiency.capped ? " (capped at 100%)" : ""}`,
+      `Reap Purification ${illOmen.reapPurification?.active ? "active" : "inactive"}`,
+    ].join(" · "),
+    tiles: illOmen.tiles.map((tile) => ({
+      key: tile.key,
+      label: tile.label,
+      value: tile.value,
+      explanation: tile.explanation,
+      emphasis: tile.key === "elite" && Boolean(illOmen.main?.applied),
+    })),
+    working: illOmen.working,
+  };
 }

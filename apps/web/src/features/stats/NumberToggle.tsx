@@ -24,9 +24,13 @@ interface NumberToggleProps {
   id: string;
   text: NumberText;
   className?: string;
+  /** Styles the truncated text's trailing unit word ("Billion") apart (a damage path's hero figure). */
+  unitClass?: string;
 }
 
-export function NumberToggle({ id, text, className }: NumberToggleProps) {
+const UNIT_WORD = /^(.*) (Thousand|Million|Billion|Trillion|Quadrillion)$/;
+
+export function NumberToggle({ id, text, className, unitClass }: NumberToggleProps) {
   const open = useSyncExternalStore(subscribe, () => expanded.has(id));
   if (text.short === null) return <strong className={className}>{text.full}</strong>;
   const shown = open ? text.full : text.short;
@@ -46,7 +50,14 @@ export function NumberToggle({ id, text, className }: NumberToggleProps) {
         flip(id);
       }}
     >
-      {shown}
+      {!open && unitClass && UNIT_WORD.test(shown) ? (
+        <>
+          {`${UNIT_WORD.exec(shown)?.[1]} `}
+          <span className={unitClass}>{UNIT_WORD.exec(shown)?.[2]}</span>
+        </>
+      ) : (
+        shown
+      )}
     </strong>
   );
 }

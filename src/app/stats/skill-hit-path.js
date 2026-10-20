@@ -1,4 +1,3 @@
-import { escapeHtml } from "../html.js";
 import { compactNumber, wholeFormat } from "./damage-path-views.js";
 
 // Damage path model for a generic spell hit (src/engine/skills/skill-hit-model.js), in the stage layout the other
@@ -37,7 +36,7 @@ export function skillHitPathModel(hit, { format: rawFormat, recountDps = null } 
       final: { label: "Hit DPS", raw: 0, unit: "DPS" },
       stages,
       empty: true,
-      intro: `${escapeHtml(hit.name)} has no base damage row at Lv.${hit.level}.`,
+      intro: `${hit.name} has no base damage row at Lv.${hit.level}.`,
     };
   let running = { ...primary.base };
   const push = (step, factor) => {
@@ -53,7 +52,7 @@ export function skillHitPathModel(hit, { format: rawFormat, recountDps = null } 
     chainLabel: "Base",
     value: range(primary.base),
     rawValue: primary.base,
-    rule: `Lv.${hit.baseLevel} ${typeLabel} roll from the game's skill damage row (${escapeHtml(hit.profile.sources.gameData || "game data")}); levels past 20 keep this base and add the level bonus below`,
+    rule: `Lv.${hit.baseLevel} ${typeLabel} roll from the game's skill damage row (${hit.profile.sources.gameData || "game data"}); levels past 20 keep this base and add the level bonus below`,
     sources: hit.ledger.base,
     sourceValue: (item) => `${format(item.min)}–${format(item.max)}`,
   });
@@ -150,7 +149,7 @@ export function skillHitPathModel(hit, { format: rawFormat, recountDps = null } 
   const rateInputs = [
     {
       source: "Use time",
-      text: `${format(rate.useTimeSeconds ?? 0)} s base (${escapeHtml(rate.source || "no timing data")}; speed type ${rate.speedType})${rate.tlidbCastSeconds && Math.abs(rate.tlidbCastSeconds - (rate.useTimeSeconds ?? 0)) > 1e-6 ? ` — TLIDB publishes ${rate.tlidbCastSeconds} s` : ""}`,
+      text: `${format(rate.useTimeSeconds ?? 0)} s base (${rate.source || "no timing data"}; speed type ${rate.speedType})${rate.tlidbCastSeconds && Math.abs(rate.tlidbCastSeconds - (rate.useTimeSeconds ?? 0)) > 1e-6 ? ` — TLIDB publishes ${rate.tlidbCastSeconds} s` : ""}`,
       display: `${format(rate.effectiveUseTimeSeconds ?? 0)} s`,
     },
     ...rate.castSpeedSources.map((item) => ({
@@ -305,12 +304,12 @@ export function skillHitPathModel(hit, { format: rawFormat, recountDps = null } 
         note: `hypothesis: average hit × hits/use × uses/s, no crit, no target layers (${format(hit.town.dps)} with the crit expectation; Flame Jet Lv16 panel read 170 vs 170.7 / 175.0)`,
       },
     ],
-    intro: `${escapeHtml(hit.name)} deals ${escapeHtml(types.join(" and "))} spell hits from the game's level table. Each stage below changes the hit figure only; its ailments (Ignite, Frostbite, Shock) are not applied yet.`,
+    intro: `${hit.name} deals ${types.join(" and ")} spell hits from the game's level table. Each stage below changes the hit figure only; its ailments (Ignite, Frostbite, Shock) are not applied yet.`,
     stages,
     sections,
     footnotes: [
       "Generic spell-hit engine (first batch, 2026-10-11): base rows and use times are game data; the layer order mirrors the Scorching Beam hit ledger. Not yet calibrated against an in-game dummy run for this skill.",
-      ...(hit.notes || []).map((note) => escapeHtml(note)),
+      ...(hit.notes || []).map((note) => note),
     ],
   };
 }

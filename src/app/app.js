@@ -1,6 +1,5 @@
 import { additionalDamagePathSources } from "./stats/damage-path-sources.js";
 import { neutralStatuses, refineCoverage, setCoverageContext, dazeStatus } from "../engine/text/line-coverage.js";
-import { damagePathPanelMarkup } from "./stats/damage-path-panel.js";
 import { OPEN_QUESTIONS, openQuestionsFor, openQuestionsText } from "./stats/open-questions.js";
 import { bugAreaForView, platformName } from "./feedback/feedback-links.js";
 import { createFeedbackDialog } from "./feedback/feedback-dialog.js";
@@ -37,9 +36,9 @@ import {
   heroTraitCoverageReason,
 } from "./calculation-coverage.js";
 import { scorchingBeamBaseHits, strippedBeamHitCoefficient } from "../engine/skills/scorching-beam-base-hit.js";
-import { damagePathControlsMarkup } from "./stats/stat-sheet.js";
 import { recountExcludedSources, setRecountSourceExcluded } from "./stats/dummy-recount-panel.js";
 import { prepareStatSheet, statsView } from "./bridge/stats-view-model.ts";
+import { prepareDamagePath } from "./bridge/damage-path-view-model.ts";
 import { fireHitMitigation, mitigateScorchingBeamCycle } from "../engine/combat/target-hit-mitigation.js";
 import { canDropGearInSlot } from "../engine/gear/gear-drag.js";
 import { equipmentView } from "./bridge/equipment-view-model.ts";
@@ -1654,6 +1653,13 @@ providePlannerCommands({
     setRecountSourceExcluded(null);
     viewSourceChanged("stats");
   },
+  selectDamagePath: (key) => {
+    selectedDamagePath = DAMAGE_PATH_KEY.test(key) ? key : "hit";
+    saveWorkspaceLocation();
+    viewSourceChanged("stats");
+  },
+  copyOpenQuestions,
+  submitOpenQuestion,
 });
 // The FOLLOWER tab's data (src/app/follower-panel.js).
 provideViewSource("follower", () => followerPanelView(plannerState));
@@ -5353,25 +5359,15 @@ function renderConfiguration() {
   viewSourceChanged("configuration");
 }
 
-function damageBucketDiagram(theoretical, planner) {
-  // Damage path page (src/app/stats/damage-path-panel.js): path tabs, summary card and stage sections.
-  return damagePathPanelMarkup({ theoretical, planner, selected: selectedDamagePath, format });
-}
-
-// The Stats view is React (apps/web/src/features/stats): the status, the panel switch and the stat sheet re-read their
-// source. The damage path is still rendered here, from a second calculation at 30% target Fire Resistance.
+// The Stats view is React (apps/web/src/features/stats): it re-reads its source.
 function renderCharacter() {
-  const planner = currentPlanner();
-  const theoretical = calculatePlanner({
-    ...capturePlannerState(),
-    combat: { ...plannerState.combat, targetFireResistancePercent: 30 },
-  }).theoretical;
-  $("#damage-path").innerHTML = damagePathControlsMarkup() + damageBucketDiagram(theoretical, planner);
   viewSourceChanged("stats");
 }
 // The Stats view's data (src/app/bridge/stats-view-model.ts). The stat sheet is prepared once per calculated build and
-// picked skill: switching panels or leaving a recount source out of the view does not prepare it again.
-let preparedStatSheet = null;
+// picked skill, the damage path once per calculated build (from a second calculation at 30% target Fire Resistance):
+// switching panels or paths, or leaving a recount source out of the view, prepares neither again.
+let preparedStatSheet = null,
+  preparedDamagePath = null;
 function statsSource() {
   const planner = currentPlanner();
   if (preparedStatSheet?.planner !== planner || preparedStatSheet.skill !== selectedStatSheetSkill)
@@ -5380,37 +5376,41 @@ function statsSource() {
       skill: selectedStatSheetSkill,
       sheet: prepareStatSheet(planner, selectedStatSheetSkill, format),
     };
-  return statsView(preparedStatSheet.sheet, { panel: activeStatsPanel, excluded: recountExcludedSources() });
-}
-
-function selectDamagePathTab(value, { focus = false } = {}) {
-  selectedDamagePath = DAMAGE_PATH_KEY.test(value) ? value : "hit";
-  saveWorkspaceLocation();
-  for (const tab of $("#damage-path").querySelectorAll("[data-damage-path-tab]")) {
-    const selected = tab.dataset.damagePathTab === selectedDamagePath;
-    tab.classList.toggle("active", selected);
-    tab.setAttribute("aria-selected", String(selected));
-    tab.tabIndex = selected ? 0 : -1;
-    if (selected && focus) tab.focus();
+  if (preparedDamagePath?.planner !== planner) {
+    const theoretical = calculatePlanner({
+      ...capturePlannerState(),
+      combat: { ...plannerState.combat, targetFireResistancePercent: 30 },
+    }).theoretical;
+    preparedDamagePath = { planner, path: prepareDamagePath(theoretical, planner, format) };
   }
-  for (const view of $("#damage-path").querySelectorAll("[data-damage-path-view]"))
-    view.hidden = view.dataset.damagePathView !== selectedDamagePath;
+  return statsView(
+    { sheet: preparedStatSheet.sheet, damagePath: preparedDamagePath.path },
+    { panel: activeStatsPanel, path: selectedDamagePath, excluded: recountExcludedSources() },
+  );
 }
-// Open questions "Copy questions" (src/app/stats/open-questions-panel.js): plain text of the build's applicable questions.
-async function copyOpenQuestions(button) {
+// Open questions "Copy questions": plain text of the build's applicable questions; false when the clipboard refused it.
+async function copyOpenQuestions() {
   const planner = currentPlanner();
   const text = openQuestionsText(openQuestionsFor(planner, planner?.state));
   try {
     await navigator.clipboard.writeText(text);
+    return true;
   } catch {
     showToast("Clipboard access was unavailable");
-    return;
+    return false;
   }
-  button.textContent = "Copied";
-  clearTimeout(button.copiedTimer);
-  button.copiedTimer = setTimeout(() => {
-    button.textContent = "Copy questions";
-  }, 1600);
+}
+// "Submit an answer" on an open question: the answer dialog for it, pre-filled.
+function submitOpenQuestion(id) {
+  const entry = OPEN_QUESTIONS.find((item) => item.id === id);
+  if (!entry) return;
+  persistPlannerState();
+  feedbackDialog.open("answer", {
+    entry,
+    version: APP_VERSION,
+    platform: platformName(window),
+    buildCode: currentBuildCode(),
+  });
 }
 // Report buttons: each opens the in-planner feedback dialog (src/app/feedback/feedback-dialog.js) with its GitHub form's fields; "Send to
 // GitHub" puts the compact build code in the URL when it is included and fits (else copies it) and opens the pre-filled
@@ -5433,9 +5433,6 @@ function reportCalculation() {
     buildCode: currentBuildCode(),
   });
 }
-$("#damage-path").addEventListener("click", (event) => {
-  if (event.target.closest("[data-report-calculation]")) reportCalculation();
-});
 $("[data-report-bug]").addEventListener("click", () => {
   persistPlannerState();
   feedbackDialog.open("bug", {
@@ -5445,41 +5442,6 @@ $("[data-report-bug]").addEventListener("click", () => {
     buildCode: currentBuildCode(),
   });
 });
-$("#damage-path").addEventListener("click", (event) => {
-  const submit = event.target.closest("[data-submit-open-question]");
-  if (!submit) return;
-  event.preventDefault();
-  const entry = OPEN_QUESTIONS.find((item) => item.id === submit.dataset.submitOpenQuestion);
-  if (!entry) return;
-  persistPlannerState();
-  feedbackDialog.open("answer", {
-    entry,
-    version: APP_VERSION,
-    platform: platformName(window),
-    buildCode: currentBuildCode(),
-  });
-});
-$("#damage-path").addEventListener("click", (event) => {
-  const tab = event.target.closest("[data-damage-path-tab]");
-  if (tab) selectDamagePathTab(tab.dataset.damagePathTab);
-  const copy = event.target.closest("[data-copy-open-questions]");
-  if (copy) copyOpenQuestions(copy);
-});
-$("#damage-path").addEventListener("keydown", (event) => {
-  const tab = event.target.closest("[data-damage-path-tab]");
-  if (!tab || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-  const tabs = [...$("#damage-path").querySelectorAll("[data-damage-path-tab]")];
-  const index = tabs.indexOf(tab);
-  const next =
-    event.key === "Home"
-      ? 0
-      : event.key === "End"
-        ? tabs.length - 1
-        : (index + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
-  event.preventDefault();
-  selectDamagePathTab(tabs[next].dataset.damagePathTab, { focus: true });
-});
-
 const tooltipSelector =
   "[data-damage-source],.talent-node,.core-talent,.equipment-item,.inventory-item,.skill-setup,.support-card:not(.add-support-card),[data-skill-tooltip],[data-support-tooltip],.skill-primary-socket:not(.empty-skill-slot),[data-hero-trait-support-id],[data-hero-trait-tooltip],[data-tree-extra-row-tooltip],[data-sage-scent-tooltip],.hero-memory-socket.filled,.hero-memory-item,.pactspirit,.kismet-toggle,.micro-quantity,.slate-chip,.slate-piece,.crafted-slate-item,[data-pactspirit-name],[data-pact-node-tooltip],[data-follower-skill-tooltip],[data-follower-tooltip],[data-qol-help]";
 let tooltipAnchorX = 0,

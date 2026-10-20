@@ -10,12 +10,6 @@ const number = (value) => (Number.isFinite(value) ? value : null);
 // What the Stats page's stat sheet shows (apps/web/src/features/stats, through src/app/bridge/stats-view-model.ts): the
 // picked skill's mechanic cards, its damage figures, the defence cards, the stat totals and the Effective HP model.
 
-// "Report calculation" (src/app/app.js reportCalculation), alone in the Damage path view's controls row
-// (damagePathControlsMarkup), which has no skill select of its own; the stat sheet's is React.
-export const REPORT_CALCULATION_BUTTON = `<button type="button" class="stat-sheet-report" data-report-calculation title="Copy the build code and open a GitHub form to report a damage figure that differs in game">Report calculation issue</button>`;
-export const damagePathControlsMarkup = () =>
-  `<div class="stat-sheet-controls damage-path-controls">${REPORT_CALCULATION_BUTTON}</div>`;
-
 export function statSheetSkillOptions(planner) {
   return planner.activation.setups.filter(
     (setup) => setup.enabled && !["aura", "passive", "support"].includes(setup.role),

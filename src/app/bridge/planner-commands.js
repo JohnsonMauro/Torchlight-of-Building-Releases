@@ -115,6 +115,10 @@
  * @property {(key: string) => void} toggleRecountSource Leaves a recount source out of the view, or brings it back
  *   (view only: the build and its figures are unchanged).
  * @property {() => void} showAllRecountSources Brings every recount source back into the view.
+ * @property {(key: string) => void} selectDamagePath Opens another damage path tab ("hit:<setup>", "combined" …).
+ * @property {() => Promise<boolean>} copyOpenQuestions Copies the build's open questions as plain text; false when the
+ *   clipboard refused (a toast says so).
+ * @property {(id: string) => void} submitOpenQuestion Opens the answer form for an open question.
  */
 
 /**
