@@ -1,0 +1,1907 @@
+{
+ "schemaVersion": 1,
+ "disabledEquipmentSlots": [],
+ "disabledSupportNames": [],
+ "removedInventoryItemIds": [
+  "captured-helmet",
+  "captured-chest",
+  "captured-necklace",
+  "captured-gloves",
+  "captured-belt",
+  "captured-boots",
+  "captured-leftRing",
+  "captured-rightRing",
+  "captured-mainHand",
+  "captured-secondaryHand"
+ ],
+ "equipmentOverrides": {
+  "helmet": {
+   "name": "Blind Vision",
+   "base": "DEX Helmet",
+   "legendaryModifiers": [
+    "+407 Max Life",
+    "The Main Skill is supported by Lv. 10 Wind Projectiles .",
+    "65 % of the Projectile Speed bonus is also applied to Projectile Damage",
+    "Immune to Blinding"
+   ],
+   "corrodedModifierIndices": [
+    0
+   ],
+   "implicitModifiers": [
+    "+1920 gear Evasion"
+   ],
+   "level": 58,
+   "itemLevel": 82,
+   "energy": 59,
+   "icon": "./src/assets/tli/gear/Blind_Vision.webp",
+   "modifiers": [
+    "+407 Max Life",
+    "The Main Skill is supported by Lv. 10 Wind Projectiles .",
+    "65 % of the Projectile Speed bonus is also applied to Projectile Damage",
+    "Immune to Blinding",
+    "+1920 gear Evasion"
+   ],
+   "affixCount": 4,
+   "rarity": "legendary",
+   "source": "game-log",
+   "sourceInventoryId": "gear-game-log-helmet"
+  },
+  "mainHand": {
+   "name": "Headless Cleric Wand",
+   "base": "Wand",
+   "baseId": "Wand-Headless-Cleric-Wand-86-19",
+   "implicitModifiers": [
+    "500 Critical Strike Rating",
+    "1.2 Attack Speed",
+    "+40 % Spell Damage"
+   ],
+   "baseAffixModifiers": [],
+   "baseAffixTierIds": [
+    "",
+    ""
+   ],
+   "prefixModifiers": [
+    "+87% Spell Damage",
+    "+71 Intelligence",
+    "+2 Cold Skill Level"
+   ],
+   "suffixModifiers": [
+    "+85% Elemental Damage",
+    "+10% Energy Shield Regain"
+   ],
+   "craftAffixFamilyIds": [
+    "prefix-1073200",
+    "prefix-1093200",
+    "prefix-1153204",
+    "suffix-1403202",
+    "suffix-1403205"
+   ],
+   "craftAffixTierIds": [
+    "1",
+    "1",
+    "1",
+    "1",
+    "2"
+   ],
+   "craftAffixLegendary": [
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "level": 86,
+   "itemLevel": 89,
+   "energy": 55,
+   "icon": "./src/assets/tli/gear/rare/Wand-Headless-Cleric-Wand-86-19.webp",
+   "modifiers": [
+    "500 Critical Strike Rating",
+    "1.2 Attack Speed",
+    "+40 % Spell Damage",
+    "+87% Spell Damage",
+    "+71 Intelligence",
+    "+2 Cold Skill Level",
+    "+85% Elemental Damage",
+    "+10% Energy Shield Regain"
+   ],
+   "affixCount": 5,
+   "defenses": {},
+   "rarity": "rare",
+   "source": "game-log",
+   "sourceInventoryId": "gear-game-log-mainHand"
+  },
+  "secondaryHand": {
+   "name": "Headless Cleric Wand",
+   "base": "Wand",
+   "baseId": "Wand-Headless-Cleric-Wand-86-19",
+   "implicitModifiers": [
+    "500 Critical Strike Rating",
+    "1.2 Attack Speed",
+    "+40 % Spell Damage"
+   ],
+   "baseAffixModifiers": [],
+   "baseAffixTierIds": [
+    "",
+    ""
+   ],
+   "prefixModifiers": [
+    "+2 Cold Skill Level",
+    "+91% Spell Damage",
+    "Adds 64 - 85 Cold Damage to Spells"
+   ],
+   "suffixModifiers": [
+    "+78% Spell Critical Strike Damage",
+    "+62% Elemental Damage"
+   ],
+   "craftAffixFamilyIds": [
+    "prefix-1153204",
+    "prefix-1073200",
+    "prefix-1063201",
+    "suffix-1113205",
+    "suffix-1403202"
+   ],
+   "craftAffixTierIds": [
+    "1",
+    "1",
+    "1",
+    "1",
+    "2"
+   ],
+   "craftAffixLegendary": [
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "level": 86,
+   "itemLevel": 86,
+   "energy": 50,
+   "icon": "./src/assets/tli/gear/rare/Wand-Headless-Cleric-Wand-86-19.webp",
+   "modifiers": [
+    "500 Critical Strike Rating",
+    "1.2 Attack Speed",
+    "+40 % Spell Damage",
+    "+2 Cold Skill Level",
+    "+91% Spell Damage",
+    "Adds 64 - 85 Cold Damage to Spells",
+    "+78% Spell Critical Strike Damage",
+    "+62% Elemental Damage"
+   ],
+   "affixCount": 5,
+   "defenses": {},
+   "rarity": "rare",
+   "source": "game-log",
+   "sourceInventoryId": "gear-game-log-secondaryHand"
+  },
+  "chest": {
+   "name": "Long Night Sorcerer's Robe",
+   "base": "INT Chest Armor",
+   "baseId": "INT-Chest-Armor-Long-Night-Sorcerers-Robe-82-13",
+   "implicitModifiers": [
+    "+170 gear Energy Shield"
+   ],
+   "baseAffixModifiers": [],
+   "baseAffixTierIds": [
+    "",
+    ""
+   ],
+   "prefixModifiers": [
+    "+57% gear Energy Shield",
+    "+42% Projectile Speed",
+    "+238 gear Energy Shield"
+   ],
+   "suffixModifiers": [
+    "+82% Critical Strike Rating",
+    "+19% Lightning Resistance"
+   ],
+   "craftAffixFamilyIds": [
+    "prefix-1056201",
+    "prefix-1406202",
+    "prefix-1056200",
+    "suffix-1106200",
+    "suffix-1086202"
+   ],
+   "craftAffixTierIds": [
+    "1",
+    "1",
+    "2",
+    "2",
+    "2"
+   ],
+   "craftAffixLegendary": [
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "level": 82,
+   "itemLevel": 88,
+   "energy": 110,
+   "icon": "./src/assets/tli/gear/rare/INT-Chest-Armor-Long-Night-Sorcerers-Robe-82-13.webp",
+   "modifiers": [
+    "+170 gear Energy Shield",
+    "+57% gear Energy Shield",
+    "+42% Projectile Speed",
+    "+238 gear Energy Shield",
+    "+82% Critical Strike Rating",
+    "+19% Lightning Resistance"
+   ],
+   "affixCount": 5,
+   "defenses": {},
+   "rarity": "rare",
+   "source": "game-log",
+   "sourceInventoryId": "gear-game-log-chest"
+  },
+  "necklace": {
+   "name": "Old Grudge",
+   "base": "Necklace",
+   "legendaryModifiers": [
+    "+15 % Max Life, Max Mana, and Max Energy Shield",
+    "+1 Max Tangle Quantity",
+    "+30 % Tangle Duration",
+    "+133 Tangle Critical Strike Rating"
+   ],
+   "corrodedModifierIndices": [],
+   "implicitModifiers": [
+    "+5 Intelligence"
+   ],
+   "level": 58,
+   "itemLevel": 89,
+   "energy": 0,
+   "icon": "./src/assets/tli/gear/Old_Grudge.webp",
+   "modifiers": [
+    "+15 % Max Life, Max Mana, and Max Energy Shield",
+    "+1 Max Tangle Quantity",
+    "+30 % Tangle Duration",
+    "+133 Tangle Critical Strike Rating",
+    "+5 Intelligence"
+   ],
+   "affixCount": 4,
+   "rarity": "legendary",
+   "source": "game-log",
+   "sourceInventoryId": "gear-game-log-necklace"
+  },
+  "leftRing": {
+   "name": "Depicted Ward Ring",
+   "base": "Ring",
+   "baseId": "Ring-Depicted-Ward-Ring-76-21",
+   "implicitModifiers": [
+    "+3 % Elemental Resistance"
+   ],
+   "baseAffixModifiers": [],
+   "baseAffixTierIds": [
+    "",
+    ""
+   ],
+   "prefixModifiers": [
+    "+244 Max Energy Shield",
+    "+39% damage",
+    "+47 Intelligence"
+   ],
+   "suffixModifiers": [
+    "+10% Fire Resistance",
+    "+16% Cold Resistance",
+    "+10% Erosion Resistance"
+   ],
+   "craftAffixFamilyIds": [
+    "prefix-1052102",
+    "prefix-1402103",
+    "prefix-1092102",
+    "suffix-1082100",
+    "suffix-1082101",
+    "suffix-1082103"
+   ],
+   "craftAffixTierIds": [
+    "2",
+    "2",
+    "1",
+    "4",
+    "2",
+    "4"
+   ],
+   "craftAffixLegendary": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "level": 76,
+   "itemLevel": 86,
+   "energy": 0,
+   "icon": "./src/assets/tli/gear/rare/Ring-Depicted-Ward-Ring-76-21.webp",
+   "modifiers": [
+    "+3 % Elemental Resistance",
+    "+244 Max Energy Shield",
+    "+39% damage",
+    "+47 Intelligence",
+    "+10% Fire Resistance",
+    "+16% Cold Resistance",
+    "+10% Erosion Resistance"
+   ],
+   "affixCount": 6,
+   "defenses": {},
+   "rarity": "rare",
+   "source": "game-log",
+   "sourceInventoryId": "gear-game-log-leftRing"
+  },
+  "rightRing": {
+   "name": "Restless Glacier",
+   "base": "Ring",
+   "legendaryModifiers": [
+    "+32 Intelligence",
+    "+24 % Cold Resistance",
+    "+11 to Max Frostbite Rating",
+    "Frozen enemies have a 19 % chance to explode when defeated, dealing True Damage equal to 123 % of their Max Life to enemies within a 6 m radius"
+   ],
+   "corrodedModifierIndices": [
+    3
+   ],
+   "level": 58,
+   "itemLevel": 86,
+   "energy": 0,
+   "icon": "./src/assets/tli/gear/Restless_Glacier.webp",
+   "modifiers": [
+    "+32 Intelligence",
+    "+24 % Cold Resistance",
+    "+11 to Max Frostbite Rating",
+    "Frozen enemies have a 19 % chance to explode when defeated, dealing True Damage equal to 123 % of their Max Life to enemies within a 6 m radius"
+   ],
+   "affixCount": 4,
+   "rarity": "legendary",
+   "source": "game-log",
+   "sourceInventoryId": "gear-game-log-rightRing"
+  },
+  "belt": {
+   "name": "Arcanist Girdle",
+   "base": "Belt",
+   "baseId": "Belt-Arcanist-Girdle-76-9",
+   "implicitModifiers": [
+    "+110 Max Energy Shield"
+   ],
+   "baseAffixModifiers": [],
+   "baseAffixTierIds": [
+    "",
+    ""
+   ],
+   "prefixModifiers": [
+    "+42% damage",
+    "+35 Intelligence",
+    "+219 Max Energy Shield"
+   ],
+   "suffixModifiers": [
+    "+19% Lightning Resistance",
+    "+18% Fire Resistance",
+    "+17% Cold Resistance"
+   ],
+   "craftAffixFamilyIds": [
+    "prefix-1402303",
+    "prefix-1092302",
+    "prefix-1052302",
+    "suffix-1082302",
+    "suffix-1082300",
+    "suffix-1082301"
+   ],
+   "craftAffixTierIds": [
+    "2",
+    "2",
+    "2",
+    "2",
+    "2",
+    "2"
+   ],
+   "craftAffixLegendary": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "level": 76,
+   "itemLevel": 83,
+   "energy": 0,
+   "icon": "./src/assets/tli/gear/rare/Belt-Arcanist-Girdle-76-9.webp",
+   "modifiers": [
+    "+110 Max Energy Shield",
+    "+42% damage",
+    "+35 Intelligence",
+    "+219 Max Energy Shield",
+    "+19% Lightning Resistance",
+    "+18% Fire Resistance",
+    "+17% Cold Resistance",
+    "Inflicts Frail when dealing Spell Damage"
+   ],
+   "affixCount": 7,
+   "defenses": {},
+   "rarity": "rare",
+   "beltBlendId": "belt-blend-014",
+   "source": "game-log",
+   "sourceInventoryId": "gear-game-log-belt"
+  },
+  "gloves": {
+   "name": "Ice Pulse",
+   "base": "INT Gloves",
+   "legendaryModifiers": [
+    "+6 to Max Frostbite Rating",
+    "+64 % Spell Damage",
+    "When defeating a Frostbitten enemy, - 20 % current cooldown of potion and Mobility skills",
+    "+1 Max Charges",
+    "Converts 50 % of Mana Cost to Life Cost"
+   ],
+   "corrodedModifierIndices": [],
+   "implicitModifiers": [
+    "+13 gear Energy Shield"
+   ],
+   "level": 14,
+   "itemLevel": 73,
+   "energy": 34,
+   "icon": "./src/assets/tli/gear/Ice_Pulse.webp",
+   "modifiers": [
+    "+6 to Max Frostbite Rating",
+    "+64 % Spell Damage",
+    "When defeating a Frostbitten enemy, - 20 % current cooldown of potion and Mobility skills",
+    "+1 Max Charges",
+    "Converts 50 % of Mana Cost to Life Cost",
+    "+13 gear Energy Shield"
+   ],
+   "affixCount": 5,
+   "rarity": "legendary",
+   "source": "game-log",
+   "sourceInventoryId": "gear-game-log-gloves"
+  },
+  "boots": {
+   "name": "Blade-dancer's Steps",
+   "base": "DEX Boots",
+   "legendaryModifiers": [
+    "+2 Mobility Skill Level",
+    "+37 % Movement Speed if you have used a Mobility Skill recently",
+    "+37 % additional damage for 5 s after using Mobility Skills",
+    "When using a Mobility Skill, you can use 1 stack(s) of Agility Blessing to reset the Mobility Skill's cooldown. Interval: 0.6 s"
+   ],
+   "corrodedModifierIndices": [],
+   "implicitModifiers": [
+    "+1920 gear Evasion"
+   ],
+   "corrosionModifiers": [
+    "+51% damage"
+   ],
+   "level": 58,
+   "itemLevel": 90,
+   "energy": 49,
+   "icon": "./src/assets/tli/gear/Blade-dancers_Steps.webp",
+   "modifiers": [
+    "+2 Mobility Skill Level",
+    "+37 % Movement Speed if you have used a Mobility Skill recently",
+    "+37 % additional damage for 5 s after using Mobility Skills",
+    "When using a Mobility Skill, you can use 1 stack(s) of Agility Blessing to reset the Mobility Skill's cooldown. Interval: 0.6 s",
+    "+1920 gear Evasion"
+   ],
+   "affixCount": 4,
+   "rarity": "legendary",
+   "source": "game-log",
+   "sourceInventoryId": "gear-game-log-boots"
+  }
+ },
+ "equipmentInventory": [
+  {
+   "id": "gear-game-log-helmet",
+   "name": "Blind Vision",
+   "base": "DEX Helmet",
+   "slot": "helmet",
+   "legendaryModifiers": [
+    "+407 Max Life",
+    "The Main Skill is supported by Lv. 10 Wind Projectiles .",
+    "65 % of the Projectile Speed bonus is also applied to Projectile Damage",
+    "Immune to Blinding"
+   ],
+   "corrodedModifierIndices": [
+    0
+   ],
+   "implicitModifiers": [
+    "+1920 gear Evasion"
+   ],
+   "level": 58,
+   "itemLevel": 82,
+   "energy": 59,
+   "icon": "./src/assets/tli/gear/Blind_Vision.webp",
+   "modifiers": [
+    "+407 Max Life",
+    "The Main Skill is supported by Lv. 10 Wind Projectiles .",
+    "65 % of the Projectile Speed bonus is also applied to Projectile Damage",
+    "Immune to Blinding",
+    "+1920 gear Evasion"
+   ],
+   "affixCount": 4,
+   "rarity": "legendary",
+   "source": "game-log"
+  },
+  {
+   "id": "gear-game-log-mainHand",
+   "name": "Headless Cleric Wand",
+   "base": "Wand",
+   "baseId": "Wand-Headless-Cleric-Wand-86-19",
+   "slot": "mainHand",
+   "implicitModifiers": [
+    "500 Critical Strike Rating",
+    "1.2 Attack Speed",
+    "+40 % Spell Damage"
+   ],
+   "baseAffixModifiers": [],
+   "baseAffixTierIds": [
+    "",
+    ""
+   ],
+   "prefixModifiers": [
+    "+87% Spell Damage",
+    "+71 Intelligence",
+    "+2 Cold Skill Level"
+   ],
+   "suffixModifiers": [
+    "+85% Elemental Damage",
+    "+10% Energy Shield Regain"
+   ],
+   "craftAffixFamilyIds": [
+    "prefix-1073200",
+    "prefix-1093200",
+    "prefix-1153204",
+    "suffix-1403202",
+    "suffix-1403205"
+   ],
+   "craftAffixTierIds": [
+    "1",
+    "1",
+    "1",
+    "1",
+    "2"
+   ],
+   "craftAffixLegendary": [
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "level": 86,
+   "itemLevel": 89,
+   "energy": 55,
+   "icon": "./src/assets/tli/gear/rare/Wand-Headless-Cleric-Wand-86-19.webp",
+   "modifiers": [
+    "500 Critical Strike Rating",
+    "1.2 Attack Speed",
+    "+40 % Spell Damage",
+    "+87% Spell Damage",
+    "+71 Intelligence",
+    "+2 Cold Skill Level",
+    "+85% Elemental Damage",
+    "+10% Energy Shield Regain"
+   ],
+   "affixCount": 5,
+   "defenses": {},
+   "rarity": "rare",
+   "source": "game-log"
+  },
+  {
+   "id": "gear-game-log-secondaryHand",
+   "name": "Headless Cleric Wand",
+   "base": "Wand",
+   "baseId": "Wand-Headless-Cleric-Wand-86-19",
+   "slot": "mainHand",
+   "implicitModifiers": [
+    "500 Critical Strike Rating",
+    "1.2 Attack Speed",
+    "+40 % Spell Damage"
+   ],
+   "baseAffixModifiers": [],
+   "baseAffixTierIds": [
+    "",
+    ""
+   ],
+   "prefixModifiers": [
+    "+2 Cold Skill Level",
+    "+91% Spell Damage",
+    "Adds 64 - 85 Cold Damage to Spells"
+   ],
+   "suffixModifiers": [
+    "+78% Spell Critical Strike Damage",
+    "+62% Elemental Damage"
+   ],
+   "craftAffixFamilyIds": [
+    "prefix-1153204",
+    "prefix-1073200",
+    "prefix-1063201",
+    "suffix-1113205",
+    "suffix-1403202"
+   ],
+   "craftAffixTierIds": [
+    "1",
+    "1",
+    "1",
+    "1",
+    "2"
+   ],
+   "craftAffixLegendary": [
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "level": 86,
+   "itemLevel": 86,
+   "energy": 50,
+   "icon": "./src/assets/tli/gear/rare/Wand-Headless-Cleric-Wand-86-19.webp",
+   "modifiers": [
+    "500 Critical Strike Rating",
+    "1.2 Attack Speed",
+    "+40 % Spell Damage",
+    "+2 Cold Skill Level",
+    "+91% Spell Damage",
+    "Adds 64 - 85 Cold Damage to Spells",
+    "+78% Spell Critical Strike Damage",
+    "+62% Elemental Damage"
+   ],
+   "affixCount": 5,
+   "defenses": {},
+   "rarity": "rare",
+   "source": "game-log"
+  },
+  {
+   "id": "gear-game-log-chest",
+   "name": "Long Night Sorcerer's Robe",
+   "base": "INT Chest Armor",
+   "baseId": "INT-Chest-Armor-Long-Night-Sorcerers-Robe-82-13",
+   "slot": "chest",
+   "implicitModifiers": [
+    "+170 gear Energy Shield"
+   ],
+   "baseAffixModifiers": [],
+   "baseAffixTierIds": [
+    "",
+    ""
+   ],
+   "prefixModifiers": [
+    "+57% gear Energy Shield",
+    "+42% Projectile Speed",
+    "+238 gear Energy Shield"
+   ],
+   "suffixModifiers": [
+    "+82% Critical Strike Rating",
+    "+19% Lightning Resistance"
+   ],
+   "craftAffixFamilyIds": [
+    "prefix-1056201",
+    "prefix-1406202",
+    "prefix-1056200",
+    "suffix-1106200",
+    "suffix-1086202"
+   ],
+   "craftAffixTierIds": [
+    "1",
+    "1",
+    "2",
+    "2",
+    "2"
+   ],
+   "craftAffixLegendary": [
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "level": 82,
+   "itemLevel": 88,
+   "energy": 110,
+   "icon": "./src/assets/tli/gear/rare/INT-Chest-Armor-Long-Night-Sorcerers-Robe-82-13.webp",
+   "modifiers": [
+    "+170 gear Energy Shield",
+    "+57% gear Energy Shield",
+    "+42% Projectile Speed",
+    "+238 gear Energy Shield",
+    "+82% Critical Strike Rating",
+    "+19% Lightning Resistance"
+   ],
+   "affixCount": 5,
+   "defenses": {},
+   "rarity": "rare",
+   "source": "game-log"
+  },
+  {
+   "id": "gear-game-log-necklace",
+   "name": "Old Grudge",
+   "base": "Necklace",
+   "slot": "necklace",
+   "legendaryModifiers": [
+    "+15 % Max Life, Max Mana, and Max Energy Shield",
+    "+1 Max Tangle Quantity",
+    "+30 % Tangle Duration",
+    "+133 Tangle Critical Strike Rating"
+   ],
+   "corrodedModifierIndices": [],
+   "implicitModifiers": [
+    "+5 Intelligence"
+   ],
+   "level": 58,
+   "itemLevel": 89,
+   "energy": 0,
+   "icon": "./src/assets/tli/gear/Old_Grudge.webp",
+   "modifiers": [
+    "+15 % Max Life, Max Mana, and Max Energy Shield",
+    "+1 Max Tangle Quantity",
+    "+30 % Tangle Duration",
+    "+133 Tangle Critical Strike Rating",
+    "+5 Intelligence"
+   ],
+   "affixCount": 4,
+   "rarity": "legendary",
+   "source": "game-log"
+  },
+  {
+   "id": "gear-game-log-leftRing",
+   "name": "Depicted Ward Ring",
+   "base": "Ring",
+   "baseId": "Ring-Depicted-Ward-Ring-76-21",
+   "slot": "leftRing",
+   "implicitModifiers": [
+    "+3 % Elemental Resistance"
+   ],
+   "baseAffixModifiers": [],
+   "baseAffixTierIds": [
+    "",
+    ""
+   ],
+   "prefixModifiers": [
+    "+244 Max Energy Shield",
+    "+39% damage",
+    "+47 Intelligence"
+   ],
+   "suffixModifiers": [
+    "+10% Fire Resistance",
+    "+16% Cold Resistance",
+    "+10% Erosion Resistance"
+   ],
+   "craftAffixFamilyIds": [
+    "prefix-1052102",
+    "prefix-1402103",
+    "prefix-1092102",
+    "suffix-1082100",
+    "suffix-1082101",
+    "suffix-1082103"
+   ],
+   "craftAffixTierIds": [
+    "2",
+    "2",
+    "1",
+    "4",
+    "2",
+    "4"
+   ],
+   "craftAffixLegendary": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "level": 76,
+   "itemLevel": 86,
+   "energy": 0,
+   "icon": "./src/assets/tli/gear/rare/Ring-Depicted-Ward-Ring-76-21.webp",
+   "modifiers": [
+    "+3 % Elemental Resistance",
+    "+244 Max Energy Shield",
+    "+39% damage",
+    "+47 Intelligence",
+    "+10% Fire Resistance",
+    "+16% Cold Resistance",
+    "+10% Erosion Resistance"
+   ],
+   "affixCount": 6,
+   "defenses": {},
+   "rarity": "rare",
+   "source": "game-log"
+  },
+  {
+   "id": "gear-game-log-rightRing",
+   "name": "Restless Glacier",
+   "base": "Ring",
+   "slot": "leftRing",
+   "legendaryModifiers": [
+    "+32 Intelligence",
+    "+24 % Cold Resistance",
+    "+11 to Max Frostbite Rating",
+    "Frozen enemies have a 19 % chance to explode when defeated, dealing True Damage equal to 123 % of their Max Life to enemies within a 6 m radius"
+   ],
+   "corrodedModifierIndices": [
+    3
+   ],
+   "level": 58,
+   "itemLevel": 86,
+   "energy": 0,
+   "icon": "./src/assets/tli/gear/Restless_Glacier.webp",
+   "modifiers": [
+    "+32 Intelligence",
+    "+24 % Cold Resistance",
+    "+11 to Max Frostbite Rating",
+    "Frozen enemies have a 19 % chance to explode when defeated, dealing True Damage equal to 123 % of their Max Life to enemies within a 6 m radius"
+   ],
+   "affixCount": 4,
+   "rarity": "legendary",
+   "source": "game-log"
+  },
+  {
+   "id": "gear-game-log-belt",
+   "name": "Arcanist Girdle",
+   "base": "Belt",
+   "baseId": "Belt-Arcanist-Girdle-76-9",
+   "slot": "belt",
+   "implicitModifiers": [
+    "+110 Max Energy Shield"
+   ],
+   "baseAffixModifiers": [],
+   "baseAffixTierIds": [
+    "",
+    ""
+   ],
+   "prefixModifiers": [
+    "+42% damage",
+    "+35 Intelligence",
+    "+219 Max Energy Shield"
+   ],
+   "suffixModifiers": [
+    "+19% Lightning Resistance",
+    "+18% Fire Resistance",
+    "+17% Cold Resistance"
+   ],
+   "craftAffixFamilyIds": [
+    "prefix-1402303",
+    "prefix-1092302",
+    "prefix-1052302",
+    "suffix-1082302",
+    "suffix-1082300",
+    "suffix-1082301"
+   ],
+   "craftAffixTierIds": [
+    "2",
+    "2",
+    "2",
+    "2",
+    "2",
+    "2"
+   ],
+   "craftAffixLegendary": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "level": 76,
+   "itemLevel": 83,
+   "energy": 0,
+   "icon": "./src/assets/tli/gear/rare/Belt-Arcanist-Girdle-76-9.webp",
+   "modifiers": [
+    "+110 Max Energy Shield",
+    "+42% damage",
+    "+35 Intelligence",
+    "+219 Max Energy Shield",
+    "+19% Lightning Resistance",
+    "+18% Fire Resistance",
+    "+17% Cold Resistance",
+    "Inflicts Frail when dealing Spell Damage"
+   ],
+   "affixCount": 7,
+   "defenses": {},
+   "rarity": "rare",
+   "beltBlendId": "belt-blend-014",
+   "source": "game-log"
+  },
+  {
+   "id": "gear-game-log-gloves",
+   "name": "Ice Pulse",
+   "base": "INT Gloves",
+   "slot": "gloves",
+   "legendaryModifiers": [
+    "+6 to Max Frostbite Rating",
+    "+64 % Spell Damage",
+    "When defeating a Frostbitten enemy, - 20 % current cooldown of potion and Mobility skills",
+    "+1 Max Charges",
+    "Converts 50 % of Mana Cost to Life Cost"
+   ],
+   "corrodedModifierIndices": [],
+   "implicitModifiers": [
+    "+13 gear Energy Shield"
+   ],
+   "level": 14,
+   "itemLevel": 73,
+   "energy": 34,
+   "icon": "./src/assets/tli/gear/Ice_Pulse.webp",
+   "modifiers": [
+    "+6 to Max Frostbite Rating",
+    "+64 % Spell Damage",
+    "When defeating a Frostbitten enemy, - 20 % current cooldown of potion and Mobility skills",
+    "+1 Max Charges",
+    "Converts 50 % of Mana Cost to Life Cost",
+    "+13 gear Energy Shield"
+   ],
+   "affixCount": 5,
+   "rarity": "legendary",
+   "source": "game-log"
+  },
+  {
+   "id": "gear-game-log-boots",
+   "name": "Blade-dancer's Steps",
+   "base": "DEX Boots",
+   "slot": "boots",
+   "legendaryModifiers": [
+    "+2 Mobility Skill Level",
+    "+37 % Movement Speed if you have used a Mobility Skill recently",
+    "+37 % additional damage for 5 s after using Mobility Skills",
+    "When using a Mobility Skill, you can use 1 stack(s) of Agility Blessing to reset the Mobility Skill's cooldown. Interval: 0.6 s"
+   ],
+   "corrodedModifierIndices": [],
+   "implicitModifiers": [
+    "+1920 gear Evasion"
+   ],
+   "corrosionModifiers": [
+    "+51% damage"
+   ],
+   "level": 58,
+   "itemLevel": 90,
+   "energy": 49,
+   "icon": "./src/assets/tli/gear/Blade-dancers_Steps.webp",
+   "modifiers": [
+    "+2 Mobility Skill Level",
+    "+37 % Movement Speed if you have used a Mobility Skill recently",
+    "+37 % additional damage for 5 s after using Mobility Skills",
+    "When using a Mobility Skill, you can use 1 stack(s) of Agility Blessing to reset the Mobility Skill's cooldown. Interval: 0.6 s",
+    "+1920 gear Evasion"
+   ],
+   "affixCount": 4,
+   "rarity": "legendary",
+   "source": "game-log"
+  }
+ ],
+ "hero": {
+  "selectedHeroId": "youga-the-ultimate-one",
+  "selectedTraits": {},
+  "memories": {
+   "level60": "Memory of Discipline",
+   "level75": "Memory of Progress",
+   "level45": "Memory of Origin"
+  },
+  "memoryTraitLevels": {
+   "level60": 2,
+   "level75": 2,
+   "level45": 2
+  },
+  "memoryInventory": [
+   {
+    "id": "game-log-memory-2",
+    "name": "Memory of Discipline",
+    "type": "Memory of Discipline",
+    "rarity": "legendary",
+    "baseStat": "+525 Max Energy Shield",
+    "enhancementLevel": 40,
+    "waxAndWane": false,
+    "risingMoon": false,
+    "revivedAffix": "",
+    "revivedTier": 1,
+    "revivedRoll": null,
+    "fixedAffixes": [
+     "+(10–14)% Max Life",
+     "+30% Projectile Speed"
+    ],
+    "randomAffixes": [
+     "+(58–68)% Cold Damage",
+     "+(46–58)% Spell Critical Strike Damage"
+    ],
+    "fixedTiers": [
+     1,
+     2
+    ],
+    "randomTiers": [
+     1,
+     3
+    ],
+    "fixedRolls": [
+     10,
+     24
+    ],
+    "randomRolls": [
+     50,
+     16
+    ],
+    "traitLevelBonus": 2
+   },
+   {
+    "id": "game-log-memory-3",
+    "name": "Memory of Progress",
+    "type": "Memory of Progress",
+    "rarity": "legendary",
+    "baseStat": "+30% Movement Speed",
+    "enhancementLevel": 40,
+    "waxAndWane": false,
+    "risingMoon": false,
+    "revivedAffix": "",
+    "revivedTier": 1,
+    "revivedRoll": null,
+    "fixedAffixes": [
+     "+30% Projectile Speed",
+     "+16% Minion Attack Speed"
+    ],
+    "randomAffixes": [
+     "+(55–65)% Cold Skill Critical Strike Damage",
+     "+52% Projectile Speed"
+    ],
+    "fixedTiers": [
+     2,
+     2
+    ],
+    "randomTiers": [
+     2,
+     1
+    ],
+    "fixedRolls": [
+     24,
+     10
+    ],
+    "randomRolls": [
+     31,
+     40
+    ],
+    "traitLevelBonus": 2
+   },
+   {
+    "id": "game-log-memory-1",
+    "name": "Memory of Origin",
+    "type": "Memory of Origin",
+    "rarity": "legendary",
+    "baseStat": "+90 Intelligence",
+    "enhancementLevel": 40,
+    "waxAndWane": false,
+    "risingMoon": false,
+    "revivedAffix": "",
+    "revivedTier": 1,
+    "revivedRoll": null,
+    "fixedAffixes": [
+     "+30% Projectile Speed",
+     "+(15–21)% Attack Block Chance"
+    ],
+    "randomAffixes": [
+     "+(46–58)% Spell Critical Strike Damage",
+     "+(58–68)% Spell Damage"
+    ],
+    "fixedTiers": [
+     3,
+     3
+    ],
+    "randomTiers": [
+     1,
+     1
+    ],
+    "fixedRolls": [
+     16,
+     7
+    ],
+    "randomRolls": [
+     36,
+     51
+    ],
+    "traitLevelBonus": 2
+   }
+  ],
+  "equippedMemoryIds": {
+   "level60": "game-log-memory-2",
+   "level75": "game-log-memory-3",
+   "level45": "game-log-memory-1"
+  },
+  "baseTraitMemoryId": "",
+  "baseTraitMemoryRoll": null,
+  "sageScent": {
+   "elixir": "",
+   "damage": "",
+   "defense": "",
+   "functional": ""
+  },
+  "carinoSpecialAmmoSupports": [
+   "",
+   "",
+   ""
+  ],
+  "heroTraitSupports": {},
+  "heroTraitSupportLevels": {},
+  "heroTraitSupportConfigs": {},
+  "treeTraits": {
+   "thea-wisdom-of-the-gods": [],
+   "selena-dance-of-the-deep": [],
+   "youga-the-ultimate-one": []
+  },
+  "heroLoadouts": {},
+  "characterLevel": 94
+ },
+ "skills": {
+  "setupOrder": [],
+  "boardSlots": {
+   "skills": [
+    "game-log-skill-1",
+    "game-log-skill-2",
+    "game-log-skill-3",
+    "game-log-skill-4",
+    "game-log-skill-5"
+   ],
+   "auras": [
+    "game-log-skill-1001",
+    "game-log-skill-1007",
+    "game-log-skill-1013",
+    "game-log-skill-1019"
+   ]
+  },
+  "supportOrder": {
+   "game-log-skill-1": [
+    "Multiple Projectiles",
+    "",
+    "Quick Decision",
+    "Slow Projectile",
+    "Homing Frost Bolt: Deep Chill (Noble)"
+   ],
+   "game-log-skill-2": [
+    "Preparation",
+    "Well-Fought Battle",
+    "Mass Effect",
+    "Grudge",
+    ""
+   ],
+   "game-log-skill-3": [
+    "Quick Mobility",
+    "Periodic Burst",
+    "Cooldown Reduction",
+    "",
+    ""
+   ],
+   "game-log-skill-4": [
+    "Preparation",
+    "Extended Duration",
+    "Cooldown Reduction",
+    "",
+    ""
+   ],
+   "game-log-skill-5": [
+    "Terrain of Malice",
+    "Extended Duration",
+    "Preparation",
+    "",
+    ""
+   ],
+   "game-log-skill-1001": [
+    "Restrain",
+    "Aura Amplification",
+    "Increased Area",
+    "",
+    ""
+   ],
+   "game-log-skill-1007": [
+    "Restrain",
+    "Aura Amplification",
+    "Cooldown Reduction",
+    "",
+    ""
+   ],
+   "game-log-skill-1013": [
+    "Restrain",
+    "Aura Amplification",
+    "Seal Conversion",
+    "",
+    ""
+   ],
+   "game-log-skill-1019": [
+    "Restrain",
+    "Target Projection",
+    "",
+    "",
+    ""
+   ]
+  },
+  "setupEnabled": {
+   "Scorching Beam": false,
+   "Aim": false,
+   "Swiftness Dew": false,
+   "Entangled Pain": false,
+   "Scorch": false,
+   "Precise: Ailment Amplification": false,
+   "Precise: Charged Flames": false,
+   "Precise: Deep Pain": false,
+   "Precise: Domain Expansion": false
+  },
+  "skillLevels": {},
+  "supportEnabled": {
+   "game-log-skill-1:Multiple Projectiles": true,
+   "game-log-skill-1:Quick Decision": true,
+   "game-log-skill-1:Slow Projectile": true,
+   "game-log-skill-1:Homing Frost Bolt: Deep Chill (Noble)": true,
+   "game-log-skill-2:Preparation": true,
+   "game-log-skill-2:Well-Fought Battle": true,
+   "game-log-skill-2:Mass Effect": true,
+   "game-log-skill-2:Grudge": true,
+   "game-log-skill-3:Quick Mobility": true,
+   "game-log-skill-3:Periodic Burst": true,
+   "game-log-skill-3:Cooldown Reduction": true,
+   "game-log-skill-4:Preparation": true,
+   "game-log-skill-4:Extended Duration": true,
+   "game-log-skill-4:Cooldown Reduction": true,
+   "game-log-skill-5:Terrain of Malice": true,
+   "game-log-skill-5:Extended Duration": true,
+   "game-log-skill-5:Preparation": true,
+   "game-log-skill-1001:Restrain": true,
+   "game-log-skill-1001:Aura Amplification": true,
+   "game-log-skill-1001:Increased Area": true,
+   "game-log-skill-1007:Restrain": true,
+   "game-log-skill-1007:Aura Amplification": true,
+   "game-log-skill-1007:Cooldown Reduction": true,
+   "game-log-skill-1013:Restrain": true,
+   "game-log-skill-1013:Aura Amplification": true,
+   "game-log-skill-1013:Seal Conversion": true,
+   "game-log-skill-1019:Restrain": true,
+   "game-log-skill-1019:Target Projection": true
+  },
+  "supportLevels": {},
+  "specialSupportConfigs": {
+   "game-log-skill-1:Homing Frost Bolt: Deep Chill (Noble)": {
+    "tier": 2,
+    "rolls": [
+     13
+    ],
+    "stars": 1,
+    "starScaleVersion": 2
+   }
+  },
+  "customSupports": {
+   "game-log-skill-1": [
+    {
+     "name": "Multiple Projectiles",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Projectile Skills. Projectile Quantity of the supported skill +2 7.4 % additional damage for the supported skill (Lv1:37/5) (Lv21:77/5)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Quick Decision",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Attack Skills or Spell Skills. Cannot support Mobility Skills. +15 % additional Attack and Cast Speed for the supported skill (Lv1:15) (Lv21:25)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Slow Projectile",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Projectile Skills. -20% additional Projectile Speed for the supported skill 18.5% additional damage for the supported skill (Lv1:37/2) (Lv21:57/2) (Lv40:33.25)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Homing Frost Bolt: Deep Chill (Noble)",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Homing Frost Bolt. This skill can only be installed in the fifth Support Skill Slot of each Active Skill. +20% additional damage for the supported skill +80 Critical Strike Rating against Frozen enemies for the supported skill There is a 25% chance for the supported skill to release a nova of secondary Icy Blades centered around the target that always Penetrate upon defeating Frost-Sealed enemies or hitting Frost-Sealed Elites Secondary Icy Blades cannot return or be Recalled"
+     ],
+     "custom": true
+    }
+   ],
+   "game-log-skill-2": [
+    {
+     "name": "Preparation",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Active Skills. Cannot support Channeled Skills or Attack Skills. Preparation If the skill is ready, triggers the skill once. If the skill is on cooldown, triggers the skill once immediately after the cooldown ends. Prepares the supported skill every 9.9 s (Lv1:99/10) (Lv20:8)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Well-Fought Battle",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Empower Skills. Cannot support Summon Skills. The supported skill 5.25 % Effect every time it is cast, stacking up to 3 time(s) (Lv1:21/4) (Lv21:41/4)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Mass Effect",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Empower Skills. +1 Max Charges for the supported skill 10.5 % effect for the supported skill for every +1 Charge, up to 31.5 % (Lv1:21/2) (Lv21:41/2) (Lv41:61/2) (Lv1:63/2) (Lv21:123/2)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Grudge",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Spell Skills. The supported skill deals 7.5% additional damage to Cursed enemies (Lv1:15/2) (Lv21:35/2) (Lv40:21.3) When the supported skill deals damage to a Cursed target, there is a +31% chance to Paralyze it (Lv1:31) (Lv40:70)"
+     ],
+     "custom": true
+    }
+   ],
+   "game-log-skill-3": [
+    {
+     "name": "Quick Mobility",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Mobility Skills. 10.5 % Attack and Cast Speed for the supported skill (Lv1:21/2) (Lv21:41/2) (Lv41:61/2) 20.5 % Cooldown Recovery Speed for the supported skill (Lv1:41/2) (Lv21:61/2)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Periodic Burst",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Support Mobility Skills. Gains a stack of buff when using the supported skill every 6 s: +20.5 % Attack and Cast Speed after using a Mobility Skill The buff lasts 2"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Cooldown Reduction",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports any skill. +13 % Cooldown Recovery Speed for the supported skill (Lv1:13) (Lv21:23)"
+     ],
+     "custom": true
+    }
+   ],
+   "game-log-skill-4": [
+    {
+     "name": "Preparation",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Active Skills. Cannot support Channeled Skills or Attack Skills. Preparation If the skill is ready, triggers the skill once. If the skill is on cooldown, triggers the skill once immediately after the cooldown ends. Prepares the supported skill every 9.9 s (Lv1:99/10) (Lv20:8)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Extended Duration",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Duration Skills. +13 % Duration for the supported skill (Lv1:13) (Lv21:23)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Cooldown Reduction",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports any skill. +13 % Cooldown Recovery Speed for the supported skill (Lv1:13) (Lv21:23)"
+     ],
+     "custom": true
+    }
+   ],
+   "game-log-skill-5": [
+    {
+     "name": "Terrain of Malice",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Curse Skills. The supported Curse Skill becomes an instant-cast skill. Upon being cast, it inflicts its Curse Effect persistently on enemies within an area centered around the caster. The Duration of the area is equal to the Duration of the Curse Effect of the supported skill. CD of the supported skill is changed to 8s +210 % additional Skill Area for the supported skill (Lv1:210) (Lv21:410)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Extended Duration",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Duration Skills. +13 % Duration for the supported skill (Lv1:13) (Lv21:23)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Preparation",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Active Skills. Cannot support Channeled Skills or Attack Skills. Preparation If the skill is ready, triggers the skill once. If the skill is on cooldown, triggers the skill once immediately after the cooldown ends. Prepares the supported skill every 9.9 s (Lv1:99/10) (Lv20:8)"
+     ],
+     "custom": true
+    }
+   ],
+   "game-log-skill-1001": [
+    {
+     "name": "Restrain",
+     "level": 20,
+     "manaCostMultiplierPercent": 100,
+     "effects": [
+      "Supports Passive Skill. 0.5 % Sealed Mana A portion of Mana is reserved to maintain persistent effects such as auras Sealed Mana Compensation for the supported skill (Lv1:1/2) (Lv21:21/2)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Aura Amplification",
+     "level": 20,
+     "manaCostMultiplierPercent": 100,
+     "effects": [
+      "Supports Aura Skills. 5.25 % Aura effect for the supported skill (Lv1:21/4) (Lv21:41/4) (Lv41:61/4) +100 % Skill Area for the supported"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Increased Area",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Area Skills. +20 % Skill Area for the supported skill (Lv1:20) (Lv21:20) (Lv41:20) +16 % additional damage for the supported skill (Lv1:16) (Lv21:20)"
+     ],
+     "custom": true
+    }
+   ],
+   "game-log-skill-1007": [
+    {
+     "name": "Restrain",
+     "level": 20,
+     "manaCostMultiplierPercent": 100,
+     "effects": [
+      "Supports Passive Skill. 0.5 % Sealed Mana A portion of Mana is reserved to maintain persistent effects such as auras Sealed Mana Compensation for the supported skill (Lv1:1/2) (Lv21:21/2)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Aura Amplification",
+     "level": 20,
+     "manaCostMultiplierPercent": 100,
+     "effects": [
+      "Supports Aura Skills. 5.25 % Aura effect for the supported skill (Lv1:21/4) (Lv21:41/4) (Lv41:61/4) +100 % Skill Area for the supported"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Cooldown Reduction",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports any skill. +13 % Cooldown Recovery Speed for the supported skill (Lv1:13) (Lv21:23)"
+     ],
+     "custom": true
+    }
+   ],
+   "game-log-skill-1013": [
+    {
+     "name": "Restrain",
+     "level": 20,
+     "manaCostMultiplierPercent": 100,
+     "effects": [
+      "Supports Passive Skill. 0.5 % Sealed Mana A portion of Mana is reserved to maintain persistent effects such as auras Sealed Mana Compensation for the supported skill (Lv1:1/2) (Lv21:21/2)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Aura Amplification",
+     "level": 20,
+     "manaCostMultiplierPercent": 100,
+     "effects": [
+      "Supports Aura Skills. 5.25 % Aura effect for the supported skill (Lv1:21/4) (Lv21:41/4) (Lv41:61/4) +100 % Skill Area for the supported"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Seal Conversion",
+     "level": 20,
+     "manaCostMultiplierPercent": 100,
+     "effects": [
+      "Supports Passive Skill. Replaces Sealed Mana of the supported skill with Sealed Life -70 % additional Sealed Mana Compensation for the supported skill (Lv1:-70) (Lv21:-65) (Lv41:-50)"
+     ],
+     "custom": true
+    }
+   ],
+   "game-log-skill-1019": [
+    {
+     "name": "Restrain",
+     "level": 20,
+     "manaCostMultiplierPercent": 100,
+     "effects": [
+      "Supports Passive Skill. 0.5 % Sealed Mana A portion of Mana is reserved to maintain persistent effects such as auras Sealed Mana Compensation for the supported skill (Lv1:1/2) (Lv21:21/2)"
+     ],
+     "custom": true
+    },
+    {
+     "name": "Target Projection",
+     "level": 20,
+     "manaCostMultiplierPercent": 110,
+     "effects": [
+      "Supports Projectile Skills. Inflicts Enhanced Mark when the supported skill hits The supported skill deals +5% additional damage to Marked enemies (Lv1:5) (Lv21:15) (Lv40:18.8)"
+     ],
+     "custom": true
+    }
+   ]
+  },
+  "customSetups": [
+   {
+    "instanceId": "game-log-skill-1",
+    "role": "main",
+    "name": "Homing Frost Bolt",
+    "baseLevel": 20,
+    "addedLevels": 0,
+    "supports": [],
+    "enabledSupportSlots": 0,
+    "source": "https://tlidb.com/en/Homing_Frost_Bolt",
+    "custom": true
+   },
+   {
+    "instanceId": "game-log-skill-2",
+    "role": "empower",
+    "name": "Ice Bond",
+    "baseLevel": 20,
+    "addedLevels": 0,
+    "supports": [],
+    "enabledSupportSlots": 0,
+    "source": "https://tlidb.com/en/Ice_Bond",
+    "custom": true
+   },
+   {
+    "instanceId": "game-log-skill-3",
+    "role": "empower",
+    "name": "Speed Phantom",
+    "baseLevel": 20,
+    "addedLevels": 0,
+    "supports": [],
+    "enabledSupportSlots": 0,
+    "source": "https://tlidb.com/en/Speed_Phantom",
+    "custom": true
+   },
+   {
+    "instanceId": "game-log-skill-4",
+    "role": "empower",
+    "name": "Selves of All Realms",
+    "baseLevel": 20,
+    "addedLevels": 0,
+    "supports": [],
+    "enabledSupportSlots": 0,
+    "source": "https://tlidb.com/en/Selves_of_All_Realms",
+    "custom": true
+   },
+   {
+    "instanceId": "game-log-skill-5",
+    "role": "curse",
+    "name": "Timid",
+    "baseLevel": 20,
+    "addedLevels": 0,
+    "supports": [],
+    "enabledSupportSlots": 0,
+    "source": "https://tlidb.com/en/Timid",
+    "custom": true
+   },
+   {
+    "instanceId": "game-log-skill-1001",
+    "role": "aura",
+    "name": "Spell Amplification",
+    "baseLevel": 20,
+    "addedLevels": 0,
+    "supports": [],
+    "enabledSupportSlots": 0,
+    "sealedManaPercent": 50,
+    "source": "https://tlidb.com/en/Spell_Amplification",
+    "custom": true
+   },
+   {
+    "instanceId": "game-log-skill-1007",
+    "role": "aura",
+    "name": "Precise Projectiles",
+    "baseLevel": 20,
+    "addedLevels": 0,
+    "supports": [],
+    "enabledSupportSlots": 0,
+    "sealedManaPercent": 50,
+    "source": "https://tlidb.com/en/Precise_Projectiles",
+    "custom": true
+   },
+   {
+    "instanceId": "game-log-skill-1013",
+    "role": "aura",
+    "name": "Frigid Domain",
+    "baseLevel": 20,
+    "addedLevels": 0,
+    "supports": [],
+    "enabledSupportSlots": 0,
+    "sealedManaPercent": 50,
+    "source": "https://tlidb.com/en/Frigid_Domain",
+    "custom": true
+   },
+   {
+    "instanceId": "game-log-skill-1019",
+    "role": "aura",
+    "name": "Summon Thunder Magus",
+    "baseLevel": 20,
+    "addedLevels": 0,
+    "supports": [],
+    "enabledSupportSlots": 0,
+    "sealedManaPercent": 20,
+    "source": "https://tlidb.com/en/Summon_Thunder_Magus",
+    "custom": true
+   }
+  ]
+ },
+ "equippedSlateIds": [
+  "game-log-slate-2",
+  "game-log-slate-4",
+  "game-log-slate-5"
+ ],
+ "slates": {
+  "geometryVersion": 4,
+  "placements": {
+   "game-log-slate-2": {
+    "column": 3,
+    "row": 4,
+    "rotation": 0,
+    "flipX": -1,
+    "flipY": 1
+   },
+   "game-log-slate-4": {
+    "column": 5,
+    "row": 3,
+    "rotation": 0,
+    "flipX": 1,
+    "flipY": 1
+   },
+   "game-log-slate-5": {
+    "column": 3,
+    "row": 1,
+    "rotation": 270,
+    "flipX": 1,
+    "flipY": 1
+   }
+  },
+  "parked": {},
+  "inventory": [
+   {
+    "id": "game-log-slate-2",
+    "name": "Pedigree of Gods",
+    "template": "Pedigree of Gods",
+    "god": "Goddess of Deception",
+    "shape": "legendary",
+    "rotation": 0,
+    "flipX": -1,
+    "flipY": 1,
+    "affixes": [
+     "Goddess of Knowledge: Medium Talent: 2.5% Life Regain · 2.5% Energy Shield Regain",
+     "Alchemist: Legendary Medium Talent: +1 Spirit Magus Skill Level · -80% additional damage taken by Spirit Magi",
+     "Shadowdancer: Medium Talent: +22% Physical Damage · -12% Elemental Damage · +22% Physical Damage for Minions",
+     "Goddess of Hunting: Lv.2 Core Talent: Three Birds with One Stone — Projectile Quantity +2 · +2 to Parabolic Projectile Splits quantity · +10% additional Projectile Damage"
+    ],
+    "rarity": "legendary",
+    "icon": ""
+   },
+   {
+    "id": "game-log-slate-4",
+    "name": "A Corner of Divinity",
+    "template": "A Corner of Divinity",
+    "god": "Goddess of Deception",
+    "shape": "legendary",
+    "rotation": 0,
+    "flipX": 1,
+    "flipY": 1,
+    "affixes": [
+     "Prophet: Legendary Medium Talent: +100% chance to gain a stack of Focus Blessing upon inflicting damage to a Frostbitten enemy. Interval: 0.1s",
+     "Warrior: Legendary Medium Talent: +30% Life Regeneration Speed"
+    ],
+    "rarity": "legendary",
+    "icon": ""
+   },
+   {
+    "id": "game-log-slate-5",
+    "name": "Fallen Starlight",
+    "template": "Fallen Starlight",
+    "god": "Goddess of Deception",
+    "shape": "legendary",
+    "rotation": 270,
+    "flipX": 1,
+    "flipY": 1,
+    "affixes": [
+     "Steel Vanguard: Micro Talent: +12% damage while an Elixir Skill is active",
+     "Arcanist: Micro Talent: 1.25% Energy Shield Regain",
+     "Shadowmaster: Micro Talent: +15% Critical Strike Rating",
+     "Bladerunner: Legendary Medium Talent: Gains a stack Agility Blessing when using Mobility Skills"
+    ],
+    "rarity": "legendary",
+    "icon": ""
+   }
+  ],
+  "affixOverrides": {}
+ },
+ "followers": {
+  "followerId": null,
+  "rarity": null,
+  "skills": [],
+  "rarityScheme": "letter"
+ },
+ "talentRanks": {
+  "Goddess of Knowledge:0,2": 3,
+  "Goddess of Knowledge:1,1": 3,
+  "Goddess of Knowledge:2,1": 3,
+  "Goddess of Knowledge:2,4": 3,
+  "Goddess of Knowledge:3,4": 3,
+  "Goddess of Knowledge:5,0": 3,
+  "Goddess of Knowledge:5,1": 3,
+  "Goddess of Knowledge:5,3": 3,
+  "Goddess of Knowledge:6,0": 2,
+  "Goddess of Knowledge:6,1": 1,
+  "Goddess of Knowledge:6,3": 1,
+  "Prophet:0,0": 3,
+  "Prophet:1,0": 3,
+  "Prophet:1,1": 3,
+  "Prophet:2,1": 3,
+  "Prophet:3,1": 1,
+  "Prophet:3,4": 3,
+  "Prophet:4,0": 3,
+  "Prophet:4,4": 1,
+  "Prophet:5,0": 3,
+  "Prophet:6,0": 1,
+  "Marksman:0,0": 3,
+  "Marksman:1,0": 3,
+  "Marksman:1,1": 3,
+  "Marksman:2,0": 3,
+  "Marksman:2,1": 3,
+  "Marksman:3,0": 3,
+  "Marksman:3,1": 3,
+  "Marksman:4,0": 1,
+  "Marksman:5,1": 3,
+  "Marksman:6,1": 1,
+  "Marksman:6,2": 1,
+  "Lich:0,0": 3,
+  "Lich:1,0": 3,
+  "Lich:2,0": 3,
+  "Lich:3,0": 3,
+  "Lich:3,1": 1,
+  "Lich:4,2": 2,
+  "Lich:4,4": 3,
+  "Lich:5,0": 3,
+  "Lich:5,1": 3,
+  "Lich:5,3": 3,
+  "Lich:6,0": 1,
+  "Lich:6,1": 1,
+  "Lich:6,3": 1
+ },
+ "talents": {
+  "useCapturedRanks": false,
+  "selectedTrees": [
+   "Goddess of Knowledge",
+   "Prophet",
+   "Marksman",
+   "Lich"
+  ],
+  "coreSelections": {
+   "Goddess of Knowledge:12": "Insight",
+   "Goddess of Knowledge:24": "Burning Touch",
+   "Prophet:24": "Extreme Coldness",
+   "Marksman:24": "Gale",
+   "Lich:24": "Off The Beaten Track"
+  },
+  "prismInventory": [
+   {
+    "id": "game-log-prism-1",
+    "type": "ethereal",
+    "base": "Haze",
+    "radiusAffix": "",
+    "rareAffix": "",
+    "legendaryAffix": ""
+   }
+  ],
+  "installedPrisms": {
+   "Lich": "game-log-prism-1"
+  },
+  "installedPrismNodes": {
+   "Lich": "4,0"
+  }
+ },
+ "pacts": {
+  "activeSpirits": {
+   "Preserver of Eternity": false,
+   "Abyssal King Soul": false,
+   "Knight of Pale Blue": false,
+   "Dreamweaver": true,
+   "Iron Lion": true,
+   "Awooawoo - White Mist": true
+  },
+  "selectedSpirits": [
+   "Dreamweaver",
+   "Iron Lion",
+   "Awooawoo - White Mist"
+  ],
+  "spiritLevels": {},
+  "nativeNodeQuantities": {
+   "Dreamweaver:0": 1,
+   "Dreamweaver:1": 1,
+   "Dreamweaver:2": 1,
+   "Dreamweaver:3": 1,
+   "Dreamweaver:4": 1,
+   "Dreamweaver:5": 1,
+   "Dreamweaver:6": 1,
+   "Dreamweaver:7": 1,
+   "Dreamweaver:8": 1,
+   "Dreamweaver:9": 1,
+   "Dreamweaver:10": 1,
+   "Iron Lion:0": 1,
+   "Iron Lion:1": 1,
+   "Iron Lion:2": 1,
+   "Iron Lion:3": 1,
+   "Iron Lion:4": 1,
+   "Iron Lion:5": 1,
+   "Iron Lion:6": 1,
+   "Iron Lion:7": 1,
+   "Iron Lion:8": 1,
+   "Iron Lion:9": 1,
+   "Awooawoo - White Mist:0": 1,
+   "Awooawoo - White Mist:1": 1,
+   "Awooawoo - White Mist:2": 1,
+   "Awooawoo - White Mist:3": 1,
+   "Awooawoo - White Mist:4": 1,
+   "Awooawoo - White Mist:5": 1,
+   "Awooawoo - White Mist:6": 1,
+   "Awooawoo - White Mist:7": 1,
+   "Awooawoo - White Mist:8": 1
+  },
+  "kismetSlots": {},
+  "fateUnlocks": {},
+  "kismetSlotMode": true,
+  "volcanoEnabled": [
+   false,
+   false,
+   false,
+   false
+  ],
+  "reapingDurationQuantity": 0,
+  "spellBlockEnabled": [
+   false
+  ],
+  "attackBlockEnabled": [
+   false,
+   false
+  ]
+ },
+ "combat": {
+  "conditionMode": "auto",
+  "conditions": {
+   "prebuiltSelfBuffs": true,
+   "blurRecentlyEnded": false,
+   "nearbyElite": true,
+   "targetLife": true,
+   "blockedRecently": true,
+   "blur": true,
+   "tideContact": true,
+   "onTheTide": true,
+   "waveAria": true,
+   "idyll": true,
+   "fireInfiltration": true,
+   "entangledPain": true,
+   "scorch": true,
+   "affliction": true,
+   "aim": true
+  },
+  "afflictionAverage": 50,
+  "afflictionPeak": 100,
+  "targetFireResistancePercent": 30,
+  "aimUptimePercent": 85.71,
+  "auraAffectedAllies": 1,
+  "idyllStacks": 15,
+  "extraMaxChanneledStacks": 0,
+  "extraInitialChanneledStacks": 0
+ }
+}
