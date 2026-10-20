@@ -14,7 +14,12 @@ export function calculateFiresAllure({
   baseResistance,
   fixedResistance = false,
 }) {
-  const fixedValue = fixedResistance === true ? 0 : Number.isFinite(fixedResistance) ? fixedResistance : null;
+  const fixedValue =
+    fixedResistance === true
+      ? 0
+      : typeof fixedResistance === "number" && Number.isFinite(fixedResistance)
+        ? fixedResistance
+        : null;
   const activeStacks = active && canApply ? Math.max(0, Math.min(limit, Number.isFinite(stacks) ? stacks : limit)) : 0;
   // Scorch buff 131 applies -20 to every resistance at ordinary effect scale;
   // Fire's Allure separately applies -10 Fire Resistance per stack within 10m.

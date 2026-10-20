@@ -273,6 +273,36 @@ const equipmentOverride = shape({
   source: text,
   rarity: text,
 });
+/**
+ * The combat numbers a build stores (the Config tab's Advanced inputs), with their limits. The same table gives the schema
+ * and clampCombatNumber, so an input can never store a value the next save would reject.
+ */
+export const combatNumberLimits = {
+  auraAffectedAllies: { min: 0, max: 7, integer: true },
+  afflictionAverage: { min: 0, max: 100, integer: false },
+  afflictionPeak: { min: 0, max: 100, integer: false },
+  targetFireResistancePercent: { min: -200, max: 200, integer: false },
+  aimUptimePercent: { min: 0, max: 100, integer: false },
+  aimBattleStacks: { min: 0, max: 3, integer: true },
+  // The engine also caps the stacks at the build's Ignite limit (src/fires-allure.js).
+  firesAllureScorchStacks: { min: 0, max: 100, integer: true },
+  idyllStacks: { min: 0, max: 15, integer: true },
+  extraMaxChanneledStacks: { min: -20, max: 20, integer: true },
+  extraInitialChanneledStacks: { min: -20, max: 20, integer: true },
+} as const;
+export type CombatNumber = keyof typeof combatNumberLimits;
+
+const combatNumbers = Object.fromEntries(
+  Object.entries(combatNumberLimits).map(([key, { min, max, integer }]) => [key, number(min, max, integer)]),
+) as Record<CombatNumber, Check<number>>;
+
+/** A typed combat number within its limits: truncated when the field is whole, 0 (or the nearest limit) when not a number. */
+export function clampCombatNumber(key: CombatNumber, value: number): number {
+  const { min, max, integer } = combatNumberLimits[key];
+  const finite = Number.isFinite(value) ? value : 0;
+  return Math.max(min, Math.min(max, integer ? Math.trunc(finite) : finite));
+}
+
 const schema = shape({
   schemaVersion: number(1, 1, true),
   disabledEquipmentSlots: list(text, 20),
@@ -349,16 +379,9 @@ const schema = shape({
   }),
   combat: shape({
     conditionMode,
-    auraAffectedAllies: number(0, 7, true),
     conditions: map(bool),
     bestCaseOverrides: map(bool),
-    afflictionAverage: number(0, 100),
-    afflictionPeak: number(0, 100),
-    targetFireResistancePercent: number(-200, 200),
-    aimUptimePercent: number(0, 100),
-    idyllStacks: number(0, 15, true),
-    extraMaxChanneledStacks: number(-20, 20, true),
-    extraInitialChanneledStacks: number(-20, 20, true),
+    ...combatNumbers,
   }),
 });
 

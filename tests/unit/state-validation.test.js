@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { validatePlannerState } from "../../src/state-validation.ts";
+import { clampCombatNumber, validatePlannerState } from "../../src/state-validation.ts";
 import { defaultPlannerState } from "../../src/planner-state.ts";
 
 const youga = JSON.parse(
@@ -61,4 +61,22 @@ test("checks the special cases: custom supports, slate rotation, follower skills
   );
   rejects({ followers: { skills: [{ name: "N", level: 3 }] } }, "build.followers.skills[0].level");
   rejects({ equipmentInventory: [{ defenses: { "bad key": 1 } }] }, "build.equipmentInventory[0].defenses");
+});
+
+test("combat numbers the Config tab writes are part of the stored build, within their limits", () => {
+  assert.doesNotThrow(() => validatePlannerState({ combat: { aimBattleStacks: 2, firesAllureScorchStacks: 6 } }));
+  rejects({ combat: { aimBattleStacks: 4 } }, "build.combat.aimBattleStacks");
+  rejects({ combat: { idyllStacks: 1.5 } }, "build.combat.idyllStacks");
+});
+
+test("clampCombatNumber keeps a typed number within what the stored build accepts", () => {
+  assert.equal(clampCombatNumber("idyllStacks", 1.5), 1);
+  assert.equal(clampCombatNumber("auraAffectedAllies", 9), 7);
+  assert.equal(clampCombatNumber("extraMaxChanneledStacks", -30), -20);
+  assert.equal(clampCombatNumber("targetFireResistancePercent", 12.5), 12.5);
+  assert.equal(clampCombatNumber("afflictionPeak", Number.NaN), 0);
+  for (const value of [-1000, -1.5, 0, 0.5, 2.75, 1000])
+    assert.doesNotThrow(() =>
+      validatePlannerState({ combat: { aimBattleStacks: clampCombatNumber("aimBattleStacks", value) } }),
+    );
 });

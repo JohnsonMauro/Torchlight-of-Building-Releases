@@ -113,6 +113,58 @@ export function resultShapeProblems(result) {
     }),
   );
 
+  values(result.conditions, "conditions", (value) => typeof value === "boolean");
+  types(result.lowResources, "lowResources", {
+    lowLife: "boolean",
+    lowMana: "boolean",
+    lifePercent: "number",
+    manaPercent: "number",
+    damageTakenFactor: "number",
+    injuryBufferPercent: "number",
+  });
+  types(result.firesAllure, "firesAllure", {
+    active: "boolean",
+    nearby: "boolean",
+    activeStacks: "number",
+    resistanceReductionPercent: "number",
+    effectiveResistancePercent: "number",
+    allureFireResistanceReductionPercent: "number",
+    scorchBaseResistanceReductionPercent: "number",
+    durationAssumption: "string",
+    stackAssumption: "string",
+  });
+  types(result.aim, "aim", {
+    active: "boolean",
+    charges: "number",
+    maxCharges: "number",
+    uptimePercent: "number",
+    uptimeLabel: "string",
+    uptimeSource: "string",
+    damagePercent: "number",
+    ailmentDamagePercent: "number",
+    castSpeedPercent: "number",
+    averageDamagePercent: "number",
+    averageAilmentDamagePercent: "number",
+    averageCastSpeedPercent: "number",
+    durationSeconds: "number",
+  });
+  expect(
+    result.aim.derivedUptimePercent === undefined || typeof result.aim.derivedUptimePercent === "number",
+    "aim.derivedUptimePercent",
+  );
+  (result.aim.chargeSources || []).forEach((entry, index) =>
+    types(entry, `aim.chargeSources[${index}]`, { source: "string", value: "number" }),
+  );
+  types(result.seaFoamNocturne, "seaFoamNocturne", {
+    selected: "boolean",
+    applied: "boolean",
+    tideEffectPercent: "number",
+    stacks: "number",
+    buildStacks: "number",
+    perStackPercent: "number",
+    factor: "number",
+  });
+
   const recount = result.dummyRecount;
   if (recount !== null) {
     const options = (object, path) =>

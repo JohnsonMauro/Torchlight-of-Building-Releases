@@ -20,7 +20,8 @@ import { automaticCombatConditionIds } from "./combat-condition-mode.js";
 import { classifySkillCoverage, supportClauseCoverage, supportLineCoverage } from "./skill-coverage.js";
 import { curseSlotSummary } from "./curse-limit.js";
 import { aimUptimeAfterToggle } from "./aim-controls.js";
-import { configurationPanelMarkup } from "./configuration-panel.js";
+import { provideViewSource, viewSourceChanged } from "./view-sources.ts";
+import { clampCombatNumber, combatNumberLimits } from "./state-validation.ts";
 import {
   coverageBadge,
   gearLineCoverage,
@@ -415,9 +416,6 @@ let gearDrag = null;
 let suppressGearClick = false;
 let selenaDanceDrag = null; // trait-tree drag (every tree hero: src/hero-trait-tree.js)
 let suppressSelenaDanceClick = false;
-// Config tab "Best-case assumptions" section: collapsed by default, kept open across re-renders once the user opens it.
-let bestCaseAssumptionsOpen = false;
-let configSectionOpen = { scenario: true, choices: true, manual: false, advanced: false };
 // Condition ids an exclusive choice can pin (src/planner.js exclusiveConditionGroups).
 const exclusiveChoiceConditionIds = [
   "blur",
@@ -1262,9 +1260,6 @@ const setupStateKey = (setup) =>
 function currentEditedSetups() {
   return currentPlanner().activation.setups;
 }
-function currentSkillActivation() {
-  return currentPlanner().activation;
-}
 function skillLevelLabel(skill) {
   const added = Number(skill.addedLevels) || 0;
   return `Lv.${skill.baseLevel}${added ? ` <span class="skill-level-bonus ${added < 0 ? "negative" : ""}">${added > 0 ? "+" : ""}${added}</span>` : ""}`;
@@ -1463,6 +1458,95 @@ providePlannerCommands({
   },
   backupBuilds: backupLibraryBuilds,
   restoreBuilds: () => $("#restore-builds-file").click(),
+  // Config tab (apps/web/src/features/configuration): every edit is saved and the card re-reads its source.
+  setBestCaseMode: (auto) => {
+    if (!auto) {
+      const active = currentPlanner().conditions;
+      for (const id of automaticCombatConditionIds) plannerState.combat.conditions[id] = active[id] !== false;
+      // Keep the Life / Mana group choices automatic mode made (src/planner.js exclusiveConditionGroups).
+      for (const id of ["lowLifeAssumed", "lowManaAssumed"]) plannerState.combat.conditions[id] = active[id] === true;
+      plannerState.combat.conditions.nearTarget = active.nearTarget !== false;
+      // The Config tab's pinned choices (combat.bestCaseOverrides) become the manual switches they selected.
+      plannerState.combat.conditions.blurRecentlyEnded = active.blurRecentlyEnded === true;
+      plannerState.combat.bestCaseOverrides = Object.fromEntries(
+        Object.entries(plannerState.combat.bestCaseOverrides || {}).filter(
+          ([id]) => !exclusiveChoiceConditionIds.includes(id),
+        ),
+      );
+    }
+    // Back to automatic: drop the manual Distance choice so the Distance group compares again (a saved nearTarget applies
+    // in both modes).
+    else delete plannerState.combat.conditions.nearTarget;
+    plannerState.combat.conditionMode = auto ? "auto" : "manual";
+    persistPlannerState();
+    renderConfiguration();
+  },
+  setCombatCondition: (id, on) => {
+    // Own buffs built before the fight: stored in combat.bestCaseOverrides (src/combat-condition-mode.js; 2026-10-14).
+    if (id === "prebuiltSelfBuffs")
+      plannerState.combat.bestCaseOverrides = {
+        ...(plannerState.combat.bestCaseOverrides || {}),
+        prebuiltSelfBuffs: on,
+      };
+    else plannerState.combat.conditions[id] = on;
+    persistPlannerState();
+    renderConfiguration();
+  },
+  // Best-case assumption switches (src/planner.js bestCaseAssumptions): stored per build in combat.bestCaseOverrides.
+  setBestCaseAssumption: (toggle, on) => {
+    plannerState.combat.bestCaseOverrides = { ...(plannerState.combat.bestCaseOverrides || {}), [toggle]: on };
+    persistPlannerState();
+    renderConfiguration();
+  },
+  // "Reset to best case" turns every switch back on: the overrides are cleared, and so is a stored "off" for the same ids
+  // in the conditions.
+  resetBestCaseAssumptions: () => {
+    for (const item of currentPlanner().bestCaseAssumptions || [])
+      if (plannerState.combat.conditions[item.toggle] === false) delete plannerState.combat.conditions[item.toggle];
+    plannerState.combat.bestCaseOverrides = {};
+    persistPlannerState();
+    renderConfiguration();
+  },
+  // A choice pins that option of an exclusive group (combat.bestCaseOverrides; src/planner.js exclusiveChoicePins);
+  // picking the best-case option clears the pin.
+  pinExclusiveChoice: (groupName, index) => {
+    const group = (currentPlanner().assumptions || []).find((item) => item.group === groupName);
+    const option = group?.compared?.[index];
+    if (!option || option.label === group.chosen) return;
+    const overrides = { ...(plannerState.combat.bestCaseOverrides || {}) };
+    for (const key of Object.keys(option.overrides || {})) {
+      delete overrides[key];
+      delete plannerState.combat.conditions[key];
+    }
+    if (option.label !== (group.best ?? group.chosen)) Object.assign(overrides, option.overrides);
+    plannerState.combat.bestCaseOverrides = overrides;
+    persistPlannerState();
+    renderConfiguration();
+  },
+  setAimUptimeAuto: (auto) => {
+    plannerState.combat.aimUptimePercent = aimUptimeAfterToggle(auto, currentPlanner().aim);
+    persistPlannerState();
+    renderConfiguration();
+  },
+  // Kept within what a stored build accepts (src/state-validation.ts combatNumberLimits): a value out of range, or a
+  // field the schema lacked, used to make every later save of the session throw.
+  setCombatValue: (key, text) => {
+    if (!Object.hasOwn(combatNumberLimits, key)) return;
+    plannerState.combat[key] = clampCombatNumber(key, Number(text));
+    persistPlannerState();
+    renderConfiguration();
+  },
+});
+// The Config tab's data (src/view-sources.ts). Manual mode also needs the same build in automatic mode (which conditions
+// have a source); it is calculated only then.
+provideViewSource("configuration", () => {
+  const planner = currentPlanner();
+  return {
+    planner,
+    combat: structuredClone(plannerState.combat),
+    probe: plannerState.combat.conditionMode === "manual" ? conditionSourceProbe() : null,
+    activeNames: planner.activation.activeNames,
+  };
 });
 
 function render() {
@@ -6094,21 +6178,9 @@ function renderSkillSelector() {
   $("[data-confirm-skill-selector]").textContent = installed ? "Installed" : "Confirm";
 }
 
+// The Config card is React (apps/web/src/features/configuration): it re-reads its source.
 function renderConfiguration() {
-  const activation = currentSkillActivation();
-  const planner = currentPlanner();
-  // Config card (src/configuration-panel.js; coordinator design with the user 2026-10-14): Scenario, exclusive choices,
-  // best-case assumptions and Advanced inputs. Manual mode lists only the conditions with a source in this build, read from
-  // the same build in automatic mode.
-  const probe = plannerState.combat.conditionMode === "manual" ? conditionSourceProbe() : null;
-  $("#combat-conditions").innerHTML = configurationPanelMarkup({
-    planner,
-    combat: plannerState.combat,
-    probe,
-    activeNames: activation.activeNames,
-    open: { ...configSectionOpen, assumptions: bestCaseAssumptionsOpen },
-    format,
-  });
+  viewSourceChanged("configuration");
 }
 
 function damageBucketDiagram(theoretical, planner) {
@@ -11037,42 +11109,6 @@ document.addEventListener(
   },
   true,
 );
-// Best-case assumptions: the section's open state survives re-renders; "Reset to best case" turns every switch back on (the
-// overrides are cleared, and so is a stored "off" for the same ids in the conditions).
-document.addEventListener("click", (event) => {
-  const summary = event.target.closest(".best-case-assumptions > summary");
-  if (summary) bestCaseAssumptionsOpen = !summary.parentElement.open;
-  if (!event.target.closest("[data-best-case-reset]")) return;
-  event.preventDefault();
-  for (const item of currentPlanner().bestCaseAssumptions || [])
-    if (plannerState.combat.conditions[item.toggle] === false) delete plannerState.combat.conditions[item.toggle];
-  plannerState.combat.bestCaseOverrides = {};
-  bestCaseAssumptionsOpen = true;
-  persistPlannerState();
-  renderConfiguration();
-});
-// Config card sections keep their open state across re-renders; a choice button pins that option of an exclusive group
-// (combat.bestCaseOverrides; src/planner.js exclusiveChoicePins), and picking the best-case option clears the pin.
-document.addEventListener("click", (event) => {
-  const summary = event.target.closest("[data-config-section] > summary");
-  if (summary && summary.parentElement.dataset.configSection !== "assumptions")
-    configSectionOpen[summary.parentElement.dataset.configSection] = !summary.parentElement.open;
-  const button = event.target.closest("[data-config-choice]");
-  if (!button) return;
-  const group = (currentPlanner().assumptions || []).find((item) => item.group === button.dataset.configChoice);
-  const option = group?.compared?.[Number(button.dataset.choiceIndex)];
-  if (!option || option.label === group.chosen) return;
-  const overrides = { ...(plannerState.combat.bestCaseOverrides || {}) };
-  for (const key of Object.keys(option.overrides || {})) {
-    delete overrides[key];
-    delete plannerState.combat.conditions[key];
-  }
-  if (option.label !== (group.best ?? group.chosen)) Object.assign(overrides, option.overrides);
-  plannerState.combat.bestCaseOverrides = overrides;
-  persistPlannerState();
-  renderConfiguration();
-});
-
 document.addEventListener("click", (event) => {
   if (!selectedSlateId || !talentSlateMode || event.target.closest("[data-slate-id],.slate-quick-tools")) return;
   selectedSlateId = null;
@@ -11377,61 +11413,6 @@ document.addEventListener("change", (event) => {
     plannerState.skills.supportLevels[event.target.dataset.supportLevel] = Number(event.target.value);
     persistPlannerState();
     renderSkills();
-  }
-  if (event.target.matches("[data-auto-combat-conditions]")) {
-    if (!event.target.checked) {
-      const active = currentPlanner().conditions;
-      for (const id of automaticCombatConditionIds) plannerState.combat.conditions[id] = active[id] !== false;
-      // Keep the Life / Mana group choices automatic mode made (src/planner.js exclusiveConditionGroups).
-      for (const id of ["lowLifeAssumed", "lowManaAssumed"]) plannerState.combat.conditions[id] = active[id] === true;
-      plannerState.combat.conditions.nearTarget = active.nearTarget !== false;
-      // The Config tab's pinned choices (combat.bestCaseOverrides) become the manual switches they selected.
-      plannerState.combat.conditions.blurRecentlyEnded = active.blurRecentlyEnded === true;
-      plannerState.combat.bestCaseOverrides = Object.fromEntries(
-        Object.entries(plannerState.combat.bestCaseOverrides || {}).filter(
-          ([id]) => !exclusiveChoiceConditionIds.includes(id),
-        ),
-      );
-    }
-    // Back to automatic: drop the manual Distance choice so the Distance group compares again (a saved nearTarget applies in both modes).
-    if (event.target.checked) delete plannerState.combat.conditions.nearTarget;
-    plannerState.combat.conditionMode = event.target.checked ? "auto" : "manual";
-    persistPlannerState();
-    renderConfiguration();
-  }
-  // Best-case assumption switches (src/planner.js bestCaseAssumptions): stored per build in combat.bestCaseOverrides.
-  if (event.target.matches("[data-best-case]")) {
-    plannerState.combat.bestCaseOverrides = {
-      ...(plannerState.combat.bestCaseOverrides || {}),
-      [event.target.dataset.bestCase]: event.target.checked,
-    };
-    bestCaseAssumptionsOpen = true;
-    persistPlannerState();
-    renderConfiguration();
-  }
-  if (event.target.matches("[data-combat-condition]")) {
-    if (event.target.dataset.combatCondition === "prebuiltSelfBuffs")
-      plannerState.combat.bestCaseOverrides = {
-        ...(plannerState.combat.bestCaseOverrides || {}),
-        prebuiltSelfBuffs: event.target.checked,
-      };
-    else plannerState.combat.conditions[event.target.dataset.combatCondition] = event.target.checked; // Own buffs built before the fight: stored in combat.bestCaseOverrides (src/combat-condition-mode.js; 2026-10-14)
-    persistPlannerState();
-    renderConfiguration();
-  }
-  if (event.target.matches("[data-aim-uptime-auto]")) {
-    plannerState.combat.aimUptimePercent = aimUptimeAfterToggle(event.target.checked, currentPlanner().aim);
-    persistPlannerState();
-    renderConfiguration();
-  }
-  if (event.target.matches("[data-combat-value]")) {
-    const key = event.target.dataset.combatValue;
-    const value = Number(event.target.value);
-    plannerState.combat[key] = ["extraMaxChanneledStacks", "extraInitialChanneledStacks"].includes(key)
-      ? Math.max(-20, Math.min(20, Number.isFinite(value) ? Math.trunc(value) : 0))
-      : value;
-    persistPlannerState();
-    renderConfiguration();
   }
 });
 

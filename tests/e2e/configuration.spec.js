@@ -110,3 +110,17 @@ test("own buffs built before the fight: saved as a best-case override and recalc
   expect((await config.storedCombat()).bestCaseOverrides).toEqual({ prebuiltSelfBuffs: false });
   await planner.expectNoErrors();
 });
+
+test("every Advanced number is saved, kept within its range, and saving keeps working after it", async ({ page }) => {
+  const { planner, config } = await openConfiguration(page);
+  await config.openSection("Advanced");
+  await config.setNumber("Well-Fought Battle stacks", 2);
+  await config.setNumber("Idyll stacks", 1.5);
+  await config.setNumber("Allies affected by aura (Safety in Numbers)", 9);
+  const combat = await config.storedCombat();
+  expect([combat.aimBattleStacks, combat.idyllStacks, combat.auraAffectedAllies]).toEqual([2, 1, 7]);
+  await expect(config.number("Idyll stacks")).toHaveValue("1");
+  await config.switch("Own buffs built before the fight").uncheck();
+  expect((await config.storedCombat()).bestCaseOverrides).toEqual({ prebuiltSelfBuffs: false });
+  await planner.expectNoErrors();
+});

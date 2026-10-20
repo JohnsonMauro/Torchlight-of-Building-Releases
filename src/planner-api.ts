@@ -92,6 +92,63 @@ export interface BestCaseAssumption {
   text: string;
 }
 
+// ---- Combat conditions and the Config tab -------------------------------------------------------------------------
+
+/** Every combat condition the calculation used, on or off (ids as in combat.conditions). */
+export type PlannerConditions = Record<string, boolean>;
+export interface LowResources {
+  lowLife: boolean;
+  lowMana: boolean;
+  lifePercent: number;
+  manaPercent: number;
+  damageTakenFactor: number;
+  injuryBufferPercent: number;
+  sources: ResultList;
+  unsupported: ResultList;
+}
+/** Fire's Allure (Scorch stacks lowering the enemy's Fire Resistance). */
+export interface FiresAllure {
+  active: boolean;
+  nearby: boolean;
+  activeStacks: number;
+  resistanceReductionPercent: number;
+  effectiveResistancePercent: number;
+  allureFireResistanceReductionPercent: number;
+  scorchBaseResistanceReductionPercent: number;
+  durationAssumption: string;
+  stackAssumption: string;
+}
+/** Aim: charges, uptime and what it adds. Fields present only while Aim is in the build are optional. */
+export interface AimSummary {
+  active: boolean;
+  charges: number;
+  maxCharges: number;
+  uptimePercent: number;
+  /** The uptime the build gives (before a manual override). */
+  derivedUptimePercent?: number;
+  uptimeLabel: string;
+  uptimeSource: string;
+  chargeSources?: { source: string; value: number }[];
+  damagePercent: number;
+  ailmentDamagePercent: number;
+  castSpeedPercent: number;
+  averageDamagePercent: number;
+  averageAilmentDamagePercent: number;
+  averageCastSpeedPercent: number;
+  durationSeconds: number;
+  sources: ResultList;
+}
+/** Sea Foam Nocturne: extra Channeled Stacks raising the Tide effect. */
+export interface SeaFoamNocturne {
+  selected: boolean;
+  applied: boolean;
+  tideEffectPercent: number;
+  stacks: number;
+  buildStacks: number;
+  perStackPercent: number;
+  factor: number;
+}
+
 // ---- The result ---------------------------------------------------------------------------------------------------
 
 /** The skill the headline figures are for (the first enabled damage setup). Other fields are not typed yet. */
@@ -127,7 +184,7 @@ export interface PlannerResult {
   activationMediumTerra: ResultSection;
   afflictionRating: ResultSection | null;
   ailments: ResultSection;
-  aim: ResultSection;
+  aim: AimSummary;
   aura: ResultSection;
   bardDelivery: ResultSection | null;
   beamAddedDamage: ResultSection;
@@ -138,7 +195,7 @@ export interface PlannerResult {
   block: ResultSection;
   blurEffects: ResultSection;
   combatProjection: ResultSection | null;
-  conditions: ResultSection;
+  conditions: PlannerConditions;
   configured: ResultSection;
   coreTalents: ResultSection;
   critNumbedBuffs: ResultSection;
@@ -152,7 +209,7 @@ export interface PlannerResult {
   empowerEffects: ResultSection;
   enemyDebuffCores: ResultSection;
   equipment: ResultSection;
-  firesAllure: ResultSection;
+  firesAllure: FiresAllure;
   follower: ResultSection;
   fullLife: ResultSection;
   heroMemories: ResultSection;
@@ -160,7 +217,7 @@ export interface PlannerResult {
   igniteIllOmen: ResultSection | null;
   illOmen: ResultSection | null;
   lineEffects: ResultSection;
-  lowResources: ResultSection;
+  lowResources: LowResources;
   mark: ResultSection;
   mechanics: ResultSection;
   minionCores: ResultSection;
@@ -173,7 +230,7 @@ export interface PlannerResult {
   recountOpening: ResultSection | null;
   recountVariation: ResultSection | null;
   resistances: ResultSection;
-  seaFoamNocturne: ResultSection;
+  seaFoamNocturne: SeaFoamNocturne;
   singWithTheTide: ResultSection;
   support: ResultSection;
   supportEffects: ResultSection;
