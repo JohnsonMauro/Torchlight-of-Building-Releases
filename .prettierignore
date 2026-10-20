@@ -1,0 +1,19 @@
+# Prettier also reads .gitignore; this lists tracked files that stay as they are.
+
+# Game data, mostly written by the upstream data tools: kept byte for byte so new upstream copies diff cleanly
+src/data/
+
+# Images and SVG art
+src/assets/
+
+# Static page shell, replaced panel by panel in the UI migration; HTML reformatting can change rendered whitespace
+index.html
+
+# Markdown is read by people and agents; Prettier pads table columns with spaces
+*.md
+
+# Tool-written files (pnpm, eslint --suppress-all, pnpm golden:update, the game-log import of the golden fixture)
+pnpm-lock.yaml
+eslint-suppressions.json
+tests/golden/expected.json
+tests/golden/fixtures/

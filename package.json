@@ -13,6 +13,8 @@
     "desktop": "electron .",
     "build:win": "electron-builder --win nsis portable --publish never",
     "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "node --test \"tests/**/*.test.js\"",
     "test:e2e": "vite build && playwright test",
     "golden:update": "node tests/golden/update.js",
@@ -28,6 +30,7 @@
     "electron-builder": "^26.15.3",
     "eslint": "10.13.0",
     "globals": "17.13.0",
+    "prettier": "3.9.10",
     "vite": "8.3.4"
   },
   "build": {
