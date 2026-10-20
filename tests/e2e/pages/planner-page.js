@@ -2,6 +2,8 @@
 import { expect } from "@playwright/test";
 
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
+// src/boot.js sets this session key before loading the planner and removes it once the first render has painted.
+const BOOT_FLAG_KEY = "tli-builder:booting";
 export const VIEWS = ["talents", "character", "configuration", "builds"];
 
 export class PlannerPage {
@@ -12,8 +14,19 @@ export class PlannerPage {
     page.on("console", (message) => { if (message.type() === "error") this.errors.push(`console: ${message.text()}`); });
   }
 
-  /** Opens the planner with a one-build library holding `state` (or the app's own default library when null). */
+  /**
+   * Opens the planner with a one-build library holding `state` (or the app's own default library when null) and waits
+   * until the planner has finished booting: the views are in the static HTML, so they are visible before any listener
+   * exists, and a click that early is lost.
+   */
   async open(state = null) {
+    await this.page.addInitScript((key) => {
+      const remove = Storage.prototype.removeItem;
+      Storage.prototype.removeItem = function (name) {
+        if (this === sessionStorage && name === key) window.__plannerReady = true;
+        return remove.call(this, name);
+      };
+    }, BOOT_FLAG_KEY);
     if (state) {
       const library = {
         schemaVersion: 1,
@@ -24,6 +37,7 @@ export class PlannerPage {
       await this.page.addInitScript(([key, value]) => { if (!localStorage.getItem(key)) localStorage.setItem(key, value); }, [LIBRARY_STORAGE_KEY, JSON.stringify(library)]);
     }
     await this.page.goto("./");
+    await this.page.waitForFunction(() => window.__plannerReady === true, null, { timeout: 15_000 });
     await expect(this.view("talents")).toBeVisible();
   }
 
