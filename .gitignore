@@ -1,6 +1,14 @@
+# Dependencies (pnpm install)
 node_modules/
-dist/
+# pnpm content store, when pnpm is set to keep it inside the project
 .pnpm-store/
+
+# Desktop installers from electron-builder (pnpm build:win)
+dist/
+
+# Web build from Vite (pnpm build:web, pnpm test:e2e)
+dist-web/
+
+# Playwright results and traces (pnpm test:e2e)
 test-results/
 playwright-report/
-dist-web/
