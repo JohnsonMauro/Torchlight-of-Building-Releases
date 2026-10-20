@@ -1,6 +1,7 @@
-// The skill selector's list (the dialog the skill board's sockets, Rosa's trait support slot and the follower's skill
-// slots open): its title with the number of choices, the search over names, tags and effects, the clear-search button,
-// the highlighted choice, and the follower picker's groups. Written against the legacy list before it moves to React, so
+// The skill selector (the dialog the skill board's sockets, Rosa's trait support slot and the follower's skill slots
+// open): its title with the number of choices, the search over names, tags and effects, the clear-search button, the
+// highlighted choice and the follower picker's groups; and its detail: the skill level, a skill's preview, a star
+// support's tiers, roll and stars, an Activation Medium's affix lines, and the Confirm button. Written against the legacy list before it moves to React, so
 // both must pass it unchanged. The default library is Selena's Scorching Beam build.
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -123,5 +124,126 @@ test("the follower skill list groups Tartarus and Origin skills and searches the
   await skills.selectorResults().first().click();
   await expect(skills.selectorResults().first()).toHaveClass(/\bselected\b/);
   await expect(skills.selectorConfirm()).toBeEnabled();
+  await planner.expectNoErrors();
+});
+
+const detail = (skills) => skills.selector().locator("#skill-selector-detail");
+const level = (skills) => detail(skills).locator("[data-selector-level], .selector-level input").first();
+
+test("a skill's detail: its level, preview, effects and source", async ({ page }) => {
+  const { planner, skills } = await openSkills(page);
+  await skills.socket("Replace Scorching Beam").click();
+  const preview = detail(skills).locator(".selector-preview");
+  const start = Number(await level(skills).inputValue());
+  await expect(preview.locator(".selector-preview-head small")).toHaveText(`Lv. ${start}`);
+  await detail(skills).getByRole("button", { name: "+", exact: true }).click();
+  await expect(level(skills)).toHaveValue(String(start + 1));
+  await expect(preview.locator(".selector-preview-head small")).toHaveText(`Lv. ${start + 1}`);
+  await detail(skills).getByRole("button", { name: "−", exact: true }).click();
+  await detail(skills).getByRole("button", { name: "−", exact: true }).click();
+  await expect(preview.locator(".selector-preview-head small")).toHaveText(`Lv. ${start - 1}`);
+  await level(skills).fill("55");
+  await level(skills).press("Tab");
+  await expect(level(skills)).toHaveValue("40");
+  await expect(preview.locator(".selector-preview-head small")).toHaveText("Lv. 40");
+  await expect(preview.locator("h3")).toHaveText("Scorching Beam");
+  await expect(preview.locator(".selector-tags span").first()).not.toBeEmpty();
+  await expect(preview.locator(".selector-stat-rows > div").first()).toContainText(":");
+  await expect(preview.locator(".selector-effect-list h4")).toHaveText("Scorching Beam:");
+  expect(await preview.locator(".skill-damage-value").count()).toBeGreaterThan(0);
+  await expect(preview.getByRole("link", { name: "Open TLIDB source" })).toHaveAttribute("href", /^https?:/);
+  await expect(skills.selectorConfirm()).toBeEnabled();
+  await planner.expectNoErrors();
+});
+
+test("a star support's detail: tiers, roll and stars, saved on Confirm", async ({ page }) => {
+  const { planner, skills } = await openSkills(page);
+  const NAME = "Scorching Beam: Disintegrate (Noble)";
+  await skills.socket(`Replace ${NAME}`).click();
+  const config = detail(skills).locator(".special-support-config");
+  const tiers = config.locator(".special-tier-buttons button");
+  await expect(tiers).toHaveText(["T219–20%", "T121–22%", "T024–26%"]);
+  await expect(config.locator(".special-tier-buttons button.active")).toHaveText("T024–26%");
+  await tiers.nth(1).click();
+  await expect(config.locator(".special-tier-buttons button.active")).toHaveText("T121–22%");
+  await expect(config.locator(".special-roll-label strong")).toHaveText("+22%");
+  await expect(detail(skills).locator(".selector-effect-list")).toContainText(
+    "Main affix · T1 · +22% additional Ignite Damage for each stack of Ignite additionally inflicted",
+  );
+  await config.locator('input[type="range"]').fill("21");
+  await expect(config.locator('input[type="number"]')).toHaveValue("21");
+  await expect(config.locator(".special-roll-control output")).toHaveText("+21%");
+  await config.getByRole("button", { name: "3 stars" }).click();
+  await expect(config.getByRole("button", { name: "3 stars" })).toHaveClass(/\bactive\b/);
+  await expect(detail(skills).locator(".selector-effect-list")).toContainText("Star bonus · +");
+  await skills.selectorConfirm().click();
+  await expect(skills.selector()).toBeHidden();
+  const saved = (await skills.stored()).specialSupportConfigs[`Scorching Beam:${NAME}`];
+  expect(saved).toMatchObject({ tier: 1, roll: 21, stars: 3 });
+  await planner.expectNoErrors();
+});
+
+test("an Activation Medium's detail: every affix line, its stat choice, tiers and rolls", async ({ page }) => {
+  const { planner, skills } = await openSkills(page);
+  await skills.row("Aim").getByRole("button", { name: "Replace Activation Medium: Preparation", exact: true }).click();
+  const config = detail(skills).locator(".activation-affix-config");
+  await expect(config.locator(".special-support-heading strong").first()).toHaveText("Set all affixes");
+  const blocks = config.locator(".special-affix-block");
+  await expect(blocks.nth(1).locator(".special-support-heading strong")).toHaveText("Affix 1");
+  await expect(blocks.nth(1).locator("p")).toHaveText("Prepares the supported skill every 5 s");
+  await expect(blocks.nth(1).getByRole("button", { name: /^Off/ })).toBeVisible();
+  const choice = blocks.nth(2).locator("select");
+  await expect(choice.locator("option")).toHaveText(["Cooldown Recovery Speed", "Additional Duration"]);
+  await choice.selectOption({ label: "Additional Duration" });
+  await expect(config.locator(".special-affix-block").nth(2).locator("p")).toContainText("Duration");
+  await config.locator(".special-affix-block").nth(2).getByRole("button", { name: /^T0/ }).click();
+  await expect(config.locator(".special-affix-block").nth(2).locator(".special-support-heading span")).toHaveText(
+    "Tier 0",
+  );
+  await config.locator(".special-affix-block").nth(2).locator('input[type="range"]').fill("21");
+  await expect(config.locator(".special-affix-block").nth(2).locator('input[type="number"]')).toHaveValue("21");
+  await config
+    .locator(".special-support-heading")
+    .first()
+    .locator("xpath=..")
+    .getByRole("button", { name: "T2" })
+    .click();
+  await expect(config.locator(".special-support-heading span").first()).toHaveText("Tier 2");
+  await expect(detail(skills).locator(".selector-effect-list")).toContainText("T2 · ");
+  await planner.expectNoErrors();
+});
+
+test("a progression support with stars shows its tiers, rolls and stars", async ({ page }) => {
+  const { planner, skills } = await openSkills(page, youga);
+  await skills.socket("Replace Homing Frost Bolt: Deep Chill (Noble)").click();
+  const config = detail(skills).locator(".special-support-config");
+  await expect(config.locator(".special-support-heading strong")).toHaveText("Main affix");
+  const tiers = config.locator(".special-tier-buttons button");
+  expect(await tiers.count()).toBeGreaterThan(1);
+  await tiers.first().click();
+  await expect(tiers.first()).toHaveClass(/\bactive\b/);
+  expect(await config.locator('input[type="range"]').count()).toBeGreaterThan(0);
+  await expect(config.locator(".special-stars button")).toHaveCount(5);
+  await config.getByRole("button", { name: "5 stars" }).click();
+  await expect(config.getByRole("button", { name: "5 stars" })).toHaveClass(/\bactive\b/);
+  await planner.expectNoErrors();
+});
+
+test("an aura on another row reads Installed and cannot be confirmed again", async ({ page }) => {
+  const { planner, skills } = await openSkills(page);
+  await skills.tab("Auras").click();
+  await skills.socket("Replace Precise: Deep Pain").click();
+  const other = skills.selectorResults().filter({ hasNot: page.locator(".selected") });
+  // Take an aura already on the board (another row): its Confirm reads Installed.
+  const names = await skills
+    .rows()
+    .locator(".skill-primary-socket")
+    .evaluateAll((items) => items.map((item) => (item.getAttribute("aria-label") || "").replace(/^Replace /, "")));
+  const target = names.find((name) => name && name !== "Precise: Deep Pain");
+  await other
+    .filter({ has: page.getByText(target, { exact: true }) })
+    .first()
+    .click();
+  await expect(skills.selector().getByRole("button", { name: "Installed", exact: true })).toBeDisabled();
   await planner.expectNoErrors();
 });
