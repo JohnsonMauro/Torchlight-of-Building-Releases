@@ -101,7 +101,6 @@ import {
   scaleJudgmentAffix,
   isActiveJudgment,
   judgmentAffixTargetPercent,
-  JUDGMENT_LINK_EFFECT_PERCENT,
 } from "../engine/talents/slate-judgment.js";
 import { netherKingUltimateAffixesSs13 } from "../data/nether-king-ultimate-affixes-ss13.js";
 import { pedigreeCoreAffixesSs13 } from "../data/pedigree-core-affixes-ss13.js";
@@ -2222,8 +2221,7 @@ function setTalentSlateMode(enabled) {
     talentLayout.style.removeProperty("--slate-panel-height");
     treePanel.hidden = false;
     const slateView = $("#slates-view");
-    if (slateLayout.parentElement !== slateView)
-      slateView.insertBefore(slateLayout, slateView.querySelector(".slate-audit"));
+    if (slateLayout.parentElement !== slateView) slateView.append(slateLayout);
   }
 }
 
@@ -5529,7 +5527,6 @@ function centerSlateGridInPanel() {
 function renderSlates() {
   const slates = slatesForBoard();
   const judgmentAffected = judgmentAffectedSlateIds(slates, slatePlacements, equippedSlateIds);
-  $("#slate-count").textContent = equippedSlateIds.size;
   const adjacent = new Set(
     slates
       .filter((item) => item.copyRule && slatePlacements[item.id])
@@ -5599,52 +5596,6 @@ function renderSlates() {
     }
   }
   if (quickTools) $("#slate-board .slate-stage").insertAdjacentHTML("beforeend", quickTools);
-  const slate = slates.find((item) => item.id === selectedSlateId) || slates[0];
-  const equipped = equippedSlateIds.has(slate.id);
-  const copyResolved = slate.copyStatus === "resolved-from-talents-affected-popup";
-  const neighbors = slatePlacements[slate.id] ? adjacentSlateIds(slate, slatePlacements, slates) : [];
-  $("#slate-inspector").innerHTML =
-    `<h2>${slate.name}</h2><p class="muted">Lv.${slate.level} · ${titleCase(slate.rarity)} Divinity Slate${slate.direction ? ` · ${slate.direction}` : ""}</p><div class="slate-edit-actions"><button class="button button-secondary" type="button" data-slate-rotate="${slate.id}" ${!equipped || !slateTransformRules(slate).rotate ? "disabled" : ""}>Rotate 90°</button><button class="button button-secondary" type="button" data-slate-remove="${slate.id}">${equipped ? "Unequip" : "Place slate"}</button></div>${slate.copyRule ? `<div class="copy-warning ${copyResolved ? "resolved" : ""}"><strong>${neighbors.length} adjacent slate${neighbors.length === 1 ? "" : "s"}</strong><span>${slate.copyRule}</span></div>` : ""}${slate.authority ? `<div class="slate-authority">${slate.authority}</div>` : ""}${slate.amplifiedPercent ? `<div class="slate-amplified">Displayed effects already include +${slate.amplifiedPercent}%</div>` : ""}<ul class="modifier-list">${(slate.fixed || []).map((effect) => `<li>${escapeHtml(effect)}</li>`).join("")}${(slate.brands || []).map((effect) => `<li class="brand-effect">${escapeHtml(effect)}</li>`).join("")}${(slate.copiedTalents || []).map((effect) => `<li class="copied-effect">${escapeHtml(effect)}</li>`).join("")}</ul>`;
-  const selectedBoosted = judgmentAffected.has(slate.id);
-  const selectedJudgment = {
-    linked: selectedBoosted,
-    ownAuthority: Boolean(isActiveJudgment(slate) && equippedSlateIds.has(slate.id) && slatePlacements[slate.id]),
-  };
-  const selectedAffix = (effect) =>
-    scaleJudgmentAffix(
-      effect,
-      slate.amplifiedPercent || 0,
-      judgmentAffixTargetPercent(slate, effect, selectedJudgment),
-    );
-  const inspectorBonus = $("#slate-inspector .slate-amplified");
-  if (inspectorBonus)
-    inspectorBonus.textContent = selectedBoosted
-      ? `Judgment · Affix effect +${JUDGMENT_LINK_EFFECT_PERCENT}%`
-      : "Judgment bonus inactive at this position";
-  else if (selectedBoosted)
-    $("#slate-inspector .modifier-list").insertAdjacentHTML(
-      "beforebegin",
-      `<div class="slate-amplified">Judgment · Affix effect +${JUDGMENT_LINK_EFFECT_PERCENT}%</div>`,
-    );
-  $("#slate-inspector .modifier-list").innerHTML =
-    `${(slate.fixed || []).map((effect) => `<li>${escapeHtml(selectedAffix(effect))}</li>`).join("")}${(slate.brands || []).map((effect) => `<li class="brand-effect">${escapeHtml(selectedAffix(effect))}</li>`).join("")}${(slate.copiedTalents || []).map((effect) => `<li class="copied-effect">${escapeHtml(effect)}</li>`).join("")}`;
-  const unresolved = slates.filter(
-    (item) => equippedSlateIds.has(item.id) && item.copyStatus === "adjacency-needs-confirmation",
-  );
-  $("#slate-audit-status").textContent = unresolved.length
-    ? `${unresolved.length} copy links unresolved`
-    : "All links resolved";
-  $("#slate-audit-status").classList.toggle("warning", unresolved.length > 0);
-  const impact = currentTalentSlateImpact();
-  const changedSlateEffects = Object.entries(impact.slateDelta).filter(([, value]) => value !== 0);
-  $("#slate-audit").innerHTML =
-    `<div class="candidate-effect-summary"><article><span>Candidate damage multiplier</span><strong>×${impact.factors.damageMultiplier}</strong></article><article><span>Base Ignite factor</span><strong>×${impact.factors.baseIgniteFactor}</strong></article><article><span>Disintegrate scaling</span><strong>+${impact.disintegrate.additionalIgniteDamagePercent}%</strong></article></div>${changedSlateEffects.length ? `<div class="candidate-delta-list">${changedSlateEffects.map(([key, value]) => `<span>${effectLabel(key)} <strong>${formatEffect(key, value)}</strong></span>`).join("")}</div>` : `<p class="muted">Equipped slates match the captured baseline.</p>`}<div class="audit-grid">${slates
-      .filter((item) => equippedSlateIds.has(item.id))
-      .map(
-        (item) =>
-          `<div class="audit-row"><span><strong>${escapeHtml(item.name)}</strong><small>Lv.${item.level}${item.amplifiedPercent ? ` · displayed +${item.amplifiedPercent}% effect` : " · native values"}</small></span><span>${item.copyRule ? (item.copiedTalents ? `${item.copiedTalents.length} copied effects confirmed` : "Copy pending") : `${(item.fixed || []).length + (item.brands || []).length} captured effects`}</span></div>`,
-      )
-      .join("")}</div>`;
 }
 
 const skillRoleLabels = {
@@ -8998,7 +8949,6 @@ document.addEventListener("click", (event) => {
     slateToolsPosition = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     selectedSlateId = slateButton.dataset.slateId;
     slatePlacementTarget = selectedSlateId;
-    $("#slates-view").classList.add("editor-open");
     renderSlates();
   }
   const editSlateButton = event.target.closest("[data-edit-slate]");
