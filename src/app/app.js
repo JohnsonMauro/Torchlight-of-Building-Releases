@@ -1620,6 +1620,7 @@ providePlannerCommands({
   startSlateMove,
   placeSlateAtCell,
   transformSlate,
+  saveSlateEditor,
   wheelTransformSlate,
   removeSlate,
   rightClickRemoveSlate,
@@ -1832,6 +1833,8 @@ provideViewSource("prismCrafter", prismCrafterSource);
 provideViewSource("kismetCrafter", kismetCrafterSource);
 // The Slate Inventory.
 provideViewSource("slateInventory", slateInventorySource);
+// The slate editor.
+provideViewSource("slateEditor", slateEditorSource);
 // The talent tree, core talent and Fate slot pickers.
 provideViewSource("talentPicker", talentPickerSource);
 provideViewSource("corePicker", corePickerSource);
@@ -5639,12 +5642,39 @@ function fillCraftedSlateEditor(slate) {
   });
   updateSlateCraftPreview();
 }
+// The slate editor (apps/web/src/shell/dialogs/SlateEditorDialog.tsx) shows the "slateEditor" source; each drawing
+// (opening, a rotation) starts its affix fields over from the slate, as the planner's markup did.
+let slateEditorSession = 0,
+  slateEditorId = "";
 function renderSlateEditor(slate) {
-  const affixes = slateAffixes(slate),
-    rules = slateTransformRules(slate);
-  $("#slate-editor-title").textContent = `Edit ${titleCase(slate.rarity)} Slate`;
-  $("#slate-editor-content").innerHTML =
-    `<div class="slate-editor-layout"><section><p class="eyebrow">Legendary template</p><h2>${slate.name}</h2><div class="slate-editor-shape"><img src="${slate.icon || slate.cellIcon || ""}" alt=""><div>${rules.rotate ? `<button type="button" data-slate-rotate="${slate.id}" data-slate-rotate-dir="1">↻ Rotate</button><button type="button" data-slate-rotate="${slate.id}" data-slate-rotate-dir="-1">↶ Rotate back</button>` : ""}${rules.flip ? `<button type="button" data-slate-flip="${slate.id}" data-slate-flip-axis="x">↔ Flip H</button><button type="button" data-slate-flip="${slate.id}" data-slate-flip-axis="y">↕ Flip V</button>` : ""}${!rules.rotate && !rules.flip ? "Orientation is fixed" : ""}</div></div><fieldset><legend>Affixes (${affixes.length})</legend>${affixes.map((effect, index) => `<label class="slate-affix-row"><span>Slot ${index + 1}</span><input type="text" data-slate-affix="${index}" value="${escapeHtml(effect)}"></label>`).join("")}<button type="button" class="button button-secondary add-affix" data-add-slate-affix>Add affix</button></fieldset></section><aside><span>Preview</span><div class="slate-craft-card"><strong>${slate.name}</strong><small>DIVINITY SLATE · ${slate.rarity.toUpperCase()}</small></div></aside></div><div class="slate-editor-footer"><button type="button" class="button button-secondary" data-close-slate-editor>Cancel</button><button type="button" class="button" data-save-slate-editor="${slate.id}">Save Changes</button></div>`;
+  slateEditorId = slate.id;
+  slateEditorSession++;
+  viewSourceChanged("slateEditor");
+}
+function slateEditorSource() {
+  const slate = slatesForBoard().find((item) => item.id === slateEditorId);
+  if (!slate) return null;
+  const rules = slateTransformRules(slate);
+  return {
+    session: slateEditorSession,
+    id: slate.id,
+    title: `Edit ${titleCase(slate.rarity)} Slate`,
+    name: slate.name,
+    icon: slate.icon || slate.cellIcon || "",
+    rotate: Boolean(rules.rotate),
+    flip: Boolean(rules.flip),
+    rarity: slate.rarity.toUpperCase(),
+    affixes: displayTexts([...slateAffixes(slate)]),
+  };
+}
+// The slate editor's Save Changes: the non-empty affix texts become the slate's affixes.
+function saveSlateEditor(id, texts) {
+  plannerState.slates.affixOverrides ||= {};
+  plannerState.slates.affixOverrides[id] = texts.map((text) => text.trim()).filter(Boolean);
+  persistPlannerState();
+  $("#slate-editor").close();
+  renderCandidateViews();
+  showToast("Slate affixes saved");
 }
 
 // The Divinity Slates board (apps/web/src/features/slates) re-reads its source (src/app/bridge/slates-view-model.ts).
@@ -7834,30 +7864,6 @@ document.addEventListener("click", (event) => {
     editingLegendaryTexts.delete(index);
     renderInventoryItemDialog();
   }
-  if (event.target.closest("[data-close-slate-editor]")) $("#slate-editor").close();
-  if (event.target.closest("[data-add-slate-affix]")) {
-    const list = $("#slate-editor-content fieldset");
-    const index = list.querySelectorAll("[data-slate-affix]").length;
-    event.target
-      .closest("[data-add-slate-affix]")
-      .insertAdjacentHTML(
-        "beforebegin",
-        `<label class="slate-affix-row"><span>Slot ${index + 1}</span><input type="text" data-slate-affix="${index}" value=""></label>`,
-      );
-  }
-  const saveSlateEditor = event.target.closest("[data-save-slate-editor]");
-  if (saveSlateEditor) {
-    plannerState.slates.affixOverrides ||= {};
-    plannerState.slates.affixOverrides[saveSlateEditor.dataset.saveSlateEditor] = [
-      ...$("#slate-editor-content").querySelectorAll("[data-slate-affix]"),
-    ]
-      .map((input) => input.value.trim())
-      .filter(Boolean);
-    persistPlannerState();
-    $("#slate-editor").close();
-    renderCandidateViews();
-    showToast("Slate affixes saved");
-  }
   if (event.target.closest("[data-close-slate-inventory]")) $("#slate-inventory").close();
   if (event.target.closest("[data-back-slate-inventory]")) {
     editingCraftedSlateId = null;
@@ -8046,15 +8052,6 @@ document.addEventListener("click", (event) => {
           : `${crafted.name} added to Slate Inventory`,
     );
   }
-  // The slate editor's Rotate / Flip buttons (the board's tools are apps/web/src/features/slates).
-  const slateRotateButton = event.target.closest("[data-slate-rotate]");
-  if (slateRotateButton)
-    transformSlate(slateRotateButton.dataset.slateRotate, {
-      rotate: Number(slateRotateButton.dataset.slateRotateDir || 1),
-    });
-  const slateFlipButton = event.target.closest("[data-slate-flip]");
-  if (slateFlipButton)
-    transformSlate(slateFlipButton.dataset.slateFlip, { flip: slateFlipButton.dataset.slateFlipAxis });
 });
 
 // Skill selector commands (apps/web/src/shell/dialogs/SkillSelectorDialog.tsx and SkillSelectorDetail.tsx).
