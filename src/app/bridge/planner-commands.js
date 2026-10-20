@@ -18,6 +18,15 @@
  * @property {() => Promise<void>} exportBuild Copies the open build's code to the clipboard (a toast says how it went).
  * @property {(text: string) => void} importBuild Adds a pasted build code as a new active build and opens the Builds view;
  *   a toast says when the code cannot be read (the Import dialog then stays open).
+ * @property {(id: string) => void} placeCraftedSlate Slate Inventory, right-click: places the slate on the grid (or
+ *   beside a full grid).
+ * @property {() => void} startSlateCraft Slate Inventory: Craft Slate (the crafter on a new slate).
+ * @property {(id: string) => void} duplicateCraftedSlate Slate Inventory: adds a copy of a slate, off the grid.
+ * @property {(id: string) => void} editCraftedSlate Slate Inventory: opens the crafter on a slate.
+ * @property {(id: string) => void} removeCraftedSlate Slate Inventory: takes a slate off the grid.
+ * @property {(id: string) => void} deleteCraftedSlate Slate Inventory: deletes a slate.
+ * @property {() => void} writeSlateCrafter Slate crafter: the planner writes the crafter into the header and body React
+ *   gave it (data-legacy-editor).
  * @property {(name: string) => void} selectKismetChoice Kismet crafter: chooses a Kismet (at its best values).
  * @property {(index: number, value: number) => void} setKismetRoll Kismet crafter: a value as typed or slid (kept only
  *   while in range).

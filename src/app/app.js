@@ -1630,6 +1630,14 @@ providePlannerCommands({
   },
   finishPendingSlate,
   editSlate,
+  // Slate Inventory (apps/web/src/shell/dialogs/SlateInventoryDialog.tsx).
+  placeCraftedSlate,
+  startSlateCraft,
+  deleteCraftedSlate,
+  duplicateCraftedSlate,
+  editCraftedSlate,
+  removeCraftedSlate,
+  writeSlateCrafter,
   openSlateInventory: () => {
     renderSlateInventory();
     $("#slate-inventory").showModal();
@@ -1822,6 +1830,8 @@ provideViewSource("inventoryItem", inventoryItemSource);
 provideViewSource("prismCrafter", prismCrafterSource);
 // The Kismet crafter.
 provideViewSource("kismetCrafter", kismetCrafterSource);
+// The Slate Inventory.
+provideViewSource("slateInventory", slateInventorySource);
 // The talent tree, core talent and Fate slot pickers.
 provideViewSource("talentPicker", talentPickerSource);
 provideViewSource("corePicker", corePickerSource);
@@ -3761,6 +3771,99 @@ function saveInventoryItemEdit() {
   }
 }
 
+// ---- Slate Inventory commands (apps/web/src/shell/dialogs/SlateInventoryDialog.tsx).
+// A right-click on a slate: places it on the grid (the first free cells, its rotations tried), or beside a full grid.
+function placeCraftedSlate(id) {
+  const slate = slatesForBoard().find((item) => item.id === id),
+    saved = (plannerState.slates?.inventory || []).find((item) => item.id === id),
+    startRotation = slatePlacements[id]?.rotation ?? parkedSlates[id]?.rotation ?? saved?.rotation ?? 0,
+    flipX = slatePlacements[id]?.flipX ?? parkedSlates[id]?.flipX ?? saved?.flipX ?? 1,
+    flipY = slatePlacements[id]?.flipY ?? parkedSlates[id]?.flipY ?? saved?.flipY ?? 1;
+  const rotations = slateTransformRules(slate).rotate
+    ? [startRotation, 0, 90, 180, 270].filter((value, index, array) => array.indexOf(value) === index)
+    : [0];
+  let placement = null;
+  for (const rotation of rotations) {
+    for (let row = 1; row <= 6 && !placement; row += 1) {
+      for (let column = 1; column <= 6; column += 1) {
+        const candidate = { column, row, rotation, flipX, flipY };
+        if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
+          placement = candidate;
+          break;
+        }
+      }
+    }
+    if (placement) break;
+  }
+  if (placement) {
+    slatePlacements = { ...slatePlacements, [id]: placement };
+    equippedSlateIds.add(id);
+    delete parkedSlates[id];
+    selectedSlateId = null;
+    slateToolsPosition = null;
+    slatePlacementTarget = null;
+    slateEditMode = false;
+    renderSlateInventory();
+    persistPlannerState();
+    showToast(`${slate.name} placed on the grid`);
+  } else if (parkSlateBesideGrid(slate, startRotation, flipX, flipY)) {
+    const next = { ...slatePlacements };
+    delete next[id];
+    slatePlacements = next;
+    equippedSlateIds.delete(id);
+    selectedSlateId = null;
+    slateToolsPosition = null;
+    persistPlannerState();
+    renderCandidateViews();
+    renderSlateInventory();
+    showToast(`${slate.name} placed beside the full grid`);
+  } else showToast("No space is available beside the grid for that slate");
+}
+function startSlateCraft() {
+  editingCraftedSlateId = null;
+  selectedLegendarySlateName = "";
+  activeSlateCrafterTab = "craft";
+  renderSlateCrafter();
+}
+function deleteCraftedSlate(id) {
+  plannerState.slates.inventory = (plannerState.slates.inventory || []).filter((slate) => slate.id !== id);
+  equippedSlateIds.delete(id);
+  delete parkedSlates[id];
+  const placements = { ...slatePlacements };
+  delete placements[id];
+  slatePlacements = placements;
+  persistPlannerState();
+  renderSlateInventory();
+  showToast("Slate deleted");
+}
+function duplicateCraftedSlate(id) {
+  const source = (plannerState.slates.inventory || []).find((slate) => slate.id === id);
+  if (source) {
+    plannerState.slates.inventory.push({
+      ...structuredClone(source),
+      id: globalThis.crypto?.randomUUID?.() || `slate-${Date.now()}`,
+      name: `${source.name} Copy`,
+    });
+    persistPlannerState();
+    renderSlateInventory();
+    showToast("Slate duplicated");
+  }
+}
+function editCraftedSlate(id) {
+  const slate = (plannerState.slates.inventory || []).find((item) => item.id === id);
+  if (slate) openCraftedSlateEditor(slate);
+}
+function removeCraftedSlate(id) {
+  equippedSlateIds.delete(id);
+  delete parkedSlates[id];
+  const placements = { ...slatePlacements };
+  delete placements[id];
+  slatePlacements = placements;
+  persistPlannerState();
+  renderSlateInventory();
+  showToast("Slate removed from grid");
+}
+
 const titleCase = (value) => value.replace(/([A-Z])/g, " $1").replace(/^./, (character) => character.toUpperCase());
 
 // The Gear section is React (apps/web/src/features/gear): it re-reads its source.
@@ -5164,8 +5267,9 @@ function saveKismetSlot(clear = false) {
   refreshPactCandidate();
 }
 const slateAsset = (name) => `./src/assets/tli/slates/${name}`;
-const slateShapeArt = (shape, god = selectedSlateGod) => {
-  const cells = {
+// The cells of a crafted slate's shape (x, y), drawn as a god-colored shape when the slate has no art.
+const slateShapeCells = (shape) =>
+  ({
     corner: [
       [0, 0],
       [0, 1],
@@ -5181,9 +5285,11 @@ const slateShapeArt = (shape, god = selectedSlateGod) => {
       [1, 1],
     ],
     single: [[0, 0]],
-  }[shape] || [[0, 0]];
-  return `<span class="god-slate-shape ${slateGodKey(god)}">${cells.map(([x, y]) => `<i style="--x:${x};--y:${y}"></i>`).join("")}</span>`;
-};
+  })[shape] || [[0, 0]];
+const slateShapeArt = (shape, god = selectedSlateGod) =>
+  `<span class="god-slate-shape ${slateGodKey(god)}">${slateShapeCells(shape)
+    .map(([x, y]) => `<i style="--x:${x};--y:${y}"></i>`)
+    .join("")}</span>`;
 const godSlateAssets = {
   deception: ["AI"],
   hunting: ["Agi"],
@@ -5193,26 +5299,47 @@ const godSlateAssets = {
   war: ["SA"],
 };
 const slateShapeCodes = ["Z1", "L1", "O1", "T1"];
+// The Slate Inventory dialog (apps/web/src/shell/dialogs/SlateInventoryDialog.tsx) shows the "slateInventory" source: the
+// crafted slates, or, in the crafter's mode, the crafter, which the planner still writes into the header and body React
+// gives it (data-legacy-editor) once React shows them.
+let slateInventoryMode = "inventory",
+  pendingSlateEditorFill = null;
 function renderSlateInventory() {
-  const inventory = plannerState.slates?.inventory || [];
-  $("#slate-inventory-header").innerHTML =
-    `<strong id="slate-inventory-title">Slate Inventory</strong><button type="button" class="picker-close" data-close-slate-inventory aria-label="Close slate inventory">×</button>`;
-  $("#slate-crafter-body").innerHTML = `<div class="crafted-slate-inventory"><div class="crafted-slate-list">${
-    inventory.length
-      ? inventory
-          .map((slate) => {
-            const icon = craftedSlateIcon(slate),
-              equipped = equippedSlateIds.has(slate.id),
-              staged = !!parkedSlates[slate.id];
-            return `<article class="crafted-slate-item ${equipped ? "equipped" : staged ? "staged" : ""}" data-crafted-slate-inventory="${escapeHtml(slate.id)}"><span class="crafted-slate-icon">${icon ? `<img src="${escapeHtml(icon)}" alt="">` : slateShapeArt(slate.shape, slate.god)}</span><span><strong>${escapeHtml(slate.name)}${equipped ? '<em class="crafted-slate-equipped-badge">Equipped</em>' : staged ? '<em class="crafted-slate-equipped-badge">Workspace</em>' : ""}</strong><small>${slate.affixes.filter(Boolean).length} affix${slate.affixes.filter(Boolean).length === 1 ? "" : "es"} · ${escapeHtml(slate.god)}</small></span><span class="crafted-slate-tools"><button type="button" data-duplicate-crafted-slate="${escapeHtml(slate.id)}" title="Duplicate">▢</button><button type="button" data-edit-crafted-slate="${escapeHtml(slate.id)}" title="Edit">✎</button><button type="button" data-remove-crafted-slate="${escapeHtml(slate.id)}" title="Remove from grid" ${equipped || staged ? "" : "disabled"}>⊘</button><button type="button" data-delete-crafted-slate="${escapeHtml(slate.id)}" title="Delete">×</button></span></article>`;
-          })
-          .join("")
-      : `<div class="crafted-slate-empty"><strong>No crafted slates yet</strong><span>Craft a slate to add it to this build's inventory.</span></div>`
-  }</div><button type="button" class="button crafted-slate-create" data-open-slate-crafter>Craft Slate</button></div>`;
+  slateInventoryMode = "inventory";
+  viewSourceChanged("slateInventory");
+}
+function slateInventorySource() {
+  return {
+    mode: slateInventoryMode,
+    items: (plannerState.slates?.inventory || []).map((slate) => {
+      const icon = craftedSlateIcon(slate),
+        affixes = slate.affixes.filter(Boolean).length;
+      return {
+        id: slate.id,
+        state: equippedSlateIds.has(slate.id) ? "equipped" : parkedSlates[slate.id] ? "staged" : "",
+        icon: icon || "",
+        shape: icon ? null : { godKey: slateGodKey(slate.god), cells: slateShapeCells(slate.shape) },
+        ...displayTexts({ name: slate.name, detail: `${affixes} affix${affixes === 1 ? "" : "es"} · ${slate.god}` }),
+      };
+    }),
+  };
 }
 function renderSlateCrafter() {
-  const body = $("#slate-crafter-body"),
-    affixPool = divinitySlateAffixesSs13[selectedSlateGod] || [],
+  slateInventoryMode = "crafter";
+  viewSourceChanged("slateInventory");
+  writeSlateCrafter();
+}
+// Writes the crafter when React shows its header and body, then fills a slate opened for editing into it.
+function writeSlateCrafter() {
+  const body = $("#slate-crafter-body");
+  if (slateInventoryMode !== "crafter" || !body?.hasAttribute("data-legacy-editor")) return;
+  drawSlateCrafter(body);
+  const slate = pendingSlateEditorFill;
+  pendingSlateEditorFill = null;
+  if (slate) fillCraftedSlateEditor(slate);
+}
+function drawSlateCrafter(body) {
+  const affixPool = divinitySlateAffixesSs13[selectedSlateGod] || [],
     affixRows = (heading, start, count) =>
       `<fieldset><legend>${heading} (0/${count})</legend>${Array.from({ length: count }, (_, index) => `<label class="slate-affix-row"><span>Slot ${start + index}</span><select><option value="">Select affix…</option></select></label>`).join("")}</fieldset>`;
   $("#slate-inventory-header").innerHTML =
@@ -5430,7 +5557,11 @@ function openCraftedSlateEditor(slate) {
   activeSlateCrafterTab =
     slate.god === "Nether King" ? "judgment" : slate.rarity === "legendary" ? "legendary" : "craft";
   selectedLegendarySlateName = activeSlateCrafterTab === "legendary" ? slate.template || slate.name : "";
+  pendingSlateEditorFill = slate;
   renderSlateCrafter();
+}
+// The crafter's form filled from the slate being edited (after the crafter is written).
+function fillCraftedSlateEditor(slate) {
   if (activeSlateCrafterTab === "legendary") {
     const preview = $(".slate-shape-preview");
     const copyRule = $("[data-sparks-copy-rule]");
@@ -7474,63 +7605,6 @@ function clearTalentTreeState(name) {
     if (key.startsWith(name + ":")) delete plannerState.talents.coreSelections[key];
 }
 
-document.addEventListener("contextmenu", (event) => {
-  const craftedSlateInventory = event.target.closest("[data-crafted-slate-inventory]");
-  if (craftedSlateInventory) {
-    event.preventDefault();
-    const id = craftedSlateInventory.dataset.craftedSlateInventory,
-      slate = slatesForBoard().find((item) => item.id === id),
-      saved = (plannerState.slates?.inventory || []).find((item) => item.id === id),
-      startRotation = slatePlacements[id]?.rotation ?? parkedSlates[id]?.rotation ?? saved?.rotation ?? 0,
-      flipX = slatePlacements[id]?.flipX ?? parkedSlates[id]?.flipX ?? saved?.flipX ?? 1,
-      flipY = slatePlacements[id]?.flipY ?? parkedSlates[id]?.flipY ?? saved?.flipY ?? 1;
-    const rotations = slateTransformRules(slate).rotate
-      ? [startRotation, 0, 90, 180, 270].filter((value, index, array) => array.indexOf(value) === index)
-      : [0];
-    let placement = null;
-    for (const rotation of rotations) {
-      for (let row = 1; row <= 6 && !placement; row += 1) {
-        for (let column = 1; column <= 6; column += 1) {
-          const candidate = { column, row, rotation, flipX, flipY };
-          if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
-            placement = candidate;
-            break;
-          }
-        }
-      }
-      if (placement) break;
-    }
-    if (placement) {
-      slatePlacements = { ...slatePlacements, [id]: placement };
-      equippedSlateIds.add(id);
-      delete parkedSlates[id];
-      selectedSlateId = null;
-      slateToolsPosition = null;
-      slatePlacementTarget = null;
-      slateEditMode = false;
-      const listScroll = $("#slate-inventory .crafted-slate-list")?.scrollTop || 0;
-      renderSlateInventory();
-      $("#slate-inventory .crafted-slate-list").scrollTop = listScroll;
-      persistPlannerState();
-      showToast(`${slate.name} placed on the grid`);
-    } else if (parkSlateBesideGrid(slate, startRotation, flipX, flipY)) {
-      const next = { ...slatePlacements };
-      delete next[id];
-      slatePlacements = next;
-      equippedSlateIds.delete(id);
-      selectedSlateId = null;
-      slateToolsPosition = null;
-      const listScroll = $("#slate-inventory .crafted-slate-list")?.scrollTop || 0;
-      persistPlannerState();
-      renderCandidateViews();
-      renderSlateInventory();
-      $("#slate-inventory .crafted-slate-list").scrollTop = listScroll;
-      showToast(`${slate.name} placed beside the full grid`);
-    } else showToast("No space is available beside the grid for that slate");
-    return;
-  }
-});
-
 document.addEventListener("keydown", (event) => {
   if (
     event.target.matches("select:not([data-native-select])") &&
@@ -7785,12 +7859,6 @@ document.addEventListener("click", (event) => {
     showToast("Slate affixes saved");
   }
   if (event.target.closest("[data-close-slate-inventory]")) $("#slate-inventory").close();
-  if (event.target.closest("[data-open-slate-crafter]")) {
-    editingCraftedSlateId = null;
-    selectedLegendarySlateName = "";
-    activeSlateCrafterTab = "craft";
-    renderSlateCrafter();
-  }
   if (event.target.closest("[data-back-slate-inventory]")) {
     editingCraftedSlateId = null;
     renderSlateInventory();
@@ -7977,54 +8045,6 @@ document.addEventListener("click", (event) => {
           ? `${crafted.name} updated`
           : `${crafted.name} added to Slate Inventory`,
     );
-  }
-  const deleteCraftedSlate = event.target.closest("[data-delete-crafted-slate]");
-  if (deleteCraftedSlate) {
-    const id = deleteCraftedSlate.dataset.deleteCraftedSlate;
-    plannerState.slates.inventory = (plannerState.slates.inventory || []).filter((slate) => slate.id !== id);
-    equippedSlateIds.delete(id);
-    delete parkedSlates[id];
-    const placements = { ...slatePlacements };
-    delete placements[id];
-    slatePlacements = placements;
-    persistPlannerState();
-    renderSlateInventory();
-    showToast("Slate deleted");
-  }
-  const duplicateCraftedSlate = event.target.closest("[data-duplicate-crafted-slate]");
-  if (duplicateCraftedSlate) {
-    const source = (plannerState.slates.inventory || []).find(
-      (slate) => slate.id === duplicateCraftedSlate.dataset.duplicateCraftedSlate,
-    );
-    if (source) {
-      plannerState.slates.inventory.push({
-        ...structuredClone(source),
-        id: globalThis.crypto?.randomUUID?.() || `slate-${Date.now()}`,
-        name: `${source.name} Copy`,
-      });
-      persistPlannerState();
-      renderSlateInventory();
-      showToast("Slate duplicated");
-    }
-  }
-  const editCraftedSlate = event.target.closest("[data-edit-crafted-slate]");
-  if (editCraftedSlate) {
-    const slate = (plannerState.slates.inventory || []).find(
-      (item) => item.id === editCraftedSlate.dataset.editCraftedSlate,
-    );
-    if (slate) openCraftedSlateEditor(slate);
-  }
-  const removeCraftedSlate = event.target.closest("[data-remove-crafted-slate]");
-  if (removeCraftedSlate) {
-    const id = removeCraftedSlate.dataset.removeCraftedSlate;
-    equippedSlateIds.delete(id);
-    delete parkedSlates[id];
-    const placements = { ...slatePlacements };
-    delete placements[id];
-    slatePlacements = placements;
-    persistPlannerState();
-    renderSlateInventory();
-    showToast("Slate removed from grid");
   }
   // The slate editor's Rotate / Flip buttons (the board's tools are apps/web/src/features/slates).
   const slateRotateButton = event.target.closest("[data-slate-rotate]");

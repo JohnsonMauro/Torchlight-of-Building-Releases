@@ -87,6 +87,21 @@ export interface ViewSources {
     editing: boolean;
     item: { name: string; classes: string; icon: string; equipped: boolean } | null;
   };
+  /**
+   * The Slate Inventory: the crafted slates (on the grid, "equipped"; beside it, "staged"; with their art, or their shape
+   * in their god's color), or the crafter's mode, which the planner writes itself.
+   */
+  slateInventory: {
+    mode: "inventory" | "crafter";
+    items: {
+      id: string;
+      name: string;
+      detail: string;
+      state: "equipped" | "staged" | "";
+      icon: string;
+      shape: { godKey: string; cells: [number, number][] } | null;
+    }[];
+  };
   /** The Kismet crafter: its opening, the slot kind's Kismets, the chosen one's values and preview. */
   kismetCrafter: DialogSession & {
     title: string;
