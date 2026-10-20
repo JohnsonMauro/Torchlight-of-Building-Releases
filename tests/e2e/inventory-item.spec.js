@@ -107,6 +107,76 @@ test("Edit opens a legendary's editor in the dialog; its controls work and Save 
   await planner.expectNoErrors();
 });
 
+test("the legendary editor: a tier and a roll change their line; the fields and lines are saved", async ({ page }) => {
+  const { planner, gear } = await openItem(page, "Ice Pulse");
+  await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
+  const editor = gear.itemDialog().locator("#inventory-item-body");
+  const lineText = (index) => editor.locator(`[data-edit-modifier-text="${index}"]`);
+  await expect(lineText(1)).toHaveText("+64% Spell Damage");
+  await expect(editor.locator('[data-edit-legendary-tier="1"]')).toHaveValue("1");
+  await editor.locator('[data-edit-legendary-tier="1"]').selectOption("2");
+  await expect(lineText(1)).toHaveText("+29% Spell Damage");
+  await expect(editor.locator('[data-edit-legendary-roll="1"]')).toHaveAttribute("max", "29");
+  await expect(editor.locator("aside")).toContainText("+29% Spell Damage");
+
+  const roll = editor.locator('[data-edit-legendary-roll="0"]');
+  await roll.fill("6");
+  await expect(lineText(0)).toHaveText("+6 to Max Frostbite Rating");
+  await expect(editor.locator(".legendary-mod-control").first().locator("em")).toHaveText("6");
+  await expect(editor.locator(".legendary-mod-control").first().locator("[data-affix-roll-number]")).toHaveValue("6");
+  await editor.locator(".legendary-mod-control").nth(1).locator("[data-affix-roll-number]").fill("25");
+  await expect(lineText(1)).toHaveText("+25% Spell Damage");
+
+  await gear.itemDialog().getByRole("spinbutton", { name: "Item level", exact: true }).fill("90");
+  await gear.itemDialog().getByRole("spinbutton", { name: "Equipment Energy", exact: true }).fill("40");
+  await gear.itemDialog().locator("footer").getByRole("button", { name: "Save Changes", exact: true }).click();
+  await expect(gear.toast()).toHaveText("Inventory item updated");
+  const saved = (await gear.stored()).inventory.find((item) => item.id === "gear-game-log-gloves");
+  expect(saved).toMatchObject({ level: 90, energy: 40 });
+  expect(saved.legendaryModifiers.slice(0, 2)).toEqual(["+6 to Max Frostbite Rating", "+25% Spell Damage"]);
+  expect(saved.modifiers).toEqual(expect.arrayContaining(["+6 to Max Frostbite Rating", "+25% Spell Damage"]));
+
+  // Edit again: the editor opens on the saved tier and rolls.
+  await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(editor.locator('[data-edit-legendary-tier="1"]')).toHaveValue("2");
+  await expect(lineText(1)).toHaveText("+25% Spell Damage");
+  await expect(roll).toHaveValue("6");
+  await planner.expectNoErrors();
+});
+
+test("the editor opens on the stored corrosion: a corroded line and a corrosion implicit; both can be dropped", async ({
+  page,
+}) => {
+  const { planner, gear } = await openItem(page, "Blind Vision");
+  const editor = gear.itemDialog().locator("#inventory-item-body");
+  const footer = gear.itemDialog().locator("footer");
+  await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
+  const first = editor.locator(".legendary-mod-control").first();
+  await expect(first).toHaveClass(/\bcorrosion-affix\b/);
+  await expect(first.locator("[data-toggle-edit-corrosion]")).toHaveText("Corroded");
+  await expect(editor.locator("aside li.corrosion-affix")).toHaveCount(1);
+  await first.locator("[data-toggle-edit-corrosion]").click();
+  await expect(editor.locator(".legendary-mod-control").first()).not.toHaveClass(/\bcorrosion-affix\b/);
+  await footer.getByRole("button", { name: "Save Changes", exact: true }).click();
+  await expect(gear.toast()).toHaveText("Inventory item updated");
+  const helmet = (await gear.stored()).inventory.find((item) => item.id === "gear-game-log-helmet");
+  expect(helmet.corrodedModifierIndices).toEqual([]);
+  await gear.itemDialog().getByRole("button", { name: "Close", exact: true }).click();
+
+  await gear.cardButton("Blade-dancer's Steps").click();
+  await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
+  const corrosion = gear.itemDialog().getByRole("combobox", { name: "Corrosion Implicit", exact: true });
+  await expect(corrosion).toHaveValue("+51% damage");
+  await expect(editor.locator(".gear-mod-editor .fixed-mod.corrosion-affix")).toHaveText("Corroded+51% damage");
+  await expect(editor.locator("aside")).toContainText("Implicit · CorrodedDEX Boots+51% damage");
+  await corrosion.selectOption("");
+  await footer.getByRole("button", { name: "Save Changes", exact: true }).click();
+  await expect(gear.toast()).toHaveText("Inventory item updated");
+  const boots = (await gear.stored()).inventory.find((item) => item.id === "gear-game-log-boots");
+  expect(boots.corrosionModifiers).toEqual([]);
+  await planner.expectNoErrors();
+});
+
 test("Edit on a crafted rare opens the crafter instead", async ({ page }) => {
   const { planner, gear } = await openItem(page, "Arcanist Girdle");
   await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
