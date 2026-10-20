@@ -1,6 +1,7 @@
 // The planner's small picker dialogs, opened from the Build page: the hero selector (Change Hero), the follower
 // selector (Change Follower), the Pactspirit selector (a pact slot), and Sage's scent and Carino's Special Ammo
-// selectors (the HERO tab). Each lists its
+// selectors (the HERO tab), the talent tree and core talent pickers, and the Fate slot selector (a Pactspirit's
+// Undetermined Fate node). Each lists its
 // choices, marks the current one, filters by the search box, and closes from its × button, from a click outside it and
 // from Escape, opening again with the search cleared. Written against the legacy dialogs before they move to React, so
 // both must pass it unchanged.
@@ -12,6 +13,8 @@ import { HeroPage } from "./pages/hero-page.js";
 import { FollowerPage } from "./pages/follower-page.js";
 import { followerPickerOptions } from "../../src/app/follower-panel.js";
 import { PactsPage } from "./pages/pacts-page.js";
+import { TalentsPage } from "./pages/talents-page.js";
+import { fateSlotChoices } from "../../src/engine/pacts/fate-slot-unlocks.js";
 import { pactspiritCatalogSs13 } from "../../src/data/pacts/pactspirit-catalog-ss13.js";
 import { sortPactspirits } from "../../src/engine/pacts/pactspirit-selection.js";
 import { sageElixirsSs13 } from "../../src/data/heroes/sage-scent-ss13.generated.js";
@@ -313,6 +316,99 @@ test("Carino's Special Ammo selector: slot title, Well Prepared help, installed 
   await hero.button("Select support for Special Ammo slot 3").click();
   await expect(page.locator("#carino-ammo-title")).toHaveText("Select Special Ammo Support · Slot 3");
   await page.mouse.click(5, 5);
+  await expect(dialog).toBeHidden();
+  await planner.expectNoErrors();
+});
+
+async function openTree(page, tree) {
+  const planner = new PlannerPage(page);
+  await planner.open(youga);
+  const talents = new TalentsPage(page);
+  await talents.open();
+  await talents.openTree(tree);
+  return { planner, talents };
+}
+
+test("the tree picker lists the trees a slot can take with their points, the slot's tree pressed", async ({ page }) => {
+  const { planner, talents } = await openTree(page, "God tree");
+  const picker = talents.treePicker();
+  const cards = picker.locator(".talent-picker-card");
+  await talents.action("Reselect").click();
+  await expect(talents.treePickerTitle()).toHaveText("Select a God tree");
+  await expect(cards.first()).toHaveClass(/\bgod-tree\b/);
+  await expect(picker.locator('.talent-picker-card[aria-pressed="true"]')).toHaveCount(1);
+  const current = picker.getByRole("button", { name: /Goddess of Knowledge/ });
+  await expect(current).toHaveAttribute("aria-pressed", "true");
+  await expect(current).toHaveClass(/\bselected\b/);
+  await expect(current).toContainText("God tree");
+  await expect(current.locator("small")).toHaveText("28 points");
+  await picker.getByRole("button", { name: "Close talent tree selector" }).click();
+  await expect(picker).toBeHidden();
+
+  await talents.openTree("Class tree");
+  await talents.action("Reselect").click();
+  await expect(talents.treePickerTitle()).toHaveText("Select a Goddess of Knowledge class tree");
+  await expect(cards.first()).toHaveClass(/\bclass-tree\b/);
+  await expect(picker.getByRole("button", { name: /Prophet/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(cards).not.toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(picker).toBeHidden();
+  await planner.expectNoErrors();
+});
+
+test("the core talent picker marks the tree's choice and locks its choices below their points", async ({ page }) => {
+  const { planner, talents } = await openTree(page, "Tree 4");
+  const picker = talents.corePicker();
+  await talents.core(24).click({ button: "right" });
+  await talents.core(24).click();
+  await expect(picker.locator("#core-picker-title")).toHaveText("Select 24-point core talent");
+  await expect(picker.locator("#core-picker-status")).toHaveText("Choose one core talent for Lich.");
+  const options = picker.locator(".core-picker-option");
+  await expect(options).not.toHaveCount(0);
+  for (const option of await options.all()) await expect(option).toBeEnabled();
+  await picker.getByRole("button", { name: /Off The Beaten Track/ }).click();
+  await talents.core(24).click({ button: "right" });
+  await talents.action("Reset").click();
+  await talents.core(24).click();
+  await expect(picker.locator("#core-picker-status")).toHaveText(
+    "0/24 points in Lich. These choices unlock at 24 points.",
+  );
+  for (const option of await options.all()) await expect(option).toBeDisabled();
+  await picker.getByRole("button", { name: "Close core talent selector" }).click();
+  await expect(picker).toBeHidden();
+
+  // A tree with its 24-point core chosen: the choice is marked.
+  await talents.openTree("Tree 3");
+  await talents.core(24).click();
+  await expect(picker.locator(".core-picker-option.selected")).toContainText("Gale");
+  await page.keyboard.press("Escape");
+  await planner.expectNoErrors();
+});
+
+test("the Fate slot selector lists the unlocks with the current one marked, stores a choice and clears", async ({
+  page,
+}) => {
+  const planner = new PlannerPage(page);
+  await planner.open(youga);
+  const pacts = new PactsPage(page);
+  await pacts.open();
+  const dialog = pacts.fateSlotSelector();
+  const node = pacts.node("Dreamweaver", "Undetermined Fate Slots");
+  await node.click({ button: "right" });
+  await expect(dialog.getByRole("heading", { name: "Unlock Fate Slots" })).toBeVisible();
+  const choices = dialog.locator("#fate-slot-options button");
+  await expect(choices).toHaveText(fateSlotChoices.map((choice) => `${choice.label}›`));
+  await choices.nth(1).click();
+  await expect(dialog).toBeHidden();
+  expect((await pacts.storedPacts()).fateUnlocks.Dreamweaver).toBe(fateSlotChoices[1].id);
+  await node.click({ button: "right" });
+  await expect(choices.nth(1)).toHaveClass(/\bselected\b/);
+  await expect(choices.nth(1)).toHaveText(`${fateSlotChoices[1].label}✓`);
+  await dialog.getByRole("button", { name: "Clear Fate slots" }).click();
+  await expect(dialog).toBeHidden();
+  expect((await pacts.storedPacts()).fateUnlocks.Dreamweaver).toBeUndefined();
+  await node.click({ button: "right" });
+  await dialog.getByRole("button", { name: "Close Fate slot selector" }).click();
   await expect(dialog).toBeHidden();
   await planner.expectNoErrors();
 });
