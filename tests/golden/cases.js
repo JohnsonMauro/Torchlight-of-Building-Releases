@@ -4,7 +4,7 @@
 // git ref against its own src/.
 import { readFileSync } from "node:fs";
 import { calculatePlanner } from "../../src/planner.js";
-import { defaultPlannerState, normalizePlannerState } from "../../src/planner-state.js";
+import { defaultPlannerState, normalizePlannerState } from "../../src/planner-state.ts";
 import { switchHeroLoadout } from "../../src/hero-loadouts.js";
 import { heroCatalogSs13 } from "../../src/data/heroes/hero-catalog-ss13.js";
 import { allHeroTraitsSs13 } from "../../src/data/heroes/all-hero-traits-ss13.generated.js";

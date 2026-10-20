@@ -15,7 +15,7 @@ import {
 import { REAP_TICK_SECONDS } from "./reaping-model.js";
 import { ailmentDefinitions } from "./ailment-model.js";
 
-// Followers (2026-10-15). A build has one follower: `state.followers = { followerId, rarity, skills }` (src/planner-state.js).
+// Followers (2026-10-15). A build has one follower: `state.followers = { followerId, rarity, skills }` (src/planner-state.ts).
 // Data: src/data/followers/*.generated.js (scripts/import-tlidb-followers.mjs, TLIDB + patch notes).
 //   - Rarities are the game's own letter rarities (rework 2026-10-19; research/followers/tartarus-skill-affixes-2026-10-19.md
 //     "Letter rarities"): Normal / Magic / Rare / Legendary / ULT (game text Func_Mercenary_Rarity…, letter qualities 1 / 2 /

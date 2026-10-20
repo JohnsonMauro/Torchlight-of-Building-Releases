@@ -1,5 +1,5 @@
 // Compact build codes, short enough to travel in a pre-filled GitHub issue URL (src/feedback-dialog-model.js). The
-// planner's Export keeps writing the original code (base64url of the state JSON, src/planner-state.js
+// planner's Export keeps writing the original code (base64url of the state JSON, src/planner-state.ts
 // encodePlannerState); Import accepts the original code and both compact versions.
 //   "TLB2:" + base64url(raw DEFLATE of the export JSON). Still decoded; no longer written.
 //   "TLB3:" + base64url(raw DEFLATE of the packed JSON). The state is packed losslessly before deflating:
@@ -319,7 +319,7 @@ function originalCode(version, inflated, table) {
 
 /**
  * The original build code for a compact one (exactly what Export wrote for that state); other text is returned trimmed,
- * so the result can go straight to src/planner-state.js importBuildCode / decodePlannerState.
+ * so the result can go straight to src/planner-state.ts importBuildCode / decodePlannerState.
  */
 export async function expandBuildCode(text) {
   const trimmed = String(text ?? "").trim();

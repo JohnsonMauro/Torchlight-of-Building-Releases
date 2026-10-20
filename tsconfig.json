@@ -14,7 +14,10 @@
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    // The .ts modules import legacy src/*.js: their types are inferred, not checked yet (as in apps/web).
+    "allowJs": true,
+    "checkJs": false
   },
   "include": ["src/**/*.ts", "tests/**/*.ts"]
 }

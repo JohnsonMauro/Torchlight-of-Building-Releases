@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { validatePlannerState } from "../../src/state-validation.ts";
-import { defaultPlannerState } from "../../src/planner-state.js";
+import { defaultPlannerState } from "../../src/planner-state.ts";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),

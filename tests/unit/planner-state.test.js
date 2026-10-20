@@ -1,4 +1,4 @@
-// Characterization of src/planner-state.js: what normalizePlannerState and normalizeBuildLibrary return, and how the
+// Characterization of src/planner-state.ts: what normalizePlannerState and normalizeBuildLibrary return, and how the
 // library is loaded, saved, shared between tabs, quarantined, restored and shared as a code. Written against the
 // JavaScript module before it moved to TypeScript; the behaviour recorded here is what its types describe.
 import { test, beforeEach } from "node:test";
@@ -35,7 +35,7 @@ import {
   setCompareBuild,
   startNewLibrary,
   updateActiveBuildMetadata,
-} from "../../src/planner-state.js";
+} from "../../src/planner-state.ts";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),

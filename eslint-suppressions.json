@@ -99,14 +99,6 @@
       "count": 1
     }
   },
-  "src/planner-state.js": {
-    "no-empty": {
-      "count": 5
-    },
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/planner.js": {
     "no-unused-vars": {
       "count": 7

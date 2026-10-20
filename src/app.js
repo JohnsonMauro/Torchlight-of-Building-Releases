@@ -247,7 +247,7 @@ import {
   slateTransformRules,
 } from "./slate-board.js";
 import { downloadBackup, isSafeMode, setSafeMode } from "./recovery-core.js";
-import { restoreLatestRevision } from "./planner-state.js";
+import { restoreLatestRevision } from "./planner-state.ts";
 import { selectorBaseLevel } from "./skill-level-input.js";
 import {
   clearPlannerState,
@@ -272,7 +272,7 @@ import {
   markPlannerStateClean,
   startNewLibrary,
   updateActiveBuildMetadata,
-} from "./planner-state.js";
+} from "./planner-state.ts";
 import { providePlannerCommands } from "./planner-commands.js";
 import { carinoSpecialAmmoOptions } from "./carino-special-ammo.js";
 import { importReportText, importSnapshot, listSnapshots, loadGameIdMap, readGameLogFile } from "./game-log-import.js";
@@ -1388,7 +1388,7 @@ function applyPlannerState(next) {
 }
 // A freshly loaded build (loadPlannerState) differs from its stored copy only by
 // load-time repairs (upgradeExistingCorrodedItems, derived talent ranks...).
-// That is not an edit: planner-state.js skips saves equal to this state, so a
+// That is not an edit: planner-state.ts skips saves equal to this state, so a
 // tab without user edits never writes (and never triggers other tabs' notice).
 function markLoadedStateClean() {
   try {
@@ -11510,7 +11510,7 @@ $("#restore-builds-file").addEventListener("change", async (event) => {
     showToast(error?.message || "That backup could not be restored");
   }
 });
-// Stored data that could not be loaded is kept unchanged (planner-state.js); say so and offer a backup.
+// Stored data that could not be loaded is kept unchanged (planner-state.ts); say so and offer a backup.
 function renderLibraryNotice() {
   document.querySelector(".library-notice")?.remove();
   let issues;
@@ -11579,7 +11579,7 @@ window.addEventListener("beforeunload", flushPlannerState);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") flushPlannerState();
 });
-// Another tab changed the shared build library. Policy (planner-state.js,
+// Another tab changed the shared build library. Policy (planner-state.ts,
 // reconcileExternalLibraryChange): this tab keeps its own build and its own
 // in-memory state; only the Build Library list and names refresh. When another
 // tab saved a different version of the build open here, a notice offers to

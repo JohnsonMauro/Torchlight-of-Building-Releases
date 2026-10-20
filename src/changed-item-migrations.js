@@ -1,4 +1,4 @@
-// Read-time migrations for saved items (src/planner-state.js normalizePlannerState). Storage is not rewritten
+// Read-time migrations for saved items (src/planner-state.ts normalizePlannerState). Storage is not rewritten
 // eagerly: a build carries the migrated item only when it is next saved. User-approved 2026-10-15
 // (research/patch-ss14/CHANGE-REPORT.md decision 1 and the id-change list; "the old builds should change if objects they were
 // using are changed").

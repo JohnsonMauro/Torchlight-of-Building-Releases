@@ -88,7 +88,7 @@ import {
   skillLevelDamageMultiplier,
   effectiveGearModifierTexts,
 } from "./engine.js";
-import { normalizePlannerState } from "./planner-state.js";
+import { normalizePlannerState } from "./planner-state.ts";
 import { resolveTalentCandidate, resolveSlateCandidate } from "./candidate-sources.js";
 import { grantedCoreNames } from "./granted-core-lines.js";
 import { selenaScorchingBeamTalentSetupSs13 as talents } from "./data/talents/selena-scorching-beam-ss13.js";

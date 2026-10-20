@@ -4,10 +4,10 @@
 
 // Library data (never cleared by any recovery action).
 export const LIBRARY_KEY = "tli-builder:build-library:v1";
-// Older versions kept a full copy of the active build here (planner-state.js).
+// Older versions kept a full copy of the active build here (planner-state.ts).
 export const LEGACY_STATE_KEY = "tli-builder:selena-candidate:v1";
 export const LIBRARY_KEYS = Object.freeze([LIBRARY_KEY, LEGACY_STATE_KEY]);
-// Unreadable library values kept aside by planner-state.js (never cleared here).
+// Unreadable library values kept aside by planner-state.ts (never cleared here).
 export const QUARANTINE_PREFIX = `${LIBRARY_KEY}:unreadable:`;
 export const isLibraryKey = (key) => LIBRARY_KEYS.includes(key) || String(key).startsWith(QUARANTINE_PREFIX);
 

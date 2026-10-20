@@ -1,20 +1,10 @@
-// The saved-build library as the UI reads it: a snapshot from src/planner-state.js that changes when this tab writes the
+// The saved-build library as the UI reads it: a snapshot from src/planner-state.ts that changes when this tab writes the
 // library (subscribeBuildLibrary) or another tab does (the `storage` event).
 import { useSyncExternalStore } from "react";
-import { loadBuildLibrary, plannerLibraryStorageKey, subscribeBuildLibrary } from "@legacy/planner-state.js";
+import { loadBuildLibrary, plannerLibraryStorageKey, subscribeBuildLibrary } from "@legacy/planner-state.ts";
+import type { BuildLibrary, LibraryBuild } from "@legacy/planner-state.ts";
 
-export interface LibraryBuild {
-  id: string;
-  name: string;
-  notes: string;
-  updatedAt: string;
-  state: { hero?: { selectedHeroId?: string } };
-}
-
-export interface BuildLibrary {
-  activeBuildId: string | null;
-  builds: LibraryBuild[];
-}
+export type { BuildLibrary, LibraryBuild };
 
 let version = 0;
 let snapshot: { version: number; library: BuildLibrary } | null = null;
@@ -37,7 +27,7 @@ function subscribe(onChange: () => void): () => void {
 
 // useSyncExternalStore needs the same object back until something changed.
 function getSnapshot(): BuildLibrary {
-  if (snapshot?.version !== version) snapshot = { version, library: loadBuildLibrary() as BuildLibrary };
+  if (snapshot?.version !== version) snapshot = { version, library: loadBuildLibrary() };
   return snapshot.library;
 }
 

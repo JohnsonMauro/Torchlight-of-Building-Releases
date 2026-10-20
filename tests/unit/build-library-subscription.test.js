@@ -8,7 +8,7 @@ beforeEach(() => {
 });
 
 const { createBuild, loadBuildLibrary, subscribeBuildLibrary, updateActiveBuildMetadata } =
-  await import("../../src/planner-state.js");
+  await import("../../src/planner-state.ts");
 
 test("subscribers hear every library write and stop after unsubscribing", () => {
   let calls = 0;

@@ -1,4 +1,4 @@
-// Saved legendary texts normalized on read (src/planner-state.js normalizePlannerState). Storage is not rewritten eagerly: a
+// Saved legendary texts normalized on read (src/planner-state.ts normalizePlannerState). Storage is not rewritten eagerly: a
 // save carries the corrected text only when the build is next saved.
 //
 // Goddess of Hunting's Dirge (Pantheon's Elegy) is read as printed: "+120% Attack and Cast Speed" (official patch notes and the

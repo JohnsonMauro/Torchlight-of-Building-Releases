@@ -6,7 +6,7 @@
 // character to fill the client printer's 30-entry cuts, and resolves the game ids into a planner state.
 // Unresolved items are skipped and listed in the report, never guessed. Browser-safe: no Node APIs.
 // Design and evidence: research/game-log-import-2026-10-12.md.
-import { defaultPlannerState, normalizePlannerState } from "./planner-state.js";
+import { defaultPlannerState, normalizePlannerState } from "./planner-state.ts";
 import { validatePlannerState } from "./state-validation.ts";
 import { defaultFollowerState } from "./follower-model.js";
 import { equipmentSlots } from "./data/gear/crafting-catalog-ss13.js";

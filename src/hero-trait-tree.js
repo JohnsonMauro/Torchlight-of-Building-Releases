@@ -338,7 +338,7 @@ export function treeRules(tree, capacity = tree?.rows || 3) {
 
 /**
  * The stored rows of a tree hero (read-time migration). Selena's earlier `hero.selenaDanceTraits` (the same row-indexed
- * form) when the state carries it: src/planner-state.js drops that field when it normalizes a state, so a state that still
+ * form) when the state carries it: src/planner-state.ts drops that field when it normalizes a state, so a state that still
  * has it was written by an earlier writer after its last normalization and the field is the newer value. Else
  * `hero.treeTraits[heroId]`; else the hero's earlier one-per-level picks ("<heroId>:level45 / 60 / 75" in `selectedTraits`;
  * Thea – Wisdom of The Gods before the SS14 tree) in row order, which the rules then normalize (picks of traits the tree no

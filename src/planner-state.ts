@@ -1,5 +1,8 @@
+// The planner state and the saved-build library: normalization of stored builds, the library in localStorage (shared
+// by every tab), conflicts between tabs, unreadable data kept aside, build codes and backups.
 import { normalizeTalentTreeSelection } from "./talent-selection-rules.js";
 import { validatePlannerState } from "./state-validation.ts";
+import type { StoredCraftedMemory, StoredPlannerState } from "./state-validation.ts";
 import { migrateTreeTraits } from "./hero-trait-tree.js";
 import { clampMemoryEnhancement, traitLevelBonusForEnhancement } from "./hero-memory-rules.js";
 import { defaultPactspiritSlots } from "./pactspirit-selection.js";
@@ -10,35 +13,168 @@ import { migrateChangedEquipment } from "./changed-item-migrations.js";
 import { migrateCustomSupports } from "./support-text-migrations.js";
 import { defaultFollowerState, normalizeFollowerState } from "./follower-model.js";
 
+// ---- Types ----------------------------------------------------------------------------------------------------------
+
+type Defaults = typeof defaultPlannerState;
+type Section<K extends keyof StoredPlannerState> = NonNullable<StoredPlannerState[K]>;
+/** A stored section after normalization: every field the defaults (D) give is present; the others stay optional. */
+type Filled<T, D> = Omit<T, keyof D> & { [K in keyof D & keyof T]-?: Exclude<T[K], undefined> };
+
+type StoredHero = Section<"hero">;
+/** A crafted memory after normalization: named after its type, enhancement clamped to its rarity, trait bonus derived. */
+export type PlannerMemory = Omit<StoredCraftedMemory, "name" | "enhancementLevel" | "traitLevelBonus"> & {
+  name: string | undefined;
+  enhancementLevel: number;
+  traitLevelBonus: number;
+};
+/** Selena's selenaDanceTraits is migrated into treeTraits and dropped, from the hero and from each saved loadout. */
+export type PlannerHero = Omit<
+  Filled<StoredHero, Defaults["hero"]>,
+  "selenaDanceTraits" | "memories" | "memoryInventory" | "heroLoadouts" | "sageScent"
+> & {
+  /** Undefined in a slot whose equipped memory has neither a type nor a name. */
+  memories: Record<string, string | undefined>;
+  memoryInventory: PlannerMemory[];
+  heroLoadouts: Record<string, Omit<NonNullable<StoredHero["heroLoadouts"]>[string], "selenaDanceTraits">>;
+  sageScent: Required<NonNullable<StoredHero["sageScent"]>>;
+};
+export type PlannerSkills = Omit<Filled<Section<"skills">, Defaults["skills"]>, "boardSlots"> & {
+  boardSlots: Required<NonNullable<Section<"skills">["boardSlots"]>>;
+};
+
+/**
+ * A build as normalizePlannerState returns it: the stored shape (src/state-validation.ts) with every field that has a
+ * default present. Fields without a default (hero.characterLevel, combat.bestCaseOverrides, slates.affixOverrides)
+ * stay optional.
+ */
+export type PlannerState = Omit<
+  Filled<StoredPlannerState, Defaults>,
+  "hero" | "skills" | "slates" | "talents" | "pacts" | "combat" | "followers"
+> & {
+  hero: PlannerHero;
+  skills: PlannerSkills;
+  slates: Filled<Section<"slates">, Defaults["slates"]>;
+  talents: Filled<Section<"talents">, Defaults["talents"]>;
+  pacts: Filled<Section<"pacts">, Defaults["pacts"]>;
+  combat: Filled<Section<"combat">, Defaults["combat"]>;
+  followers: Filled<Section<"followers">, Defaults["followers"]>;
+};
+
+export interface BuildRevision {
+  timestamp: string;
+  label: string;
+  state: PlannerState;
+}
+export interface ShareRecord {
+  timestamp: string;
+  code: string;
+}
+export interface LibraryBuild {
+  id: string;
+  name: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+  state: PlannerState;
+  /** The last 10 states this build had, oldest first. */
+  revisions: BuildRevision[];
+  /** The last 5 build codes shared from this build. */
+  shareHistory: ShareRecord[];
+}
+/** The saved-build library as loadBuildLibrary returns it. activeBuildId is this tab's open build. */
+export interface BuildLibrary {
+  schemaVersion: 1;
+  activeBuildId: string | null;
+  /** Never the open build. */
+  compareBuildId: string | null;
+  builds: LibraryBuild[];
+}
+
+/** A build record as read from storage or a backup. Not checked here: only its state is validated (normalized). */
+interface StoredBuildRecord {
+  id?: string | number;
+  name?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  state?: unknown;
+  revisions?: { timestamp?: string; label?: string; state?: unknown }[];
+  shareHistory?: { timestamp?: string; code?: string }[];
+}
+interface StoredLibrary {
+  schemaVersion?: number;
+  builds?: StoredBuildRecord[];
+  activeBuildId?: string | null;
+  compareBuildId?: string | null;
+  /** Builds that failed validation, kept verbatim. */
+  quarantinedBuilds?: StoredBuildRecord[];
+}
+interface WriteOptions {
+  /** Also make the open build the stored "last used" one (open, create, delete). */
+  lastUsed?: boolean;
+}
+/** The stored library could not be read: where its raw value was copied (null when it could not be) and why. */
+export interface UnreadableLibrary {
+  quarantineKey: string | null;
+  error: string;
+}
+export interface LibraryLoadIssues {
+  unreadable: UnreadableLibrary | null;
+  quarantinedBuilds: { id: string; name: string }[];
+}
+export type ExternalLibraryChange =
+  { kind: "none" | "dismissed" | "changed" } | { kind: "deleted"; state: PlannerState };
+export interface NewBuild {
+  name?: string;
+  notes?: string;
+  state?: unknown;
+  activate?: boolean;
+}
+export interface RestoreSummary {
+  added: number;
+  renamed: number;
+  unchanged: number;
+  skipped: number;
+  skippedNames: string[];
+  /** False when the browser rejected the write (the restored builds are kept in memory). */
+  saved: boolean;
+}
+export type PlannerStateDiff = Record<
+  "hero" | "equipment" | "skills" | "talents" | "slates" | "pacts" | "followers" | "combat",
+  number
+>;
+
+// ---- Storage --------------------------------------------------------------------------------------------------------
+
 const storageKey = "tli-builder:selena-candidate:v1";
 const libraryStorageKey = "tli-builder:build-library:v1";
-let unsavedLibrary = null;
+let unsavedLibrary: BuildLibrary | null = null;
 let storageFailure = false;
-let cachedStorage = null;
-let cachedSerializedLibrary = null;
-let cachedLibrary = null;
+let cachedStorage: Storage | null = null;
+let cachedSerializedLibrary: string | null = null;
+let cachedLibrary: BuildLibrary | null = null;
 // Activity across browser tabs. The library in localStorage is shared by every
 // tab; each tab keeps its own open build in sessionStorage (distinct per tab and
 // kept across a reload of that tab). The stored library's activeBuildId is only
 // the "last used" build, used to pick a build for a brand-new tab.
 const tabActiveBuildKey = "tli-builder:tab-active-build:v1";
 export const plannerLibraryStorageKey = libraryStorageKey;
-let tabActiveBuildId = null;
-let storedActiveBuildId = null;
+let tabActiveBuildId: string | null = null;
+let storedActiveBuildId: string | null = null;
 // The build this tab's planner state belongs to, and that build's stored state
 // (serialized) when this tab last loaded or saved it. A stored state different
 // from this base means another tab changed the build since.
-let baseBuildId = null;
-let baseStateJson = null;
+let baseBuildId: string | null = null;
+let baseStateJson: string | null = null;
 
-function sessionStore() {
+function sessionStore(): Storage | null {
   try {
     return globalThis.sessionStorage || null;
   } catch {
     return null;
   }
 }
-function readTabActiveBuildId() {
+function readTabActiveBuildId(): string | null {
   if (tabActiveBuildId) return tabActiveBuildId;
   try {
     return sessionStore()?.getItem(tabActiveBuildKey) || null;
@@ -46,18 +182,20 @@ function readTabActiveBuildId() {
     return null;
   }
 }
-function rememberTabActiveBuildId(id) {
+function rememberTabActiveBuildId(id: string | null): void {
   tabActiveBuildId = id || null;
   try {
     const session = sessionStore();
     if (!session) return;
     if (id) session.setItem(tabActiveBuildKey, id);
     else session.removeItem(tabActiveBuildKey);
-  } catch {}
+  } catch {
+    // sessionStorage unavailable: the in-memory id still holds for this page.
+  }
 }
 // Point the (shared, cached) library object at this tab's build.
-function withTabView(library) {
-  const has = (id) => id && library.builds.some((build) => build.id === id);
+function withTabView(library: BuildLibrary): BuildLibrary {
+  const has = (id: string | null) => !!id && library.builds.some((build) => build.id === id);
   const tabId = readTabActiveBuildId();
   const id = has(tabId) ? tabId : has(storedActiveBuildId) ? storedActiveBuildId : library.builds[0]?.id || null;
   if (id !== tabActiveBuildId) rememberTabActiveBuildId(id);
@@ -65,7 +203,7 @@ function withTabView(library) {
   if (library.compareBuildId === id) library.compareBuildId = null;
   return library;
 }
-function setBase(id, stateJson) {
+function setBase(id: string | null | undefined, stateJson: string | null): void {
   baseBuildId = id || null;
   baseStateJson = id ? stateJson : null;
 }
@@ -74,19 +212,20 @@ function setBase(id, stateJson) {
 // the in-memory state differ from the stored one; a save equal to this clean
 // state is not an edit and is never written, so an idle tab never writes and
 // never makes another tab's "changed elsewhere" notice appear.
-let cleanStateStable = null;
+let cleanStateStable: string | null = null;
 let cleanMarkPending = false;
 // The stored version (stableJson) whose notice the user dismissed.
-let dismissedStable = null;
+let dismissedStable: string | null = null;
 
-export function plannerStorageStatus() {
+export function plannerStorageStatus(): "saved" | "unsaved" {
   return storageFailure ? "unsaved" : "saved";
 }
 
-// Fields that src/hero-trait-tree.js migrateTreeTraits has moved into hero.treeTraits.
-function withoutLegacyTreeFields(hero) {
-  if (!hero || typeof hero !== "object") return hero;
-  const { selenaDanceTraits, ...rest } = hero;
+// Fields that src/hero-trait-tree.js migrateTreeTraits has moved into hero.treeTraits. Heroes and loadouts reach here
+// validated, so always as objects.
+function withoutLegacyTreeFields<T extends { selenaDanceTraits?: unknown }>(hero: T): Omit<T, "selenaDanceTraits"> {
+  const rest = { ...hero };
+  delete rest.selenaDanceTraits;
   return rest;
 }
 
@@ -189,20 +328,21 @@ export const defaultPlannerState = {
     extraMaxChanneledStacks: 0,
     extraInitialChanneledStacks: 0,
   },
-};
+} satisfies StoredPlannerState;
 
-const clone = (value) => JSON.parse(JSON.stringify(value));
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 // A build's stored state must never share objects with the caller's in-memory state. normalizePlannerState copies only
 // the top levels (equipmentInventory, equipmentOverrides, slates, talentRanks and others pass through by reference), so
 // a library state built straight from the live planner state would change with it: the next in-place edit (an inventory
 // item edited twice) would already be in the cached library, savePlannerState would see no difference and skip the write.
-const ownedState = (state) => normalizePlannerState(clone(state));
-const now = () => new Date().toISOString();
-const makeId = () =>
+const ownedState = (state: unknown): PlannerState => normalizePlannerState(clone(state));
+const now = (): string => new Date().toISOString();
+const makeId = (): string =>
   globalThis.crypto?.randomUUID?.() || `build-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-export function normalizePlannerState(value = {}) {
-  validatePlannerState(value);
+/** Validates a stored build (throws a TypeError naming the first invalid field) and fills in and migrates the rest. */
+export function normalizePlannerState(input: unknown = {}): PlannerState {
+  const value = validatePlannerState(input);
   const defaults = clone(defaultPlannerState);
   // Older New Build saves lack this flag; removed captured gear identifies
   // the blank template, whose talent ranks must start at zero.
@@ -222,11 +362,11 @@ export function normalizePlannerState(value = {}) {
       })
     : [];
   const defaultHeroSelected = !value.hero?.selectedHeroId || value.hero.selectedHeroId === defaults.hero.selectedHeroId;
-  const memoryTraitLevels =
+  const memoryTraitLevels: Record<string, number> =
     value.hero?.memoryTraitLevels && !Object.keys(value.hero.memoryTraitLevels).length
       ? {}
       : { ...(defaultHeroSelected ? defaults.hero.memoryTraitLevels : {}), ...(value.hero?.memoryTraitLevels || {}) };
-  const memoryNames =
+  const memoryNames: Record<string, string | undefined> =
     value.hero?.memories && !Object.keys(value.hero.memories).length
       ? {}
       : { ...(defaultHeroSelected ? defaults.hero.memories : {}), ...(value.hero?.memories || {}) };
@@ -243,6 +383,7 @@ export function normalizePlannerState(value = {}) {
     Array.isArray(value.equipmentInventory) ? value.equipmentInventory : [],
   );
   const legendaryEquipment = migrateLegendaryEquipment(changedEquipment.overrides, changedEquipment.inventory);
+  const selectedSpirits = value.pacts?.selectedSpirits;
   return {
     ...defaults,
     ...value,
@@ -356,9 +497,9 @@ export function normalizePlannerState(value = {}) {
       ...defaults.pacts,
       ...(value.pacts || {}),
       activeSpirits: { ...(value.pacts?.activeSpirits || {}) },
-      selectedSpirits: Array.isArray(value.pacts?.selectedSpirits)
+      selectedSpirits: Array.isArray(selectedSpirits)
         ? Array.from({ length: 3 }, (_, index) =>
-            typeof value.pacts.selectedSpirits[index] === "string" ? value.pacts.selectedSpirits[index] : "",
+            typeof selectedSpirits[index] === "string" ? selectedSpirits[index] : "",
           )
         : defaultPactspiritSlots.filter((name) => value.pacts?.activeSpirits?.[name] !== false),
       spiritLevels: { ...(value.pacts?.spiritLevels || {}) },
@@ -369,7 +510,7 @@ export function normalizePlannerState(value = {}) {
   };
 }
 
-function normalizeBuildRecord(build, index, fallbackState) {
+function normalizeBuildRecord(build: StoredBuildRecord, index: number, fallbackState: unknown): LibraryBuild {
   return {
     id: String(build.id || makeId()),
     name: String(build.name || `Build ${index + 1}`),
@@ -389,7 +530,11 @@ function normalizeBuildRecord(build, index, fallbackState) {
   };
 }
 
-export function normalizeBuildLibrary(value = {}, fallbackState = defaultPlannerState, normalizedBuilds = null) {
+export function normalizeBuildLibrary(
+  value: StoredLibrary = {},
+  fallbackState: unknown = defaultPlannerState,
+  normalizedBuilds: LibraryBuild[] | null = null,
+): BuildLibrary {
   const rawBuilds = Array.isArray(value.builds) ? value.builds : [];
   const builds = normalizedBuilds || rawBuilds.map((build, index) => normalizeBuildRecord(build, index, fallbackState));
   if (!builds.length && !Array.isArray(value.builds))
@@ -403,12 +548,9 @@ export function normalizeBuildLibrary(value = {}, fallbackState = defaultPlanner
       revisions: [],
       shareHistory: [],
     });
-  const activeBuildId = builds.some((build) => build.id === value.activeBuildId)
-    ? value.activeBuildId
-    : builds[0]?.id || null;
-  const compareBuildId = builds.some((build) => build.id === value.compareBuildId && build.id !== activeBuildId)
-    ? value.compareBuildId
-    : null;
+  const activeBuildId = builds.find((build) => build.id === value.activeBuildId)?.id ?? (builds[0]?.id || null);
+  const compareBuildId =
+    builds.find((build) => build.id === value.compareBuildId && build.id !== activeBuildId)?.id ?? null;
   return { schemaVersion: 1, activeBuildId, compareBuildId, builds };
 }
 
@@ -422,21 +564,25 @@ export function normalizeBuildLibrary(value = {}, fallbackState = defaultPlanner
 //   which every save writes back unchanged.
 export const libraryQuarantinePrefix = `${libraryStorageKey}:unreadable:`;
 const maxQuarantineCopies = 3;
-let unsavedStorage = null;
-let libraryWriteBlock = null;
-let quarantinedBuilds = [];
+let unsavedStorage: Storage | null = null;
+let libraryWriteBlock: UnreadableLibrary | null = null;
+let quarantinedBuilds: StoredBuildRecord[] = [];
 
-function storageKeys(storage) {
+function storageKeys(storage: Storage): string[] {
   try {
     if (typeof storage.key === "function" && Number.isInteger(storage.length))
-      return Array.from({ length: storage.length }, (_, index) => storage.key(index)).filter((key) => key !== null);
-  } catch {}
+      return Array.from({ length: storage.length }, (_, index) => storage.key(index)).filter(
+        (key): key is string => key !== null,
+      );
+  } catch {
+    // A storage backend without key enumeration: no quarantine copies to find.
+  }
   return [];
 }
 // Copies an unreadable stored value to a quarantine key. Returns the key
 // holding it (an existing identical copy is reused), or null when it could not
 // be kept (three copies already, or the write failed).
-function quarantineRawLibrary(storage, serialized) {
+function quarantineRawLibrary(storage: Storage, serialized: string | null | undefined): string | null {
   if (serialized === null || serialized === undefined) return null;
   const existing = storageKeys(storage)
     .filter((key) => key.startsWith(libraryQuarantinePrefix))
@@ -444,7 +590,9 @@ function quarantineRawLibrary(storage, serialized) {
   for (const key of existing) {
     try {
       if (storage.getItem(key) === serialized) return key;
-    } catch {}
+    } catch {
+      // Unreadable copy: compare the next one.
+    }
   }
   if (existing.length >= maxQuarantineCopies) return null;
   let key = `${libraryQuarantinePrefix}${new Date().toISOString()}`;
@@ -459,7 +607,7 @@ function quarantineRawLibrary(storage, serialized) {
 }
 
 // What could not be loaded from storage, for the planner's notices.
-export function libraryLoadIssues() {
+export function libraryLoadIssues(): LibraryLoadIssues {
   loadBuildLibrary();
   return {
     unreadable: libraryWriteBlock ? { ...libraryWriteBlock } : null,
@@ -472,7 +620,7 @@ export function libraryLoadIssues() {
 
 // The user chose to start a new library while the stored one is unreadable.
 // The unreadable value stays in its quarantine key.
-export function startNewLibrary() {
+export function startNewLibrary(): BuildLibrary {
   loadBuildLibrary();
   if (!libraryWriteBlock) return loadBuildLibrary();
   const storage = globalThis.localStorage;
@@ -480,7 +628,8 @@ export function startNewLibrary() {
   const keptAt = current === null ? null : quarantineRawLibrary(storage, current);
   if (current !== null && !keptAt)
     throw new Error("There is no room to keep another copy of the unreadable data. Download a backup first.");
-  const library = unsavedLibrary;
+  // Set whenever libraryWriteBlock is (blockUnreadableLibrary, storeBuildLibrary).
+  const library = unsavedLibrary as BuildLibrary;
   libraryWriteBlock = null;
   unsavedLibrary = null;
   unsavedStorage = null;
@@ -490,13 +639,18 @@ export function startNewLibrary() {
   return writeBuildLibrary(library, { lastUsed: true });
 }
 
-function blockUnreadableLibrary(storage, serialized, legacy, error) {
+function blockUnreadableLibrary(
+  storage: Storage,
+  serialized: string | null,
+  legacy: PlannerState,
+  error: unknown,
+): BuildLibrary {
   libraryWriteBlock = {
     quarantineKey: quarantineRawLibrary(storage, serialized),
-    error: String(error?.message || error),
+    error: String((error as Error | undefined)?.message || error),
   };
   quarantinedBuilds = [];
-  if (cachedStorage && cachedStorage !== storage) setBase(null);
+  if (cachedStorage && cachedStorage !== storage) setBase(null, null);
   unsavedLibrary = normalizeBuildLibrary({}, legacy);
   unsavedStorage = storage;
   cachedLibrary = null;
@@ -507,7 +661,7 @@ function blockUnreadableLibrary(storage, serialized, legacy, error) {
   return withTabView(unsavedLibrary);
 }
 
-export function loadBuildLibrary() {
+export function loadBuildLibrary(): BuildLibrary {
   const storage = globalThis.localStorage;
   if (unsavedLibrary && unsavedStorage === storage) return withTabView(unsavedLibrary);
   // A different storage object (tests, or a swapped backend) is a different library.
@@ -523,8 +677,10 @@ export function loadBuildLibrary() {
   let legacy = normalizePlannerState();
   try {
     legacy = normalizePlannerState(JSON.parse(storage.getItem(storageKey) || "{}"));
-  } catch {}
-  let parsed;
+  } catch {
+    // The old single-build copy is unreadable: start from the defaults.
+  }
+  let parsed: StoredLibrary;
   try {
     parsed = JSON.parse(serialized || "{}");
     if (
@@ -538,8 +694,8 @@ export function loadBuildLibrary() {
     return blockUnreadableLibrary(storage, serialized, legacy, error);
   }
   try {
-    if (cachedStorage && cachedStorage !== storage) setBase(null);
-    const valid = [],
+    if (cachedStorage && cachedStorage !== storage) setBase(null, null);
+    const valid: LibraryBuild[] = [],
       rejected = Array.isArray(parsed.quarantinedBuilds) ? [...parsed.quarantinedBuilds] : [];
     (parsed.builds || []).forEach((build, index) => {
       try {
@@ -559,20 +715,18 @@ export function loadBuildLibrary() {
   }
 }
 
-const libraryListeners = new Set();
+const libraryListeners = new Set<() => void>();
 
 /**
  * Calls `listener` after every write of the build library from this tab (stored, or kept in memory when storage
  * fails). Changes made by other tabs arrive as `storage` events instead. Returns the unsubscribe function.
- * @param {() => void} listener
- * @returns {() => void}
  */
-export function subscribeBuildLibrary(listener) {
+export function subscribeBuildLibrary(listener: () => void): () => void {
   libraryListeners.add(listener);
   return () => libraryListeners.delete(listener);
 }
 
-function writeBuildLibrary(normalized, options) {
+function writeBuildLibrary(normalized: BuildLibrary, options?: WriteOptions): BuildLibrary {
   const written = storeBuildLibrary(normalized, options);
   for (const listener of libraryListeners) {
     try {
@@ -588,7 +742,7 @@ function writeBuildLibrary(normalized, options) {
 // "last used" build only when this tab explicitly opens, creates or deletes a
 // build (`lastUsed`); ordinary saves keep the stored value, so a background tab
 // never moves another tab's (or a new tab's) starting build.
-function storeBuildLibrary(normalized, { lastUsed = false } = {}) {
+function storeBuildLibrary(normalized: BuildLibrary, { lastUsed = false }: WriteOptions = {}): BuildLibrary {
   const tabId = normalized.activeBuildId;
   rememberTabActiveBuildId(tabId);
   const keepStored =
@@ -616,7 +770,9 @@ function storeBuildLibrary(normalized, { lastUsed = false } = {}) {
     }
     try {
       storage.removeItem(storageKey);
-    } catch {}
+    } catch {
+      // The old copy stays; the library write above is what counts.
+    }
     unsavedLibrary = null;
     unsavedStorage = null;
     storageFailure = false;
@@ -634,11 +790,11 @@ function storeBuildLibrary(normalized, { lastUsed = false } = {}) {
   return normalized;
 }
 
-export function saveBuildLibrary(library, options) {
+export function saveBuildLibrary(library: StoredLibrary, options?: WriteOptions): BuildLibrary {
   return writeBuildLibrary(normalizeBuildLibrary(library), options);
 }
 
-export function loadPlannerState() {
+export function loadPlannerState(): PlannerState {
   const library = loadBuildLibrary();
   const build = library.builds.find((entry) => entry.id === library.activeBuildId);
   setBase(build?.id, build ? JSON.stringify(build.state) : null);
@@ -651,7 +807,7 @@ export function loadPlannerState() {
 // The app calls this once its freshly loaded state (loadPlannerState) has
 // been applied and rendered, with the state it would save. Ignored unless a
 // load is pending, so a state that was never stored can't be marked clean.
-export function markPlannerStateClean(state) {
+export function markPlannerStateClean(state: unknown): void {
   if (!cleanMarkPending) return;
   cleanMarkPending = false;
   cleanStateStable = stableJson(ownedState(state));
@@ -670,10 +826,11 @@ export function markPlannerStateClean(state) {
 //   version"). This tab's in-memory state is never replaced by another tab's;
 //   the app shows a notice instead (openBuildChangedElsewhere) and reloads
 //   only when the user asks.
-const isPlainObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
 // Key-order-insensitive comparison (rebuilt maps such as talent ranks can list
 // the same entries in a different order).
-const stableJson = (value) =>
+const stableJson = (value: unknown): string =>
   JSON.stringify(value, (key, item) =>
     isPlainObject(item)
       ? Object.fromEntries(
@@ -683,19 +840,19 @@ const stableJson = (value) =>
         )
       : item,
   );
-const same = (a, b) => stableJson(a) === stableJson(b);
+const same = (a: unknown, b: unknown): boolean => stableJson(a) === stableJson(b);
 // Same build state, ignoring key order (both sides normalized states).
-const sameStateJson = (json, state) =>
+const sameStateJson = (json: string, state: unknown): boolean =>
   json === JSON.stringify(state) || stableJson(JSON.parse(json)) === stableJson(state);
 // Another tab saved a different state of this tab's build since this tab last
 // loaded or saved it. Metadata (name, notes, timestamps, revisions, the shared
 // last-used id) and key order are not part of the comparison.
-function storedChangedSinceBase(build) {
+function storedChangedSinceBase(build: LibraryBuild | undefined): boolean {
   return Boolean(
     build && baseBuildId === build.id && baseStateJson !== null && !sameStateJson(baseStateJson, build.state),
   );
 }
-export function savePlannerState(state) {
+export function savePlannerState(state: unknown): BuildLibrary {
   const library = loadBuildLibrary();
   const build = library.builds.find((entry) => entry.id === (baseBuildId || library.activeBuildId));
   if (!build) return library;
@@ -710,7 +867,8 @@ export function savePlannerState(state) {
   const nextJson = JSON.stringify(next);
   const otherTab = storedChangedSinceBase(build);
   const unchanged = storedJson === nextJson || same(next, build.state);
-  if (otherTab && !unchanged && sameStateJson(baseStateJson, next)) return library;
+  // otherTab implies a base state (storedChangedSinceBase).
+  if (otherTab && !unchanged && sameStateJson(baseStateJson as string, next)) return library;
   if (!unchanged) {
     build.revisions = [
       ...build.revisions,
@@ -728,15 +886,15 @@ export function savePlannerState(state) {
 
 // True when another tab saved a different version of the build this tab has
 // open since this tab last loaded or saved it.
-export function openBuildChangedElsewhere() {
+export function openBuildChangedElsewhere(): boolean {
   const library = loadBuildLibrary();
-  const build = baseBuildId && library.builds.find((entry) => entry.id === baseBuildId);
+  const build = baseBuildId ? library.builds.find((entry) => entry.id === baseBuildId) : undefined;
   return storedChangedSinceBase(build);
 }
 
 // The user dismissed the notice: don't show it again for this stored version.
-export function dismissOpenBuildChange() {
-  const build = baseBuildId && loadBuildLibrary().builds.find((entry) => entry.id === baseBuildId);
+export function dismissOpenBuildChange(): void {
+  const build = baseBuildId ? loadBuildLibrary().builds.find((entry) => entry.id === baseBuildId) : undefined;
   if (build) dismissedStable = stableJson(build.state);
 }
 
@@ -753,7 +911,7 @@ export function dismissOpenBuildChange() {
 //   own state, and its next own edit overwrites the stored one (last save wins).
 // - "deleted": another tab deleted this build; `state` is the build this tab
 //   shows now (the last-used or first build, or the empty default).
-export function reconcileExternalLibraryChange(currentState) {
+export function reconcileExternalLibraryChange(currentState?: unknown): ExternalLibraryChange {
   const library = loadBuildLibrary();
   if (baseBuildId && !library.builds.some((build) => build.id === baseBuildId))
     return { kind: "deleted", state: loadPlannerState() };
@@ -772,13 +930,18 @@ export function reconcileExternalLibraryChange(currentState) {
   return { kind: "changed" };
 }
 
-export function clearPlannerState() {
+export function clearPlannerState(): void {
   savePlannerState(defaultPlannerState);
 }
 
-export function createBuild({ name = "New build", notes = "", state = defaultPlannerState, activate = true } = {}) {
+export function createBuild({
+  name = "New build",
+  notes = "",
+  state = defaultPlannerState,
+  activate = true,
+}: NewBuild = {}): LibraryBuild {
   const library = loadBuildLibrary();
-  const build = {
+  const build: LibraryBuild = {
     id: makeId(),
     name,
     notes,
@@ -798,7 +961,7 @@ export function createBuild({ name = "New build", notes = "", state = defaultPla
   return clone(build);
 }
 
-export function importBuildCode(code) {
+export function importBuildCode(code: string): LibraryBuild {
   const state = decodePlannerState(code);
   const library = loadBuildLibrary();
   const baseName = "Imported build";
@@ -809,27 +972,27 @@ export function importBuildCode(code) {
   return createBuild({ name, state });
 }
 
-export function duplicateActiveBuild(name) {
+export function duplicateActiveBuild(name?: string): LibraryBuild | null {
   const library = loadBuildLibrary();
   const source = library.builds.find((build) => build.id === library.activeBuildId);
   if (!source) return null;
   return createBuild({ name: name || `${source.name} copy`, notes: source.notes, state: source.state });
 }
 
-export function setActiveBuild(id) {
+export function setActiveBuild(id: string): BuildLibrary {
   const library = loadBuildLibrary();
   if (library.builds.some((build) => build.id === id)) library.activeBuildId = id;
   if (library.compareBuildId === id) library.compareBuildId = null;
   return saveBuildLibrary(library, { lastUsed: true });
 }
 
-export function setCompareBuild(id) {
+export function setCompareBuild(id: string | null): BuildLibrary {
   const library = loadBuildLibrary();
   library.compareBuildId = library.builds.some((build) => build.id === id && id !== library.activeBuildId) ? id : null;
   return saveBuildLibrary(library);
 }
 
-export function updateActiveBuildMetadata({ name, notes }) {
+export function updateActiveBuildMetadata({ name, notes }: { name?: string; notes?: string }): LibraryBuild | null {
   const library = loadBuildLibrary();
   const build = library.builds.find((entry) => entry.id === library.activeBuildId);
   if (!build) return null;
@@ -840,7 +1003,7 @@ export function updateActiveBuildMetadata({ name, notes }) {
   return clone(build);
 }
 
-export function deleteBuild(id) {
+export function deleteBuild(id: string): BuildLibrary {
   const library = loadBuildLibrary();
   library.builds = library.builds.filter((build) => build.id !== id);
   const openedRemoved = library.activeBuildId === id;
@@ -849,7 +1012,7 @@ export function deleteBuild(id) {
   return saveBuildLibrary(library, { lastUsed: openedRemoved });
 }
 
-export function deleteAllBuilds() {
+export function deleteAllBuilds(): BuildLibrary {
   return saveBuildLibrary(
     { schemaVersion: 1, activeBuildId: null, compareBuildId: null, builds: [] },
     { lastUsed: true },
@@ -863,13 +1026,13 @@ export function deleteAllBuilds() {
 // is already used gets a new id and a "(restored)" name, unless it is an exact
 // copy of the stored build (same id and state), which is skipped. The open and
 // last-used builds stay as they are.
-export function restoreBuildsFromBackup(backup) {
-  const source = libraryFromBackup(backup);
+export function restoreBuildsFromBackup(backup: unknown): RestoreSummary {
+  const source: { builds: StoredBuildRecord[] } | null = libraryFromBackup(backup);
   if (!source) throw new TypeError("This file is not a Torchlight of Building backup");
   const library = loadBuildLibrary();
   const ids = new Set(library.builds.map((build) => build.id));
   const names = new Set(library.builds.map((build) => build.name));
-  const summary = { added: 0, renamed: 0, unchanged: 0, skipped: 0, skippedNames: [] };
+  const summary: RestoreSummary = { added: 0, renamed: 0, unchanged: 0, skipped: 0, skippedNames: [], saved: false };
   source.builds.forEach((raw, index) => {
     const name = typeof raw?.name === "string" && raw.name.trim() ? raw.name.trim() : `Build ${index + 1}`;
     let state;
@@ -919,7 +1082,8 @@ export function restoreBuildsFromBackup(backup) {
       updatedAt: raw.updatedAt || now(),
       state,
       revisions,
-      shareHistory: Array.isArray(raw.shareHistory) ? raw.shareHistory : [],
+      // Kept as read (not checked); normalizeBuildRecord cleans it on the next load.
+      shareHistory: (Array.isArray(raw.shareHistory) ? raw.shareHistory : []) as ShareRecord[],
     });
     summary.added++;
   });
@@ -928,7 +1092,7 @@ export function restoreBuildsFromBackup(backup) {
   return summary;
 }
 
-export function restoreLatestRevision() {
+export function restoreLatestRevision(): PlannerState {
   const library = loadBuildLibrary();
   const build = library.builds.find((entry) => entry.id === library.activeBuildId);
   if (!build) return clone(defaultPlannerState);
@@ -946,7 +1110,7 @@ export function restoreLatestRevision() {
   return clone(build.state);
 }
 
-export function recordShareCode(code) {
+export function recordShareCode(code: string): void {
   const library = loadBuildLibrary();
   const build = library.builds.find((entry) => entry.id === library.activeBuildId);
   if (!build) return;
@@ -954,10 +1118,10 @@ export function recordShareCode(code) {
   saveBuildLibrary(library);
 }
 
-export function diffPlannerStates(left, right) {
+export function diffPlannerStates(left: unknown, right: unknown): PlannerStateDiff {
   const a = normalizePlannerState(left),
     b = normalizePlannerState(right);
-  const objectDifferences = (x, y) =>
+  const objectDifferences = (x: Record<string, unknown>, y: Record<string, unknown>) =>
     new Set(
       [...Object.keys(x || {}), ...Object.keys(y || {})].filter(
         (key) => JSON.stringify(x?.[key]) !== JSON.stringify(y?.[key]),
@@ -987,7 +1151,8 @@ export function diffPlannerStates(left, right) {
   };
 }
 
-export function encodePlannerState(state) {
+/** A build code: base64url (no padding) of the normalized state's JSON. */
+export function encodePlannerState(state: unknown): string {
   const bytes = new TextEncoder().encode(JSON.stringify(normalizePlannerState(state)));
   let binary = "";
   bytes.forEach((byte) => {
@@ -996,7 +1161,7 @@ export function encodePlannerState(state) {
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
 }
 
-export function decodePlannerState(code) {
+export function decodePlannerState(code: unknown): PlannerState {
   if (typeof code !== "string" || code.length > 250000 || !/^[A-Za-z0-9_+/=-]+$/.test(code.trim()))
     throw new TypeError("Invalid or oversized build code");
   const padded = code
