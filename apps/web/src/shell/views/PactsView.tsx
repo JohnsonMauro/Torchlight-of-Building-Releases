@@ -1,3 +1,5 @@
+import { KismetSummary, PactSlots, PactspiritCount } from "../../features/pacts/PactsSection";
+
 export function PactsView() {
   return (
     <section id="pacts-view" className="app-view" hidden>
@@ -14,11 +16,17 @@ export function PactsView() {
         </div>
         <div className="talent-total">
           <span>Pactspirits</span>
-          <strong id="pactspirit-count">3/3</strong>
+          <strong id="pactspirit-count">
+            <PactspiritCount />
+          </strong>
         </div>
       </div>
-      <div id="pactspirits" className="pactspirit-grid" />
-      <div id="pact-kismet-summary" className="pact-kismet-summary" aria-live="polite" />
+      <div id="pactspirits" className="pactspirit-grid">
+        <PactSlots />
+      </div>
+      <div id="pact-kismet-summary" className="pact-kismet-summary" aria-live="polite">
+        <KismetSummary />
+      </div>
     </section>
   );
 }

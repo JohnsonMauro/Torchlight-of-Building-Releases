@@ -21,6 +21,7 @@ import { classifySkillCoverage, supportClauseCoverage, supportLineCoverage } fro
 import { curseSlotSummary } from "./curse-limit.js";
 import { aimUptimeAfterToggle } from "./aim-controls.js";
 import { provideViewSource, viewSourceChanged } from "./view-sources.ts";
+import { pactsView } from "./pacts-view-model.ts";
 import { clampCombatNumber, combatNumberLimits } from "./state-validation.ts";
 import {
   coverageBadge,
@@ -160,7 +161,6 @@ import {
   kismetAffixesWithRolls,
   kismetKindForRing,
   kismetRollControls,
-  kismetSlotKey,
   normalizeKismetRolls,
 } from "./kismet-crafting.js";
 import { transferKismetSlot } from "./kismet-slot-transfer.js";
@@ -409,9 +409,6 @@ let suppressSkillClick = false;
 let supportDrag = null;
 let suppressSupportClick = false;
 let suppressSupportContextMenu = false;
-let kismetDrag = null;
-let suppressKismetClick = false;
-let suppressKismetContextMenu = false;
 let gearDrag = null;
 let suppressGearClick = false;
 let selenaDanceDrag = null; // trait-tree drag (every tree hero: src/hero-trait-tree.js)
@@ -1536,7 +1533,47 @@ providePlannerCommands({
     persistPlannerState();
     renderConfiguration();
   },
+  // Pactspirits section (apps/web/src/features/pacts).
+  openPactspiritSelector: (slot) => {
+    selectedPactspiritSlot = slot;
+    $("[data-pactspirit-search]").value = "";
+    $("[data-pactspirit-category]").innerHTML = [
+      "All",
+      ...new Set(pactspiritCatalogSs13.map((entry) => entry.category)),
+    ]
+      .map((category) => `<option value="${category}">${category}</option>`)
+      .join("");
+    renderPactspiritSelector();
+    $("#pactspirit-selector").showModal();
+    $("[data-pactspirit-search]").focus();
+  },
+  removePactspirit: removeSelectedPactspirit,
+  // A level change is saved without recalculating the page (as before); the section shows the new level.
+  setPactspiritLevel: (name, level) => {
+    plannerState.pacts.spiritLevels[name] = level;
+    hidePlannerTooltip();
+    persistPlannerState();
+    renderPacts();
+  },
+  togglePactNode: (spiritName, nodeIndex) => {
+    plannerState.pacts.nativeNodeQuantities = togglePactNodeChain(
+      plannerState.pacts.nativeNodeQuantities,
+      spiritName,
+      nodeIndex,
+      orderedPactspiritNodes(pactspiritTreesSs13[spiritName]).length,
+    );
+    refreshPactCandidate();
+  },
+  openKismetCrafter,
+  clearKismetSlot: clearKismetNode,
+  openFateSlotSelector,
+  clearFateSlots,
+  moveKismet,
+  showToast: (text) => showToast(escapeHtml(text)),
+  hideTooltip: hidePlannerTooltip,
 });
+// The Pactspirits section's data (src/pacts-view-model.ts).
+provideViewSource("pacts", () => pactsView(plannerState.pacts));
 // The Config tab's data (src/view-sources.ts). Manual mode also needs the same build in automatic mode (which conditions
 // have a source); it is calculated only then.
 provideViewSource("configuration", () => {
@@ -4879,71 +4916,9 @@ function selectedPactspiritLevel(name) {
   return pactspiritLevel(name, plannerState.pacts.spiritLevels, fallback);
 }
 
+// The Pactspirits section is React (apps/web/src/features/pacts): it re-reads its source.
 function renderPacts() {
-  const slots = Array.from({ length: 3 }, (_, index) => plannerState.pacts.selectedSpirits?.[index] || "");
-  $("#pactspirit-count").textContent = `${slots.filter(Boolean).length}/3`;
-  $("#pactspirits").innerHTML = slots
-    .map((name, index) => {
-      const entry = pactspiritCatalogSs13.find((candidate) => candidate.name === name);
-      const level = selectedPactspiritLevel(name);
-      const tree = pactspiritTreesSs13[name] || [];
-      const sequence = orderedPactspiritNodes(tree);
-      const allocatedCount = sequence.filter(
-        (node, nodeIndex) =>
-          ["inner", "mid", "outer", "destiny"].includes(node.ring) &&
-          plannerState.pacts.nativeNodeQuantities?.[`${name}:${nodeIndex}`] > 0,
-      ).length;
-      const destinyIndex = sequence.findIndex((node) => node.ring === "destiny");
-      const destinyAllocated =
-        destinyIndex >= 0 && plannerState.pacts.nativeNodeQuantities?.[`${name}:${destinyIndex}`] > 0;
-      const nodeHtml = sequence
-        .map((node, nodeIndex) => {
-          const key = kismetSlotKey(name, nodeIndex),
-            equipped = plannerState.pacts.kismetSlots?.[key],
-            kismet = kismetCatalogSs13.find((item) => item.name === equipped?.name),
-            kind = kismetKindForRing(node.ring),
-            icon = kismet?.icon || node.icon;
-          const isFate = node.ring === "destiny",
-            isNative = node.ring === "inner" || node.ring === "mid",
-            allocatable = isNative || node.ring === "outer" || isFate,
-            unlock = fateSlotChoice(plannerState.pacts.fateUnlocks?.[name]);
-          const allocated = allocatable && plannerState.pacts.nativeNodeQuantities?.[`${name}:${nodeIndex}`] > 0;
-          const status =
-            allocatable && plannerState.pacts.kismetSlotMode
-              ? `<i class="pact-node-status" aria-hidden="true">${allocated ? "✓" : "+"}</i>`
-              : "";
-          const action = plannerState.pacts.kismetSlotMode
-            ? `${allocated ? "Allocated" : "Unallocated"}; left-click to ${allocated ? "refund" : "allocate"}${kind ? "; right-click for Kismet" : isFate ? "; right-click for Fate slots" : ""}${kismet ? "; drag to move or swap, right-click during drag to copy" : ""}`
-            : kind
-              ? "Click to craft a Kismet"
-              : isFate
-                ? "Click to unlock Fate slots"
-                : "";
-          return `<span class="pact-tree-node pact-tree-${node.ring}${allocated ? " allocated" : ""}${allocatable && plannerState.pacts.kismetSlotMode && !allocated ? " unallocated" : ""}${kismet ? " has-kismet" : ""}${kind || isFate ? " craftable" : ""}${unlock && isFate && allocated ? " fate-unlocked" : ""}" tabindex="0" ${allocatable && plannerState.pacts.kismetSlotMode ? `role="button" aria-pressed="${allocated}" data-pact-node-allocate="${escapeHtml(name)}:${nodeIndex}"` : ""} data-pact-node-tooltip ${kind ? `data-kismet-node="${escapeHtml(key)}" data-kismet-kind="${kind}"` : isFate ? `data-open-fate-slot="${escapeHtml(name)}"` : ""} data-node-name="${escapeHtml(node.name)}" data-node-effect="${escapeHtml(isFate ? (unlock ? "Undetermined Fate installed · unlocks additional Fate slots" : "+6% Damage · +6% Minion Damage") : node.effect)}" data-node-ring="${node.ring}" data-node-icon="${icon}" aria-label="${escapeHtml(`${node.name}: ${action}`)}"><img src="${icon}" alt="">${status}</span>`;
-        })
-        .join("");
-      const extraHtml = fateExtraSlots(
-        name,
-        destinyAllocated || !plannerState.pacts.kismetSlotMode ? plannerState.pacts.fateUnlocks?.[name] : null,
-      )
-        .map((slot) => {
-          const equipped = plannerState.pacts.kismetSlots?.[slot.key],
-            kismet = kismetCatalogSs13.find((item) => item.name === equipped?.name && item.kind === slot.kind),
-            label = `Extra ${slot.kind === "micro" ? "Micro" : "Medium"} Fate Slot ${slot.index}`;
-          return `<span class="pact-tree-node pact-tree-${slot.kind === "micro" ? "inner" : "mid"} pact-tree-extra${kismet ? " has-kismet" : ""} craftable" tabindex="0" data-pact-node-tooltip data-kismet-node="${escapeHtml(slot.key)}" data-kismet-kind="${slot.kind}" data-node-name="${label}" data-node-effect="${kismet ? escapeHtml(kismet.affixes.join(" · ")) : "Right-click to choose a Kismet"}" data-node-ring="${slot.kind === "micro" ? "inner" : "mid"}" data-node-icon="${kismet?.icon || ""}" aria-label="${escapeHtml(kismet ? `${kismet.name} equipped; right-click to edit` : label)}">${kismet ? `<img src="${kismet.icon}" alt="">` : '<span aria-hidden="true">+</span>'}</span>`;
-        })
-        .join("");
-      const treeHtml = sequence.length
-        ? `<div class="pact-tree" aria-label="${escapeHtml(name)} Pactspirit tree">${nodeHtml}${extraHtml}</div><small class="pact-node-count">${allocatedCount} allocated</small>`
-        : "";
-      return `<article class="pact-slot${entry ? ` rarity-${entry.rarity.toLowerCase()}` : ""}"><button type="button" class="pact-slot-select" data-open-pactspirit-selector="${index}" ${entry ? `data-pactspirit-name="${escapeHtml(name)}"` : ""}><span class="pact-slot-portrait ${entry ? "filled" : "empty"}">${entry ? `<img src="${entry.icon}" alt="">` : '<span aria-hidden="true">+</span>'}</span>${entry ? `<span><strong>${escapeHtml(name)}</strong><small>${entry.category} · ${entry.rarity}</small></span>` : `<span class="pact-slot-empty">Select Pactspirit ${index + 1}</span>`}</button>${entry ? `<label>Level<select data-pactspirit-level="${escapeHtml(name)}">${Array.from({ length: 6 }, (_, rank) => `<option value="${rank + 1}" ${level === rank + 1 ? "selected" : ""}>${rank + 1}</option>`).join("")}</select></label>${treeHtml}<button type="button" class="pact-slot-remove" data-remove-pactspirit="${index}" aria-label="Remove ${escapeHtml(name)}" title="Remove Pactspirit">×</button>` : ""}</article>`;
-    })
-    .join("");
-  const kismets = equippedKismetSummary(selenaScorchingBeamPactsSs13, plannerState.pacts);
-  const group = (kind, count, max) =>
-    `<section class="pact-kismet-group"><h3>${kind} Kismets <strong>${count}<span> / ${max}</span></strong></h3></section>`;
-  $("#pact-kismet-summary").innerHTML =
-    group("Micro", kismets.microCount, kismets.microMax) + group("Medium", kismets.mediumCount, kismets.mediumMax);
+  viewSourceChanged("pacts");
 }
 
 function removeSelectedPactspirit(index) {
@@ -7438,37 +7413,6 @@ document.addEventListener("pointermove", (event) => {
       supportDrag.target?.classList.add("support-drop-target");
     }
   }
-  if (kismetDrag && event.pointerId === kismetDrag.pointerId) {
-    const dx = event.clientX - kismetDrag.startX,
-      dy = event.clientY - kismetDrag.startY;
-    if (!kismetDrag.moved && Math.hypot(dx, dy) >= 5) {
-      kismetDrag.moved = true;
-      kismetDrag.element.classList.add("kismet-drag-source");
-      kismetDrag.ghost = document.createElement("div");
-      kismetDrag.ghost.className = "kismet-drag-ghost";
-      kismetDrag.ghost.innerHTML = `<img src="${kismetDrag.icon}" alt=""><b>+</b>`;
-      kismetDrag.ghost.style.width = `${kismetDrag.element.offsetWidth}px`;
-      kismetDrag.ghost.style.height = `${kismetDrag.element.offsetHeight}px`;
-      document.body.append(kismetDrag.ghost);
-      hidePlannerTooltip();
-    }
-    if (kismetDrag.moved) {
-      event.preventDefault();
-      kismetDrag.ghost.style.left = `${event.clientX - kismetDrag.ghost.offsetWidth / 2}px`;
-      kismetDrag.ghost.style.top = `${event.clientY - kismetDrag.ghost.offsetHeight / 2}px`;
-      const pointed = document.elementFromPoint(event.clientX, event.clientY);
-      const candidate = pointed?.closest(".pact-tree-node[data-kismet-node]");
-      const target =
-        candidate &&
-        candidate.dataset.kismetKind === kismetDrag.kind &&
-        (candidate.classList.contains("pact-tree-extra") || candidate.getAttribute("aria-pressed") === "true")
-          ? candidate
-          : null;
-      kismetDrag.target?.classList.remove("kismet-drop-target");
-      kismetDrag.target = target;
-      target?.classList.add("kismet-drop-target");
-    }
-  }
   if (selenaDanceDrag && event.pointerId === selenaDanceDrag.pointerId) {
     const dx = event.clientX - selenaDanceDrag.startX,
       dy = event.clientY - selenaDanceDrag.startY;
@@ -7946,18 +7890,6 @@ function clearTalentTreeState(name) {
 }
 
 document.addEventListener("contextmenu", (event) => {
-  if (kismetDrag?.moved) {
-    event.preventDefault();
-    kismetDrag.duplicate = true;
-    suppressKismetContextMenu = true;
-    kismetDrag.ghost?.classList.add("copying");
-    kismetDrag.element.classList.remove("kismet-drag-source");
-    return;
-  }
-  if (suppressKismetContextMenu) {
-    event.preventDefault();
-    return;
-  }
   if (supportDrag) {
     event.preventDefault();
     supportDrag.duplicate = true;
@@ -7977,39 +7909,6 @@ document.addEventListener("contextmenu", (event) => {
     commitFollower(
       setFollowerSkill(plannerState, Number(filledFollowerSlot.dataset.followerSkillSlot), null),
       "Skill slot cleared",
-    );
-    return;
-  }
-  const allocatablePactNode = event.target.closest(".pact-tree-node[data-pact-node-allocate]");
-  if (allocatablePactNode) {
-    event.preventDefault();
-    if (allocatablePactNode.dataset.openFateSlot) {
-      if (allocatablePactNode.getAttribute("aria-pressed") === "true")
-        openFateSlotSelector(allocatablePactNode.dataset.openFateSlot);
-      else showToast("Allocate Undetermined Fate Slots first");
-    } else if (allocatablePactNode.dataset.kismetNode)
-      openKismetCrafter(allocatablePactNode.dataset.kismetNode, allocatablePactNode.dataset.kismetKind);
-    return;
-  }
-  const fateNode = event.target.closest("[data-open-fate-slot]");
-  if (fateNode) {
-    event.preventDefault();
-    clearFateSlots(fateNode.dataset.openFateSlot);
-    return;
-  }
-  const kismetNode = event.target.closest("[data-kismet-node]");
-  if (kismetNode) {
-    event.preventDefault();
-    if (plannerState.pacts.kismetSlotMode)
-      openKismetCrafter(kismetNode.dataset.kismetNode, kismetNode.dataset.kismetKind);
-    else clearKismetNode(kismetNode.dataset.kismetNode);
-    return;
-  }
-  const equippedPact = event.target.closest(".pact-slot-select[data-pactspirit-name],.pact-slot-remove");
-  if (equippedPact) {
-    event.preventDefault();
-    removeSelectedPactspirit(
-      Number(equippedPact.dataset.openPactspiritSelector ?? equippedPact.dataset.removePactspirit),
     );
     return;
   }
@@ -8308,14 +8207,6 @@ document.addEventListener("contextmenu", (event) => {
     showToast("Talent tree removed");
     return;
   }
-  const spirit = event.target.closest("[data-pactspirit-name]");
-  if (spirit && plannerState.pacts.activeSpirits[spirit.dataset.pactspiritName] !== false) {
-    event.preventDefault();
-    plannerState.pacts.activeSpirits[spirit.dataset.pactspiritName] = false;
-    persistPlannerState();
-    renderCandidateViews();
-    showToast(`${escapeHtml(spirit.dataset.pactspiritName)} removed`);
-  }
 });
 
 $("#inventory-item-dialog").addEventListener("click", (event) => {
@@ -8388,42 +8279,9 @@ document.querySelector(".loadout-tab")?.addEventListener("keydown", (event) => {
   event.preventDefault();
   startActiveBuildRename(event.currentTarget);
 });
-document.addEventListener("keydown", (event) => {
-  if (
-    !["Enter", " "].includes(event.key) ||
-    !event.target.matches(
-      ".pact-tree-node[data-pact-node-allocate],.pact-tree-node[data-open-fate-slot],.pact-tree-node[data-kismet-node]",
-    )
-  )
-    return;
-  event.preventDefault();
-  event.target.click();
-});
 
 document.addEventListener("click", (event) => {
   if (slatePendingDrop && finishPendingSlateDrop(event)) return;
-  const pactAllocation = event.target.closest("[data-pact-node-allocate]");
-  if (pactAllocation) {
-    const key = pactAllocation.dataset.pactNodeAllocate;
-    const spiritName = pactAllocation.closest(".pact-slot")?.querySelector("[data-pactspirit-name]")
-      ?.dataset.pactspiritName;
-    const nodeIndex = Number(key.slice(key.lastIndexOf(":") + 1));
-    const nodeCount = orderedPactspiritNodes(pactspiritTreesSs13[spiritName]).length;
-    plannerState.pacts.nativeNodeQuantities = togglePactNodeChain(
-      plannerState.pacts.nativeNodeQuantities,
-      spiritName,
-      nodeIndex,
-      nodeCount,
-    );
-    refreshPactCandidate();
-    return;
-  }
-  if (plannerState.pacts.kismetSlotMode && event.target.closest(".pact-tree-extra")) return;
-  const fateNode = event.target.closest("[data-open-fate-slot]");
-  if (fateNode) {
-    openFateSlotSelector(fateNode.dataset.openFateSlot);
-    return;
-  }
   const fateChoice = event.target.closest("[data-select-fate-slots]");
   if (fateChoice) {
     selectFateSlots(fateChoice.dataset.selectFateSlots);
@@ -8436,11 +8294,6 @@ document.addEventListener("click", (event) => {
   }
   if (event.target.closest("[data-close-fate-slot]")) {
     $("#fate-slot-selector").close();
-    return;
-  }
-  const kismetNode = event.target.closest("[data-kismet-node]");
-  if (kismetNode) {
-    openKismetCrafter(kismetNode.dataset.kismetNode, kismetNode.dataset.kismetKind);
     return;
   }
   const kismetChoice = event.target.closest("[data-select-kismet]");
@@ -8459,21 +8312,6 @@ document.addEventListener("click", (event) => {
   if (event.target.closest("[data-close-kismet-crafter]")) {
     $("#kismet-crafter").close();
     activeKismetSlot = null;
-    return;
-  }
-  const openPact = event.target.closest("[data-open-pactspirit-selector]");
-  if (openPact) {
-    selectedPactspiritSlot = Number(openPact.dataset.openPactspiritSelector);
-    $("[data-pactspirit-search]").value = "";
-    $("[data-pactspirit-category]").innerHTML = [
-      "All",
-      ...new Set(pactspiritCatalogSs13.map((entry) => entry.category)),
-    ]
-      .map((category) => `<option value="${category}">${category}</option>`)
-      .join("");
-    renderPactspiritSelector();
-    $("#pactspirit-selector").showModal();
-    $("[data-pactspirit-search]").focus();
     return;
   }
   if (event.target.closest("[data-close-pactspirit-selector]")) {
@@ -10375,14 +10213,6 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("pointerdown", (event) => {
-  if (kismetDrag?.moved && event.button === 2) {
-    event.preventDefault();
-    kismetDrag.duplicate = true;
-    suppressKismetContextMenu = true;
-    kismetDrag.ghost?.classList.add("copying");
-    kismetDrag.element.classList.remove("kismet-drag-source");
-    return;
-  }
   if (supportDrag && event.button === 2) {
     event.preventDefault();
     supportDrag.duplicate = true;
@@ -10480,32 +10310,6 @@ document.addEventListener("pointerdown", (event) => {
         fromSlot: slot,
         setupKey: setupStateKey(setup),
         tab: activeSkillBoardTab,
-        startX: event.clientX,
-        startY: event.clientY,
-        moved: false,
-        duplicate: false,
-        target: null,
-        ghost: null,
-      };
-    }
-    return;
-  }
-  const kismetNode = event.target.closest(".pact-tree-node.has-kismet[data-kismet-node]");
-  if (kismetNode && event.button === 0 && plannerState.pacts.kismetSlotMode) {
-    const key = kismetNode.dataset.kismetNode,
-      slot = plannerState.pacts.kismetSlots?.[key];
-    const entry = kismetCatalogSs13.find(
-      (item) => item.name === slot?.name && item.kind === kismetNode.dataset.kismetKind,
-    );
-    if (entry) {
-      kismetNode.setPointerCapture?.(event.pointerId);
-      kismetDrag = {
-        pointerId: event.pointerId,
-        element: kismetNode,
-        key,
-        kind: entry.kind,
-        name: entry.name,
-        icon: entry.icon,
         startX: event.clientX,
         startY: event.clientY,
         moved: false,
@@ -10920,43 +10724,9 @@ function finishSelenaDanceDrag(event, cancelled = false) {
     `Moved ${drag.name} under ${rules.rowName(to)}${other ? ` · ${other} moved under ${rules.rowName(drag.from)}` : ""}`,
   );
 }
-function finishKismetDrag(event, cancelled = false) {
-  if (
-    !kismetDrag ||
-    event.pointerId !== kismetDrag.pointerId ||
-    (!cancelled && event.pointerType === "mouse" && event.button !== 0)
-  )
-    return;
-  const drag = kismetDrag;
-  kismetDrag = null;
-  drag.target?.classList.remove("kismet-drop-target");
-  drag.element.classList.remove("kismet-drag-source");
-  drag.ghost?.remove();
-  if (drag.duplicate)
-    setTimeout(() => {
-      suppressKismetContextMenu = false;
-    }, 300);
-  if (!drag.moved) return;
-  suppressKismetClick = true;
-  setTimeout(() => {
-    suppressKismetClick = false;
-  }, 400);
-  const pointed = cancelled
-    ? null
-    : document.elementFromPoint(event.clientX, event.clientY)?.closest(".pact-tree-node[data-kismet-node]");
-  const target =
-    pointed &&
-    pointed.dataset.kismetKind === drag.kind &&
-    (pointed.classList.contains("pact-tree-extra") || pointed.getAttribute("aria-pressed") === "true")
-      ? pointed
-      : null;
-  if (!target) {
-    showToast("Invalid drop · Kismet returned to its slot");
-    return;
-  }
-  const result = transferKismetSlot(plannerState.pacts.kismetSlots, drag.key, target.dataset.kismetNode, {
-    duplicate: drag.duplicate,
-  });
+// Moves (or copies) a Kismet dropped on another slot of its kind (apps/web/src/features/pacts/use-kismet-drag.ts).
+function moveKismet(fromKey, toKey, kind, duplicate) {
+  const result = transferKismetSlot(plannerState.pacts.kismetSlots, fromKey, toKey, { duplicate });
   if (result.error) {
     showToast(result.error);
     return;
@@ -10968,7 +10738,7 @@ function finishKismetDrag(event, cancelled = false) {
     kismetSlots: result.slots,
   });
   if (summary.microCount > summary.microMax || summary.mediumCount > summary.mediumMax) {
-    showToast(`${drag.kind === "micro" ? "Micro" : "Medium"} Kismet slots are full`);
+    showToast(`${kind === "micro" ? "Micro" : "Medium"} Kismet slots are full`);
     return;
   }
   plannerState.pacts.kismetSlots = result.slots;
@@ -11018,7 +10788,6 @@ document.addEventListener("pointerup", (event) => {
   finishGearDrag(event);
   finishSkillDrag(event);
   finishSupportDrag(event);
-  finishKismetDrag(event);
   finishPrismDrag(event);
   finishSlateDrag(event);
   finishSelenaDanceDrag(event);
@@ -11027,7 +10796,6 @@ document.addEventListener("pointercancel", (event) => {
   finishGearDrag(event, true);
   finishSkillDrag(event, true);
   finishSupportDrag(event, true);
-  finishKismetDrag(event, true);
   finishPrismDrag(event, true);
   finishSlateDrag(event, true);
   finishSelenaDanceDrag(event, true);
@@ -11035,7 +10803,6 @@ document.addEventListener("pointercancel", (event) => {
 document.addEventListener("lostpointercapture", (event) => {
   if (skillDrag?.pointerId === event.pointerId) finishSkillDrag(event, true);
   if (supportDrag?.pointerId === event.pointerId) finishSupportDrag(event, true);
-  if (kismetDrag?.pointerId === event.pointerId) finishKismetDrag(event, true);
   if (selenaDanceDrag?.pointerId === event.pointerId) finishSelenaDanceDrag(event, true);
 });
 document.addEventListener("dragstart", (event) => {
@@ -11071,17 +10838,6 @@ document.addEventListener(
   (event) => {
     if (suppressSupportClick && event.target.closest("#skill-groups")) {
       suppressSupportClick = false;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }
-  },
-  true,
-);
-document.addEventListener(
-  "click",
-  (event) => {
-    if (suppressKismetClick && event.target.closest("#pactspirits")) {
-      suppressKismetClick = false;
       event.preventDefault();
       event.stopImmediatePropagation();
     }
@@ -11352,12 +11108,6 @@ document.addEventListener("change", (event) => {
   }
   if (event.target.matches("[data-pactspirit-category]")) {
     renderPactspiritSelector();
-    return;
-  }
-  if (event.target.matches("[data-pactspirit-level]")) {
-    plannerState.pacts.spiritLevels[event.target.dataset.pactspiritLevel] = Number(event.target.value);
-    hidePlannerTooltip();
-    persistPlannerState();
     return;
   }
   if (event.target.matches("[data-slate-equipped]")) {

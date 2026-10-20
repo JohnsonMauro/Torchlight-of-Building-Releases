@@ -3,6 +3,7 @@
 // is read again only then (and only while a view subscribes). Edits go the other way, through src/planner-commands.js.
 import type { PlannerResult } from "./planner-api.ts";
 import type { PlannerState } from "./planner-state.ts";
+import type { PactsView } from "./pacts-view-model.ts";
 
 /** The Config tab: the calculated build and the combat settings it was calculated with. */
 export interface ConfigurationSource {
@@ -16,6 +17,8 @@ export interface ConfigurationSource {
 
 export interface ViewSources {
   configuration: ConfigurationSource;
+  /** The Pactspirits section (src/pacts-view-model.ts). */
+  pacts: PactsView;
 }
 export type ViewSourceName = keyof ViewSources;
 
