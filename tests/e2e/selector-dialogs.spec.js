@@ -1,7 +1,7 @@
 // The planner's small picker dialogs, opened from the Build page: the hero selector (Change Hero), the follower
 // selector (Change Follower), the Pactspirit selector (a pact slot), and Sage's scent and Carino's Special Ammo
 // selectors (the HERO tab), the talent tree and core talent pickers, and the Fate slot selector (a Pactspirit's
-// Undetermined Fate node). Each lists its
+// Undetermined Fate node), and the prism inventory (Install Prism / the installed prism). Each lists its
 // choices, marks the current one, filters by the search box, and closes from its × button, from a click outside it and
 // from Escape, opening again with the search cleared. Written against the legacy dialogs before they move to React, so
 // both must pass it unchanged.
@@ -410,5 +410,57 @@ test("the Fate slot selector lists the unlocks with the current one marked, stor
   await node.click({ button: "right" });
   await dialog.getByRole("button", { name: "Close Fate slot selector" }).click();
   await expect(dialog).toBeHidden();
+  await planner.expectNoErrors();
+});
+
+test("the prism inventory lists the crafted prisms, where each is installed, and unequips or deletes them", async ({
+  page,
+}) => {
+  const { planner, talents } = await openTree(page, "Tree 4");
+  const dialog = talents.prismInventory();
+  const crafter = page.locator("#prism-crafter-dialog");
+  await talents.prismNode().click();
+  await expect(dialog.locator("#prism-inventory-title")).toHaveText("Install Prism - Tree Slot 4");
+  const row = dialog.locator(".prism-inventory-item");
+  await expect(row).toHaveCount(1);
+  await expect(row.locator("strong")).toHaveText("Ethereal Prism: Haze");
+  await expect(row.locator("small")).toHaveText("Ethereal Prism · 1x1 area · Installed in Lich");
+  await expect(row.locator(".prism-item-icon img")).toHaveAttribute("src", /\S/);
+  await expect(row.getByRole("button", { name: "Equipped", exact: true })).toBeEnabled();
+
+  await row.getByRole("button", { name: "Edit Ethereal Prism: Haze" }).click();
+  await expect(crafter).toBeVisible();
+  await crafter.locator("[data-cancel-prism-crafter]").click();
+  await expect(crafter).toBeHidden();
+  await expect(dialog).toBeVisible();
+
+  await dialog.getByRole("button", { name: "Unequip current Prism" }).click();
+  await expect(row.getByRole("button", { name: "Install", exact: true })).toBeEnabled();
+  await expect(row.locator("small")).toHaveText("Ethereal Prism · 1x1 area");
+  await expect(dialog.getByRole("button", { name: "Unequip current Prism" })).toHaveCount(0);
+  expect((await talents.stored()).installedPrisms.Lich).toBeUndefined();
+
+  await row.getByRole("button", { name: "Delete Ethereal Prism: Haze" }).click();
+  await expect(dialog.locator(".prism-inventory-empty")).toContainText("No prisms crafted yet");
+  expect((await talents.stored()).prismInventory).toEqual([]);
+  await dialog.getByRole("button", { name: "Craft First Prism" }).click();
+  await expect(crafter).toBeVisible();
+  await crafter.locator("[data-cancel-prism-crafter]").click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Close Prism inventory" }).click();
+  await expect(dialog).toBeHidden();
+  await planner.expectNoErrors();
+});
+
+test("deleting the installed prism also takes it off its node", async ({ page }) => {
+  const { planner, talents } = await openTree(page, "Tree 4");
+  const dialog = talents.prismInventory();
+  await talents.prismNode().click();
+  await dialog.getByRole("button", { name: "Delete Ethereal Prism: Haze" }).click();
+  await expect(talents.prismNode()).toHaveCount(0);
+  const stored = await talents.stored();
+  expect(stored.installedPrisms.Lich).toBeUndefined();
+  expect(stored.installedPrismNodes.Lich).toBeUndefined();
+  await expect(dialog.getByRole("button", { name: "Craft Prism", exact: true })).toBeVisible();
   await planner.expectNoErrors();
 });
