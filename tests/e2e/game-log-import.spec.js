@@ -137,6 +137,44 @@ test("a chosen log lists its logins newest first; a login shows its summary and 
   await planner.expectNoErrors();
 });
 
+test("a login filled from an older one and changed afterwards says both", async ({ page }) => {
+  const planner = await openDialog(page);
+  const older = { stamp: "2026.10.17-10.00.00:000", player: "p-carino", hero: "2001", level: "58" };
+  const newer = { stamp: "2026.10.19-13.30.00:000", player: "p-carino", hero: "2001", level: "60" };
+  const text = [
+    "Log file open, 10/17/26 09:59:00",
+    ...login(older),
+    "+heroCharacterv3OverView+pointOverView+1 [1]",
+    "[2026.10.17-10.00.01:000][  1]LogTemp: Display: after login",
+    ...login(newer),
+    "[2026.10.19-13.31.00:000][  1]LogTemp: Display: ItemChange@ ProtoName=PutOn id=1 start",
+    "[2026.10.19-23.59.00:000][  1]LogTemp: Display: end",
+    "",
+  ].join("\n");
+  await fileInput(page).setInputFiles(logFile(text));
+  await expect(logins(page).first()).toHaveText(
+    "Divineshot Carino · Ranger of GloryLv 60 · 2026-10-19 13:30Build changed after this login (1 change)",
+  );
+  await logins(page).first().click();
+  const summary = dialog(page).locator("#import-game-log-summary");
+  const hero = summary.locator("tr", { has: page.getByRole("rowheader", { name: "Hero traits and memories" }) });
+  await expect(hero.locator("td").nth(2)).toHaveText("2026-10-17 10:00from an older login; may be outdated");
+  await expect(hero.locator("td small")).toHaveAttribute(
+    "title",
+    "2026-10-17 10:00: logged 52 h before the selected login",
+  );
+  await expect(summary).toContainText(
+    "The build changed after this login. The game writes the build only at login, so log in again to import the current build.",
+  );
+  const skipped = summary.locator("details.game-log-skipped");
+  await expect(skipped).not.toHaveAttribute("open");
+  await skipped.locator("summary").click();
+  await expect(skipped.locator("li").first()).toHaveText(
+    "Character 1 gear, skill or slate change(s) were logged after this snapshot; the game only dumps the build at login, so re-log in to refresh it",
+  );
+  await planner.expectNoErrors();
+});
+
 test("a chosen file that holds no login says why, with its details", async ({ page }) => {
   const planner = await openDialog(page);
   const cases = [
