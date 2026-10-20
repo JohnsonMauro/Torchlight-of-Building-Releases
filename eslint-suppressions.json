@@ -1,0 +1,158 @@
+{
+  "src/affix-attributes.js": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/aim-model.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app.js": {
+    "no-empty": {
+      "count": 3
+    },
+    "no-unused-vars": {
+      "count": 44
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/attack-hit-profiles.js": {
+    "no-useless-escape": {
+      "count": 4
+    }
+  },
+  "src/attribute-panel.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/build-code-compact.js": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/carino-traits.js": {
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "src/damage-path-panel.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/data/skills/special-support-tiers-ss13.js": {
+    "no-unused-vars": {
+      "count": 6
+    }
+  },
+  "src/dummy-recount.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine.js": {
+    "no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/erika-traits.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/follower-model.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/follower-panel.js": {
+    "no-empty": {
+      "count": 1
+    },
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "src/game-log-import.js": {
+    "no-unused-vars": {
+      "count": 4
+    },
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "src/game-log-local.js": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/hero-memory-model.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/planner-state.js": {
+    "no-empty": {
+      "count": 5
+    },
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/planner.js": {
+    "no-unused-vars": {
+      "count": 7
+    }
+  },
+  "src/recovery-core.js": {
+    "no-empty": {
+      "count": 4
+    }
+  },
+  "src/sage-traits.js": {
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "src/skill-coverage.js": {
+    "no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-escape": {
+      "count": 1
+    }
+  },
+  "src/skill-dot-model.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/skill-hit-model.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/skill-hit-path.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/stat-sheet-panel.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/youga-ultimate-one.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  }
+}
