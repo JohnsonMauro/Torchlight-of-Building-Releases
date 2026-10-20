@@ -14,7 +14,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc -p apps/web",
+    "typecheck": "tsc -p apps/web && tsc -p .",
     "test": "node --test \"tests/**/*.test.js\"",
     "test:e2e": "pnpm build:web && playwright test",
     "test:desktop": "pnpm build:web && playwright test -c playwright.desktop.config.js",
@@ -55,7 +55,7 @@
     "files": [
       "electron/**",
       "dist-web/**",
-      "src/**/*.js",
+      "src/**/*.{js,ts}",
       "package.json"
     ],
     "win": {

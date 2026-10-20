@@ -7,7 +7,7 @@
 // Unresolved items are skipped and listed in the report, never guessed. Browser-safe: no Node APIs.
 // Design and evidence: research/game-log-import-2026-10-12.md.
 import { defaultPlannerState, normalizePlannerState } from "./planner-state.js";
-import { validatePlannerState } from "./state-validation.js";
+import { validatePlannerState } from "./state-validation.ts";
 import { defaultFollowerState } from "./follower-model.js";
 import { equipmentSlots } from "./data/gear/crafting-catalog-ss13.js";
 import { rareBaseByGameId, rareBaseByName } from "./rare-base-lookup.js";

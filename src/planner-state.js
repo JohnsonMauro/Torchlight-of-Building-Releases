@@ -1,5 +1,5 @@
 import { normalizeTalentTreeSelection } from "./talent-selection-rules.js";
-import { validatePlannerState } from "./state-validation.js";
+import { validatePlannerState } from "./state-validation.ts";
 import { migrateTreeTraits } from "./hero-trait-tree.js";
 import { clampMemoryEnhancement, traitLevelBonusForEnhancement } from "./hero-memory-rules.js";
 import { defaultPactspiritSlots } from "./pactspirit-selection.js";

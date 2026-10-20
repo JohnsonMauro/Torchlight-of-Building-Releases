@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { validatePlannerState } from "../../src/state-validation.js";
+import { validatePlannerState } from "../../src/state-validation.ts";
 import { defaultPlannerState } from "../../src/planner-state.js";
 
 const youga = JSON.parse(
