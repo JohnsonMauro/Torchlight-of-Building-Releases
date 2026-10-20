@@ -225,7 +225,7 @@ export function decodeGameLogBytes(bytes, encoding = detectGameLogEncoding(bytes
 // stamped lines, and "<Category>: <Verbosity>:" lines from the engine (LogInit, LogTemp, LogConfig…) or the game
 // (TLShipping, TLGame, TLNetGame…). The user's own logs (2026-10-19) open with "Log file open," and unstamped
 // "LogTemp: Display:" lines; stamped lines follow. A file with none of these is not a game log.
-const LOG_OPEN = /^﻿?Log file open,/;
+const LOG_OPEN = /^\uFEFF?Log file open,/;
 const LOG_LINE = /^\[\d{4}\.\d{2}\.\d{2}-\d{2}\.\d{2}\.\d{2}:\d{3}\]/m;
 const LOG_CATEGORY_LINE = /^(?:\[[^\]\n]*\]\[\s*\d+\])?(?:Log[A-Z]\w*|TL[A-Z]\w*): (?:Display|Warning|Error|Log|Verbose|VeryVerbose|Fatal):/m;
 const MARKER_WINDOW = 1 << 20;
@@ -242,7 +242,7 @@ export function hasGameLogMarkers(text) {
 /** "empty" (nothing, or only NUL padding / whitespace), "binary" (mostly control or undecodable characters) or "text". */
 function textKind(text) {
   const head = String(text || "").slice(0, 65536);
-  if (!head.replace(/[\0\s﻿]+/g, "")) return "empty";
+  if (!head.replace(/[\0\s\uFEFF]+/g, "")) return "empty";
   let odd = 0;
   for (let i = 0; i < head.length; i += 1) {
     const code = head.charCodeAt(i);
