@@ -2933,6 +2933,15 @@ function equipHeroMemory(memory) {
   }
   hidePlannerTooltip();
   plannerState.hero.equippedMemoryIds ||= {};
+  // The game-log import keys a memory by its level alone ("level45"), the planner by hero ("<hero>:level45"), and the
+  // calculation counts every key: the level's other key goes, so one memory sits at a level.
+  const level = tier.replace(/^.*:/, "");
+  for (const key of [level, `${plannerState.hero.selectedHeroId}:${level}`])
+    if (key !== tier && plannerState.hero.equippedMemoryIds[key]) {
+      delete plannerState.hero.equippedMemoryIds[key];
+      plannerState.hero.memories[key] = "";
+      plannerState.hero.memoryTraitLevels[key] = 0;
+    }
   plannerState.hero.equippedMemoryIds[tier] = memory.id;
   plannerState.hero.memories[tier] = memory.name;
   plannerState.hero.memoryTraitLevels[tier] = traitLevelBonusForEnhancement(memory.enhancementLevel);
