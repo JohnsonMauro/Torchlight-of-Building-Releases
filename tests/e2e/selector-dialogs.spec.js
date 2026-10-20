@@ -111,7 +111,9 @@ test("the follower selector shows a follower's tooltip, closes from × and outsi
   page,
 }) => {
   const { planner, follower, dialog } = await openFollowerSelector(page);
+  // The tooltip moves into the dialog, which scrolls it a little, and a scroll hides the tooltip: each try hovers anew.
   await expect(async () => {
+    await page.mouse.move(0, 0);
     await follower.selectorChoice("Lion Queen Normal").hover();
     await expect(dialog.locator("#planner-tooltip")).toBeVisible({ timeout: 500 });
   }).toPass();
