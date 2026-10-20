@@ -22,7 +22,7 @@ import { aimUptimeAfterToggle } from "./aim-controls.js";
 import { provideViewSource, viewSourceChanged } from "./bridge/view-sources.ts";
 import { pactsView, pactspiritSelectorView } from "./bridge/pacts-view-model.ts";
 import { carinoAmmoSelectorView, sageScentSelectorView } from "./bridge/hero-dialogs-view-model.ts";
-import { displayTexts } from "./bridge/display-text.ts";
+import { displayTexts, htmlTextSegments } from "./bridge/display-text.ts";
 import { skillsView } from "./bridge/skills-view-model.ts";
 import { slatesView } from "./bridge/slates-view-model.ts";
 import { clampCombatNumber, combatNumberLimits } from "../engine/state/state-validation.ts";
@@ -1586,6 +1586,18 @@ providePlannerCommands({
   },
   openSkillSelector,
   chooseSkillSelectorEntry,
+  confirmSkillSelector,
+  clearSkillSelectorSlot,
+  setSelectorLevel,
+  stepSelectorLevel,
+  setSpecialTier,
+  setSpecialRoll,
+  setSupportStars,
+  setProgressionTier,
+  setProgressionRoll,
+  setAffixLineTier,
+  setAffixRoll,
+  setAffixChoice,
   removeSkill: removeBoardSkill,
   removeSupport: removeBoardSupport,
   moveSkill: moveBoardSkill,
@@ -2808,24 +2820,6 @@ function openFollowerSkillSelector(slot) {
   renderSkillSelector();
   $("#skill-selector").showModal();
   $("#skill-selector-search").focus();
-}
-function renderFollowerSkillSelector() {
-  const highlighted = followerSelectorEntries(plannerState, followerSelectorSlot)[selectorChoiceIndex] || null;
-  if (followerSelectorDraft?.name !== highlighted?.name)
-    followerSelectorDraft = highlighted
-      ? followerSkillDraft(plannerState, followerSelectorSlot, highlighted.name)
-      : null;
-  const view = followerSkillSelectorView({
-    state: plannerState,
-    slot: followerSelectorSlot,
-    choiceIndex: selectorChoiceIndex,
-    draft: followerSelectorDraft,
-    artwork,
-  });
-  $("#skill-selector-detail").innerHTML = view.detailHtml;
-  const confirm = $("[data-confirm-skill-selector]");
-  confirm.disabled = view.confirmDisabled;
-  confirm.textContent = view.confirmLabel;
 }
 function commitFollower(next, message) {
   plannerState.followers = next;
@@ -5234,8 +5228,8 @@ function selectorTargetSupport() {
     }
   return slots[selectorTargetSupportSlot];
 }
-// The skill selector's title and list (apps/web/src/shell/dialogs/SkillSelectorDialog.tsx); the dialog filters the
-// list by its search box. The detail beside it is still rendered here (renderSkillSelector).
+// The skill selector's data (apps/web/src/shell/dialogs/SkillSelectorDialog.tsx): the title and list, which the dialog
+// filters by its search box, and the highlighted choice's detail and Confirm button (skillSelectorDetail).
 function skillSelectorSource() {
   const result = (entry, index, tintClass = "") => ({
     index,
@@ -5255,6 +5249,7 @@ function skillSelectorSource() {
         heading: group.heading,
         results: group.results.map((item) => ({ ...item, ...displayTexts({ name: item.name, tags: item.tags }) })),
       })),
+      ...skillSelectorDetail(),
     };
   }
   const entries = selectorEntries();
@@ -5272,23 +5267,56 @@ function skillSelectorSource() {
     placeholder: selectorKind === "skill" ? "Search skills…" : "Search supports…",
     selected: selectorChoiceIndex,
     groups: [{ heading: null, results: entries.map((entry, index) => result(entry, index)) }],
+    ...skillSelectorDetail(),
   };
 }
+// Before the skill selector shows a support with tiers, its configuration is filled in with the support's defaults (the
+// slot's saved values kept); a follower skill's editor draft follows the highlighted skill.
 function renderSkillSelector() {
-  viewSourceChanged("skillSelector");
   if (selectorKind === "follower-skill") {
-    renderFollowerSkillSelector();
-    return;
+    const highlighted = followerSelectorEntries(plannerState, followerSelectorSlot)[selectorChoiceIndex] || null;
+    if (followerSelectorDraft?.name !== highlighted?.name)
+      followerSelectorDraft = highlighted
+        ? followerSkillDraft(plannerState, followerSelectorSlot, highlighted.name)
+        : null;
+  } else {
+    const entry = selectorEntries()[selectorChoiceIndex];
+    const supportSelector = selectorKind === "support" || selectorKind === "hero-support";
+    if (entry && supportSelector && (configurableSupportTierData(entry.name) || progressionSupportTierData(entry.name)))
+      selectorSpecialConfig = {
+        ...defaultConfigurableSupportConfig(entry.name, selectorTargetSupport()?.effects || entry.effects),
+        ...(normalizeProgressionSupportConfig(entry.name, selectorSpecialConfig) || {}),
+      };
+  }
+  viewSourceChanged("skillSelector");
+}
+const rangeText = ({ min, max }) => (min === max ? min : `${min}–${max}`);
+const rollControl = (range, value, index = 0) => ({ index, min: range.min, max: range.max, step: range.step, value });
+// The skill selector's detail (apps/web/src/shell/dialogs/SkillSelectorDetail.tsx) for the highlighted choice, and its
+// Confirm button. A follower skill's detail is still the HTML of src/app/follower-panel.js followerSkillSelectorView.
+function skillSelectorDetail() {
+  if (selectorKind === "follower-skill") {
+    const view = followerSkillSelectorView({
+      state: plannerState,
+      slot: followerSelectorSlot,
+      choiceIndex: selectorChoiceIndex,
+      draft: followerSelectorDraft,
+      artwork,
+    });
+    return {
+      detail: { kind: "follower", html: view.detailHtml },
+      confirm: { label: view.confirmLabel, disabled: view.confirmDisabled },
+    };
   }
   const entries = selectorEntries();
   const selectedSetup = selectorTargetSetup();
   const supportSelector = selectorKind === "support" || selectorKind === "hero-support";
   const entry = entries[selectorChoiceIndex];
-  if (!entry) {
-    $("#skill-selector-detail").innerHTML = `<p>Select a ${selectorKind} to configure</p>`;
-    $("[data-confirm-skill-selector]").disabled = true;
-    return;
-  }
+  if (!entry)
+    return {
+      detail: { kind: "empty", message: `Select a ${selectorKind} to configure` },
+      confirm: { label: "Confirm", disabled: true },
+    };
   const currentSupportName = supportSelector ? selectorTargetSupport()?.name : null;
   const installed =
     selectorKind === "support"
@@ -5311,139 +5339,145 @@ function renderSkillSelector() {
       Boolean((plannerState.skills.supportOrder[setupStateKey(selectedSetup)] || [])[selectorTargetSupportSlot])) ||
     (selectorKind === "support" && selectorTargetSupportSlot < activeSupportCount);
   const full = selectorKind === "support" && (!selectedSetup || (activeSupportCount >= 5 && !replacingSupport));
-  const tags = entry.tags || ["Spell", "Support"];
+  const config = selectorSpecialConfig;
+  // Star supports (src/data/skills/special-support-tiers-ss13.js specialSupportTierData): one main affix with stars.
   const specialTiers = supportSelector ? configurableSupportTierData(entry.name) : null;
   const progressionTiers = supportSelector ? progressionSupportTierData(entry.name) : null;
-  const starSupport = Boolean(specialSupportTierData(entry.name));
-  if (specialTiers || progressionTiers)
-    selectorSpecialConfig = {
-      ...defaultConfigurableSupportConfig(entry.name, selectorTargetSupport()?.effects || entry.effects),
-      ...(normalizeProgressionSupportConfig(entry.name, selectorSpecialConfig) || {}),
-    };
-  const selectedTier = specialTiers?.find((tier) => tier.tier === selectorSpecialConfig?.tier) || specialTiers?.[0];
-  const progressionTier =
-    progressionTiers?.find((tier) => tier.tier === selectorSpecialConfig?.tier) || progressionTiers?.[0];
+  const selectedTier = specialTiers?.find((tier) => tier.tier === config?.tier) || specialTiers?.[0];
+  const progressionTier = progressionTiers?.find((tier) => tier.tier === config?.tier) || progressionTiers?.[0];
   const skillDisplay = selectorKind === "skill" ? skillDisplaySs13(entry, selectorLevel) : null;
   const supportDisplay = supportSelector ? supportDisplaySs13(entry, selectorLevel) : null;
-  const facts = skillDisplay?.facts || supportDisplay?.facts || [];
-  const tierControlHtml = (tiers, tierValue, rollValue, prefix = "", effectOverride = "") => {
-    const tier = tiers.find((item) => item.tier === tierValue) || tiers[0],
-      sign = !prefix && rollValue >= 0 ? "+" : "",
-      unit = prefix ? " s" : "%";
-    return `<div class="special-affix-block"><div class="special-support-heading"><strong>${prefix ? "Activation affix" : "Main affix"}</strong><span>Tier ${tier.tier}</span></div><div class="special-tier-buttons ${tiers.length === 4 ? "four-tiers" : ""}">${tiers.map((item) => `<button type="button" class="${item.tier === tier.tier ? "active" : ""}" data-${prefix || "special"}-tier="${item.tier}">T${item.tier}<small>${item.min === item.max ? item.min : `${item.min}–${item.max}`}${unit}</small></button>`).join("")}</div><label class="special-roll-label"><span>${escapeHtml(effectOverride || tier.effect)}</span><strong>${sign}${rollValue}${unit}</strong></label><div class="special-roll-control"><input type="range" min="${tier.min}" max="${tier.max}" step="${tier.step}" value="${rollValue}" data-${prefix || "special"}-roll><input type="number" min="${tier.min}" max="${tier.max}" step="${tier.step}" value="${rollValue}" data-${prefix || "special"}-roll-number><output>${sign}${rollValue}${unit}</output></div></div>`;
-  };
+  const stars = (value) => ({ value, bonus: specialSupportStarBonus(value) });
   const affixLines = supportSelector ? activationMediumAffixLines(entry.name) : null;
-  const affixTierLabel = (option) =>
-    option.ranges.length
-      ? option.ranges.map(({ min, max }) => (min === max ? min : `${min}–${max}`)).join(" · ")
-      : "Fixed";
-  const mediumControlsHtml =
-    affixLines && progressionTier
-      ? (() => {
-          const lineConfigs = activationMediumLineConfigs(entry.name, selectorSpecialConfig);
-          const selectedText = new Map(
-            (activationMediumSelectedLines(entry.name, selectorSpecialConfig) || []).map((line) => [
-              line.index,
-              line.text,
-            ]),
-          );
-          return `<section class="special-support-config activation-affix-config"><div class="special-affix-block"><div class="special-support-heading"><strong>Set all affixes</strong><span>Tier ${progressionTier.tier}</span></div><div class="special-tier-buttons ${progressionTiers.length === 4 ? "four-tiers" : ""}">${progressionTiers.map((tier) => `<button type="button" class="${tier.tier === progressionTier.tier ? "active" : ""}" data-progression-tier="${tier.tier}">T${tier.tier}</button>`).join("")}</div></div>${(() => {
-            let shown = 0;
-            return affixLines
-              .map((line, index) => {
-                const members = line.choiceGroup
-                  ? affixLines
-                      .map((other, otherIndex) => (other.choiceGroup === line.choiceGroup ? otherIndex : -1))
-                      .filter((otherIndex) => otherIndex >= 0)
-                  : null;
-                if (members && index !== (members.find((member) => lineConfigs[member].tier != null) ?? members[0]))
-                  return "";
-                const choiceLabel = (member) =>
-                  /cooldown/.test(affixLines[member].signature) ? "Cooldown Recovery Speed" : "Additional Duration";
-                const choiceSelect = members
-                  ? `<label class="activation-roll-kind activation-affix-choice"><span>Affix stat</span><select data-affix-choice="${index}">${members.map((member) => `<option value="${member}" ${member === index ? "selected" : ""}>${choiceLabel(member)}</option>`).join("")}</select></label>`
-                  : "";
-                const selected = lineConfigs[index],
-                  option = line.options.find((item) => item.tier === selected.tier);
-                const buttons = [
-                  ...line.options.map(
-                    (item) =>
-                      `<button type="button" class="${item.tier === selected.tier ? "active" : ""}" data-affix-line="${index}" data-affix-tier="${item.tier}">T${item.tier}<small>${escapeHtml(String(affixTierLabel(item)))}</small></button>`,
-                  ),
-                  ...(line.optional && !members
-                    ? [
-                        `<button type="button" class="${selected.tier == null ? "active" : ""}" data-affix-line="${index}" data-affix-tier="off">Off<small>Not rolled</small></button>`,
-                      ]
-                    : []),
-                ];
-                return `<div class="special-affix-block"><div class="special-support-heading"><strong>Affix ${++shown}</strong><span>${selected.tier == null ? "Off" : `Tier ${selected.tier}`}</span></div><p>${escapeHtml(option ? selectedText.get(index) || "" : "Not on this item")}</p>${choiceSelect}<div class="special-tier-buttons ${buttons.length === 4 ? "four-tiers" : ""}">${buttons.join("")}</div>${
-                  option
-                    ? option.ranges
-                        .map((range, rollIndex) => {
-                          const roll = selected.rolls[rollIndex] ?? range.max;
-                          return `<label class="special-roll-label"><span>${option.ranges.length > 1 ? `Value ${rollIndex + 1} · ` : ""}${range.min}–${range.max}</span><strong>${roll}</strong></label><div class="special-roll-control"><input type="range" min="${range.min}" max="${range.max}" step="${range.step}" value="${roll}" data-affix-roll="${index}" data-affix-roll-index="${rollIndex}"><input type="number" min="${range.min}" max="${range.max}" step="${range.step}" value="${roll}" data-affix-roll-number="${index}" data-affix-roll-index="${rollIndex}"><output>${roll}</output></div>`;
-                        })
-                        .join("")
-                    : ""
-                }</div>`;
-              })
-              .join("");
-          })()}</section>`;
-        })()
-      : "";
-  const progressionControlsHtml =
-    mediumControlsHtml ||
-    (progressionTier
-      ? `<section class="special-support-config"><div class="special-affix-block"><div class="special-support-heading"><strong>${progressionSupportHasStars(entry.name) ? "Main affix" : "Affixes"}</strong><span>Tier ${progressionTier.tier}</span></div><div class="special-tier-buttons ${progressionTiers.length === 4 ? "four-tiers" : ""}">${progressionTiers.map((tier) => `<button type="button" class="${tier.tier === progressionTier.tier ? "active" : ""}" data-progression-tier="${tier.tier}">T${tier.tier}<small>${tier.ranges.length ? tier.ranges.map(({ min, max }) => (min === max ? min : `${min}–${max}`)).join(" · ") : "Fixed"}</small></button>`).join("")}</div><p>${progressionSupportText(entry.name, selectorSpecialConfig).split(" | ").map(escapeHtml).join("<br>")}</p>${progressionTier.ranges
-          .map((range, index) => {
-            const roll = selectorSpecialConfig.rolls?.[index] ?? range.max;
-            return `<label class="special-roll-label"><span>${escapeHtml(progressionRangeLabels(entry.name, progressionTier.tier)[index] || `Affix value ${index + 1}`)}</span><strong>${roll}</strong></label><div class="special-roll-control"><input type="range" min="${range.min}" max="${range.max}" step="${range.step}" value="${roll}" data-progression-roll="${index}"><input type="number" min="${range.min}" max="${range.max}" step="${range.step}" value="${roll}" data-progression-roll-number="${index}"><output>${roll}</output></div>`;
-          })
-          .join(
-            "",
-          )}</div>${progressionSupportHasStars(entry.name) ? `<div class="special-stars"><span><strong>Star level</strong><small>+${specialSupportStarBonus(selectorSpecialConfig.stars)}% additional damage</small></span><div>${[1, 2, 3, 4, 5].map((stars) => `<button type="button" class="${stars === selectorSpecialConfig.stars ? "active" : ""}" data-special-stars="${stars}" aria-label="${stars} stars">${"★".repeat(stars)}</button>`).join("")}</div></div>` : ""}</section>`
-      : "");
-  const secondaryTiers = activationMediumSecondaryTierData(entry.name);
-  const skillLevelEditor = `<div class="selector-level"><strong>Skill Level:</strong><div><button type="button" data-selector-level-step="-1">−</button><input type="number" min="1" max="40" value="${selectorLevel}" data-selector-level><button type="button" data-selector-level-step="1">+</button></div></div>`;
-  const levelEditor = `${skillLevelEditor}${progressionControlsHtml}${specialTiers ? `<section class="special-support-config">${secondaryTiers ? tierControlHtml(secondaryTiers, selectorSpecialConfig.secondaryTier, selectorSpecialConfig.secondaryRoll, "activation-trigger") : ""}${!starSupport ? `<label class="activation-roll-kind"><span>Main affix stat</span><select data-activation-roll-kind><option value="duration" ${selectorSpecialConfig.rollKind === "duration" ? "selected" : ""}>Additional Duration</option><option value="cooldown" ${selectorSpecialConfig.rollKind === "cooldown" ? "selected" : ""}>Cooldown Recovery Speed</option></select></label>` : ""}${tierControlHtml(specialTiers, selectorSpecialConfig.tier, selectorSpecialConfig.roll, "", !starSupport ? `additional ${selectorSpecialConfig.rollKind === "cooldown" ? "Cooldown Recovery Speed" : "Duration"} for the supported skill` : "")}${starSupport ? `<div class="special-stars"><span><strong>Star level</strong><small>+${specialSupportStarBonus(selectorSpecialConfig.stars)}% additional damage</small></span><div>${[1, 2, 3, 4, 5].map((stars) => `<button type="button" class="${stars === selectorSpecialConfig.stars ? "active" : ""}" data-special-stars="${stars}" aria-label="${stars} stars">${"★".repeat(stars)}</button>`).join("")}</div></div>` : ""}</section>` : ""}`;
-  const specialEffects = progressionTier
+  let progression = null;
+  if (affixLines && progressionTier) {
+    const lineConfigs = activationMediumLineConfigs(entry.name, config);
+    const selectedText = new Map(
+      (activationMediumSelectedLines(entry.name, config) || []).map((line) => [line.index, line.text]),
+    );
+    let shown = 0;
+    const lines = [];
+    affixLines.forEach((line, index) => {
+      const members = line.choiceGroup
+        ? affixLines
+            .map((other, otherIndex) => (other.choiceGroup === line.choiceGroup ? otherIndex : -1))
+            .filter((otherIndex) => otherIndex >= 0)
+        : null;
+      if (members && index !== (members.find((member) => lineConfigs[member].tier != null) ?? members[0])) return;
+      const choiceLabel = (member) =>
+        /cooldown/.test(affixLines[member].signature) ? "Cooldown Recovery Speed" : "Additional Duration";
+      const selected = lineConfigs[index],
+        option = line.options.find((item) => item.tier === selected.tier);
+      lines.push({
+        index,
+        number: ++shown,
+        tierText: selected.tier == null ? "Off" : `Tier ${selected.tier}`,
+        text: option ? selectedText.get(index) || "" : "Not on this item",
+        choice: members ? members.map((member) => ({ value: member, label: choiceLabel(member) })) : null,
+        buttons: [
+          ...line.options.map((item) => ({
+            tier: item.tier,
+            label: `T${item.tier}`,
+            small: item.ranges.length ? item.ranges.map(rangeText).join(" · ") : "Fixed",
+            active: item.tier === selected.tier,
+          })),
+          ...(line.optional && !members
+            ? [{ tier: "off", label: "Off", small: "Not rolled", active: selected.tier == null }]
+            : []),
+        ],
+        rolls: option
+          ? option.ranges.map((range, rollIndex) => ({
+              label: `${option.ranges.length > 1 ? `Value ${rollIndex + 1} · ` : ""}${range.min}–${range.max}`,
+              ...rollControl(range, selected.rolls[rollIndex] ?? range.max, rollIndex),
+            }))
+          : [],
+      });
+    });
+    progression = {
+      medium: true,
+      tier: progressionTier.tier,
+      tiers: progressionTiers.map((tier) => ({ tier: tier.tier, active: tier.tier === progressionTier.tier })),
+      lines,
+    };
+  } else if (progressionTier) {
+    progression = {
+      medium: false,
+      heading: progressionSupportHasStars(entry.name) ? "Main affix" : "Affixes",
+      tier: progressionTier.tier,
+      tiers: progressionTiers.map((tier) => ({
+        tier: tier.tier,
+        small: tier.ranges.length ? tier.ranges.map(rangeText).join(" · ") : "Fixed",
+        active: tier.tier === progressionTier.tier,
+      })),
+      text: progressionSupportText(entry.name, config).split(" | "),
+      rolls: progressionTier.ranges.map((range, index) => ({
+        label: progressionRangeLabels(entry.name, progressionTier.tier)[index] || `Affix value ${index + 1}`,
+        ...rollControl(range, config.rolls?.[index] ?? range.max, index),
+      })),
+      stars: progressionSupportHasStars(entry.name) ? stars(config.stars) : null,
+    };
+  }
+  const special = specialTiers
+    ? {
+        tier: selectedTier.tier,
+        tiers: specialTiers.map((tier) => ({
+          tier: tier.tier,
+          small: `${rangeText(tier)}%`,
+          active: tier.tier === selectedTier.tier,
+        })),
+        effect: selectedTier.effect,
+        roll: rollControl(selectedTier, config.roll),
+        stars: stars(config.stars),
+      }
+    : null;
+  const effects = progressionTier
     ? [
-        ...(activationMediumSelectedLines(entry.name, selectorSpecialConfig)?.map(
-          (line) => `T${line.tier} · ${line.text}`,
-        ) ||
-          progressionSupportText(entry.name, selectorSpecialConfig)
+        ...(activationMediumSelectedLines(entry.name, config)?.map((line) => `T${line.tier} · ${line.text}`) ||
+          progressionSupportText(entry.name, config)
             .split(" | ")
             .map((line, index) => (index ? line : `Main affix · T${progressionTier.tier} · ${line}`))),
         ...(progressionSupportHasStars(entry.name)
-          ? [`Star level · +${specialSupportStarBonus(selectorSpecialConfig.stars)}% additional damage`]
+          ? [`Star level · +${specialSupportStarBonus(config.stars)}% additional damage`]
           : []),
       ]
     : specialTiers
       ? [
-          ...(entry.name === "Activation Medium: Spell Burst" ? supportDisplay?.effects || entry.effects : []),
-          ...(secondaryTiers
-            ? [
-                `Activation affix · T${selectorSpecialConfig.secondaryTier} · Prepares the supported skill every ${selectorSpecialConfig.secondaryRoll} s`,
-              ]
-            : []),
-          ...(starSupport
-            ? [`Star bonus · +${specialSupportStarBonus(selectorSpecialConfig.stars)}% additional damage`]
-            : []),
-          `Main affix · T${selectedTier.tier} · ${selectorSpecialConfig.roll >= 0 ? "+" : ""}${selectorSpecialConfig.roll}% ${!starSupport ? `additional ${selectorSpecialConfig.rollKind === "cooldown" ? "Cooldown Recovery Speed" : "Duration"} for the supported skill` : selectedTier.effect}`,
+          `Star bonus · +${specialSupportStarBonus(config.stars)}% additional damage`,
+          `Main affix · T${selectedTier.tier} · ${config.roll >= 0 ? "+" : ""}${config.roll}% ${selectedTier.effect}`,
         ]
       : skillDisplay?.effects || supportDisplay?.effects || entry.effects;
-  const effectReference = skillDisplay?.effectEstimate
-    ? `<p class="skill-effect-reference">${escapeHtml(skillDisplay.effectEstimate)}</p>`
-    : ((skillDisplay && !skillDisplay.hasLevelProgression) ||
-          (supportDisplay && !supportDisplay.hasLevelProgression && !specialTiers && !progressionTier)) &&
-        selectorLevel !== 20
-      ? ""
-      : "";
-  const previewEffects = `${effectReference}<div class="selector-effect-list"><h4>${escapeHtml(entry.name)}:</h4>${(specialEffects?.length ? specialEffects : ["See TLIDB for complete level scaling."]).map((effect) => `<p>${supportSelector ? highlightedSupportEffect(effect) : entry.role === "aura" ? highlightedAuraEffect(effect) : highlightedSkillEffect(effect, entry.name)}</p>`).join("")}</div>`;
-  $("#skill-selector-detail").innerHTML =
-    `${levelEditor}<article class="selector-preview ${supportSelector ? "support" : entry.role === "aura" ? "aura" : ""}"><div class="selector-preview-head">${artwork(entry.icon, entry.name, "support-art")}<h3>${escapeHtml(entry.name)}</h3><small>Lv. ${selectorLevel}</small><div class="selector-tags">${tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div></div><div class="selector-facts"><div class="selector-stat-rows">${facts.map(([label, value]) => `<div class="${label === "Effectiveness of Added Damage" ? "skill-added-damage-stat" : ""}"><span>${escapeHtml(String(label))}:</span><strong>${escapeHtml(String(value))}</strong></div>`).join("")}</div>${previewEffects}<a href="${entry.source}" target="_blank" rel="noreferrer">Open TLIDB source</a>${full ? `<p class="comparison-warning">All five support slots are occupied. Remove a support before confirming another.</p>` : ""}</div></article>`;
-  $("[data-confirm-skill-selector]").disabled = installed || full;
-  $("[data-confirm-skill-selector]").textContent = installed ? "Installed" : "Confirm";
+  const highlight = (effect) =>
+    supportSelector
+      ? highlightedSupportEffect(effect)
+      : entry.role === "aura"
+        ? highlightedAuraEffect(effect)
+        : highlightedSkillEffect(effect, entry.name);
+  return {
+    detail: {
+      kind: "entry",
+      level: selectorLevel,
+      progression: displayTexts(progression),
+      special: displayTexts(special),
+      previewClass: supportSelector ? "support" : entry.role === "aura" ? "aura" : "",
+      icon: entry.icon,
+      ...displayTexts({
+        name: entry.name,
+        tags: [...(entry.tags || ["Spell", "Support"])],
+        facts: (skillDisplay?.facts || supportDisplay?.facts || []).map(([label, value]) => ({
+          label: String(label),
+          value: String(value),
+          addedDamage: label === "Effectiveness of Added Damage",
+        })),
+        reference: skillDisplay?.effectEstimate || null,
+      }),
+      effects: (effects?.length ? effects : ["See TLIDB for complete level scaling."]).map((effect) =>
+        htmlTextSegments(highlight(effect)),
+      ),
+      source: entry.source,
+      full,
+    },
+    confirm: { label: installed ? "Installed" : "Confirm", disabled: Boolean(installed || full) },
+  };
 }
 
 // The Config card is React (apps/web/src/features/configuration): it re-reads its source.
@@ -7961,271 +7995,285 @@ document.addEventListener("click", (event) => {
   const slateFlipButton = event.target.closest("[data-slate-flip]");
   if (slateFlipButton)
     transformSlate(slateFlipButton.dataset.slateFlip, { flip: slateFlipButton.dataset.slateFlipAxis });
-  if (event.target.closest("[data-close-skill-selector]")) $("#skill-selector").close();
+});
+
+// Skill selector commands (apps/web/src/shell/dialogs/SkillSelectorDialog.tsx and SkillSelectorDetail.tsx).
+// Confirm: `levelText` is the level field as typed (the generic modes).
+function confirmSkillSelector(levelText) {
   if (selectorKind === "follower-skill") {
-    if (event.target.closest("[data-clear-skill-slot]")) {
-      $("#skill-selector").close();
-      commitFollower(setFollowerSkill(plannerState, followerSelectorSlot, null), "Skill slot cleared");
-      return;
-    }
-    const confirmFollower = event.target.closest("[data-confirm-skill-selector]");
-    if (confirmFollower && !confirmFollower.disabled) {
-      const entry = followerSelectorEntries(plannerState, followerSelectorSlot)[selectorChoiceIndex];
-      if (entry) {
-        const draft =
-          followerSelectorDraft?.name === entry.name
-            ? followerSelectorDraft
-            : followerSkillDraft(plannerState, followerSelectorSlot, entry.name);
-        followerSelectorDraft = null;
-        $("#skill-selector").close();
-        commitFollower(
-          applyFollowerSkillDraft(plannerState, followerSelectorSlot, draft),
-          `${escapeHtml(entry.name)} equipped`,
-        );
-      }
-      return;
-    }
-  }
-  if (event.target.closest("[data-clear-skill-slot]")) {
-    const selected = selectorTargetSetup();
-    if (selectorKind === "hero-support") {
-      delete plannerState.hero.heroTraitSupports[activeHeroTraitSupportId];
-      delete plannerState.hero.heroTraitSupportLevels[activeHeroTraitSupportId];
-      delete plannerState.hero.heroTraitSupportConfigs[activeHeroTraitSupportId];
-    } else if (selectorKind === "skill" && (selected?.enabled || selected?.slotInactive)) {
-      plannerState.skills.boardSlots = assignSkillBoardSlot(
-        plannerState.skills.boardSlots,
-        activeSkillBoardTab,
-        selectorBoardSetups(),
-        selectorTargetRow,
-        "",
-      );
-      const selectedKey = setupStateKey(selected),
-        customIndex = plannerState.skills.customSetups.findIndex(
-          (setup) => (setup.instanceId || setup.name) === selectedKey,
-        );
-      if (customIndex >= 0) plannerState.skills.customSetups.splice(customIndex, 1);
-      else plannerState.skills.setupEnabled[selectedKey] = false;
-      delete plannerState.skills.customSupports[selectedKey];
-      delete plannerState.skills.supportOrder[selectedKey];
-    } else if (selectorKind === "support" && selected) {
-      const selectedKey = setupStateKey(selected),
-        order = [
-          ...(plannerState.skills.supportOrder[selectedKey] ||
-            userInstalledSupports(selected).map((support) => support.name)),
-        ];
-      const supportName = order[selectorTargetSupportSlot];
-      const support = selected.supports.find((item) => item.enabled && item.name === supportName);
-      if (support) {
-        if (support.custom)
-          plannerState.skills.customSupports[selectedKey] = (
-            plannerState.skills.customSupports[selectedKey] || []
-          ).filter((item) => item.name !== support.name);
-        else plannerState.skills.supportEnabled[supportStateKey(selectedKey, support.name)] = false;
-      }
-      while (order.length < 5) order.push("");
-      order[selectorTargetSupportSlot] = "";
-      plannerState.skills.supportOrder[selectedKey] = order.slice(0, 5);
-    }
+    const entry = followerSelectorEntries(plannerState, followerSelectorSlot)[selectorChoiceIndex];
+    if (!entry) return;
+    const draft =
+      followerSelectorDraft?.name === entry.name
+        ? followerSelectorDraft
+        : followerSkillDraft(plannerState, followerSelectorSlot, entry.name);
+    followerSelectorDraft = null;
     $("#skill-selector").close();
-    persistPlannerState();
-    renderCandidateViews();
-    showToast("Slot cleared");
-  }
-  const specialTierButton = event.target.closest("[data-special-tier]");
-  if (specialTierButton) {
-    const tier = Number(specialTierButton.dataset.specialTier);
-    const tierData = configurableSupportTierData(selectorEntries()[selectorChoiceIndex]?.name)?.find(
-      (entry) => entry.tier === tier,
+    commitFollower(
+      applyFollowerSkillDraft(plannerState, followerSelectorSlot, draft),
+      `${escapeHtml(entry.name)} equipped`,
     );
-    if (tierData) {
-      selectorSpecialConfig = { ...(selectorSpecialConfig || {}), tier, roll: tierData.max };
-      renderSkillSelector();
-    }
-  }
-  const progressionTierButton = event.target.closest("[data-progression-tier]");
-  const affixTierButton = event.target.closest("[data-affix-tier]");
-  if (affixTierButton) {
-    const name = selectorEntries()[selectorChoiceIndex]?.name,
-      index = Number(affixTierButton.dataset.affixLine),
-      lines = activationMediumLineConfigs(name, selectorSpecialConfig),
-      line = activationMediumAffixLines(name)?.[index];
-    if (lines && line) {
-      const value = affixTierButton.dataset.affixTier,
-        option = value === "off" ? null : line.options.find((item) => item.tier === Number(value));
-      lines[index] = option
-        ? { tier: option.tier, rolls: option.ranges.map((range) => range.max) }
-        : { tier: null, rolls: [] };
-      selectorSpecialConfig = {
-        ...selectorSpecialConfig,
-        lines: activationMediumLineConfigs(name, { ...selectorSpecialConfig, lines }, option ? index : null),
-      };
-      renderSkillSelector();
-    }
     return;
   }
-  if (progressionTierButton) {
-    const tier = Number(progressionTierButton.dataset.progressionTier);
-    const tierData = progressionSupportTierData(selectorEntries()[selectorChoiceIndex]?.name)?.find(
-      (entry) => entry.tier === tier,
+  selectorLevel = Math.max(1, Math.min(40, Number(levelText) || selectorLevel || 20));
+  const entry = selectorEntries()[selectorChoiceIndex];
+  if (!entry || (selectorKind === "support" && !supportFitsSlot(entry, selectorTargetSupportSlot))) return;
+  const selected = selectorTargetSetup();
+  if (selectorKind === "hero-support") {
+    plannerState.hero.heroTraitSupports[activeHeroTraitSupportId] = entry.name;
+    plannerState.hero.heroTraitSupportLevels[activeHeroTraitSupportId] = selectorLevel;
+    if (selectorSpecialConfig)
+      plannerState.hero.heroTraitSupportConfigs[activeHeroTraitSupportId] = { ...selectorSpecialConfig };
+    else delete plannerState.hero.heroTraitSupportConfigs[activeHeroTraitSupportId];
+    persistPlannerState();
+    showToast(
+      `${escapeHtml(entry.name)} linked to ${escapeHtml(heroTraitSupportConfig[activeHeroTraitSupportId]?.skill || "trait skill")}`,
     );
-    if (tierData) {
-      const name = selectorEntries()[selectorChoiceIndex]?.name;
-      const next = { ...(selectorSpecialConfig || {}), tier, rolls: tierData.ranges.map((range) => range.max) };
-      const choice = (selectorSpecialConfig?.lines || []).findIndex(
-        (line, index) => line?.tier != null && activationMediumAffixLines(name)?.[index]?.choiceGroup,
-      );
-      delete next.lines;
-      const lines = activationMediumLineConfigs(name, next, choice >= 0 ? choice : null);
-      selectorSpecialConfig = lines ? { ...next, lines } : next;
-      renderSkillSelector();
-    }
-  }
-  const activationTriggerTierButton = event.target.closest("[data-activation-trigger-tier]");
-  if (activationTriggerTierButton) {
-    const secondaryTier = Number(activationTriggerTierButton.dataset.activationTriggerTier);
-    const tierData = activationMediumSecondaryTierData(selectorEntries()[selectorChoiceIndex]?.name)?.find(
-      (entry) => entry.tier === secondaryTier,
-    );
-    if (tierData) {
-      selectorSpecialConfig = { ...(selectorSpecialConfig || {}), secondaryTier, secondaryRoll: tierData.min };
-      renderSkillSelector();
-    }
-  }
-  const specialStarsButton = event.target.closest("[data-special-stars]");
-  if (specialStarsButton) {
-    selectorSpecialConfig = {
-      ...(selectorSpecialConfig || {}),
-      stars: Number(specialStarsButton.dataset.specialStars),
-    };
-    renderSkillSelector();
-  }
-  const selectorLevelStep = event.target.closest("[data-selector-level-step]");
-  if (selectorLevelStep) {
-    selectorLevel = Math.max(1, Math.min(40, selectorLevel + Number(selectorLevelStep.dataset.selectorLevelStep)));
-    renderSkillSelector();
-  }
-  const confirmSelector = event.target.closest("[data-confirm-skill-selector]");
-  if (confirmSelector && !confirmSelector.disabled) {
-    selectorLevel = Math.max(
-      1,
-      Math.min(40, Number($("#skill-selector-detail [data-selector-level]")?.value) || selectorLevel || 20),
-    );
-    const entry = selectorEntries()[selectorChoiceIndex];
-    if (!entry || (selectorKind === "support" && !supportFitsSlot(entry, selectorTargetSupportSlot))) return;
-    const selected = selectorTargetSetup();
-    if (selectorKind === "hero-support") {
-      plannerState.hero.heroTraitSupports[activeHeroTraitSupportId] = entry.name;
-      plannerState.hero.heroTraitSupportLevels[activeHeroTraitSupportId] = selectorLevel;
-      if (selectorSpecialConfig)
-        plannerState.hero.heroTraitSupportConfigs[activeHeroTraitSupportId] = { ...selectorSpecialConfig };
-      else delete plannerState.hero.heroTraitSupportConfigs[activeHeroTraitSupportId];
-      persistPlannerState();
-      showToast(
-        `${escapeHtml(entry.name)} linked to ${escapeHtml(heroTraitSupportConfig[activeHeroTraitSupportId]?.skill || "trait skill")}`,
-      );
-    } else if (selectorKind === "skill") {
-      const board = selectorBoardSetups();
-      const replaced = board[selectorTargetRow];
-      if (replaced?.name === entry.name) {
-        const replacedKey = setupStateKey(replaced);
-        plannerState.skills.skillLevels[replacedKey] = { baseLevel: selectorLevel };
-      } else {
-        if (replaced) {
-          const replacedKey = setupStateKey(replaced),
-            customIndex = plannerState.skills.customSetups.findIndex(
-              (setup) => (setup.instanceId || setup.name) === replacedKey,
-            );
-          if (customIndex >= 0) plannerState.skills.customSetups.splice(customIndex, 1);
-          else plannerState.skills.setupEnabled[replacedKey] = false;
-        }
-        const magusActiveSlot = activeSkillBoardTab !== "auras" && entry.role === "aura",
-          disabledExisting = magusActiveSlot
-            ? null
-            : currentEditedSetups().find((setup) => setup.name === entry.name && !setup.enabled && !setup.slotInactive);
-        if (disabledExisting && !currentEditedSetups().some((setup) => setup.name === entry.name && setup.enabled)) {
-          const existingKey = setupStateKey(disabledExisting);
-          plannerState.skills.setupEnabled[existingKey] = true;
-          plannerState.skills.skillLevels[existingKey] = { baseLevel: selectorLevel };
-          plannerState.skills.supportOrder[existingKey] = ["", "", "", "", ""];
-          for (const support of disabledExisting.supports)
-            plannerState.skills.supportEnabled[supportStateKey(existingKey, support.name)] = false;
-          selectorTargetSetupName = existingKey;
-        } else {
-          const instanceId = `skill-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-          plannerState.skills.customSetups.push({
-            instanceId,
-            role: entry.role,
-            name: entry.name,
-            baseLevel: selectorLevel,
-            addedLevels: 0,
-            supports: [],
-            enabledSupportSlots: 0,
-            ...(Number.isFinite(entry.sealedManaPercent) ? { sealedManaPercent: entry.sealedManaPercent } : {}),
-            ...(magusActiveSlot ? { boardTab: "skills" } : {}),
-            source: entry.source,
-            custom: true,
-          });
-          plannerState.skills.supportOrder[instanceId] = ["", "", "", "", ""];
-          selectorTargetSetupName = instanceId;
-        }
-      }
-      plannerState.skills.boardSlots = assignSkillBoardSlot(
-        plannerState.skills.boardSlots,
-        activeSkillBoardTab,
-        board,
-        selectorTargetRow,
-        selectorTargetSetupName,
-      );
-      persistPlannerState();
-      showToast(`${escapeHtml(entry.name)} setup added`);
+  } else if (selectorKind === "skill") {
+    const board = selectorBoardSetups();
+    const replaced = board[selectorTargetRow];
+    if (replaced?.name === entry.name) {
+      const replacedKey = setupStateKey(replaced);
+      plannerState.skills.skillLevels[replacedKey] = { baseLevel: selectorLevel };
     } else {
-      if (!selected) return;
-      const selectedKey = setupStateKey(selected),
-        order = [
-          ...(plannerState.skills.supportOrder[selectedKey] ||
-            userInstalledSupports(selected).map((support) => support.name)),
-        ];
-      while (order.length < 5) order.push("");
-      const replaced = selected.supports.find(
-        (support) => support.enabled && support.name === order[selectorTargetSupportSlot],
-      );
-      if (replaced && replaced.name !== entry.name) {
-        if (replaced.custom)
-          plannerState.skills.customSupports[selectedKey] = (
-            plannerState.skills.customSupports[selectedKey] || []
-          ).filter((item) => item.name !== replaced.name);
-        else plannerState.skills.supportEnabled[supportStateKey(selectedKey, replaced.name)] = false;
+      if (replaced) {
+        const replacedKey = setupStateKey(replaced),
+          customIndex = plannerState.skills.customSetups.findIndex(
+            (setup) => (setup.instanceId || setup.name) === replacedKey,
+          );
+        if (customIndex >= 0) plannerState.skills.customSetups.splice(customIndex, 1);
+        else plannerState.skills.setupEnabled[replacedKey] = false;
       }
-      plannerState.skills.customSupports[selectedKey] ||= [];
-      const captured = selected.supports.find((support) => support.name === entry.name && !support.custom);
-      const selectedSupportKey = supportStateKey(selectedKey, entry.name);
-      plannerState.skills.supportEnabled[selectedSupportKey] = true;
-      if (selectorSpecialConfig)
-        plannerState.skills.specialSupportConfigs[selectedSupportKey] = { ...selectorSpecialConfig };
-      if (captured) {
-        plannerState.skills.supportLevels[selectedSupportKey] = selectorLevel;
+      const magusActiveSlot = activeSkillBoardTab !== "auras" && entry.role === "aura",
+        disabledExisting = magusActiveSlot
+          ? null
+          : currentEditedSetups().find((setup) => setup.name === entry.name && !setup.enabled && !setup.slotInactive);
+      if (disabledExisting && !currentEditedSetups().some((setup) => setup.name === entry.name && setup.enabled)) {
+        const existingKey = setupStateKey(disabledExisting);
+        plannerState.skills.setupEnabled[existingKey] = true;
+        plannerState.skills.skillLevels[existingKey] = { baseLevel: selectorLevel };
+        plannerState.skills.supportOrder[existingKey] = ["", "", "", "", ""];
+        for (const support of disabledExisting.supports)
+          plannerState.skills.supportEnabled[supportStateKey(existingKey, support.name)] = false;
+        selectorTargetSetupName = existingKey;
       } else {
-        const custom = plannerState.skills.customSupports[selectedKey].find((support) => support.name === entry.name);
-        if (custom) custom.level = selectorLevel;
-        else
-          plannerState.skills.customSupports[selectedKey].push({
-            name: entry.name,
-            level: selectorLevel,
-            manaCostMultiplierPercent: specialSupportTierData(entry.name) ? 110 : entry.manaCostMultiplierPercent,
-            effects: structuredClone(entry.effects),
-            custom: true,
-          });
+        const instanceId = `skill-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        plannerState.skills.customSetups.push({
+          instanceId,
+          role: entry.role,
+          name: entry.name,
+          baseLevel: selectorLevel,
+          addedLevels: 0,
+          supports: [],
+          enabledSupportSlots: 0,
+          ...(Number.isFinite(entry.sealedManaPercent) ? { sealedManaPercent: entry.sealedManaPercent } : {}),
+          ...(magusActiveSlot ? { boardTab: "skills" } : {}),
+          source: entry.source,
+          custom: true,
+        });
+        plannerState.skills.supportOrder[instanceId] = ["", "", "", "", ""];
+        selectorTargetSetupName = instanceId;
       }
-      order[selectorTargetSupportSlot] = entry.name;
-      plannerState.skills.supportOrder[selectedKey] = order.slice(0, 5);
-      persistPlannerState();
-      showToast(`${escapeHtml(entry.name)} linked to ${escapeHtml(selected.name)}`);
     }
-    $("#skill-selector").close();
-    renderCandidateViews();
+    plannerState.skills.boardSlots = assignSkillBoardSlot(
+      plannerState.skills.boardSlots,
+      activeSkillBoardTab,
+      board,
+      selectorTargetRow,
+      selectorTargetSetupName,
+    );
+    persistPlannerState();
+    showToast(`${escapeHtml(entry.name)} setup added`);
+  } else {
+    if (!selected) return;
+    const selectedKey = setupStateKey(selected),
+      order = [
+        ...(plannerState.skills.supportOrder[selectedKey] ||
+          userInstalledSupports(selected).map((support) => support.name)),
+      ];
+    while (order.length < 5) order.push("");
+    const replaced = selected.supports.find(
+      (support) => support.enabled && support.name === order[selectorTargetSupportSlot],
+    );
+    if (replaced && replaced.name !== entry.name) {
+      if (replaced.custom)
+        plannerState.skills.customSupports[selectedKey] = (
+          plannerState.skills.customSupports[selectedKey] || []
+        ).filter((item) => item.name !== replaced.name);
+      else plannerState.skills.supportEnabled[supportStateKey(selectedKey, replaced.name)] = false;
+    }
+    plannerState.skills.customSupports[selectedKey] ||= [];
+    const captured = selected.supports.find((support) => support.name === entry.name && !support.custom);
+    const selectedSupportKey = supportStateKey(selectedKey, entry.name);
+    plannerState.skills.supportEnabled[selectedSupportKey] = true;
+    if (selectorSpecialConfig)
+      plannerState.skills.specialSupportConfigs[selectedSupportKey] = { ...selectorSpecialConfig };
+    if (captured) {
+      plannerState.skills.supportLevels[selectedSupportKey] = selectorLevel;
+    } else {
+      const custom = plannerState.skills.customSupports[selectedKey].find((support) => support.name === entry.name);
+      if (custom) custom.level = selectorLevel;
+      else
+        plannerState.skills.customSupports[selectedKey].push({
+          name: entry.name,
+          level: selectorLevel,
+          manaCostMultiplierPercent: specialSupportTierData(entry.name) ? 110 : entry.manaCostMultiplierPercent,
+          effects: structuredClone(entry.effects),
+          custom: true,
+        });
+    }
+    order[selectorTargetSupportSlot] = entry.name;
+    plannerState.skills.supportOrder[selectedKey] = order.slice(0, 5);
+    persistPlannerState();
+    showToast(`${escapeHtml(entry.name)} linked to ${escapeHtml(selected.name)}`);
   }
-});
+  $("#skill-selector").close();
+  renderCandidateViews();
+}
+// Clear slot: empties the slot the selector was opened for.
+function clearSkillSelectorSlot() {
+  if (selectorKind === "follower-skill") {
+    $("#skill-selector").close();
+    commitFollower(setFollowerSkill(plannerState, followerSelectorSlot, null), "Skill slot cleared");
+    return;
+  }
+  const selected = selectorTargetSetup();
+  if (selectorKind === "hero-support") {
+    delete plannerState.hero.heroTraitSupports[activeHeroTraitSupportId];
+    delete plannerState.hero.heroTraitSupportLevels[activeHeroTraitSupportId];
+    delete plannerState.hero.heroTraitSupportConfigs[activeHeroTraitSupportId];
+  } else if (selectorKind === "skill" && (selected?.enabled || selected?.slotInactive)) {
+    plannerState.skills.boardSlots = assignSkillBoardSlot(
+      plannerState.skills.boardSlots,
+      activeSkillBoardTab,
+      selectorBoardSetups(),
+      selectorTargetRow,
+      "",
+    );
+    const selectedKey = setupStateKey(selected),
+      customIndex = plannerState.skills.customSetups.findIndex(
+        (setup) => (setup.instanceId || setup.name) === selectedKey,
+      );
+    if (customIndex >= 0) plannerState.skills.customSetups.splice(customIndex, 1);
+    else plannerState.skills.setupEnabled[selectedKey] = false;
+    delete plannerState.skills.customSupports[selectedKey];
+    delete plannerState.skills.supportOrder[selectedKey];
+  } else if (selectorKind === "support" && selected) {
+    const selectedKey = setupStateKey(selected),
+      order = [
+        ...(plannerState.skills.supportOrder[selectedKey] ||
+          userInstalledSupports(selected).map((support) => support.name)),
+      ];
+    const supportName = order[selectorTargetSupportSlot];
+    const support = selected.supports.find((item) => item.enabled && item.name === supportName);
+    if (support) {
+      if (support.custom)
+        plannerState.skills.customSupports[selectedKey] = (
+          plannerState.skills.customSupports[selectedKey] || []
+        ).filter((item) => item.name !== support.name);
+      else plannerState.skills.supportEnabled[supportStateKey(selectedKey, support.name)] = false;
+    }
+    while (order.length < 5) order.push("");
+    order[selectorTargetSupportSlot] = "";
+    plannerState.skills.supportOrder[selectedKey] = order.slice(0, 5);
+  }
+  $("#skill-selector").close();
+  persistPlannerState();
+  renderCandidateViews();
+  showToast("Slot cleared");
+}
+function selectorEntryName() {
+  return selectorEntries()[selectorChoiceIndex]?.name;
+}
+function clampLevel(value) {
+  return Math.max(1, Math.min(40, value));
+}
+function setSelectorConfig(next) {
+  selectorSpecialConfig = next;
+  renderSkillSelector();
+}
+// The detail's controls: the level, a star support's tier, roll and stars, a progression support's tier and rolls, and an
+// Activation Medium's lines (tier, rolls, and the stat a line with a choice rolls).
+function setSelectorLevel(value) {
+  selectorLevel = clampLevel(Number(value) || 20);
+  renderSkillSelector();
+}
+function stepSelectorLevel(delta) {
+  selectorLevel = clampLevel(selectorLevel + delta);
+  renderSkillSelector();
+}
+function setSpecialTier(tier) {
+  const tierData = configurableSupportTierData(selectorEntryName())?.find((entry) => entry.tier === tier);
+  if (tierData) setSelectorConfig({ ...(selectorSpecialConfig || {}), tier, roll: tierData.max });
+}
+function setSpecialRoll(value) {
+  const tier = configurableSupportTierData(selectorEntryName())?.find(
+    (item) => item.tier === selectorSpecialConfig?.tier,
+  );
+  if (tier)
+    setSelectorConfig({ ...selectorSpecialConfig, roll: Math.max(tier.min, Math.min(tier.max, Number(value))) });
+}
+function setSupportStars(stars) {
+  setSelectorConfig({ ...(selectorSpecialConfig || {}), stars });
+}
+function setProgressionTier(tier) {
+  const name = selectorEntryName(),
+    tierData = progressionSupportTierData(name)?.find((entry) => entry.tier === tier);
+  if (!tierData) return;
+  const next = { ...(selectorSpecialConfig || {}), tier, rolls: tierData.ranges.map((range) => range.max) };
+  const choice = (selectorSpecialConfig?.lines || []).findIndex(
+    (line, index) => line?.tier != null && activationMediumAffixLines(name)?.[index]?.choiceGroup,
+  );
+  delete next.lines;
+  const lines = activationMediumLineConfigs(name, next, choice >= 0 ? choice : null);
+  setSelectorConfig(lines ? { ...next, lines } : next);
+}
+function setProgressionRoll(index, value) {
+  const tier = progressionSupportTierData(selectorEntryName())?.find(
+      (item) => item.tier === selectorSpecialConfig?.tier,
+    ),
+    range = tier?.ranges[index];
+  if (!range) return;
+  const rolls = [...(selectorSpecialConfig.rolls || tier.ranges.map((item) => item.max))];
+  rolls[index] = Math.max(range.min, Math.min(range.max, Number(value)));
+  setSelectorConfig({ ...selectorSpecialConfig, rolls });
+}
+function setAffixLineTier(index, tier) {
+  const name = selectorEntryName(),
+    lines = activationMediumLineConfigs(name, selectorSpecialConfig),
+    line = activationMediumAffixLines(name)?.[index];
+  if (!lines || !line) return;
+  const option = tier === "off" ? null : line.options.find((item) => item.tier === tier);
+  lines[index] = option
+    ? { tier: option.tier, rolls: option.ranges.map((range) => range.max) }
+    : { tier: null, rolls: [] };
+  setSelectorConfig({
+    ...selectorSpecialConfig,
+    lines: activationMediumLineConfigs(name, { ...selectorSpecialConfig, lines }, option ? index : null),
+  });
+}
+function setAffixRoll(index, rollIndex, value) {
+  const name = selectorEntryName(),
+    lines = activationMediumLineConfigs(name, selectorSpecialConfig),
+    option = activationMediumAffixLines(name)?.[index]?.options.find((item) => item.tier === lines?.[index]?.tier),
+    range = option?.ranges[rollIndex];
+  if (!range) return;
+  const roll = Math.max(range.min, Math.min(range.max, Number(value)));
+  if (!Number.isFinite(roll)) return;
+  lines[index] = { ...lines[index], rolls: Object.assign([...lines[index].rolls], { [rollIndex]: roll }) };
+  setSelectorConfig({ ...selectorSpecialConfig, lines });
+}
+function setAffixChoice(from, to) {
+  const name = selectorEntryName(),
+    lines = activationMediumLineConfigs(name, selectorSpecialConfig);
+  if (!lines || from === to) return;
+  lines[to] = { ...lines[from] };
+  lines[from] = { tier: null, rolls: [] };
+  setSelectorConfig({
+    ...selectorSpecialConfig,
+    lines: activationMediumLineConfigs(name, { ...selectorSpecialConfig, lines }, to),
+  });
+}
 
 // ---- Divinity Slates board (apps/web/src/features/slates): the board reads the "slates" source; these carry out its edits.
 function selectSlate(id, toolsPosition) {
@@ -8586,111 +8634,6 @@ $("#kismet-roll-controls").addEventListener("change", (event) => {
 });
 $("#kismet-crafter").addEventListener("close", () => {
   activeKismetSlot = null;
-});
-$("#skill-selector-detail").addEventListener("input", (event) => {
-  if (event.target.matches("[data-special-roll],[data-special-roll-number]")) {
-    const entry = selectorEntries()[selectorChoiceIndex];
-    const tier = configurableSupportTierData(entry?.name)?.find((item) => item.tier === selectorSpecialConfig?.tier);
-    if (!tier) return;
-    const roll = Math.max(tier.min, Math.min(tier.max, Number(event.target.value)));
-    selectorSpecialConfig = { ...selectorSpecialConfig, roll };
-    const range = $("#skill-selector-detail [data-special-roll]"),
-      numberInput = $("#skill-selector-detail [data-special-roll-number]"),
-      output = $("#skill-selector-detail .special-roll-control output");
-    if (range) range.value = roll;
-    if (numberInput) numberInput.value = roll;
-    if (output) output.textContent = `${roll}%`;
-  }
-});
-$("#skill-selector-detail").addEventListener("input", (event) => {
-  if (!event.target.matches("[data-affix-roll],[data-affix-roll-number]")) return;
-  const name = selectorEntries()[selectorChoiceIndex]?.name,
-    index = Number(event.target.dataset.affixRoll ?? event.target.dataset.affixRollNumber),
-    rollIndex = Number(event.target.dataset.affixRollIndex),
-    lines = activationMediumLineConfigs(name, selectorSpecialConfig),
-    option = activationMediumAffixLines(name)?.[index]?.options.find((item) => item.tier === lines?.[index]?.tier),
-    range = option?.ranges[rollIndex];
-  if (!range) return;
-  const value = Math.max(range.min, Math.min(range.max, Number(event.target.value)));
-  if (!Number.isFinite(value)) return;
-  lines[index] = { ...lines[index], rolls: Object.assign([...lines[index].rolls], { [rollIndex]: value }) };
-  selectorSpecialConfig = { ...selectorSpecialConfig, lines };
-  const block = event.target.closest(".special-roll-control");
-  for (const input of block?.querySelectorAll("input") || []) if (input !== event.target) input.value = value;
-  const output = block?.querySelector("output");
-  if (output) output.textContent = String(value);
-  const label = block?.previousElementSibling?.querySelector("strong");
-  if (label) label.textContent = String(value);
-});
-$("#skill-selector-detail").addEventListener("change", (event) => {
-  if (event.target.matches("[data-affix-roll],[data-affix-roll-number]")) renderSkillSelector();
-});
-$("#skill-selector-detail").addEventListener("input", (event) => {
-  if (!event.target.matches("[data-progression-roll],[data-progression-roll-number]")) return;
-  const entry = selectorEntries()[selectorChoiceIndex],
-    tier = progressionSupportTierData(entry?.name)?.find((item) => item.tier === selectorSpecialConfig?.tier),
-    index = Number(event.target.dataset.progressionRoll ?? event.target.dataset.progressionRollNumber),
-    range = tier?.ranges[index];
-  if (!range) return;
-  const value = Math.max(range.min, Math.min(range.max, Number(event.target.value)));
-  const rolls = [...(selectorSpecialConfig.rolls || tier.ranges.map((item) => item.max))];
-  rolls[index] = value;
-  selectorSpecialConfig = { ...selectorSpecialConfig, rolls };
-  const block = event.target.closest(".special-roll-control");
-  for (const input of block?.querySelectorAll("input") || []) input.value = value;
-  const output = block?.querySelector("output");
-  if (output) output.textContent = String(value);
-});
-$("#skill-selector-detail").addEventListener("input", (event) => {
-  if (event.target.matches("[data-activation-trigger-roll],[data-activation-trigger-roll-number]")) {
-    const entry = selectorEntries()[selectorChoiceIndex];
-    const tier = activationMediumSecondaryTierData(entry?.name)?.find(
-      (item) => item.tier === selectorSpecialConfig?.secondaryTier,
-    );
-    if (!tier) return;
-    const secondaryRoll = Math.max(tier.min, Math.min(tier.max, Number(event.target.value)));
-    selectorSpecialConfig = { ...selectorSpecialConfig, secondaryRoll };
-    const range = $("#skill-selector-detail [data-activation-trigger-roll]"),
-      numberInput = $("#skill-selector-detail [data-activation-trigger-roll-number]"),
-      output = range?.closest(".special-roll-control")?.querySelector("output");
-    if (range) range.value = secondaryRoll;
-    if (numberInput) numberInput.value = secondaryRoll;
-    if (output) output.textContent = `${secondaryRoll} s`;
-  }
-});
-$("#skill-selector-detail").addEventListener("change", (event) => {
-  if (event.target.matches("[data-affix-choice]")) {
-    const name = selectorEntries()[selectorChoiceIndex]?.name,
-      from = Number(event.target.dataset.affixChoice),
-      to = Number(event.target.value),
-      lines = activationMediumLineConfigs(name, selectorSpecialConfig);
-    if (lines && from !== to) {
-      lines[to] = { ...lines[from] };
-      lines[from] = { tier: null, rolls: [] };
-      selectorSpecialConfig = {
-        ...selectorSpecialConfig,
-        lines: activationMediumLineConfigs(name, { ...selectorSpecialConfig, lines }, to),
-      };
-      renderSkillSelector();
-    }
-    return;
-  }
-  if (event.target.matches("[data-activation-roll-kind]")) {
-    selectorSpecialConfig = { ...selectorSpecialConfig, rollKind: event.target.value };
-    renderSkillSelector();
-  }
-});
-$("#skill-selector-detail").addEventListener("change", (event) => {
-  if (event.target.matches("[data-selector-level]")) {
-    selectorLevel = Math.max(1, Math.min(40, Number(event.target.value) || 20));
-    renderSkillSelector();
-  }
-  if (
-    event.target.matches(
-      "[data-special-roll],[data-special-roll-number],[data-progression-roll],[data-progression-roll-number],[data-activation-trigger-roll],[data-activation-trigger-roll-number]",
-    )
-  )
-    renderSkillSelector();
 });
 
 document.addEventListener("change", (event) => {

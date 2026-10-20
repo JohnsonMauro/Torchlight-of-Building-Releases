@@ -171,3 +171,13 @@ test("a path's summary, stages and sections", () => {
   assert.equal(openQuestions.length, 5);
   assert.ok(openQuestions.every((entry) => entry.id && entry.title && entry.alternatives.length));
 });
+
+test("an effect line's highlighted HTML becomes runs of text", async () => {
+  const { htmlTextSegments } = await import("../../src/app/bridge/display-text.ts");
+  assert.deepEqual(htmlTextSegments('Deals <span class="skill-damage-value">+12%</span> more &amp; &#39;x&#39;'), [
+    { text: "Deals ", className: null },
+    { text: "+12%", className: "skill-damage-value" },
+    { text: " more & 'x'", className: null },
+  ]);
+  assert.deepEqual(htmlTextSegments(""), []);
+});
