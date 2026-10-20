@@ -4,6 +4,7 @@
 import type { PlannerResult } from "./planner-api.ts";
 import type { PlannerState } from "./planner-state.ts";
 import type { PactsView } from "./pacts-view-model.ts";
+import type { FollowerPanelView } from "./follower-panel.js";
 
 /** The Config tab: the calculated build and the combat settings it was calculated with. */
 export interface ConfigurationSource {
@@ -19,6 +20,8 @@ export interface ViewSources {
   configuration: ConfigurationSource;
   /** The Pactspirits section (src/pacts-view-model.ts). */
   pacts: PactsView;
+  /** The hero panel's FOLLOWER tab (src/follower-panel.js followerPanelView). */
+  follower: FollowerPanelView;
 }
 export type ViewSourceName = keyof ViewSources;
 

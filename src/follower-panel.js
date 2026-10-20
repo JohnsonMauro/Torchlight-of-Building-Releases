@@ -165,60 +165,11 @@ const skillCoverage = (skill, planner, affixes = []) => {
 };
 
 // ---- Panel ----------------------------------------------------------------------------------------------------------
-function cardMarkup(selection, artwork) {
-  if (!selection) {
-    return `<div class="hero-showcase follower-showcase"><div class="hero-portrait follower-portrait"><span class="hero-avatar-fallback" aria-hidden="true">+</span></div><div class="hero-identity follower-identity"><strong>No follower selected</strong><small class="follower-rarity">Choose a follower</small><button type="button" class="change-hero-button" data-change-follower>Change Follower</button></div></div>`;
-  }
-  const { follower, rarity } = selection;
-  return `<div class="hero-showcase follower-showcase"><div class="hero-portrait follower-portrait${tintClass(rarity)}" data-follower-tooltip="${escapeHtml(follower.id)}">${follower.portrait ? `<img src="${escapeHtml(follower.portrait)}" alt="${escapeHtml(follower.displayName)}">` : `<span class="hero-avatar-fallback" aria-hidden="true">${escapeHtml(follower.name.slice(0, 2).toUpperCase())}</span>`}</div><div class="hero-identity follower-identity" data-follower-tooltip="${escapeHtml(follower.id)}"><strong id="selected-follower-name">${escapeHtml(follower.displayName)}</strong><div class="follower-rarity-line"><small class="${rarityClass(rarity)}" id="selected-follower-rarity">${escapeHtml(rarity?.name || "")} · ${escapeHtml(follower.species)}</small>${specialEffectMarkup(follower)}</div><button type="button" class="change-hero-button" data-change-follower>Change Follower</button></div></div>`;
-}
-
 /** The ULT letter's special effects ({ name, lines, modifierId }; one per letter in the game data), or []. */
 export function followerSpecialEffects(follower) {
   return follower?.kind === "named" && follower.traitName
     ? [{ name: follower.traitName, lines: follower.traitLines, modifierId: follower.specialEffect?.modifierId ?? null }]
     : [];
-}
-
-// The card's ULT special effect (2026-10-19 user request, as on the in-game letter tooltip): the game ties each effect to its
-// letter, so the one effect is a chip on the rarity line, in the Change Follower button's look (user feedback 2026-10-19);
-// hover or keyboard focus shows the follower card's tooltip (the effect with its coverage badges). A follower with a choice of several effects would keep a select (none in the current data).
-const SPECIAL_EFFECT_ICON = `<svg class="follower-special-effect-icon" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false"><path d="M2 8 6 4l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-function specialEffectMarkup(follower) {
-  const effects = followerSpecialEffects(follower);
-  if (!effects.length) return "";
-  if (effects.length > 1) {
-    const options = effects
-      .map(
-        (effect, index) =>
-          `<option value="${escapeHtml(effect.name)}"${index ? "" : " selected"}>${escapeHtml(effect.name)}</option>`,
-      )
-      .join("");
-    return `<div class="special-affix-block follower-special-effect-choice"><label class="activation-roll-kind activation-affix-choice"><span>Special effect</span><select data-follower-special-effect data-native-select aria-label="Special effect">${options}</select></label></div>`;
-  }
-  const name = escapeHtml(effects[0].name);
-  return `<span class="follower-special-effect" data-follower-tooltip="${escapeHtml(follower.id)}" tabindex="0" aria-label="Special effect: ${name}">${SPECIAL_EFFECT_ICON}<span>${name}</span></span>`;
-}
-
-// The hidden select a slot's searchable dropdown reads: the empty choice, then the eligible skills by kind; a skill in another
-// slot is disabled (each skill once), so the dropdown leaves it out.
-function slotRowsMarkup(selection, state, planner, artwork) {
-  if (!selection)
-    return `<div class="hero-traits-pending follower-pending"><strong>Select a follower</strong><span>Choose a follower to equip its Tartarus Skills.</span><button type="button" class="button" data-change-follower>Choose Follower</button></div>`;
-  const { follower, rarity } = selection;
-  const stored = normalizeFollowerState(state?.followers).skills;
-  const chosen = stored.map(followerSkillEntryName);
-  const rows = Array.from({ length: Math.min(FOLLOWER_MAX_SLOTS, selection.slots) }, (_, index) => {
-    const label = `<span class="tier-level"><small>SLOT</small><strong>${index + 1}</strong></span>`;
-    // Slot 1 is the letter's initial skill (2026-10-19 rework).
-    const initial = index === 0;
-    const skill = tartarusSkillByName(chosen[index]);
-    if (!skill)
-      return `<div class="follower-skill-slot-wrap"><button type="button" class="hero-tier follower-skill-slot empty" data-follower-skill-slot="${index}" aria-label="${initial ? "Choose the initial skill (slot 1)" : `Choose a Tartarus Skill for slot ${index + 1}`}">${label}<span class="follower-skill-art"><b aria-hidden="true">+</b></span><span class="tier-divider"></span><span class="follower-skill-info"><small>${initial ? "Initial skill" : "Empty slot"}</small><strong>${initial ? "Choose the initial skill" : "Choose a Tartarus Skill"}</strong></span></button></div>`;
-    const tier = followerSkillEntryTier(stored[index]);
-    return `<div class="follower-skill-slot-wrap"><button type="button" class="hero-tier follower-skill-slot filled" data-follower-skill-slot="${index}" data-follower-skill-tooltip="${escapeHtml(skill.name)}" aria-label="${escapeHtml(tartarusSkillTierName(skill, tier))}, ${initial ? "initial skill, " : ""}slot ${index + 1}; right-click to clear">${label}<span class="follower-skill-art">${artwork(skill.icon, skill.name, "hero-choice-art follower-skill-icon")}</span><span class="tier-divider"></span><span class="follower-skill-info"><small>${initial ? "Initial skill" : escapeHtml(KIND_LABEL[skill.kind] || "Tartarus Skill")}</small><strong>${escapeHtml(skillTitle(skill, tier))}</strong><small class="follower-skill-summary">${escapeHtml(followerSkillSummary(stored[index]))}</small></span></button></div>`;
-  });
-  return `<div class="hero-trait-tree follower-skill-slots" aria-label="${escapeHtml(follower.displayName)} Tartarus Skills">${rows.join("")}</div>`;
 }
 
 // A filled slot row's summary (2026-10-19 user request: the editor moved into the skill picker): "Tier III · Catalyst, Stable
@@ -361,10 +312,84 @@ export function followerSkillEditorMarkup(draft) {
     : "";
 }
 
-/** The FOLLOWER tab's content: the follower card and the skill slot rows. */
-export function followerPanelMarkup({ state, planner = null, artwork }) {
+/**
+ * @typedef {object} FollowerCardView
+ * @property {string} id
+ * @property {string} displayName
+ * @property {string | null} portrait
+ * @property {string} initials Shown when there is no portrait.
+ * @property {string} tintClass Rarity tint of the portrait (" follower-tint-<id>" or "").
+ * @property {string} rarityClass
+ * @property {string} rarityText "ULT · Lion Queen".
+ * @property {string[]} specialEffects The letter's special effect names (one per letter in the game data).
+ *
+ * @typedef {object} FollowerSlotView
+ * @property {number} index
+ * @property {boolean} initial Slot 1 holds the letter's initial skill.
+ * @property {string | null} skillName The stored skill, or null for an empty slot.
+ * @property {string | null} icon
+ * @property {string} label Accessible name.
+ * @property {string} kind "Initial skill", "Tartarus Skill", "Empty slot"…
+ * @property {string} title
+ * @property {string | null} summary "Tier III · No affixes" (filled slots).
+ *
+ * @typedef {object} FollowerPanelView
+ * @property {FollowerCardView | null} card Null without a follower.
+ * @property {FollowerSlotView[]} slots
+ * @property {string} slotsLabel
+ */
+
+/**
+ * The FOLLOWER tab's content (apps/web/src/features/follower): the follower card and the skill slot rows.
+ * @returns {FollowerPanelView}
+ */
+export function followerPanelView(state) {
   const selection = followerSelection(state);
-  return `${cardMarkup(selection, artwork)}${slotRowsMarkup(selection, state, planner, artwork)}`;
+  if (!selection) return { card: null, slots: [], slotsLabel: "" };
+  const { follower, rarity } = selection;
+  const stored = normalizeFollowerState(state?.followers).skills;
+  const chosen = stored.map(followerSkillEntryName);
+  const slots = Array.from({ length: Math.min(FOLLOWER_MAX_SLOTS, selection.slots) }, (_, index) => {
+    // Slot 1 is the letter's initial skill (2026-10-19 rework).
+    const initial = index === 0;
+    const skill = tartarusSkillByName(chosen[index]);
+    if (!skill)
+      return {
+        index,
+        initial,
+        skillName: null,
+        icon: null,
+        label: initial ? "Choose the initial skill (slot 1)" : `Choose a Tartarus Skill for slot ${index + 1}`,
+        kind: initial ? "Initial skill" : "Empty slot",
+        title: initial ? "Choose the initial skill" : "Choose a Tartarus Skill",
+        summary: null,
+      };
+    const tier = followerSkillEntryTier(stored[index]);
+    return {
+      index,
+      initial,
+      skillName: skill.name,
+      icon: skill.icon,
+      label: `${tartarusSkillTierName(skill, tier)}, ${initial ? "initial skill, " : ""}slot ${index + 1}; right-click to clear`,
+      kind: initial ? "Initial skill" : KIND_LABEL[skill.kind] || "Tartarus Skill",
+      title: skillTitle(skill, tier),
+      summary: followerSkillSummary(stored[index]),
+    };
+  });
+  return {
+    card: {
+      id: follower.id,
+      displayName: follower.displayName,
+      portrait: follower.portrait || null,
+      initials: follower.name.slice(0, 2).toUpperCase(),
+      tintClass: tintClass(rarity),
+      rarityClass: rarityClass(rarity),
+      rarityText: `${rarity?.name || ""} · ${follower.species}`,
+      specialEffects: followerSpecialEffects(follower).map((effect) => effect.name),
+    },
+    slots,
+    slotsLabel: `${follower.displayName} Tartarus Skills`,
+  };
 }
 
 // ---- Picker ---------------------------------------------------------------------------------------------------------

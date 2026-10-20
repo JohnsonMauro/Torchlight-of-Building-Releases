@@ -45,7 +45,7 @@ import { isRenameKey, resolveBuildRename } from "./build-tab-rename.js";
 import { slateShortcutAction } from "./slate-shortcuts.js";
 import { qolHelpButton, qolHelpTooltipHtml } from "./qol-help.js";
 import {
-  followerPanelMarkup,
+  followerPanelView,
   followerPickerMarkup,
   followerSkillTooltipHtml,
   followerTooltipHtml,
@@ -1571,7 +1571,24 @@ providePlannerCommands({
   moveKismet,
   showToast: (text) => showToast(escapeHtml(text)),
   hideTooltip: hidePlannerTooltip,
+  // Follower tab (apps/web/src/features/follower).
+  openFollowerSelector: () => {
+    followerSelectorQuery = "";
+    $("#follower-selector-search").value = "";
+    renderFollowerSelector();
+    $("#follower-selector").showModal();
+  },
+  openFollowerSkillSelector: (slot) => {
+    hidePlannerTooltip();
+    openFollowerSkillSelector(slot);
+  },
+  clearFollowerSkill: (slot) => {
+    hidePlannerTooltip();
+    commitFollower(setFollowerSkill(plannerState, slot, null), "Skill slot cleared");
+  },
 });
+// The FOLLOWER tab's data (src/follower-panel.js).
+provideViewSource("follower", () => followerPanelView(plannerState));
 // The Pactspirits section's data (src/pacts-view-model.ts).
 provideViewSource("pacts", () => pactsView(plannerState.pacts));
 // The Config tab's data (src/view-sources.ts). Manual mode also needs the same build in automatic mode (which conditions
@@ -3155,8 +3172,8 @@ function renderHeroPanel() {
     help.dataset.qolHelp = follower ? "follower" : "hero";
     help.setAttribute("aria-label", follower ? "Follower controls" : "Hero controls");
   }
-  if (follower)
-    $("#follower-panel").innerHTML = followerPanelMarkup({ state: plannerState, planner: currentPlanner(), artwork });
+  // The FOLLOWER tab is React (apps/web/src/features/follower): it re-reads its source while the tab is open.
+  if (follower) viewSourceChanged("follower");
 }
 function renderFollowerSelector() {
   $("#follower-selector-grid").innerHTML = followerPickerMarkup(followerSelectorQuery, plannerState);
@@ -7902,16 +7919,6 @@ document.addEventListener("contextmenu", (event) => {
     event.preventDefault();
     return;
   }
-  const filledFollowerSlot = event.target.closest("[data-follower-skill-slot].filled");
-  if (filledFollowerSlot) {
-    event.preventDefault();
-    hidePlannerTooltip();
-    commitFollower(
-      setFollowerSkill(plannerState, Number(filledFollowerSlot.dataset.followerSkillSlot), null),
-      "Skill slot cleared",
-    );
-    return;
-  }
   if (slateDrag) {
     event.preventDefault();
     const slate = slatesForBoard().find((item) => item.id === slateDrag.id);
@@ -8456,13 +8463,6 @@ document.addEventListener("click", (event) => {
     renderHeroPanel();
     return;
   }
-  if (event.target.closest("[data-change-follower]")) {
-    followerSelectorQuery = "";
-    $("#follower-selector-search").value = "";
-    renderFollowerSelector();
-    $("#follower-selector").showModal();
-    return;
-  }
   if (event.target.closest("[data-close-follower-selector]")) {
     $("#follower-selector").close();
     return;
@@ -8479,14 +8479,6 @@ document.addEventListener("click", (event) => {
       next,
       `${escapeHtml(followerById(next.followerId)?.displayName || "Follower")} · ${escapeHtml(followerRarityById(next.rarity)?.name || "")} selected`,
     );
-    return;
-  }
-  const followerSlot = event.target.closest("[data-follower-skill-slot]");
-  if (followerSlot) {
-    if (!followerSlot.disabled) {
-      hidePlannerTooltip();
-      openFollowerSkillSelector(Number(followerSlot.dataset.followerSkillSlot));
-    }
     return;
   }
   if (event.target.closest("[data-change-hero]")) {

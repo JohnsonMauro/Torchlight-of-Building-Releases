@@ -46,6 +46,10 @@ test("shows the follower card, its special effect and its skill slots", async ({
 test("without a follower: Choose Follower opens the selector, and a choice fills the card", async ({ page }) => {
   const { planner, follower } = await openFollower(page, youga);
   await expect(follower.panel()).toContainText("No follower selected");
+  await follower.button("Change Follower").click();
+  await expect(follower.selector()).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(follower.selector()).toBeHidden();
   await follower.button("Choose Follower").click();
   await expect(follower.selector()).toBeVisible();
   await follower.selectorChoice("Lion Queen Normal").click();

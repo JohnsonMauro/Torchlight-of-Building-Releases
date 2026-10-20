@@ -1,3 +1,5 @@
+import { FollowerPanel } from "../../features/follower/FollowerPanel";
+
 export function TalentsView() {
   return (
     <section id="talents-view" className="app-view">
@@ -58,7 +60,9 @@ export function TalentsView() {
           role="tabpanel"
           aria-labelledby="hero-panel-tab-follower"
           hidden
-        />
+        >
+          <FollowerPanel />
+        </div>
       </aside>
       <div className="talent-page-heading">
         <div>
