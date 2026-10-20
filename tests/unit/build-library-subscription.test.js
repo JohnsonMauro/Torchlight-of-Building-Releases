@@ -1,24 +1,6 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-
-class MemoryStorage {
-  #items = new Map();
-  getItem(key) {
-    return this.#items.has(key) ? this.#items.get(key) : null;
-  }
-  setItem(key, value) {
-    this.#items.set(key, String(value));
-  }
-  removeItem(key) {
-    this.#items.delete(key);
-  }
-  key(index) {
-    return [...this.#items.keys()][index] ?? null;
-  }
-  get length() {
-    return this.#items.size;
-  }
-}
+import { MemoryStorage } from "./memory-storage.js";
 
 beforeEach(() => {
   globalThis.localStorage = new MemoryStorage();
