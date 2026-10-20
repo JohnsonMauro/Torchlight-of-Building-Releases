@@ -15,11 +15,19 @@ export const headline: [string, string[], string, number | undefined] = [
   result.dummyRecount?.twentySeconds.bySource["hit:x"]?.dps,
 ];
 export const timeline: Float64Array | undefined = result.dummyRecount?.timeline.total;
+export const skills: [ReadonlySet<string>, string, number | undefined, string | undefined] = [
+  result.activation.activeNames,
+  result.activation.setups[0].setupKey,
+  result.aura.planned?.manaDemandPercent,
+  result.activation.setups[0].supports[0].traitGranted?.trait,
+];
 
 // @ts-expect-error the recount can be missing
 export const dps: number = result.dummyRecount.twentySeconds.dps;
 // @ts-expect-error untyped sections are read through a type of their own, not by guessing fields
-export const guessed = result.activation.activeNames;
+export const guessed = result.activationMediumTerra.active;
+// @ts-expect-error most setups are not granted by a hero trait
+export const grantedRow: number = result.activation.setups[0].traitGranted.row;
 // @ts-expect-error warnings are text
 export const warningCount: number = result.warnings[0];
 // @ts-expect-error the result is not any

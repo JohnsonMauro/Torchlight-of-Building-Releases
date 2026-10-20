@@ -155,6 +155,74 @@ export function resultShapeProblems(result) {
   (result.aim.chargeSources || []).forEach((entry, index) =>
     types(entry, `aim.chargeSources[${index}]`, { source: "string", value: "number" }),
   );
+  const activation = result.activation;
+  expect(activation.activeNames instanceof Set, "activation.activeNames");
+  types(activation.energy, "activation.energy", {
+    available: "number",
+    capturedMaximum: "number",
+    equipmentEnergy: "number",
+    nonEquipmentEnergy: "number",
+  });
+  for (const key of ["activeSlotCosts", "passiveSlotCosts"])
+    expect(
+      Array.isArray(activation.profile[key]) && activation.profile[key].every((cost) => typeof cost === "number"),
+      `activation.profile.${key}`,
+    );
+  const grant = (value, path, place) =>
+    expect(
+      value === undefined ||
+        (typeof value?.[place] === "number" &&
+          typeof value.trait === "string" &&
+          typeof value.source === "string" &&
+          (value.replaces === null || typeof value.replaces === "string")),
+      path,
+    );
+  activation.setups.forEach((setup, index) => {
+    const path = `activation.setups[${index}]`;
+    types(setup, path, {
+      setupKey: "string",
+      name: "string",
+      role: "string",
+      icon: "string",
+      enabled: "boolean",
+      baseLevel: "number",
+      addedLevels: "number",
+      effectiveLevel: "number",
+      energyCost: "number",
+    });
+    expect(Array.isArray(setup.tags) && setup.tags.every((tag) => typeof tag === "string"), `${path}.tags`);
+    expect(
+      Array.isArray(setup.occupiedSupportSlots) &&
+        setup.occupiedSupportSlots.every((occupied) => typeof occupied === "boolean"),
+      `${path}.occupiedSupportSlots`,
+    );
+    expect(setup.instanceId === undefined || typeof setup.instanceId === "string", `${path}.instanceId`);
+    expect(setup.slotInactive === undefined || typeof setup.slotInactive === "string", `${path}.slotInactive`);
+    grant(setup.traitGranted, `${path}.traitGranted`, "row");
+    setup.supports.forEach((support, at) => {
+      types(support, `${path}.supports[${at}]`, {
+        name: "string",
+        enabled: "boolean",
+        level: "number",
+        baseLevel: "number",
+        addedLevels: "number",
+        effectiveLevel: "number",
+      });
+      expect(Array.isArray(support.effects), `${path}.supports[${at}].effects`);
+      grant(support.traitGranted, `${path}.supports[${at}].traitGranted`, "slot");
+    });
+  });
+  const reservation = {
+    manaReservedPercent: "number",
+    lifeReservedPercent: "number",
+    manaDemandPercent: "number",
+    lifeDemandPercent: "number",
+    manaRemainingPercent: "number",
+    lifeRemainingPercent: "number",
+  };
+  types(result.aura, "aura", reservation);
+  types(result.aura.planned, "aura.planned", reservation);
+
   types(result.seaFoamNocturne, "seaFoamNocturne", {
     selected: "boolean",
     applied: "boolean",

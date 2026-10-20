@@ -149,6 +149,97 @@ export interface SeaFoamNocturne {
   factor: number;
 }
 
+// ---- Skills: activation (setups, supports, Energy) and aura reservation -------------------------------------------
+
+/** A hero trait shows this skill on a board row, over the user's skill there (src/trait-board-grants.js). */
+export interface SkillTraitGrant {
+  row: number;
+  trait: string;
+  source: string;
+  /** The user's skill it replaces; null when the row was empty. */
+  replaces: string | null;
+}
+/** A hero trait shows this support in a socket (src/trait-board-grants.js). */
+export interface SupportTraitGrant {
+  slot: number;
+  trait: string;
+  source: string;
+  replaces: string | null;
+}
+/** A support on a setup. Other fields are not typed yet. */
+export interface InstalledSupport {
+  name: string;
+  enabled: boolean;
+  level: number;
+  baseLevel: number;
+  addedLevels: number;
+  effectiveLevel: number;
+  effects: readonly string[];
+  /** Added by the user (not part of the captured loadout). */
+  custom?: boolean;
+  traitGranted?: SupportTraitGrant;
+  /** Set aside by a hero trait (disabled for the calculation, keeps its socket). */
+  traitReplaced?: object;
+}
+/** A skill setup (a skill with its supports). Other fields are not typed yet. */
+export interface SkillSetup {
+  /** The key the build's skill settings use for this setup. */
+  setupKey: string;
+  instanceId?: string;
+  name: string;
+  role: string;
+  icon: string;
+  tags: readonly string[];
+  enabled: boolean;
+  baseLevel: number;
+  addedLevels: number;
+  effectiveLevel: number;
+  energyCost: number;
+  supports: InstalledSupport[];
+  /** Which of the five support sockets hold a support (the Energy cost reads it). */
+  occupiedSupportSlots: readonly boolean[];
+  custom?: boolean;
+  traitGranted?: SkillTraitGrant;
+  traitReplaced?: object;
+  /** Why a board rule set this setup aside (src/magus-active-slot.js). */
+  slotInactive?: string;
+}
+/** Energy cost of each support socket, for active skills and for passive skills / auras. Other fields are not typed yet. */
+export interface EnergyProfile {
+  activeSlotCosts: readonly number[];
+  passiveSlotCosts: readonly number[];
+}
+export interface SkillActivation {
+  profile: EnergyProfile;
+  setups: SkillSetup[];
+  energy: {
+    available: number;
+    capturedMaximum: number;
+    equipmentEnergy: number;
+    nonEquipmentEnergy: number;
+    sources: ResultSection;
+  };
+  allocation: ResultSection;
+  /** The skills active in this build (a skill short of Energy, or disabled, is not). */
+  activeNames: ReadonlySet<string>;
+  traitBoard: ResultSection | null;
+}
+/** Mana and Life the auras seal. A demand of 100% or more cannot be activated in full. */
+export interface AuraReservation {
+  manaReservedPercent: number;
+  lifeReservedPercent: number;
+  manaDemandPercent: number;
+  lifeDemandPercent: number;
+  manaRemainingPercent: number;
+  lifeRemainingPercent: number;
+  entries: ResultSection;
+}
+/** The auras as calculated, and `planned`: every aura on the board, before the reservation cap. */
+export interface AuraLedger extends AuraReservation {
+  /** Set on every golden case; optional because the engine adds it to the ledger afterwards (TS cannot see it). */
+  planned?: AuraReservation;
+}
+
 // ---- The result ---------------------------------------------------------------------------------------------------
 
 /** The skill the headline figures are for (the first enabled damage setup). Other fields are not typed yet. */
@@ -180,12 +271,12 @@ export interface PlannerResult {
   igniteLimit: number;
   sourceDamageMultiplier: number;
 
-  activation: ResultSection;
+  activation: SkillActivation;
   activationMediumTerra: ResultSection;
   afflictionRating: ResultSection | null;
   ailments: ResultSection;
   aim: AimSummary;
-  aura: ResultSection;
+  aura: AuraLedger;
   bardDelivery: ResultSection | null;
   beamAddedDamage: ResultSection;
   beamCastRate: ResultSection;
