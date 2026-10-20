@@ -1,5 +1,5 @@
 import { heroById } from "@legacy/data/heroes/hero-catalog-ss13.js";
-import { plannerCommands } from "@legacy/planner-commands.js";
+import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { BuildLibrary, LibraryBuild } from "./build-library";
 
 interface BuildListProps {

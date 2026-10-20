@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { plannerCommands } from "@legacy/planner-commands.js";
+import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
 import { activeBuild, useBuildLibrary, type LibraryBuild } from "./build-library";
 import { BuildDetails } from "./BuildDetails";

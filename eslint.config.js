@@ -12,7 +12,7 @@ export default [
     languageOptions: { ecmaVersion: "latest", sourceType: "module", globals: { ...globals.browser } },
   },
   {
-    files: ["scripts/**/*.js", "tests/**/*.js", "*.config.js", "src/game-log-local.js"],
+    files: ["scripts/**/*.js", "tests/**/*.js", "*.config.js", "src/game-log/game-log-local.js"],
     languageOptions: { globals: { ...globals.node } },
   },
   {

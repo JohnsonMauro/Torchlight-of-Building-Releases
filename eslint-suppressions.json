@@ -1,15 +1,5 @@
 {
-  "src/affix-attributes.js": {
-    "no-useless-assignment": {
-      "count": 1
-    }
-  },
-  "src/aim-model.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/app.js": {
+  "src/app/app.js": {
     "no-empty": {
       "count": 3
     },
@@ -20,29 +10,32 @@
       "count": 1
     }
   },
-  "src/attack-hit-profiles.js": {
-    "no-useless-escape": {
+  "src/app/follower-panel.js": {
+    "no-empty": {
+      "count": 1
+    },
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app/stats/damage-path-panel.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app/stats/skill-hit-path.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app/stats/stat-sheet-panel.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app/storage/recovery-core.js": {
+    "no-empty": {
       "count": 4
-    }
-  },
-  "src/attribute-panel.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "src/build-code-compact.js": {
-    "no-useless-assignment": {
-      "count": 1
-    }
-  },
-  "src/carino-traits.js": {
-    "no-useless-assignment": {
-      "count": 2
-    }
-  },
-  "src/damage-path-panel.js": {
-    "no-unused-vars": {
-      "count": 1
     }
   },
   "src/data/skills/special-support-tiers-ss13.js": {
@@ -50,12 +43,17 @@
       "count": 6
     }
   },
-  "src/dummy-recount.js": {
+  "src/engine/combat/dummy-recount.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "src/engine.js": {
+  "src/engine/defense/attribute-panel.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/engine/engine.js": {
     "no-unused-vars": {
       "count": 1
     },
@@ -63,58 +61,52 @@
       "count": 1
     }
   },
-  "src/erika-traits.js": {
+  "src/engine/followers/follower-model.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "src/follower-model.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/follower-panel.js": {
-    "no-empty": {
-      "count": 1
-    },
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/game-log-import.js": {
-    "no-unused-vars": {
-      "count": 4
-    },
+  "src/engine/heroes/carino-traits.js": {
     "no-useless-assignment": {
       "count": 2
     }
   },
-  "src/game-log-local.js": {
-    "no-useless-assignment": {
-      "count": 1
-    }
-  },
-  "src/hero-memory-model.js": {
+  "src/engine/heroes/erika-traits.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "src/planner.js": {
+  "src/engine/heroes/hero-memory-model.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/heroes/sage-traits.js": {
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "src/engine/heroes/youga-ultimate-one.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/engine/planner.js": {
     "no-unused-vars": {
       "count": 7
     }
   },
-  "src/recovery-core.js": {
-    "no-empty": {
+  "src/engine/skills/aim-model.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/skills/attack-hit-profiles.js": {
+    "no-useless-escape": {
       "count": 4
     }
   },
-  "src/sage-traits.js": {
-    "no-useless-assignment": {
-      "count": 2
-    }
-  },
-  "src/skill-coverage.js": {
+  "src/engine/skills/skill-coverage.js": {
     "no-unused-vars": {
       "count": 1
     },
@@ -122,29 +114,37 @@
       "count": 1
     }
   },
-  "src/skill-dot-model.js": {
+  "src/engine/skills/skill-dot-model.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "src/skill-hit-model.js": {
+  "src/engine/skills/skill-hit-model.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "src/skill-hit-path.js": {
-    "no-unused-vars": {
+  "src/engine/state/build-code-compact.js": {
+    "no-useless-assignment": {
       "count": 1
     }
   },
-  "src/stat-sheet-panel.js": {
-    "no-unused-vars": {
+  "src/engine/text/affix-attributes.js": {
+    "no-useless-assignment": {
       "count": 1
     }
   },
-  "src/youga-ultimate-one.js": {
+  "src/game-log/game-log-import.js": {
     "no-unused-vars": {
+      "count": 4
+    },
+    "no-useless-assignment": {
       "count": 2
+    }
+  },
+  "src/game-log/game-log-local.js": {
+    "no-useless-assignment": {
+      "count": 1
     }
   }
 }

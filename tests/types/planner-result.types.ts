@@ -1,7 +1,7 @@
-// Type-level checks for src/planner-api.ts, run by `pnpm typecheck`. Every expected error must happen: if a type
+// Type-level checks for src/engine/planner-api.ts, run by `pnpm typecheck`. Every expected error must happen: if a type
 // loosens, tsc reports the unused directive.
-import { calculate, plannerResultKeys } from "../../src/planner-api.ts";
-import type { PlannerResult } from "../../src/planner-api.ts";
+import { calculate, plannerResultKeys } from "../../src/engine/planner-api.ts";
+import type { PlannerResult } from "../../src/engine/planner-api.ts";
 
 // plannerResultKeys lists every key of PlannerResult (and, by its `satisfies`, nothing else).
 type Unlisted = Exclude<keyof PlannerResult, (typeof plannerResultKeys)[number]>;

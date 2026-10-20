@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { provideViewSource, readViewSource, subscribeViewSource, viewSourceChanged } from "../../src/view-sources.ts";
+import {
+  provideViewSource,
+  readViewSource,
+  subscribeViewSource,
+  viewSourceChanged,
+} from "../../src/app/bridge/view-sources.ts";
 
 test("a source reads its data once per change, and only after the planner provided it", () => {
   assert.equal(readViewSource("configuration"), null);

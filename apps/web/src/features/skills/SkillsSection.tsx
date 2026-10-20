@@ -1,11 +1,11 @@
 // The Skills section of the Build page: the setup count, the Energy allocator, and the skill board (Skills and Auras tabs,
 // each row's skill, supports and Energy, the aura reservation, Reset Skills). The data is the planner's "skills" source
-// (src/skills-view-model.ts); every edit is a planner command, and the skill selector dialog stays legacy. The legacy hover
+// (src/app/bridge/skills-view-model.ts); every edit is a planner command, and the skill selector dialog stays legacy. The legacy hover
 // tooltip reads data-skill-tooltip, data-support-tooltip, data-parent-skill, data-selector-row and
 // data-selector-support-slot (and finds the board by #skill-groups), so they stay.
 import type { CSSProperties, MouseEvent } from "react";
-import { plannerCommands } from "@legacy/planner-commands.js";
-import type { SkillBoardTab, SkillRowView, SkillsView } from "@legacy/skills-view-model.ts";
+import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import type { SkillBoardTab, SkillRowView, SkillsView } from "@legacy/app/bridge/skills-view-model.ts";
 import { Artwork } from "../../ui/Artwork";
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";

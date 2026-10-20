@@ -1,8 +1,12 @@
-// The saved-build library as the UI reads it: a snapshot from src/build-library.ts that changes when this tab writes the
+// The saved-build library as the UI reads it: a snapshot from src/app/storage/build-library.ts that changes when this tab writes the
 // library (subscribeBuildLibrary) or another tab does (the `storage` event).
 import { useSyncExternalStore } from "react";
-import { loadBuildLibrary, plannerLibraryStorageKey, subscribeBuildLibrary } from "@legacy/build-library.ts";
-import type { BuildLibrary, LibraryBuild } from "@legacy/build-library.ts";
+import {
+  loadBuildLibrary,
+  plannerLibraryStorageKey,
+  subscribeBuildLibrary,
+} from "@legacy/app/storage/build-library.ts";
+import type { BuildLibrary, LibraryBuild } from "@legacy/app/storage/build-library.ts";
 
 export type { BuildLibrary, LibraryBuild };
 

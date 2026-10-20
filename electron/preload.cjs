@@ -1,6 +1,6 @@
 // Sandboxed preload. `gameLogSnapshots` is read-only: the main process reads the game's fixed log folder and returns
-// only sanitised build dumps (src/game-log-local.js); no path or other argument crosses the bridge. `updates` drives the
-// update banner (src/update-banner.js): status pushes from electron/updater.cjs and argument-free actions.
+// only sanitised build dumps (src/game-log/game-log-local.js); no path or other argument crosses the bridge. `updates` drives the
+// update banner (src/app/update-banner.js): status pushes from electron/updater.cjs and argument-free actions.
 const { contextBridge, ipcRenderer } = require("electron");
 
 const updateListeners = new Set();

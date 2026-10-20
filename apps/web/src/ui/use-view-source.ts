@@ -1,7 +1,7 @@
-// Reads a source the legacy planner publishes (src/view-sources.ts) and re-renders when the planner says it changed.
+// Reads a source the legacy planner publishes (src/app/bridge/view-sources.ts) and re-renders when the planner says it changed.
 import { useCallback, useSyncExternalStore } from "react";
-import { readViewSource, subscribeViewSource } from "@legacy/view-sources.ts";
-import type { ViewSourceName, ViewSources } from "@legacy/view-sources.ts";
+import { readViewSource, subscribeViewSource } from "@legacy/app/bridge/view-sources.ts";
+import type { ViewSourceName, ViewSources } from "@legacy/app/bridge/view-sources.ts";
 
 /** The source's data; null until the planner has loaded and provided it. */
 export function useViewSource<K extends ViewSourceName>(name: K): ViewSources[K] | null {

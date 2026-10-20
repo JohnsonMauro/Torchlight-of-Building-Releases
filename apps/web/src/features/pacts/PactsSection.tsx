@@ -1,9 +1,9 @@
 // The Pactspirits section of the Build page: the pact count, the three pact slots with their trees, and the Kismet counts.
-// The data is the planner's "pacts" source (src/pacts-view-model.ts); every edit is a planner command. The legacy hover
+// The data is the planner's "pacts" source (src/app/bridge/pacts-view-model.ts); every edit is a planner command. The legacy hover
 // tooltip still reads the nodes' data-node-* and data-pactspirit-name attributes, so they stay.
 import { useMemo, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
-import { plannerCommands } from "@legacy/planner-commands.js";
-import type { ExtraSlotView, PactNodeView, PactSlotView, PactsView } from "@legacy/pacts-view-model.ts";
+import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import type { ExtraSlotView, PactNodeView, PactSlotView, PactsView } from "@legacy/app/bridge/pacts-view-model.ts";
 import { useViewSource } from "../../ui/use-view-source";
 import { useKismetDrag, type DropSlot } from "./use-kismet-drag";
 

@@ -1,11 +1,11 @@
 // The Config tab's card: Scenario, exclusive choices, best-case assumptions and Advanced numbers. The data comes from
-// the planner (src/view-sources.ts "configuration"); every edit is a planner command, after which the source changes.
+// the planner (src/app/bridge/view-sources.ts "configuration"); every edit is a planner command, after which the source changes.
 import { useState, type ReactNode } from "react";
-import { aimUptimeControl } from "@legacy/aim-controls.js";
-import { plannerCommands } from "@legacy/planner-commands.js";
-import { combatNumberLimits, type CombatNumber } from "@legacy/state-validation.ts";
-import type { ConfigurationSource } from "@legacy/view-sources.ts";
-import type { ExclusiveChoice } from "@legacy/planner-api.ts";
+import { aimUptimeControl } from "@legacy/app/aim-controls.js";
+import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import { combatNumberLimits, type CombatNumber } from "@legacy/engine/state/state-validation.ts";
+import type { ConfigurationSource } from "@legacy/app/bridge/view-sources.ts";
+import type { ExclusiveChoice } from "@legacy/engine/planner-api.ts";
 import { CommitNumberInput } from "../../ui/CommitNumberInput";
 import { formatNumber } from "../../ui/format";
 import { applicableManualConditions, manualConditionRows } from "./configuration-model";

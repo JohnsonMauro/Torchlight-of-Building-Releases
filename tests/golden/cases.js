@@ -1,11 +1,11 @@
 // Golden-master cases: planner inputs covering the default build, a real imported build (Youga The Ultimate One, L94,
-// read from a game log and sanitised by src/game-log-import.js), every hero with two trait picks on that build's gear,
+// read from a game log and sanitised by src/game-log/game-log-import.js), every hero with two trait picks on that build's gear,
 // and combat-setting variants. Imports are relative to this file so tests/golden/diff.js can run the copy from an older
 // git ref against its own src/.
 import { readFileSync } from "node:fs";
-import { calculatePlanner } from "../../src/planner.js";
-import { defaultPlannerState, normalizePlannerState } from "../../src/planner-state.ts";
-import { switchHeroLoadout } from "../../src/hero-loadouts.js";
+import { calculatePlanner } from "../../src/engine/planner.js";
+import { defaultPlannerState, normalizePlannerState } from "../../src/engine/state/planner-state.ts";
+import { switchHeroLoadout } from "../../src/engine/heroes/hero-loadouts.js";
 import { heroCatalogSs13 } from "../../src/data/heroes/hero-catalog-ss13.js";
 import { allHeroTraitsSs13 } from "../../src/data/heroes/all-hero-traits-ss13.generated.js";
 

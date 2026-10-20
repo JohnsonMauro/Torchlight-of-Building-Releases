@@ -2,7 +2,7 @@
 // during it turns the move into a copy. The drop target must be an allocated node or an extra Fate slot of the same kind.
 // The click (and, after a copy, the context menu) that follows the drop is swallowed, so it does not also act on the slot.
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import type { KismetKind } from "@legacy/pacts-view-model.ts";
+import type { KismetKind } from "@legacy/app/bridge/pacts-view-model.ts";
 
 export interface DragSource {
   key: string;

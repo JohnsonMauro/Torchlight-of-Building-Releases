@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { heroById } from "@legacy/data/heroes/hero-catalog-ss13.js";
-import { plannerCommands } from "@legacy/planner-commands.js";
+import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { LibraryBuild } from "./build-library";
 
 /**

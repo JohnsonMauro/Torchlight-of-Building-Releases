@@ -8,7 +8,7 @@ beforeEach(() => {
 });
 
 const { createBuild, loadBuildLibrary, subscribeBuildLibrary, updateActiveBuildMetadata } =
-  await import("../../src/build-library.ts");
+  await import("../../src/app/storage/build-library.ts");
 
 test("subscribers hear every library write and stop after unsubscribing", () => {
   let calls = 0;

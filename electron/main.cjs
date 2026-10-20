@@ -52,7 +52,9 @@ let gameLogReader = null;
 ipcMain.handle("game-log:snapshots", async (event) => {
   if (!fromApp(event)) return { found: false, reason: "Not available here." };
   try {
-    gameLogReader ||= import(pathToFileURL(path.join(app.getAppPath(), "src", "game-log-local.js")).toString());
+    gameLogReader ||= import(
+      pathToFileURL(path.join(app.getAppPath(), "src", "game-log", "game-log-local.js")).toString()
+    );
     return await (await gameLogReader).readGameLogSnapshots();
   } catch {
     gameLogReader = null;

@@ -1,7 +1,7 @@
-// Run-time check of src/planner-api.ts PlannerResult on a real result: the top-level keys are exactly
+// Run-time check of src/engine/planner-api.ts PlannerResult on a real result: the top-level keys are exactly
 // plannerResultKeys, and the typed parts have the types the interface claims. golden.test.js runs it on every case.
 // When a part of the result gets its real type, check it here too.
-import { plannerResultKeys } from "../../src/planner-api.ts";
+import { plannerResultKeys } from "../../src/engine/planner-api.ts";
 
 const NULLABLE = new Set([
   "dummyRecount",

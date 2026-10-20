@@ -1,5 +1,6 @@
-// The shape of src/'s import graph: no import cycles, and the calculation (everything src/planner.js reaches) loads no
-// page code: no document / storage access and no HTML helpers. Imports are read from the source text (static `import` /
+// The shape of src/'s import graph: no import cycles; the folders depend one way (src/engine, the pure domain, imports only
+// itself and src/data; src/game-log does not import the page in src/app); and the calculation (everything
+// src/engine/planner.js reaches) loads no page code: no document / storage access and no HTML helpers. Imports are read from the source text (static `import` /
 // `export … from` with a relative path; `import type` is erased and does not count).
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -62,7 +63,7 @@ test("src/ has no import cycles", () => {
 
 test("the calculation reaches no page code", () => {
   const reached = new Set();
-  const queue = ["src/planner.js"];
+  const queue = ["src/engine/planner.js"];
   while (queue.length) {
     const file = queue.pop();
     if (reached.has(file)) continue;
@@ -72,8 +73,19 @@ test("the calculation reaches no page code", () => {
   assert.ok(reached.size > 100, `only ${reached.size} modules reached: the import reader is broken`);
   const pageCode = [...reached].filter(
     (file) =>
-      file === join("src", "html.js") ||
+      file === join("src", "app", "html.js") ||
       /\bdocument\.|\b(?:localStorage|sessionStorage)\b/.test(source[file].replace(/^\s*\/\/.*$/gm, "")),
   );
   assert.deepEqual(pageCode, []);
+});
+
+test("src/engine imports only itself and src/data; src/game-log does not import src/app", () => {
+  const area = (file) => file.split(/[\\/]/)[1];
+  const allowed = { engine: ["engine", "data"], "game-log": ["game-log", "engine", "data"] };
+  const crossings = files.flatMap((file) =>
+    (allowed[area(file)] ? imports.get(file) : [])
+      .filter((target) => !allowed[area(file)].includes(area(target)))
+      .map((target) => `${file} -> ${target}`),
+  );
+  assert.deepEqual(crossings, []);
 });

@@ -1,13 +1,13 @@
-// src/skills-view-model.ts on real calculations (the default build, the golden-master Youga build and a hero whose trait
+// src/app/bridge/skills-view-model.ts on real calculations (the default build, the golden-master Youga build and a hero whose trait
 // takes a board row), with the parts of a result the golden cases never reach (a curse past the limit, a skill set aside
 // by a board rule, auras asking for 100% or more) put into a copy of a real result.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { calculatePlanner } from "../../src/planner.js";
-import { defaultPlannerState } from "../../src/planner-state.ts";
-import { switchHeroLoadout } from "../../src/hero-loadouts.js";
-import { skillsView } from "../../src/skills-view-model.ts";
+import { calculatePlanner } from "../../src/engine/planner.js";
+import { defaultPlannerState } from "../../src/engine/state/planner-state.ts";
+import { switchHeroLoadout } from "../../src/engine/heroes/hero-loadouts.js";
+import { skillsView } from "../../src/app/bridge/skills-view-model.ts";
 import { selenaCompleteSkillLoadoutSs13 } from "../../src/data/skills/selena-complete-skill-loadout-ss13.js";
 
 const youga = JSON.parse(
@@ -80,7 +80,7 @@ test("the Auras tab: four rows and the Mana and Life the auras seal", () => {
 
 test("empty rows are named by tab and row, and their sockets wait for a skill", () => {
   const state = structuredClone(defaultPlannerState);
-  // What "Reset Skills" leaves (src/app.js emptyPlannerState does the same): every captured setup off.
+  // What "Reset Skills" leaves (src/app/app.js emptyPlannerState does the same): every captured setup off.
   state.skills.setupEnabled = Object.fromEntries(
     selenaCompleteSkillLoadoutSs13.setups.map((setup) => [setup.name, false]),
   );

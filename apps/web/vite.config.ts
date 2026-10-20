@@ -35,7 +35,7 @@ async function serveGameLog(request: IncomingMessage, response: ServerResponse):
   try {
     // Run-time URL: a literal specifier would be bundled into this config by Vite's config loader.
     const { handleGameLogSnapshotsRequest } = await import(
-      pathToFileURL(resolve(repoRoot, "src/game-log-local.js")).href
+      pathToFileURL(resolve(repoRoot, "src/game-log/game-log-local.js")).href
     );
     await handleGameLogSnapshotsRequest(request, response);
   } catch (error) {

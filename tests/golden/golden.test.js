@@ -24,7 +24,7 @@ for (const { id, state } of inputs) {
     assert.deepEqual(
       resultShapeProblems(result),
       [],
-      `${id}: result does not match PlannerResult (src/planner-api.ts)`,
+      `${id}: result does not match PlannerResult (src/engine/planner-api.ts)`,
     );
     assert.ok(recorded, `no recorded result for ${id}; run pnpm golden:update`);
     assert.deepEqual(resultSummary(result), recorded.summary, `${id}: headline figures changed`);

@@ -1,4 +1,4 @@
-// Characterization of src/planner-state.ts and src/build-library.ts (one module until 2026-10-20): what
+// Characterization of src/engine/state/planner-state.ts and src/app/storage/build-library.ts (one module until 2026-10-20): what
 // normalizePlannerState and normalizeBuildLibrary return, and how the
 // library is loaded, saved, shared between tabs, quarantined, restored and shared as a code. Written against the
 // JavaScript module before it moved to TypeScript; the behaviour recorded here is what its types describe.
@@ -12,7 +12,7 @@ import {
   diffPlannerStates,
   encodePlannerState,
   normalizePlannerState,
-} from "../../src/planner-state.ts";
+} from "../../src/engine/state/planner-state.ts";
 import {
   createBuild,
   deleteAllBuilds,
@@ -39,7 +39,7 @@ import {
   setCompareBuild,
   startNewLibrary,
   updateActiveBuildMetadata,
-} from "../../src/build-library.ts";
+} from "../../src/app/storage/build-library.ts";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
@@ -117,7 +117,7 @@ test("hero: traits, equipped memories, Carino ammo, trait support levels and the
   assert.deepEqual(hero.carinoSpecialAmmoSupports, ["Ammo", "", ""]);
   assert.deepEqual(hero.heroTraitSupportLevels, { a: 1, b: 40 });
   assert.equal("selenaDanceTraits" in hero, false);
-  // The picks move to hero.treeTraits (src/hero-trait-tree.js migrateTreeTraits, tested with its own rules).
+  // The picks move to hero.treeTraits (src/engine/heroes/hero-trait-tree.js migrateTreeTraits, tested with its own rules).
   assert.deepEqual(hero.heroLoadouts, { "selena-dance-of-the-deep": { baseTraitMemoryId: "" } });
 });
 

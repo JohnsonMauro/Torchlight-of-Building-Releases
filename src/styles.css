@@ -5215,7 +5215,7 @@ body.unified-planner .change-hero-button:focus-visible {
 body.revival-alt-held .memory-revived-detail {
   display: block;
 }
-/* Keyword rolls on gear (Pantheon's Elegy's Dirges, src/app.js modifierTextMarkup): the revived-memory keyword style; Alt expands. */
+/* Keyword rolls on gear (Pantheon's Elegy's Dirges, src/app/app.js modifierTextMarkup): the revived-memory keyword style; Alt expands. */
 .keyword-roll-name {
   color: #75d8f6;
   font-weight: 700;
@@ -14458,7 +14458,7 @@ body.unified-planner .talent-node.legendary-node.prism-affected-node:not(.alloca
     0 0 0 3px #77d6f466,
     0 0 18px #4bbce599;
 }
-/* Hero trait grants on the skill board (src/trait-board-grants.js: Youga's Clockwork Core and trait skills): locked sockets in the keyword blue. */
+/* Hero trait grants on the skill board (src/engine/heroes/trait-board-grants.js: Youga's Clockwork Core and trait skills): locked sockets in the keyword blue. */
 .compendium-skill-row .skill-primary-socket.trait-granted-socket {
   border: 1px solid #75d8f6;
   box-shadow:
@@ -14545,7 +14545,7 @@ body.unified-planner #equipment-view #equipment-grid .equipment-item > .curse-of
 .skill-tooltip-head img[src=""] {
   visibility: hidden;
 }
-/* Hero trait keywords (src/trait-keyword-markup.js): the keyword style in the trait tooltip; holding Alt lists the definitions (as the core-slate details). */
+/* Hero trait keywords (src/app/trait-keyword-markup.js): the keyword style in the trait tooltip; holding Alt lists the definitions (as the core-slate details). */
 .planner-tooltip.hero-trait-tooltip .trait-keyword-hint {
   display: block;
   margin-top: 8px;
@@ -19439,7 +19439,7 @@ body.unified-planner #equipment-view .inventory-item .inventory-item-icon img[sr
   cursor: default;
   filter: none;
 }
-/* Feedback dialog (src/feedback-dialog.js): the import-build dialog's look, with a scrolling body of form fields. */
+/* Feedback dialog (src/app/feedback/feedback-dialog.js): the import-build dialog's look, with a scrolling body of form fields. */
 .feedback-dialog {
   width: min(600px, calc(100vw - 32px));
   max-height: calc(100vh - 32px);
@@ -19934,7 +19934,7 @@ body.unified-planner .hero-traits-pending .button:focus-visible {
   overflow-wrap: normal;
   white-space: nowrap;
 }
-/* Recovery screen and safe mode (src/recovery.js, src/boot.js) */
+/* Recovery screen and safe mode (src/app/storage/recovery.js, src/boot.js) */
 body.recovery-mode > :not(.recovery-screen):not(.toast) {
   display: none !important;
 }
@@ -19984,7 +19984,7 @@ body.recovery-mode main.recovery-screen {
   flex-wrap: wrap;
   gap: 8px;
 }
-/* Main-skill damage panel on the stat sheet (src/dummy-recount-panel.js, src/stat-sheet.js): the
+/* Main-skill damage panel on the stat sheet (src/app/stats/dummy-recount-panel.js, src/app/stats/stat-sheet.js): the
    calculator's focal point. Reuses the planner's gold rules (#db9850 / #ffbd82), navy card tones
    (#303c49 / #222e3b / #18232e), the orange hero-portrait rule and the serif display heading. */
 .stat-sheet-banner.stat-sheet-banner-wide {
@@ -20210,7 +20210,7 @@ body.recovery-mode main.recovery-screen {
   color: #e9f4ff;
   font-variant-numeric: tabular-nums;
 }
-/* Click-to-exclude sources (view-only what-if; src/dummy-recount-panel.js). */
+/* Click-to-exclude sources (view-only what-if; src/app/stats/dummy-recount-panel.js). */
 .dummy-recount-mix [data-recount-source] {
   cursor: pointer;
 }
@@ -20290,7 +20290,7 @@ body.recovery-mode main.recovery-screen {
   outline: 2px solid #74c8ed;
   outline-offset: 3px;
 }
-/* Config "Best-case assumptions (N)" (src/app.js): a gold chevron on the summary, pointing right when closed and
+/* Config "Best-case assumptions (N)" (src/app/app.js): a gold chevron on the summary, pointing right when closed and
    down when open (the .stat-section summary chevron), and the reset link as a small gold text button. */
 .best-case-assumptions > summary::-webkit-details-marker {
   display: none;
@@ -20458,7 +20458,7 @@ body.recovery-mode main.recovery-screen {
   font-size: inherit;
   line-height: normal;
 }
-/* Effective HP banner below the damage panel (src/effective-hp.js, src/stat-sheet.js): same frame as the
+/* Effective HP banner below the damage panel (src/engine/defense/effective-hp.js, src/app/stats/stat-sheet.js): same frame as the
    recount panel, the EHP figures and per-type table on the left and the ailment / crowd-control
    checklist on the right. Check marks use the recount share palette (green / gold / red). */
 .stat-sheet-ehp-banner {
@@ -20701,7 +20701,7 @@ body.recovery-mode main.recovery-screen {
 .ehp-check-status {
   justify-self: start;
 }
-/* Character stats panel (src/stat-sheet-panel.js, src/stat-sheet-tabs.js): the in-game character panel's
+/* Character stats panel (src/app/stats/stat-sheet-panel.js, src/app/stats/stat-sheet-tabs.js): the in-game character panel's
    layout: category tabs, collapsible sections, label/value rows, and a row that opens to its lines by
    source. Same frame and palette as the damage and Effective HP panels above it. */
 .stat-panel {
@@ -21345,7 +21345,7 @@ body.recovery-mode main.recovery-screen {
 #damage-path[hidden] {
   display: none !important;
 }
-/* Damage path page (src/damage-path-panel.js, src/damage-path-views.js; 2026-10-11 restyle in the
+/* Damage path page (src/app/stats/damage-path-panel.js, src/app/stats/damage-path-views.js; 2026-10-11 restyle in the
    stat sheet's language): path tabs (grouped by skill when several skills deal damage), then per
    path a framed summary card (final figure with magnitude word, the chain of stage chips showing how
    the stages multiply, the 5 s / 10 s / 20 s windows and the assumed conditions), the intro, and
@@ -21909,7 +21909,7 @@ body.recovery-mode main.recovery-screen {
 .damage-extra {
   margin-top: 0.6rem;
 }
-/* Open questions (src/open-questions-panel.js): the same .stat-section.damage-extra panel as Damage components / Timing. Its
+/* Open questions (src/app/stats/open-questions-panel.js): the same .stat-section.damage-extra panel as Damage components / Timing. Its
    body starts with the muted intro and the copy button (wraps under the line on narrow widths), then one collapsed
    .stat-sheet-row <details> per question, with the coverage badge as its evidence pill and the body indented. */
 .open-questions-intro {
@@ -22334,7 +22334,7 @@ body .loadout-tab .loadout-tab-rename:focus {
   }
 }
 
-/* Section "?" help: hidden quality-of-life controls per section (src/qol-help.js). */
+/* Section "?" help: hidden quality-of-life controls per section (src/app/qol-help.js). */
 button.qol-help {
   display: inline-grid;
   place-items: center;
@@ -22467,7 +22467,7 @@ button.qol-help:focus-visible {
   text-decoration: underline;
 }
 
-/* Hero panel HERO | FOLLOWER tabs and the FOLLOWER tab (src/follower-panel.js; 2026-10-15). The tabs take the Hero Trait /
+/* Hero panel HERO | FOLLOWER tabs and the FOLLOWER tab (src/app/follower-panel.js; 2026-10-15). The tabs take the Hero Trait /
    Trait Path tab style (gold text, gold underline on the active tab); the card and slot rows reuse the hero card and trait rows. */
 .planner-hero-panel > .planner-section-title.hero-panel-tabs {
   gap: 8px;
@@ -22748,7 +22748,7 @@ body.unified-planner .planner-select:focus-visible {
 .planner-select option:disabled {
   color: #6f7a86;
 }
-/* Follower skill tier and support affixes (src/follower-panel.js, 2026-10-19 user request): edited in the skill picker's preview
+/* Follower skill tier and support affixes (src/app/follower-panel.js, 2026-10-19 user request): edited in the skill picker's preview
    card (native .planner-select selects; affix label, select and effect text per slot); a slot row shows a summary. */
 .follower-skill-editor {
   display: grid;
@@ -23025,7 +23025,7 @@ body.unified-planner
 body.unified-planner .hero-portrait:not(.follower-portrait) img {
   background-color: #000;
 }
-/* Ctrl+F find bar (src/find-bar.js); top is set from the header's bottom edge when it opens. */
+/* Ctrl+F find bar (src/app/find-bar.js); top is set from the header's bottom edge when it opens. */
 .find-bar {
   position: fixed;
   top: 74px;
@@ -23099,7 +23099,7 @@ mark.find-hit.current {
   background: var(--gold);
   color: #10141b;
 }
-/* Desktop update banner (src/update-banner.js): fixed at the top centre, above the header and the find bar. */
+/* Desktop update banner (src/app/update-banner.js): fixed at the top centre, above the header and the find bar. */
 .update-banner {
   position: fixed;
   top: 10px;

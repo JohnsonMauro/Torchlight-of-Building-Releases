@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aggregateTalentEffects } from "../../src/engine.js";
+import { aggregateTalentEffects } from "../../src/engine/engine.js";
 
 const setup = (effectsPerRank) => ({
   panels: [{ name: "Test", allocatedNodes: [{ coordinate: [0, 0], rank: 2, effectsPerRank }] }],

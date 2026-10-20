@@ -1,6 +1,10 @@
 // Type-level checks for the inferred StoredPlannerState, run by `pnpm typecheck` (tsc -p .). Each @ts-expect-error
 // must hit an error: if the inferred type loosens (any, unknown), tsc reports the unused directive.
-import type { StoredCustomSupport, StoredPlannerState, StoredSlatePlacement } from "../../src/state-validation.ts";
+import type {
+  StoredCustomSupport,
+  StoredPlannerState,
+  StoredSlatePlacement,
+} from "../../src/engine/state/state-validation.ts";
 
 export const minimal: StoredPlannerState = {};
 export const typical: StoredPlannerState = {
