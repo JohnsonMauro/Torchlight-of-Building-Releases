@@ -64,19 +64,6 @@ export function TalentsView() {
           <FollowerPanel />
         </div>
       </aside>
-      <div className="talent-page-heading">
-        <div>
-          <p className="eyebrow">Captured build</p>
-          <h1>Talent trees</h1>
-          <p className="muted">
-            Left-click a node to add a point. Right-click to remove one. Hover for its exact effect.
-          </p>
-        </div>
-        <div className="talent-total">
-          <span>Total allocated</span>
-          <strong id="talent-total">—</strong>
-        </div>
-      </div>
       <div id="talent-board-tabs" className="talent-board-tabs" role="tablist" aria-label="Talent boards" />
       <div className="talent-layout">
         <section className="panel talent-tree-panel">
@@ -136,15 +123,6 @@ export function TalentsView() {
           </div>
         </section>
       </div>
-      <section className="panel allocation-audit">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Verification</p>
-            <h2>Allocated effects</h2>
-          </div>
-        </div>
-        <div id="talent-audit" />
-      </section>
     </section>
   );
 }

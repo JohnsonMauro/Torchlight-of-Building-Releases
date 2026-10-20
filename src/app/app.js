@@ -1225,9 +1225,6 @@ function conditionSourceProbe() {
     combat: { ...state.combat, conditionMode: "auto", conditions: {}, bestCaseOverrides: {} },
   });
 }
-function currentTalentSlateImpact() {
-  return currentPlanner().talentSlate;
-}
 function currentPactImpact() {
   return currentPlanner().pact;
 }
@@ -2301,8 +2298,6 @@ function renderTalents() {
   const nativeTalentCoordinates = new Set(
     professionTreeLayoutsAllSs13[panel.name].nodes.map((node) => node.coordinate.join(",")),
   );
-  $("#talent-total").textContent = `${totalPoints}/${MAX_TALENT_POINTS}`;
-  $("#talent-total").classList.toggle("warning", totalPoints >= MAX_TALENT_POINTS);
   const noTreeSelected = !plannerState.talents.selectedTrees?.[activeTalentSlot];
   $("#talent-board-name").textContent = noTreeSelected ? "" : panel.name;
   $("#talent-board-points").textContent = `${panelPoints} panel · ${totalPoints}/${MAX_TALENT_POINTS} total`;
@@ -2556,36 +2551,6 @@ function renderTalents() {
         );
       })
       .join("");
-  const blockRatio = Number(
-    installedPrism?.rareAffix?.match(
-      /^All Legendary Medium Talent within the area also gain: \+(\d+)% Block Ratio$/,
-    )?.[1] || 0,
-  );
-  const activeLegendaryCount = prismBounds
-    ? displayNodes.filter(
-        (node) =>
-          node.type === "legendary" &&
-          node.coordinate.join(",") !== installedPrismCoordinate &&
-          node.coordinate[0] >= prismBounds.left &&
-          node.coordinate[0] < prismBounds.left + prismBounds.width &&
-          node.coordinate[1] >= prismBounds.top &&
-          node.coordinate[1] < prismBounds.top + prismBounds.height &&
-          rankFor(node) > 0,
-      ).length
-    : 0;
-  const prismAudit = blockRatio
-    ? `<div class="audit-row prism-audit"><span><strong>${escapeHtml(prismName(installedPrism))} area bonus</strong><small>${prismArea(installedPrism)} area · ${activeLegendaryCount} allocated Legendary Medium Talents</small></span><span>+${blockRatio}% × ${activeLegendaryCount} = <strong>+${blockRatio * activeLegendaryCount}% Block Ratio</strong></span></div>`
-    : "";
-  const impact = currentTalentSlateImpact();
-  const changedTalentEffects = Object.entries(impact.talentDelta).filter(([, value]) => value !== 0);
-  const candidateSummary = `<div class="candidate-effect-summary"><article><span>Talent/slate damage multiplier</span><strong>×${impact.factors.damageMultiplier}</strong></article><article><span>Sealed Mana Compensation</span><strong>+${impact.sealedManaCompensationPercent}%</strong></article><article><span>Disintegrate additional stacks</span><strong>${impact.disintegrate.candidateAdditionalStacks}</strong></article></div>${changedTalentEffects.length ? `<div class="candidate-delta-list">${changedTalentEffects.map(([key, value]) => `<span>${effectLabel(key)} <strong>${formatEffect(key, value)}</strong></span>`).join("")}</div>` : `<p class="muted">Talent ranks match the captured baseline.</p>`}`;
-  $("#talent-audit").innerHTML = `${candidateSummary}<div class="audit-grid">${prismAudit}${displayNodes
-    .filter((node) => rankFor(node) > 0 && node.coordinate.join(",") !== installedPrismCoordinate)
-    .map(
-      (node) =>
-        `<div class="audit-row"><span><strong>${nodeTitle(node)}</strong><small>Coordinate ${node.coordinate.join(" · ")} · Rank ${rankFor(node)}${node.reflectedFrom ? ` · Reflected from ${node.reflectedFrom}` : ""}</small></span><span>${effectSummary(node, rankFor(node), node.reflectedFrom ? inverseImageEffectMultiplier(installedPrism, node.type) : 1)}</span></div>`,
-    )
-    .join("")}</div>`;
   setTalentSlateMode(talentSlateMode);
 }
 
@@ -3811,19 +3776,6 @@ document.addEventListener("change", (event) => {
   renderHeroMemoryCraft();
   $("#hero-memory-content .hero-memory-form").scrollTop = scroll;
 });
-
-function effectSummary(node, rank, multiplier = 1) {
-  if (node.replacedBy) return "Core replaced";
-  const effects = node.effectsPerRank || node.effects || {};
-  if (!Object.keys(effects).length && node.description) return talentEffectText(node.description, rank, multiplier);
-  return Object.entries(effects)
-    .slice(0, 2)
-    .map(
-      ([key, value]) =>
-        `${formatEffect(key, typeof value === "number" ? value * (node.effectsPerRank ? rank : 1) * multiplier : value)} ${effectLabel(key)}`,
-    )
-    .join(" · ");
-}
 
 const titleCase = (value) => value.replace(/([A-Z])/g, " $1").replace(/^./, (character) => character.toUpperCase());
 
