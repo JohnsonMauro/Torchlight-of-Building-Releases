@@ -115,6 +115,11 @@ test("Edit opens the crafter on the slate; Cancel returns to the inventory", asy
   await item(slates, "Fallen Starlight").getByTitle("Edit", { exact: true }).click();
   await expect(slates.inventory().locator("[data-slate-inventory-tab].active")).toHaveText("Craft Legendary Slate");
   await expect(slates.inventory()).toContainText("Fallen Starlight");
+  // The crafter is filled from the slate: its saved affixes in the legendary slots.
+  const saved = (await slates.stored()).inventory.find((slate) => slate.id === FALLEN).affixes;
+  const slots = slates.inventory().locator("[data-legendary-affix]");
+  await expect(slots).toHaveCount(saved.length);
+  for (const [index, affix] of saved.entries()) await expect(slots.nth(index)).toHaveValue(affix);
   await slates.inventory().getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(slates.inventory().locator("#slate-inventory-title")).toHaveText("Slate Inventory");
   await expect(items(slates)).toHaveCount(3);
