@@ -39,6 +39,31 @@ export class StatsPage {
   statPanel() {
     return this.sheet().getByRole("tabpanel");
   }
+  /** The training dummy recount panel of the damage banner. */
+  recount() {
+    return this.sheet().getByRole("region", { name: "Training dummy recount" });
+  }
+  /** A recount field's value ("averageDps", "highest5sDps", "last5sDps"), a short / full number toggle. */
+  recountValue(field) {
+    return this.recount().locator(`[data-recount-field="${field}"] .dummy-recount-value`);
+  }
+  /** A source in the recount's share legend by its label ("Homing Frost Bolt hits"); a toggle button. */
+  recountSource(label) {
+    return this.recount()
+      .locator(".dummy-recount-mix-legend")
+      .getByRole("button", { name: new RegExp(`^${label.replace(/[()]/g, "\\$&")}`) });
+  }
+  /** Total modeled DPS below the recount panel. */
+  totalModeled() {
+    return this.banner().locator(".dummy-recount-secondary .number-toggle");
+  }
+  /** The recount's "How this is calculated" details in the banner's foot. */
+  recountDetails() {
+    return this.banner().locator(".dummy-recount-foot > details");
+  }
+  effectiveHp() {
+    return this.sheet().getByRole("region", { name: "Effective HP" });
+  }
   /** A damage path tab by the start of its name ("Homing Frost Bolt hits", "Thunder Magus (Minion)", "All paths"). */
   pathTab(name) {
     return this.damagePath().getByRole("tab", { name: new RegExp(`^${name.replace(/[()]/g, "\\$&")}`) });
