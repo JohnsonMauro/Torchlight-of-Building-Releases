@@ -9,7 +9,7 @@ import {
   markBootMarker,
   markBooting,
   shouldShowRecovery,
-} from "../../../src/recovery-core.js";
+} from "@legacy/recovery-core.js";
 import { AppShell } from "./shell/AppShell";
 
 interface RecoveryOptions {
@@ -34,7 +34,7 @@ function local(): Storage | null {
 }
 
 async function showRecovery(options: RecoveryOptions): Promise<void> {
-  const { renderRecoveryScreen } = await import("../../../src/recovery.js");
+  const { renderRecoveryScreen } = await import("@legacy/recovery.js");
   renderRecoveryScreen(options);
 }
 
@@ -58,19 +58,19 @@ async function boot(): Promise<void> {
   const markerToken = markBootMarker(shared);
   try {
     renderShell();
-    await import("../../../src/app.js");
+    await import("@legacy/app.js");
   } catch (error) {
     console.error(error);
     await showRecovery({ reason: "error", error });
     return;
   }
   // Ctrl+F find bar (src/find-bar.js); the desktop build has no browser find.
-  import("../../../src/find-bar.js")
+  import("@legacy/find-bar.js")
     .then(({ installFindBar }) => installFindBar(document))
     .catch((error: unknown) => console.error(error));
   // Desktop update banner (src/update-banner.js); only the Electron preload provides the bridge.
   if ((globalThis as { tliDesktop?: { updates?: unknown } }).tliDesktop?.updates) {
-    import("../../../src/update-banner.js")
+    import("@legacy/update-banner.js")
       .then(({ installUpdateBanner }) => installUpdateBanner(document))
       .catch((error: unknown) => console.error(error));
   }

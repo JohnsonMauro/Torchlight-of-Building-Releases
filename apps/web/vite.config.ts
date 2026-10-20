@@ -67,6 +67,8 @@ export default defineConfig({
   root: appRoot,
   base: "./",
   plugins: [react(), plannerAssets()],
+  // The legacy planner sources (repository src/) until they move into packages; mirrored in tsconfig.json "paths".
+  resolve: { alias: { "@legacy": resolve(repoRoot, "src") } },
   server: { host: "127.0.0.1", port: 4173, strictPort: true, fs: { allow: [repoRoot] } },
   preview: { host: "127.0.0.1", strictPort: true },
   build: { outDir, emptyOutDir: true, sourcemap: true },

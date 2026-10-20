@@ -31,8 +31,6 @@ import { ImportBuildDialog } from "./dialogs/ImportBuildDialog";
 import { FeedbackDialog } from "./dialogs/FeedbackDialog";
 import { ImportGameLogDialog } from "./dialogs/ImportGameLogDialog";
 import { ResetBuildConfirmDialog } from "./dialogs/ResetBuildConfirmDialog";
-import { DeleteAllBuildsConfirmDialog } from "./dialogs/DeleteAllBuildsConfirmDialog";
-import { DeleteBuildConfirmDialog } from "./dialogs/DeleteBuildConfirmDialog";
 import { PlannerTooltip } from "./PlannerTooltip";
 import { Toast } from "./Toast";
 import { RestoreBuildsFileInput } from "./RestoreBuildsFileInput";
@@ -79,8 +77,6 @@ export function AppShell() {
       <FeedbackDialog />
       <ImportGameLogDialog />
       <ResetBuildConfirmDialog />
-      <DeleteAllBuildsConfirmDialog />
-      <DeleteBuildConfirmDialog />
       <PlannerTooltip />
       <Toast />
       <RestoreBuildsFileInput />

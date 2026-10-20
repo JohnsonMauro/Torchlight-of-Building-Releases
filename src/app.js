@@ -273,6 +273,7 @@ import {
   startNewLibrary,
   updateActiveBuildMetadata,
 } from "./planner-state.js";
+import { providePlannerCommands } from "./planner-commands.js";
 import { carinoSpecialAmmoOptions } from "./carino-special-ammo.js";
 import { importReportText, importSnapshot, listSnapshots, loadGameIdMap, readGameLogFile } from "./game-log-import.js";
 import {
@@ -1122,7 +1123,7 @@ function startActiveBuildRename(tab) {
     input.remove();
     if (name) {
       updateActiveBuildMetadata({ name });
-      renderBuilds();
+      updateStorageStatus();
       showToast("Build renamed");
     } else updateStorageStatus();
     tab.focus({ preventScroll: true });
@@ -1397,33 +1398,69 @@ function markLoadedStateClean() {
   } catch {}
 }
 
-function renderBuilds() {
-  const library = loadBuildLibrary();
-  updateStorageStatus();
-  const active = library.builds.find((entry) => entry.id === library.activeBuildId);
-  $("#build-count").textContent = library.builds.length;
-  $("[data-duplicate-build]").disabled = !active;
-  $("[data-delete-all-builds]").disabled = !library.builds.length;
-  $("#build-list").innerHTML = library.builds.length
-    ? library.builds
-        .map((entry) => {
-          const hero = heroById(entry.state.hero?.selectedHeroId);
-          const selected = entry.id === active?.id;
-          return `<article class="build-list-card ${selected ? "active" : ""}"><button class="build-open" type="button" data-activate-build="${escapeHtml(entry.id)}" aria-label="Select ${escapeHtml(entry.name)}">${hero?.image ? `<img class="build-hero-art" src="${escapeHtml(hero.image)}" alt="">` : '<span class="build-hero-art fallback">✦</span>'}<span class="build-card-copy"><small>${selected ? "ACTIVE BUILD" : "SAVED BUILD"}</small><strong>${escapeHtml(entry.name)}</strong><em>${escapeHtml(hero?.name || "No hero selected")} · Updated ${escapeHtml(new Date(entry.updatedAt).toLocaleDateString())}</em></span></button><div class="build-card-actions"><button class="build-edit" type="button" data-edit-build="${escapeHtml(entry.id)}" aria-label="Edit ${escapeHtml(entry.name)}">Edit</button><button class="build-delete" type="button" data-delete-build="${escapeHtml(entry.id)}" aria-label="Delete ${escapeHtml(entry.name)}">Delete</button></div></article>`;
-        })
-        .join("")
-    : `<div class="build-empty-state"><span class="build-empty-icon" aria-hidden="true">✦</span><h3>No saved builds</h3><p>Start a new build to plan a hero, talents, gear, and pacts.</p><button class="button" type="button" data-new-build>+ New Build</button></div>`;
-  if (!active) {
-    $("#build-editor").innerHTML =
-      '<div class="build-details-empty"><span aria-hidden="true">◇</span><h3>Nothing selected</h3><p>Your next build will appear here with its notes and recent autosaves.</p></div>';
-    return;
-  }
-  const hero = heroById(active.state.hero?.selectedHeroId);
-  $("#build-editor").innerHTML =
-    `<div class="build-active-summary">${hero?.image ? `<img src="${escapeHtml(hero.image)}" alt="">` : '<span aria-hidden="true">✦</span>'}<div><small>CURRENTLY OPEN</small><strong>${escapeHtml(active.name)}</strong><em>${escapeHtml(hero?.name || "No hero selected")}</em></div></div><label>Build name<input data-build-name></label><label>Notes<textarea data-build-notes rows="3" placeholder="What are you testing in this build?"></textarea></label><div class="build-editor-actions"><button class="button" type="button" data-save-build-meta>Save details</button></div>`;
-  $("[data-build-name]").value = active.name;
-  $("[data-build-notes]").value = active.notes;
+// Build library commands (src/planner-commands.js). The Builds view (apps/web/src/features/builds) renders the library
+// itself; these keep the planner's own state in step: save the open build, change the library, reload, re-render.
+function openLibraryBuild(id, view) {
+  persistPlannerState();
+  setActiveBuild(id);
+  applyPlannerState(loadPlannerState());
+  renderCandidateViews();
+  activateWorkspaceView(view, { scroll: false });
 }
+function backupLibraryBuilds() {
+  persistPlannerState();
+  try {
+    showToast(`Backup downloaded · ${downloadBackup()}`);
+  } catch {
+    showToast("The backup could not be created");
+  }
+}
+providePlannerCommands({
+  openBuild: (id) => {
+    openLibraryBuild(id, "builds");
+    showToast("Build selected");
+  },
+  editBuild: (id) => {
+    openLibraryBuild(id, "talents");
+    showToast("Build opened for editing");
+  },
+  newBuild: () => {
+    createBuild({ name: "New build", state: emptyPlannerState() });
+    applyPlannerState(loadPlannerState());
+    selectedSkillIndex = 0;
+    renderCandidateViews();
+    activateWorkspaceView("talents", { scroll: false });
+    showToast("New build ready · Rename it in Build Library");
+  },
+  duplicateActiveBuild: () => {
+    persistPlannerState();
+    duplicateActiveBuild();
+    applyPlannerState(loadPlannerState());
+    renderCandidateViews();
+    showToast("Build duplicated — safe to experiment");
+  },
+  saveBuildDetails: ({ name, notes }) => {
+    updateActiveBuildMetadata({ name, notes });
+    updateStorageStatus();
+    showToast("Build details saved");
+  },
+  deleteBuild: (id) => {
+    deleteBuild(id);
+    applyPlannerState(loadPlannerState());
+    renderCandidateViews();
+    activateWorkspaceView("builds", { scroll: false });
+    showToast("Build deleted");
+  },
+  deleteAllBuilds: () => {
+    deleteAllBuilds();
+    applyPlannerState(loadPlannerState());
+    renderCandidateViews();
+    activateWorkspaceView("builds", { scroll: false });
+    showToast("All builds deleted");
+  },
+  backupBuilds: backupLibraryBuilds,
+  restoreBuilds: () => $("#restore-builds-file").click(),
+});
 
 function render() {
   const planner = currentPlanner();
@@ -1674,7 +1711,7 @@ function runGuardedRender(renderStep) {
 function renderCandidateViews() {
   if (calculationsPaused) {
     pendingCandidateRender = false;
-    renderBuilds();
+    updateStorageStatus();
     return;
   }
   pendingCandidateRender = false;
@@ -1684,7 +1721,7 @@ function renderCandidateViews() {
     if (focusedViews.has(activeWorkspaceView)) {
       if (activeWorkspaceView === "character") renderCharacter();
       if (activeWorkspaceView === "configuration") renderConfiguration();
-      if (activeWorkspaceView === "builds") renderBuilds();
+      if (activeWorkspaceView === "builds") updateStorageStatus();
     } else {
       renderEquipment();
       renderSkills();
@@ -1724,7 +1761,7 @@ function activateWorkspaceView(viewName, { scroll = true, remember = true } = {}
       ),
     );
   if (focused) {
-    if (viewName === "builds") renderBuilds();
+    if (viewName === "builds") updateStorageStatus();
     if (viewName === "character") renderCharacter();
     if (viewName === "configuration") renderConfiguration();
   } else {
@@ -8693,84 +8730,8 @@ document.addEventListener("click", (event) => {
       activateWorkspaceView(viewButton.dataset.view);
     }
   }
-  const activateBuildButton = event.target.closest("[data-activate-build]");
-  if (activateBuildButton) {
-    persistPlannerState();
-    setActiveBuild(activateBuildButton.dataset.activateBuild);
-    applyPlannerState(loadPlannerState());
-    renderCandidateViews();
-    activateWorkspaceView("builds", { scroll: false });
-    showToast("Build selected");
-  }
-  const editBuildButton = event.target.closest("[data-edit-build]");
-  if (editBuildButton) {
-    persistPlannerState();
-    setActiveBuild(editBuildButton.dataset.editBuild);
-    applyPlannerState(loadPlannerState());
-    renderCandidateViews();
-    activateWorkspaceView("talents", { scroll: false });
-    showToast("Build opened for editing");
-  }
-  const newBuildButton = event.target.closest("[data-new-build]");
-  if (newBuildButton) {
-    createBuild({ name: "New build", state: emptyPlannerState() });
-    applyPlannerState(loadPlannerState());
-    selectedSkillIndex = 0;
-    renderCandidateViews();
-    activateWorkspaceView("talents", { scroll: false });
-    showToast("New build ready · Rename it in Build Library");
-  }
-  const duplicateBuildButton = event.target.closest("[data-duplicate-build]");
-  if (duplicateBuildButton) {
-    persistPlannerState();
-    duplicateActiveBuild();
-    applyPlannerState(loadPlannerState());
-    renderCandidateViews();
-    showToast("Build duplicated — safe to experiment");
-  }
-  const saveMetaButton = event.target.closest("[data-save-build-meta]");
-  if (saveMetaButton) {
-    updateActiveBuildMetadata({ name: $("[data-build-name]").value, notes: $("[data-build-notes]").value });
-    renderBuilds();
-    showToast("Build details saved");
-  }
-  const deleteBuildButton = event.target.closest("[data-delete-build]");
-  if (deleteBuildButton) {
-    const build = loadBuildLibrary().builds.find((entry) => entry.id === deleteBuildButton.dataset.deleteBuild);
-    if (build) {
-      const dialog = $("#delete-build-confirm");
-      dialog.dataset.buildId = build.id;
-      $("#delete-build-message").textContent =
-        `This will permanently delete “${build.name}” and its autosaves from this browser. This cannot be undone.`;
-      dialog.showModal();
-    }
-  }
-  if (event.target.closest("[data-cancel-delete-build]")) {
-    $("#delete-build-confirm").close();
-    delete $("#delete-build-confirm").dataset.buildId;
-  }
-  if (event.target.closest("[data-confirm-delete-build]")) {
-    const dialog = $("#delete-build-confirm"),
-      id = dialog.dataset.buildId;
-    dialog.close();
-    delete dialog.dataset.buildId;
-    if (id) {
-      deleteBuild(id);
-      applyPlannerState(loadPlannerState());
-      renderCandidateViews();
-      activateWorkspaceView("builds", { scroll: false });
-      showToast("Build deleted");
-    }
-  }
-  if (event.target.closest("[data-backup-builds]")) {
-    persistPlannerState();
-    try {
-      showToast(`Backup downloaded · ${downloadBackup()}`);
-    } catch {
-      showToast("The backup could not be created");
-    }
-  }
-  if (event.target.closest("[data-restore-builds]")) $("#restore-builds-file").click();
+  // "Download backup" in the unreadable-library notice (renderLibraryNotice).
+  if (event.target.closest("[data-backup-builds]")) backupLibraryBuilds();
   if (event.target.closest("[data-resume-calculations]")) {
     setSafeMode(sessionStorage, false);
     location.reload();
@@ -8786,16 +8747,6 @@ document.addEventListener("click", (event) => {
     } catch (error) {
       showToast(error?.message || "A new library could not be started");
     }
-  }
-  if (event.target.closest("[data-delete-all-builds]")) $("#delete-all-builds-confirm").showModal();
-  if (event.target.closest("[data-cancel-delete-all-builds]")) $("#delete-all-builds-confirm").close();
-  if (event.target.closest("[data-confirm-delete-all-builds]")) {
-    $("#delete-all-builds-confirm").close();
-    deleteAllBuilds();
-    applyPlannerState(loadPlannerState());
-    renderCandidateViews();
-    activateWorkspaceView("builds", { scroll: false });
-    showToast("All builds deleted");
   }
   const selenaDanceNode = event.target.closest("[data-selena-dance-node]");
   if (selenaDanceNode) {
@@ -11553,7 +11504,6 @@ $("#restore-builds-file").addEventListener("change", async (event) => {
   try {
     persistPlannerState();
     const summary = restoreBuildsFromBackup(backup);
-    renderBuilds();
     updateStorageStatus();
     showToast(restoreSummaryText(summary));
   } catch (error) {
@@ -11642,7 +11592,7 @@ let deferredExternalChange = null;
 function showExternalChange(change) {
   if (change.recalculate) renderCandidateViews();
   if (change.deleted && !loadBuildLibrary().builds.length) activateWorkspaceView("builds", { scroll: false });
-  else if (!change.recalculate && activeWorkspaceView === "builds") renderBuilds();
+  else if (!change.recalculate && activeWorkspaceView === "builds") updateStorageStatus();
   if (change.message) showToast(change.message);
 }
 function hideOtherTabNotice() {
@@ -11697,7 +11647,7 @@ window.addEventListener("storage", (event) => {
     if (!deferredExternalChange) deferredExternalChange = { recalculate: false, deleted: false, message: "" };
     return;
   }
-  if (activeWorkspaceView === "builds") renderBuilds();
+  if (activeWorkspaceView === "builds") updateStorageStatus();
 });
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible" || !deferredExternalChange) return;

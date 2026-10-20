@@ -13,7 +13,9 @@
     "skipLibCheck": true,
     // The legacy planner (src/*.js) is imported from the shell; its types are inferred, not checked yet.
     "allowJs": true,
-    "checkJs": false
+    "checkJs": false,
+    // The legacy planner sources (repository src/) until they move into packages.
+    "paths": { "@legacy/*": ["../../src/*"] }
   },
   "include": ["src", "vite.config.ts"]
 }
