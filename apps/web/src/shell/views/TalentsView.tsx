@@ -1,4 +1,11 @@
 import { FollowerPanel } from "../../features/follower/FollowerPanel";
+import {
+  CoreTalents,
+  PrismPlacementPrompt,
+  TalentBoardHeading,
+  TalentStage,
+  TalentTabs,
+} from "../../features/talents/TalentTree";
 
 export function TalentsView() {
   return (
@@ -64,51 +71,14 @@ export function TalentsView() {
           <FollowerPanel />
         </div>
       </aside>
-      <div id="talent-board-tabs" className="talent-board-tabs" role="tablist" aria-label="Talent boards" />
+      <div id="talent-board-tabs" className="talent-board-tabs" role="tablist" aria-label="Talent boards">
+        <TalentTabs />
+      </div>
       <div className="talent-layout">
         <section className="panel talent-tree-panel">
-          <div className="talent-board-heading">
-            <div>
-              <p className="eyebrow" id="talent-board-kind">
-                Talent panel
-              </p>
-              <h2 id="talent-board-name">—</h2>
-            </div>
-            <div className="talent-board-header-side">
-              <strong id="talent-board-points" className="point-total">
-                —
-              </strong>
-              <div className="talent-board-actions" aria-label="Talent tree actions">
-                <button type="button" className="talent-action talent-action-prism" data-install-prism="">
-                  Install Prism
-                </button>{" "}
-                <button type="button" className="talent-action talent-action-reselect" data-reselect-tree="">
-                  Reselect
-                </button>{" "}
-                <button
-                  type="button"
-                  className="talent-action talent-action-reset"
-                  data-reset-talents=""
-                  title="Reset points on the open talent tree"
-                >
-                  Reset
-                </button>{" "}
-                <button type="button" className="qol-help" data-qol-help="talents" aria-label="Talents controls">
-                  ?
-                </button>
-              </div>
-            </div>
-          </div>
-          <div id="prism-placement-prompt" className="prism-placement-prompt" hidden>
-            <span>
-              {"Click a talent node to install "}
-              <strong id="prism-placement-name" />.
-            </span>
-            <button type="button" data-cancel-prism-placement="">
-              Cancel
-            </button>
-          </div>
-          <div id="core-talents" className="core-talents" />
+          <TalentBoardHeading />
+          <PrismPlacementPrompt />
+          <CoreTalents />
           <div className="talent-stage-wrap">
             <div className="talent-thresholds" aria-hidden="true">
               <span>0</span>
@@ -119,7 +89,7 @@ export function TalentsView() {
               <span>15</span>
               <span>18</span>
             </div>
-            <div id="talent-stage" className="talent-stage" role="grid" aria-label="Allocated talent nodes" />
+            <TalentStage />
           </div>
         </section>
       </div>

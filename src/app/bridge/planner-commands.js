@@ -78,6 +78,22 @@
  * @property {() => void} resetEquipment Unequips every slot (the Inventory stays).
  * @property {(mode: "rare" | "legendary" | "vorax") => void} openEquipmentCrafter Opens the crafter in that mode.
  * @property {(drop: GearDrop) => void} dropGear The end of a gear drag on a slot the item fits, or on the Inventory.
+ * @property {(slot: number) => void} openTalentTree Opens the tree in a tab (0–3), or the tree picker for an empty one.
+ * @property {(slot: number) => boolean} removeTalentTree Right-click on a tab: empties it and every tab after it; false
+ *   when it is empty.
+ * @property {() => void} openTalentSlates Shows the slate board in place of the tree.
+ * @property {(threshold: number) => void} openCorePicker Opens the core talent picker for a core slot of the open tree.
+ * @property {(threshold: number) => boolean} removeCoreTalent Right-click: empties a core slot; false when it is empty.
+ * @property {(coordinate: string) => void} clickTalentNode A click on a node ("column,row") of the open tree: places a
+ *   waiting prism, opens the prism inventory on the installed prism, or adds a point.
+ * @property {(coordinate: string) => void} rightClickTalentNode A right-click on a node: takes the installed prism off,
+ *   takes a point off, or fills an empty node.
+ * @property {() => void} resetTalentTree Empties the open tree's points and cores.
+ * @property {() => void} reselectTalentTree Opens the tree picker for the open tree's tab.
+ * @property {() => void} openPrismInventory Opens the prism inventory for the open tree (not the God tree).
+ * @property {() => void} cancelPrismPlacement Drops the prism waiting for its node.
+ * @property {(coordinate: string | null) => void} dropPrism The end of a drag of the installed prism: on a node
+ *   ("column,row"), or null away from the nodes.
  */
 
 /**

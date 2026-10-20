@@ -41,6 +41,11 @@ import { damagePathControlsMarkup, renderStatSheet } from "./stats/stat-sheet.js
 import { fireHitMitigation, mitigateScorchingBeamCycle } from "../engine/combat/target-hit-mitigation.js";
 import { canDropGearInSlot } from "../engine/gear/gear-drag.js";
 import { equipmentView } from "./bridge/equipment-view-model.ts";
+import {
+  talentsView,
+  talentDisplayNodes as talentNodesOnBoard,
+  talentFamilyClass,
+} from "./bridge/talents-view-model.ts";
 import { folkloreRingModifier, folkloreRingOptionFromModifiers } from "../engine/gear/legendary-ring-options.js";
 import { escapeHtml } from "./html.js";
 import { traitKeywordTextHtml, traitKeywordDetailsHtml, traitGrantNoteHtml } from "./trait-keyword-markup.js";
@@ -136,7 +141,6 @@ import {
   inverseImageEffectMultiplier,
   inverseImageReflectedCoordinates,
   inverseImageReflectionMap,
-  inverseImageReflectedBounds,
   inverseImageTalentNodes,
   inverseImageRoll,
   inverseImageRolls,
@@ -150,7 +154,8 @@ import {
   prismNodeAffixes,
   prismRareAffixesForBase,
 } from "../engine/talents/prism-crafting.js";
-import { etherealPrismIcons } from "./prism-icons.js";
+import { prismIcon, prismName } from "./prism-icons.js";
+import { effectLabel, formatEffect, nodeTitle } from "./talent-labels.js";
 import { switchHeroLoadout } from "../engine/heroes/hero-loadouts.js";
 import { equippedKismetSummary } from "../engine/pacts/pact-kismet-summary.js";
 import { fateExtraSlots, fateSlotChoice, fateSlotChoices } from "../engine/pacts/fate-slot-unlocks.js";
@@ -220,21 +225,15 @@ import {
   reduceBaseTraitMemoryStat,
 } from "../engine/heroes/hero-memory-rules.js";
 import {
-  MAX_TALENT_POINTS,
   TALENT_THRESHOLDS,
   allocateTalentToMaxWithPrerequisites,
   allocateTalentWithPrerequisites,
-  canAllocateTalent,
   pruneInvalidTalentRanks,
   removeTalentWithDependents,
   talentEffectText,
   talentPointTotals,
 } from "../engine/talents/talent-rules.js";
-import {
-  godTalentTreesSs13,
-  talentFamiliesSs13,
-  talentOptionsForSlot,
-} from "../engine/talents/talent-selection-rules.js";
+import { talentFamiliesSs13, talentOptionsForSlot } from "../engine/talents/talent-selection-rules.js";
 import { canPlaceSlate, isCopySlate, slateSize, slateTransformRules } from "../engine/talents/slate-board.js";
 import { downloadBackup, isSafeMode, setSafeMode } from "./storage/recovery-core.js";
 import { restoreLatestRevision } from "./storage/build-library.ts";
@@ -400,8 +399,6 @@ let activePrismTreeSlot = 1;
 let prismDraft = null;
 let prismEditingId = null;
 let pendingPrismPlacement = null;
-let prismDrag = null;
-let suppressPrismClick = false;
 let selenaDanceDrag = null; // trait-tree drag (every tree hero: src/engine/heroes/hero-trait-tree.js)
 let suppressSelenaDanceClick = false;
 // Condition ids an exclusive choice can pin (src/engine/planner.js exclusiveConditionGroups).
@@ -414,7 +411,6 @@ const exclusiveChoiceConditionIds = [
   "lowManaAssumed",
 ];
 let activeCoreThreshold = 12;
-let selectedTalentCoordinate = "4,0";
 let selectedEquipmentSlot = "helmet";
 let equipmentCraftMode = "rare";
 let selectedLegendaryIndex = -1;
@@ -1609,6 +1605,19 @@ providePlannerCommands({
   resetEquipment,
   openEquipmentCrafter,
   dropGear,
+  // Talent trees (apps/web/src/features/talents).
+  openTalentTree,
+  removeTalentTree,
+  openTalentSlates,
+  openCorePicker,
+  removeCoreTalent,
+  clickTalentNode,
+  rightClickTalentNode,
+  resetTalentTree,
+  reselectTalentTree,
+  openPrismInventory,
+  cancelPrismPlacement,
+  dropPrism,
 });
 // The FOLLOWER tab's data (src/app/follower-panel.js).
 provideViewSource("follower", () => followerPanelView(plannerState));
@@ -1633,6 +1642,8 @@ provideViewSource("slates", () =>
 provideViewSource("skills", () => skillsView(currentPlanner(), plannerState.skills, activeSkillBoardTab));
 // The Gear section's data (src/app/bridge/equipment-view-model.ts).
 provideViewSource("equipment", equipmentSource);
+// The talent trees' data (src/app/bridge/talents-view-model.ts).
+provideViewSource("talents", talentsSource);
 // The Config tab's data (src/app/bridge/view-sources.ts). Manual mode also needs the same build in automatic mode (which conditions
 // have a source); it is calculated only then.
 provideViewSource("configuration", () => {
@@ -2171,61 +2182,6 @@ function showToast(message) {
 
 if (!calculationsPaused) runGuardedRender(render);
 
-const effectLabels = {
-  afflictionPerSecond: "Affliction per second",
-  damageOverTimePercent: "Damage over time",
-  movementSpeedPercent: "Movement speed",
-  skillAreaPercent: "Skill area",
-  skillEffectDurationPercent: "Skill effect duration",
-  damagePercent: "Damage",
-  maxEnergyShieldPercent: "Maximum energy shield",
-  energyShieldChargeSpeedPercent: "Energy shield charge speed",
-  reapingRecoverySpeedPercent: "Reaping recovery speed",
-  focusBlessingStacksOnReap: "Focus Blessing stacks on Reap",
-  afflictionEffectPercent: "Affliction effect",
-  enemyAllResistanceAtMaxAfflictionPercent: "Enemy all resistance at max Affliction",
-  reapingDurationPercent: "Reaping duration",
-  startsEnergyShieldChargeOnReap: "Starts energy shield charge on Reap",
-  intervalSeconds: "Interval",
-  chanceToGainBlurOnReapPercent: "Chance to gain Blur on Reap",
-  maxLifePercent: "Maximum life",
-  firePenetrationAgainstIgnitedPercent: "Fire penetration against Ignited enemies",
-  inflictsFireInfiltrationAgainstIgnited: "Inflicts Fire Infiltration",
-  igniteChanceAgainstNotIgnitedPercent: "Ignite chance against enemies not Ignited",
-  igniteChancePercent: "Ignite chance",
-  fireDamageOverTimePercent: "Fire damage over time",
-  baseIgniteDamage: "Base Ignite damage",
-  additionalIgniteStacks: "Additional Ignite stacks",
-  attackAndCastSpeedPercent: "Attack and cast speed",
-  allSkillLevels: "All skill levels",
-  gainsBlurWhenEnergyShieldStartsCharging: "Gain Blur when shield starts charging",
-  blurEffectPercent: "Blur effect",
-  movementSpeedWhileBlurPercent: "Movement speed while Blur is active",
-  movementSpeedCannotFallBelowBaseWhileBlur: "Movement speed cannot fall below base",
-  sealedManaCompensationPercent: "Sealed mana compensation",
-  blockRatioPercent: "Block Ratio",
-};
-const effectLabel = (key) => effectLabels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
-const formatEffect = (key, value) => {
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  if (key.endsWith("Percent")) return `${value > 0 ? "+" : ""}${value}%`;
-  if (key.endsWith("Seconds")) return `${value} s`;
-  return `${value > 0 ? "+" : ""}${value}`;
-};
-const nodeTitle = (node) => {
-  if (node.replacedBy) return node.replacedBy;
-  const effects = node.effectsPerRank || node.effects || {};
-  return effectLabel(Object.keys(effects)[0] || "Talent node");
-};
-const nodeIcon = (node) => {
-  const keys = Object.keys(node.effectsPerRank || node.effects || {});
-  if (node.replacedBy) return "◆";
-  if (keys.some((key) => /shield|life|defense/i.test(key))) return "⬡";
-  if (keys.some((key) => /speed|duration|reaping/i.test(key))) return "⌛";
-  if (keys.some((key) => /affliction|ignite|damage|fire/i.test(key))) return "✦";
-  return "◇";
-};
-
 function currentTalentPanel() {
   return allTalentPanelsSs13.find((panel) => panel.name === activeTalentPanel);
 }
@@ -2265,102 +2221,42 @@ function activeTalentLayouts() {
 }
 
 function talentDisplayNodes(panel = currentTalentPanel()) {
-  const allocated = new Map(panel.allocatedNodes.map((node) => [node.coordinate.join(","), node]));
-  const nodes = professionTreeLayoutsAllSs13[panel.name].nodes.map((layoutNode) => {
-    const captured = allocated.get(layoutNode.coordinate.join(","));
-    return captured ? { ...layoutNode, ...captured, captured: true } : { ...layoutNode, placeholder: true };
-  });
   const prism = (plannerState.talents.prismInventory || []).find(
     (item) => item.id === plannerState.talents.installedPrisms?.[panel.name],
   );
-  const coordinate = plannerState.talents.installedPrismNodes?.[panel.name];
-  return inverseImageTalentNodes(nodes, prism, coordinate);
+  return talentNodesOnBoard(
+    panel,
+    professionTreeLayoutsAllSs13[panel.name],
+    prism,
+    plannerState.talents.installedPrismNodes?.[panel.name],
+  );
 }
 
+// The talent trees are React (apps/web/src/features/talents): they re-read their source. The hero panel beside them and
+// the tree picker dialog are still drawn here.
 function renderTalents() {
   renderHeroTraitTree();
   renderHeroPanel();
-  const panels = allTalentPanelsSs13;
-  const panel = currentTalentPanel();
-  const displayNodes = talentDisplayNodes(panel);
-  const rankFor = (node) => talentRanks.get(`${panel.name}:${node.coordinate}`) || 0;
-  const rankObject = Object.fromEntries(talentRanks);
-  const layouts = activeTalentLayouts();
-  const pointTotals = talentPointTotals(layouts, rankObject);
-  const panelPoints = pointTotals.panels[panel.name];
-  const totalPoints = pointTotals.total;
-  const installedPrism = (plannerState.talents.prismInventory || []).find(
-    (item) => item.id === plannerState.talents.installedPrisms?.[panel.name],
-  );
-  const hasInstalledPrism = Boolean(installedPrism);
-  const installedPrismCoordinate = plannerState.talents.installedPrismNodes?.[panel.name];
-  const placingPrism = pendingPrismPlacement?.panel === panel.name;
-  const nativeTalentCoordinates = new Set(
-    professionTreeLayoutsAllSs13[panel.name].nodes.map((node) => node.coordinate.join(",")),
-  );
-  const noTreeSelected = !plannerState.talents.selectedTrees?.[activeTalentSlot];
-  $("#talent-board-name").textContent = noTreeSelected ? "" : panel.name;
-  $("#talent-board-points").textContent = `${panelPoints} panel · ${totalPoints}/${MAX_TALENT_POINTS} total`;
-  $("#talent-board-kind").textContent = hasInstalledPrism ? "Advanced panel · Prism override" : "Talent panel";
+  renderTalentPicker();
+  viewSourceChanged("talents");
+  setTalentSlateMode(talentSlateMode);
+}
+// The talent trees' data (src/app/bridge/talents-view-model.ts).
+function talentsSource() {
+  return talentsView({
+    panel: currentTalentPanel(),
+    baseLayouts: professionTreeLayoutsAllSs13,
+    layouts: activeTalentLayouts(),
+    ranks: Object.fromEntries(talentRanks),
+    talents: plannerState.talents,
+    activeSlot: activeTalentSlot,
+    slateMode: talentSlateMode,
+    pendingPrism: pendingPrismPlacement,
+  });
+}
+function renderTalentPicker() {
   const selectedTrees = plannerState.talents.selectedTrees;
-  const activePanelSlot = selectedTrees.indexOf(panel.name);
-  const prismButton = $("[data-install-prism]");
-  if (prismButton) prismButton.hidden = activePanelSlot <= 0;
-  $("#prism-placement-prompt").hidden = !placingPrism;
-  if (placingPrism)
-    $("#prism-placement-name").textContent = prismName(
-      (plannerState.talents.prismInventory || []).find((item) => item.id === pendingPrismPlacement.id),
-    );
-  const talentFamilyClass = (name) => {
-    const family = godTalentTreesSs13.includes(name)
-      ? name
-      : Object.entries(talentFamiliesSs13).find(([, trees]) => trees.includes(name))?.[0];
-    return family
-      ? `talent-family-${family
-          .toLowerCase()
-          .replace(/[^a-z]+/g, "-")
-          .replace(/(^-|-$)/g, "")}`
-      : "";
-  };
-  $(".talent-board-heading").className = `talent-board-heading ${noTreeSelected ? "" : talentFamilyClass(panel.name)}`;
-  const slateGridIcon = `<span class="talent-slate-emblem" aria-hidden="true"><svg viewBox="0 0 64 64"><g>${[
-    [24, 4],
-    [34, 4],
-    [14, 14],
-    [24, 14],
-    [34, 14],
-    [44, 14],
-    [4, 24],
-    [14, 24],
-    [24, 24],
-    [34, 24],
-    [44, 24],
-    [54, 24],
-    [4, 34],
-    [14, 34],
-    [24, 34],
-    [34, 34],
-    [44, 34],
-    [54, 34],
-    [14, 44],
-    [24, 44],
-    [34, 44],
-    [44, 44],
-    [24, 54],
-    [34, 54],
-  ]
-    .map(([x, y]) => `<rect x="${x}" y="${y}" width="8" height="8" rx="1"/>`)
-    .join("")}</g></svg></span>`;
-  $("#talent-board-tabs").innerHTML = `<p class="eyebrow"><span>Talent trees</span></p>${[0, 1, 2, 3]
-    .map((slot) => {
-      const name = selectedTrees[slot];
-      const item = allProfessionTalentCatalogueSs13[name];
-      const disabled = slot > 0 && !selectedTrees[slot - 1];
-      return `<button type="button" class="talent-tree-slot ${talentFamilyClass(name)} ${!talentSlateMode && name === panel.name ? "active" : ""} ${!name ? "empty" : ""}" data-talent-slot="${slot}" ${disabled ? "disabled" : ""}>${name ? artwork(tliArt.talentPanels[name] || item?.emblem, name, "talent-panel-art") : '<span class="empty-tree-art">+</span>'}<span><small>${slot === 0 ? "God tree" : slot === 1 ? "Class tree" : `Tree ${slot + 1}`}</small><strong>${name || (disabled ? "Select previous" : "Click to select")}</strong>${name ? `<em>${pointTotals.panels[name]} pts</em>` : ""}</span></button>`;
-    })
-    .join(
-      "",
-    )}<button type="button" class="talent-divinity-link ${talentSlateMode ? "active" : ""}" data-talent-slates>${slateGridIcon}<small>Divinity</small><strong>Slates</strong></button><div class="talent-slot-total"><small>Total points</small><strong>${totalPoints} / ${MAX_TALENT_POINTS}</strong></div>`;
+  const pointTotals = talentPointTotals(activeTalentLayouts(), Object.fromEntries(talentRanks));
   const pickerOptions = talentOptionsForSlot(activeTalentSlot, selectedTrees);
   $("#talent-picker-title").textContent =
     activeTalentSlot === 0
@@ -2374,194 +2270,8 @@ function renderTalents() {
       return `<button type="button" class="talent-picker-card ${talentFamilyClass(name)} ${selectedTrees[activeTalentSlot] === name ? "selected" : ""} ${activeTalentSlot === 0 ? "god-tree" : "class-tree"}" data-select-panel="${escapeHtml(name)}" aria-pressed="${selectedTrees[activeTalentSlot] === name}">${artwork(tliArt.talentPanels[name] || item.emblem, name, "talent-picker-art")}<span>${activeTalentSlot === 0 ? "God tree" : "Class tree"}</span><strong>${escapeHtml(name)}</strong><small>${pointTotals.panels[name]} points</small></button>`;
     })
     .join("");
-
-  const coreEntries = prismReplacesCore(installedPrism)
-    ? [
-        {
-          name: installedPrism.base,
-          effects: {
-            "Base affix": prismBaseEffect(installedPrism.type, installedPrism.base, installedPrism.legendaryAffix),
-          },
-          prism: true,
-        },
-      ]
-    : panel.coreTalents;
-  if (prismReplacesCore(installedPrism)) {
-    const core = coreEntries[0];
-    const details = Object.values(core.effects || {}).join(" · ");
-    $("#core-talents").innerHTML =
-      `<article class="core-talent prism">${artwork(prismIcon(installedPrism), core.name, "core-art")}<div><span>Prism override</span><strong>${escapeHtml(core.name)}</strong><small>${escapeHtml(details)}</small></div></article>`;
-  } else {
-    const thresholds = [...new Set(coreEntries.map((core) => core.unlockPoints))].sort((a, b) => a - b);
-    $("#core-talents").innerHTML = thresholds
-      .map((threshold) => {
-        const selectedName = plannerState.talents.coreSelections[`${panel.name}:${threshold}`];
-        const core = coreEntries.find((item) => item.name === selectedName);
-        const locked = panelPoints < threshold;
-        return `<button type="button" class="core-talent core-selector ${core ? "selected" : ""} ${locked ? "locked" : ""}" data-core-slot="${threshold}">${core ? artwork(tliArt.coreTalents[core.name] || core.icon, core.name, "core-art") : '<span class="empty-core-art">+</span>'}<div><span>${threshold} point core${locked ? " · locked" : ""}</span><strong>${core?.name || "Select core talent"}</strong><small>${core?.description || "Choose one available core talent"}</small></div></button>`;
-      })
-      .join("");
-    if (installedPrism?.type === "ethereal")
-      $("#core-talents").insertAdjacentHTML(
-        "beforeend",
-        `<article class="core-talent prism">${artwork(prismIcon(installedPrism), installedPrism.base, "core-art")}<div><span>Separate prism effect</span><strong>${escapeHtml(installedPrism.base)}</strong><small>${escapeHtml(prismBaseEffect(installedPrism.type, installedPrism.base, installedPrism.legendaryAffix))}</small></div></article>`,
-      );
-  }
-
-  const graph = layouts[panel.name];
-  const trimConnection = ([x1, y1, x2, y2]) => {
-    const start = { x: x1 + 0.5, y: y1 + 0.5 },
-      end = { x: x2 + 0.5, y: y2 + 0.5 },
-      dx = end.x - start.x,
-      dy = end.y - start.y;
-    const distance = Math.sqrt((dx / 0.18) ** 2 + (dy / 0.31) ** 2),
-      inset = distance ? 1 / distance : 0;
-    return { x1: start.x + dx * inset, y1: start.y + dy * inset, x2: end.x - dx * inset, y2: end.y - dy * inset };
-  };
-  const prerequisiteFreeCoordinates = inverseImageReflectedCoordinates(installedPrism, installedPrismCoordinate);
-  const connections =
-    '<svg class="talent-connections" viewBox="0 0 7 5" preserveAspectRatio="none" aria-hidden="true">' +
-    graph.edges
-      .filter(
-        ([x1, y1, x2, y2]) =>
-          !prerequisiteFreeCoordinates.has(`${x1},${y1}`) && !prerequisiteFreeCoordinates.has(`${x2},${y2}`),
-      )
-      .map((edge) => {
-        const [x1, y1, x2, y2] = edge,
-          trimmed = trimConnection(edge);
-        const left = x1 <= x2 ? [x1, y1] : [x2, y2];
-        const right = x1 <= x2 ? [x2, y2] : [x1, y1];
-        const leftRank =
-          talentRanks.get(`${panel.name}:${left}`) ||
-          0 ||
-          (hasInstalledPrism && left.join(",") === installedPrismCoordinate);
-        const rightRank =
-          talentRanks.get(`${panel.name}:${right}`) ||
-          0 ||
-          (hasInstalledPrism && right.join(",") === installedPrismCoordinate);
-        const state = leftRank && rightRank ? "active" : leftRank ? "reachable" : "locked";
-        return (
-          '<line class="' +
-          state +
-          '" x1="' +
-          trimmed.x1 +
-          '" y1="' +
-          trimmed.y1 +
-          '" x2="' +
-          trimmed.x2 +
-          '" y2="' +
-          trimmed.y2 +
-          '"></line>'
-        );
-      })
-      .join("") +
-    "</svg>";
-  const prismBounds =
-    installedPrism && installedPrismCoordinate ? prismAreaBounds(installedPrism, installedPrismCoordinate) : null;
-  const reflectedBounds = inverseImageReflectedBounds(installedPrism, installedPrismCoordinate);
-  const prismAreaBox = prismBounds
-    ? `<div class="prism-area-box" style="grid-column:${prismBounds.left + 1}/span ${prismBounds.width};grid-row:${prismBounds.top + 1}/span ${prismBounds.height}" aria-hidden="true"></div>${reflectedBounds ? `<div class="prism-area-box inverse-reflected-area" style="grid-column:${reflectedBounds.left + 1}/span ${reflectedBounds.width};grid-row:${reflectedBounds.top + 1}/span ${reflectedBounds.height}" aria-hidden="true"></div>` : ""}`
-    : "";
-  $("#talent-stage").innerHTML =
-    connections +
-    prismAreaBox +
-    displayNodes
-      .map((node) => {
-        const rank = rankFor(node);
-        const max = node.maxRank || (node.effectsPerRank ? 3 : 1);
-        const coordinate = node.coordinate.join(",");
-        const symbol = node.placeholder
-          ? node.type === "legendary"
-            ? "✧"
-            : node.type === "medium"
-              ? "◇"
-              : "·"
-          : nodeIcon(node);
-        const isPrismNode = hasInstalledPrism && coordinate === installedPrismCoordinate;
-        const isAffected =
-          installedPrism?.type === "inverse"
-            ? prerequisiteFreeCoordinates.has(coordinate) && !isPrismNode
-            : prismBounds &&
-              !isPrismNode &&
-              node.coordinate[0] >= prismBounds.left &&
-              node.coordinate[0] < prismBounds.left + prismBounds.width &&
-              node.coordinate[1] >= prismBounds.top &&
-              node.coordinate[1] < prismBounds.top + prismBounds.height;
-        const icon = tliArt.talents[panel.name]?.[node.reflectedFrom || coordinate] || node.icon;
-        const availability = canAllocateTalent({
-          panel: panel.name,
-          node,
-          graph,
-          layouts,
-          ranks: rankObject,
-          prismCoordinate: hasInstalledPrism ? installedPrismCoordinate : null,
-          prerequisiteFreeCoordinates,
-        });
-        const label = node.placeholder ? "Unallocated " + node.type + " talent" : nodeTitle(node);
-        const nodeStyle = "--column:" + (node.coordinate[0] + 1) + ";--row:" + (node.coordinate[1] + 1);
-        const talentButton =
-          '<button type="button" role="gridcell" class="talent-node ' +
-          (rank ? "allocated " : "") +
-          (node.placeholder && !rank ? "available " : "") +
-          (!rank && !availability.allowed ? "locked " : "") +
-          (node.type === "legendary" ? "legendary-node " : "") +
-          (isAffected ? "prism-affected-node " : "") +
-          (node.reflectedFrom ? "inverse-reflected-node " : "") +
-          (placingPrism && nativeTalentCoordinates.has(coordinate) ? "prism-placement-target " : "") +
-          (isPrismNode ? "prism-covered-node " : "") +
-          '" style="' +
-          nodeStyle +
-          '" data-coordinate="' +
-          coordinate +
-          '" data-node-type="' +
-          (node.type || "captured") +
-          '" aria-label="' +
-          label +
-          ", rank " +
-          rank +
-          " of " +
-          max +
-          (availability.allowed ? "" : ", " + availability.reason) +
-          (isAffected ? ", within Inverse Image reflected area" : "") +
-          '">' +
-          (icon
-            ? '<img class="talent-node-art" src="' + icon + '" alt="">'
-            : '<span class="node-symbol">' + symbol + "</span>") +
-          '<span class="node-rank">' +
-          rank +
-          "/" +
-          max +
-          "</span></button>";
-        if (!isPrismNode) return talentButton;
-        return (
-          talentButton +
-          '<button type="button" class="talent-node prism-node installed-prism-node" style="' +
-          nodeStyle +
-          '" data-coordinate="' +
-          coordinate +
-          '" data-node-type="' +
-          (node.type || "captured") +
-          '" aria-label="' +
-          escapeHtml(prismName(installedPrism)) +
-          ' installed here">' +
-          (prismIcon(installedPrism)
-            ? '<img class="talent-node-art" src="' + prismIcon(installedPrism) + '" alt="">'
-            : '<span class="node-symbol">✦</span>') +
-          "</button>"
-        );
-      })
-      .join("");
-  setTalentSlateMode(talentSlateMode);
 }
 
-function prismName(item) {
-  return item.type === "inverse" ? "Inverse Image" : `Ethereal Prism: ${item.base}`;
-}
-function prismIcon(item) {
-  return item.type === "ethereal"
-    ? etherealPrismIcons[item.base] || ""
-    : "./src/assets/tli/ui-s12-lengjing-golden01.webp";
-}
 function prismAffixSections(item, showCoverage = false) {
   const badge = (kind) =>
     showCoverage ? coverageBadge(prismAffixCoverage(item, kind), prismAffixCoverageReason(item, kind)) : "";
@@ -2723,7 +2433,6 @@ function installCraftedPrism(id) {
   pendingPrismPlacement = { id, panel };
   if ($("#prism-inventory-dialog").open) $("#prism-inventory-dialog").close();
   renderTalents();
-  $("#prism-placement-prompt").scrollIntoView({ block: "center", behavior: "smooth" });
 }
 function placeCraftedPrism(coordinate) {
   if (!pendingPrismPlacement) return;
@@ -7081,26 +6790,6 @@ document.addEventListener("pointermove", (event) => {
       target?.classList.add("selena-dance-drop-target");
     }
   }
-  if (prismDrag && event.pointerId === prismDrag.pointerId) {
-    const dx = event.clientX - prismDrag.startX,
-      dy = event.clientY - prismDrag.startY;
-    if (!prismDrag.moved && Math.hypot(dx, dy) >= 5) {
-      prismDrag.moved = true;
-      prismDrag.element.classList.add("prism-dragging");
-      prismDrag.sourceNode?.classList.add("prism-source-revealed");
-      hidePlannerTooltip();
-    }
-    if (prismDrag.moved) {
-      event.preventDefault();
-      prismDrag.element.style.transform = `translate(${dx}px, ${dy}px)`;
-      const target = document
-        .elementFromPoint(event.clientX, event.clientY)
-        ?.closest("#talent-stage .talent-node[data-coordinate]");
-      prismDrag.target?.classList.remove("prism-drop-target");
-      prismDrag.target = target && target !== prismDrag.element ? target : null;
-      prismDrag.target?.classList.add("prism-drop-target");
-    }
-  }
   if ($("#planner-tooltip").classList.contains("visible")) scheduleTooltipPosition(event.clientX, event.clientY);
 });
 
@@ -7437,6 +7126,137 @@ function changeTalentRank(coordinate, delta, max = false) {
   renderConfiguration();
 }
 
+// Talent tree commands (apps/web/src/features/talents). The tree, core and prism dialogs stay here.
+function openTalentTree(slot) {
+  pendingPrismPlacement = null;
+  setTalentSlateMode(false);
+  activeTalentSlot = slot;
+  const selected = plannerState.talents.selectedTrees[slot];
+  if (selected) {
+    activeWorkspaceView = "talents";
+    activeTalentPanel = selected;
+    renderTalents();
+    saveWorkspaceLocation();
+    return;
+  }
+  renderTalents();
+  $("#talent-panel-picker").showModal();
+}
+// Right-click on a tree tab: the tree and every one after it are emptied.
+function removeTalentTree(slot) {
+  if (!plannerState.talents.selectedTrees[slot]) return false;
+  for (let index = slot; index < plannerState.talents.selectedTrees.length; index += 1) {
+    const name = plannerState.talents.selectedTrees[index];
+    clearTalentTreeState(name);
+    delete plannerState.talents.installedPrisms[name];
+    delete plannerState.talents.installedPrismNodes[name];
+    plannerState.talents.selectedTrees[index] = "";
+  }
+  persistPlannerState();
+  renderCandidateViews();
+  showToast("Talent tree removed");
+  return true;
+}
+function openTalentSlates() {
+  activeWorkspaceView = "talents";
+  setTalentSlateMode(true);
+  renderTalents();
+  renderSlates();
+  saveWorkspaceLocation();
+}
+function openCorePicker(threshold) {
+  activeCoreThreshold = threshold;
+  renderCoreTalentPicker(activeCoreThreshold);
+  $("#core-talent-picker").showModal();
+}
+function removeCoreTalent(threshold) {
+  const key = `${currentTalentPanel().name}:${threshold}`;
+  if (!plannerState.talents.coreSelections[key]) return false;
+  delete plannerState.talents.coreSelections[key];
+  persistPlannerState();
+  renderCandidateViews();
+  showToast("Core talent removed");
+  return true;
+}
+// A click on a node: places a prism waiting for one, opens the prism inventory on the installed prism, or adds a point
+// (with the points on the way to it).
+function clickTalentNode(coordinate) {
+  if (pendingPrismPlacement) {
+    placeCraftedPrism(coordinate);
+    return;
+  }
+  if (
+    plannerState.talents.installedPrismNodes?.[activeTalentPanel] === coordinate &&
+    plannerState.talents.installedPrisms?.[activeTalentPanel]
+  ) {
+    openPrismInventory();
+    return;
+  }
+  changeTalentRank(coordinate, 1);
+}
+// A right-click on a node: takes the installed prism off, takes a point off, or fills an empty node.
+function rightClickTalentNode(coordinate) {
+  if (pendingPrismPlacement) return;
+  const panelName = currentTalentPanel().name;
+  if (
+    plannerState.talents.installedPrismNodes?.[panelName] === coordinate &&
+    plannerState.talents.installedPrisms?.[panelName]
+  ) {
+    const item = plannerState.talents.prismInventory.find(
+      (entry) => entry.id === plannerState.talents.installedPrisms[panelName],
+    );
+    clearInverseReflectedRanks(panelName, item, coordinate);
+    delete plannerState.talents.installedPrisms[panelName];
+    delete plannerState.talents.installedPrismNodes[panelName];
+    if (item?.type === "inverse") reconcileTalentRanksAfterPrismChange(panelName);
+    persistPlannerState();
+    renderCandidateViews();
+    showToast("Prism removed from talent node");
+    return;
+  }
+  const empty = !(talentRanks.get(`${panelName}:${coordinate}`) || 0);
+  changeTalentRank(coordinate, empty ? 1 : -1, empty);
+}
+function resetTalentTree() {
+  clearTalentTreeState(activeTalentPanel);
+  persistPlannerState();
+  renderCandidateViews();
+  showToast(`${escapeHtml(activeTalentPanel)} points reset`);
+}
+function reselectTalentTree() {
+  const slot = plannerState.talents.selectedTrees.indexOf(activeTalentPanel);
+  activeTalentSlot = slot >= 0 ? slot : 0;
+  renderTalents();
+  $("#talent-panel-picker").showModal();
+}
+function cancelPrismPlacement() {
+  pendingPrismPlacement = null;
+  renderTalents();
+}
+// The end of a drag of the installed prism: onto another node of the open tree it moves there; anywhere else it stays.
+function dropPrism(coordinate) {
+  const panel = activeTalentPanel,
+    origin = plannerState.talents.installedPrismNodes?.[panel];
+  const valid =
+    coordinate && professionTreeLayoutsAllSs13[panel]?.nodes.some((node) => node.coordinate.join(",") === coordinate);
+  if (!valid) {
+    showToast("Invalid drop · Prism returned to its original node");
+    return;
+  }
+  if (coordinate === origin) return;
+  const item = plannerState.talents.prismInventory.find(
+    (entry) => entry.id === plannerState.talents.installedPrisms?.[panel],
+  );
+  clearInverseReflectedRanks(panel, item, origin);
+  clearInverseReflectedRanks(panel, item, coordinate);
+  plannerState.talents.installedPrismNodes[panel] = coordinate;
+  talentRanks.set(`${panel}:${coordinate}`, 0);
+  if (item?.type === "inverse") reconcileTalentRanksAfterPrismChange(panel);
+  persistPlannerState();
+  renderCandidateViews();
+  showToast(`Prism moved to node ${coordinate}`);
+}
+
 function clearTalentTreeState(name) {
   if (!name) return;
   for (const key of [...talentRanks.keys()]) if (key.startsWith(name + ":")) talentRanks.set(key, 0);
@@ -7574,62 +7394,6 @@ document.addEventListener("contextmenu", (event) => {
       $("#slate-inventory .crafted-slate-list").scrollTop = listScroll;
       showToast(`${slate.name} placed beside the full grid`);
     } else showToast("No space is available beside the grid for that slate");
-    return;
-  }
-  const nodeButton = event.target.closest(".talent-node[data-coordinate]");
-  if (nodeButton) {
-    event.preventDefault();
-    hidePlannerTooltip();
-    if (pendingPrismPlacement) return;
-    const panelName = currentTalentPanel().name;
-    if (
-      plannerState.talents.installedPrismNodes?.[panelName] === nodeButton.dataset.coordinate &&
-      plannerState.talents.installedPrisms?.[panelName]
-    ) {
-      const item = plannerState.talents.prismInventory.find(
-        (entry) => entry.id === plannerState.talents.installedPrisms[panelName],
-      );
-      clearInverseReflectedRanks(panelName, item, nodeButton.dataset.coordinate);
-      delete plannerState.talents.installedPrisms[panelName];
-      delete plannerState.talents.installedPrismNodes[panelName];
-      if (item?.type === "inverse") reconcileTalentRanksAfterPrismChange(panelName);
-      persistPlannerState();
-      renderCandidateViews();
-      showToast("Prism removed from talent node");
-      return;
-    }
-    const coordinate = nodeButton.dataset.coordinate,
-      empty = !(talentRanks.get(`${currentTalentPanel().name}:${coordinate}`) || 0);
-    changeTalentRank(coordinate, empty ? 1 : -1, empty);
-    return;
-  }
-  const core = event.target.closest("[data-core-slot]");
-  if (core) {
-    const panel = currentTalentPanel();
-    const key = `${panel.name}:${core.dataset.coreSlot}`;
-    if (!plannerState.talents.coreSelections[key]) return;
-    event.preventDefault();
-    delete plannerState.talents.coreSelections[key];
-    persistPlannerState();
-    renderCandidateViews();
-    showToast("Core talent removed");
-    return;
-  }
-  const tree = event.target.closest("[data-talent-slot]");
-  if (tree) {
-    const slot = Number(tree.dataset.talentSlot);
-    if (!plannerState.talents.selectedTrees[slot]) return;
-    event.preventDefault();
-    for (let index = slot; index < plannerState.talents.selectedTrees.length; index += 1) {
-      const name = plannerState.talents.selectedTrees[index];
-      clearTalentTreeState(name);
-      delete plannerState.talents.installedPrisms[name];
-      delete plannerState.talents.installedPrismNodes[name];
-      plannerState.talents.selectedTrees[index] = "";
-    }
-    persistPlannerState();
-    renderCandidateViews();
-    showToast("Talent tree removed");
     return;
   }
 });
@@ -7919,32 +7683,6 @@ document.addEventListener("click", (event) => {
   if (closeTalentPicker) $("#talent-panel-picker").close();
   const closeCorePicker = event.target.closest("[data-close-core-picker]");
   if (closeCorePicker) $("#core-talent-picker").close();
-  const resetTalentsButton = event.target.closest("[data-reset-talents]");
-  if (resetTalentsButton) {
-    clearTalentTreeState(activeTalentPanel);
-    persistPlannerState();
-    renderCandidateViews();
-    showToast(`${escapeHtml(activeTalentPanel)} points reset`);
-    return;
-  }
-  const reselectTreeButton = event.target.closest("[data-reselect-tree]");
-  if (reselectTreeButton) {
-    const slot = plannerState.talents.selectedTrees.indexOf(activeTalentPanel);
-    activeTalentSlot = slot >= 0 ? slot : 0;
-    renderTalents();
-    $("#talent-panel-picker").showModal();
-    return;
-  }
-  const installPrismButton = event.target.closest("[data-install-prism]");
-  if (installPrismButton) {
-    openPrismInventory();
-    return;
-  }
-  if (event.target.closest("[data-cancel-prism-placement]")) {
-    pendingPrismPlacement = null;
-    renderTalents();
-    return;
-  }
   if (event.target.closest("[data-close-prism-inventory]")) {
     $("#prism-inventory-dialog").close();
     return;
@@ -8297,30 +8035,6 @@ document.addEventListener("click", (event) => {
     showToast(`${escapeHtml(memory.name)} saved`);
     return;
   }
-  const talentSlotButton = event.target.closest("[data-talent-slot]");
-  if (talentSlotButton && !event.target.closest("[data-talent-slates]")) {
-    pendingPrismPlacement = null;
-    setTalentSlateMode(false);
-    activeTalentSlot = Number(talentSlotButton.dataset.talentSlot);
-    const selected = plannerState.talents.selectedTrees[activeTalentSlot];
-    if (selected) {
-      activeWorkspaceView = "talents";
-      activeTalentPanel = selected;
-      renderTalents();
-      saveWorkspaceLocation();
-      return;
-    }
-    renderTalents();
-    $("#talent-panel-picker").showModal();
-  }
-  const talentSlatesButton = event.target.closest("[data-talent-slates]");
-  if (talentSlatesButton) {
-    activeWorkspaceView = "talents";
-    setTalentSlateMode(true);
-    renderTalents();
-    renderSlates();
-    saveWorkspaceLocation();
-  }
   const selectPanelButton = event.target.closest("[data-select-panel]");
   if (selectPanelButton) {
     const name = selectPanelButton.dataset.selectPanel;
@@ -8340,19 +8054,10 @@ document.addEventListener("click", (event) => {
     }
     activeWorkspaceView = "talents";
     activeTalentPanel = name;
-    selectedTalentCoordinate = (
-      currentTalentPanel().allocatedNodes[0]?.coordinate || currentTalentPanel().nodes[0].coordinate
-    ).join(",");
     persistPlannerState();
     $("#talent-panel-picker").close();
     renderTalents();
     saveWorkspaceLocation();
-  }
-  const coreSlotButton = event.target.closest("[data-core-slot]");
-  if (coreSlotButton) {
-    activeCoreThreshold = Number(coreSlotButton.dataset.coreSlot);
-    renderCoreTalentPicker(activeCoreThreshold);
-    $("#core-talent-picker").showModal();
   }
   const coreOptionButton = event.target.closest("[data-core-option]");
   if (coreOptionButton && !coreOptionButton.disabled) {
@@ -8362,22 +8067,6 @@ document.addEventListener("click", (event) => {
     $("#core-talent-picker").close();
     renderTalents();
     showToast(`${coreOptionButton.dataset.coreOption} selected`);
-  }
-  const nodeButton = event.target.closest(".talent-node[data-coordinate]");
-  if (nodeButton) {
-    hidePlannerTooltip();
-    if (pendingPrismPlacement) {
-      placeCraftedPrism(nodeButton.dataset.coordinate);
-      return;
-    }
-    if (
-      plannerState.talents.installedPrismNodes?.[activeTalentPanel] === nodeButton.dataset.coordinate &&
-      plannerState.talents.installedPrisms?.[activeTalentPanel]
-    ) {
-      openPrismInventory();
-      return;
-    }
-    changeTalentRank(nodeButton.dataset.coordinate, 1);
   }
   const voraxBaseChoice = event.target.closest("[data-select-vorax-base]");
   if (voraxBaseChoice) {
@@ -9205,23 +8894,6 @@ document.addEventListener("pointerdown", (event) => {
     }
     return;
   }
-  const prismNode = event.target.closest("#talent-stage .installed-prism-node[data-coordinate]");
-  if (prismNode && event.button === 0 && !pendingPrismPlacement) {
-    event.preventDefault();
-    prismNode.setPointerCapture?.(event.pointerId);
-    prismDrag = {
-      pointerId: event.pointerId,
-      element: prismNode,
-      sourceNode: prismNode.previousElementSibling,
-      panel: activeTalentPanel,
-      origin: prismNode.dataset.coordinate,
-      startX: event.clientX,
-      startY: event.clientY,
-      moved: false,
-      target: null,
-    };
-    return;
-  }
 });
 // ---- Divinity Slates board (apps/web/src/features/slates): the board reads the "slates" source; these carry out its edits.
 function selectSlate(id, toolsPosition) {
@@ -9581,73 +9253,19 @@ function moveKismet(fromKey, toKey, kind, duplicate) {
   refreshPactCandidate();
   showToast(`Kismet ${result.action}`);
 }
-function finishPrismDrag(event, cancelled = false) {
-  if (!prismDrag || event.pointerId !== prismDrag.pointerId) return;
-  const drag = prismDrag;
-  prismDrag = null;
-  drag.target?.classList.remove("prism-drop-target");
-  drag.element.classList.remove("prism-dragging");
-  drag.sourceNode?.classList.remove("prism-source-revealed");
-  drag.element.style.transform = "";
-  if (!drag.moved) return;
-  suppressPrismClick = true;
-  setTimeout(() => {
-    suppressPrismClick = false;
-  }, 0);
-  const target = cancelled
-    ? null
-    : document.elementFromPoint(event.clientX, event.clientY)?.closest("#talent-stage .talent-node[data-coordinate]");
-  const coordinate = target?.dataset.coordinate;
-  const valid =
-    coordinate &&
-    drag.panel === activeTalentPanel &&
-    professionTreeLayoutsAllSs13[drag.panel]?.nodes.some((node) => node.coordinate.join(",") === coordinate);
-  if (!valid) {
-    showToast("Invalid drop · Prism returned to its original node");
-    return;
-  }
-  if (coordinate === drag.origin) return;
-  const item = plannerState.talents.prismInventory.find(
-    (entry) => entry.id === plannerState.talents.installedPrisms?.[drag.panel],
-  );
-  clearInverseReflectedRanks(drag.panel, item, drag.origin);
-  clearInverseReflectedRanks(drag.panel, item, coordinate);
-  plannerState.talents.installedPrismNodes[drag.panel] = coordinate;
-  talentRanks.set(`${drag.panel}:${coordinate}`, 0);
-  if (item?.type === "inverse") reconcileTalentRanksAfterPrismChange(drag.panel);
-  persistPlannerState();
-  renderCandidateViews();
-  showToast(`Prism moved to node ${coordinate}`);
-}
 document.addEventListener("pointerup", (event) => {
-  finishPrismDrag(event);
   finishSelenaDanceDrag(event);
 });
 document.addEventListener("pointercancel", (event) => {
-  finishPrismDrag(event, true);
   finishSelenaDanceDrag(event, true);
 });
 document.addEventListener("lostpointercapture", (event) => {
   if (selenaDanceDrag?.pointerId === event.pointerId) finishSelenaDanceDrag(event, true);
 });
 document.addEventListener("dragstart", (event) => {
-  if (
-    event.target.closest(
-      "#talent-stage .installed-prism-node,.pact-tree-node.has-kismet,#hero-trait-tree [data-selena-dance-pick]",
-    )
-  )
+  if (event.target.closest(".pact-tree-node.has-kismet,#hero-trait-tree [data-selena-dance-pick]"))
     event.preventDefault();
 });
-document.addEventListener(
-  "click",
-  (event) => {
-    if (suppressPrismClick && event.target.closest("#talent-stage")) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }
-  },
-  true,
-);
 document.addEventListener(
   "click",
   (event) => {

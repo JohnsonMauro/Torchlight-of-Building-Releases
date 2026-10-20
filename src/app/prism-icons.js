@@ -25,3 +25,14 @@ export const etherealPrismIcons = {
   "Fire's Allure": "./src/assets/tli/ui_s12_lengjing_purple25.webp",
   "Fiery Fantasy": "./src/assets/tli/ui_s12_lengjing_purple26.webp",
 };
+
+/** A prism's name as the page shows it. */
+export function prismName(item) {
+  return item.type === "inverse" ? "Inverse Image" : `Ethereal Prism: ${item.base}`;
+}
+/** A prism's icon (Inverse Image has one; an Ethereal Prism's depends on its base). */
+export function prismIcon(item) {
+  return item.type === "ethereal"
+    ? etherealPrismIcons[item.base] || ""
+    : "./src/assets/tli/ui-s12-lengjing-golden01.webp";
+}
