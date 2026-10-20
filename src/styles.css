@@ -14672,6 +14672,38 @@ body.unified-planner .skill-support-socket .lane-support-art img {
   object-fit: cover;
   transform: scale(1.14);
 }
+/* Phones: skill, name, five support sockets and Energy side by side need about 350 px, more than a phone leaves the row,
+   and the whole page scrolled sideways. Below 720 px the sockets take a line of their own across the row and shrink to
+   fit it. */
+@media (max-width: 720px) {
+  .compendium-skill-row {
+    grid-template-columns: 54px minmax(0, 1fr) 42px;
+    grid-template-areas:
+      "skill name energy"
+      "supports supports supports";
+    row-gap: 8px;
+  }
+  .compendium-skill-row > .skill-primary-socket {
+    grid-area: skill;
+  }
+  .compendium-skill-row > .skill-row-name {
+    grid-area: name;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .compendium-skill-row > .skill-support-sockets {
+    grid-area: supports;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .compendium-skill-row > .skill-row-energy {
+    grid-area: energy;
+  }
+  .compendium-skill-row .skill-support-socket {
+    width: min(34px, 100%);
+    height: auto;
+    aspect-ratio: 1;
+  }
+}
 .planner-tooltip.slate-tooltip .slate-craft-affix-preview li.core-slate-affix {
   margin-left: -7px;
   padding: 8px;
