@@ -15,8 +15,9 @@ const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], { encodin
 const folder = mkdtempSync(join(tmpdir(), "tli-golden-"));
 
 try {
-  const archive = execFileSync("git", ["-C", repoRoot, "archive", "--format=tar", ref, "--", "src", "tests/golden", ":(exclude)src/assets"]);
-  execFileSync("tar", ["-x", "-C", folder], { input: archive, maxBuffer: 1 << 30 });
+  const archive = join(folder, "ref.tar");
+  execFileSync("git", ["-C", repoRoot, "archive", "--format=tar", `--output=${archive}`, ref, "--", "src", "tests/golden", ":(exclude)src/assets"]);
+  execFileSync("tar", ["-xf", archive, "-C", folder]);
   writeFileSync(join(folder, "package.json"), JSON.stringify({ type: "module" }));
   const before = await import(pathToFileURL(join(folder, "tests/golden/cases.js")).href);
   const after = await import("./cases.js");

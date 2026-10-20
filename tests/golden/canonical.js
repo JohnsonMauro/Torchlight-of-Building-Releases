@@ -36,7 +36,8 @@ export function differingPaths(left, right, path = "$", out = [], limit = 40) {
   const leftObject = left !== null && typeof left === "object";
   const rightObject = right !== null && typeof right === "object";
   if (!leftObject || !rightObject || Array.isArray(left) !== Array.isArray(right)) {
-    out.push({ path, before: preview(left), after: preview(right) });
+    const from = typeof left === "string" && typeof right === "string" ? firstDifference(left, right) : 0;
+    out.push({ path, before: preview(left, from), after: preview(right, from) });
     return out;
   }
   const keys = Array.isArray(left)
@@ -46,7 +47,20 @@ export function differingPaths(left, right, path = "$", out = [], limit = 40) {
   return out;
 }
 
-function preview(value) {
-  const text = JSON.stringify(value);
-  return text === undefined ? "(missing)" : text.length > 120 ? `${text.slice(0, 117)}...` : text;
+function firstDifference(left, right) {
+  let index = 0;
+  while (index < left.length && left[index] === right[index]) index++;
+  return index;
+}
+
+/** Up to 120 characters of the value; for strings, starting a little before `from` (where two strings diverge). */
+function preview(value, from = 0) {
+  if (value === undefined) return "(missing)";
+  if (typeof value !== "string") {
+    const text = JSON.stringify(value);
+    return text.length > 120 ? `${text.slice(0, 117)}...` : text;
+  }
+  const start = Math.max(0, from - 40);
+  const text = value.slice(start, start + 120);
+  return `${start ? "..." : ""}${JSON.stringify(text)}${start + 120 < value.length ? "..." : ""}`;
 }
