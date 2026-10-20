@@ -1,6 +1,5 @@
 import { SiteHeader } from "./SiteHeader";
 import { LoadoutStrip } from "./LoadoutStrip";
-import { OverviewView } from "./views/OverviewView";
 import { BuildsView } from "./views/BuildsView";
 import { CharacterView } from "./views/CharacterView";
 import { SkillsView } from "./views/SkillsView";
@@ -45,7 +44,6 @@ export function AppShell() {
       <SiteHeader />
       <LoadoutStrip />
       <main>
-        <OverviewView />
         <BuildsView />
         <CharacterView />
         <SkillsView />

@@ -73,7 +73,6 @@ import {
 import { followerById, followerRarityById } from "../engine/followers/follower-model.js";
 import { resolveTalentCandidate } from "../engine/candidate-sources.js";
 import {
-  calculateSelenaTownBaseline,
   calculateTalentSlateCandidate,
   calculatePactCandidate,
   calculateEquipmentCandidate,
@@ -83,12 +82,10 @@ import {
   applyCapturedEnergyCosts,
   energyCostForSupportSlots,
   collectNormalizedGearModifiers,
-  aggregateNormalizedModifiers,
 } from "../engine/engine.js";
 import { leveledSkillDamage } from "../engine/skills/skill-damage-progression.js";
 import { skillDisplaySs13, highlightedSkillEffect, highlightedAuraEffect } from "./skill-display-ss13.js";
 import { supportDisplaySs13, highlightedSupportEffect } from "./support-display-ss13.js";
-import { sampleBuild } from "../data/sample-build.js";
 import { selenaScorchingBeamTalentSetupSs13 } from "../data/talents/selena-scorching-beam-ss13.js";
 import { professionTreeLayoutsSs13 } from "../data/talents/profession-tree-layouts-ss13.js";
 import { allProfessionTalentCatalogueSs13 } from "../data/talents/all-profession-trees-ss13.generated.js";
@@ -358,7 +355,6 @@ function upgradeExistingCorrodedItems(state) {
 for (const entry of tlidbSkillCatalogSs13) tliArt.skills[entry.name] ||= entry.icon;
 for (const entry of tlidbSupportCatalogSs13) tliArt.supports[entry.name] ||= entry.icon;
 
-let build = structuredClone(sampleBuild);
 // Safe mode (Recovery screen): the planner opens on the Builds page and never runs build calculations until resumed.
 const calculationsPaused = (() => {
   try {
@@ -1676,134 +1672,6 @@ provideViewSource("configuration", () => {
   };
 });
 
-function render() {
-  const planner = currentPlanner();
-  const baselineSnapshot = selenaScorchingBeamObservedSnapshots[0];
-  const noGlovesSnapshot = selenaScorchingBeamObservedSnapshots[1];
-  const noMainHandSnapshot = selenaScorchingBeamObservedSnapshots[2];
-  const noSecondaryHandSnapshot = selenaScorchingBeamObservedSnapshots[3];
-  const noAdditionalIgniteSnapshot = selenaScorchingBeamObservedSnapshots[4];
-  const noControlSpellSnapshot = selenaScorchingBeamObservedSnapshots[5];
-  const noGuardSnapshot = selenaScorchingBeamObservedSnapshots[6];
-  const noRefractedPrismSnapshot = selenaScorchingBeamObservedSnapshots[7];
-  const glovesDisabled = disabledEquipmentSlots.has("gloves");
-  const mainHandDisabled = disabledEquipmentSlots.has("mainHand");
-  const secondaryHandDisabled = disabledEquipmentSlots.has("secondaryHand");
-  const additionalIgniteDisabled = disabledSupportNames.has("Additional Ignite");
-  const controlSpellDisabled = disabledSupportNames.has("Control Spell");
-  const guardDisabled = disabledSupportNames.has("Guard");
-  const refractedPrismDisabled = disabledSupportNames.has("Refracted Prism");
-  const snapshot = additionalIgniteDisabled
-    ? noAdditionalIgniteSnapshot
-    : controlSpellDisabled
-      ? noControlSpellSnapshot
-      : guardDisabled
-        ? noGuardSnapshot
-        : refractedPrismDisabled
-          ? noRefractedPrismSnapshot
-          : glovesDisabled
-            ? noGlovesSnapshot
-            : mainHandDisabled
-              ? noMainHandSnapshot
-              : secondaryHandDisabled
-                ? noSecondaryHandSnapshot
-                : baselineSnapshot;
-  const result = calculateSelenaTownBaseline(snapshot, noGlovesSnapshot);
-  $("#build-name").textContent = "Selena · Sing with the Tide";
-  const comparisonLabel = additionalIgniteDisabled
-    ? "Additional Ignite unlinked"
-    : controlSpellDisabled
-      ? "Control Spell unlinked"
-      : guardDisabled
-        ? "Guard unlinked"
-        : refractedPrismDisabled
-          ? "Refracted Prism unlinked"
-          : glovesDisabled
-            ? "Torturer's Touch disabled"
-            : mainHandDisabled
-              ? "Main-hand Dark Gaze disabled"
-              : secondaryHandDisabled
-                ? "Secondary-hand Dark Gaze disabled"
-                : "";
-  $("#build-meta").textContent =
-    `Level ${snapshot.level} · SS13 · ${comparisonLabel ? `Comparison: ${comparisonLabel}` : "Unbuffed town baseline"}`;
-  $("#skill-name").textContent = "Scorching Beam";
-  const combinedSourceMultiplier = planner.sourceDamageMultiplier;
-  $("#full-dps").textContent = format(result.ignite.calculatedDps * combinedSourceMultiplier);
-  $("#average-hit").textContent = format(result.spell.calculatedDps);
-  $("#life").textContent = format(snapshot.damage.castsPerSecond);
-  $("#armor").textContent = format(result.ignite.baseIgniteDamage);
-  const sourceChanged = Math.abs(combinedSourceMultiplier - 1) > 0.000001;
-  $("#conditions").innerHTML =
-    `<div class="baseline-state"><strong>No combat buffs</strong><small>Confirmed standing in town</small></div><div class="baseline-state"><strong>${comparisonLabel || sourceChanged ? "Candidate changes active" : "Observed target locked"}</strong><small>${comparisonLabel || (sourceChanged ? `Candidate source multiplier ×${format(combinedSourceMultiplier)}` : "Baseline equipment equipped")}</small></div>`;
-  const trace = comparisonLabel
-    ? [
-        {
-          label: "Controlled equipment state",
-          formula: comparisonLabel,
-          value: snapshot.damage.spellDps,
-          confidence: "measured",
-        },
-        {
-          label: "Observed Ignite DPS",
-          formula: "captured town comparison",
-          value: snapshot.damage.igniteDps,
-          confidence: "measured",
-        },
-        {
-          label: "Observed Base Ignite",
-          formula: "captured character stat",
-          value: snapshot.buffsAndMechanics.baseIgniteDamage,
-          confidence: "observed",
-        },
-        {
-          label: "Observed Affliction rate",
-          formula: "captured character stat",
-          value: snapshot.buffsAndMechanics.afflictionPerSecond,
-          confidence: "observed",
-        },
-      ]
-    : result.trace;
-  $("#damage-trace").innerHTML =
-    `<li><strong>Historical capture audit — not the edited candidate</strong><small>Candidate estimates are in Character and Configuration.</small></li>` +
-    trace
-      .map(
-        (step, index) =>
-          `<li class="trace-${step.confidence}"><span class="trace-index">${index + 1}</span><div><strong>${step.label}</strong><small>${step.formula}</small><em>${step.confidence}</em></div><output>${format(step.value)}</output></li>`,
-      )
-      .join("");
-  const modifierTotals = aggregateNormalizedModifiers(
-    collectNormalizedGearModifiers(planner.equipment.candidateItems, [...disabledEquipmentSlots]),
-  );
-  const inputs = [
-    ["Equipment ledger", "Aura Effect", "Captured", `${modifierTotals["auraEffectPercent:increased"] || 0}%`],
-    ["Equipment ledger", "Affliction per second", "Captured", modifierTotals["afflictionPerSecond:flat"] || 0],
-    ["Character stats", "Cast rate", "Observed", `${snapshot.damage.castsPerSecond}/s`],
-    ["Character stats", "Damage Bonus", "Observed", `${snapshot.damage.damageBonusPercent}%`],
-    ["Character stats", "Additional Damage Bonus", "Observed", `${snapshot.damage.additionalDamageBonusPercent}%`],
-    ["Character stats", "Additional Fire Damage", "Observed", `${snapshot.damage.additionalFireDamageBonusPercent}%`],
-    ["Character stats", "Affliction per second", "Observed", snapshot.buffsAndMechanics.afflictionPerSecond],
-    ["Character stats", "Reaping Duration", "Observed", `${snapshot.buffsAndMechanics.reapingDurationBonusPercent}%`],
-    ["Scorching Beam", "Max-stack explosion", "Modeled", `×${result.spell.explosionContributionFactor}`],
-    ["Ignite", "Maximum active stacks", "Modeled", result.ignite.igniteLimit],
-    ["Ignite", "Affliction-derived factor", "Modeled", `×${result.ignite.afflictionDamageFactor}`],
-    [
-      "Additional Ignite",
-      `${result.ignite.igniteLimit} active stacks × ${result.ignite.additionalIgnitePerStackPercent}% (cap ${result.ignite.additionalIgniteCapPercent}%)`,
-      "Modeled",
-      `×${result.ignite.additionalIgniteSupportFactor}`,
-    ],
-    ["Engine", "Remaining display/order residual", "Calibration", `×${result.ignite.remainingDisplayAndOrderResidual}`],
-  ];
-  $("#modifier-count").textContent = `${inputs.length} inputs`;
-  $("#modifier-table").innerHTML = inputs
-    .map(
-      ([source, stat, type, value]) =>
-        `<tr><td>${source}</td><td>${stat}</td><td>${type}</td><td>${value}</td><td><span class="status ${["Observed", "Captured"].includes(type) ? "active" : type === "Calibration" ? "calibration" : "modeled"}">${["Observed", "Captured"].includes(type) ? "Exact" : type === "Calibration" ? "Unresolved" : "Derived"}</span></td></tr>`,
-    )
-    .join("");
-}
-
 document.addEventListener("change", (event) => {
   // Follower skill tier and support affixes (src/app/follower-panel.js followerSkillEditorMarkup, 2026-10-19 user request): the picker's
   // preview card edits the highlighted skill's draft (followerSelectorDraft); Confirm saves it, Cancel drops it.
@@ -1863,8 +1731,6 @@ document.addEventListener("change", (event) => {
     event.target.reportValidity();
     return;
   }
-
-  if (event.target.id === "enemy-level") build.enemy.level = Number(event.target.value);
 });
 
 // A build that cannot be calculated must not stop the planner from loading: show
@@ -1927,7 +1793,6 @@ function renderCandidateViews() {
   pendingCandidateRender = false;
   try {
     renderPassPlanner = cachedPlanner(capturePlannerState());
-    render();
     if (focusedViews.has(activeWorkspaceView)) {
       if (activeWorkspaceView === "character") renderCharacter();
       if (activeWorkspaceView === "configuration") renderConfiguration();
@@ -1964,12 +1829,7 @@ function activateWorkspaceView(viewName, { scroll = true, remember = true } = {}
   });
   document
     .querySelectorAll(".view-tab")
-    .forEach((button) =>
-      button.classList.toggle(
-        "active",
-        button.dataset.view === (focused ? viewName : viewName === "overview" ? "overview" : viewName),
-      ),
-    );
+    .forEach((button) => button.classList.toggle("active", button.dataset.view === viewName));
   if (focused) {
     if (viewName === "builds") updateStorageStatus();
     if (viewName === "character") renderCharacter();
@@ -1980,11 +1840,11 @@ function activateWorkspaceView(viewName, { scroll = true, remember = true } = {}
     renderEquipment();
     renderPacts();
     renderSlates();
-    if (scroll && viewName !== "overview")
+    if (scroll)
       requestAnimationFrame(() =>
         document.querySelector("#" + viewName + "-view")?.scrollIntoView({ behavior: "smooth", block: "start" }),
       );
-    if (!scroll || viewName === "overview") window.scrollTo({ top: 0, behavior: scroll ? "smooth" : "auto" });
+    else window.scrollTo({ top: 0, behavior: "auto" });
   }
   if (remember) saveWorkspaceLocation();
 }
@@ -2200,7 +2060,9 @@ function showToast(message) {
   toastTimer = setTimeout(() => $("#toast").classList.remove("visible"), 2200);
 }
 
-if (!calculationsPaused) runGuardedRender(render);
+// The first calculation runs here, where a build that cannot be calculated shows the recovery banner instead of stopping
+// the planner from loading.
+if (!calculationsPaused) runGuardedRender(currentPlanner);
 
 function currentTalentPanel() {
   return allTalentPanelsSs13.find((panel) => panel.name === activeTalentPanel);
@@ -2633,7 +2495,6 @@ function commitTreeTraits(heroId, rows) {
   plannerState.hero.treeTraits = { ...(plannerState.hero.treeTraits || {}), [heroId]: rows };
   persistPlannerState();
   renderHeroTraitTree();
-  render();
   renderConfiguration();
 }
 
@@ -2677,7 +2538,6 @@ function pickHeroTrait(selectionKey, name) {
   plannerState.hero.selectedTraits[selectionKey] = name;
   persistPlannerState();
   renderHeroTraitTree();
-  render();
   renderConfiguration();
   showToast(`${escapeHtml(name)} selected`);
 }
@@ -2852,7 +2712,6 @@ function commitFollower(next, message) {
   plannerState.followers = next;
   persistPlannerState();
   renderHeroPanel();
-  render();
   renderConfiguration();
   if (message) showToast(message);
 }
@@ -6964,7 +6823,6 @@ function changeTalentRank(coordinate, delta, max = false) {
     for (const [rankKey, rankValue] of Object.entries(allocation.ranks)) talentRanks.set(rankKey, rankValue);
     persistPlannerState();
     renderTalents();
-    render();
     renderSkills();
     renderConfiguration();
     return;
@@ -6978,7 +6836,6 @@ function changeTalentRank(coordinate, delta, max = false) {
   for (const [rankKey, rankValue] of Object.entries(rule.ranks)) talentRanks.set(rankKey, rankValue);
   persistPlannerState();
   renderTalents();
-  render();
   renderSkills();
   renderConfiguration();
 }
@@ -9279,11 +9136,7 @@ runGuardedRender(() =>
   activateWorkspaceView(restoredView === "slates" ? "talents" : restoredView, { scroll: false, remember: false }),
 );
 if (restoredView === "slates") activeWorkspaceView = "talents";
-if (
-  restoredWorkspaceLocation &&
-  restoredWorkspaceLocation.view !== "overview" &&
-  Number.isFinite(restoredWorkspaceLocation.scrollY)
-)
+if (restoredWorkspaceLocation && Number.isFinite(restoredWorkspaceLocation.scrollY))
   requestAnimationFrame(() => window.scrollTo(0, Math.max(0, restoredWorkspaceLocation.scrollY)));
 window.addEventListener("pagehide", saveWorkspaceLocation);
 // Each tab autosaves synchronously on every edit; this also writes anything
