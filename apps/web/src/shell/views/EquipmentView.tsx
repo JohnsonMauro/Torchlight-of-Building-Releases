@@ -48,23 +48,6 @@ export function EquipmentView() {
           <div id="equipment-inventory" />
         </section>
       </div>
-      <aside className="panel equipment-inspector" aria-live="polite">
-        <p className="eyebrow">Item inspector</p>
-        <div id="equipment-inspector" />
-      </aside>
-      <section className="panel equipment-comparison">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Predictive comparison</p>
-            <h2>Current equipment delta</h2>
-          </div>
-          <span id="comparison-status" className="count" />
-        </div>
-        <div id="equipment-comparison" />
-      </section>
-      <section className="panel catalog-panel" hidden>
-        <div id="equipment-catalog-results" />
-      </section>
     </section>
   );
 }

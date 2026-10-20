@@ -70,7 +70,6 @@ import {
   calculateTalentSlateCandidate,
   calculatePactCandidate,
   calculateEquipmentCandidate,
-  compareObservedDamageStates,
   calculateAuraLedger,
   calculateAvailableEnergy,
   allocateSkillEnergy,
@@ -183,11 +182,7 @@ import {
 } from "../data/skills/special-support-tiers-ss13.js";
 import { selenaScorchingBeamObservedSnapshots } from "../data/stats/selena-scorching-beam-observed-snapshots.js";
 import { tliArt } from "../data/assets/tli-art.js";
-import {
-  tlidbSkillCatalogSs13,
-  tlidbSupportCatalogSs13,
-  tlidbEquipmentCatalogSs13,
-} from "../data/catalogs/tlidb-ss13.js";
+import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../data/catalogs/tlidb-ss13.js";
 import { heroCatalogSs13, heroById } from "../data/heroes/hero-catalog-ss13.js";
 import { allHeroTraitsSs13 } from "../data/heroes/all-hero-traits-ss13.generated.js";
 import { sageElixirsSs13 } from "../data/heroes/sage-scent-ss13.generated.js";
@@ -3838,17 +3833,6 @@ function renderEquipment() {
   $("#equipment-inventory").innerHTML = inventory.length
     ? `<div class="gear-inventory-grid">${inventory.map((item) => `<article class="inventory-item rarity-${itemCardRarity(itemDisplayRarity(item), item)}${sixAffixClass(item)}${pricelessClass(item)}${itemLevel100Class(item)}" data-equip-inventory="${escapeHtml(item.id)}"><button type="button" class="inventory-item-main" data-equip-inventory="${escapeHtml(item.id)}"><span class="inventory-item-icon"><img src="${gearIcon(item)}" alt=""></span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.base || titleCase(item.slot))} · Lv.${item.level || 100}</small></button>${isItemEquipped(item) ? '<em class="equipment-status">Equipped</em>' : ""}<span class="inventory-item-tools"><button type="button" data-quick-edit-item="${escapeHtml(item.id)}" title="Edit item">✎</button><button type="button" data-duplicate-item="${escapeHtml(item.id)}" title="Duplicate item">◉</button></span></article>`).join("")}</div>`
     : `<div class="gear-empty"><strong>No items crafted yet</strong><span>Use a crafting button above to add an item.</span></div>`;
-  const item = items.find((entry) => entry.slot === selectedEquipmentSlot);
-  if (!item || disabledEquipmentSlots.has(selectedEquipmentSlot)) {
-    $("#equipment-inspector").innerHTML =
-      `<div class="comparison-empty"><strong>${equipmentSlots.find(([slot]) => slot === selectedEquipmentSlot)?.[1] || "Slot"} is empty</strong><span>Select a compatible item in Inventory to equip it here.</span></div>`;
-    renderEquipmentComparison();
-    return;
-  }
-  const edited = Boolean(plannerState.equipmentOverrides[item.slot]);
-  $("#equipment-inspector").innerHTML =
-    `<div class="equipment-editor-heading"><div><h2>${escapeHtml(item.name)}</h2><p class="muted">${escapeHtml(item.base || titleCase(item.slot))} · Lv.${item.level || 100}${item.energy ? ` · Energy ${item.energy}` : ""}</p></div><span>${edited ? "Inventory item" : "Captured item"}</span></div><ul class="modifier-list">${(item.modifiers || []).map((modifier, index) => `<li class="${item.corrodedModifierIndices?.includes(index) ? "corrosion-affix" : ""}">${escapeHtml(modifier)}</li>`).join("") || "<li>No affixes recorded</li>"}${(item.corrosionModifiers || []).map((modifier) => `<li class="corrosion-affix">${escapeHtml(modifier)}</li>`).join("")}</ul><div class="equipment-editor-actions"><button class="button button-secondary" type="button" data-edit-equipped="${item.slot}">Edit item</button><button class="button button-secondary" type="button" data-unequip-item="${item.slot}">Unequip</button></div>`;
-  renderEquipmentComparison();
 }
 
 function compatibleEquipmentSlot(item) {
@@ -4910,52 +4894,6 @@ function openInventoryItemEditor(item) {
   renderInventoryItemDialog();
   const dialog = $("#inventory-item-dialog");
   if (!dialog.open) dialog.showModal();
-}
-
-function renderEquipmentCatalog() {
-  const entries = tlidbEquipmentCatalogSs13.filter((entry) => entry.slot === selectedEquipmentSlot);
-  $("#equipment-catalog-results").innerHTML = entries.length
-    ? entries
-        .map(
-          (entry, index) =>
-            `<article class="catalog-card"><div><strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(entry.base)} · Lv.${entry.level} · ${entry.modifiers.length} affixes</small></div><a href="${entry.source}" target="_blank" rel="noreferrer">TLIDB source</a><button class="button" type="button" data-apply-equipment-catalog="${index}" data-equipment-catalog-slot="${entry.slot}">Apply template</button></article>`,
-        )
-        .join("")
-    : `<p class="muted">No verified template is loaded for ${titleCase(selectedEquipmentSlot)} yet.</p>`;
-}
-
-function renderEquipmentComparison() {
-  const slot = [...disabledEquipmentSlots][0];
-  const captured = { gloves: 1, mainHand: 2, secondaryHand: 3 };
-  const equipmentImpact = currentEquipmentImpact();
-  const overrideSlots = Object.keys(plannerState.equipmentOverrides);
-  if (slot || overrideSlots.length) {
-    const deltaPercent = (equipmentImpact.factors.nonLimitDamageMultiplier - 1) * 100;
-    const baselineEnergy = selenaScorchingBeamGearSs13.items.reduce((sum, item) => sum + (item.energy || 0), 0);
-    $("#comparison-status").textContent = `${equipmentImpact.recognizedCount} recognized affixes`;
-    $("#equipment-comparison").innerHTML =
-      `<div class="comparison-hero"><span>${overrideSlots.length + disabledEquipmentSlots.size} gear edits</span><strong>×${equipmentImpact.factors.nonLimitDamageMultiplier} non-limit damage</strong><em>${deltaPercent >= 0 ? "+" : ""}${format(deltaPercent)}%</em></div><div class="comparison-grid"><div><span>Equipment Energy</span><small>${baselineEnergy} → ${equipmentImpact.equipmentEnergy}</small><strong>${equipmentImpact.equipmentEnergy - baselineEnergy >= 0 ? "+" : ""}${equipmentImpact.equipmentEnergy - baselineEnergy}</strong></div><div><span>Gear Ignite limit</span><small>${equipmentImpact.baselineGearIgniteLimit} → ${equipmentImpact.candidateGearIgniteLimit}</small><strong>${equipmentImpact.candidateGearIgniteLimit - equipmentImpact.baselineGearIgniteLimit}</strong></div><div><span>Base Ignite factor</span><small>recognized affixes</small><strong>×${equipmentImpact.factors.baseIgniteFactor}</strong></div><div><span>Unrecognized</span><small>retained, not calculated</small><strong>${equipmentImpact.unrecognized.length}</strong></div></div>${equipmentImpact.unrecognized.length ? `<details class="unrecognized-affixes"><summary>Excluded affixes (${equipmentImpact.unrecognized.length})</summary><ul>${equipmentImpact.unrecognized.map((entry) => `<li><strong>${titleCase(entry.slot)}</strong> · ${escapeHtml(entry.text.replace(/(\d)\s+%/g, "$1%"))}</li>`).join("")}</ul></details>` : ""}`;
-    return;
-  }
-  if (!slot) {
-    $("#comparison-status").textContent = "Captured baseline";
-    $("#equipment-comparison").innerHTML =
-      `<div class="comparison-empty"><strong>No candidate gear change</strong><span>Edit an item or disable one to compare it with the captured build.</span></div>`;
-    return;
-  }
-  if (captured[slot] == null) {
-    $("#comparison-status").textContent = "Energy only";
-    $("#equipment-comparison").innerHTML =
-      `<div class="comparison-empty comparison-warning"><strong>${titleCase(slot)} disabled</strong><span>Energy and modifier ledgers update, but no clean damage capture exists for this isolated removal.</span></div>`;
-    return;
-  }
-  const comparison = compareObservedDamageStates(
-    selenaScorchingBeamObservedSnapshots[0],
-    selenaScorchingBeamObservedSnapshots[captured[slot]],
-  );
-  $("#comparison-status").textContent = "Measured capture";
-  $("#equipment-comparison").innerHTML =
-    `<div class="comparison-hero"><span>Candidate without ${titleCase(slot)}</span><strong>${format(comparison.igniteDps.candidate)} Ignite DPS</strong><em>${comparison.igniteDps.percent}%</em></div><div class="comparison-grid"><div><span>Spell DPS</span><small>${format(comparison.spellDps.baseline)} → ${format(comparison.spellDps.candidate)}</small><strong>${comparison.spellDps.percent}%</strong></div><div><span>Ignite DPS</span><small>${format(comparison.igniteDps.baseline)} → ${format(comparison.igniteDps.candidate)}</small><strong>${comparison.igniteDps.percent}%</strong></div><div><span>Affliction/s</span><small>${comparison.afflictionPerSecond.baseline} → ${comparison.afflictionPerSecond.candidate}</small><strong>${comparison.afflictionPerSecond.delta}</strong></div></div>`;
 }
 
 function selectedPactspiritLevel(name) {
@@ -8734,34 +8672,12 @@ document.addEventListener("click", (event) => {
       showToast("Inventory item updated");
     }
   }
-  const unequipItem = event.target.closest("[data-unequip-item]");
-  if (unequipItem) {
-    disabledEquipmentSlots.add(unequipItem.dataset.unequipItem);
-    persistPlannerState();
-    renderCandidateViews();
-    showToast(`${titleCase(unequipItem.dataset.unequipItem)} unequipped`);
-  }
   if (event.target.closest("[data-reset-equipment]")) {
     equipmentSlots.forEach(([slot]) => disabledEquipmentSlots.add(slot));
     plannerState.equipmentOverrides = {};
     persistPlannerState();
     renderCandidateViews();
     showToast("Gear reset to empty");
-  }
-  const equipmentCatalogButton = event.target.closest("[data-apply-equipment-catalog]");
-  if (equipmentCatalogButton) {
-    const entries = tlidbEquipmentCatalogSs13.filter(
-      (entry) => entry.slot === equipmentCatalogButton.dataset.equipmentCatalogSlot,
-    );
-    const entry = entries[Number(equipmentCatalogButton.dataset.applyEquipmentCatalog)];
-    if (entry) {
-      const { source, slot, ...override } = entry;
-      plannerState.equipmentOverrides[entry.slot] = structuredClone(override);
-      disabledEquipmentSlots.delete(entry.slot);
-      persistPlannerState();
-      renderCandidateViews();
-      showToast(`${escapeHtml(entry.name)} applied`);
-    }
   }
   if (event.target.closest("[data-close-slate-editor]")) $("#slate-editor").close();
   if (event.target.closest("[data-add-slate-affix]")) {
