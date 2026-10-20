@@ -76,6 +76,16 @@ export interface ViewSources {
   fateSlotSelector: { spirit: string; selected: string; choices: { id: string; label: string }[] };
   /** The skill selector (src/app/bridge/skill-selector-view.ts). */
   skillSelector: SkillSelectorView;
+  /**
+   * The Inventory item dialog: the open item (its name raw for the title, escaped-text name, rarity classes, art and
+   * whether it is equipped), and whether its editor shows (the planner writes the editor itself).
+   */
+  inventoryItem: {
+    id: string;
+    title: string;
+    editing: boolean;
+    item: { name: string; classes: string; icon: string; equipped: boolean } | null;
+  };
   /** The hero memory dialog: the inventory, or the crafter (src/app/bridge/hero-memory-view.ts). */
   heroMemory: HeroMemoryView;
   /** The Import from game dialog: its opening and what it shows (src/app/bridge/game-log-import-view.ts). */

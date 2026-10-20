@@ -18,6 +18,12 @@
  * @property {() => Promise<void>} exportBuild Copies the open build's code to the clipboard (a toast says how it went).
  * @property {(text: string) => void} importBuild Adds a pasted build code as a new active build and opens the Builds view;
  *   a toast says when the code cannot be read (the Import dialog then stays open).
+ * @property {() => void} toggleSelectedItemEquip Inventory item dialog: equips the open item, or unequips it; closes.
+ * @property {() => void} copySelectedItem Inventory item dialog: duplicates the open item; closes.
+ * @property {() => void} deleteSelectedItem Inventory item dialog: deletes the open item (emptying its slot); closes.
+ * @property {() => void} saveInventoryItemEdit Item editor: saves its fields to the item and comes back to the item.
+ * @property {() => void} renderInventoryItemEditor Item editor: the planner writes the editor into the dialog body React
+ *   gave it (data-legacy-editor).
  * @property {(id: string) => void} toggleCraftedMemory Hero memories: equips a memory into its type's socket, or
  *   unequips it.
  * @property {(id: string) => void} toggleBaseMemory Hero memories, base trait slot: equips a fitting memory there (at its

@@ -1629,6 +1629,11 @@ providePlannerCommands({
   openEquipmentSlot,
   unequipEquipmentSlot,
   equipInventoryItem: (id) => equipInventoryItem(inventoryItemById(id)),
+  toggleSelectedItemEquip,
+  copySelectedItem,
+  deleteSelectedItem,
+  saveInventoryItemEdit,
+  renderInventoryItemEditor,
   openInventoryItem: (id) => {
     const item = inventoryItemById(id);
     if (item) openInventoryItemDialog(item);
@@ -1796,6 +1801,8 @@ provideViewSource("prismInventory", prismInventorySource);
 provideViewSource("gameLogImport", gameLogImportSource);
 // The hero memory dialog.
 provideViewSource("heroMemory", heroMemorySource);
+// The Inventory item dialog.
+provideViewSource("inventoryItem", inventoryItemSource);
 // The talent tree, core talent and Fate slot pickers.
 provideViewSource("talentPicker", talentPickerSource);
 provideViewSource("corePicker", corePickerSource);
@@ -3552,6 +3559,102 @@ function saveMemoryCraft() {
   showToast(`${escapeHtml(memory.name)} saved`);
 }
 
+// ---- Inventory item dialog commands (apps/web/src/shell/dialogs/InventoryItemDialog.tsx).
+// Equip / Unequip of the open item; the dialog closes.
+function toggleSelectedItemEquip() {
+  const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
+  if (isItemEquipped(item)) {
+    disabledEquipmentSlots.add(equippedSlotForInventoryItem(item) || compatibleEquipmentSlot(item));
+    persistPlannerState();
+    renderCandidateViews();
+    showToast(`${escapeHtml(item.name)} unequipped`);
+  } else equipInventoryItem(item);
+  $("#inventory-item-dialog").close();
+}
+function copySelectedItem() {
+  if (duplicateInventoryItem(selectedInventoryItemId)) $("#inventory-item-dialog").close();
+}
+function deleteSelectedItem() {
+  const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
+  if (item?.id.startsWith("captured-")) {
+    plannerState.removedInventoryItemIds = [...new Set([...(plannerState.removedInventoryItemIds || []), item.id])];
+    disabledEquipmentSlots.add(item.slot);
+  } else
+    plannerState.equipmentInventory = plannerState.equipmentInventory.filter(
+      (entry) => entry.id !== selectedInventoryItemId,
+    );
+  for (const [slot, override] of Object.entries(plannerState.equipmentOverrides)) {
+    if (override.sourceInventoryId === selectedInventoryItemId) {
+      delete plannerState.equipmentOverrides[slot];
+      disabledEquipmentSlots.add(slot);
+    }
+  }
+  $("#inventory-item-dialog").close();
+  persistPlannerState();
+  renderCandidateViews();
+  showToast("Item deleted from Inventory");
+}
+// The item editor's Save Changes: reads the editor's fields, saves the item and comes back to it.
+function saveInventoryItemEdit() {
+  let item = plannerState.equipmentInventory.find((entry) => entry.id === selectedInventoryItemId);
+  const source = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
+  if (!item && source) {
+    item = { ...structuredClone(source), id: `gear-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` };
+    plannerState.equipmentInventory.push(item);
+    selectedInventoryItemId = item.id;
+  }
+  if (item) {
+    item.name = $("[data-inventory-edit-name]").value.trim() || item.name;
+    item.level = Number($("[data-inventory-edit-level]").value) || item.level;
+    item.energy = equipmentEnergyAllowed(item.slot) ? Number($("[data-inventory-edit-energy]")?.value) || 0 : 0;
+    item.base = $("[data-inventory-edit-base]").value.trim() || item.base;
+    const blend = item.slot === "belt" ? beltBlendById($("[data-edit-belt-blend]")?.value) : null,
+      sequence = towerSequenceById($("[data-edit-tower-sequence]")?.value),
+      editedModifiers = [...document.querySelectorAll("[data-edit-modifier]")]
+        .map((input) => input.value.trim())
+        .filter(Boolean);
+    const legendarySource = legendaryEditorSource(item);
+    if (legendarySource) {
+      const texts = new Map(
+        [...document.querySelectorAll("[data-edit-modifier]")]
+          .map((input) => [Number(input.dataset.editModifier), input.value.trim()])
+          .filter(([, text]) => text),
+      );
+      Object.assign(
+        item,
+        applyLegendaryEditorEdits(item, inventoryLegendaryModel(item, legendarySource), {
+          texts,
+          corrodedCatalog: editingCorrodedModifierIndices,
+          specials: [
+            { from: beltBlendById(item.beltBlendId)?.modifier, to: blend?.modifier },
+            { from: towerSequenceById(item.towerSequenceId)?.modifier, to: sequence?.modifier },
+          ],
+        }),
+      );
+    } else applyEditedModifierStructure(item, editedModifiers);
+    if (blend) item.beltBlendId = blend.id;
+    else delete item.beltBlendId;
+    if (sequence) item.towerSequenceId = sequence.id;
+    else delete item.towerSequenceId;
+    if (!legendarySource) {
+      item.modifiers = [...editedModifiers, ...(item.rarity === "legendary" ? item.implicitModifiers || [] : [])];
+      if (blend) item.modifiers.push(blend.modifier);
+      if (sequence) item.modifiers.push(sequence.modifier);
+      item.corrodedModifierIndices = [...editingCorrodedModifierIndices];
+    }
+    item.corrosionModifiers = ($("[data-edit-corrosion]")?.value || "").split(" | ").filter(Boolean);
+    const base = rareBaseForItem(item, [(item.name || "").replace(/ - Priceless$/i, ""), item.base]);
+    if (!legendarySource)
+      item.affixCount =
+        Math.max(0, item.modifiers.length - (base?.modifiers?.length || 0)) + item.corrosionModifiers.length;
+    inventoryItemEditing = false;
+    persistPlannerState();
+    renderCandidateViews();
+    renderInventoryItemDialog();
+    showToast("Inventory item updated");
+  }
+}
+
 const titleCase = (value) => value.replace(/([A-Z])/g, " $1").replace(/^./, (character) => character.toUpperCase());
 
 // The Gear section is React (apps/web/src/features/gear): it re-reads its source.
@@ -3894,25 +3997,35 @@ function inventoryEditingPreview(item) {
     }),
   };
 }
+// The Inventory item dialog (apps/web/src/shell/dialogs/InventoryItemDialog.tsx) shows the "inventoryItem" source: the
+// item and its actions, or, while editing, the item editor, which the planner still writes into the body React gives it
+// (data-legacy-editor) once React shows the editor.
 function renderInventoryItemDialog() {
+  viewSourceChanged("inventoryItem");
+  renderInventoryItemEditor();
+}
+function inventoryItemSource() {
   const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
-  if (!item) return;
-  $("#inventory-item-title").textContent = item.name;
-  if (inventoryItemEditing) {
-    $("#inventory-item-dialog").classList.add("gear-editor-dialog");
-    const weaponType = itemWeaponType(item),
-      sequenceEntries = towerSequencesForType(weaponType);
-    $("#inventory-item-body").innerHTML =
-      `<div class="gear-edit-layout"><section><div class="gear-edit-selected"><img src="${gearIcon(item)}" alt=""><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.base || titleCase(item.slot))}</small></span><button type="button" data-change-edit-item>Change</button></div><label>Name<input data-inventory-edit-name value="${escapeHtml(item.name)}"></label><div class="gear-edit-pair"><label>Item level<input type="number" min="1" max="100" data-inventory-edit-level value="${item.level || 100}"></label>${equipmentEnergyAllowed(item.slot) ? `<label>Equipment Energy<input type="number" min="0" data-inventory-edit-energy value="${item.energy || 0}"></label>` : ""}</div><label>Base item<input data-inventory-edit-base value="${escapeHtml(item.base || "")}"></label>${item.slot === "belt" ? `<label>Belt Blend<select data-edit-belt-blend>${beltBlendOptions(item.beltBlendId)}</select></label>` : ""}${sequenceEntries.length ? `<label>TOWER Sequence<select data-edit-tower-sequence>${towerSequenceOptions(weaponType, item.towerSequenceId)}</select></label>` : ""}<label>Corrosion Implicit<select data-edit-corrosion><option value="">None</option><option value="${escapeHtml((item.corrosionModifiers || []).join(" | "))}" ${(item.corrosionModifiers || []).length ? "selected" : ""}>${(item.corrosionModifiers || []).length ? escapeHtml(item.corrosionModifiers.join(" · ")) : "Corroded implicit"}</option></select></label><h3>${item.rarity === "legendary" ? "Legendary Mods" : legendaryEditorSource(item) ? "Legendary affixes" : "Prefixes and Suffixes"}</h3><div class="gear-mod-editor">${(legendaryEditorSource(item) ? editableLegendarySlots(inventoryLegendaryModel(item), legendaryEditorSource(item)).map((slot) => modifierEditorControl(item, slot.text, slot.catalogIndex)) : modifiersWithoutSpecials(item).map((modifier, index) => modifierEditorControl(item, modifier, index))).join("") || "<p>No modifiers configured.</p>"}${(item.corrosionModifiers || []).map((modifier) => `<div class="fixed-mod corrosion-affix"><b>Corroded</b><span>${escapeHtml(modifier)}</span></div>`).join("")}</div></section><aside><small>Preview</small>${equipmentPreview(inventoryEditingPreview(item))}</aside></div>`;
-    $("#inventory-item-dialog footer").innerHTML =
-      '<button class="button button-secondary" type="button" data-close-inventory-item>Cancel</button><button class="button" type="button" data-save-inventory-item>Save Changes</button>';
-    $("#inventory-item-dialog footer").hidden = false;
-  } else {
-    $("#inventory-item-dialog").classList.remove("gear-editor-dialog");
-    $("#inventory-item-body").innerHTML =
-      `<div class="inventory-quick-actions rarity-${itemCardRarity(itemDisplayRarity(item), item)}${sixAffixClass(item)}${pricelessClass(item)}"><img src="${gearIcon(item)}" alt=""><strong>${escapeHtml(item.name)}</strong><button type="button" data-equip-selected-item>${isItemEquipped(item) ? "Unequip" : "Equip"}</button><button type="button" data-edit-inventory-item>Edit</button><button type="button" data-copy-inventory-item>Copy</button><button type="button" class="danger" data-delete-inventory-item>Delete</button></div>`;
-  }
-  if (!inventoryItemEditing) $("#inventory-item-dialog footer").hidden = true;
+  if (!item) return { id: "", title: "Item", editing: false, item: null };
+  return {
+    id: item.id,
+    title: item.name,
+    editing: inventoryItemEditing,
+    item: {
+      ...displayTexts({ name: item.name }),
+      classes: `rarity-${itemCardRarity(itemDisplayRarity(item), item)}${sixAffixClass(item)}${pricelessClass(item)}`,
+      icon: gearIcon(item),
+      equipped: isItemEquipped(item),
+    },
+  };
+}
+function renderInventoryItemEditor() {
+  const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId),
+    body = $("#inventory-item-body");
+  if (!item || !inventoryItemEditing || !body?.hasAttribute("data-legacy-editor")) return;
+  const weaponType = itemWeaponType(item),
+    sequenceEntries = towerSequencesForType(weaponType);
+  body.innerHTML = `<div class="gear-edit-layout"><section><div class="gear-edit-selected"><img src="${gearIcon(item)}" alt=""><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.base || titleCase(item.slot))}</small></span><button type="button" data-change-edit-item>Change</button></div><label>Name<input data-inventory-edit-name value="${escapeHtml(item.name)}"></label><div class="gear-edit-pair"><label>Item level<input type="number" min="1" max="100" data-inventory-edit-level value="${item.level || 100}"></label>${equipmentEnergyAllowed(item.slot) ? `<label>Equipment Energy<input type="number" min="0" data-inventory-edit-energy value="${item.energy || 0}"></label>` : ""}</div><label>Base item<input data-inventory-edit-base value="${escapeHtml(item.base || "")}"></label>${item.slot === "belt" ? `<label>Belt Blend<select data-edit-belt-blend>${beltBlendOptions(item.beltBlendId)}</select></label>` : ""}${sequenceEntries.length ? `<label>TOWER Sequence<select data-edit-tower-sequence>${towerSequenceOptions(weaponType, item.towerSequenceId)}</select></label>` : ""}<label>Corrosion Implicit<select data-edit-corrosion><option value="">None</option><option value="${escapeHtml((item.corrosionModifiers || []).join(" | "))}" ${(item.corrosionModifiers || []).length ? "selected" : ""}>${(item.corrosionModifiers || []).length ? escapeHtml(item.corrosionModifiers.join(" · ")) : "Corroded implicit"}</option></select></label><h3>${item.rarity === "legendary" ? "Legendary Mods" : legendaryEditorSource(item) ? "Legendary affixes" : "Prefixes and Suffixes"}</h3><div class="gear-mod-editor">${(legendaryEditorSource(item) ? editableLegendarySlots(inventoryLegendaryModel(item), legendaryEditorSource(item)).map((slot) => modifierEditorControl(item, slot.text, slot.catalogIndex)) : modifiersWithoutSpecials(item).map((modifier, index) => modifierEditorControl(item, modifier, index))).join("") || "<p>No modifiers configured.</p>"}${(item.corrosionModifiers || []).map((modifier) => `<div class="fixed-mod corrosion-affix"><b>Corroded</b><span>${escapeHtml(modifier)}</span></div>`).join("")}</div></section><aside><small>Preview</small>${equipmentPreview(inventoryEditingPreview(item))}</aside></div>`;
 }
 function equippedSlotForInventoryItem(item) {
   const overrideSlot = Object.entries(plannerState.equipmentOverrides || {}).find(
@@ -7295,17 +7408,6 @@ document.addEventListener("contextmenu", (event) => {
   }
 });
 
-$("#inventory-item-dialog").addEventListener("click", (event) => {
-  if (event.target !== event.currentTarget) return;
-  const bounds = event.currentTarget.getBoundingClientRect();
-  const outside =
-    event.clientX < bounds.left ||
-    event.clientX > bounds.right ||
-    event.clientY < bounds.top ||
-    event.clientY > bounds.bottom;
-  if (outside) event.currentTarget.close();
-});
-
 document.addEventListener("keydown", (event) => {
   if (
     event.target.matches("select:not([data-native-select])") &&
@@ -7585,23 +7687,6 @@ document.addEventListener("click", (event) => {
     renderCandidateViews();
     showToast(`${escapeHtml(item.name)} ${edited ? "updated" : "added to Inventory"}`);
   }
-  if (event.target.closest("[data-close-inventory-item]")) $("#inventory-item-dialog").close();
-  if (event.target.closest("[data-equip-selected-item]")) {
-    const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
-    if (isItemEquipped(item)) {
-      disabledEquipmentSlots.add(equippedSlotForInventoryItem(item) || compatibleEquipmentSlot(item));
-      persistPlannerState();
-      renderCandidateViews();
-      showToast(`${escapeHtml(item.name)} unequipped`);
-    } else equipInventoryItem(item);
-    $("#inventory-item-dialog").close();
-  }
-  if (event.target.closest("[data-edit-inventory-item]")) {
-    const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
-    openInventoryItemEditor(item);
-  }
-  if (event.target.closest("[data-copy-inventory-item]") && duplicateInventoryItem(selectedInventoryItemId))
-    $("#inventory-item-dialog").close();
   const toggleEditCorrosion = event.target.closest("[data-toggle-edit-corrosion]");
   if (toggleEditCorrosion) {
     const index = Number(toggleEditCorrosion.dataset.toggleEditCorrosion);
@@ -7609,85 +7694,6 @@ document.addEventListener("click", (event) => {
     else editingCorrodedModifierIndices.add(index);
     editingLegendaryTexts.delete(index);
     renderInventoryItemDialog();
-  }
-  if (event.target.closest("[data-delete-inventory-item]")) {
-    const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
-    if (item?.id.startsWith("captured-")) {
-      plannerState.removedInventoryItemIds = [...new Set([...(plannerState.removedInventoryItemIds || []), item.id])];
-      disabledEquipmentSlots.add(item.slot);
-    } else
-      plannerState.equipmentInventory = plannerState.equipmentInventory.filter(
-        (entry) => entry.id !== selectedInventoryItemId,
-      );
-    for (const [slot, override] of Object.entries(plannerState.equipmentOverrides)) {
-      if (override.sourceInventoryId === selectedInventoryItemId) {
-        delete plannerState.equipmentOverrides[slot];
-        disabledEquipmentSlots.add(slot);
-      }
-    }
-    $("#inventory-item-dialog").close();
-    persistPlannerState();
-    renderCandidateViews();
-    showToast("Item deleted from Inventory");
-  }
-  if (event.target.closest("[data-save-inventory-item]")) {
-    let item = plannerState.equipmentInventory.find((entry) => entry.id === selectedInventoryItemId);
-    const source = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
-    if (!item && source) {
-      item = { ...structuredClone(source), id: `gear-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` };
-      plannerState.equipmentInventory.push(item);
-      selectedInventoryItemId = item.id;
-    }
-    if (item) {
-      item.name = $("[data-inventory-edit-name]").value.trim() || item.name;
-      item.level = Number($("[data-inventory-edit-level]").value) || item.level;
-      item.energy = equipmentEnergyAllowed(item.slot) ? Number($("[data-inventory-edit-energy]")?.value) || 0 : 0;
-      item.base = $("[data-inventory-edit-base]").value.trim() || item.base;
-      const blend = item.slot === "belt" ? beltBlendById($("[data-edit-belt-blend]")?.value) : null,
-        sequence = towerSequenceById($("[data-edit-tower-sequence]")?.value),
-        editedModifiers = [...document.querySelectorAll("[data-edit-modifier]")]
-          .map((input) => input.value.trim())
-          .filter(Boolean);
-      const legendarySource = legendaryEditorSource(item);
-      if (legendarySource) {
-        const texts = new Map(
-          [...document.querySelectorAll("[data-edit-modifier]")]
-            .map((input) => [Number(input.dataset.editModifier), input.value.trim()])
-            .filter(([, text]) => text),
-        );
-        Object.assign(
-          item,
-          applyLegendaryEditorEdits(item, inventoryLegendaryModel(item, legendarySource), {
-            texts,
-            corrodedCatalog: editingCorrodedModifierIndices,
-            specials: [
-              { from: beltBlendById(item.beltBlendId)?.modifier, to: blend?.modifier },
-              { from: towerSequenceById(item.towerSequenceId)?.modifier, to: sequence?.modifier },
-            ],
-          }),
-        );
-      } else applyEditedModifierStructure(item, editedModifiers);
-      if (blend) item.beltBlendId = blend.id;
-      else delete item.beltBlendId;
-      if (sequence) item.towerSequenceId = sequence.id;
-      else delete item.towerSequenceId;
-      if (!legendarySource) {
-        item.modifiers = [...editedModifiers, ...(item.rarity === "legendary" ? item.implicitModifiers || [] : [])];
-        if (blend) item.modifiers.push(blend.modifier);
-        if (sequence) item.modifiers.push(sequence.modifier);
-        item.corrodedModifierIndices = [...editingCorrodedModifierIndices];
-      }
-      item.corrosionModifiers = ($("[data-edit-corrosion]")?.value || "").split(" | ").filter(Boolean);
-      const base = rareBaseForItem(item, [(item.name || "").replace(/ - Priceless$/i, ""), item.base]);
-      if (!legendarySource)
-        item.affixCount =
-          Math.max(0, item.modifiers.length - (base?.modifiers?.length || 0)) + item.corrosionModifiers.length;
-      inventoryItemEditing = false;
-      persistPlannerState();
-      renderCandidateViews();
-      renderInventoryItemDialog();
-      showToast("Inventory item updated");
-    }
   }
   if (event.target.closest("[data-close-slate-editor]")) $("#slate-editor").close();
   if (event.target.closest("[data-add-slate-affix]")) {
