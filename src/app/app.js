@@ -1657,6 +1657,12 @@ providePlannerCommands({
   selectTalentTree,
   openPrismInventory,
   openPrismCrafter: () => openPrismCrafter(),
+  setPrismType,
+  setPrismBase,
+  setPrismAffix,
+  setInverseRoll,
+  cancelPrismCraft,
+  confirmPrismCraft,
   editCraftedPrism,
   installCraftedPrism,
   deleteCraftedPrism,
@@ -1803,6 +1809,8 @@ provideViewSource("gameLogImport", gameLogImportSource);
 provideViewSource("heroMemory", heroMemorySource);
 // The Inventory item dialog.
 provideViewSource("inventoryItem", inventoryItemSource);
+// The Prism crafter.
+provideViewSource("prismCrafter", prismCrafterSource);
 // The talent tree, core talent and Fate slot pickers.
 provideViewSource("talentPicker", talentPickerSource);
 provideViewSource("corePicker", corePickerSource);
@@ -2324,29 +2332,55 @@ function selectTalentTree(name) {
   saveWorkspaceLocation();
 }
 
+// A prism's affix sections, as the crafter's preview and the prism tooltip show them: an Inverse Image's exclusive effect
+// and mod values, or an Ethereal Prism's base affix and its random affixes. `kind` names the coverage badge's affix.
+function prismAffixSectionsView(item) {
+  if (item.type === "inverse")
+    return [
+      {
+        className: "base",
+        heading: "Prism Exclusive Effect",
+        lines: [{ kind: "base", text: prismBaseEffect(item.type, item.base) }],
+      },
+      {
+        className: "inverse-fixed",
+        heading: "Fixed Affixes",
+        lines: Object.entries(inverseImageRolls).map(([kind, range]) => {
+          const value = inverseImageRoll(item, kind);
+          return { kind, label: range.label, value, sign: inverseRollSign(value) };
+        }),
+      },
+    ];
+  return [
+    {
+      className: "base",
+      heading: "Base Affix",
+      lines: [{ kind: "base", text: prismBaseEffect(item.type, item.base, item.legendaryAffix) }],
+    },
+    ...[
+      ["radiusAffix", "Radius Affix"],
+      ["rareAffix", "Rare Affix"],
+      ["legendaryAffix", "Legendary Affix"],
+    ]
+      .filter(([key]) => item[key] && (key !== "legendaryAffix" || prismSupportsLegendaryAffix(item)))
+      .map(([key, heading]) => ({ className: key, heading, lines: [{ kind: key, text: item[key] }] })),
+  ];
+}
 function prismAffixSections(item, showCoverage = false) {
   const badge = (kind) =>
     showCoverage ? coverageBadge(prismAffixCoverage(item, kind), prismAffixCoverageReason(item, kind)) : "";
-  if (item.type === "inverse")
-    return `<section class="prism-affix-section base"><h4>Prism Exclusive Effect</h4><p>${escapeHtml(prismBaseEffect(item.type, item.base))} ${badge("base")}</p></section><section class="prism-affix-section inverse-fixed"><h4>Fixed Affixes</h4>${Object.entries(
-      inverseImageRolls,
-    )
-      .map(([kind, range]) => {
-        const value = inverseImageRoll(item, kind);
-        return `<p>${escapeHtml(range.label)}: <strong class="${inverseRollSign(value)}">${value}</strong> ${badge(kind)}</p>`;
-      })
-      .join("")}</section>`;
-  return `<section class="prism-affix-section base"><h4>Base Affix</h4><p>${escapeHtml(prismBaseEffect(item.type, item.base, item.legendaryAffix))} ${badge("base")}</p></section>${[
-    ["radiusAffix", "Radius Affix"],
-    ["rareAffix", "Rare Affix"],
-    ["legendaryAffix", "Legendary Affix"],
-  ]
-    .filter(([key]) => item[key] && (key !== "legendaryAffix" || prismSupportsLegendaryAffix(item)))
+  return prismAffixSectionsView(item)
     .map(
-      ([key, label]) =>
-        `<section class="prism-affix-section ${key}"><h4>${label}</h4><p>${escapeHtml(item[key])} ${badge(key)}</p></section>`,
+      (section) =>
+        `<section class="prism-affix-section ${section.className}"><h4>${section.heading}</h4>${section.lines
+          .map((line) =>
+            "value" in line
+              ? `<p>${escapeHtml(line.label)}: <strong class="${line.sign}">${line.value}</strong> ${badge(line.kind)}</p>`
+              : `<p>${escapeHtml(line.text)} ${badge(line.kind)}</p>`,
+          )
+          .join("")}</section>`,
     )
-    .join("")}`;
+    .join("");
 }
 function prismTooltipHtml(item) {
   const icon = prismIcon(item);
@@ -2410,64 +2444,162 @@ function openPrismInventory() {
   viewSourceChanged("prismInventory");
   $("#prism-inventory-dialog").showModal();
 }
-function prismAffixSelect(kind, label) {
-  const value = prismDraft[`${kind}Affix`] || "",
-    options =
-      kind === "rare"
-        ? prismRareAffixesForBase(prismDraft.base)
-        : kind === "legendary"
-          ? prismLegendaryAffixesForBase(prismDraft.base)
-          : prismAffixes[kind];
-  const optionLabel = (affix) =>
-    kind === "legendary" && affix.includes("Gains a stack of Fortitude")
-      ? `Fortitude — ${affix.match(/Owns (\d+) additional/)?.[1] || "?"} additional stack(s) — ${affix}`
-      : affix;
-  return `<label class="prism-affix-select"><span><b class="${kind}">${label}</b><small>Only ${label} mods</small></span><select data-prism-affix="${kind}" aria-label="${label} Prism affix"${fullTextTitle(options.includes(value) ? optionLabel(value) : "")}><option value="">-- Select ${label} Slot --</option>${options.map((affix) => `<option value="${escapeHtml(affix)}" ${affix === value ? "selected" : ""}${fullTextTitle(optionLabel(affix))}>${escapeHtml(optionLabel(affix))}</option>`).join("")}</select></label>`;
-}
 function inverseRollSign(value) {
   return value < 0 ? "negative" : value > 0 ? "positive" : "zero";
 }
-function inverseRollStyle(range, value) {
-  const width = range.max - range.min;
-  const zero = (100 * (0 - range.min)) / width;
-  const current = (100 * (value - range.min)) / width;
-  return `--inverse-start:${Math.min(zero, current)}%;--inverse-end:${Math.max(zero, current)}%`;
-}
-function inverseImageControl(kind, range) {
-  const value = inverseImageRoll(prismDraft, kind);
-  return `<div class="inverse-roll ${inverseRollSign(value)}" style="${inverseRollStyle(range, value)}"><label for="inverse-${kind}">${escapeHtml(range.label)}</label><input id="inverse-${kind}" type="number" min="${range.min}" max="${range.max}" step="1" value="${value}" data-inverse-roll="${kind}" data-inverse-input aria-label="${escapeHtml(range.label)}"><input type="range" min="${range.min}" max="${range.max}" step="1" value="${value}" data-inverse-roll="${kind}" data-inverse-slider aria-label="${escapeHtml(range.label)} slider"><small><span>${range.min}</span><span>${range.max}</span></small></div>`;
-}
-function renderPrismCrafterPreview() {
-  const draft = prismDraft,
-    name = draft.base ? prismName(draft) : "",
-    icon = prismIcon(draft);
-  $("#prism-crafter-preview").innerHTML = draft.base
-    ? `<div class="prism-preview-card ${draft.type === "inverse" ? "inverse-preview" : ""}"><span class="prism-preview-icon">${icon ? `<img src="${icon}" alt="">` : "✦"}</span><h3>${escapeHtml(name)}</h3><small>${draft.type === "inverse" ? "INVERSE IMAGE" : "ETHEREAL PRISM"}</small><div><p class="prism-effect-area">Effect Area: <strong>${prismArea(draft)}</strong></p>${prismAffixSections(draft)}</div></div>`
-    : '<div class="prism-preview-empty">Select options to preview item</div>';
-}
+// The Prism crafter (apps/web/src/shell/dialogs/PrismCrafterDialog.tsx) shows the "prismCrafter" source.
 function renderPrismCrafter() {
-  const draft = prismDraft,
+  viewSourceChanged("prismCrafter");
+}
+const prismAffixOptionLabel = (kind, affix) =>
+  kind === "legendary" && affix.includes("Gains a stack of Fortitude")
+    ? `Fortitude — ${affix.match(/Owns (\d+) additional/)?.[1] || "?"} additional stack(s) — ${affix}`
+    : affix;
+function prismCrafterSource() {
+  const draft = prismDraft || { type: "ethereal", base: "", radiusAffix: "", rareAffix: "", legendaryAffix: "" },
     hasLegendary = prismSupportsLegendaryAffix(draft),
-    affixes = [draft.radiusAffix, draft.rareAffix, hasLegendary && draft.legendaryAffix].filter(Boolean);
-  $("#prism-crafter-title").textContent =
-    `${prismEditingId ? "Edit" : "Craft"} ${draft.type === "inverse" ? "Inverse Image" : "Prism"}`;
-  const tabs = `<div class="prism-type-tabs"><button type="button" data-prism-type="ethereal" class="${draft.type === "ethereal" ? "active" : ""}" ${prismEditingId ? "disabled" : ""}>Ethereal Prism</button><button type="button" data-prism-type="inverse" class="${draft.type === "inverse" ? "active" : ""}" ${prismEditingId ? "disabled" : ""}>Inverse Image</button></div>`;
-  if (draft.type === "inverse") {
-    $("#prism-crafter-form").innerHTML =
-      tabs +
-      `<div class="inverse-image-heading"><img src="${prismIcon(draft)}" alt=""><div><strong>Inverse Image</strong><small>Ultimate</small></div></div><p class="inverse-image-description">${escapeHtml(prismBaseEffect(draft.type, draft.base))}</p><p class="inverse-radius">Radius: <strong>3x3</strong></p><h3>Mod Values</h3><div class="inverse-rolls">${Object.entries(
-        inverseImageRolls,
-      )
-        .map(([kind, range]) => inverseImageControl(kind, range))
-        .join("")}</div>`;
-  } else {
-    $("#prism-crafter-form").innerHTML =
-      tabs +
-      `<label class="prism-base-field">Base Item *<select data-prism-base aria-label="Base Prism"${fullTextTitle(draft.base ? `Ethereal Prism: ${draft.base}` : "")}><option value="">Select Base Prism</option>${etherealPrismBases.map((base) => `<option value="${escapeHtml(base)}" ${base === draft.base ? "selected" : ""}${fullTextTitle(`Ethereal Prism: ${base}`)}>Ethereal Prism: ${escapeHtml(base)}</option>`).join("")}</select></label>${draft.base ? `<div class="prism-fixed"><label>${prismReplacesCore(draft) ? "Core Talent" : "Prism Effect"} *<input value="${escapeHtml(draft.base)}" readonly></label><small>${prismReplacesCore(draft) ? "This prism replaces the panel core talent" : "This prism does not replace the panel core talent"}</small><p>${escapeHtml(prismBaseEffect(draft.type, draft.base, draft.legendaryAffix))}</p></div><h3>Random Affixes (${affixes.length}/${hasLegendary ? 3 : 2})</h3>${prismAffixSelect("radius", "Radius")}${prismAffixSelect("rare", "Rare")}${hasLegendary ? prismAffixSelect("legendary", "Legendary") : ""}` : ""}`;
-  }
-  renderPrismCrafterPreview();
-  $("[data-confirm-prism-craft]").disabled = !draft.base;
-  $("[data-confirm-prism-craft]").textContent = prismEditingId ? "Save Changes" : "Craft";
+    replaces = prismReplacesCore(draft),
+    icon = prismIcon(draft);
+  const select = (kind, label) => {
+    const value = draft[`${kind}Affix`] || "",
+      options =
+        kind === "rare"
+          ? prismRareAffixesForBase(draft.base)
+          : kind === "legendary"
+            ? prismLegendaryAffixesForBase(draft.base)
+            : prismAffixes[kind];
+    return {
+      kind,
+      label,
+      value,
+      title: options.includes(value) ? prismAffixOptionLabel(kind, value) : "",
+      options: options.map((affix) => ({ value: affix, label: prismAffixOptionLabel(kind, affix) })),
+    };
+  };
+  return displayTexts({
+    title: `${prismEditingId ? "Edit" : "Craft"} ${draft.type === "inverse" ? "Inverse Image" : "Prism"}`,
+    editing: Boolean(prismEditingId),
+    type: draft.type,
+    inverse:
+      draft.type === "inverse"
+        ? {
+            icon: prismIcon(draft),
+            description: prismBaseEffect(draft.type, draft.base),
+            rolls: Object.entries(inverseImageRolls).map(([kind, range]) => {
+              const value = inverseImageRoll(draft, kind),
+                width = range.max - range.min,
+                zero = (100 * (0 - range.min)) / width,
+                current = (100 * (value - range.min)) / width;
+              return {
+                kind,
+                label: range.label,
+                min: range.min,
+                max: range.max,
+                value,
+                sign: inverseRollSign(value),
+                start: Math.min(zero, current),
+                end: Math.max(zero, current),
+              };
+            }),
+          }
+        : null,
+    ethereal:
+      draft.type === "ethereal"
+        ? {
+            base: draft.base,
+            bases: [...etherealPrismBases],
+            fixed: draft.base
+              ? {
+                  label: replaces ? "Core Talent" : "Prism Effect",
+                  note: replaces
+                    ? "This prism replaces the panel core talent"
+                    : "This prism does not replace the panel core talent",
+                  effect: prismBaseEffect(draft.type, draft.base, draft.legendaryAffix),
+                }
+              : null,
+            count: [draft.radiusAffix, draft.rareAffix, hasLegendary && draft.legendaryAffix].filter(Boolean).length,
+            max: hasLegendary ? 3 : 2,
+            selects: [
+              select("radius", "Radius"),
+              select("rare", "Rare"),
+              ...(hasLegendary ? [select("legendary", "Legendary")] : []),
+            ],
+          }
+        : null,
+    preview: draft.base
+      ? {
+          inverse: draft.type === "inverse",
+          icon: icon || "",
+          name: prismName(draft),
+          area: prismArea(draft),
+          sections: prismAffixSectionsView(draft),
+        }
+      : null,
+    canSave: Boolean(draft.base),
+    saveLabel: prismEditingId ? "Save Changes" : "Craft",
+  });
+}
+// The crafter's type tabs: a new draft of that type (an Inverse Image starts at its worst rolls).
+function setPrismType(type) {
+  const inverse = type === "inverse";
+  prismDraft = {
+    type,
+    base: inverse ? "Inverse Image" : "",
+    radiusAffix: "",
+    rareAffix: "",
+    legendaryAffix: "",
+    ...(inverse ? { inverseRolls: { micro: -100, medium: -100, legendary: -100 } } : {}),
+  };
+  renderPrismCrafter();
+}
+// A base keeps only the rare and legendary affixes it can roll.
+function setPrismBase(base) {
+  if (!prismDraft) return;
+  prismDraft.base = base;
+  if (!prismRareAffixesForBase(prismDraft.base).includes(prismDraft.rareAffix)) prismDraft.rareAffix = "";
+  if (!prismLegendaryAffixesForBase(prismDraft.base).includes(prismDraft.legendaryAffix))
+    prismDraft.legendaryAffix = "";
+  renderPrismCrafter();
+}
+function setPrismAffix(kind, value) {
+  if (!prismDraft) return;
+  prismDraft[`${kind}Affix`] = value;
+  renderPrismCrafter();
+}
+// An Inverse Image's mod value, rounded and kept in its range.
+function setInverseRoll(kind, number) {
+  if (prismDraft?.type !== "inverse" || !Number.isFinite(number)) return;
+  const range = inverseImageRolls[kind];
+  prismDraft.inverseRolls = {
+    ...prismDraft.inverseRolls,
+    [kind]: Math.max(range.min, Math.min(range.max, Math.round(number))),
+  };
+  renderPrismCrafter();
+}
+// Cancel or the close button: back to the prism inventory.
+function cancelPrismCraft() {
+  $("#prism-crafter-dialog").close();
+  openPrismInventory();
+}
+function confirmPrismCraft() {
+  if (!prismDraft?.base) return;
+  const editing = Boolean(prismEditingId),
+    item = {
+      ...prismDraft,
+      legendaryAffix: prismSupportsLegendaryAffix(prismDraft) ? prismDraft.legendaryAffix : "",
+      id: prismEditingId || globalThis.crypto?.randomUUID?.() || `prism-${Date.now()}`,
+    };
+  if (editing) {
+    const index = plannerState.talents.prismInventory.findIndex((entry) => entry.id === prismEditingId);
+    if (index < 0) return;
+    plannerState.talents.prismInventory[index] = item;
+  } else plannerState.talents.prismInventory.push(item);
+  persistPlannerState();
+  $("#prism-crafter-dialog").close();
+  renderCandidateViews();
+  viewSourceChanged("prismInventory");
+  $("#prism-inventory-dialog").showModal();
+  showToast(`${prismName(item)} ${editing ? "updated" : "crafted"}`);
 }
 function openPrismCrafter(item = null) {
   if ($("#prism-inventory-dialog").open) $("#prism-inventory-dialog").close();
@@ -2544,43 +2676,6 @@ function placeCraftedPrism(coordinate) {
   renderCandidateViews();
   showToast(`${prismName(item)} installed on node ${coordinate}`);
 }
-
-document.addEventListener("change", (event) => {
-  if (!prismDraft) return;
-  if (event.target.matches("[data-prism-base]")) {
-    prismDraft.base = event.target.value;
-    if (!prismRareAffixesForBase(prismDraft.base).includes(prismDraft.rareAffix)) prismDraft.rareAffix = "";
-    if (!prismLegendaryAffixesForBase(prismDraft.base).includes(prismDraft.legendaryAffix))
-      prismDraft.legendaryAffix = "";
-    renderPrismCrafter();
-  }
-  if (event.target.matches("[data-prism-affix]")) {
-    prismDraft[`${event.target.dataset.prismAffix}Affix`] = event.target.value;
-    renderPrismCrafter();
-  }
-  if (event.target.matches("[data-inverse-roll]")) {
-    const kind = event.target.dataset.inverseRoll;
-    event.target.value = inverseImageRoll(prismDraft, kind);
-  }
-});
-document.addEventListener("input", (event) => {
-  if (!prismDraft || prismDraft.type !== "inverse" || !event.target.matches("[data-inverse-roll]")) return;
-  const kind = event.target.dataset.inverseRoll,
-    raw = event.target.value;
-  if (raw === "" || !Number.isFinite(Number(raw))) return;
-  const range = inverseImageRolls[kind],
-    value = Math.max(range.min, Math.min(range.max, Math.round(Number(raw))));
-  prismDraft.inverseRolls = { ...prismDraft.inverseRolls, [kind]: value };
-  const partner = event.target
-    .closest(".inverse-roll")
-    .querySelector(event.target.matches("[data-inverse-slider]") ? "[data-inverse-input]" : "[data-inverse-slider]");
-  partner.value = value;
-  const control = event.target.closest(".inverse-roll");
-  control.classList.remove("negative", "positive", "zero");
-  control.classList.add(inverseRollSign(value));
-  control.style.cssText = inverseRollStyle(range, value);
-  renderPrismCrafterPreview();
-});
 
 // The core talent picker's data (apps/web/src/shell/dialogs/CoreTalentPickerDialog.tsx): the open tree's choices for a slot.
 function corePickerSource() {
@@ -7492,46 +7587,6 @@ document.addEventListener("click", (event) => {
     writeHeroPanelTab(activeBuildViewId(), heroPanelTab.dataset.heroPanelTab);
     hidePlannerTooltip();
     renderHeroPanel();
-    return;
-  }
-  if (event.target.closest("[data-close-prism-crafter],[data-cancel-prism-crafter]")) {
-    $("#prism-crafter-dialog").close();
-    openPrismInventory();
-    return;
-  }
-  const prismType = event.target.closest("[data-prism-type]");
-  if (prismType) {
-    const inverse = prismType.dataset.prismType === "inverse";
-    prismDraft = {
-      type: prismType.dataset.prismType,
-      base: inverse ? "Inverse Image" : "",
-      radiusAffix: "",
-      rareAffix: "",
-      legendaryAffix: "",
-      ...(inverse ? { inverseRolls: { micro: -100, medium: -100, legendary: -100 } } : {}),
-    };
-    renderPrismCrafter();
-    return;
-  }
-  if (event.target.closest("[data-confirm-prism-craft]")) {
-    if (!prismDraft?.base) return;
-    const editing = Boolean(prismEditingId),
-      item = {
-        ...prismDraft,
-        legendaryAffix: prismSupportsLegendaryAffix(prismDraft) ? prismDraft.legendaryAffix : "",
-        id: prismEditingId || globalThis.crypto?.randomUUID?.() || `prism-${Date.now()}`,
-      };
-    if (editing) {
-      const index = plannerState.talents.prismInventory.findIndex((entry) => entry.id === prismEditingId);
-      if (index < 0) return;
-      plannerState.talents.prismInventory[index] = item;
-    } else plannerState.talents.prismInventory.push(item);
-    persistPlannerState();
-    $("#prism-crafter-dialog").close();
-    renderCandidateViews();
-    viewSourceChanged("prismInventory");
-    $("#prism-inventory-dialog").showModal();
-    showToast(`${prismName(item)} ${editing ? "updated" : "crafted"}`);
     return;
   }
   const viewButton = event.target.closest("[data-view]");

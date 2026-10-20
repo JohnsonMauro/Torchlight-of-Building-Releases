@@ -18,6 +18,14 @@
  * @property {() => Promise<void>} exportBuild Copies the open build's code to the clipboard (a toast says how it went).
  * @property {(text: string) => void} importBuild Adds a pasted build code as a new active build and opens the Builds view;
  *   a toast says when the code cannot be read (the Import dialog then stays open).
+ * @property {(type: "ethereal" | "inverse") => void} setPrismType Prism crafter: a new draft of that type.
+ * @property {(base: string) => void} setPrismBase Prism crafter: the base (keeping only the affixes it can roll).
+ * @property {(kind: string, value: string) => void} setPrismAffix Prism crafter: a random affix (radius, rare,
+ *   legendary).
+ * @property {(kind: string, value: number) => void} setInverseRoll Prism crafter: an Inverse Image's mod value
+ *   (rounded, in range).
+ * @property {() => void} cancelPrismCraft Prism crafter: Cancel or close, back to the prism inventory.
+ * @property {() => void} confirmPrismCraft Prism crafter: Craft or Save Changes, back to the prism inventory.
  * @property {() => void} toggleSelectedItemEquip Inventory item dialog: equips the open item, or unequips it; closes.
  * @property {() => void} copySelectedItem Inventory item dialog: duplicates the open item; closes.
  * @property {() => void} deleteSelectedItem Inventory item dialog: deletes the open item (emptying its slot); closes.
