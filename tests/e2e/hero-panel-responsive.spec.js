@@ -16,7 +16,7 @@ for (const [name, viewport] of [
       await planner.open();
       const panel = page.locator(".planner-hero-panel");
       await expect(panel).toBeVisible();
-      await page.locator("[data-change-hero]").first().click();
+      await page.getByRole("button", { name: /Change Hero$/ }).click();
       await expect(page.locator("#hero-selector")).toBeVisible();
       await page.keyboard.press("Escape");
       const follower = new FollowerPage(page);

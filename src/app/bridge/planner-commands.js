@@ -94,6 +94,21 @@
  * @property {() => void} cancelPrismPlacement Drops the prism waiting for its node.
  * @property {(coordinate: string | null) => void} dropPrism The end of a drag of the installed prism: on a node
  *   ("column,row"), or null away from the nodes.
+ * @property {(tab: "traits" | "path" | "scent") => void} setHeroDetailTab HERO tab: Hero Trait, Trait Path or Scent Bottle.
+ * @property {() => void} openHeroSelector Opens the hero selector.
+ * @property {(tier: string) => void} openMemorySocket Opens the memory selector for a socket ("base", "level45",
+ *   "<hero>:level45" …).
+ * @property {(tier: string) => boolean} removeMemory Right-click: takes a socket's memory off; false when it holds none.
+ * @property {(selectionKey: string, name: string) => void} pickHeroTrait Picks a trait for a level (or Bing's upper /
+ *   lower choice).
+ * @property {(name: string) => void} toggleTraitPathNode Trait Path: picks a trait, or takes the path back from it.
+ * @property {(from: number, to: number | null) => void} moveTraitPick The end of a drag of a tree hero's pick: onto
+ *   another row (0–3), or null off the rows.
+ * @property {(kind: string) => void} openScentSlot Opens Sage's scent selector for the elixir or an ingredient.
+ * @property {(index: number) => void} openCarinoAmmo Opens the Special Ammo selector for slot 0–2.
+ * @property {(index: number) => void} removeCarinoAmmo Empties a Special Ammo slot.
+ * @property {(heroId: string) => void} openHeroTraitSupport Opens the support selector for a hero's trait support slot.
+ * @property {(heroId: string) => void} removeHeroTraitSupport Empties a hero's trait support slot.
  */
 
 /**

@@ -41,6 +41,7 @@ import { damagePathControlsMarkup, renderStatSheet } from "./stats/stat-sheet.js
 import { fireHitMitigation, mitigateScorchingBeamCycle } from "../engine/combat/target-hit-mitigation.js";
 import { canDropGearInSlot } from "../engine/gear/gear-drag.js";
 import { equipmentView } from "./bridge/equipment-view-model.ts";
+import { heroTraitsView } from "./bridge/hero-traits-view-model.ts";
 import {
   talentsView,
   talentDisplayNodes as talentNodesOnBoard,
@@ -155,6 +156,12 @@ import {
   prismRareAffixesForBase,
 } from "../engine/talents/prism-crafting.js";
 import { prismIcon, prismName } from "./prism-icons.js";
+import {
+  heroMemoryIcon,
+  heroMemoryIsRevived,
+  heroTraitSupportConfig,
+  memoryTypesByTier,
+} from "./hero-memory-display.js";
 import { effectLabel, formatEffect, nodeTitle } from "./talent-labels.js";
 import { switchHeroLoadout } from "../engine/heroes/hero-loadouts.js";
 import { equippedKismetSummary } from "../engine/pacts/pact-kismet-summary.js";
@@ -284,13 +291,10 @@ import {
   heroTraitTree,
   heroTreeRules,
   heroTreeSelections,
-  heroTreeCapacity,
   treeRowLevelKey,
-  TREE_ROW_LEVELS,
   EXTRA_PICK_LEVEL,
-  treeBoardLayout,
 } from "../engine/heroes/hero-trait-tree.js";
-import { treeExtraRowMarkup, treeExtraRowTooltipHtml, EXTRA_ROW_NOTE } from "./hero-trait-tree-markup.js";
+import { treeExtraRowTooltipHtml, EXTRA_ROW_NOTE } from "./hero-trait-tree-markup.js";
 import { heroTraitLevelBonus } from "../engine/character-stats.js";
 import { normalizeSunsEmbraceItem } from "../engine/state/suns-embrace-normalization.js";
 import {
@@ -399,8 +403,6 @@ let activePrismTreeSlot = 1;
 let prismDraft = null;
 let prismEditingId = null;
 let pendingPrismPlacement = null;
-let selenaDanceDrag = null; // trait-tree drag (every tree hero: src/engine/heroes/hero-trait-tree.js)
-let suppressSelenaDanceClick = false;
 // Condition ids an exclusive choice can pin (src/engine/planner.js exclusiveConditionGroups).
 const exclusiveChoiceConditionIds = [
   "blur",
@@ -1618,6 +1620,22 @@ providePlannerCommands({
   openPrismInventory,
   cancelPrismPlacement,
   dropPrism,
+  // HERO tab (apps/web/src/features/hero).
+  setHeroDetailTab: (tab) => {
+    activeHeroDetailTab = tab;
+    renderHeroTraitTree();
+  },
+  openHeroSelector,
+  openMemorySocket,
+  removeMemory,
+  pickHeroTrait,
+  toggleTraitPathNode,
+  moveTraitPick,
+  openScentSlot,
+  openCarinoAmmo,
+  removeCarinoAmmo,
+  openHeroTraitSupport,
+  removeHeroTraitSupport,
 });
 // The FOLLOWER tab's data (src/app/follower-panel.js).
 provideViewSource("follower", () => followerPanelView(plannerState));
@@ -1644,6 +1662,8 @@ provideViewSource("skills", () => skillsView(currentPlanner(), plannerState.skil
 provideViewSource("equipment", equipmentSource);
 // The talent trees' data (src/app/bridge/talents-view-model.ts).
 provideViewSource("talents", talentsSource);
+// The HERO tab's data (src/app/bridge/hero-traits-view-model.ts).
+provideViewSource("heroTraits", () => heroTraitsView(plannerState.hero, activeHeroDetailTab));
 // The Config tab's data (src/app/bridge/view-sources.ts). Manual mode also needs the same build in automatic mode (which conditions
 // have a source); it is calculated only then.
 provideViewSource("configuration", () => {
@@ -2512,18 +2532,6 @@ function renderCoreTalentPicker(threshold) {
     .join("");
 }
 
-function renderSageScentBottle() {
-  const scent = plannerState.hero.sageScent || {},
-    elixir = sageElixirsSs13.find((entry) => entry.name === scent.elixir);
-  const slot = (kind, label) => {
-    const value = scent[kind],
-      ingredient = sageScentIngredientsSs13[kind].find((entry) => entry.name === value);
-    return `<button type="button" class="sage-ingredient-slot ${value ? "filled" : ""}" data-open-sage-scent="${kind}" ${ingredient ? `data-sage-scent-tooltip="${kind}"` : ""}><span>${label}</span><b>${ingredient ? `<img src="${ingredient.icon}" alt="">` : "+"}</b>${ingredient ? `<small>${escapeHtml(ingredient.name)}</small>` : ""}</button>`;
-  };
-  $("#hero-trait-tree").innerHTML =
-    `<section class="sage-scent-panel"><button type="button" class="sage-basic-scent ${elixir ? "filled" : ""}" data-open-sage-scent="elixir" ${elixir ? 'data-sage-scent-tooltip="elixir"' : ""}>${elixir ? `<img src="${elixir.icon}" alt=""><strong>${escapeHtml(elixir.name)}</strong><small>${elixir.tags.map(escapeHtml).join(" · ")}</small>` : "<b>+</b>"}</button><div class="sage-scent-divider">Basic Scent</div>${slot("damage", "Damage Ingredient")}${slot("defense", "Defense Ingredient")}${slot("functional", "Functional Ingredient")}</section>`;
-}
-
 function renderSageScentSelector() {
   const query = sageScentQuery.trim().toLowerCase(),
     isElixir = sageScentSelectorKind === "elixir";
@@ -2575,11 +2583,6 @@ function renderCarinoAmmoSelector() {
       .join("") || '<p class="hero-selector-empty">No matching Projectile supports.</p>';
 }
 
-const heroTraitSupportConfig = {
-  "rosa-high-court-chariot": { hero: "High Court Chariot", skill: "Holy Domain" },
-  "moto-charge-calling": { hero: "Charge Calling", skill: "Charge Calling" },
-};
-
 function heroTraitSupportOptions() {
   return tlidbSupportCatalogSs13.filter(
     (support) => !support.passiveOnly && ["regular", "magnificent", "noble", "activation"].includes(support.category),
@@ -2607,29 +2610,6 @@ function renderHeroTraitSupportSelector() {
       .join("") || '<p class="hero-selector-empty">No matching supports.</p>';
 }
 
-function carinoAmmoSlotsMarkup(selectedHero, traits) {
-  if (selectedHero.id !== "carino-ranger-of-glory") return "";
-  const level75Key = `${selectedHero.id}:level75`;
-  const level75Choices = traits.filter((trait) => trait.level === 75);
-  const selected75 = plannerState.hero.selectedTraits[level75Key];
-  const unlocked = selected75 === "Well Prepared" ? 3 : 2;
-  const selections = plannerState.hero.carinoSpecialAmmoSupports || [];
-  const slots = Array.from({ length: 3 }, (_, index) => {
-    const support = tlidbSupportCatalogSs13.find((entry) => entry.name === selections[index]);
-    const locked = index >= unlocked;
-    return `<button type="button" class="carino-ammo-slot ${support ? "filled" : ""} ${locked ? "locked" : ""}" data-open-carino-ammo="${index}" ${support ? `data-support-tooltip="${escapeHtml(support.name)}" data-parent-skill="Special Ammo" data-carino-support-slot="${index}"` : ""} ${locked ? "disabled" : ""} title="${locked ? "Requires Well Prepared" : support ? escapeHtml(support.name) : `Select Special Ammo support ${index + 1}`}" aria-label="${locked ? "Requires Well Prepared" : support ? `Edit ${escapeHtml(support.name)}; right-click to remove` : `Select support for Special Ammo slot ${index + 1}`}">${support ? artwork(support.icon, support.name, "carino-ammo-art") : "<b>+</b>"}</button>`;
-  }).join("");
-  return `<div class="carino-ammo-slots" aria-label="Special Ammo supports">${slots}</div>`;
-}
-
-function heroTraitSupportSlotMarkup(selectedHero) {
-  const config = heroTraitSupportConfig[selectedHero.id];
-  if (!config) return "";
-  const name = plannerState.hero.heroTraitSupports?.[selectedHero.id] || "";
-  const support = tlidbSupportCatalogSs13.find((entry) => entry.name === name);
-  return `<div class="carino-ammo-slots hero-trait-support-slot" aria-label="${escapeHtml(config.skill)} support"><button type="button" class="carino-ammo-slot ${support ? "filled" : ""}" data-open-hero-trait-support="${selectedHero.id}" ${support ? `data-support-tooltip="${escapeHtml(support.name)}" data-hero-trait-support-id="${selectedHero.id}"` : ""} title="${support ? escapeHtml(support.name) : `Select ${escapeHtml(config.skill)} support`}" aria-label="${support ? `Edit ${escapeHtml(support.name)}; right-click to remove` : `Select support for ${escapeHtml(config.skill)}`}">${support ? artwork(support.icon, support.name, "carino-ammo-art") : "<b>+</b>"}</button></div>`;
-}
-
 // Trait level the tooltip shows, the rule src/engine/character-stats.js heroTraitStatLines and the planner apply (user-stated rule
 // 2026-10-13; src/engine/heroes/hero-memory-rules.js): a memory gives 1 (any), 2 (enhancement 30+), 3 (Ultimate 50), plus its own "+N to
 // Hero Trait Level". Base trait: that of the base-slot memory (1 without one, open). A 45/60/75 trait: 0 (inactive) with no
@@ -2648,88 +2628,6 @@ function heroTraitTooltipLevel(levelKey = "base") {
   ); // Bing's sixth rank (Q-H2)
 }
 
-// Trait Path tab of a trait-tree hero (Selena – Dance of the Deep, Thea – Wisdom of The Gods, Youga – The Ultimate One;
-// src/engine/heroes/hero-trait-tree.js). The board keeps Selena's style; picks are row-indexed in hero.treeTraits[heroId].
-function renderSelenaDanceTree(traits) {
-  const heroId = plannerState.hero.selectedHeroId,
-    tree = heroTraitTree(heroId),
-    rules = heroTreeRules(plannerState.hero, heroId);
-  const selected = heroTreeSelections(plannerState.hero, heroId);
-  const picked = selected.filter(Boolean),
-    selectedSet = new Set(picked),
-    atLimit = picked.length >= rules.capacity;
-  const traitByName = new Map(traits.map((trait) => [trait.name, trait]));
-  const lines = treeLinesMarkup(tree.nodes, selectedSet);
-  const nodes = tree.nodes
-    .map((node) => {
-      const trait = traitByName.get(node.name),
-        parentReady = node.base || node.parent === tree.base || selectedSet.has(node.parent),
-        chosen = node.base || selectedSet.has(node.name),
-        locked = !node.base && !chosen && (!parentReady || atLimit);
-      return `<button type="button" class="selena-dance-node ${node.base ? "base" : ""} ${chosen ? "selected" : ""} ${locked ? "locked" : ""}" style="--node-x:${node.x / 4}%;--node-y:${node.y}px" ${locked ? "disabled" : ""} data-selena-dance-node="${escapeHtml(node.name)}" data-hero-trait-tooltip="${escapeHtml(node.name)}" data-hero-trait-level-key="${node.base ? "base" : selected.includes(node.name) ? treeRowLevelKey(heroId, selected.indexOf(node.name)) : `${heroId}:tree`}" aria-pressed="${chosen}">${artwork(trait?.icon, node.name, "selena-dance-node-art")}<span>${node.base ? "Base" : trait?.level ? `Lv.${trait.level}` : ""}</span></button>`;
-    })
-    .join("");
-  $("#hero-trait-tree").innerHTML =
-    `<section class="selena-dance-tree"><header><span>Hero trait path</span><strong>${picked.length}/${rules.capacity} selected</strong></header><div class="selena-dance-tree-board"><svg viewBox="0 0 400 275" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>${nodes}</div></section>`;
-  positionTraitTreeBoard();
-}
-
-// Connection lines of a trait tree, in the coordinates of its nodes (inset to the node edges; lit when both ends are picked).
-function treeLinesMarkup(nodes, selectedSet) {
-  const byName = new Map(nodes.map((node) => [node.name, node]));
-  return nodes
-    .filter((node) => node.parent)
-    .map((node) => {
-      const parent = byName.get(node.parent),
-        dx = node.x - parent.x,
-        dy = node.y - parent.y,
-        length = Math.hypot(dx, dy) || 1,
-        inset = 27;
-      const x1 = parent.x + (dx / length) * inset,
-        y1 = parent.y + (dy / length) * inset,
-        x2 = node.x - (dx / length) * inset,
-        y2 = node.y - (dy / length) * inset;
-      const active = (parent.base || selectedSet.has(parent.name)) && selectedSet.has(node.name);
-      return `<line class="${active ? "active" : ""}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
-    })
-    .join("");
-}
-// Places the trait tree at the board's width (src/engine/heroes/hero-trait-tree.js treeBoardLayout): node centres and lines in px, the
-// board at least as tall as the layout, re-run when the board resizes. A hidden board (0 px wide) keeps the tree's own
-// layout in % until it shows.
-let traitTreeBoardObserver = null;
-function positionTraitTreeBoard() {
-  traitTreeBoardObserver?.disconnect();
-  traitTreeBoardObserver = null;
-  const board = $("#hero-trait-tree .selena-dance-tree-board"),
-    tree = heroTraitTree(plannerState.hero.selectedHeroId);
-  if (!board || !tree) return;
-  if (typeof ResizeObserver === "function") {
-    traitTreeBoardObserver = new ResizeObserver(() => layoutTraitTreeBoard(board, tree));
-    traitTreeBoardObserver.observe(board);
-  }
-  layoutTraitTreeBoard(board, tree);
-}
-function layoutTraitTreeBoard(board, tree) {
-  const width = board.clientWidth;
-  if (!width || !board.isConnected || board.dataset.layoutSize === `${width}x${board.clientHeight}`) return;
-  const layout = treeBoardLayout(tree, width),
-    selectedSet = new Set(heroTreeSelections(plannerState.hero).filter(Boolean));
-  board.style.minHeight = `${layout.height}px`;
-  for (const node of layout.nodes) {
-    const element = [...board.querySelectorAll("[data-selena-dance-node]")].find(
-      (item) => item.dataset.selenaDanceNode === node.name,
-    );
-    element?.style.setProperty("--node-x", `${node.x}px`);
-    element?.style.setProperty("--node-y", `${node.y}px`);
-  }
-  const svg = board.querySelector("svg"),
-    height = board.clientHeight;
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  svg.innerHTML = treeLinesMarkup(layout.nodes, selectedSet);
-  board.dataset.layoutSize = `${width}x${height}`;
-}
-
 // Stores a trait tree's rows and re-renders like the other trait changes (pick, remove and drag-move all land here).
 function commitTreeTraits(heroId, rows) {
   plannerState.hero.treeTraits = { ...(plannerState.hero.treeTraits || {}), [heroId]: rows };
@@ -2739,132 +2637,145 @@ function commitTreeTraits(heroId, rows) {
   renderConfiguration();
 }
 
+// The HERO tab is React (apps/web/src/features/hero): it re-reads its source. The open tab falls back to Hero Trait when
+// the hero has no such tab (Sage's Scent Bottle, a tree hero's Trait Path).
 function renderHeroTraitTree() {
-  const selectedHero = heroById(plannerState.hero.selectedHeroId);
-  if (!selectedHero) {
-    $("#selected-hero-name").textContent = "No hero selected";
-    $("#selected-hero-trait").textContent = "Choose a hero trait";
-    $("#selected-hero-portrait").innerHTML = '<span class="hero-avatar-fallback" aria-hidden="true">+</span>';
-    $("#hero-detail-tabs").hidden = true;
-    $("#hero-trait-tree").setAttribute("aria-label", "No hero selected");
-    $("#hero-trait-tree").innerHTML =
-      '<div class="hero-traits-pending"><strong>Select a hero</strong><span>Choose a hero to configure its base trait, memories, and special trait options.</span><button type="button" class="button" data-change-hero>Choose Hero</button></div>';
+  const heroId = plannerState.hero.selectedHeroId,
+    sage = heroId === "sage-licorice-note",
+    treeHero = Boolean(heroTraitTree(heroId));
+  if (heroById(heroId) && !(sage && activeHeroDetailTab === "scent") && !(treeHero && activeHeroDetailTab === "path"))
+    activeHeroDetailTab = "traits";
+  viewSourceChanged("heroTraits");
+}
+// HERO tab commands (apps/web/src/features/hero). The hero, memory, scent, ammo and support dialogs stay here.
+function openHeroSelector() {
+  heroSelectorQuery = "";
+  $("#hero-selector-search").value = "";
+  renderHeroSelector();
+  $("#hero-selector").showModal();
+}
+function openMemorySocket(tier) {
+  activeHeroMemoryTier = tier;
+  renderHeroMemoryInventory();
+  $("#hero-memory-selector").showModal();
+}
+// Right-click on a memory socket: takes its memory off; false when it holds none.
+function removeMemory(tier) {
+  if (tier === "base") {
+    if (!plannerState.hero.baseTraitMemoryId) return false;
+    plannerState.hero.baseTraitMemoryId = "";
+    plannerState.hero.baseTraitMemoryRoll = null;
+    persistPlannerState();
+    renderHeroTraitTree();
+    return true;
+  }
+  if (!plannerState.hero.equippedMemoryIds?.[tier]) return false;
+  unequipHeroMemory(tier);
+  return true;
+}
+function pickHeroTrait(selectionKey, name) {
+  plannerState.hero.selectedTraits[selectionKey] = name;
+  persistPlannerState();
+  renderHeroTraitTree();
+  render();
+  renderConfiguration();
+  showToast(`${escapeHtml(name)} selected`);
+}
+// Trait Path: picks a trait under the next free row, or takes the path back from a picked one.
+function toggleTraitPathNode(name) {
+  const heroId = plannerState.hero.selectedHeroId;
+  if (name === heroTraitTree(heroId)?.base) return;
+  const rules = heroTreeRules(plannerState.hero, heroId),
+    before = heroTreeSelections(plannerState.hero, heroId),
+    result = rules.toggle(before, name);
+  if (result.error) {
+    showToast(result.error);
     return;
   }
-  $("#selected-hero-name").textContent = selectedHero.name;
-  $("#selected-hero-trait").textContent = selectedHero.trait;
-  $("#selected-hero-portrait").innerHTML = selectedHero.image
-    ? `<img src="${selectedHero.image}" alt="${escapeHtml(selectedHero.name)}">`
-    : `<span class="hero-avatar-fallback" aria-hidden="true">${escapeHtml(selectedHero.name.slice(0, 2).toUpperCase())}</span>`;
-  const sage = selectedHero.id === "sage-licorice-note";
-  const treeHero = Boolean(heroTraitTree(selectedHero.id));
-  const detailTabs = $("#hero-detail-tabs"),
-    secondaryTab = detailTabs.querySelector("button:last-child");
-  if (sage && !["traits", "scent"].includes(activeHeroDetailTab)) activeHeroDetailTab = "traits";
-  if (treeHero && !["traits", "path"].includes(activeHeroDetailTab)) activeHeroDetailTab = "traits";
-  detailTabs.hidden = !(sage || treeHero);
-  secondaryTab.dataset.heroDetailTab = treeHero ? "path" : "scent";
-  secondaryTab.textContent = treeHero ? "Trait Path" : "Scent Bottle";
-  if (!sage && !treeHero) activeHeroDetailTab = "traits";
-  $("#hero-detail-tabs")
-    .querySelectorAll("button")
-    .forEach((button) => button.classList.toggle("active", button.dataset.heroDetailTab === activeHeroDetailTab));
-  if (sage && activeHeroDetailTab === "scent") {
-    renderSageScentBottle();
+  commitTreeTraits(heroId, result.rows);
+  showToast(
+    before.includes(name)
+      ? "Trait path shortened"
+      : `${name} selected under ${rules.rowName(result.rows.indexOf(name))}`,
+  );
+}
+// The end of a drag of a tree hero's pick: onto another row it moves there (swapping with that row's pick); off the rows
+// (to null) it stays.
+function moveTraitPick(from, to) {
+  if (to === null) {
+    showToast("Invalid drop · trait returned to its row");
     return;
   }
-  $("#hero-trait-tree").setAttribute("aria-label", `${selectedHero.name}, ${selectedHero.trait} hero traits`);
-  const traits = allHeroTraitsSs13[selectedHero.id]?.traits || [];
-  if (treeHero && activeHeroDetailTab === "path") {
-    renderSelenaDanceTree(traits);
+  if (to === from) return;
+  const heroId = plannerState.hero.selectedHeroId,
+    rules = heroTreeRules(plannerState.hero, heroId),
+    before = heroTreeSelections(plannerState.hero, heroId),
+    result = rules.move(before, from, to);
+  if (result.error) {
+    showToast(result.error);
     return;
   }
-  const stateKey = (level) =>
-    selectedHero.id === "selena-sing-with-the-tide" ? `level${level}` : `${selectedHero.id}:level${level}`;
-  const tierRows = [45, 60, 75].map((level) => [
-    stateKey(level),
-    level,
-    traits.filter((trait) => trait.level === level),
-  ]);
-  // The memory slot of a tier: the calculation reads "<hero>:level45", then "level45" (src/engine/character-stats.js; the
-  // game-log import stores memories under the level alone), so the socket shows and edits the first that holds one.
-  const memoryKey = (key, level) =>
-    [key, `level${level}`].find(
-      (candidate) => plannerState.hero.memories[candidate] || plannerState.hero.equippedMemoryIds?.[candidate],
-    ) || key;
-  const baseTrait = traits.find((trait) => trait.level === 1);
-  const dualTraitHero = selectedHero.id === "bing-creative-genius";
-  const creativeGeniusUpper = {
-    45: ["Inspiration Overflow"],
-    60: ["Mind Domain", "Trouble Maker"],
-    75: ["Brainstorm", "Flash of Brilliance"],
-  };
-  const memoryIcon = (name) =>
-    selectedHero.id === "selena-sing-with-the-tide" && name === "Ceaseless Tide"
-      ? tliArt.hero.memories["Ceaseless Tide"]
-      : baseTrait?.icon;
-  const danceSelections = treeHero ? heroTreeSelections(plannerState.hero, selectedHero.id) : [];
-  // Youga – The Ultimate One with "+1 Max Youga Count in the Universe": a fourth tree row after Lv75 (src/engine/heroes/hero-trait-tree.js).
-  const extraTreeRow =
-    treeHero && heroTreeCapacity(plannerState.hero, selectedHero.id) > TREE_ROW_LEVELS.length
-      ? treeExtraRowMarkup(selectedHero.id, traits, danceSelections, artwork)
-      : "";
-  const baseSupports = carinoAmmoSlotsMarkup(selectedHero, traits) || heroTraitSupportSlotMarkup(selectedHero);
-  const baseSlot = equippedBaseTraitSlot(plannerState.hero),
-    slottedBaseMemory = baseTraitMemory();
-  const baseMemorySlot = baseSlot
-    ? `<button type="button" class="hero-memory-socket base-memory-socket ${slottedBaseMemory ? `filled memory-rarity-${escapeHtml(slottedBaseMemory.rarity)}` : ""}" data-memory-tier="base" aria-label="${slottedBaseMemory ? `Manage base trait ${escapeHtml(slottedBaseMemory.name)}${heroMemoryIsRevived(slottedBaseMemory) ? ", revived" : ""}` : "Add base trait memory"}">${slottedBaseMemory ? artwork(heroMemoryIcon(slottedBaseMemory.type), slottedBaseMemory.name, "hero-memory-art") + memorySocketRevivalBadge(slottedBaseMemory) : "<b>+</b>"}</button>`
-    : "";
-  const baseTraitButton = `<button type="button" class="hero-choice selected" data-hero-trait-tooltip="${escapeHtml(baseTrait?.name || selectedHero.trait)}" data-hero-trait-level-key="base" aria-label="${escapeHtml(baseTrait?.name || selectedHero.trait)}" aria-pressed="true">${artwork(baseTrait?.icon, baseTrait?.name || selectedHero.trait, "hero-choice-art")}</button>`;
-  const baseTierContent = baseMemorySlot
-    ? `${baseMemorySlot}<span class="tier-divider"></span><div class="base-trait-contents">${baseTraitButton}${baseSupports}</div>`
-    : `${baseTraitButton}${baseSupports}`;
-  $("#hero-trait-tree").innerHTML =
-    `<div class="hero-tier base-tier ${baseSupports ? "carino-base-tier" : ""} ${baseMemorySlot ? "has-base-memory" : ""}"><span class="tier-level"><small>LVL</small><strong>1</strong></span>${baseTierContent}</div>${tierRows
-      .map(([key, level, choices]) => {
-        const slotKey = memoryKey(key, level);
-        const memory = plannerState.hero.memories[slotKey] || "";
-        const craftedMemory = (plannerState.hero.memoryInventory || []).find(
-          (item) => item.id === plannerState.hero.equippedMemoryIds?.[slotKey],
-        );
-        const memoryButton = `<button type="button" class="hero-memory-socket ${memory ? "filled" : ""} ${craftedMemory ? `memory-rarity-${escapeHtml(craftedMemory.rarity)}` : ""}" data-memory-tier="${slotKey}" aria-label="${memory ? `Manage ${escapeHtml(memory)}${heroMemoryIsRevived(craftedMemory) ? ", revived" : ""}` : `Add level ${level} hero memory`}">${memory ? artwork(craftedMemory ? heroMemoryIcon(craftedMemory.type) : memoryIcon(memory), memory, "hero-memory-art") + memorySocketRevivalBadge(craftedMemory) : "<b>+</b>"}</button>`;
-        if (treeHero) {
-          // hero.treeTraits[heroId] is row-indexed (Lv45 / 60 / 75); each pick is levelled by its row's memory (src/engine/character-stats.js) and can be dragged to another row.
-          const row = TREE_ROW_LEVELS.indexOf(level),
-            pick = danceSelections[row],
-            chosen = pick ? traits.filter((trait) => trait.name === pick && trait.level > 1) : [];
-          if (!chosen.length)
-            return `<div class="hero-tier hero-memory-only-tier" data-selena-dance-row="${row}"><span class="tier-level"><small>LVL</small><strong>${level}</strong></span>${memoryButton}</div>`;
-          const chosenButtons = chosen
-            .map(
-              (trait) =>
-                `<button type="button" class="hero-choice selected selena-dance-pick" data-selena-dance-pick="${row}" data-hero-trait-tooltip="${escapeHtml(trait.name)}" data-hero-trait-level-key="${escapeHtml(key)}" aria-label="${escapeHtml(trait.name)}" aria-pressed="true">${artwork(trait.icon, trait.name, "hero-choice-art")}</button>`,
-            )
-            .join("");
-          return `<div class="hero-tier" data-selena-dance-row="${row}"><span class="tier-level"><small>LVL</small><strong>${level}</strong></span>${memoryButton}<span class="tier-divider"></span><div class="hero-tier-choices">${chosenButtons}</div></div>`;
-        }
-        const choiceButtons = (groupChoices, selectionKey) => {
-          const legacySelection = plannerState.hero.selectedTraits[key];
-          const selected =
-            plannerState.hero.selectedTraits[selectionKey] ||
-            (groupChoices.some((choice) => choice.name === legacySelection) ? legacySelection : "");
-          return groupChoices
-            .map(
-              (choice) =>
-                `<button type="button" class="hero-choice ${selected === choice.name ? "selected" : ""}" data-hero-trait-tier="${selectionKey}" data-hero-trait="${escapeHtml(choice.name)}" data-hero-trait-tooltip="${escapeHtml(choice.name)}" data-hero-trait-level-key="${escapeHtml(key)}" aria-label="${escapeHtml(choice.name)}" aria-pressed="${selected === choice.name}">${artwork(choice.icon, choice.name, "hero-choice-art")}</button>`,
-            )
-            .join("");
-        };
-        let choiceMarkup = choiceButtons(choices, key);
-        if (dualTraitHero) {
-          const upperNames = new Set(creativeGeniusUpper[level] || []),
-            upper = choices.filter((choice) => upperNames.has(choice.name)),
-            lower = choices.filter((choice) => !upperNames.has(choice.name));
-          choiceMarkup = `<div class="hero-trait-choice-group upper" aria-label="Level ${level} upper trait choice">${choiceButtons(upper, `${key}:upper`)}</div><div class="hero-trait-choice-group lower" aria-label="Level ${level} lower trait choice">${choiceButtons(lower, `${key}:lower`)}</div>`;
-        }
-        return `<div class="hero-tier ${dualTraitHero ? "dual-trait-tier" : ""}"><span class="tier-level"><small>LVL</small><strong>${level}</strong></span>${memoryButton}<span class="tier-divider"></span><div class="hero-tier-choices">${choiceMarkup}</div></div>`;
-      })
-      .join("")}${extraTreeRow}`;
+  const name = before[from],
+    other = before[to];
+  commitTreeTraits(heroId, result.rows);
+  showToast(`Moved ${name} under ${rules.rowName(to)}${other ? ` · ${other} moved under ${rules.rowName(from)}` : ""}`);
+}
+function openScentSlot(kind) {
+  sageScentSelectorKind = kind;
+  sageScentQuery = "";
+  $("#sage-scent-search").value = "";
+  renderSageScentSelector();
+  $("#sage-scent-selector").showModal();
+  $("#sage-scent-search").focus();
+}
+function openCarinoAmmo(index) {
+  activeHeroTraitSupportId = "";
+  activeCarinoAmmoSlot = index;
+  carinoAmmoQuery = "";
+  $("#carino-ammo-search").value = "";
+  document.querySelector("#carino-ammo-selector .eyebrow").textContent = "Ranger of Glory";
+  $("#carino-ammo-search").placeholder = "Search projectile supports...";
+  $("#carino-ammo-selector .carino-ammo-help").textContent =
+    "Choose a support that can support a Projectile skill and is not installed on the skill panel.";
+  renderCarinoAmmoSelector();
+  $("#carino-ammo-selector").showModal();
+  $("#carino-ammo-search").focus();
+}
+function removeCarinoAmmo(index) {
+  const name = plannerState.hero.carinoSpecialAmmoSupports?.[index];
+  plannerState.hero.carinoSpecialAmmoSupports[index] = "";
+  persistPlannerState();
+  renderHeroTraitTree();
+  showToast(`${escapeHtml(name || "Special Ammo support")} removed`);
+}
+function openHeroTraitSupport(heroId) {
+  activeHeroTraitSupportId = heroId;
+  selectorKind = "hero-support";
+  selectorQuery = "";
+  selectorChoiceIndex = -1;
+  selectorSpecialConfig = null;
+  const installed = selectorTargetSupport();
+  selectorLevel = installed?.level || 20;
+  if (installed) {
+    selectorChoiceIndex = selectorEntries().findIndex((entry) => entry.name === installed.name);
+    selectorSpecialConfig = {
+      ...defaultConfigurableSupportConfig(installed.name, installed.effects),
+      ...(normalizeProgressionSupportConfig(installed.name, installed.specialConfig) || {}),
+    };
+  }
+  $("#skill-selector-search").value = "";
+  renderSkillSelector();
+  $("#skill-selector").showModal();
+  $("#skill-selector-search").focus();
+}
+function removeHeroTraitSupport(heroId) {
+  const name = plannerState.hero.heroTraitSupports?.[heroId];
+  delete plannerState.hero.heroTraitSupports[heroId];
+  delete plannerState.hero.heroTraitSupportLevels[heroId];
+  delete plannerState.hero.heroTraitSupportConfigs[heroId];
+  persistPlannerState();
+  renderHeroTraitTree();
+  showToast(`${escapeHtml(name || "Trait support")} removed`);
 }
 
 // Hero panel HERO | FOLLOWER tabs (src/app/follower-panel.js; 2026-10-15): the tab is remembered per build view (localStorage, UI
@@ -2946,17 +2857,6 @@ function commitFollower(next, message) {
   if (message) showToast(message);
 }
 
-const memoryTypesByTier = {
-  level45: "Memory of Origin",
-  level60: "Memory of Discipline",
-  level75: "Memory of Progress",
-};
-const heroMemoryIcons = {
-  "Memory of Origin": "./src/assets/tli/gear/Memory_Origin.webp",
-  "Memory of Discipline": "./src/assets/tli/gear/Memory_Discipline.webp",
-  "Memory of Progress": "./src/assets/tli/gear/Memory_Progress.webp",
-};
-const heroMemoryIcon = (type) => heroMemoryIcons[type] || heroMemoryIcons["Memory of Origin"];
 function heroMemoryTypeForTier(tier) {
   return memoryTypesByTier[
     String(tier || "")
@@ -2999,20 +2899,6 @@ function clearInvalidBaseTraitMemory() {
     plannerState.hero.baseTraitMemoryId = "";
     plannerState.hero.baseTraitMemoryRoll = null;
   }
-}
-function heroMemoryIsRevived(memory) {
-  return Boolean(
-    memory &&
-    ((memory.revivalMethod && memory.revivalMethod !== "none") ||
-      memory.waxAndWane ||
-      memory.risingMoon ||
-      memory.revivedAffix),
-  );
-}
-function memorySocketRevivalBadge(memory) {
-  if (!heroMemoryIsRevived(memory)) return "";
-  const symbolId = `memory-moon-${String(memory.id).replace(/[^a-z0-9_-]/gi, "")}`;
-  return `<span class="hero-memory-revival-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><defs><linearGradient id="${symbolId}-shine" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".52" stop-color="#c9efff"/><stop offset="1" stop-color="#65bdf0"/></linearGradient><mask id="${symbolId}-cut" maskUnits="userSpaceOnUse"><rect width="24" height="24" fill="#fff"/><circle cx="14.9" cy="9" r="5.9" fill="#000"/></mask></defs><circle class="moon-disc" cx="12" cy="12" r="10.2"/><circle class="moon-crescent" cx="12" cy="12" r="6.7" fill="url(#${symbolId}-shine)" mask="url(#${symbolId}-cut)"/></svg></span>`;
 }
 function memoryRevivalBadge(memory) {
   return heroMemoryIsRevived(memory)
@@ -6761,42 +6647,6 @@ document.addEventListener("pointerover", (event) => {
 });
 document.addEventListener("pointermove", (event) => {
   if (event.target.closest("#planner-tooltip.damage-source-tooltip")) return;
-  if (selenaDanceDrag && event.pointerId === selenaDanceDrag.pointerId) {
-    const dx = event.clientX - selenaDanceDrag.startX,
-      dy = event.clientY - selenaDanceDrag.startY;
-    if (!selenaDanceDrag.moved && Math.hypot(dx, dy) >= 5) {
-      selenaDanceDrag.moved = true;
-      hidePlannerTooltip();
-      selenaDanceDrag.element.classList.add("selena-dance-drag-source");
-      selenaDanceDrag.ghost = document.createElement("div");
-      selenaDanceDrag.ghost.className = "kismet-drag-ghost";
-      selenaDanceDrag.ghost.innerHTML = `<img src="${selenaDanceDrag.icon}" alt="">`;
-      selenaDanceDrag.ghost.style.width = `${selenaDanceDrag.element.offsetWidth}px`;
-      selenaDanceDrag.ghost.style.height = `${selenaDanceDrag.element.offsetHeight}px`;
-      document.body.append(selenaDanceDrag.ghost);
-      // Legal rows: after the move or swap every trait still sits in a later row than its prerequisite.
-      const rules = heroTreeRules(plannerState.hero),
-        rows = heroTreeSelections(plannerState.hero);
-      document.querySelectorAll("#hero-trait-tree [data-selena-dance-row]").forEach((rowElement) => {
-        const row = Number(rowElement.dataset.selenaDanceRow);
-        if (row === selenaDanceDrag.from) return;
-        const legal = !rules.move(rows, selenaDanceDrag.from, row).error;
-        rowElement.classList.add(legal ? "selena-dance-drop-eligible" : "selena-dance-drop-blocked");
-      });
-    }
-    if (selenaDanceDrag.moved) {
-      event.preventDefault();
-      selenaDanceDrag.ghost.style.left = `${event.clientX - selenaDanceDrag.ghost.offsetWidth / 2}px`;
-      selenaDanceDrag.ghost.style.top = `${event.clientY - selenaDanceDrag.ghost.offsetHeight / 2}px`;
-      const target =
-        document
-          .elementFromPoint(event.clientX, event.clientY)
-          ?.closest("#hero-trait-tree .selena-dance-drop-eligible") || null;
-      selenaDanceDrag.target?.classList.remove("selena-dance-drop-target");
-      selenaDanceDrag.target = target;
-      target?.classList.add("selena-dance-drop-target");
-    }
-  }
   if ($("#planner-tooltip").classList.contains("visible")) scheduleTooltipPosition(event.clientX, event.clientY);
 });
 
@@ -7309,46 +7159,6 @@ document.addEventListener("contextmenu", (event) => {
     else showToast("No open compatible memory slot");
     return;
   }
-  const memorySocket = event.target.closest("[data-memory-tier]");
-  if (memorySocket?.dataset.memoryTier === "base" && plannerState.hero.baseTraitMemoryId) {
-    event.preventDefault();
-    plannerState.hero.baseTraitMemoryId = "";
-    plannerState.hero.baseTraitMemoryRoll = null;
-    persistPlannerState();
-    renderHeroTraitTree();
-    return;
-  }
-  if (memorySocket && plannerState.hero.equippedMemoryIds?.[memorySocket.dataset.memoryTier]) {
-    event.preventDefault();
-    unequipHeroMemory(memorySocket.dataset.memoryTier);
-    return;
-  }
-  const carinoSupport = event.target.closest("[data-open-carino-ammo][data-support-tooltip]");
-  if (carinoSupport) {
-    event.preventDefault();
-    hidePlannerTooltip();
-    const index = Number(carinoSupport.dataset.openCarinoAmmo),
-      name = plannerState.hero.carinoSpecialAmmoSupports?.[index];
-    plannerState.hero.carinoSpecialAmmoSupports[index] = "";
-    persistPlannerState();
-    renderHeroTraitTree();
-    showToast(`${escapeHtml(name || "Special Ammo support")} removed`);
-    return;
-  }
-  const heroTraitSupport = event.target.closest("[data-hero-trait-support-id]");
-  if (heroTraitSupport) {
-    event.preventDefault();
-    hidePlannerTooltip();
-    const id = heroTraitSupport.dataset.heroTraitSupportId,
-      name = plannerState.hero.heroTraitSupports?.[id];
-    delete plannerState.hero.heroTraitSupports[id];
-    delete plannerState.hero.heroTraitSupportLevels[id];
-    delete plannerState.hero.heroTraitSupportConfigs[id];
-    persistPlannerState();
-    renderHeroTraitTree();
-    showToast(`${escapeHtml(name || "Trait support")} removed`);
-    return;
-  }
   const craftedSlateInventory = event.target.closest("[data-crafted-slate-inventory]");
   if (craftedSlateInventory) {
     event.preventDefault();
@@ -7528,22 +7338,6 @@ document.addEventListener("click", (event) => {
     refreshPactCandidate();
     return;
   }
-  const heroDetailTab = event.target.closest("[data-hero-detail-tab]");
-  if (heroDetailTab) {
-    activeHeroDetailTab = heroDetailTab.dataset.heroDetailTab;
-    renderHeroTraitTree();
-    return;
-  }
-  const openScent = event.target.closest("[data-open-sage-scent]");
-  if (openScent) {
-    sageScentSelectorKind = openScent.dataset.openSageScent;
-    sageScentQuery = "";
-    $("#sage-scent-search").value = "";
-    renderSageScentSelector();
-    $("#sage-scent-selector").showModal();
-    $("#sage-scent-search").focus();
-    return;
-  }
   if (event.target.closest("[data-close-sage-scent]")) {
     $("#sage-scent-selector").close();
     return;
@@ -7563,43 +7357,6 @@ document.addEventListener("click", (event) => {
     $("#sage-scent-selector").close();
     renderHeroTraitTree();
     showToast(`${escapeHtml(scentChoice.dataset.selectSageScent)} selected`);
-    return;
-  }
-  const openCarinoAmmo = event.target.closest("[data-open-carino-ammo]");
-  if (openCarinoAmmo) {
-    activeHeroTraitSupportId = "";
-    activeCarinoAmmoSlot = Number(openCarinoAmmo.dataset.openCarinoAmmo);
-    carinoAmmoQuery = "";
-    $("#carino-ammo-search").value = "";
-    document.querySelector("#carino-ammo-selector .eyebrow").textContent = "Ranger of Glory";
-    $("#carino-ammo-search").placeholder = "Search projectile supports...";
-    $("#carino-ammo-selector .carino-ammo-help").textContent =
-      "Choose a support that can support a Projectile skill and is not installed on the skill panel.";
-    renderCarinoAmmoSelector();
-    $("#carino-ammo-selector").showModal();
-    $("#carino-ammo-search").focus();
-    return;
-  }
-  const openHeroTraitSupport = event.target.closest("[data-open-hero-trait-support]");
-  if (openHeroTraitSupport) {
-    activeHeroTraitSupportId = openHeroTraitSupport.dataset.openHeroTraitSupport;
-    selectorKind = "hero-support";
-    selectorQuery = "";
-    selectorChoiceIndex = -1;
-    selectorSpecialConfig = null;
-    const installed = selectorTargetSupport();
-    selectorLevel = installed?.level || 20;
-    if (installed) {
-      selectorChoiceIndex = selectorEntries().findIndex((entry) => entry.name === installed.name);
-      selectorSpecialConfig = {
-        ...defaultConfigurableSupportConfig(installed.name, installed.effects),
-        ...(normalizeProgressionSupportConfig(installed.name, installed.specialConfig) || {}),
-      };
-    }
-    $("#skill-selector-search").value = "";
-    renderSkillSelector();
-    $("#skill-selector").showModal();
-    $("#skill-selector-search").focus();
     return;
   }
   if (event.target.closest("[data-close-carino-ammo]")) {
@@ -7662,13 +7419,6 @@ document.addEventListener("click", (event) => {
       next,
       `${escapeHtml(followerById(next.followerId)?.displayName || "Follower")} · ${escapeHtml(followerRarityById(next.rarity)?.name || "")} selected`,
     );
-    return;
-  }
-  if (event.target.closest("[data-change-hero]")) {
-    heroSelectorQuery = "";
-    $("#hero-selector-search").value = "";
-    renderHeroSelector();
-    $("#hero-selector").showModal();
     return;
   }
   if (event.target.closest("[data-close-hero-selector]")) {
@@ -7809,43 +7559,6 @@ document.addEventListener("click", (event) => {
     } catch (error) {
       showToast(error?.message || "A new library could not be started");
     }
-  }
-  const selenaDanceNode = event.target.closest("[data-selena-dance-node]");
-  if (selenaDanceNode) {
-    if (selenaDanceNode.dataset.selenaDanceNode === heroTraitTree(plannerState.hero.selectedHeroId)?.base) return;
-    const heroId = plannerState.hero.selectedHeroId,
-      rules = heroTreeRules(plannerState.hero, heroId),
-      name = selenaDanceNode.dataset.selenaDanceNode,
-      before = heroTreeSelections(plannerState.hero, heroId),
-      result = rules.toggle(before, name);
-    if (result.error) {
-      showToast(result.error);
-      return;
-    }
-    commitTreeTraits(heroId, result.rows);
-    showToast(
-      before.includes(name)
-        ? "Trait path shortened"
-        : `${name} selected under ${rules.rowName(result.rows.indexOf(name))}`,
-    );
-    return;
-  }
-  const traitChoiceButton = event.target.closest("[data-hero-trait]");
-  if (traitChoiceButton) {
-    const tier = traitChoiceButton.dataset.heroTraitTier;
-    const name = traitChoiceButton.dataset.heroTrait;
-    plannerState.hero.selectedTraits[tier] = name;
-    persistPlannerState();
-    renderHeroTraitTree();
-    render();
-    renderConfiguration();
-    showToast(`${escapeHtml(name)} selected`);
-  }
-  const memoryButton = event.target.closest("[data-memory-tier]");
-  if (memoryButton) {
-    activeHeroMemoryTier = memoryButton.dataset.memoryTier;
-    renderHeroMemoryInventory();
-    $("#hero-memory-selector").showModal();
   }
   if (event.target.closest("[data-close-hero-memory]")) {
     $("#hero-memory-selector").close();
@@ -8879,29 +8592,6 @@ document.addEventListener("click", (event) => {
   }
 });
 
-document.addEventListener("pointerdown", (event) => {
-  const selenaDancePick = event.target.closest("#hero-trait-tree [data-selena-dance-pick]");
-  if (selenaDancePick && event.button === 0) {
-    const from = Number(selenaDancePick.dataset.selenaDancePick),
-      name = heroTreeSelections(plannerState.hero)[from];
-    if (name) {
-      selenaDancePick.setPointerCapture?.(event.pointerId);
-      selenaDanceDrag = {
-        pointerId: event.pointerId,
-        element: selenaDancePick,
-        from,
-        name,
-        icon: selenaDancePick.querySelector("img")?.getAttribute("src") || "",
-        startX: event.clientX,
-        startY: event.clientY,
-        moved: false,
-        target: null,
-        ghost: null,
-      };
-    }
-    return;
-  }
-});
 // ---- Divinity Slates board (apps/web/src/features/slates): the board reads the "slates" source; these carry out its edits.
 function selectSlate(id, toolsPosition) {
   slateToolsPosition = toolsPosition;
@@ -9199,45 +8889,6 @@ function resetSkills() {
   renderCandidateViews();
   showToast("Skills reset to empty");
 }
-function finishSelenaDanceDrag(event, cancelled = false) {
-  if (!selenaDanceDrag || event.pointerId !== selenaDanceDrag.pointerId) return;
-  const drag = selenaDanceDrag;
-  selenaDanceDrag = null;
-  drag.element.classList.remove("selena-dance-drag-source");
-  drag.ghost?.remove();
-  document
-    .querySelectorAll("#hero-trait-tree [data-selena-dance-row]")
-    .forEach((element) =>
-      element.classList.remove("selena-dance-drop-eligible", "selena-dance-drop-blocked", "selena-dance-drop-target"),
-    );
-  if (!drag.moved) return;
-  suppressSelenaDanceClick = true;
-  setTimeout(() => {
-    suppressSelenaDanceClick = false;
-  }, 0);
-  const target = cancelled
-    ? null
-    : document.elementFromPoint(event.clientX, event.clientY)?.closest("#hero-trait-tree [data-selena-dance-row]");
-  if (!target) {
-    showToast("Invalid drop · trait returned to its row");
-    return;
-  }
-  const to = Number(target.dataset.selenaDanceRow);
-  if (to === drag.from) return;
-  const heroId = plannerState.hero.selectedHeroId,
-    rules = heroTreeRules(plannerState.hero, heroId),
-    before = heroTreeSelections(plannerState.hero, heroId),
-    result = rules.move(before, drag.from, to);
-  if (result.error) {
-    showToast(result.error);
-    return;
-  }
-  const other = before[to];
-  commitTreeTraits(heroId, result.rows);
-  showToast(
-    `Moved ${drag.name} under ${rules.rowName(to)}${other ? ` · ${other} moved under ${rules.rowName(drag.from)}` : ""}`,
-  );
-}
 // Moves (or copies) a Kismet dropped on another slot of its kind (apps/web/src/features/pacts/use-kismet-drag.ts).
 function moveKismet(fromKey, toKey, kind, duplicate) {
   const result = transferKismetSlot(plannerState.pacts.kismetSlots, fromKey, toKey, { duplicate });
@@ -9260,30 +8911,9 @@ function moveKismet(fromKey, toKey, kind, duplicate) {
   refreshPactCandidate();
   showToast(`Kismet ${result.action}`);
 }
-document.addEventListener("pointerup", (event) => {
-  finishSelenaDanceDrag(event);
-});
-document.addEventListener("pointercancel", (event) => {
-  finishSelenaDanceDrag(event, true);
-});
-document.addEventListener("lostpointercapture", (event) => {
-  if (selenaDanceDrag?.pointerId === event.pointerId) finishSelenaDanceDrag(event, true);
-});
 document.addEventListener("dragstart", (event) => {
-  if (event.target.closest(".pact-tree-node.has-kismet,#hero-trait-tree [data-selena-dance-pick]"))
-    event.preventDefault();
+  if (event.target.closest(".pact-tree-node.has-kismet")) event.preventDefault();
 });
-document.addEventListener(
-  "click",
-  (event) => {
-    if (suppressSelenaDanceClick && event.target.closest("#hero-trait-tree")) {
-      suppressSelenaDanceClick = false;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }
-  },
-  true,
-);
 
 $("#skill-selector-search").addEventListener("input", (event) => {
   selectorQuery = event.target.value.trim();

@@ -1,4 +1,5 @@
 import { FollowerPanel } from "../../features/follower/FollowerPanel";
+import { HeroDetailTabs, HeroShowcase, HeroTraitTree } from "../../features/hero/HeroTab";
 import {
   CoreTalents,
   PrismPlacementPrompt,
@@ -41,25 +42,9 @@ export function TalentsView() {
           </button>
         </div>
         <div id="hero-panel-hero" className="hero-panel-content" role="tabpanel" aria-labelledby="hero-panel-tab-hero">
-          <div className="hero-showcase">
-            <div className="hero-portrait" id="selected-hero-portrait" />
-            <div className="hero-identity">
-              <span id="selected-hero-name">Selena</span>
-              <strong id="selected-hero-trait">Sing with the Tide</strong>
-              <button type="button" className="change-hero-button" data-change-hero="">
-                Change Hero
-              </button>
-            </div>
-          </div>
-          <div id="hero-detail-tabs" className="hero-detail-tabs" hidden>
-            <button type="button" data-hero-detail-tab="traits">
-              Hero Trait
-            </button>
-            <button type="button" data-hero-detail-tab="scent">
-              Scent Bottle
-            </button>
-          </div>
-          <div id="hero-trait-tree" className="hero-trait-tree" aria-label="Selena hero traits and memories" />
+          <HeroShowcase />
+          <HeroDetailTabs />
+          <HeroTraitTree />
         </div>
         <div
           id="follower-panel"

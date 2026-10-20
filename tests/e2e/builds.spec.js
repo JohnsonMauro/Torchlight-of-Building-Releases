@@ -45,7 +45,7 @@ test("an edit in the planner shows in the build list (autosave)", async ({ page 
   const { planner, builds } = await openBuilds(page);
   await expect(builds.activeCard()).not.toContainText("Youga");
   await planner.showView("talents");
-  await page.locator("[data-change-hero]").first().click();
+  await page.getByRole("button", { name: /Change Hero$/ }).click();
   const youga = page.locator('[data-select-hero="youga-the-ultimate-one"]');
   const heroName = (await youga.locator("strong").textContent()).trim();
   await youga.click();
