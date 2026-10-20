@@ -56,6 +56,21 @@ export interface ViewSources {
   sageScentSelector: DialogSession & SageScentSelectorView;
   /** Carino's Special Ammo selector: its opening, the slot and its supports. */
   carinoAmmoSelector: DialogSession & CarinoAmmoSelectorView;
+  /** The talent tree picker: the trees the open slot can take (a God tree for slot 1). */
+  talentPicker: {
+    title: string;
+    god: boolean;
+    cards: { name: string; familyClass: string; art: string; selected: boolean; points: number }[];
+  };
+  /** The core talent picker: the open tree's choices for a slot, locked below the slot's points. */
+  corePicker: {
+    title: string;
+    status: string;
+    locked: boolean;
+    options: { name: string; description: string; art: string; selected: boolean }[];
+  };
+  /** The Fate slot selector: the Pactspirit it is open for, its unlock, and every unlock. */
+  fateSlotSelector: { spirit: string; selected: string; choices: { id: string; label: string }[] };
 }
 export type ViewSourceName = keyof ViewSources;
 

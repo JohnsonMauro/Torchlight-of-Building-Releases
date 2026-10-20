@@ -1551,6 +1551,7 @@ providePlannerCommands({
   clearKismetSlot: clearKismetNode,
   openFateSlotSelector,
   clearFateSlots,
+  selectFateSlots,
   moveKismet,
   showToast: (text) => showToast(escapeHtml(text)),
   hideTooltip: hidePlannerTooltip,
@@ -1625,11 +1626,13 @@ providePlannerCommands({
   removeTalentTree,
   openTalentSlates,
   openCorePicker,
+  selectCoreTalent,
   removeCoreTalent,
   clickTalentNode,
   rightClickTalentNode,
   resetTalentTree,
   reselectTalentTree,
+  selectTalentTree,
   openPrismInventory,
   cancelPrismPlacement,
   dropPrism,
@@ -1732,6 +1735,14 @@ provideViewSource("carinoAmmoSelector", () => ({
     plannerState.hero.carinoSpecialAmmoSupports || [],
     plannerState.hero.selectedTraits["carino-ranger-of-glory:level75"] === "Well Prepared",
   ),
+}));
+// The talent tree, core talent and Fate slot pickers.
+provideViewSource("talentPicker", talentPickerSource);
+provideViewSource("corePicker", corePickerSource);
+provideViewSource("fateSlotSelector", () => ({
+  spirit: fateSlotSpirit,
+  selected: plannerState.pacts.fateUnlocks?.[fateSlotSpirit] || "",
+  choices: fateSlotChoices.map((choice) => ({ id: choice.id, label: choice.label })),
 }));
 // The hero selector's data (apps/web/src/shell/dialogs/HeroSelectorDialog.tsx).
 provideViewSource("heroSelector", () => ({
@@ -2199,7 +2210,7 @@ function talentDisplayNodes(panel = currentTalentPanel()) {
 function renderTalents() {
   renderHeroTraitTree();
   renderHeroPanel();
-  renderTalentPicker();
+  viewSourceChanged("talentPicker");
   viewSourceChanged("talents");
   setTalentSlateMode(talentSlateMode);
 }
@@ -2216,22 +2227,49 @@ function talentsSource() {
     pendingPrism: pendingPrismPlacement,
   });
 }
-function renderTalentPicker() {
+// The talent tree picker's data (apps/web/src/shell/dialogs/TalentPanelPickerDialog.tsx): the trees the open slot takes.
+function talentPickerSource() {
   const selectedTrees = plannerState.talents.selectedTrees;
   const pointTotals = talentPointTotals(activeTalentLayouts(), Object.fromEntries(talentRanks));
-  const pickerOptions = talentOptionsForSlot(activeTalentSlot, selectedTrees);
-  $("#talent-picker-title").textContent =
-    activeTalentSlot === 0
-      ? "Select a God tree"
-      : activeTalentSlot === 1
-        ? `Select a ${selectedTrees[0] || "God"} class tree`
-        : `Select talent tree ${activeTalentSlot + 1}`;
-  $("#talent-panel-picker-grid").innerHTML = pickerOptions
-    .map((name) => {
-      const item = allProfessionTalentCatalogueSs13[name];
-      return `<button type="button" class="talent-picker-card ${talentFamilyClass(name)} ${selectedTrees[activeTalentSlot] === name ? "selected" : ""} ${activeTalentSlot === 0 ? "god-tree" : "class-tree"}" data-select-panel="${escapeHtml(name)}" aria-pressed="${selectedTrees[activeTalentSlot] === name}">${artwork(tliArt.talentPanels[name] || item.emblem, name, "talent-picker-art")}<span>${activeTalentSlot === 0 ? "God tree" : "Class tree"}</span><strong>${escapeHtml(name)}</strong><small>${pointTotals.panels[name]} points</small></button>`;
-    })
-    .join("");
+  return {
+    title:
+      activeTalentSlot === 0
+        ? "Select a God tree"
+        : activeTalentSlot === 1
+          ? `Select a ${selectedTrees[0] || "God"} class tree`
+          : `Select talent tree ${activeTalentSlot + 1}`,
+    god: activeTalentSlot === 0,
+    cards: talentOptionsForSlot(activeTalentSlot, selectedTrees).map((name) => ({
+      name,
+      familyClass: talentFamilyClass(name),
+      art: tliArt.talentPanels[name] || allProfessionTalentCatalogueSs13[name].emblem,
+      selected: selectedTrees[activeTalentSlot] === name,
+      points: pointTotals.panels[name],
+    })),
+  };
+}
+// The tree picker's pick: the open slot takes that tree (a new God tree empties a class tree it does not lead to).
+function selectTalentTree(name) {
+  const previous = plannerState.talents.selectedTrees[activeTalentSlot];
+  if (previous !== name) {
+    clearTalentTreeState(previous);
+    delete plannerState.talents.installedPrisms[previous];
+    delete plannerState.talents.installedPrismNodes[previous];
+  }
+  plannerState.talents.selectedTrees[activeTalentSlot] = name;
+  if (activeTalentSlot === 0 && !talentFamiliesSs13[name].includes(plannerState.talents.selectedTrees[1])) {
+    const removed = plannerState.talents.selectedTrees[1];
+    clearTalentTreeState(removed);
+    delete plannerState.talents.installedPrisms[removed];
+    delete plannerState.talents.installedPrismNodes[removed];
+    plannerState.talents.selectedTrees[1] = "";
+  }
+  activeWorkspaceView = "talents";
+  activeTalentPanel = name;
+  persistPlannerState();
+  $("#talent-panel-picker").close();
+  renderTalents();
+  saveWorkspaceLocation();
 }
 
 function prismAffixSections(item, showCoverage = false) {
@@ -2457,21 +2495,27 @@ document.addEventListener("input", (event) => {
   renderPrismCrafterPreview();
 });
 
-function renderCoreTalentPicker(threshold) {
-  const panel = currentTalentPanel();
+// The core talent picker's data (apps/web/src/shell/dialogs/CoreTalentPickerDialog.tsx): the open tree's choices for a slot.
+function corePickerSource() {
+  const threshold = activeCoreThreshold,
+    panel = currentTalentPanel();
   const points = talentPointTotals(activeTalentLayouts(), Object.fromEntries(talentRanks)).panels[panel.name];
-  const options = panel.coreTalents.filter((core) => core.unlockPoints === threshold);
   const locked = points < threshold;
-  $("#core-picker-title").textContent = `Select ${threshold}-point core talent`;
-  $("#core-picker-status").textContent = locked
-    ? `${points}/${threshold} points in ${panel.name}. These choices unlock at ${threshold} points.`
-    : `Choose one core talent for ${panel.name}.`;
-  $("#core-talent-picker-grid").innerHTML = options
-    .map(
-      (core) =>
-        `<button type="button" class="core-picker-option ${plannerState.talents.coreSelections[`${panel.name}:${threshold}`] === core.name ? "selected" : ""}" data-core-option="${core.name}" ${locked ? "disabled" : ""}>${artwork(tliArt.coreTalents[core.name] || core.icon, core.name, "core-picker-art")}<span><strong>${core.name}</strong><small>${core.description}</small></span></button>`,
-    )
-    .join("");
+  return {
+    title: `Select ${threshold}-point core talent`,
+    status: locked
+      ? `${points}/${threshold} points in ${panel.name}. These choices unlock at ${threshold} points.`
+      : `Choose one core talent for ${panel.name}.`,
+    locked,
+    options: panel.coreTalents
+      .filter((core) => core.unlockPoints === threshold)
+      .map((core) => ({
+        name: core.name,
+        description: core.description,
+        art: tliArt.coreTalents[core.name] || core.icon,
+        selected: plannerState.talents.coreSelections[`${panel.name}:${threshold}`] === core.name,
+      })),
+  };
 }
 
 const carinoProjectileSupportOptions = () => {
@@ -4493,21 +4537,16 @@ function slateCraftedAffixGroups(slate) {
   return { fixed: affixes.slice(0, fixedCount), brand: affixes.slice(fixedCount) };
 }
 
+// The Fate slot selector (apps/web/src/shell/dialogs/FateSlotSelectorDialog.tsx) is open for this Pactspirit.
+let fateSlotSpirit = "";
 function openFateSlotSelector(name) {
-  const dialog = $("#fate-slot-selector"),
-    selected = plannerState.pacts.fateUnlocks?.[name];
-  dialog.dataset.spiritName = name;
-  $("#fate-slot-options").innerHTML = fateSlotChoices
-    .map(
-      (choice) =>
-        `<button type="button" data-select-fate-slots="${choice.id}" class="${choice.id === selected ? "selected" : ""}">${escapeHtml(choice.label)}<span aria-hidden="true">${choice.id === selected ? "✓" : "›"}</span></button>`,
-    )
-    .join("");
-  dialog.showModal();
+  fateSlotSpirit = name;
+  viewSourceChanged("fateSlotSelector");
+  $("#fate-slot-selector").showModal();
 }
 function selectFateSlots(choiceId) {
   const dialog = $("#fate-slot-selector"),
-    name = dialog.dataset.spiritName,
+    name = fateSlotSpirit,
     choice = fateSlotChoice(choiceId);
   if (!name || !choice) return;
   const nextUnlocks = { ...(plannerState.pacts.fateUnlocks || {}), [name]: choice.id };
@@ -6771,8 +6810,16 @@ function openTalentSlates() {
 }
 function openCorePicker(threshold) {
   activeCoreThreshold = threshold;
-  renderCoreTalentPicker(activeCoreThreshold);
+  viewSourceChanged("corePicker");
   $("#core-talent-picker").showModal();
+}
+// The core talent picker's pick (choices are disabled below the slot's points).
+function selectCoreTalent(name) {
+  plannerState.talents.coreSelections[`${activeTalentPanel}:${activeCoreThreshold}`] = name;
+  persistPlannerState();
+  $("#core-talent-picker").close();
+  renderTalents();
+  showToast(`${name} selected`);
 }
 function removeCoreTalent(threshold) {
   const key = `${currentTalentPanel().name}:${threshold}`;
@@ -7035,20 +7082,6 @@ document.querySelector(".loadout-tab")?.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", (event) => {
-  const fateChoice = event.target.closest("[data-select-fate-slots]");
-  if (fateChoice) {
-    selectFateSlots(fateChoice.dataset.selectFateSlots);
-    return;
-  }
-  if (event.target.closest("[data-clear-fate-slots]")) {
-    clearFateSlots($("#fate-slot-selector").dataset.spiritName);
-    $("#fate-slot-selector").close();
-    return;
-  }
-  if (event.target.closest("[data-close-fate-slot]")) {
-    $("#fate-slot-selector").close();
-    return;
-  }
   const kismetChoice = event.target.closest("[data-select-kismet]");
   if (kismetChoice) {
     selectKismetChoice(kismetChoice.dataset.selectKismet);
@@ -7074,10 +7107,6 @@ document.addEventListener("click", (event) => {
     renderHeroPanel();
     return;
   }
-  const closeTalentPicker = event.target.closest("[data-close-talent-picker]");
-  if (closeTalentPicker) $("#talent-panel-picker").close();
-  const closeCorePicker = event.target.closest("[data-close-core-picker]");
-  if (closeCorePicker) $("#core-talent-picker").close();
   if (event.target.closest("[data-close-prism-inventory]")) {
     $("#prism-inventory-dialog").close();
     return;
@@ -7392,39 +7421,6 @@ document.addEventListener("click", (event) => {
     renderHeroMemoryInventory();
     showToast(`${escapeHtml(memory.name)} saved`);
     return;
-  }
-  const selectPanelButton = event.target.closest("[data-select-panel]");
-  if (selectPanelButton) {
-    const name = selectPanelButton.dataset.selectPanel;
-    const previous = plannerState.talents.selectedTrees[activeTalentSlot];
-    if (previous !== name) {
-      clearTalentTreeState(previous);
-      delete plannerState.talents.installedPrisms[previous];
-      delete plannerState.talents.installedPrismNodes[previous];
-    }
-    plannerState.talents.selectedTrees[activeTalentSlot] = name;
-    if (activeTalentSlot === 0 && !talentFamiliesSs13[name].includes(plannerState.talents.selectedTrees[1])) {
-      const removed = plannerState.talents.selectedTrees[1];
-      clearTalentTreeState(removed);
-      delete plannerState.talents.installedPrisms[removed];
-      delete plannerState.talents.installedPrismNodes[removed];
-      plannerState.talents.selectedTrees[1] = "";
-    }
-    activeWorkspaceView = "talents";
-    activeTalentPanel = name;
-    persistPlannerState();
-    $("#talent-panel-picker").close();
-    renderTalents();
-    saveWorkspaceLocation();
-  }
-  const coreOptionButton = event.target.closest("[data-core-option]");
-  if (coreOptionButton && !coreOptionButton.disabled) {
-    plannerState.talents.coreSelections[`${activeTalentPanel}:${activeCoreThreshold}`] =
-      coreOptionButton.dataset.coreOption;
-    persistPlannerState();
-    $("#core-talent-picker").close();
-    renderTalents();
-    showToast(`${coreOptionButton.dataset.coreOption} selected`);
   }
   const voraxBaseChoice = event.target.closest("[data-select-vorax-base]");
   if (voraxBaseChoice) {

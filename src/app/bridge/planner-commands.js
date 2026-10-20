@@ -34,6 +34,8 @@
  * @property {(key: string) => void} clearKismetSlot Removes the Kismet in a slot.
  * @property {(name: string) => void} openFateSlotSelector Opens the extra Fate slot choices of a Pactspirit.
  * @property {(name: string) => void} clearFateSlots Removes a Pactspirit's extra Fate slots (and their Kismets).
+ * @property {(id: string) => void} selectFateSlots Fate slot selector: unlocks those extra slots on the Pactspirit it is open
+ *   for (Kismets in slots it no longer has are dropped).
  * @property {(from: string, to: string, kind: "micro" | "medium", copy: boolean) => void} moveKismet Moves (or copies)
  *   a Kismet to another slot of the same kind, or swaps the two.
  * @property {(text: string) => void} showToast Shows a short message (plain text).
@@ -87,6 +89,7 @@
  *   when it is empty.
  * @property {() => void} openTalentSlates Shows the slate board in place of the tree.
  * @property {(threshold: number) => void} openCorePicker Opens the core talent picker for a core slot of the open tree.
+ * @property {(name: string) => void} selectCoreTalent Core talent picker: the open tree's slot takes that core talent.
  * @property {(threshold: number) => boolean} removeCoreTalent Right-click: empties a core slot; false when it is empty.
  * @property {(coordinate: string) => void} clickTalentNode A click on a node ("column,row") of the open tree: places a
  *   waiting prism, opens the prism inventory on the installed prism, or adds a point.
@@ -94,6 +97,7 @@
  *   takes a point off, or fills an empty node.
  * @property {() => void} resetTalentTree Empties the open tree's points and cores.
  * @property {() => void} reselectTalentTree Opens the tree picker for the open tree's tab.
+ * @property {(name: string) => void} selectTalentTree Tree picker: the open slot takes that tree.
  * @property {() => void} openPrismInventory Opens the prism inventory for the open tree (not the God tree).
  * @property {() => void} cancelPrismPlacement Drops the prism waiting for its node.
  * @property {(coordinate: string | null) => void} dropPrism The end of a drag of the installed prism: on a node
