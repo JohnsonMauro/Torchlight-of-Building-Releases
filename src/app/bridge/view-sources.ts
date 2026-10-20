@@ -7,6 +7,7 @@ import type { PactsView } from "./pacts-view-model.ts";
 import type { FollowerPanelView } from "../follower-panel.js";
 import type { SkillsView } from "./skills-view-model.ts";
 import type { SlatesView } from "./slates-view-model.ts";
+import type { EquipmentView } from "./equipment-view-model.ts";
 
 /** The Config tab: the calculated build and the combat settings it was calculated with. */
 export interface ConfigurationSource {
@@ -28,6 +29,8 @@ export interface ViewSources {
   skills: SkillsView;
   /** The Divinity Slates board (src/app/bridge/slates-view-model.ts). */
   slates: SlatesView;
+  /** The Gear section of the Build page (src/app/bridge/equipment-view-model.ts). */
+  equipment: EquipmentView;
 }
 export type ViewSourceName = keyof ViewSources;
 

@@ -1,3 +1,5 @@
+import { EquippedCount, GearWorkbench } from "../../features/gear/GearWorkbench";
+
 export function EquipmentView() {
   return (
     <section id="equipment-view" className="app-view" hidden>
@@ -14,40 +16,12 @@ export function EquipmentView() {
         </div>
         <div className="talent-total">
           <span>Equipped slots</span>
-          <strong id="equipment-count">—</strong>
+          <strong id="equipment-count">
+            <EquippedCount />
+          </strong>
         </div>
       </div>
-      <div className="gear-workbench panel">
-        <aside>
-          <div id="equipment-grid" className="equipment-grid" aria-label="Equipped items" />
-          <button className="button button-secondary gear-reset" type="button" data-reset-equipment="">
-            Reset Gear
-          </button>
-        </aside>
-        <section className="gear-inventory">
-          <header>
-            <div>
-              <p className="eyebrow">Inventory</p>
-              <h2>
-                {"Items "}
-                <span id="inventory-count" />
-              </h2>
-            </div>
-            <div>
-              <button className="button" type="button" data-open-equipment-craft="rare">
-                Craft Rare Item
-              </button>
-              <button className="button" type="button" data-open-equipment-craft="legendary">
-                Craft Legendary
-              </button>
-              <button className="button" type="button" data-open-equipment-craft="vorax">
-                Craft Vorax Item
-              </button>
-            </div>
-          </header>
-          <div id="equipment-inventory" />
-        </section>
-      </div>
+      <GearWorkbench />
     </section>
   );
 }

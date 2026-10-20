@@ -132,7 +132,9 @@ test("clicking an equipped slot opens its item, whose Unequip takes it off", asy
   await planner.expectNoErrors();
 });
 
-test("clicking an Inventory card opens the item; its tools edit and duplicate it", async ({ page }) => {
+test("clicking an Inventory card opens the item; its tools, and the dialog's Copy, edit and duplicate it", async ({
+  page,
+}) => {
   const { planner, gear } = await openGear(page);
   await gear.cardButton("Ice Pulse").click();
   await expect(gear.itemDialog()).toBeVisible();
@@ -157,6 +159,14 @@ test("clicking an Inventory card opens the item; its tools edit and duplicate it
   const stored = await gear.stored();
   expect(stored.inventory).toHaveLength(11);
   expect(stored.inventory.at(-1).name).toBe("Ice Pulse Copy");
+
+  // The dialog's Copy does the same and closes the dialog.
+  await gear.cardButton("Old Grudge").click();
+  await gear.itemDialog().getByRole("button", { name: "Copy", exact: true }).click();
+  await expect(gear.toast()).toHaveText("Old Grudge duplicated");
+  await expect(gear.itemDialog()).not.toBeVisible();
+  await expect(gear.inventoryCount()).toHaveText("(12)");
+  await expect(gear.card("Old Grudge Copy")).toBeVisible();
   await planner.expectNoErrors();
 });
 
@@ -232,6 +242,9 @@ test("dragging an equipped weapon onto the other weapon slot moves it there", as
   await gear.drag(gear.slot("mainHand"), gear.slot("secondaryHand"));
   await expect(gear.toast()).toHaveText("Headless Cleric Wand equipped");
   await expect(gear.slot("mainHand")).toHaveClass(/\bdisabled\b/);
+  // The slot it went to is the selected one; the click that ends the drag does not select the emptied slot.
+  await expect(gear.slot("secondaryHand")).toHaveClass(/\bselected\b/);
+  await expect(gear.slot("mainHand")).not.toHaveClass(/\bselected\b/);
   const stored = await gear.stored();
   expect(stored.overrides.secondaryHand.sourceInventoryId).toBe("gear-game-log-mainHand");
   expect(stored.disabled).toContain("mainHand");
@@ -247,6 +260,17 @@ test("a drop on a slot the item does not fit returns it", async ({ page }) => {
       await expect(gear.slot("gloves")).toHaveClass(/\bgear-drop-eligible\b/);
     },
   });
+  await expect(gear.toast()).toHaveText("Invalid drop · item returned to its original place");
+  await expect(gear.slot("helmet")).toContainText("Blind Vision");
+  await expect(gear.itemDialog()).not.toBeVisible();
+  expect(await gear.stored()).toEqual(before);
+  await planner.expectNoErrors();
+});
+
+test("an equipped item dropped on a slot it does not fit stays, and its slot opens nothing", async ({ page }) => {
+  const { planner, gear } = await openGear(page);
+  const before = await gear.stored();
+  await gear.drag(gear.slot("helmet"), gear.slot("gloves"));
   await expect(gear.toast()).toHaveText("Invalid drop · item returned to its original place");
   await expect(gear.slot("helmet")).toContainText("Blind Vision");
   await expect(gear.itemDialog()).not.toBeVisible();

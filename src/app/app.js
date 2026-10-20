@@ -40,6 +40,7 @@ import { scorchingBeamBaseHits, strippedBeamHitCoefficient } from "../engine/ski
 import { damagePathControlsMarkup, renderStatSheet } from "./stats/stat-sheet.js";
 import { fireHitMitigation, mitigateScorchingBeamCycle } from "../engine/combat/target-hit-mitigation.js";
 import { canDropGearInSlot } from "../engine/gear/gear-drag.js";
+import { equipmentView } from "./bridge/equipment-view-model.ts";
 import { folkloreRingModifier, folkloreRingOptionFromModifiers } from "../engine/gear/legendary-ring-options.js";
 import { escapeHtml } from "./html.js";
 import { traitKeywordTextHtml, traitKeywordDetailsHtml, traitGrantNoteHtml } from "./trait-keyword-markup.js";
@@ -400,8 +401,6 @@ let prismEditingId = null;
 let pendingPrismPlacement = null;
 let prismDrag = null;
 let suppressPrismClick = false;
-let gearDrag = null;
-let suppressGearClick = false;
 let selenaDanceDrag = null; // trait-tree drag (every tree hero: src/engine/heroes/hero-trait-tree.js)
 let suppressSelenaDanceClick = false;
 // Condition ids an exclusive choice can pin (src/engine/planner.js exclusiveConditionGroups).
@@ -1210,10 +1209,6 @@ function curseBadge(status, text) {
   const reason = curseLineLeftOutReason(text);
   return coverageBadge(status, reason ? `${status}: ${reason}` : "");
 }
-function curseOffBadge(reason = "curse limit reached") {
-  const label = escapeHtml(`Curse not applied: ${reason}`);
-  return `<em class="curse-off-badge" title="${label}" aria-label="${label}">CURSE OFF</em>`;
-}
 function curseLimitNoteHtml(reason) {
   return reason ? `<p class="curse-limit-note">Not applied: ${escapeHtml(reason)}</p>` : "";
 }
@@ -1603,6 +1598,19 @@ providePlannerCommands({
     renderSlateInventory();
     $("#slate-inventory").showModal();
   },
+  // Gear section (apps/web/src/features/gear).
+  openEquipmentSlot,
+  unequipEquipmentSlot,
+  equipInventoryItem: (id) => equipInventoryItem(inventoryItemById(id)),
+  openInventoryItem: (id) => {
+    const item = inventoryItemById(id);
+    if (item) openInventoryItemDialog(item);
+  },
+  editInventoryItem: (id) => openInventoryItemEditor(inventoryItemById(id)),
+  duplicateInventoryItem,
+  resetEquipment,
+  openEquipmentCrafter,
+  dropGear,
 });
 // The FOLLOWER tab's data (src/app/follower-panel.js).
 provideViewSource("follower", () => followerPanelView(plannerState));
@@ -1625,6 +1633,8 @@ provideViewSource("slates", () =>
   }),
 );
 provideViewSource("skills", () => skillsView(currentPlanner(), plannerState.skills, activeSkillBoardTab));
+// The Gear section's data (src/app/bridge/equipment-view-model.ts).
+provideViewSource("equipment", equipmentSource);
 // The Config tab's data (src/app/bridge/view-sources.ts). Manual mode also needs the same build in automatic mode (which conditions
 // have a source); it is calculated only then.
 provideViewSource("configuration", () => {
@@ -3816,23 +3826,38 @@ function effectSummary(node, rank, multiplier = 1) {
 
 const titleCase = (value) => value.replace(/([A-Z])/g, " $1").replace(/^./, (character) => character.toUpperCase());
 
+// The Gear section is React (apps/web/src/features/gear): it re-reads its source.
 function renderEquipment() {
-  const equipmentImpact = currentEquipmentImpact();
-  const items = equipmentImpact.allItems;
-  const activeItems = items.filter((item) => !disabledEquipmentSlots.has(item.slot));
-  $("#equipment-count").textContent = `${activeItems.length}/10`;
-  $("#equipment-grid").innerHTML = equipmentSlots
-    .map(([slot, label]) => {
-      const item = items.find((entry) => entry.slot === slot);
-      const empty = !item || disabledEquipmentSlots.has(slot);
-      return `<button type="button" class="equipment-item ${slot === selectedEquipmentSlot ? "selected" : ""}${!empty && curseItemOffReason(item) ? " curse-limit-item" : ""} ${empty ? "disabled" : `rarity-${itemCardRarity(itemDisplayRarity(item), item)}${sixAffixClass(item)}${pricelessClass(item)}${itemLevel100Class(item)}${/scepter/i.test(item.base || "") ? " scepter-icon" : ""}${/\bwand\b/i.test(item.base || "") ? " wand-icon" : ""}`}" data-equipment-slot="${slot}" title="${empty ? "Select this slot, then choose an Inventory item" : "Right-click to unequip"}">${!empty && curseItemOffReason(item) ? curseOffBadge(curseItemOffReason(item)) : ""}<span>${label}</span><b>${empty ? "+" : `<img src="${gearIcon(item)}" alt="">`}</b><strong>${empty ? "Empty" : escapeHtml(item.name)}</strong><small>${empty ? "Select slot" : `Lv.${item.level || 100}`}</small></button>`;
-    })
-    .join("");
-  const inventory = inventoryItems();
-  $("#inventory-count").textContent = `(${inventory.length})`;
-  $("#equipment-inventory").innerHTML = inventory.length
-    ? `<div class="gear-inventory-grid">${inventory.map((item) => `<article class="inventory-item rarity-${itemCardRarity(itemDisplayRarity(item), item)}${sixAffixClass(item)}${pricelessClass(item)}${itemLevel100Class(item)}" data-equip-inventory="${escapeHtml(item.id)}"><button type="button" class="inventory-item-main" data-equip-inventory="${escapeHtml(item.id)}"><span class="inventory-item-icon"><img src="${gearIcon(item)}" alt=""></span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.base || titleCase(item.slot))} · Lv.${item.level || 100}</small></button>${isItemEquipped(item) ? '<em class="equipment-status">Equipped</em>' : ""}<span class="inventory-item-tools"><button type="button" data-quick-edit-item="${escapeHtml(item.id)}" title="Edit item">✎</button><button type="button" data-duplicate-item="${escapeHtml(item.id)}" title="Duplicate item">◉</button></span></article>`).join("")}</div>`
-    : `<div class="gear-empty"><strong>No items crafted yet</strong><span>Use a crafting button above to add an item.</span></div>`;
+  viewSourceChanged("equipment");
+}
+// The Gear section's data (src/app/bridge/equipment-view-model.ts).
+function equipmentSource() {
+  return equipmentView({
+    slots: equipmentSlots,
+    items: currentEquipmentImpact().allItems,
+    disabled: disabledEquipmentSlots,
+    selectedSlot: selectedEquipmentSlot,
+    inventory: inventoryItems(),
+    look: (item) => ({
+      rarityClass: `rarity-${itemCardRarity(itemDisplayRarity(item), item)}${sixAffixClass(item)}${pricelessClass(item)}${itemLevel100Class(item)}`,
+      icon: gearIcon(item),
+    }),
+    curseOffReason: curseItemOffReason,
+    isEquipped: isItemEquipped,
+    slotDragItem: equippedSlotInventoryItem,
+  });
+}
+// The Inventory entry an equipped slot holds: its source, or an entry of the same name that fits the slot (a drag of
+// the slot carries it).
+function equippedSlotInventoryItem(slot, equipped) {
+  const sourceId = plannerState.equipmentOverrides?.[slot]?.sourceInventoryId;
+  return (
+    inventoryItems().find((entry) => entry.id === sourceId) ||
+    inventoryItems().find(
+      (entry) => entry.name === equipped.name && (entry.slot === slot || canDropGearInSlot(entry, slot)),
+    ) ||
+    null
+  );
 }
 
 function compatibleEquipmentSlot(item) {
@@ -4006,6 +4031,87 @@ function equipInventoryItem(item, targetSlot = null) {
   persistPlannerState();
   renderCandidateViews();
   showToast(`${escapeHtml(item.name)} equipped`);
+}
+// Gear section commands (apps/web/src/features/gear). The item dialog and the crafter stay here.
+const inventoryItemById = (id) => inventoryItems().find((item) => item.id === id);
+function openInventoryItemDialog(item) {
+  hidePlannerTooltip();
+  selectedInventoryItemId = item.id;
+  inventoryItemEditing = false;
+  renderInventoryItemDialog();
+  $("#inventory-item-dialog").showModal();
+}
+function openEquipmentSlot(slot) {
+  selectedEquipmentSlot = slot;
+  const equippedItem = currentEquipmentImpact().allItems.find((entry) => entry.slot === slot);
+  if (!equippedItem || disabledEquipmentSlots.has(slot)) {
+    renderEquipment();
+    return;
+  }
+  const sourceId = plannerState.equipmentOverrides?.[slot]?.sourceInventoryId;
+  const inventoryItem =
+    inventoryItemById(sourceId) ||
+    inventoryItems().find((entry) => entry.slot === slot && entry.name === equippedItem.name);
+  if (inventoryItem) openInventoryItemDialog(inventoryItem);
+}
+function unequipEquipmentSlot(slot) {
+  if (disabledEquipmentSlots.has(slot)) return false;
+  disabledEquipmentSlots.add(slot);
+  persistPlannerState();
+  renderCandidateViews();
+  showToast(`${titleCase(slot)} unequipped`);
+  return true;
+}
+function duplicateInventoryItem(id) {
+  const source = inventoryItemById(id);
+  if (!source) return false;
+  const copy = structuredClone(source);
+  copy.id = `gear-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  copy.name = `${copy.name} Copy`;
+  plannerState.equipmentInventory.push(copy);
+  persistPlannerState();
+  renderCandidateViews();
+  showToast(`${escapeHtml(source.name)} duplicated`);
+  return true;
+}
+function resetEquipment() {
+  equipmentSlots.forEach(([slot]) => disabledEquipmentSlots.add(slot));
+  plannerState.equipmentOverrides = {};
+  persistPlannerState();
+  renderCandidateViews();
+  showToast("Gear reset to empty");
+}
+function openEquipmentCrafter(mode) {
+  editingCraftItemId = null;
+  equipmentCraftMode = mode;
+  selectedVoraxBaseName = "";
+  selectedLegendaryIndex = -1;
+  selectedLegendaryBase = "";
+  selectedLegendaryBeltBlendId = "";
+  selectedLegendaryTowerSequenceId = "";
+  selectedCorrosionIndex = -1;
+  selectedLegendaryCorrodedModifiers = new Set();
+  selectedLegendaryPlaceholderChoices = new Map();
+  selectedLegendaryTierChoices = new Map();
+  selectedFolkloreRingOption = "left";
+  equipmentSearch = "";
+  renderEquipmentCrafter();
+  $("#equipment-crafter").showModal();
+}
+// The end of a gear drag (src/app/bridge/planner-commands.js GearDrop): on another slot the item equips there; dragged
+// out of a slot onto the Inventory, the slot is unequipped.
+function dropGear({ itemId, fromSlot, toSlot }) {
+  const item = inventoryItemById(itemId);
+  if (!item) return;
+  if (toSlot) {
+    if (toSlot !== fromSlot) equipInventoryItem(item, toSlot);
+    return;
+  }
+  if (!fromSlot) return;
+  disabledEquipmentSlots.add(fromSlot);
+  persistPlannerState();
+  renderCandidateViews();
+  showToast(`${escapeHtml(item.name)} unequipped`);
 }
 function editingLegendaryModifierTemplate(source, index) {
   const corroded = editingCorrodedModifierIndices.has(index),
@@ -6986,41 +7092,6 @@ document.addEventListener("pointerover", (event) => {
 });
 document.addEventListener("pointermove", (event) => {
   if (event.target.closest("#planner-tooltip.damage-source-tooltip")) return;
-  if (gearDrag && event.pointerId === gearDrag.pointerId) {
-    const dx = event.clientX - gearDrag.startX,
-      dy = event.clientY - gearDrag.startY;
-    if (!gearDrag.moved && Math.hypot(dx, dy) >= 5) {
-      gearDrag.moved = true;
-      gearDrag.element.classList.add("gear-drag-source");
-      gearDrag.ghost = document.createElement("div");
-      gearDrag.ghost.className = "gear-drag-ghost";
-      gearDrag.ghost.innerHTML = `<img src="${gearIcon(gearDrag.item)}" alt=""><span>${escapeHtml(gearDrag.item.name)}</span>`;
-      document.body.append(gearDrag.ghost);
-      document
-        .querySelectorAll("#equipment-grid [data-equipment-slot]")
-        .forEach((slot) =>
-          slot.classList.toggle("gear-drop-eligible", canDropGearInSlot(gearDrag.item, slot.dataset.equipmentSlot)),
-        );
-      if (gearDrag.fromSlot) $("#equipment-inventory").classList.add("gear-drop-eligible");
-      hidePlannerTooltip();
-    }
-    if (gearDrag.moved) {
-      event.preventDefault();
-      gearDrag.ghost.style.left = `${event.clientX + 14}px`;
-      gearDrag.ghost.style.top = `${event.clientY + 14}px`;
-      const pointed = document.elementFromPoint(event.clientX, event.clientY);
-      const slot = pointed?.closest("#equipment-grid [data-equipment-slot]");
-      const target =
-        slot && canDropGearInSlot(gearDrag.item, slot.dataset.equipmentSlot)
-          ? slot
-          : gearDrag.fromSlot
-            ? pointed?.closest("#equipment-inventory")
-            : null;
-      gearDrag.target?.classList.remove("gear-drop-target");
-      gearDrag.target = target || null;
-      gearDrag.target?.classList.add("gear-drop-target");
-    }
-  }
   if (selenaDanceDrag && event.pointerId === selenaDanceDrag.pointerId) {
     const dx = event.clientX - selenaDanceDrag.startX,
       dy = event.clientY - selenaDanceDrag.startY;
@@ -7577,21 +7648,6 @@ document.addEventListener("contextmenu", (event) => {
     const coordinate = nodeButton.dataset.coordinate,
       empty = !(talentRanks.get(`${currentTalentPanel().name}:${coordinate}`) || 0);
     changeTalentRank(coordinate, empty ? 1 : -1, empty);
-    return;
-  }
-  const equipment = event.target.closest("[data-equipment-slot]");
-  if (equipment && !disabledEquipmentSlots.has(equipment.dataset.equipmentSlot)) {
-    event.preventDefault();
-    disabledEquipmentSlots.add(equipment.dataset.equipmentSlot);
-    persistPlannerState();
-    renderCandidateViews();
-    showToast(`${titleCase(equipment.dataset.equipmentSlot)} unequipped`);
-    return;
-  }
-  const inventoryItem = event.target.closest("[data-equip-inventory]");
-  if (inventoryItem) {
-    event.preventDefault();
-    equipInventoryItem(inventoryItems().find((item) => item.id === inventoryItem.dataset.equipInventory));
     return;
   }
   const core = event.target.closest("[data-core-slot]");
@@ -8370,41 +8426,6 @@ document.addEventListener("click", (event) => {
     }
     changeTalentRank(nodeButton.dataset.coordinate, 1);
   }
-  const equipmentButton = event.target.closest("[data-equipment-slot]");
-  if (equipmentButton) {
-    selectedEquipmentSlot = equipmentButton.dataset.equipmentSlot;
-    const equippedItem = currentEquipmentImpact().allItems.find((entry) => entry.slot === selectedEquipmentSlot);
-    if (equippedItem && !disabledEquipmentSlots.has(selectedEquipmentSlot)) {
-      const sourceId = plannerState.equipmentOverrides?.[selectedEquipmentSlot]?.sourceInventoryId;
-      const inventoryItem =
-        inventoryItems().find((entry) => entry.id === sourceId) ||
-        inventoryItems().find((entry) => entry.slot === selectedEquipmentSlot && entry.name === equippedItem.name);
-      if (inventoryItem) {
-        selectedInventoryItemId = inventoryItem.id;
-        inventoryItemEditing = false;
-        renderInventoryItemDialog();
-        $("#inventory-item-dialog").showModal();
-      }
-    } else renderEquipment();
-  }
-  const openEquipmentCraft = event.target.closest("[data-open-equipment-craft]");
-  if (openEquipmentCraft) {
-    editingCraftItemId = null;
-    equipmentCraftMode = openEquipmentCraft.dataset.openEquipmentCraft;
-    selectedVoraxBaseName = "";
-    selectedLegendaryIndex = -1;
-    selectedLegendaryBase = "";
-    selectedLegendaryBeltBlendId = "";
-    selectedLegendaryTowerSequenceId = "";
-    selectedCorrosionIndex = -1;
-    selectedLegendaryCorrodedModifiers = new Set();
-    selectedLegendaryPlaceholderChoices = new Map();
-    selectedLegendaryTierChoices = new Map();
-    selectedFolkloreRingOption = "left";
-    equipmentSearch = "";
-    renderEquipmentCrafter();
-    $("#equipment-crafter").showModal();
-  }
   const voraxBaseChoice = event.target.closest("[data-select-vorax-base]");
   if (voraxBaseChoice) {
     selectedVoraxBaseName = voraxBaseChoice.dataset.selectVoraxBase;
@@ -8528,35 +8549,6 @@ document.addEventListener("click", (event) => {
     renderCandidateViews();
     showToast(`${escapeHtml(item.name)} ${edited ? "updated" : "added to Inventory"}`);
   }
-  const inventoryButton = event.target.closest("[data-equip-inventory]");
-  if (inventoryButton && !event.target.closest("[data-quick-edit-item],[data-duplicate-item]")) {
-    const item = inventoryItems().find((entry) => entry.id === inventoryButton.dataset.equipInventory);
-    if (item) {
-      hidePlannerTooltip();
-      selectedInventoryItemId = item.id;
-      inventoryItemEditing = false;
-      renderInventoryItemDialog();
-      $("#inventory-item-dialog").showModal();
-    }
-  }
-  const quickEdit = event.target.closest("[data-quick-edit-item]");
-  if (quickEdit) {
-    const item = inventoryItems().find((entry) => entry.id === quickEdit.dataset.quickEditItem);
-    openInventoryItemEditor(item);
-  }
-  const duplicateItemButton = event.target.closest("[data-duplicate-item]");
-  if (duplicateItemButton) {
-    const source = inventoryItems().find((item) => item.id === duplicateItemButton.dataset.duplicateItem);
-    if (source) {
-      const { id, ...copy } = structuredClone(source);
-      copy.id = `gear-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      copy.name = `${copy.name} Copy`;
-      plannerState.equipmentInventory.push(copy);
-      persistPlannerState();
-      renderCandidateViews();
-      showToast(`${escapeHtml(source.name)} duplicated`);
-    }
-  }
   if (event.target.closest("[data-close-inventory-item]")) $("#inventory-item-dialog").close();
   if (event.target.closest("[data-equip-selected-item]")) {
     const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
@@ -8572,19 +8564,8 @@ document.addEventListener("click", (event) => {
     const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
     openInventoryItemEditor(item);
   }
-  if (event.target.closest("[data-copy-inventory-item]")) {
-    const source = inventoryItems().find((item) => item.id === selectedInventoryItemId);
-    if (source) {
-      const { id, ...copy } = structuredClone(source);
-      copy.id = `gear-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      copy.name = `${copy.name} Copy`;
-      plannerState.equipmentInventory.push(copy);
-      $("#inventory-item-dialog").close();
-      persistPlannerState();
-      renderCandidateViews();
-      showToast(`${escapeHtml(source.name)} duplicated`);
-    }
-  }
+  if (event.target.closest("[data-copy-inventory-item]") && duplicateInventoryItem(selectedInventoryItemId))
+    $("#inventory-item-dialog").close();
   const toggleEditCorrosion = event.target.closest("[data-toggle-edit-corrosion]");
   if (toggleEditCorrosion) {
     const index = Number(toggleEditCorrosion.dataset.toggleEditCorrosion);
@@ -8671,13 +8652,6 @@ document.addEventListener("click", (event) => {
       renderInventoryItemDialog();
       showToast("Inventory item updated");
     }
-  }
-  if (event.target.closest("[data-reset-equipment]")) {
-    equipmentSlots.forEach(([slot]) => disabledEquipmentSlots.add(slot));
-    plannerState.equipmentOverrides = {};
-    persistPlannerState();
-    renderCandidateViews();
-    showToast("Gear reset to empty");
   }
   if (event.target.closest("[data-close-slate-editor]")) $("#slate-editor").close();
   if (event.target.closest("[data-add-slate-affix]")) {
@@ -9278,38 +9252,6 @@ document.addEventListener("pointerdown", (event) => {
     }
     return;
   }
-  const inventoryGear = event.target.closest("#equipment-inventory .inventory-item-main[data-equip-inventory]");
-  const equippedGear = event.target.closest("#equipment-grid .equipment-item:not(.disabled)[data-equipment-slot]");
-  if ((inventoryGear || equippedGear) && event.button === 0) {
-    const slot = equippedGear?.dataset.equipmentSlot;
-    const equipped = slot ? currentEquipmentImpact().allItems.find((entry) => entry.slot === slot) : null;
-    const sourceId = slot
-      ? plannerState.equipmentOverrides?.[slot]?.sourceInventoryId
-      : inventoryGear?.dataset.equipInventory;
-    const item =
-      inventoryItems().find((entry) => entry.id === sourceId) ||
-      (equipped
-        ? inventoryItems().find(
-            (entry) => entry.name === equipped.name && (entry.slot === slot || canDropGearInSlot(entry, slot)),
-          )
-        : null);
-    if (item) {
-      const element = inventoryGear || equippedGear;
-      element.setPointerCapture?.(event.pointerId);
-      gearDrag = {
-        pointerId: event.pointerId,
-        element,
-        item,
-        fromSlot: slot || null,
-        startX: event.clientX,
-        startY: event.clientY,
-        moved: false,
-        target: null,
-        ghost: null,
-      };
-    }
-    return;
-  }
   const prismNode = event.target.closest("#talent-stage .installed-prism-node[data-coordinate]");
   if (prismNode && event.button === 0 && !pendingPrismPlacement) {
     event.preventDefault();
@@ -9477,36 +9419,6 @@ function editSlate(id) {
       $("#slate-editor").showModal();
     }
   }
-}
-function finishGearDrag(event, cancelled = false) {
-  if (!gearDrag || event.pointerId !== gearDrag.pointerId) return;
-  const drag = gearDrag;
-  gearDrag = null;
-  drag.element.classList.remove("gear-drag-source");
-  drag.target?.classList.remove("gear-drop-target");
-  drag.ghost?.remove();
-  document
-    .querySelectorAll(".gear-drop-eligible")
-    .forEach((element) => element.classList.remove("gear-drop-eligible", "gear-drop-target"));
-  if (!drag.moved) return;
-  suppressGearClick = true;
-  setTimeout(() => {
-    suppressGearClick = false;
-  }, 0);
-  const pointed = cancelled ? null : document.elementFromPoint(event.clientX, event.clientY);
-  const targetSlot = pointed?.closest("#equipment-grid [data-equipment-slot]")?.dataset.equipmentSlot;
-  if (targetSlot && canDropGearInSlot(drag.item, targetSlot)) {
-    if (targetSlot !== drag.fromSlot) equipInventoryItem(drag.item, targetSlot);
-    return;
-  }
-  if (drag.fromSlot && pointed?.closest("#equipment-inventory")) {
-    disabledEquipmentSlots.add(drag.fromSlot);
-    persistPlannerState();
-    renderCandidateViews();
-    showToast(`${escapeHtml(drag.item.name)} unequipped`);
-    return;
-  }
-  showToast("Invalid drop · item returned to its original place");
 }
 // Skills section commands (apps/web/src/features/skills): rows and sockets of the open board tab (activeSkillBoardTab).
 // The skill selector dialog stays here (the follower's skill picker shares it).
@@ -9755,12 +9667,10 @@ function finishPrismDrag(event, cancelled = false) {
   showToast(`Prism moved to node ${coordinate}`);
 }
 document.addEventListener("pointerup", (event) => {
-  finishGearDrag(event);
   finishPrismDrag(event);
   finishSelenaDanceDrag(event);
 });
 document.addEventListener("pointercancel", (event) => {
-  finishGearDrag(event, true);
   finishPrismDrag(event, true);
   finishSelenaDanceDrag(event, true);
 });
@@ -9770,7 +9680,7 @@ document.addEventListener("lostpointercapture", (event) => {
 document.addEventListener("dragstart", (event) => {
   if (
     event.target.closest(
-      "#talent-stage .installed-prism-node,#equipment-grid,#equipment-inventory,.pact-tree-node.has-kismet,#hero-trait-tree [data-selena-dance-pick]",
+      "#talent-stage .installed-prism-node,.pact-tree-node.has-kismet,#hero-trait-tree [data-selena-dance-pick]",
     )
   )
     event.preventDefault();
@@ -9779,16 +9689,6 @@ document.addEventListener(
   "click",
   (event) => {
     if (suppressPrismClick && event.target.closest("#talent-stage")) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }
-  },
-  true,
-);
-document.addEventListener(
-  "click",
-  (event) => {
-    if (suppressGearClick && event.target.closest("#equipment-grid,#equipment-inventory")) {
       event.preventDefault();
       event.stopImmediatePropagation();
     }

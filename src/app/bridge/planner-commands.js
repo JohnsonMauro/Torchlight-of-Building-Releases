@@ -66,6 +66,25 @@
  * @property {(drop: SlateDrop) => void} finishPendingSlate The click that ends a waiting slate.
  * @property {(id: string) => void} editSlate Opens a slate's affix editor (a crafted slate's, in the inventory).
  * @property {() => void} openSlateInventory Opens the slate inventory.
+ * @property {(slot: string) => void} openEquipmentSlot Gear: a click on a slot. An equipped slot opens its item's dialog;
+ *   an empty one becomes the selected slot (where the next ring or weapon goes).
+ * @property {(slot: string) => boolean} unequipEquipmentSlot Right-click: unequips a slot; false when it is already
+ *   empty.
+ * @property {(id: string) => void} equipInventoryItem Equips an Inventory item in the slot it fits (the selected slot
+ *   for a ring or a weapon).
+ * @property {(id: string) => void} openInventoryItem Opens an Inventory item's dialog (Equip, Edit, Copy, Delete).
+ * @property {(id: string) => void} editInventoryItem Opens an Inventory item's editor.
+ * @property {(id: string) => void} duplicateInventoryItem Adds a copy of an Inventory item ("<name> Copy").
+ * @property {() => void} resetEquipment Unequips every slot (the Inventory stays).
+ * @property {(mode: "rare" | "legendary" | "vorax") => void} openEquipmentCrafter Opens the crafter in that mode.
+ * @property {(drop: GearDrop) => void} dropGear The end of a gear drag on a slot the item fits, or on the Inventory.
+ */
+
+/**
+ * @typedef {object} GearDrop
+ * @property {string} itemId The dragged Inventory item.
+ * @property {string | null} fromSlot The slot it was dragged out of; null from the Inventory.
+ * @property {string | null} toSlot The slot it was dropped on; null on the Inventory (unequips fromSlot).
  */
 
 /**
