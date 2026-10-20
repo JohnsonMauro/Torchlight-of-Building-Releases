@@ -96,6 +96,7 @@
  *   ("column,row"), or null away from the nodes.
  * @property {(tab: "traits" | "path" | "scent") => void} setHeroDetailTab HERO tab: Hero Trait, Trait Path or Scent Bottle.
  * @property {() => void} openHeroSelector Opens the hero selector.
+ * @property {(id: string) => void} selectHero Hero selector: switches the open build to that hero (its own loadout).
  * @property {(tier: string) => void} openMemorySocket Opens the memory selector for a socket ("base", "level45",
  *   "<hero>:level45" …).
  * @property {(tier: string) => boolean} removeMemory Right-click: takes a socket's memory off; false when it holds none.

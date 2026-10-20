@@ -22,6 +22,11 @@ export interface ConfigurationSource {
   activeNames: ReadonlySet<string>;
 }
 
+/** A dialog the planner opens: `session` goes up at every opening. */
+export interface DialogSession {
+  session: number;
+}
+
 export interface ViewSources {
   configuration: ConfigurationSource;
   /** The Pactspirits section (src/app/bridge/pacts-view-model.ts). */
@@ -38,8 +43,10 @@ export interface ViewSources {
   talents: TalentsView;
   /** The HERO tab of the hero panel (src/app/bridge/hero-traits-view-model.ts). */
   heroTraits: HeroTraitsView;
-  /** The Stats view besides the damage path (src/app/bridge/stats-view-model.ts). */
+  /** The Stats view (src/app/bridge/stats-view-model.ts). */
   stats: StatsView;
+  /** The hero selector: its opening (counted, so its search starts over) and the open build's hero. */
+  heroSelector: DialogSession & { selectedHeroId: string };
 }
 export type ViewSourceName = keyof ViewSources;
 

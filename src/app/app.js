@@ -192,7 +192,7 @@ import {
 } from "../data/skills/special-support-tiers-ss13.js";
 import { tliArt } from "../data/assets/tli-art.js";
 import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../data/catalogs/tlidb-ss13.js";
-import { heroCatalogSs13, heroById } from "../data/heroes/hero-catalog-ss13.js";
+import { heroById } from "../data/heroes/hero-catalog-ss13.js";
 import { allHeroTraitsSs13 } from "../data/heroes/all-hero-traits-ss13.generated.js";
 import { sageElixirsSs13 } from "../data/heroes/sage-scent-ss13.generated.js";
 import { sageScentIngredientsSs13 } from "../data/heroes/sage-scent-options-ss13.js";
@@ -451,7 +451,7 @@ let selectedLegendarySlateName = "";
 let editingCraftedSlateId = null;
 let selectorKind = "skill";
 let selectorQuery = "";
-let heroSelectorQuery = "";
+let heroSelectorSession = 0; // the hero selector's openings (apps/web/src/shell/dialogs/HeroSelectorDialog.tsx)
 let activeHeroDetailTab = "traits";
 let followerSelectorQuery = "";
 let sageScentSelectorKind = "elixir";
@@ -1623,6 +1623,7 @@ providePlannerCommands({
     renderHeroTraitTree();
   },
   openHeroSelector,
+  selectHero,
   openMemorySocket,
   removeMemory,
   pickHeroTrait,
@@ -1688,6 +1689,11 @@ provideViewSource("equipment", equipmentSource);
 provideViewSource("talents", talentsSource);
 // The HERO tab's data (src/app/bridge/hero-traits-view-model.ts).
 provideViewSource("heroTraits", () => heroTraitsView(plannerState.hero, activeHeroDetailTab));
+// The hero selector's data (apps/web/src/shell/dialogs/HeroSelectorDialog.tsx).
+provideViewSource("heroSelector", () => ({
+  session: heroSelectorSession,
+  selectedHeroId: plannerState.hero.selectedHeroId,
+}));
 // The Stats view's data (src/app/bridge/stats-view-model.ts).
 provideViewSource("stats", statsSource);
 // The Config tab's data (src/app/bridge/view-sources.ts). Manual mode also needs the same build in automatic mode (which conditions
@@ -2540,10 +2546,19 @@ function renderHeroTraitTree() {
 }
 // HERO tab commands (apps/web/src/features/hero). The hero, memory, scent, ammo and support dialogs stay here.
 function openHeroSelector() {
-  heroSelectorQuery = "";
-  $("#hero-selector-search").value = "";
-  renderHeroSelector();
+  heroSelectorSession++;
+  viewSourceChanged("heroSelector");
   $("#hero-selector").showModal();
+}
+// A hero picked in the hero selector: its loadout replaces the open hero's.
+function selectHero(id) {
+  const hero = heroById(id);
+  if (!hero) return;
+  plannerState.hero = switchHeroLoadout(plannerState.hero, hero.id);
+  persistPlannerState();
+  $("#hero-selector").close();
+  renderCandidateViews();
+  showToast(`${escapeHtml(hero.name)} · ${escapeHtml(hero.trait)} selected`);
 }
 function openMemorySocket(tier) {
   activeHeroMemoryTier = tier;
@@ -5100,18 +5115,6 @@ function selectorEntries() {
   });
 }
 
-function renderHeroSelector() {
-  const query = heroSelectorQuery.trim().toLowerCase();
-  const heroes = heroCatalogSs13.filter((hero) => `${hero.name} ${hero.trait}`.toLowerCase().includes(query));
-  $("#hero-selector-grid").innerHTML = heroes.length
-    ? heroes
-        .map(
-          (hero) =>
-            `<button type="button" class="hero-selector-card ${plannerState.hero.selectedHeroId === hero.id ? "selected" : ""}" data-select-hero="${hero.id}">${hero.image ? `<img src="${hero.image}" alt="">` : `<span class="hero-card-fallback" aria-hidden="true">${escapeHtml(hero.name.slice(0, 2).toUpperCase())}</span>`}<strong>${escapeHtml(hero.name)}</strong><small>${escapeHtml(hero.trait)}</small></button>`,
-        )
-        .join("")
-    : '<p class="hero-selector-empty">No heroes match that search.</p>';
-}
 function selectorBoardSetups(traitGrants = false) {
   return skillBoardRows(currentEditedSetups(), plannerState.skills.boardSlots, activeSkillBoardTab, { traitGrants });
 }
@@ -7207,21 +7210,6 @@ document.addEventListener("click", (event) => {
     );
     return;
   }
-  if (event.target.closest("[data-close-hero-selector]")) {
-    $("#hero-selector").close();
-    return;
-  }
-  const heroChoice = event.target.closest("[data-select-hero]");
-  if (heroChoice) {
-    const hero = heroById(heroChoice.dataset.selectHero);
-    if (!hero) return;
-    plannerState.hero = switchHeroLoadout(plannerState.hero, hero.id);
-    persistPlannerState();
-    $("#hero-selector").close();
-    renderCandidateViews();
-    showToast(`${escapeHtml(hero.name)} · ${escapeHtml(hero.trait)} selected`);
-    return;
-  }
   const closeTalentPicker = event.target.closest("[data-close-talent-picker]");
   if (closeTalentPicker) $("#talent-panel-picker").close();
   const closeCorePicker = event.target.closest("[data-close-core-picker]");
@@ -8743,10 +8731,6 @@ $("#kismet-roll-controls").addEventListener("change", (event) => {
 $("#kismet-crafter").addEventListener("close", () => {
   activeKismetSlot = null;
 });
-$("#hero-selector-search").addEventListener("input", (event) => {
-  heroSelectorQuery = event.target.value;
-  renderHeroSelector();
-});
 $("#follower-selector-search").addEventListener("input", (event) => {
   followerSelectorQuery = event.target.value;
   renderFollowerSelector();
@@ -8757,9 +8741,6 @@ $("#follower-selector").addEventListener("click", (event) => {
 $("#sage-scent-search").addEventListener("input", (event) => {
   sageScentQuery = event.target.value;
   renderSageScentSelector();
-});
-$("#hero-selector").addEventListener("click", (event) => {
-  if (event.target === event.currentTarget) event.currentTarget.close();
 });
 $("#sage-scent-selector").addEventListener("click", (event) => {
   if (event.target === event.currentTarget) event.currentTarget.close();
