@@ -52,6 +52,14 @@ test("the tabs show the build's four trees with their points; a tab opens its tr
   await planner.expectNoErrors();
 });
 
+test("the planner opens on the build's first tree", async ({ page }) => {
+  const { planner, talents } = await openTalents(page, null);
+  await expect(talents.tab("God tree")).toHaveClass(/\bactive\b/);
+  await expect(talents.boardName()).toHaveText("Goddess of Knowledge");
+  await expect(talents.boardPoints()).toHaveText("28 panel · 109/115 total");
+  await planner.expectNoErrors();
+});
+
 test("a click adds a point and a right-click takes one off; a right-click on an empty node fills it", async ({
   page,
 }) => {

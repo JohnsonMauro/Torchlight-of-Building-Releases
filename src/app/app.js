@@ -366,7 +366,8 @@ const calculationsPaused = (() => {
 })();
 let plannerState = loadPlannerState();
 upgradeExistingCorrodedItems(plannerState);
-let activeTalentPanel = "Goddess of Deception";
+// The open tree: the build's first one (applyPlannerState does the same for every build opened later).
+let activeTalentPanel = plannerState.talents?.selectedTrees?.[0] || "Goddess of Deception";
 let activeTalentSlot = 0;
 let activeWorkspaceView = "talents";
 let activeStatsPanel = "sheet";
