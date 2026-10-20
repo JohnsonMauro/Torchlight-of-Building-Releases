@@ -371,6 +371,8 @@ let activeTalentSlot = 0;
 let activeWorkspaceView = "talents";
 let activeStatsPanel = "sheet";
 let selectedDamagePath = "hit";
+// The damage path tabs' keys (src/app/stats/damage-path-panel.js): a skill's hits, its ailments, a minion, the combined view.
+const DAMAGE_PATH_KEY = /^(hit|ignite|reaping|combined|hit:[\w:-]+|ailment:[\w:-]+|minion:[\w:-]+)$/;
 let selectedStatSheetSkill = "Scorching Beam";
 const workspaceLocationKey = "tli-builder:workspace-location:v1";
 function readWorkspaceLocation() {
@@ -5416,7 +5418,7 @@ $("#stat-sheet").addEventListener("change", (event) => {
 });
 
 function selectDamagePathTab(value, { focus = false } = {}) {
-  selectedDamagePath = /^(hit|ignite|reaping|combined|hit:[\w:-]+|ailment:[\w:-]+)$/.test(value) ? value : "hit";
+  selectedDamagePath = DAMAGE_PATH_KEY.test(value) ? value : "hit";
   saveWorkspaceLocation();
   for (const tab of $("#damage-path").querySelectorAll("[data-damage-path-tab]")) {
     const selected = tab.dataset.damagePathTab === selectedDamagePath;
@@ -9016,9 +9018,7 @@ if (restoredWorkspaceLocation) {
   activeStatsPanel = ["sheet", "damage-path"].includes(restoredWorkspaceLocation.statsPanel)
     ? restoredWorkspaceLocation.statsPanel
     : "sheet";
-  selectedDamagePath = /^(hit|ignite|reaping|combined|hit:[\w:-]+|ailment:[\w:-]+)$/.test(
-    restoredWorkspaceLocation.damagePath || "",
-  )
+  selectedDamagePath = DAMAGE_PATH_KEY.test(restoredWorkspaceLocation.damagePath || "")
     ? restoredWorkspaceLocation.damagePath
     : "hit";
   if (typeof restoredWorkspaceLocation.statSheetSkill === "string")

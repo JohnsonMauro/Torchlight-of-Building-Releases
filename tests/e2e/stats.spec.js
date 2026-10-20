@@ -91,6 +91,19 @@ test("Damage path shows the first path; a tab shows another, arrow keys move bet
   await planner.expectNoErrors();
 });
 
+test("the minion's damage path tab shows its path, and stays after a reload", async ({ page }) => {
+  const { planner, stats } = await openStats(page);
+  await stats.panelTab("Damage path").click();
+  await stats.pathTab("Thunder Magus (Minion)").click();
+  await expect(stats.pathTab("Thunder Magus (Minion)")).toHaveAttribute("aria-selected", "true");
+  await expect(stats.pathViews()).toHaveCount(1);
+  await expect(stats.pathViews()).toHaveAttribute("data-damage-path-view", "minion:thunder-magus");
+  await page.reload();
+  await planner.waitUntilReady();
+  await expect(stats.pathTab("Thunder Magus (Minion)")).toHaveAttribute("aria-selected", "true");
+  await planner.expectNoErrors();
+});
+
 test("the report button opens the calculation report", async ({ page }) => {
   const { planner, stats } = await openStats(page);
   await stats
