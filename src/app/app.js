@@ -55,7 +55,7 @@ import { isRenameKey, resolveBuildRename } from "./build-tab-rename.js";
 import { qolHelpTooltipHtml } from "./qol-help.js";
 import {
   followerPanelView,
-  followerPickerMarkup,
+  followerPickerView,
   followerSkillTooltipHtml,
   followerTooltipHtml,
   followerTooltipRarity,
@@ -453,7 +453,7 @@ let selectorKind = "skill";
 let selectorQuery = "";
 let heroSelectorSession = 0; // the hero selector's openings (apps/web/src/shell/dialogs/HeroSelectorDialog.tsx)
 let activeHeroDetailTab = "traits";
-let followerSelectorQuery = "";
+let followerSelectorSession = 0; // the follower selector's openings (apps/web/src/shell/dialogs/FollowerSelectorDialog.tsx)
 let sageScentSelectorKind = "elixir";
 let sageScentQuery = "";
 let activeCarinoAmmoSlot = 0;
@@ -1547,10 +1547,17 @@ providePlannerCommands({
   hideTooltip: hidePlannerTooltip,
   // Follower tab (apps/web/src/features/follower).
   openFollowerSelector: () => {
-    followerSelectorQuery = "";
-    $("#follower-selector-search").value = "";
-    renderFollowerSelector();
+    followerSelectorSession++;
+    viewSourceChanged("followerSelector");
     $("#follower-selector").showModal();
+  },
+  selectFollower: (followerId, rarityId) => {
+    const next = pickFollower(plannerState, followerId, rarityId);
+    $("#follower-selector").close();
+    commitFollower(
+      next,
+      `${escapeHtml(followerById(next.followerId)?.displayName || "Follower")} · ${escapeHtml(followerRarityById(next.rarity)?.name || "")} selected`,
+    );
   },
   openFollowerSkillSelector: (slot) => {
     hidePlannerTooltip();
@@ -1689,6 +1696,11 @@ provideViewSource("equipment", equipmentSource);
 provideViewSource("talents", talentsSource);
 // The HERO tab's data (src/app/bridge/hero-traits-view-model.ts).
 provideViewSource("heroTraits", () => heroTraitsView(plannerState.hero, activeHeroDetailTab));
+// The follower selector's data (apps/web/src/shell/dialogs/FollowerSelectorDialog.tsx).
+provideViewSource("followerSelector", () => ({
+  session: followerSelectorSession,
+  cards: followerPickerView(plannerState),
+}));
 // The hero selector's data (apps/web/src/shell/dialogs/HeroSelectorDialog.tsx).
 provideViewSource("heroSelector", () => ({
   session: heroSelectorSession,
@@ -2709,9 +2721,6 @@ function renderHeroPanel() {
   }
   // The FOLLOWER tab is React (apps/web/src/features/follower): it re-reads its source while the tab is open.
   if (follower) viewSourceChanged("follower");
-}
-function renderFollowerSelector() {
-  $("#follower-selector-grid").innerHTML = followerPickerMarkup(followerSelectorQuery, plannerState);
 }
 // A follower skill slot opens the skill board's picker (#skill-selector) as selectorKind "follower-skill" (src/app/follower-panel.js followerSkillSelectorView; 2026-10-15 user request).
 let followerSelectorSlot = 0;
@@ -7192,24 +7201,6 @@ document.addEventListener("click", (event) => {
     renderHeroPanel();
     return;
   }
-  if (event.target.closest("[data-close-follower-selector]")) {
-    $("#follower-selector").close();
-    return;
-  }
-  const followerChoice = event.target.closest("[data-select-follower]");
-  if (followerChoice) {
-    const next = pickFollower(
-      plannerState,
-      followerChoice.dataset.selectFollower,
-      followerChoice.dataset.followerRarity,
-    );
-    $("#follower-selector").close();
-    commitFollower(
-      next,
-      `${escapeHtml(followerById(next.followerId)?.displayName || "Follower")} · ${escapeHtml(followerRarityById(next.rarity)?.name || "")} selected`,
-    );
-    return;
-  }
   const closeTalentPicker = event.target.closest("[data-close-talent-picker]");
   if (closeTalentPicker) $("#talent-panel-picker").close();
   const closeCorePicker = event.target.closest("[data-close-core-picker]");
@@ -8730,13 +8721,6 @@ $("#kismet-roll-controls").addEventListener("change", (event) => {
 });
 $("#kismet-crafter").addEventListener("close", () => {
   activeKismetSlot = null;
-});
-$("#follower-selector-search").addEventListener("input", (event) => {
-  followerSelectorQuery = event.target.value;
-  renderFollowerSelector();
-});
-$("#follower-selector").addEventListener("click", (event) => {
-  if (event.target === event.currentTarget) event.currentTarget.close();
 });
 $("#sage-scent-search").addEventListener("input", (event) => {
   sageScentQuery = event.target.value;

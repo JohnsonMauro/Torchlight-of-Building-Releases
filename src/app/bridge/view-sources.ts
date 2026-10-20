@@ -4,7 +4,7 @@
 import type { PlannerResult } from "../../engine/planner-api.ts";
 import type { PlannerState } from "../../engine/state/planner-state.ts";
 import type { PactsView } from "./pacts-view-model.ts";
-import type { FollowerPanelView } from "../follower-panel.js";
+import type { FollowerPanelView, FollowerPickerCard } from "../follower-panel.js";
 import type { SkillsView } from "./skills-view-model.ts";
 import type { SlatesView } from "./slates-view-model.ts";
 import type { EquipmentView } from "./equipment-view-model.ts";
@@ -47,6 +47,8 @@ export interface ViewSources {
   stats: StatsView;
   /** The hero selector: its opening (counted, so its search starts over) and the open build's hero. */
   heroSelector: DialogSession & { selectedHeroId: string };
+  /** The follower selector: its opening and its cards (src/app/follower-panel.js followerPickerView). */
+  followerSelector: DialogSession & { cards: FollowerPickerCard[] };
 }
 export type ViewSourceName = keyof ViewSources;
 

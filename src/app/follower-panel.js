@@ -410,16 +410,43 @@ export function followerPickerOptions(query = "") {
     );
 }
 
-export function followerPickerMarkup(query, state) {
+/**
+ * @typedef {object} FollowerPickerCard
+ * @property {string} followerId
+ * @property {string} rarityId
+ * @property {string} search What the search box matches (name, species, title, trait and rarity), lower case.
+ * @property {string | null} portrait
+ * @property {string} initials Shown when there is no portrait.
+ * @property {string} name
+ * @property {string} tintClass Rarity tint of the card (" follower-tint-<id>" or "").
+ * @property {string} rarityClass
+ * @property {string} slotsText "ULT · 3 skill slots".
+ * @property {boolean} selected The open build's follower at this rarity.
+ */
+
+/**
+ * The follower selector's cards (apps/web/src/shell/dialogs/FollowerSelectorDialog.tsx): one per follower and rarity, in
+ * catalog order. The dialog filters them by `search`, as followerPickerOptions does.
+ * @returns {FollowerPickerCard[]}
+ */
+export function followerPickerView(state) {
   const current = normalizeFollowerState(state?.followers);
-  const options = followerPickerOptions(query);
-  if (!options.length) return '<p class="hero-selector-empty">No followers match that search.</p>';
-  return options
-    .map(({ follower, rarity }) => {
-      const selected = current.followerId === follower.id && current.rarity === rarity.id;
-      return `<button type="button" class="hero-selector-card follower-selector-card${tintClass(rarity)} ${selected ? "selected" : ""}" data-select-follower="${escapeHtml(follower.id)}" data-follower-rarity="${escapeHtml(rarity.id)}" data-follower-tooltip="${escapeHtml(follower.id)}" data-follower-tooltip-rarity="${escapeHtml(rarity.id)}" aria-pressed="${selected}">${follower.portrait ? `<img src="${escapeHtml(follower.portrait)}" alt="">` : `<span class="hero-card-fallback" aria-hidden="true">${escapeHtml(follower.name.slice(0, 2).toUpperCase())}</span>`}<strong>${escapeHtml(follower.displayName)}</strong><small class="${rarityClass(rarity)}">${escapeHtml(rarity.name)} · ${followerSkillSlotQuantity(follower, rarity.id)} skill slot${followerSkillSlotQuantity(follower, rarity.id) === 1 ? "" : "s"}</small></button>`;
-    })
-    .join("");
+  return followerPickerOptions("").map(({ follower, rarity }) => {
+    const slots = followerSkillSlotQuantity(follower, rarity.id);
+    return {
+      followerId: follower.id,
+      rarityId: rarity.id,
+      search:
+        `${follower.displayName} ${follower.species} ${follower.title} ${follower.traitName} ${rarity.name}`.toLowerCase(),
+      portrait: follower.portrait || null,
+      initials: follower.name.slice(0, 2).toUpperCase(),
+      name: follower.displayName,
+      tintClass: tintClass(rarity),
+      rarityClass: rarityClass(rarity),
+      slotsText: `${rarity.name} · ${slots} skill slot${slots === 1 ? "" : "s"}`,
+      selected: current.followerId === follower.id && current.rarity === rarity.id,
+    };
+  });
 }
 
 /** The state with support affix `affixSlot` of skill slot `slot` set to affix `id` (null clears it); the slot keeps its tier. */

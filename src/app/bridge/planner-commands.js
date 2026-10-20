@@ -37,6 +37,8 @@
  * @property {(text: string) => void} showToast Shows a short message (plain text).
  * @property {() => void} hideTooltip Hides the planner's hover tooltip (a drag starts, a dialog opens).
  * @property {() => void} openFollowerSelector Opens the follower selector.
+ * @property {(followerId: string, rarityId: string) => void} selectFollower Follower selector: makes that follower at that
+ *   rarity the open build's.
  * @property {(slot: number) => void} openFollowerSkillSelector Opens the skill picker for a follower skill slot.
  * @property {(slot: number) => void} clearFollowerSkill Empties a follower skill slot.
  * @property {(tab: "skills" | "auras") => void} setSkillBoardTab Shows the Skills or the Auras board.
