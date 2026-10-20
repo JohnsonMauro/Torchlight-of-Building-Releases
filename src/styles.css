@@ -6377,8 +6377,11 @@ body.unified-planner #talents-view > .talent-layout {
   body.unified-planner #talents-view:not([hidden]) {
     grid-template-columns: 220px minmax(0, 1fr);
   }
+  /* Below the three-column width the hero panel (hero, traits, memories, follower) takes a full row after the talents;
+     it used to be hidden, which left no way to change the hero or reach the follower on a tablet or phone. */
   body.unified-planner #talents-view > .planner-hero-panel {
-    display: none;
+    grid-column: 1 / -1;
+    grid-row: auto;
   }
   body.unified-planner #talents-view > .talent-board-tabs {
     grid-column: 1;
