@@ -50,6 +50,31 @@
  * @property {(move: SupportMove) => void} moveSupport Moves (or copies) a support to another socket of the same board tab,
  *   swapping with the support there.
  * @property {() => void} resetSkills Empties both board tabs.
+ * @property {(id: string, toolsPosition: { x: number, y: number }) => void} selectSlate Selects a slate on the Divinity Slates
+ *   board; its tools open at `toolsPosition` (stage pixels).
+ * @property {() => void} clearSlateSelection A click away from the slates and their tools.
+ * @property {(id: string) => void} startSlateMove Move mode: the next board cell click places the slate.
+ * @property {(column: number, row: number) => void} placeSlateAtCell Move mode: places the slate with its top-left there.
+ * @property {(id: string, change: { rotate: 1 | -1 } | { flip: "x" | "y" }) => void} transformSlate Rotates or flips a
+ *   slate; one that no longer fits waits under the pointer until a click (finishPendingSlate).
+ * @property {(down: boolean) => void} wheelTransformSlate The wheel over the board with a slate selected.
+ * @property {(id: string) => void} removeSlate Takes an equipped or parked slate off the board.
+ * @property {(id: string) => boolean} rightClickRemoveSlate Right-click: takes an equipped or parked slate off the board
+ *   ("Slate removed"); false for any other slate.
+ * @property {(id: string, drop: SlateDrop) => void} dropSlate The end of a drag (measured by the board).
+ * @property {() => void} slateDragCancelled A drag the browser cancelled: the slate goes back.
+ * @property {(drop: SlateDrop) => void} finishPendingSlate The click that ends a waiting slate.
+ * @property {(id: string) => void} editSlate Opens a slate's affix editor (a crafted slate's, in the inventory).
+ * @property {() => void} openSlateInventory Opens the slate inventory.
+ */
+
+/**
+ * Where a dragged or waiting slate was let go. At most one is set; neither means outside the stage.
+ * @typedef {object} SlateDrop
+ * @property {{ column: number, row: number, rotation: number, flipX: number, flipY: number } | null} placement The grid
+ *   position under it (its top-left cell), when released over the grid.
+ * @property {{ x: number, y: number, rotation: number, flipX: number, flipY: number } | null} parked Its top-left in
+ *   percent of the stage, when released beside the grid.
  */
 
 /**

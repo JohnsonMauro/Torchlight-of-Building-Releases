@@ -23,6 +23,7 @@ import { aimUptimeAfterToggle } from "./aim-controls.js";
 import { provideViewSource, viewSourceChanged } from "./bridge/view-sources.ts";
 import { pactsView } from "./bridge/pacts-view-model.ts";
 import { skillsView } from "./bridge/skills-view-model.ts";
+import { slatesView } from "./bridge/slates-view-model.ts";
 import { clampCombatNumber, combatNumberLimits } from "../engine/state/state-validation.ts";
 import {
   coverageBadge,
@@ -43,8 +44,7 @@ import { folkloreRingModifier, folkloreRingOptionFromModifiers } from "../engine
 import { escapeHtml } from "./html.js";
 import { traitKeywordTextHtml, traitKeywordDetailsHtml, traitGrantNoteHtml } from "./trait-keyword-markup.js";
 import { isRenameKey, resolveBuildRename } from "./build-tab-rename.js";
-import { slateShortcutAction } from "./slate-shortcuts.js";
-import { qolHelpButton, qolHelpTooltipHtml } from "./qol-help.js";
+import { qolHelpTooltipHtml } from "./qol-help.js";
 import {
   followerPanelView,
   followerPickerMarkup,
@@ -239,15 +239,7 @@ import {
   talentFamiliesSs13,
   talentOptionsForSlot,
 } from "../engine/talents/talent-selection-rules.js";
-import {
-  SLATE_BOARD_ROWS,
-  adjacentSlateIds,
-  canPlaceSlate,
-  isCopySlate,
-  slateOffsets,
-  slateSize,
-  slateTransformRules,
-} from "../engine/talents/slate-board.js";
+import { canPlaceSlate, isCopySlate, slateSize, slateTransformRules } from "../engine/talents/slate-board.js";
 import { downloadBackup, isSafeMode, setSafeMode } from "./storage/recovery-core.js";
 import { restoreLatestRevision } from "./storage/build-library.ts";
 import { selectorBaseLevel } from "../engine/state/skill-level-input.js";
@@ -458,11 +450,8 @@ let editingLegendaryTexts = new Map();
 let selectedSlateId = null;
 let slateEditMode = false;
 let slatePlacementTarget = null;
-let slateDrag = null;
 let parkedSlates = {};
-let suppressSlateClick = false;
 let slateToolsPosition = null;
-let slateMenuLastWheelAt = 0;
 let slatePendingDrop = null;
 let talentSlateMode = false;
 let activeSlateCrafterTab = "craft";
@@ -1599,12 +1588,47 @@ providePlannerCommands({
   moveSkill: moveBoardSkill,
   moveSupport: moveBoardSupport,
   resetSkills,
+  // Divinity Slates board (apps/web/src/features/slates).
+  selectSlate,
+  clearSlateSelection,
+  startSlateMove,
+  placeSlateAtCell,
+  transformSlate,
+  wheelTransformSlate,
+  removeSlate,
+  rightClickRemoveSlate,
+  dropSlate,
+  slateDragCancelled: () => {
+    renderSlates();
+    showToast("Slate returned to its original position");
+  },
+  finishPendingSlate,
+  editSlate,
+  openSlateInventory: () => {
+    renderSlateInventory();
+    $("#slate-inventory").showModal();
+  },
 });
 // The FOLLOWER tab's data (src/app/follower-panel.js).
 provideViewSource("follower", () => followerPanelView(plannerState));
 // The Pactspirits section's data (src/app/bridge/pacts-view-model.ts).
 provideViewSource("pacts", () => pactsView(plannerState.pacts));
 // The Skills section's data (src/app/bridge/skills-view-model.ts) for the open board tab.
+// The Divinity Slates board's data (src/app/bridge/slates-view-model.ts).
+provideViewSource("slates", () =>
+  slatesView({
+    slates: slatesForBoard(),
+    placements: slatePlacements,
+    parked: parkedSlates,
+    equipped: equippedSlateIds,
+    ui: {
+      selectedId: selectedSlateId,
+      toolsPosition: slateToolsPosition,
+      editMode: slateEditMode,
+      pendingId: slatePendingDrop?.id ?? null,
+    },
+  }),
+);
 provideViewSource("skills", () => skillsView(currentPlanner(), plannerState.skills, activeSkillBoardTab));
 // The Config tab's data (src/app/bridge/view-sources.ts). Manual mode also needs the same build in automatic mode (which conditions
 // have a source); it is calculated only then.
@@ -5513,89 +5537,9 @@ function renderSlateEditor(slate) {
     `<div class="slate-editor-layout"><section><p class="eyebrow">Legendary template</p><h2>${slate.name}</h2><div class="slate-editor-shape"><img src="${slate.icon || slate.cellIcon || ""}" alt=""><div>${rules.rotate ? `<button type="button" data-slate-rotate="${slate.id}" data-slate-rotate-dir="1">↻ Rotate</button><button type="button" data-slate-rotate="${slate.id}" data-slate-rotate-dir="-1">↶ Rotate back</button>` : ""}${rules.flip ? `<button type="button" data-slate-flip="${slate.id}" data-slate-flip-axis="x">↔ Flip H</button><button type="button" data-slate-flip="${slate.id}" data-slate-flip-axis="y">↕ Flip V</button>` : ""}${!rules.rotate && !rules.flip ? "Orientation is fixed" : ""}</div></div><fieldset><legend>Affixes (${affixes.length})</legend>${affixes.map((effect, index) => `<label class="slate-affix-row"><span>Slot ${index + 1}</span><input type="text" data-slate-affix="${index}" value="${escapeHtml(effect)}"></label>`).join("")}<button type="button" class="button button-secondary add-affix" data-add-slate-affix>Add affix</button></fieldset></section><aside><span>Preview</span><div class="slate-craft-card"><strong>${slate.name}</strong><small>DIVINITY SLATE · ${slate.rarity.toUpperCase()}</small></div></aside></div><div class="slate-editor-footer"><button type="button" class="button button-secondary" data-close-slate-editor>Cancel</button><button type="button" class="button" data-save-slate-editor="${slate.id}">Save Changes</button></div>`;
 }
 
-function centerSlateGridInPanel() {
-  const panel = document.querySelector("#talents-view.showing-slates .slate-board-panel");
-  const stage = panel?.querySelector(".slate-stage"),
-    grid = stage?.querySelector(".divinity-board");
-  if (!panel || !stage || !grid || !panel.clientHeight) return;
-  const panelRect = panel.getBoundingClientRect(),
-    stageRect = stage.getBoundingClientRect();
-  const centeredTop = panelRect.top + panelRect.height / 2 - stageRect.top - grid.offsetHeight / 2;
-  stage.style.setProperty("--slate-grid-top", `${Math.max(0, Math.round(centeredTop))}px`);
-}
-
+// The Divinity Slates board (apps/web/src/features/slates) re-reads its source (src/app/bridge/slates-view-model.ts).
 function renderSlates() {
-  const slates = slatesForBoard();
-  const judgmentAffected = judgmentAffectedSlateIds(slates, slatePlacements, equippedSlateIds);
-  const adjacent = new Set(
-    slates
-      .filter((item) => item.copyRule && slatePlacements[item.id])
-      .flatMap((item) => adjacentSlateIds(item, slatePlacements, slates)),
-  );
-  const cells = SLATE_BOARD_ROWS.flatMap((columns, row) =>
-    columns.map(
-      (column) =>
-        `<button type="button" class="slate-cell" data-slate-cell="${column},${row + 1}" aria-label="Board cell ${column}, ${row + 1}"></button>`,
-    ),
-  ).join("");
-  const pieces = slates
-    .filter((slate) => equippedSlateIds.has(slate.id) && slatePlacements[slate.id])
-    .map((slate, index) => {
-      const placement = slatePlacements[slate.id],
-        flipX = placement.flipX || 1,
-        flipY = placement.flipY || 1;
-      const [width, height] = slateSize(slate, placement.rotation, flipX, flipY);
-      const [baseWidth, baseHeight] = slateSize(slate, 0);
-      const offsets = slateOffsets(slate, placement.rotation, flipX, flipY);
-      const neighbors = slate.copyRule ? adjacentSlateIds(slate, slatePlacements, slates).length : 0;
-      return `<button type="button" class="slate-piece ${slate.overlay ? "overlay-slate" : ""} ${slate.copyRule ? "copy-slate" : ""} ${judgmentAffected.has(slate.id) ? "judgment-affected" : ""} ${adjacent.has(slate.id) ? "copied-by-neighbor" : ""} ${selectedSlateId === slate.id ? "selected" : ""}" style="--slate-column:${placement.column};--slate-row:${placement.row};--slate-width:${width};--slate-height:${height};--slate-base-width:${baseWidth};--slate-base-height:${baseHeight};--slate-art-width:${baseWidth * 72}px;--slate-art-height:${baseHeight * 72}px;--slate-rotation:${placement.rotation || 0}deg;--slate-flip-x:${flipX};--slate-flip-y:${flipY}" data-slate-id="${slate.id}" aria-label="${escapeHtml(slate.name)}: hover for affixes">${offsets.map(([column, row]) => `<i style="--piece-column:${column};--piece-row:${row}">${slate.cellIcon ? `<img class="slate-cell-art" src="${slate.cellIcon}" alt="">` : ""}</i>`).join("")}${slate.icon ? `<img class="slate-piece-art" src="${slate.icon}" alt="">` : ""}<span>${index + 1}</span><strong>${slate.name}</strong>${slate.copyRule ? `<em>${neighbors} adjacent</em>` : ""}</button>`;
-    })
-    .join("");
-  const parkedPieces = slates
-    .filter((slate) => parkedSlates[slate.id] && !equippedSlateIds.has(slate.id))
-    .map((slate) => {
-      const placement = parkedSlates[slate.id],
-        flipX = placement.flipX || 1,
-        flipY = placement.flipY || 1,
-        [width, height] = slateSize(slate, placement.rotation, flipX, flipY),
-        [baseWidth, baseHeight] = slateSize(slate, 0),
-        offsets = slateOffsets(slate, placement.rotation, flipX, flipY);
-      return `<button type="button" class="slate-piece parked-slate ${slate.copyRule ? "copy-slate" : ""}" style="--park-x:${placement.x}%;--park-y:${placement.y}%;--slate-width:${width};--slate-height:${height};--slate-base-width:${baseWidth};--slate-base-height:${baseHeight};--slate-art-width:${baseWidth * 72}px;--slate-art-height:${baseHeight * 72}px;--slate-rotation:${placement.rotation || 0}deg;--slate-flip-x:${flipX};--slate-flip-y:${flipY}" data-slate-id="${slate.id}" aria-label="${escapeHtml(slate.name)}: parked outside the grid; drag onto the grid to equip">${offsets.map(([column, row]) => `<i style="--piece-column:${column};--piece-row:${row}">${slate.cellIcon ? `<img class="slate-cell-art" src="${slate.cellIcon}" alt="">` : ""}</i>`).join("")}${slate.icon ? `<img class="slate-piece-art" src="${slate.icon}" alt="">` : ""}<strong>${escapeHtml(slate.name)}</strong></button>`;
-    })
-    .join("");
-  const selectedForTools = slates.find((slate) => slate.id === selectedSlateId),
-    selectedPlacement = selectedForTools && (slatePlacements[selectedForTools.id] || parkedSlates[selectedForTools.id]);
-  const quickTools =
-    selectedForTools &&
-    selectedPlacement &&
-    (equippedSlateIds.has(selectedForTools.id) || parkedSlates[selectedForTools.id])
-      ? `<div class="slate-quick-tools" style="--tool-x:${slateToolsPosition?.x ?? 8}px;--tool-y:${slateToolsPosition?.y ?? 8}px"><strong>${selectedForTools.name}</strong><div><button type="button" data-slate-move="${selectedForTools.id}" title="Move">✥</button>${slateTransformRules(selectedForTools).rotate ? `<button type="button" data-slate-rotate="${selectedForTools.id}" data-slate-rotate-dir="1" title="Rotate clockwise (D)">↻</button><button type="button" data-slate-rotate="${selectedForTools.id}" data-slate-rotate-dir="-1" title="Rotate counter-clockwise (A)">↶</button>` : ""}${slateTransformRules(selectedForTools).flip ? `<button type="button" data-slate-flip="${selectedForTools.id}" data-slate-flip-axis="x" title="Flip horizontal (S)">↔</button><button type="button" data-slate-flip="${selectedForTools.id}" data-slate-flip-axis="y" title="Flip vertical (W)">↕</button>` : ""}<button type="button" data-edit-slate="${selectedForTools.id}" title="Edit affixes">✎</button><button type="button" class="danger" data-slate-remove="${selectedForTools.id}" title="Remove">×</button></div></div>`
-      : "";
-  $("#slate-board").innerHTML =
-    `<div class="slate-board-toolbar slate-board-toolbar-actions">${qolHelpButton("slates")}<button type="button" class="button button-secondary" data-slate-inventory>Inventory</button></div><div class="slate-stage"><div class="divinity-board ${slateEditMode ? "editing" : ""}">${cells}${pieces}</div>${parkedPieces}</div>`;
-  requestAnimationFrame(centerSlateGridInPanel);
-  for (const piece of document.querySelectorAll("#slate-board .slate-piece.judgment-affected")) {
-    const tiles = [...piece.querySelectorAll(":scope > i")];
-    const position = (tile) => [
-      Number(tile.style.getPropertyValue("--piece-column")),
-      Number(tile.style.getPropertyValue("--piece-row")),
-    ];
-    const occupied = new Set(tiles.map((tile) => position(tile).join(",")));
-    for (const tile of tiles) {
-      const [column, row] = position(tile);
-      for (const [side, neighbor] of [
-        ["top", [column, row - 1]],
-        ["right", [column + 1, row]],
-        ["bottom", [column, row + 1]],
-        ["left", [column - 1, row]],
-      ]) {
-        const exterior = !occupied.has(neighbor.join(","));
-        tile.style.setProperty(`--judgment-${side}-inset`, exterior ? "6px" : "0px");
-        tile.style.setProperty(`--judgment-${side}-border`, exterior ? "2px" : "0px");
-      }
-    }
-  }
-  if (quickTools) $("#slate-board .slate-stage").insertAdjacentHTML("beforeend", quickTools);
+  viewSourceChanged("slates");
 }
 
 const skillRoleLabels = {
@@ -7196,108 +7140,32 @@ document.addEventListener("pointermove", (event) => {
     }
   }
   if ($("#planner-tooltip").classList.contains("visible")) scheduleTooltipPosition(event.clientX, event.clientY);
-  if (slatePendingDrop) positionPendingSlate(event.clientX, event.clientY);
-  if (slateDrag && event.pointerId === slateDrag.pointerId) {
-    const dx = event.clientX - slateDrag.startX,
-      dy = event.clientY - slateDrag.startY;
-    if (!slateDrag.moved && Math.hypot(dx, dy) >= 4) {
-      slateDrag.moved = true;
-      slateDrag.element.classList.add("dragging");
-      hidePlannerTooltip();
-    }
-    if (slateDrag.moved) {
-      event.preventDefault();
-      slateDrag.element.style.transform = `translate(${dx}px, ${dy}px)`;
-    }
-  }
 });
 
-function positionPendingSlate(clientX, clientY) {
-  if (!slatePendingDrop) return;
-  const piece = document.querySelector(
-      `.divinity-board .slate-piece[data-slate-id="${CSS.escape(slatePendingDrop.id)}"]`,
-    ),
-    board = piece?.closest(".divinity-board");
-  if (!piece || !board) return;
-  const rect = board.getBoundingClientRect();
-  piece.classList.add("pending-drop");
-  piece.style.left = `${clientX - rect.left - piece.offsetWidth / 2}px`;
-  piece.style.top = `${clientY - rect.top - piece.offsetHeight / 2}px`;
-}
-
-function pickUpTransformedSlate(slate, current, candidate, clientX, clientY, action) {
+// A rotated or flipped slate that no longer fits waits under the pointer (the board follows it) until a click places it.
+function pickUpTransformedSlate(slate, current, candidate, action) {
   slatePendingDrop = { id: slate.id, original: { ...current }, transformed: candidate, action };
   slatePlacements = { ...slatePlacements, [slate.id]: candidate };
   selectedSlateId = null;
   slateToolsPosition = null;
   if ($("#slate-editor").open) $("#slate-editor").close();
   renderSlates();
-  positionPendingSlate(clientX, clientY);
   showToast(`Move the ${action} slate and click to place it`);
 }
 
-function finishPendingSlateDrop(event) {
-  if (!slatePendingDrop) return false;
+// The click that ends a waiting slate: `placement` is the grid position under it (null off the grid), `parked` the stage
+// position beside the grid (null on the grid or off the stage), both measured by the board.
+function finishPendingSlate({ placement, parked }) {
+  if (!slatePendingDrop) return;
   const pending = slatePendingDrop,
-    stage = document.querySelector("#slate-board .slate-stage"),
-    board = stage?.querySelector(".divinity-board"),
     slate = slatesForBoard().find((item) => item.id === pending.id);
-  let candidate = null;
-  const boardRect = board?.getBoundingClientRect(),
-    stageRect = stage?.getBoundingClientRect();
-  const overBoard =
-    boardRect &&
-    event.clientX >= boardRect.left &&
-    event.clientX <= boardRect.right &&
-    event.clientY >= boardRect.top &&
-    event.clientY <= boardRect.bottom;
-  const overStage =
-    stageRect &&
-    event.clientX >= stageRect.left &&
-    event.clientX <= stageRect.right &&
-    event.clientY >= stageRect.top &&
-    event.clientY <= stageRect.bottom;
-  if (overBoard && slate) {
-    const cell = boardRect.width / 6,
-      [width, height] = slateSize(
-        slate,
-        pending.transformed.rotation,
-        pending.transformed.flipX || 1,
-        pending.transformed.flipY || 1,
-      );
-    candidate = {
-      ...pending.transformed,
-      column: Math.round((event.clientX - boardRect.left - (width * cell) / 2) / cell) + 1,
-      row: Math.round((event.clientY - boardRect.top - (height * cell) / 2) / cell) + 1,
-    };
-  }
   slatePendingDrop = null;
-  if (candidate && canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
-    slatePlacements = { ...slatePlacements, [pending.id]: candidate };
+  if (placement && slate && canPlaceSlate(slate, placement, slatePlacements, slatesForBoard())) {
+    slatePlacements = { ...slatePlacements, [pending.id]: placement };
     persistPlannerState();
     showToast(`${pending.action} slate placed`);
-  } else if (slate && overStage && !overBoard) {
-    const cell = boardRect.width / 6,
-      [width, height] = slateSize(
-        slate,
-        pending.transformed.rotation,
-        pending.transformed.flipX || 1,
-        pending.transformed.flipY || 1,
-      ),
-      w = width * cell,
-      h = height * cell;
-    const x = Math.max(0, Math.min(stageRect.width - w, event.clientX - stageRect.left - w / 2)),
-      y = Math.max(0, Math.min(stageRect.height - h, event.clientY - stageRect.top - h / 2));
-    parkedSlates = {
-      ...parkedSlates,
-      [pending.id]: {
-        x: Math.round((x / stageRect.width) * 10000) / 100,
-        y: Math.round((y / stageRect.height) * 10000) / 100,
-        rotation: pending.transformed.rotation || 0,
-        flipX: pending.transformed.flipX || 1,
-        flipY: pending.transformed.flipY || 1,
-      },
-    };
+  } else if (slate && parked) {
+    parkedSlates = { ...parkedSlates, [pending.id]: parked };
     equippedSlateIds.delete(pending.id);
     const next = { ...slatePlacements };
     delete next[pending.id];
@@ -7309,7 +7177,6 @@ function finishPendingSlateDrop(event) {
     renderSlates();
     showToast("Invalid drop · slate restored");
   }
-  return true;
 }
 document.addEventListener("pointerout", (event) => {
   const target = event.target.closest(tooltipSelector);
@@ -7616,33 +7483,6 @@ function clearTalentTreeState(name) {
 }
 
 document.addEventListener("contextmenu", (event) => {
-  if (slateDrag) {
-    event.preventDefault();
-    const slate = slatesForBoard().find((item) => item.id === slateDrag.id);
-    if (!slate) return;
-    if (!slateTransformRules(slate).rotate) {
-      if (slate.template !== "Pedigree of Gods" && slate.name !== "Pedigree of Gods") return;
-      slateDrag.placement.flipX = -(slateDrag.placement.flipX || 1);
-    } else slateDrag.rotation = (slateDrag.rotation + 90) % 360;
-    slateDrag.moved = true;
-    slateDrag.element.classList.add("dragging");
-    hidePlannerTooltip();
-    const flipX = slateDrag.placement.flipX || 1,
-      flipY = slateDrag.placement.flipY || 1,
-      [width, height] = slateSize(slate, slateDrag.rotation, flipX, flipY),
-      offsets = slateOffsets(slate, slateDrag.rotation, flipX, flipY);
-    slateDrag.element.style.setProperty("--slate-width", width);
-    slateDrag.element.style.setProperty("--slate-height", height);
-    slateDrag.element.style.setProperty("--slate-rotation", `${slateDrag.rotation}deg`);
-    slateDrag.element.style.setProperty("--slate-flip-x", flipX);
-    slateDrag.element.style.setProperty("--slate-flip-y", flipY);
-    [...slateDrag.element.querySelectorAll(":scope>i")].forEach((cell, index) => {
-      const [column, row] = offsets[index];
-      cell.style.setProperty("--piece-column", column);
-      cell.style.setProperty("--piece-row", row);
-    });
-    return;
-  }
   const memoryRow = event.target.closest("[data-memory-inventory-id]");
   if (memoryRow) {
     event.preventDefault();
@@ -7816,20 +7656,6 @@ document.addEventListener("contextmenu", (event) => {
     equipInventoryItem(inventoryItems().find((item) => item.id === inventoryItem.dataset.equipInventory));
     return;
   }
-  const slate = event.target.closest("[data-slate-id]");
-  if (slate && (equippedSlateIds.has(slate.dataset.slateId) || parkedSlates[slate.dataset.slateId])) {
-    event.preventDefault();
-    const id = slate.dataset.slateId;
-    equippedSlateIds.delete(id);
-    delete parkedSlates[id];
-    const placements = { ...slatePlacements };
-    delete placements[id];
-    slatePlacements = placements;
-    persistPlannerState();
-    renderCandidateViews();
-    showToast("Slate removed");
-    return;
-  }
   const core = event.target.closest("[data-core-slot]");
   if (core) {
     const panel = currentTalentPanel();
@@ -7933,7 +7759,6 @@ document.querySelector(".loadout-tab")?.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", (event) => {
-  if (slatePendingDrop && finishPendingSlateDrop(event)) return;
   const fateChoice = event.target.closest("[data-select-fate-slots]");
   if (fateChoice) {
     selectFateSlots(fateChoice.dataset.selectFateSlots);
@@ -8938,42 +8763,7 @@ document.addEventListener("click", (event) => {
       showToast(`${escapeHtml(entry.name)} applied`);
     }
   }
-  const slateButton = event.target.closest("[data-slate-id]");
-  if (slateButton && suppressSlateClick) {
-    suppressSlateClick = false;
-    return;
-  }
-  if (slateButton) {
-    const stage = slateButton.closest(".slate-stage"),
-      rect = stage.getBoundingClientRect();
-    slateToolsPosition = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    selectedSlateId = slateButton.dataset.slateId;
-    slatePlacementTarget = selectedSlateId;
-    renderSlates();
-  }
-  const editSlateButton = event.target.closest("[data-edit-slate]");
-  if (editSlateButton) {
-    const id = editSlateButton.dataset.editSlate;
-    const crafted = (plannerState.slates.inventory || []).find((item) => item.id === id);
-    if (crafted) {
-      openCraftedSlateEditor(crafted);
-      if (!$("#slate-inventory").open) $("#slate-inventory").showModal();
-    } else {
-      const slate = slatesForBoard().find((item) => item.id === id);
-      if (slate) {
-        renderSlateEditor(slate);
-        $("#slate-editor").showModal();
-      }
-    }
-  }
   if (event.target.closest("[data-close-slate-editor]")) $("#slate-editor").close();
-  const moveSlateButton = event.target.closest("[data-slate-move]");
-  if (moveSlateButton) {
-    slatePlacementTarget = moveSlateButton.dataset.slateMove;
-    slateEditMode = true;
-    renderSlates();
-    showToast("Choose an empty board cell");
-  }
   if (event.target.closest("[data-add-slate-affix]")) {
     const list = $("#slate-editor-content fieldset");
     const index = list.querySelectorAll("[data-slate-affix]").length;
@@ -8996,11 +8786,6 @@ document.addEventListener("click", (event) => {
     $("#slate-editor").close();
     renderCandidateViews();
     showToast("Slate affixes saved");
-  }
-  const slateInventoryButton = event.target.closest("[data-slate-inventory]");
-  if (slateInventoryButton) {
-    renderSlateInventory();
-    $("#slate-inventory").showModal();
   }
   if (event.target.closest("[data-close-slate-inventory]")) $("#slate-inventory").close();
   if (event.target.closest("[data-open-slate-crafter]")) {
@@ -9244,86 +9029,15 @@ document.addEventListener("click", (event) => {
     renderSlateInventory();
     showToast("Slate removed from grid");
   }
+  // The slate editor's Rotate / Flip buttons (the board's tools are apps/web/src/features/slates).
   const slateRotateButton = event.target.closest("[data-slate-rotate]");
-  if (slateRotateButton) {
-    const slate = slatesForBoard().find((item) => item.id === slateRotateButton.dataset.slateRotate);
-    if (slate && slateTransformRules(slate).rotate) {
-      const parked = !!parkedSlates[slate.id],
-        current = parked ? parkedSlates[slate.id] : slatePlacements[slate.id],
-        direction = Number(slateRotateButton.dataset.slateRotateDir || 1);
-      if (current) {
-        const candidate = { ...current, rotation: ((current.rotation || 0) + direction * 90 + 360) % 360 };
-        if (parked) {
-          parkedSlates = { ...parkedSlates, [slate.id]: candidate };
-          persistPlannerState();
-        } else if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
-          slatePlacements = { ...slatePlacements, [slate.id]: candidate };
-          persistPlannerState();
-          if ($("#slate-editor").open) renderSlateEditor(slate);
-        } else pickUpTransformedSlate(slate, current, candidate, event.clientX, event.clientY, "Rotated");
-      }
-    }
-  }
+  if (slateRotateButton)
+    transformSlate(slateRotateButton.dataset.slateRotate, {
+      rotate: Number(slateRotateButton.dataset.slateRotateDir || 1),
+    });
   const slateFlipButton = event.target.closest("[data-slate-flip]");
-  if (slateFlipButton) {
-    const slate = slatesForBoard().find((item) => item.id === slateFlipButton.dataset.slateFlip);
-    if (slate && slateTransformRules(slate).flip) {
-      const parked = !!parkedSlates[slate.id],
-        current = parked ? parkedSlates[slate.id] : slatePlacements[slate.id];
-      if (current) {
-        const axis = slateFlipButton.dataset.slateFlipAxis,
-          candidate = {
-            ...current,
-            [axis === "y" ? "flipY" : "flipX"]: -Number(current[axis === "y" ? "flipY" : "flipX"] || 1),
-          };
-        if (parked) {
-          parkedSlates = { ...parkedSlates, [slate.id]: candidate };
-          persistPlannerState();
-        } else if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
-          slatePlacements = { ...slatePlacements, [slate.id]: candidate };
-          persistPlannerState();
-        } else pickUpTransformedSlate(slate, current, candidate, event.clientX, event.clientY, "Flipped");
-      }
-    }
-  }
-  const slateRemoveButton = event.target.closest("[data-slate-remove]");
-  if (slateRemoveButton) {
-    const id = slateRemoveButton.dataset.slateRemove;
-    if (equippedSlateIds.has(id) || parkedSlates[id]) {
-      equippedSlateIds.delete(id);
-      delete parkedSlates[id];
-      const next = { ...slatePlacements };
-      delete next[id];
-      slatePlacements = next;
-      selectedSlateId = null;
-      slateToolsPosition = null;
-    } else {
-      slatePlacementTarget = id;
-      slateEditMode = true;
-    }
-    persistPlannerState();
-    renderCandidateViews();
-  }
-  const slateCellButton = event.target.closest("[data-slate-cell]");
-  if (slateCellButton && slateEditMode && slatePlacementTarget) {
-    const slate = slatesForBoard().find((item) => item.id === slatePlacementTarget),
-      previous = slatePlacements[slate.id] || parkedSlates[slate.id] || {};
-    const [column, row] = slateCellButton.dataset.slateCell.split(",").map(Number);
-    const candidate = {
-      column,
-      row,
-      rotation: previous.rotation || 0,
-      flipX: previous.flipX || 1,
-      flipY: previous.flipY || 1,
-    };
-    if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
-      slatePlacements = { ...slatePlacements, [slate.id]: candidate };
-      equippedSlateIds.add(slate.id);
-      delete parkedSlates[slate.id];
-      persistPlannerState();
-      renderCandidateViews();
-    } else showToast("That slate overlaps or leaves the statue board");
-  }
+  if (slateFlipButton)
+    transformSlate(slateFlipButton.dataset.slateFlip, { flip: slateFlipButton.dataset.slateFlipAxis });
   if (event.target.closest("[data-close-skill-selector]")) $("#skill-selector").close();
   if (event.target.closest("[data-clear-skill-search]")) {
     selectorQuery = "";
@@ -9697,236 +9411,155 @@ document.addEventListener("pointerdown", (event) => {
     };
     return;
   }
-  const piece = event.target.closest(".slate-stage .slate-piece[data-slate-id]");
-  if (!piece || event.button !== 0) return;
-  const parked = piece.classList.contains("parked-slate"),
-    placement = parked ? parkedSlates[piece.dataset.slateId] : slatePlacements[piece.dataset.slateId];
-  if (!placement) return;
-  event.preventDefault();
-  piece.setPointerCapture?.(event.pointerId);
-  const rect = piece.getBoundingClientRect();
-  slateDrag = {
-    pointerId: event.pointerId,
-    id: piece.dataset.slateId,
-    element: piece,
-    startX: event.clientX,
-    startY: event.clientY,
-    originLeft: rect.left,
-    originTop: rect.top,
-    parked,
-    placement: { ...placement },
-    rotation: placement.rotation || 0,
-    moved: false,
-    lastWheelAt: 0,
-  };
 });
-function flipDraggedSlate(axis) {
-  if (!slateDrag) return false;
-  const slate = slatesForBoard().find((item) => item.id === slateDrag.id);
-  if (!slate || !slateTransformRules(slate).flip) return false;
-  const key = axis === "y" ? "flipY" : "flipX";
-  slateDrag.placement[key] = -(slateDrag.placement[key] || 1);
-  refreshDraggedSlateShape(slate);
-  return true;
+// ---- Divinity Slates board (apps/web/src/features/slates): the board reads the "slates" source; these carry out its edits.
+function selectSlate(id, toolsPosition) {
+  slateToolsPosition = toolsPosition;
+  selectedSlateId = id;
+  slatePlacementTarget = id;
+  renderSlates();
 }
-function rotateDraggedSlate(direction) {
-  if (!slateDrag) return false;
-  const slate = slatesForBoard().find((item) => item.id === slateDrag.id);
-  if (!slate || !slateTransformRules(slate).rotate) return false;
-  slateDrag.rotation = (slateDrag.rotation + direction * 90 + 360) % 360;
-  refreshDraggedSlateShape(slate);
-  return true;
+// A click away from the slates and their tools, while the board is shown.
+function clearSlateSelection() {
+  if (!selectedSlateId || !talentSlateMode) return;
+  selectedSlateId = null;
+  slateToolsPosition = null;
+  if (!slateEditMode) slatePlacementTarget = null;
+  renderSlates();
 }
-function refreshDraggedSlateShape(slate) {
-  slateDrag.moved = true;
-  slateDrag.element.classList.add("dragging");
-  hidePlannerTooltip();
-  const flipX = slateDrag.placement.flipX || 1,
-    flipY = slateDrag.placement.flipY || 1;
-  const [width, height] = slateSize(slate, slateDrag.rotation, flipX, flipY),
-    offsets = slateOffsets(slate, slateDrag.rotation, flipX, flipY);
-  slateDrag.element.style.setProperty("--slate-width", width);
-  slateDrag.element.style.setProperty("--slate-height", height);
-  slateDrag.element.style.setProperty("--slate-rotation", `${slateDrag.rotation}deg`);
-  slateDrag.element.style.setProperty("--slate-flip-x", flipX);
-  slateDrag.element.style.setProperty("--slate-flip-y", flipY);
-  [...slateDrag.element.querySelectorAll(":scope>i")].forEach((cell, index) => {
-    const [column, row] = offsets[index];
-    cell.style.setProperty("--piece-column", column);
-    cell.style.setProperty("--piece-row", row);
-  });
+function startSlateMove(id) {
+  slatePlacementTarget = id;
+  slateEditMode = true;
+  renderSlates();
+  showToast("Choose an empty board cell");
 }
-
-document.addEventListener("mousedown", (event) => {
-  if (!slateDrag || ![1, 3, 4].includes(event.button)) return;
-  event.preventDefault();
-  flipDraggedSlate(event.button === 4 ? "y" : "x");
-});
-document.addEventListener("mouseup", (event) => {
-  if (slateDrag && [1, 3, 4].includes(event.button)) event.preventDefault();
-});
-document.addEventListener("keydown", (event) => {
-  const action = slateShortcutAction(event);
-  if (!action) return;
-  if (slateDrag) {
-    if (action.rotate ? rotateDraggedSlate(action.rotate) : flipDraggedSlate(action.flip)) event.preventDefault();
-    return;
-  }
-  if (!selectedSlateId) return;
-  const selector = action.rotate
-    ? `[data-slate-rotate-dir="${action.rotate}"]`
-    : `[data-slate-flip-axis="${action.flip}"]`;
-  const button = document.querySelector(`.slate-quick-tools ${selector}`);
-  if (!button || !button.getClientRects().length) return;
-  event.preventDefault();
-  button.click();
-});
-document.addEventListener("auxclick", (event) => {
-  if (slateDrag && [1, 3, 4].includes(event.button)) event.preventDefault();
-});
-
-$("#slate-board").addEventListener(
-  "wheel",
-  (event) => {
-    if (!slateDrag) {
-      if (!selectedSlateId || !document.querySelector(".slate-quick-tools") || !event.target.closest(".slate-stage"))
-        return;
-      const slate = slatesForBoard().find((item) => item.id === selectedSlateId);
-      if (!slate || (!slateTransformRules(slate).rotate && !slateTransformRules(slate).flip)) return;
-      event.preventDefault();
-      const now = performance.now();
-      if (now - slateMenuLastWheelAt < 80) return;
-      slateMenuLastWheelAt = now;
-      const parked = !!parkedSlates[selectedSlateId],
-        current = parked ? parkedSlates[selectedSlateId] : slatePlacements[selectedSlateId];
-      if (!current) return;
-      const pedigree = slate.template === "Pedigree of Gods" || slate.name === "Pedigree of Gods";
-      const axis = event.deltaY >= 0 ? "flipX" : "flipY";
-      const candidate = pedigree
-        ? { ...current, [axis]: -(current[axis] || 1) }
-        : { ...current, rotation: ((current.rotation || 0) + (event.deltaY >= 0 ? 90 : -90) + 360) % 360 };
-      if (parked) {
-        parkedSlates = { ...parkedSlates, [selectedSlateId]: candidate };
-        persistPlannerState();
-        renderSlates();
-      } else if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
-        slatePlacements = { ...slatePlacements, [selectedSlateId]: candidate };
-        persistPlannerState();
-        renderSlates();
-      } else
-        pickUpTransformedSlate(
-          slate,
-          current,
-          candidate,
-          event.clientX,
-          event.clientY,
-          pedigree ? "Flipped" : "Rotated",
-        );
-      return;
-    }
-    event.preventDefault();
-    const now = performance.now();
-    if (now - slateDrag.lastWheelAt < 80) return;
-    slateDrag.lastWheelAt = now;
-    flipDraggedSlate((event.deltaY || event.deltaX) >= 0 ? "x" : "y");
-  },
-  { passive: false },
-);
-
-function finishSlateDrag(event, cancelled = false) {
-  if (!slateDrag || event.pointerId !== slateDrag.pointerId) return;
-  const drag = slateDrag;
-  slateDrag = null;
-  drag.element.classList.remove("dragging");
-  drag.element.style.transform = "";
-  if (!drag.moved) return;
-  suppressSlateClick = true;
-  setTimeout(() => {
-    suppressSlateClick = false;
-  }, 0);
-  if (cancelled) {
-    renderSlates();
-    showToast("Slate returned to its original position");
-    return;
-  }
-  const stage = drag.element.closest(".slate-stage"),
-    board = stage?.querySelector(".divinity-board");
-  if (!stage || !board) return;
-  const boardRect = board.getBoundingClientRect(),
-    stageRect = stage.getBoundingClientRect(),
-    cell = boardRect.width / 6,
-    dx = event.clientX - drag.startX,
-    dy = event.clientY - drag.startY;
+// Move mode: the cell the slate's top-left corner goes to.
+function placeSlateAtCell(column, row) {
+  if (!slateEditMode || !slatePlacementTarget) return;
+  const slate = slatesForBoard().find((item) => item.id === slatePlacementTarget),
+    previous = slatePlacements[slate.id] || parkedSlates[slate.id] || {};
   const candidate = {
-    column: Math.round((drag.originLeft + dx - boardRect.left) / cell) + 1,
-    row: Math.round((drag.originTop + dy - boardRect.top) / cell) + 1,
-    rotation: drag.rotation,
-    flipX: drag.placement.flipX || 1,
-    flipY: drag.placement.flipY || 1,
+    column,
+    row,
+    rotation: previous.rotation || 0,
+    flipX: previous.flipX || 1,
+    flipY: previous.flipY || 1,
   };
-  const slate = slatesForBoard().find((item) => item.id === drag.id);
-  const overBoard =
-    event.clientX >= boardRect.left &&
-    event.clientX <= boardRect.right &&
-    event.clientY >= boardRect.top &&
-    event.clientY <= boardRect.bottom;
-  const overStage =
-    event.clientX >= stageRect.left &&
-    event.clientX <= stageRect.right &&
-    event.clientY >= stageRect.top &&
-    event.clientY <= stageRect.bottom;
-  if (slate && overBoard && canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
-    slatePlacements = { ...slatePlacements, [drag.id]: candidate };
-    equippedSlateIds.add(drag.id);
-    delete parkedSlates[drag.id];
+  if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
+    slatePlacements = { ...slatePlacements, [slate.id]: candidate };
+    equippedSlateIds.add(slate.id);
+    delete parkedSlates[slate.id];
+    persistPlannerState();
+    renderCandidateViews();
+  } else showToast("That slate overlaps or leaves the statue board");
+}
+// Rotates ({ rotate: 1 | -1 }) or flips ({ flip: "x" | "y" }) a slate; one that no longer fits waits under the pointer.
+function transformSlate(id, change) {
+  const slate = slatesForBoard().find((item) => item.id === id);
+  if (!slate || !slateTransformRules(slate)[change.rotate ? "rotate" : "flip"]) return;
+  const parked = !!parkedSlates[slate.id],
+    current = parked ? parkedSlates[slate.id] : slatePlacements[slate.id];
+  if (!current) return;
+  const key = change.flip === "y" ? "flipY" : "flipX",
+    candidate = change.rotate
+      ? { ...current, rotation: ((current.rotation || 0) + change.rotate * 90 + 360) % 360 }
+      : { ...current, [key]: -Number(current[key] || 1) };
+  if (parked) {
+    parkedSlates = { ...parkedSlates, [slate.id]: candidate };
+    persistPlannerState();
+  } else if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
+    slatePlacements = { ...slatePlacements, [slate.id]: candidate };
+    persistPlannerState();
+    if (change.rotate && $("#slate-editor").open) renderSlateEditor(slate);
+  } else pickUpTransformedSlate(slate, current, candidate, change.rotate ? "Rotated" : "Flipped");
+}
+// The wheel over the board with a slate selected: down rotates clockwise (Pedigree of Gods flips horizontally), up the
+// other way (Pedigree of Gods flips vertically).
+function wheelTransformSlate(down) {
+  const slate = slatesForBoard().find((item) => item.id === selectedSlateId);
+  if (!slate || (!slateTransformRules(slate).rotate && !slateTransformRules(slate).flip)) return;
+  const parked = !!parkedSlates[selectedSlateId],
+    current = parked ? parkedSlates[selectedSlateId] : slatePlacements[selectedSlateId];
+  if (!current) return;
+  const pedigree = slate.template === "Pedigree of Gods" || slate.name === "Pedigree of Gods";
+  const axis = down ? "flipX" : "flipY";
+  const candidate = pedigree
+    ? { ...current, [axis]: -(current[axis] || 1) }
+    : { ...current, rotation: ((current.rotation || 0) + (down ? 90 : -90) + 360) % 360 };
+  if (parked) {
+    parkedSlates = { ...parkedSlates, [selectedSlateId]: candidate };
+    persistPlannerState();
+    renderSlates();
+  } else if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
+    slatePlacements = { ...slatePlacements, [selectedSlateId]: candidate };
+    persistPlannerState();
+    renderSlates();
+  } else pickUpTransformedSlate(slate, current, candidate, pedigree ? "Flipped" : "Rotated");
+}
+// Removes an equipped or parked slate; for another slate, starts Move mode with it.
+function removeSlate(id) {
+  if (equippedSlateIds.has(id) || parkedSlates[id]) {
+    equippedSlateIds.delete(id);
+    delete parkedSlates[id];
+    const next = { ...slatePlacements };
+    delete next[id];
+    slatePlacements = next;
+    selectedSlateId = null;
+    slateToolsPosition = null;
+  } else {
+    slatePlacementTarget = id;
+    slateEditMode = true;
+  }
+  persistPlannerState();
+  renderCandidateViews();
+}
+// The end of a drag: `placement` is the grid position under the slate (null off the grid), `parked` its stage position
+// beside the grid (null on the grid or off the stage), both measured by the board.
+function dropSlate(id, { placement, parked }) {
+  const slate = slatesForBoard().find((item) => item.id === id);
+  if (slate && placement && canPlaceSlate(slate, placement, slatePlacements, slatesForBoard())) {
+    slatePlacements = { ...slatePlacements, [id]: placement };
+    equippedSlateIds.add(id);
+    delete parkedSlates[id];
     persistPlannerState();
     showToast("Slate placed on grid");
-  } else if (slate && overStage && !overBoard) {
-    const [width, height] = slateSize(slate, drag.rotation, drag.placement.flipX || 1, drag.placement.flipY || 1);
-    let x = drag.originLeft + dx - stageRect.left,
-      y = drag.originTop + dy - stageRect.top;
-    const boardLeft = boardRect.left - stageRect.left,
-      boardTop = boardRect.top - stageRect.top;
-    const clamp = (value, max) => Math.max(0, Math.min(max, value)),
-      pieceWidth = width * cell,
-      pieceHeight = height * cell;
-    x = clamp(x, stageRect.width - pieceWidth);
-    y = clamp(y, stageRect.height - pieceHeight);
-    if (
-      x < boardLeft + boardRect.width &&
-      x + pieceWidth > boardLeft &&
-      y < boardTop + boardRect.height &&
-      y + pieceHeight > boardTop
-    ) {
-      const alternatives = [];
-      if (boardLeft >= pieceWidth) alternatives.push([boardLeft - pieceWidth, y]);
-      if (stageRect.width - boardLeft - boardRect.width >= pieceWidth)
-        alternatives.push([boardLeft + boardRect.width, y]);
-      if (boardTop >= pieceHeight) alternatives.push([x, boardTop - pieceHeight]);
-      if (stageRect.height - boardTop - boardRect.height >= pieceHeight)
-        alternatives.push([x, boardTop + boardRect.height]);
-      alternatives.sort((a, b) => (a[0] - x) ** 2 + (a[1] - y) ** 2 - (b[0] - x) ** 2 - (b[1] - y) ** 2);
-      if (alternatives.length) [x, y] = alternatives[0];
-    }
-    parkedSlates = {
-      ...parkedSlates,
-      [drag.id]: {
-        x: Math.round((x / stageRect.width) * 10000) / 100,
-        y: Math.round((y / stageRect.height) * 10000) / 100,
-        rotation: drag.rotation,
-        flipX: drag.placement.flipX || 1,
-        flipY: drag.placement.flipY || 1,
-      },
-    };
-    equippedSlateIds.delete(drag.id);
+  } else if (slate && parked) {
+    parkedSlates = { ...parkedSlates, [id]: parked };
+    equippedSlateIds.delete(id);
     const next = { ...slatePlacements };
-    delete next[drag.id];
+    delete next[id];
     slatePlacements = next;
     persistPlannerState();
     showToast("Slate parked beside the grid");
   } else {
     renderSlates();
     showToast("That slate does not fit there");
+  }
+}
+// Right-click on a slate: takes an equipped or parked slate off the board; false for any other (the browser menu opens).
+function rightClickRemoveSlate(id) {
+  if (!equippedSlateIds.has(id) && !parkedSlates[id]) return false;
+  equippedSlateIds.delete(id);
+  delete parkedSlates[id];
+  const placements = { ...slatePlacements };
+  delete placements[id];
+  slatePlacements = placements;
+  persistPlannerState();
+  renderCandidateViews();
+  showToast("Slate removed");
+  return true;
+}
+function editSlate(id) {
+  const crafted = (plannerState.slates.inventory || []).find((item) => item.id === id);
+  if (crafted) {
+    openCraftedSlateEditor(crafted);
+    if (!$("#slate-inventory").open) $("#slate-inventory").showModal();
+  } else {
+    const slate = slatesForBoard().find((item) => item.id === id);
+    if (slate) {
+      renderSlateEditor(slate);
+      $("#slate-editor").showModal();
+    }
   }
 }
 function finishGearDrag(event, cancelled = false) {
@@ -10208,13 +9841,11 @@ function finishPrismDrag(event, cancelled = false) {
 document.addEventListener("pointerup", (event) => {
   finishGearDrag(event);
   finishPrismDrag(event);
-  finishSlateDrag(event);
   finishSelenaDanceDrag(event);
 });
 document.addEventListener("pointercancel", (event) => {
   finishGearDrag(event, true);
   finishPrismDrag(event, true);
-  finishSlateDrag(event, true);
   finishSelenaDanceDrag(event, true);
 });
 document.addEventListener("lostpointercapture", (event) => {
@@ -10259,13 +9890,6 @@ document.addEventListener(
   },
   true,
 );
-document.addEventListener("click", (event) => {
-  if (!selectedSlateId || !talentSlateMode || event.target.closest("[data-slate-id],.slate-quick-tools")) return;
-  selectedSlateId = null;
-  slateToolsPosition = null;
-  if (!slateEditMode) slatePlacementTarget = null;
-  renderSlates();
-});
 
 $("#skill-selector-search").addEventListener("input", (event) => {
   selectorQuery = event.target.value.trim();
@@ -10555,7 +10179,6 @@ new MutationObserver((mutations) => {
 }).observe(document.body, { childList: true, subtree: true });
 document.addEventListener("input", scheduleRangeFillRefresh);
 document.addEventListener("change", scheduleRangeFillRefresh);
-new ResizeObserver(centerSlateGridInPanel).observe($(".slate-board-panel"));
 function restoreSummaryText({ added, renamed, unchanged, skipped, saved }) {
   const parts = [`Restored ${added} build${added === 1 ? "" : "s"}`];
   if (renamed) parts.push(`${renamed} renamed (same id already in library)`);

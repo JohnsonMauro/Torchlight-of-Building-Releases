@@ -64,6 +64,9 @@ test("dragging a slate onto free cells places it there", async ({ page }) => {
   await expect(slates.toast()).toHaveText("Slate placed on grid");
   expect((await slates.stored()).placements[FALLEN]).toEqual({ column: 2, row: 2, rotation: 270, flipX: 1, flipY: 1 });
   await expect(slates.board().locator(".slate-piece.dragging")).toHaveCount(0);
+  // The click that ends the drag does not also select the slate.
+  await expect(slates.piece(FALLEN)).not.toHaveClass(/\bselected\b/);
+  await expect(slates.tools()).toHaveCount(0);
   await planner.expectNoErrors();
 });
 
@@ -122,6 +125,15 @@ test("Remove takes the slate off the grid", async ({ page }) => {
   await slates.tool("Remove").click();
   await expect(slates.piece(FALLEN)).toHaveCount(0);
   await expect(slates.tools()).toHaveCount(0);
+  expect((await slates.stored()).equipped).toEqual([PEDIGREE, CORNER]);
+  await planner.expectNoErrors();
+});
+
+test("right-clicking a slate removes it", async ({ page }) => {
+  const { planner, slates } = await openSlates(page);
+  await slates.tile(FALLEN).click({ button: "right" });
+  await expect(slates.toast()).toHaveText("Slate removed");
+  await expect(slates.piece(FALLEN)).toHaveCount(0);
   expect((await slates.stored()).equipped).toEqual([PEDIGREE, CORNER]);
   await planner.expectNoErrors();
 });

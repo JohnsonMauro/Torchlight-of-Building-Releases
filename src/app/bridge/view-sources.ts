@@ -6,6 +6,7 @@ import type { PlannerState } from "../../engine/state/planner-state.ts";
 import type { PactsView } from "./pacts-view-model.ts";
 import type { FollowerPanelView } from "../follower-panel.js";
 import type { SkillsView } from "./skills-view-model.ts";
+import type { SlatesView } from "./slates-view-model.ts";
 
 /** The Config tab: the calculated build and the combat settings it was calculated with. */
 export interface ConfigurationSource {
@@ -25,6 +26,8 @@ export interface ViewSources {
   follower: FollowerPanelView;
   /** The Skills section of the Build page (src/app/bridge/skills-view-model.ts). */
   skills: SkillsView;
+  /** The Divinity Slates board (src/app/bridge/slates-view-model.ts). */
+  slates: SlatesView;
 }
 export type ViewSourceName = keyof ViewSources;
 
