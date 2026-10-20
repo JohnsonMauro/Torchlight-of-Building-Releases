@@ -71,6 +71,17 @@ export class StatsPage {
   pathViews() {
     return this.damagePath().locator("[data-damage-path-view]:not([hidden])");
   }
+  /** The open path's hero figure, a short / full number toggle. */
+  pathHeroValue() {
+    return this.pathViews().locator(".damage-path-hero-value");
+  }
+  /** The open path's stages (collapsible sections). */
+  pathStages() {
+    return this.pathViews().locator("details.damage-stage");
+  }
+  openQuestions() {
+    return this.damagePath().locator("details.open-questions");
+  }
   feedbackDialog() {
     return this.page.locator("#feedback-dialog");
   }

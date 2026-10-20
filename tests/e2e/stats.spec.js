@@ -1,7 +1,7 @@
 // Stats view: the build status, the Stat sheet / Damage path switch, the active skill picker, the damage banner with its
 // recount (short / full number toggles, sources left out of the view), the Effective HP banner, the Character stats tabs
 // (click, arrow keys, kept across renders and reloads) with their rows that open to their lines, the damage path tabs,
-// and the report button. Written against the legacy view before it moves to React, so both must pass it unchanged. The
+// a path's hero figure and stages, the open questions (copy, submit an answer), and the report buttons. Written against the legacy view before it moves to React, so both must pass it unchanged. The
 // golden-master Youga build has five active skills and a Thunder Magus minion.
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -228,4 +228,78 @@ test("the Character stats tab stays while the sheet re-renders and after a reloa
   await expect(stats.statTab("Defense")).toHaveAttribute("aria-selected", "true");
   await expect(stats.skillSelect()).toHaveValue("game-log-skill-3");
   await planner.expectNoErrors();
+});
+
+test("a path's hero figure shows its full number on click or Enter, and keeps it across tabs", async ({ page }) => {
+  const { planner, stats } = await openStats(page);
+  await stats.panelTab("Damage path").click();
+  const hero = stats.pathHeroValue();
+  await expect(hero).toHaveText("1.63 Billion");
+  await expect(hero.locator(".damage-path-hero-magnitude")).toHaveText("Billion");
+  await hero.click();
+  await expect(hero).toHaveText(/^1,6\d\d,\d{3},\d{3}$/);
+  await expect(hero).toHaveAttribute("aria-expanded", "true");
+  await expect(hero.locator(".damage-path-hero-magnitude")).toHaveCount(0);
+  await stats.pathTab("Ice Bond hits").click();
+  await expect(stats.pathHeroValue()).toHaveText("553.64 Thousand");
+  await stats.pathTab("Homing Frost Bolt hits").click();
+  await expect(stats.pathHeroValue()).toHaveText(/^1,6\d\d,\d{3},\d{3}$/);
+  await stats.pathHeroValue().focus();
+  await page.keyboard.press("Enter");
+  await expect(stats.pathHeroValue()).toHaveText("1.63 Billion");
+  await planner.expectNoErrors();
+});
+
+test("a path's stages open and close, and list the sources that feed them", async ({ page }) => {
+  const { planner, stats } = await openStats(page);
+  await stats.panelTab("Damage path").click();
+  const first = stats.pathStages().first();
+  await expect(first).toHaveAttribute("open", "");
+  await expect(first.locator("summary")).toContainText("Homing Frost Bolt · base hit");
+  await expect(first.locator(".damage-feed").first()).toContainText("Homing Frost Bolt · Frost Bolt Lv.20");
+  await first.locator("summary").click();
+  await expect(first).not.toHaveAttribute("open", "");
+  await expect(stats.pathViews().locator(".damage-chain-stage.result")).toContainText("Hit DPS");
+  await stats.pathTab("All paths").click();
+  await expect(stats.pathViews()).toContainText("Share by source over 10 s (recount)");
+  await planner.expectNoErrors();
+});
+
+test("the damage path's report button opens the calculation report", async ({ page }) => {
+  const { planner, stats } = await openStats(page);
+  await stats.panelTab("Damage path").click();
+  await stats
+    .damagePath()
+    .getByRole("button", { name: /Report calculation issue/ })
+    .click();
+  await expect(stats.feedbackDialog()).toBeVisible();
+  await page.keyboard.press("Escape");
+  await planner.expectNoErrors();
+});
+
+test.describe("open questions", () => {
+  test.use({ permissions: ["clipboard-read", "clipboard-write"] });
+
+  test("Copy questions puts them on the clipboard; Submit an answer opens the answer form", async ({ page }) => {
+    const { planner, stats } = await openStats(page);
+    await stats.panelTab("Damage path").click();
+    const questions = stats.openQuestions();
+    await expect(questions).toHaveAttribute("open", "");
+    await expect(questions.locator("> summary")).toContainText("Open questions5");
+    await expect(questions.locator(".open-question")).toHaveCount(5);
+    const title = (await questions.locator(".open-question-title").first().textContent()).trim();
+    const copy = questions.getByRole("button", { name: "Copy questions" });
+    await copy.click();
+    await expect(questions.locator(".open-questions-copy")).toHaveText("Copied");
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(title);
+    await expect(questions.locator(".open-questions-copy")).toHaveText("Copy questions");
+
+    const row = questions.locator(".open-question").first();
+    await row.locator("summary").click();
+    await row.getByRole("button", { name: "Submit an answer" }).click();
+    await expect(stats.feedbackDialog()).toBeVisible();
+    await expect(stats.feedbackDialog()).toContainText(title);
+    await page.keyboard.press("Escape");
+    await planner.expectNoErrors();
+  });
 });
