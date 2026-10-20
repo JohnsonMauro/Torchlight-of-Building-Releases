@@ -25,9 +25,14 @@ function subscribe(onChange: () => void): () => void {
   };
 }
 
-// useSyncExternalStore needs the same object back until something changed.
+// useSyncExternalStore needs the same object back until something changed, and a new one when it did. The planner
+// edits the cached library in place (an autosave changes a build's state and updatedAt), so each change gets a fresh
+// copy of the library and of every build record; the states inside are shared, not copied.
 function getSnapshot(): BuildLibrary {
-  if (snapshot?.version !== version) snapshot = { version, library: loadBuildLibrary() };
+  if (snapshot?.version !== version) {
+    const library = loadBuildLibrary();
+    snapshot = { version, library: { ...library, builds: library.builds.map((build) => ({ ...build })) } };
+  }
   return snapshot.library;
 }
 

@@ -41,6 +41,19 @@ test("a new build becomes active and opens the Build view", async ({ page }) => 
   await planner.expectNoErrors();
 });
 
+test("an edit in the planner shows in the build list (autosave)", async ({ page }) => {
+  const { planner, builds } = await openBuilds(page);
+  await expect(builds.activeCard()).not.toContainText("Youga");
+  await planner.showView("talents");
+  await page.locator("[data-change-hero]").first().click();
+  const youga = page.locator('[data-select-hero="youga-the-ultimate-one"]');
+  const heroName = (await youga.locator("strong").textContent()).trim();
+  await youga.click();
+  await builds.open();
+  await expect(builds.activeCard()).toContainText(heroName);
+  await planner.expectNoErrors();
+});
+
 test("saving details renames the build everywhere and keeps the notes", async ({ page }) => {
   const { planner, builds } = await openBuilds(page);
   await builds.nameInput().fill("Frost Bolt test");
