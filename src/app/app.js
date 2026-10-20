@@ -2786,6 +2786,12 @@ function renderHeroTraitTree() {
     level,
     traits.filter((trait) => trait.level === level),
   ]);
+  // The memory slot of a tier: the calculation reads "<hero>:level45", then "level45" (src/engine/character-stats.js; the
+  // game-log import stores memories under the level alone), so the socket shows and edits the first that holds one.
+  const memoryKey = (key, level) =>
+    [key, `level${level}`].find(
+      (candidate) => plannerState.hero.memories[candidate] || plannerState.hero.equippedMemoryIds?.[candidate],
+    ) || key;
   const baseTrait = traits.find((trait) => trait.level === 1);
   const dualTraitHero = selectedHero.id === "bing-creative-genius";
   const creativeGeniusUpper = {
@@ -2816,11 +2822,12 @@ function renderHeroTraitTree() {
   $("#hero-trait-tree").innerHTML =
     `<div class="hero-tier base-tier ${baseSupports ? "carino-base-tier" : ""} ${baseMemorySlot ? "has-base-memory" : ""}"><span class="tier-level"><small>LVL</small><strong>1</strong></span>${baseTierContent}</div>${tierRows
       .map(([key, level, choices]) => {
-        const memory = plannerState.hero.memories[key] || "";
+        const slotKey = memoryKey(key, level);
+        const memory = plannerState.hero.memories[slotKey] || "";
         const craftedMemory = (plannerState.hero.memoryInventory || []).find(
-          (item) => item.id === plannerState.hero.equippedMemoryIds?.[key],
+          (item) => item.id === plannerState.hero.equippedMemoryIds?.[slotKey],
         );
-        const memoryButton = `<button type="button" class="hero-memory-socket ${memory ? "filled" : ""} ${craftedMemory ? `memory-rarity-${escapeHtml(craftedMemory.rarity)}` : ""}" data-memory-tier="${key}" aria-label="${memory ? `Manage ${escapeHtml(memory)}${heroMemoryIsRevived(craftedMemory) ? ", revived" : ""}` : `Add level ${level} hero memory`}">${memory ? artwork(craftedMemory ? heroMemoryIcon(craftedMemory.type) : memoryIcon(memory), memory, "hero-memory-art") + memorySocketRevivalBadge(craftedMemory) : "<b>+</b>"}</button>`;
+        const memoryButton = `<button type="button" class="hero-memory-socket ${memory ? "filled" : ""} ${craftedMemory ? `memory-rarity-${escapeHtml(craftedMemory.rarity)}` : ""}" data-memory-tier="${slotKey}" aria-label="${memory ? `Manage ${escapeHtml(memory)}${heroMemoryIsRevived(craftedMemory) ? ", revived" : ""}` : `Add level ${level} hero memory`}">${memory ? artwork(craftedMemory ? heroMemoryIcon(craftedMemory.type) : memoryIcon(memory), memory, "hero-memory-art") + memorySocketRevivalBadge(craftedMemory) : "<b>+</b>"}</button>`;
         if (treeHero) {
           // hero.treeTraits[heroId] is row-indexed (Lv45 / 60 / 75); each pick is levelled by its row's memory (src/engine/character-stats.js) and can be dragged to another row.
           const row = TREE_ROW_LEVELS.indexOf(level),

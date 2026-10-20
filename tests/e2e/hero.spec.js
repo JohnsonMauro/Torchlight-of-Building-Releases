@@ -30,13 +30,29 @@ test("shows the selected hero, its trait tabs and its trait tiers", async ({ pag
   await expect(hero.detailTab("Trait Path")).not.toHaveClass(/\bactive\b/);
   await expect(hero.tree()).toHaveAttribute("aria-label", "Youga, The Ultimate One hero traits");
   await expect(hero.button("I Am the Ultimate One")).toHaveAttribute("aria-pressed", "true");
-  for (const level of [45, 60, 75]) await expect(hero.button(`Add level ${level} hero memory`)).toBeVisible();
+  await expect(hero.tree().locator(".hero-memory-socket")).toHaveCount(3);
+  await planner.expectNoErrors();
+});
+
+test("memories stored under the level alone (as the game-log import writes them) show in their sockets", async ({
+  page,
+}) => {
+  // The calculation reads "<hero>:level45", then "level45"; the sockets must show what it counts.
+  const { planner, hero } = await openHero(page);
+  expect(Object.keys(youga.hero.equippedMemoryIds).sort()).toEqual(["level45", "level60", "level75"]);
+  await expect(hero.button("Manage Memory of Origin")).toBeVisible();
+  await expect(hero.button("Manage Memory of Discipline")).toBeVisible();
+  await expect(hero.button("Manage Memory of Progress")).toBeVisible();
+  // A right-click takes it off, from the key it is stored under.
+  await hero.button("Manage Memory of Discipline").click({ button: "right" });
+  await expect(hero.button("Add level 60 hero memory")).toBeVisible();
+  expect((await hero.stored()).equippedMemoryIds.level60).toBeUndefined();
   await planner.expectNoErrors();
 });
 
 test("a memory socket opens the memory selector", async ({ page }) => {
   const { planner, hero } = await openHero(page);
-  await hero.button("Add level 60 hero memory").click();
+  await hero.tree().locator(".hero-memory-socket").nth(1).click();
   await expect(hero.memorySelector()).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(hero.memorySelector()).not.toBeVisible();
