@@ -12,7 +12,8 @@ export function traitLevelBonusForEnhancement(level) {
 // "+N to Non-Base Hero Trait Level" (none on memories in the catalogs).
 export function memoryOwnHeroTraitLevel(memory, { nonBase = false } = {}) {
   const pattern = nonBase ? /^\+(\d+) to (?:Non-Base )?Hero Trait Level$/i : /^\+(\d+) to Hero Trait Level$/i;
-  return (memory?.fixedAffixes || []).flatMap((text) => String(text || "").split(/\s*·\s*|\n/))
+  return (memory?.fixedAffixes || [])
+    .flatMap((text) => String(text || "").split(/\s*·\s*|\n/))
     .reduce((sum, text) => sum + Number(text.replace(/\s+/g, " ").trim().match(pattern)?.[1] || 0), 0);
 }
 
@@ -40,12 +41,21 @@ export function slotTraitLevel(hero = {}, keys = [], buildWide = 0, extras = {})
   let level;
   if (memory) level = memoryTraitLevel(memory);
   else {
-    const stored = Number(keys.map((key) => hero?.memoryTraitLevels?.[key]).find((value) => value !== undefined && value !== null) || 0) || 0;
+    const stored =
+      Number(
+        keys.map((key) => hero?.memoryTraitLevels?.[key]).find((value) => value !== undefined && value !== null) || 0,
+      ) || 0;
     const named = keys.some((key) => String(hero?.memories?.[key] || "").trim());
     if (!id && !named && stored <= 0) return 0;
     level = Math.max(1, stored);
   }
-  return Math.max(1, Math.min(extras.cap ?? 5, level + slotMemoryOwnTraitLevel(hero, ...keys) + (Number(buildWide) || 0) + (Number(extras.bonus) || 0)));
+  return Math.max(
+    1,
+    Math.min(
+      extras.cap ?? 5,
+      level + slotMemoryOwnTraitLevel(hero, ...keys) + (Number(buildWide) || 0) + (Number(extras.bonus) || 0),
+    ),
+  );
 }
 
 // Bing – Creative Genius's sixth rank (hero trait audit 2026-10-19 F2, open question Q-H2; recommended reading, provisional):
@@ -58,14 +68,22 @@ export const SIXTH_RANK_LOADOUTS = new Set(["bing-creative-genius"]);
 // A base-trait line that ends the "Artificial Moon:" section: Sage – Licorice Note prints its Ingredient catalogue ("Damage
 // Ingredient Razor Leaf: …", "Defense Ingredient …") after the moon line in TLIDB's LV.5 text, but the Ingredients are the bottle's
 // options at every level (the LV.1–4 texts carry them with no moon section). Hero trait audit B8, finding F4.
-export const endsArtificialMoonSection = (line) => /^(?:Damage|Defense|Functional|Special) Ingredient /i.test(String(line || "").trim());
+export const endsArtificialMoonSection = (line) =>
+  /^(?:Damage|Defense|Functional|Special) Ingredient /i.test(String(line || "").trim());
 const moonNonBaseLevelCache = new Map();
 /** The base trait's Artificial Moon "+N to Non-Base Hero Trait Level" (0 when its moon section has none). */
 export function moonNonBaseTraitLevel(heroId) {
   if (moonNonBaseLevelCache.has(heroId)) return moonNonBaseLevelCache.get(heroId);
-  const lines = String(baseHeroTraitProgressionsSs13[heroId] || "").split("\n").map((line) => line.trim());
+  const lines = String(baseHeroTraitProgressionsSs13[heroId] || "")
+    .split("\n")
+    .map((line) => line.trim());
   const header = lines.findIndex((line) => /^Artificial Moon:$/i.test(line));
-  const value = header < 0 ? 0 : lines.slice(header + 1).reduce((sum, line) => sum + Number(line.match(/^\+(\d+) to Non-Base Hero Trait Level$/i)?.[1] || 0), 0);
+  const value =
+    header < 0
+      ? 0
+      : lines
+          .slice(header + 1)
+          .reduce((sum, line) => sum + Number(line.match(/^\+(\d+) to Non-Base Hero Trait Level$/i)?.[1] || 0), 0);
   moonNonBaseLevelCache.set(heroId, value);
   return value;
 }
@@ -97,7 +115,10 @@ export function baseTraitDescriptionForLevel(heroId, description) {
 }
 
 export function memoryMaxEnhancementForRarity(rarity) {
-  return { normal:10, common:10, magic:20, epic:30, legendary:40, ultimate:50 }[String(rarity || "").toLowerCase()] || 50;
+  return (
+    { normal: 10, common: 10, magic: 20, epic: 30, legendary: 40, ultimate: 50 }[String(rarity || "").toLowerCase()] ||
+    50
+  );
 }
 
 export function clampMemoryEnhancement(level, rarity) {
@@ -112,8 +133,14 @@ export function memoryTierNumericValue(effect) {
 export function closestMemoryTier(tiers, value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return null;
-  return tiers.filter((entry) => memoryTierNumericValue(entry.effect) !== null)
-    .sort((a,b) => Math.abs(memoryTierNumericValue(a.effect)-numeric)-Math.abs(memoryTierNumericValue(b.effect)-numeric))[0] || null;
+  return (
+    tiers
+      .filter((entry) => memoryTierNumericValue(entry.effect) !== null)
+      .sort(
+        (a, b) =>
+          Math.abs(memoryTierNumericValue(a.effect) - numeric) - Math.abs(memoryTierNumericValue(b.effect) - numeric),
+      )[0] || null
+  );
 }
 
 export function memoryImplicitText(baseStat, waxAndWane = false) {
@@ -125,8 +152,11 @@ export function memoryImplicitText(baseStat, waxAndWane = false) {
 }
 
 export function reduceBaseTraitMemoryStat(text, reduction) {
-  const factor=1+reduction/100;
-  return String(text||"").replace(/([+-])(\d+(?:\.\d+)?)/g,(_,sign,value)=>`${sign}${Math.round(Number(value)*factor*100)/100}`);
+  const factor = 1 + reduction / 100;
+  return String(text || "").replace(
+    /([+-])(\d+(?:\.\d+)?)/g,
+    (_, sign, value) => `${sign}${Math.round(Number(value) * factor * 100) / 100}`,
+  );
 }
 
 // Base-stat values come from the game's config_modifier table (rows 4031 SS Q LL; scripts/build-memory-base-stat-values.mjs ->
@@ -141,7 +171,14 @@ export function reduceBaseTraitMemoryStat(text, reduction) {
 // 40 / 50 for every stat but Movement Speed (the SS14 Wilting Beam fixture, Epic 30 in game, keeps its panel match). The
 // planner's "Minion Attack Speed" base stat is the game's "Minion Attack and Cast Speed" row (403114).
 import { heroMemoryBaseStatValuesSs13 } from "./data/heroes/hero-memory-base-stat-values-ss13.generated.js";
-const memoryBaseStatRarity = { normal: "normal", common: "normal", magic: "magic", epic: "epic", legendary: "legendary", ultimate: "ultimate" };
+const memoryBaseStatRarity = {
+  normal: "normal",
+  common: "normal",
+  magic: "magic",
+  epic: "epic",
+  legendary: "legendary",
+  ultimate: "ultimate",
+};
 const memoryBaseStatAliases = { "+#% Minion Attack Speed": "+#% Minion Attack and Cast Speed" };
 
 export function memoryBaseStatLabel(baseStat) {
@@ -155,8 +192,9 @@ export function memoryBaseStatValue(baseStat, memoryType, enhancementLevel, rari
   const byRarity = stats?.[label] || stats?.[memoryBaseStatAliases[label]];
   if (!byRarity) return null;
   const level = clampMemoryEnhancement(enhancementLevel, rarity);
-  const key = memoryBaseStatRarity[String(rarity || "").toLowerCase()]
-    || ["normal", "magic", "epic", "legendary", "ultimate"].find((name) => memoryMaxEnhancementForRarity(name) >= level);
+  const key =
+    memoryBaseStatRarity[String(rarity || "").toLowerCase()] ||
+    ["normal", "magic", "epic", "legendary", "ultimate"].find((name) => memoryMaxEnhancementForRarity(name) >= level);
   return byRarity[key][level - 1] ?? null;
 }
 
@@ -178,7 +216,11 @@ import { baseHeroTraitProgressionsSs13 } from "./data/heroes/base-hero-trait-pro
 // (user-confirmed 2026-10-13; memoryOwnHeroTraitLevel), capped at 5. Lines on other memories or gear do not count (Frost
 // Terra build: +2 on the Lv75 memory, base trait LV.3, gate shut). The rest of the planner reads the same level
 // (baseTraitLevelForMemory). Every hero follows it. The result names what is missing when the gate is shut.
-import { equippedBaseTraitSlot, memoryFitsBaseTraitSlot, normalizeRevivedAffix } from "./data/heroes/memory-revival-ss13.js";
+import {
+  equippedBaseTraitSlot,
+  memoryFitsBaseTraitSlot,
+  normalizeRevivedAffix,
+} from "./data/heroes/memory-revival-ss13.js";
 import { revivedAffixCounts } from "./hero-exclusive-revivals.js";
 export const ARTIFICIAL_MOON_TRAIT_LEVEL = 5;
 export function artificialMoonGate(hero = {}) {
@@ -186,17 +228,41 @@ export function artificialMoonGate(hero = {}) {
   const equippedIds = Object.values(hero?.equippedMemoryIds || {}).filter(Boolean);
   // Only one revived memory counts (Q-H11, provisional; src/hero-exclusive-revivals.js): a moon memory that is not the counted
   // revived memory (an exclusive revival comes first in slot order) opens nothing.
-  const moonMemory = inventory.find((memory) => equippedIds.includes(memory.id) && /^Artificial Moon/.test(normalizeRevivedAffix(memory.revivedAffix || "")) && revivedAffixCounts(hero, memory)) || null;
+  const moonMemory =
+    inventory.find(
+      (memory) =>
+        equippedIds.includes(memory.id) &&
+        /^Artificial Moon/.test(normalizeRevivedAffix(memory.revivedAffix || "")) &&
+        revivedAffixCounts(hero, memory),
+    ) || null;
   const slot = equippedBaseTraitSlot(hero);
   const base = inventory.find((memory) => memory.id === hero?.baseTraitMemoryId);
   const baseMemory = memoryFitsBaseTraitSlot(base, slot, equippedIds) ? base : null;
-  const baseTraitLevel = baseMemory ? Math.max(0, Math.min(5, memoryTraitLevel(baseMemory) + memoryOwnHeroTraitLevel(baseMemory))) : 0;
-  const uncounted = !moonMemory && inventory.some((memory) => equippedIds.includes(memory.id) && /^Artificial Moon/.test(normalizeRevivedAffix(memory.revivedAffix || "")));
-  const reason = uncounted ? "Only one revived memory counts: another equipped revived memory comes first (slot order)"
-    : !moonMemory ? "No equipped memory with the Artificial Moon revived affix"
-    : !baseMemory ? "No memory in the base trait slot (opened by the Artificial Moon memory)"
-    : baseTraitLevel < ARTIFICIAL_MOON_TRAIT_LEVEL ? `Base trait level ${baseTraitLevel} < ${ARTIFICIAL_MOON_TRAIT_LEVEL}` : "";
-  return { active: !reason, reason, moonMemoryId: moonMemory?.id ?? null, baseMemoryId: baseMemory?.id ?? null, baseTraitLevel };
+  const baseTraitLevel = baseMemory
+    ? Math.max(0, Math.min(5, memoryTraitLevel(baseMemory) + memoryOwnHeroTraitLevel(baseMemory)))
+    : 0;
+  const uncounted =
+    !moonMemory &&
+    inventory.some(
+      (memory) =>
+        equippedIds.includes(memory.id) && /^Artificial Moon/.test(normalizeRevivedAffix(memory.revivedAffix || "")),
+    );
+  const reason = uncounted
+    ? "Only one revived memory counts: another equipped revived memory comes first (slot order)"
+    : !moonMemory
+      ? "No equipped memory with the Artificial Moon revived affix"
+      : !baseMemory
+        ? "No memory in the base trait slot (opened by the Artificial Moon memory)"
+        : baseTraitLevel < ARTIFICIAL_MOON_TRAIT_LEVEL
+          ? `Base trait level ${baseTraitLevel} < ${ARTIFICIAL_MOON_TRAIT_LEVEL}`
+          : "";
+  return {
+    active: !reason,
+    reason,
+    moonMemoryId: moonMemory?.id ?? null,
+    baseMemoryId: baseMemory?.id ?? null,
+    baseTraitLevel,
+  };
 }
 
 // The trait tooltip leaves the base trait's Artificial Moon section out of its effect lines (the badge reason names it): the
@@ -205,12 +271,23 @@ export function artificialMoonGate(hero = {}) {
 // (Vendetta's Sting prints "Replace the skill in the third slot with Vendetta" after its moon line). Without per-level data
 // the header and the one line after it are left out, as before.
 import { baseHeroTraitLevelsSs13 } from "./data/heroes/base-hero-trait-levels-ss13.generated.js";
-const traitLineShape = (line) => String(line || "").replace(/[+-]?\d+(?:\.\d+)?/g, "#").replace(/\s+/g, " ").trim();
+const traitLineShape = (line) =>
+  String(line || "")
+    .replace(/[+-]?\d+(?:\.\d+)?/g, "#")
+    .replace(/\s+/g, " ")
+    .trim();
 export function withoutArtificialMoonLines(heroId, lines = []) {
   const header = lines.findIndex((line) => String(line).trim() === "Artificial Moon:");
   if (header < 0) return lines;
   const levelOne = baseHeroTraitLevelsSs13[heroId]?.[1];
   if (!levelOne) return lines.filter((_, index) => index !== header && index !== header + 1);
   const shapes = new Set(levelOne.split("\n").map(traitLineShape));
-  return lines.filter((line, index) => index < header || (index > header && shapes.has(traitLineShape(line.replace(/\(\s*([^()]*\/[^()]*)\)/g, (_, list) => list.split("/").at(-1).trim())))));
+  return lines.filter(
+    (line, index) =>
+      index < header ||
+      (index > header &&
+        shapes.has(
+          traitLineShape(line.replace(/\(\s*([^()]*\/[^()]*)\)/g, (_, list) => list.split("/").at(-1).trim())),
+        )),
+  );
 }

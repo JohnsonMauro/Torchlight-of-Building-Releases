@@ -20,7 +20,7 @@ export const LEGENDARY_BASE_LINES = Object.freeze({
   "Crimson Gash": { base: "Obsidian Necklace", line: "+3 Intelligence" },
   "Dawn Break": { base: "Dragon Scale Waistguard", line: "+35 Max Life" },
   "Death's Touch": { base: "Ranger's Rusted Gauntlets", line: "+1920 gear Armor" },
-  "Enamor": { base: "God's Grace Girdle", line: "+18 Max Energy Shield" },
+  Enamor: { base: "God's Grace Girdle", line: "+18 Max Energy Shield" },
   "Evil Heart Armor": { base: "Eternal Night Stalker's Chestguard", line: "+1571 gear Evasion" },
   "False God's Skin": { base: "Flare Amulet", line: "+8 Strength" },
   "Futile Tradeoff": { base: "Footman's Chestguard", line: "+274 gear Armor" },
@@ -28,11 +28,11 @@ export const LEGENDARY_BASE_LINES = Object.freeze({
   "Lone Walker's Boots": { base: "Boots of Calamity", line: "+1615 gear Evasion" },
   "Pantheon's Elegy": { base: "Wayfarer Waistguard", line: "+110 Max Life" },
   "Pentagram Astrolabe": { base: "Sunlight Pendant", line: "+5 Dexterity" },
-  "Phantom": { base: "Obsidian Necklace", line: "+3 Intelligence" },
+  Phantom: { base: "Obsidian Necklace", line: "+3 Intelligence" },
   "Providential Grace": { base: "All Magic Grip", line: "+120 gear Energy Shield" },
   "Verdant Steps": { base: "Long Night Sorcerer's Boots", line: "+146 gear Energy Shield" },
   "Warden's Breastpin": { base: "Lunar Corona Necklace", line: "+8 Intelligence" },
-  "Wings of Light": { base: "Hands of Calamity", line: "+1615 gear Evasion" }
+  "Wings of Light": { base: "Hands of Calamity", line: "+1615 gear Evasion" },
   // Weapon bases (Supreme Throne: Deception Scepter, Throat-Slasher: Scarlet River Claw) carry weapon base damage and stats that
   // the weapon model reads from its own base data; they are not listed here.
 });
@@ -48,7 +48,11 @@ export function legendaryBaseLine(item) {
   if (!item || item.rarity !== "legendary") return null;
   const entry = LEGENDARY_BASE_LINES[item.name];
   if (!entry) return null;
-  const carried = [...(item.modifiers || []), ...(item.legendaryModifiers || []), ...(item.implicitModifiers || [])].map((text) => String(text).replace(/\s+/g, " ").trim().toLowerCase());
+  const carried = [
+    ...(item.modifiers || []),
+    ...(item.legendaryModifiers || []),
+    ...(item.implicitModifiers || []),
+  ].map((text) => String(text).replace(/\s+/g, " ").trim().toLowerCase());
   if (carried.includes(entry.line.toLowerCase())) return null;
   const corroded = (item.corrosionModifiers || []).length > 0;
   if (corroded && !ARMOUR_PIECE_DEFENSE.test(entry.line)) return null;
@@ -60,12 +64,22 @@ export function legendaryBaseDefenseLines(items = []) {
   const lines = [];
   for (const item of items) {
     const entry = legendaryBaseLine(item);
-    if (entry && DEFENSE_POOL.test(entry.line)) lines.push({ text: entry.line, source: `${item.name} · base ${entry.base}`, origin: "gear", multiplier: 1, legendaryBase: true });
+    if (entry && DEFENSE_POOL.test(entry.line))
+      lines.push({
+        text: entry.line,
+        source: `${item.name} · base ${entry.base}`,
+        origin: "gear",
+        multiplier: 1,
+        legendaryBase: true,
+      });
   }
   return lines;
 }
 
 /** Every known base line of the equipped Legendary items that the defence view does not apply (attributes, resistances). */
 export function legendaryBaseLinesNotApplied(items = []) {
-  return items.map((item) => ({ item, entry: legendaryBaseLine(item) })).filter(({ entry }) => entry && !DEFENSE_POOL.test(entry.line)).map(({ item, entry }) => ({ source: `${item.name} · base ${entry.base}`, text: entry.line }));
+  return items
+    .map((item) => ({ item, entry: legendaryBaseLine(item) }))
+    .filter(({ entry }) => entry && !DEFENSE_POOL.test(entry.line))
+    .map(({ item, entry }) => ({ source: `${item.name} · base ${entry.base}`, text: entry.line }));
 }

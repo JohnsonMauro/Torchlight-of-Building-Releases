@@ -24,26 +24,59 @@ const round = (value) => Math.round(value * 10000) / 10000;
  * @param {Map<string, object>|null} p.hitRateFacts setupKey → { critHitsPerSecond } from the planner's hit pass (null before it)
  * @returns {{ lines: object[], entries: object[], setupKeys: string[] }}
  */
-export function resolveCritNumbedBuffs({ setups = [], activeNames = new Set(), enemyAilments = [], lightningHitters = new Map(), hitRateFacts = null } = {}) {
+export function resolveCritNumbedBuffs({
+  setups = [],
+  activeNames = new Set(),
+  enemyAilments = [],
+  lightningHitters = new Map(),
+  hitRateFacts = null,
+} = {}) {
   const entries = [];
   const numbed = enemyAilments.includes("Numbed");
   for (const setup of setups) {
     if (setup.enabled === false || !activeNames.has(setup.name)) continue;
-    for (const clause of (setup.supportEffects?.clauses || []).filter((item) => item.family === "critBuff" && item.kind === "numbedEffect")) {
+    for (const clause of (setup.supportEffects?.clauses || []).filter(
+      (item) => item.family === "critBuff" && item.kind === "numbedEffect",
+    )) {
       const lightning = Boolean(lightningHitters.get(setup.setupKey));
       const facts = hitRateFacts?.get?.(setup.setupKey) || null;
       const critHitsPerSecond = facts && Number.isFinite(facts.critHitsPerSecond) ? facts.critHitsPerSecond : null;
-      const uptime = !numbed || !lightning ? 0 : critHitsPerSecond == null ? 1 : Math.min(1, critHitsPerSecond * clause.seconds);
+      const uptime =
+        !numbed || !lightning ? 0 : critHitsPerSecond == null ? 1 : Math.min(1, critHitsPerSecond * clause.seconds);
       const value = round(clause.value * uptime);
-      const reason = !numbed ? "the build inflicts no Numbed (enemy-ailment model)"
-        : !lightning ? `${setup.name} deals no modeled Lightning hits, so it inflicts no Numbed`
-        : critHitsPerSecond == null ? "crit hit rate not measured yet (held for this pass)"
-        : `${round(critHitsPerSecond)} crit hits/s × ${clause.seconds} s = ${round(critHitsPerSecond * clause.seconds)} → uptime ${round(uptime)}`;
-      entries.push({ setupKey: setup.setupKey, skill: setup.name, support: clause.support, base: clause.value, seconds: clause.seconds, critHitsPerSecond, uptime: round(uptime), value, active: value > 0, reason });
+      const reason = !numbed
+        ? "the build inflicts no Numbed (enemy-ailment model)"
+        : !lightning
+          ? `${setup.name} deals no modeled Lightning hits, so it inflicts no Numbed`
+          : critHitsPerSecond == null
+            ? "crit hit rate not measured yet (held for this pass)"
+            : `${round(critHitsPerSecond)} crit hits/s × ${clause.seconds} s = ${round(critHitsPerSecond * clause.seconds)} → uptime ${round(uptime)}`;
+      entries.push({
+        setupKey: setup.setupKey,
+        skill: setup.name,
+        support: clause.support,
+        base: clause.value,
+        seconds: clause.seconds,
+        critHitsPerSecond,
+        uptime: round(uptime),
+        value,
+        active: value > 0,
+        reason,
+      });
     }
   }
   // The dummy keeps the stronger Numbed: the largest supported skill's buff (other sources carry only the build-wide effect).
   const strongest = entries.filter((entry) => entry.active).sort((a, b) => b.value - a.value)[0] || null;
-  const lines = strongest ? [{ text: `+${strongest.value}% Numbed Effect`, source: `${strongest.skill}: ${strongest.support} (+${strongest.base}% Numbed Effect for ${strongest.seconds} s on Critical Strike × ${strongest.uptime} uptime; the stronger Numbed the dummy keeps)`, origin: "derived", multiplier: 1, critNumbedBuff: true }] : [];
+  const lines = strongest
+    ? [
+        {
+          text: `+${strongest.value}% Numbed Effect`,
+          source: `${strongest.skill}: ${strongest.support} (+${strongest.base}% Numbed Effect for ${strongest.seconds} s on Critical Strike × ${strongest.uptime} uptime; the stronger Numbed the dummy keeps)`,
+          origin: "derived",
+          multiplier: 1,
+          critNumbedBuff: true,
+        },
+      ]
+    : [];
   return { lines, entries, setupKeys: entries.map((entry) => entry.setupKey) };
 }

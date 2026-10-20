@@ -36,11 +36,17 @@ export const ACTIVE_SLOT_MAGUS_LEVEL_NOTE = "Spirit Magus in an active skill slo
  */
 export function applyMagusActiveSlotRule(setups, heroId) {
   const allowed = heroCanPlaceMagusInActiveSlot(heroId);
-  const onAuraBoard = new Set(setups.filter((setup) => setup.enabled !== false && setupBoardTab(setup) === "auras").map((setup) => setup.name));
+  const onAuraBoard = new Set(
+    setups.filter((setup) => setup.enabled !== false && setupBoardTab(setup) === "auras").map((setup) => setup.name),
+  );
   const seen = new Set();
   return setups.map((setup) => {
     if (setupBoardTab(setup) !== "skills" || setup.role !== "aura" || setup.enabled === false) return setup;
-    const reason = !allowed ? MAGUS_ACTIVE_SLOT_REASON : onAuraBoard.has(setup.name) || seen.has(setup.name) ? MAGUS_DUPLICATE_REASON : null;
+    const reason = !allowed
+      ? MAGUS_ACTIVE_SLOT_REASON
+      : onAuraBoard.has(setup.name) || seen.has(setup.name)
+        ? MAGUS_DUPLICATE_REASON
+        : null;
     seen.add(setup.name);
     return reason ? { ...setup, enabled: false, slotInactive: reason } : setup;
   });

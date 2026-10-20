@@ -15,7 +15,11 @@ const DAMAGE_TO_LIFE = /additional damage applied to Life/i;
 export function isDamageToLifeLine(line) {
   if (!line) return false;
   if (line.category && !/^Additional damage$/i.test(line.category)) return false;
-  return line.condition === "Target Life" || DAMAGE_TO_LIFE.test(String(line.source || "")) || DAMAGE_TO_LIFE.test(String(line.text || ""));
+  return (
+    line.condition === "Target Life" ||
+    DAMAGE_TO_LIFE.test(String(line.source || "")) ||
+    DAMAGE_TO_LIFE.test(String(line.text || ""))
+  );
 }
 
 /**
@@ -24,7 +28,9 @@ export function isDamageToLifeLine(line) {
  * @returns {{ scale: number, factor: number, sources: Array<{ source, value }> }}
  */
 export function trueDamageSettleScale(ledgerLines = []) {
-  const sources = ledgerLines.filter((line) => isDamageToLifeLine(line) && Number(line.value)).map((line) => ({ source: line.source, text: line.text, value: Number(line.value) }));
+  const sources = ledgerLines
+    .filter((line) => isDamageToLifeLine(line) && Number(line.value))
+    .map((line) => ({ source: line.source, text: line.text, value: Number(line.value) }));
   const factor = sources.reduce((product, line) => product * (1 + line.value / 100), 1);
   return { scale: factor > 0 ? 1 / factor : 1, factor, sources };
 }

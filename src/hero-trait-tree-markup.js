@@ -19,7 +19,9 @@ export function treeExtraRowTooltipHtml() {
  * memory rows' picks). `artwork(src, alt, className)` is the planner's art helper.
  */
 export function treeExtraRowMarkup(heroId, traits = [], selections = [], artwork = () => "") {
-  const row = TREE_ROW_LEVELS.length, pick = selections[row], trait = pick ? traits.find((item) => item.name === pick && item.level > 1) : null;
+  const row = TREE_ROW_LEVELS.length,
+    pick = selections[row],
+    trait = pick ? traits.find((item) => item.name === pick && item.level > 1) : null;
   const head = `<span class="tier-level tier-level-max"><strong>${EXTRA_PICK_LEVEL}</strong><small>MAX</small></span><span class="tree-extra-row-chip">${escapeHtml(EXTRA_ROW_CHIP).replace(" ", "&nbsp;")}</span>`; // "+1 Youga" / "Count"
   const attributes = `data-selena-dance-row="${row}" data-tree-extra-row-tooltip aria-label="Fourth trait row, ${escapeHtml(EXTRA_ROW_CHIP)}, level ${EXTRA_PICK_LEVEL} (max)"`;
   if (!trait) return `<div class="hero-tier hero-memory-only-tier tree-extra-row" ${attributes}>${head}</div>`;

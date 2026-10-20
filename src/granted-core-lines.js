@@ -15,35 +15,54 @@
 // core-name set (src/planner.js grantedCoreNames) and these clauses keep their bracket, so no text reader counts them a second
 // time. Other clauses of a granted core (Starfire's spread) are read as text like any granted line.
 // Q-G5 (whether a granted core counts as a core for "core talent" lines) stays open.
-export const DEDICATED_BRACKET_NAMES = new Set(["Stealth Stab", "Divine Grace", "Poisoned Relief", "Barrier of Radiance"]);
+export const DEDICATED_BRACKET_NAMES = new Set([
+  "Stealth Stab",
+  "Divine Grace",
+  "Poisoned Relief",
+  "Barrier of Radiance",
+]);
 export const NAME_READ_CORE_CLAUSES = new Map([
   ["Affliction", /^\+30 Affliction inflicted per second$|^\+30% additional Affliction effect$/i],
   ["Subtle Impact", /^\+30% additional Damage Over Time while Blur is active$/i],
   ["Indifference", /^\+1% additional damage and \+1% additional Minion Damage for every 5 remaining Energy/i],
-  ["True Flame", /^When an enemy is Ignited ?, 65 ?% of the additional bonus to Damage Over Time taken from Affliction is also applied to your Fire Hit Damage$/i],
+  [
+    "True Flame",
+    /^When an enemy is Ignited ?, 65 ?% of the additional bonus to Damage Over Time taken from Affliction is also applied to your Fire Hit Damage$/i,
+  ],
   ["Fueling", /^The Fire Resistance of enemies within 10 ?m is fixed at 0$/i],
   ["Starfire", /^\+1 Ignite limit$/i],
   // Off The Beaten Track's fixed 95% Support Mana Multiplier (src/planner.js offTheBeatenTrack; its +4 Support Skill Level is text).
-  ["Off The Beaten Track", /^Support Skill's Mana Multiplier is fixed at 95 ?%\.?$/i]
+  ["Off The Beaten Track", /^Support Skill's Mana Multiplier is fixed at 95 ?%\.?$/i],
 ]);
 const BRACKET = /^\[([^\]]+)\]\s*(.+)$/;
 
 /** True when `body` is a clause that the core `name` applies by name (see NAME_READ_CORE_CLAUSES). */
 export function isNameReadCoreClause(name, body) {
   const pattern = NAME_READ_CORE_CLAUSES.get(String(name || "").trim());
-  return Boolean(pattern && pattern.test(String(body ?? "").replace(/\s+/g, " ").trim()));
+  return Boolean(
+    pattern &&
+    pattern.test(
+      String(body ?? "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    ),
+  );
 }
 
 /** { name, body } for a "[Name] body" line whose clause the core's name model reads (it keeps its bracket), else null. */
 export function nameReadCoreGrant(text) {
-  const match = String(text ?? "").trim().match(BRACKET);
+  const match = String(text ?? "")
+    .trim()
+    .match(BRACKET);
   if (!match || !isNameReadCoreClause(match[1], match[2])) return null;
   return { name: match[1].trim(), body: match[2].trim() };
 }
 
 /** { name, body } for a "[Name] body" line whose prefix the intake strips, else null. */
 export function grantedCoreLine(text) {
-  const match = String(text ?? "").trim().match(BRACKET);
+  const match = String(text ?? "")
+    .trim()
+    .match(BRACKET);
   if (!match || DEDICATED_BRACKET_NAMES.has(match[1].trim()) || isNameReadCoreClause(match[1], match[2])) return null;
   return { name: match[1].trim(), body: match[2].trim() };
 }
@@ -53,10 +72,14 @@ export function grantedCoreLine(text) {
  * inflicted per second" + "+30% additional Affliction effect" (one row, two lines) is one grant, so its second line is the core's too.
  */
 export function carryNameReadBracket(lines) {
-  const first = String(lines[0] ?? "").trim().match(BRACKET);
+  const first = String(lines[0] ?? "")
+    .trim()
+    .match(BRACKET);
   if (!first || !NAME_READ_CORE_CLAUSES.has(first[1].trim())) return lines;
   const tag = `[${first[1].trim()}]`;
-  return lines.map((line, index) => index === 0 || BRACKET.test(line) || !isNameReadCoreClause(first[1], line) ? line : `${tag} ${line}`);
+  return lines.map((line, index) =>
+    index === 0 || BRACKET.test(line) || !isNameReadCoreClause(first[1], line) ? line : `${tag} ${line}`,
+  );
 }
 
 /** The line with a strippable "[Name] " prefix removed (dedicated names keep theirs). */
@@ -69,7 +92,9 @@ export const stripGrantedCore = (text) => grantedCoreLine(text)?.body ?? text;
  */
 export function grantedCoreNames(modifierTexts = []) {
   const names = new Map();
-  for (const line of modifierTexts) if (line?.nameReadCore && line.grantedCore && !names.has(line.grantedCore)) names.set(line.grantedCore, line.origin === "slate" ? `${line.source} slate` : String(line.source));
+  for (const line of modifierTexts)
+    if (line?.nameReadCore && line.grantedCore && !names.has(line.grantedCore))
+      names.set(line.grantedCore, line.origin === "slate" ? `${line.source} slate` : String(line.source));
   return names;
 }
 

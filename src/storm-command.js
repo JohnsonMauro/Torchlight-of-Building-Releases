@@ -24,12 +24,17 @@
 import { skillTimingSs13 } from "./data/skills/skill-timing-ss13.generated.js";
 import { normalizePercentageText } from "./percentage-text.js";
 
-export const STORM_COMMAND_LINE = /^\+(\d+(?:\.\d+)?)% additional Attack Damage for each different Warcry cast for (\d+(?:\.\d+)?) ?s$/i;
-export const EMPOWER_DEFENSIVE_EFFECT_LINE = /^([+-]?\d+(?:\.\d+)?)% additional Empower Skill(?: and Defensive Skill)? Effect$/i;
+export const STORM_COMMAND_LINE =
+  /^\+(\d+(?:\.\d+)?)% additional Attack Damage for each different Warcry cast for (\d+(?:\.\d+)?) ?s$/i;
+export const EMPOWER_DEFENSIVE_EFFECT_LINE =
+  /^([+-]?\d+(?:\.\d+)?)% additional Empower Skill(?: and Defensive Skill)? Effect$/i;
 export const WARCRY_BASE_COOLDOWN_SECONDS = 8;
 const PLAIN_COOLDOWN = /^([+-]?\d+(?:\.\d+)?)% (additional )?Cooldown Recovery Speed$/i;
 const round = (value) => Math.round(value * 10000) / 10000;
-const clean = (text) => normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim();
+const clean = (text) =>
+  normalizePercentageText(String(text ?? ""))
+    .replace(/\s+/g, " ")
+    .trim();
 
 /** A Warcry's base cooldown from the game skill data (8 s for every Warcry it holds; 8 s when it has none). */
 export function warcryBaseCooldown(name) {
@@ -42,16 +47,46 @@ export function warcryBaseCooldown(name) {
  * @param {object} p { warcries: [{ name, setupKey, cooldownClauses: [{ source, text, value, additional }] }], modifierTexts, windowSeconds }
  */
 export function warcryShares({ warcries = [], modifierTexts = [], windowSeconds = 8 } = {}) {
-  const plain = modifierTexts.filter((line) => line.origin !== "derived").flatMap((line) => { const match = clean(line.text).match(PLAIN_COOLDOWN); return match ? [{ source: line.source, text: clean(line.text), value: Number(match[1]) * (line.multiplier ?? 1), additional: Boolean(match[2]) }] : []; });
+  const plain = modifierTexts
+    .filter((line) => line.origin !== "derived")
+    .flatMap((line) => {
+      const match = clean(line.text).match(PLAIN_COOLDOWN);
+      return match
+        ? [
+            {
+              source: line.source,
+              text: clean(line.text),
+              value: Number(match[1]) * (line.multiplier ?? 1),
+              additional: Boolean(match[2]),
+            },
+          ]
+        : [];
+    });
   const seen = new Set();
-  return warcries.filter((warcry) => { if (seen.has(warcry.name)) return false; seen.add(warcry.name); return true; }).map((warcry) => {
-    const base = warcryBaseCooldown(warcry.name);
-    const lines = [...plain, ...(warcry.cooldownClauses || [])];
-    const factor = Math.max(1e-9, 1 + lines.filter((line) => !line.additional).reduce((sum, line) => sum + line.value, 0) / 100) * lines.filter((line) => line.additional).reduce((product, line) => product * (1 + line.value / 100), 1);
-    const cooldown = base.seconds / factor;
-    const share = Math.min(1, windowSeconds / cooldown);
-    return { name: warcry.name, setupKey: warcry.setupKey, baseCooldownSeconds: base.seconds, cooldownSourced: base.sourced, cooldownSeconds: round(cooldown), cooldownLines: lines, share: round(share) };
-  });
+  return warcries
+    .filter((warcry) => {
+      if (seen.has(warcry.name)) return false;
+      seen.add(warcry.name);
+      return true;
+    })
+    .map((warcry) => {
+      const base = warcryBaseCooldown(warcry.name);
+      const lines = [...plain, ...(warcry.cooldownClauses || [])];
+      const factor =
+        Math.max(1e-9, 1 + lines.filter((line) => !line.additional).reduce((sum, line) => sum + line.value, 0) / 100) *
+        lines.filter((line) => line.additional).reduce((product, line) => product * (1 + line.value / 100), 1);
+      const cooldown = base.seconds / factor;
+      const share = Math.min(1, windowSeconds / cooldown);
+      return {
+        name: warcry.name,
+        setupKey: warcry.setupKey,
+        baseCooldownSeconds: base.seconds,
+        cooldownSourced: base.sourced,
+        cooldownSeconds: round(cooldown),
+        cooldownLines: lines,
+        share: round(share),
+      };
+    });
 }
 
 /**
@@ -59,9 +94,22 @@ export function warcryShares({ warcries = [], modifierTexts = [], windowSeconds 
  * @param {object} p { lines: [{ source, clean, multiplier }], warcries, modifierTexts, castOnCooldown (switch), attackHits }
  * @returns {{ active, count, value, perWarcry, windowSeconds, shares, derivedText, reason, sources }}
  */
-export function resolveStormCommand({ lines = [], warcries = [], modifierTexts = [], castOnCooldown = true, attackHits = false } = {}) {
+export function resolveStormCommand({
+  lines = [],
+  warcries = [],
+  modifierTexts = [],
+  castOnCooldown = true,
+  attackHits = false,
+} = {}) {
   if (!lines.length) return null;
-  const parsed = lines.map((line) => { const match = clean(line.clean ?? line.text).match(STORM_COMMAND_LINE); return { source: line.source, perWarcry: Number(match[1]) * (line.multiplier ?? 1), windowSeconds: Number(match[2]) }; });
+  const parsed = lines.map((line) => {
+    const match = clean(line.clean ?? line.text).match(STORM_COMMAND_LINE);
+    return {
+      source: line.source,
+      perWarcry: Number(match[1]) * (line.multiplier ?? 1),
+      windowSeconds: Number(match[2]),
+    };
+  });
   // Two copies of the core would each add their own value (text lines add up); the window is the longest one.
   const perWarcry = parsed.reduce((sum, item) => sum + item.perWarcry, 0);
   const windowSeconds = Math.max(...parsed.map((item) => item.windowSeconds));
@@ -69,16 +117,43 @@ export function resolveStormCommand({ lines = [], warcries = [], modifierTexts =
   const count = round(shares.reduce((sum, item) => sum + item.share, 0));
   const value = round(perWarcry * count);
   const active = value > 0 && attackHits;
-  const shareText = shares.map((item) => `${item.name} ${item.share < 1 ? `${Math.round(item.share * 1000) / 10}% of the time (cooldown ${item.cooldownSeconds} s)` : `always (cooldown ${item.cooldownSeconds} s ≤ ${windowSeconds} s${item.cooldownSourced ? "" : "; no game cooldown record, read as 8 s"})`}`).join(", ");
-  const reason = !warcries.length ? "no Warcry Skill on the skill board"
-    : !castOnCooldown ? "Warcries not cast (best-case switch \"Warcries cast on cooldown\" off)"
-      : !attackHits ? `${count} different Warcr${count === 1 ? "y" : "ies"} held, but the build deals no Attack damage`
+  const shareText = shares
+    .map(
+      (item) =>
+        `${item.name} ${item.share < 1 ? `${Math.round(item.share * 1000) / 10}% of the time (cooldown ${item.cooldownSeconds} s)` : `always (cooldown ${item.cooldownSeconds} s ≤ ${windowSeconds} s${item.cooldownSourced ? "" : "; no game cooldown record, read as 8 s"})`}`,
+    )
+    .join(", ");
+  const reason = !warcries.length
+    ? "no Warcry Skill on the skill board"
+    : !castOnCooldown
+      ? 'Warcries not cast (best-case switch "Warcries cast on cooldown" off)'
+      : !attackHits
+        ? `${count} different Warcr${count === 1 ? "y" : "ies"} held, but the build deals no Attack damage`
         : `+${perWarcry}% × ${count} different Warcr${count === 1 ? "y" : "ies"} cast in the last ${windowSeconds} s (${shareText}; each cast whenever its cooldown is ready: best case, provisional; game affix 14648885) = +${value}% additional Attack Damage`;
-  return { active, count, value, perWarcry, windowSeconds, shares, derivedText: active ? `+${value}% additional Attack Damage` : null, reason, sources: parsed.map((item) => item.source), castOnCooldown, hasWarcries: warcries.length > 0 };
+  return {
+    active,
+    count,
+    value,
+    perWarcry,
+    windowSeconds,
+    shares,
+    derivedText: active ? `+${value}% additional Attack Damage` : null,
+    reason,
+    sources: parsed.map((item) => item.source),
+    castOnCooldown,
+    hasWarcries: warcries.length > 0,
+  };
 }
 
 /** "−99% additional Empower Skill and Defensive Skill Effect" lines: the additional Empower Effect factor and its sources. */
 export function empowerAdditionalLines(modifierTexts = []) {
-  const sources = modifierTexts.filter((line) => line.origin !== "derived").flatMap((line) => { const match = clean(line.text).match(EMPOWER_DEFENSIVE_EFFECT_LINE); return match ? [{ source: line.source, text: clean(line.text), value: Number(match[1]) * (line.multiplier ?? 1) }] : []; });
+  const sources = modifierTexts
+    .filter((line) => line.origin !== "derived")
+    .flatMap((line) => {
+      const match = clean(line.text).match(EMPOWER_DEFENSIVE_EFFECT_LINE);
+      return match
+        ? [{ source: line.source, text: clean(line.text), value: Number(match[1]) * (line.multiplier ?? 1) }]
+        : [];
+    });
   return { factor: sources.reduce((product, item) => product * Math.max(0, 1 + item.value / 100), 1), sources };
 }

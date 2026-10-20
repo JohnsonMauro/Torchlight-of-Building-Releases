@@ -13,7 +13,7 @@ export const beamDeliveryMeasurements = Object.freeze({
   gearedSelenaDummyDps: 1084.5,
   bardDamageFactor: 0.8,
   bardChannelIntervalSeconds: 0.8,
-  bardMaxStacks: 4
+  bardMaxStacks: 4,
 });
 
 const fireFactor = (resistancePercent) => Math.max(0, 1 - resistancePercent / 100);
@@ -42,24 +42,38 @@ function openingResistanceScale(delivery, rate, seconds) {
       distribution = next;
     }
     const expected = distribution.reduce((sum, probability, stacks) => sum + probability * stacks, 0);
-    const nextExpected = distribution.reduce((sum, probability, stacks) => sum + probability * (stacks * (1 - chance) + Math.min(limit, stacks + perSuccess) * chance), 0);
+    const nextExpected = distribution.reduce(
+      (sum, probability, stacks) =>
+        sum + probability * (stacks * (1 - chance) + Math.min(limit, stacks + perSuccess) * chance),
+      0,
+    );
     return (expected + (attempts - whole) * (nextExpected - expected)) / limit;
   };
   const slices = Math.ceil(seconds * 100);
   let factor = 0;
   for (let index = 0; index < slices; index++) {
-    const time = seconds * (index + 0.5) / slices;
+    const time = (seconds * (index + 0.5)) / slices;
     const attempts = Math.min(time, duration) * rate;
     factor += base + (active - base) * stackFraction(attempts);
   }
   return factor / slices / fireFactor(30);
 }
 
-export function estimateBardBeamDelivery({ heroId, beamActive, sourceScale = 1, nativeCycle = null, targetFireResistancePercent = 30, conditions = {}, scorch = null }) {
+export function estimateBardBeamDelivery({
+  heroId,
+  beamActive,
+  sourceScale = 1,
+  nativeCycle = null,
+  targetFireResistancePercent = 30,
+  conditions = {},
+  scorch = null,
+}) {
   if (heroId !== "selena-sing-with-the-tide" || !beamActive) return null;
   const measured = beamDeliveryMeasurements;
-  const strippedNativeDps = nativeCycle && sourceScale > 0
-    ? nativeCycle.expectedDps / sourceScale : measured.irisDummyDps * measured.bardDamageFactor;
+  const strippedNativeDps =
+    nativeCycle && sourceScale > 0
+      ? nativeCycle.expectedDps / sourceScale
+      : measured.irisDummyDps * measured.bardDamageFactor;
   const residualDps = measured.selenaDummyDps - strippedNativeDps;
   const cycleSeconds = measured.bardChannelIntervalSeconds * measured.bardMaxStacks;
   const applicable = Number.isFinite(targetFireResistancePercent);
@@ -67,17 +81,25 @@ export function estimateBardBeamDelivery({ heroId, beamActive, sourceScale = 1, 
   const extrapolatedConditions = Object.values(conditions).some(Boolean);
   const scale = Number.isFinite(sourceScale) && sourceScale > 0 ? sourceScale : 0;
   const bubbleUseDamage = nativeCycle
-    ? (nativeCycle.beam.min + nativeCycle.beam.max) / 2 * nativeCycle.criticalFactor : null;
-  const fullChannelDamage = nativeCycle && nativeCycle.castsPerSecond > 0
-    ? nativeCycle.expectedDps * nativeCycle.cycleUses / nativeCycle.castsPerSecond : null;
-  const bubbleScenarios = nativeCycle ? {
-    oneBeamDps: bubbleUseDamage / cycleSeconds,
-    fullChannelDps: fullChannelDamage / cycleSeconds
-  } : null;
+    ? ((nativeCycle.beam.min + nativeCycle.beam.max) / 2) * nativeCycle.criticalFactor
+    : null;
+  const fullChannelDamage =
+    nativeCycle && nativeCycle.castsPerSecond > 0
+      ? (nativeCycle.expectedDps * nativeCycle.cycleUses) / nativeCycle.castsPerSecond
+      : null;
+  const bubbleScenarios = nativeCycle
+    ? {
+        oneBeamDps: bubbleUseDamage / cycleSeconds,
+        fullChannelDps: fullChannelDamage / cycleSeconds,
+      }
+    : null;
   return {
     applicable,
     extrapolatedConditions: extrapolatedConditions || targetFireResistancePercent !== 30,
-    reason: targetFireResistancePercent !== 30 ? "Fire Resistance is scaled from the level-85 dummy calibration at 30%; Scorch uptime is estimated from chance and duration." : "",
+    reason:
+      targetFireResistancePercent !== 30
+        ? "Fire Resistance is scaled from the level-85 dummy calibration at 30%; Scorch uptime is estimated from chance and duration."
+        : "",
     targetResistanceScale,
     scorch,
     sourceScale: scale,
@@ -90,9 +112,9 @@ export function estimateBardBeamDelivery({ heroId, beamActive, sourceScale = 1, 
     candidateDamagePerCycle: residualDps * cycleSeconds * scale,
     bubbleScenarios,
     validation: {
-      predictedGearedDps: measured.selenaDummyDps * measured.gearedSelenaSheetDps / measured.selenaSheetDps,
-      observedGearedDps: measured.gearedSelenaDummyDps
-    }
+      predictedGearedDps: (measured.selenaDummyDps * measured.gearedSelenaSheetDps) / measured.selenaSheetDps,
+      observedGearedDps: measured.gearedSelenaDummyDps,
+    },
   };
 }
 
@@ -100,7 +122,14 @@ export function estimateBardBeamDelivery({ heroId, beamActive, sourceScale = 1, 
 // The cycle's packets carry the 49% coefficient, which reproduces the stripped Iris dummy run at the 30% Fire Resistance
 // target (536.8 modeled vs 542 observed, Lv.20; research/selena-1-scorching-beam/volcano-dummy-validation-2026-09-22.md),
 // so another resistance scales from 30% exactly as the Bard delivery does. Same shape as estimateBardBeamDelivery.
-export function estimateNeutralBeamDelivery({ heroId, beamActive, nativeCycle = null, targetFireResistancePercent = 30, conditions = {}, scorch = null }) {
+export function estimateNeutralBeamDelivery({
+  heroId,
+  beamActive,
+  nativeCycle = null,
+  targetFireResistancePercent = 30,
+  conditions = {},
+  scorch = null,
+}) {
   if (heroId === "selena-sing-with-the-tide" || !beamActive || !nativeCycle) return null;
   const applicable = Number.isFinite(targetFireResistancePercent);
   const targetResistanceScale = fireFactor(targetFireResistancePercent) / fireFactor(30);
@@ -109,7 +138,10 @@ export function estimateNeutralBeamDelivery({ heroId, beamActive, nativeCycle = 
     applicable,
     neutral: true,
     extrapolatedConditions: Object.values(conditions).some(Boolean) || targetFireResistancePercent !== 30,
-    reason: targetFireResistancePercent !== 30 ? "Fire Resistance is scaled from the level-85 dummy calibration at 30%; Scorch uptime is estimated from chance and duration." : "",
+    reason:
+      targetFireResistancePercent !== 30
+        ? "Fire Resistance is scaled from the level-85 dummy calibration at 30%; Scorch uptime is estimated from chance and duration."
+        : "",
     targetResistanceScale,
     scorch,
     sourceScale: 1,
@@ -117,7 +149,7 @@ export function estimateNeutralBeamDelivery({ heroId, beamActive, nativeCycle = 
     bardSourceDps: 0,
     neutralDps: neutralSourceDps * targetResistanceScale,
     bardRelatedDps: 0,
-    totalDps: neutralSourceDps * targetResistanceScale
+    totalDps: neutralSourceDps * targetResistanceScale,
   };
 }
 
@@ -126,7 +158,15 @@ export function combineBeamAndIgnite(delivery, strongestOneStack, reaping = null
   const beamDps = delivery.totalDps;
   const igniteDps = strongestOneStack.expectedDps;
   const reapingDps = reaping ? (reaping.minimum.reapingDps + reaping.maximum.reapingDps) / 2 : 0;
-  return { beamDps, igniteDps, reapingDps, extrapolatedConditions: delivery.extrapolatedConditions || false, igniteMode: strongestOneStack.mode || "one-stack", expectedActiveStacks: strongestOneStack.expectedActiveStacks ?? 1, totalDps: beamDps + igniteDps + reapingDps };
+  return {
+    beamDps,
+    igniteDps,
+    reapingDps,
+    extrapolatedConditions: delivery.extrapolatedConditions || false,
+    igniteMode: strongestOneStack.mode || "one-stack",
+    expectedActiveStacks: strongestOneStack.expectedActiveStacks ?? 1,
+    totalDps: beamDps + igniteDps + reapingDps,
+  };
 }
 
 // All Ignite applications on a target share one expiration time. A success
@@ -138,16 +178,33 @@ export function combineBeamAndIgnite(delivery, strongestOneStack, reaping = null
 // "+X% Ignite Chance against enemies that haven't been Ignited" (affix 2214789) is the
 // Ignite chance field gated on the target not being Ignited. This shortens the expected
 // time to the first Ignite from 1/(rate × p) to 1/(rate × p'), with p' = min(1, p + X%).
-function expectedSharedTimerIgniteBaseIntegral({ baseRange, chancePercent, notIgnitedChancePercent = chancePercent, castsPerSecond, durationSeconds, maximumActiveStacks, mode, seconds, stacksPerApplication }) {
-  if (!(durationSeconds > 0) || !(castsPerSecond > 0) || !(Math.max(chancePercent, notIgnitedChancePercent) > 0)) return 0;
+function expectedSharedTimerIgniteBaseIntegral({
+  baseRange,
+  chancePercent,
+  notIgnitedChancePercent = chancePercent,
+  castsPerSecond,
+  durationSeconds,
+  maximumActiveStacks,
+  mode,
+  seconds,
+  stacksPerApplication,
+}) {
+  if (!(durationSeconds > 0) || !(castsPerSecond > 0) || !(Math.max(chancePercent, notIgnitedChancePercent) > 0))
+    return 0;
   const uses = Math.floor(castsPerSecond * seconds + 1e-9);
   const ignitedChance = Math.max(0, Math.min(1, chancePercent / 100));
   const notIgnitedChance = Math.max(0, Math.min(1, notIgnitedChancePercent / 100));
   const expectedBase = Array.from({ length: uses + 1 }, (_, successes) => {
     if (!successes) return 0;
     return mode === "multi-stack"
-      ? retainedAilmentBaseSumForSuccesses({ min: baseRange.min, max: baseRange.max, successes, stacksPerApplication, maximumActiveStacks })
-      : baseRange.min + (baseRange.max - baseRange.min) * successes / (successes + 1);
+      ? retainedAilmentBaseSumForSuccesses({
+          min: baseRange.min,
+          max: baseRange.max,
+          successes,
+          stacksPerApplication,
+          maximumActiveStacks,
+        })
+      : baseRange.min + ((baseRange.max - baseRange.min) * successes) / (successes + 1);
   });
   let states = new Map([["0:0", 1]]);
   let previousTime = 0;
@@ -176,17 +233,29 @@ function expectedSharedTimerIgniteBaseIntegral({ baseRange, chancePercent, notIg
 }
 
 export function estimateApplicationReapingOpening({ source, strongestOneStack, castsPerSecond, seconds = 5 }) {
-  if (!["inflicting Ignite", "inflicting an ailment"].includes(source?.trigger) || !(castsPerSecond > 0) || !(seconds > 0)) return null;
+  if (
+    !["inflicting Ignite", "inflicting an ailment"].includes(source?.trigger) ||
+    !(castsPerSecond > 0) ||
+    !(seconds > 0)
+  )
+    return null;
   const uses = Math.floor(castsPerSecond * seconds + 1e-9);
   // Keep this exact state calculation bounded for unusually fast builds.
   if (uses > 18 || !strongestOneStack?.expectedDps || !strongestOneStack.baseRange) return null;
   const ignitedChance = Math.max(0, Math.min(1, strongestOneStack.applicationChancePercent / 100));
   // Attempts while the dummy is not Ignited use the not-Ignited chance (affix 2214789).
-  const notIgnitedChance = Math.max(0, Math.min(1, (strongestOneStack.notIgnitedApplicationChancePercent ?? strongestOneStack.applicationChancePercent) / 100));
+  const notIgnitedChance = Math.max(
+    0,
+    Math.min(
+      1,
+      (strongestOneStack.notIgnitedApplicationChancePercent ?? strongestOneStack.applicationChancePercent) / 100,
+    ),
+  );
   const duration = strongestOneStack.durationSeconds ?? 4;
   const recoverySeconds = source.minimum.recoverySeconds;
   const reapedSeconds = source.minimum.effectiveDurationSeconds;
-  const damagePerBase = strongestOneStack.mode === "multi-stack" ? 0 : strongestOneStack.expectedDps / strongestOneStack.expectedBaseDamage;
+  const damagePerBase =
+    strongestOneStack.mode === "multi-stack" ? 0 : strongestOneStack.expectedDps / strongestOneStack.expectedBaseDamage;
   const { min, max } = strongestOneStack.baseRange;
   let states = new Map([["0:0:0", 1]]);
   let expectedDamage = 0;
@@ -205,9 +274,18 @@ export function estimateApplicationReapingOpening({ source, strongestOneStack, c
       const succeededKey = `${index + 1}:${activeApplications}:${nextReady}`;
       next.set(succeededKey, (next.get(succeededKey) || 0) + probability * chance);
       if (canReap) {
-        const activeDotDps = duration <= 0 ? 0 : strongestOneStack.mode === "multi-stack"
-          ? retainedAilmentBaseSumForSuccesses({ min, max, successes: activeApplications, stacksPerApplication: strongestOneStack.stacksPerApplication, maximumActiveStacks: strongestOneStack.maximumActiveStacks }) * strongestOneStack.damagePerBase
-          : (min + (max - min) * activeApplications / (activeApplications + 1)) * damagePerBase;
+        const activeDotDps =
+          duration <= 0
+            ? 0
+            : strongestOneStack.mode === "multi-stack"
+              ? retainedAilmentBaseSumForSuccesses({
+                  min,
+                  max,
+                  successes: activeApplications,
+                  stacksPerApplication: strongestOneStack.stacksPerApplication,
+                  maximumActiveStacks: strongestOneStack.maximumActiveStacks,
+                }) * strongestOneStack.damagePerBase
+              : (min + ((max - min) * activeApplications) / (activeApplications + 1)) * damagePerBase;
         // A Reap is True Damage: without the Ignite's "damage applied to Life" lines (src/true-damage.js).
         expectedDamage += probability * chance * activeDotDps * reapedSeconds * (source.trueDamageScale ?? 1);
       }
@@ -223,8 +301,8 @@ export function estimateFiveSecondOpening({ delivery, nativeCycle, strongestOneS
   if (!(rate > 0)) return null;
   const uses = Math.floor(rate * seconds + 1e-9);
   const explosions = Math.floor(uses / nativeCycle.cycleUses);
-  const averageBeam = (nativeCycle.beam.min + nativeCycle.beam.max) / 2 * nativeCycle.criticalFactor;
-  const averageExplosion = (nativeCycle.explosion.min + nativeCycle.explosion.max) / 2 * nativeCycle.criticalFactor;
+  const averageBeam = ((nativeCycle.beam.min + nativeCycle.beam.max) / 2) * nativeCycle.criticalFactor;
+  const averageExplosion = ((nativeCycle.explosion.min + nativeCycle.explosion.max) / 2) * nativeCycle.criticalFactor;
   const neutralDamage = uses * averageBeam + explosions * averageExplosion;
   const resistanceScale = openingResistanceScale(delivery, rate, seconds);
   const bardSourceDps = delivery.bardSourceDps ?? delivery.bardRelatedDps ?? 0;
@@ -233,31 +311,61 @@ export function estimateFiveSecondOpening({ delivery, nativeCycle, strongestOneS
   const baseRange = strongestOneStack.baseRange;
   // Integrate expected active rolls between casts and possible shared-timer
   // expirations. The game's discrete ticks still vary with phase and rolls.
-  const damagePerBase = strongestOneStack.mode === "multi-stack" ? strongestOneStack.damagePerBase
-    : strongestOneStack.expectedBaseDamage > 0 ? strongestOneStack.expectedDps / strongestOneStack.expectedBaseDamage : 0;
+  const damagePerBase =
+    strongestOneStack.mode === "multi-stack"
+      ? strongestOneStack.damagePerBase
+      : strongestOneStack.expectedBaseDamage > 0
+        ? strongestOneStack.expectedDps / strongestOneStack.expectedBaseDamage
+        : 0;
   // "−X% All Resistance when the enemy has max Affliction": the steady-state Ignite figure uses the
   // steady share of time at max; this window (clean dummy) uses its own share (max-affliction-resistance.js).
   const maxAfflictionScale = maxAfflictionWindowScale(strongestOneStack.maxAffliction, seconds);
-  const igniteDamage = expectedSharedTimerIgniteBaseIntegral({
-    baseRange, chancePercent: strongestOneStack.applicationChancePercent, notIgnitedChancePercent: strongestOneStack.notIgnitedApplicationChancePercent ?? strongestOneStack.applicationChancePercent, castsPerSecond: rate,
-    durationSeconds: duration, maximumActiveStacks: strongestOneStack.maximumActiveStacks,
-    mode: strongestOneStack.mode, seconds, stacksPerApplication: strongestOneStack.stacksPerApplication
-  }) * damagePerBase * maxAfflictionScale;
+  const igniteDamage =
+    expectedSharedTimerIgniteBaseIntegral({
+      baseRange,
+      chancePercent: strongestOneStack.applicationChancePercent,
+      notIgnitedChancePercent:
+        strongestOneStack.notIgnitedApplicationChancePercent ?? strongestOneStack.applicationChancePercent,
+      castsPerSecond: rate,
+      durationSeconds: duration,
+      maximumActiveStacks: strongestOneStack.maximumActiveStacks,
+      mode: strongestOneStack.mode,
+      seconds,
+      stacksPerApplication: strongestOneStack.stacksPerApplication,
+    }) *
+    damagePerBase *
+    maxAfflictionScale;
   let reapingDps = 0;
   let reapingTiming = "none";
   // Per source (same order as reaping.sources): the window figure, the steady figure and whether it is application-timed.
   let reapingBySource = [];
   if (reaping) {
-    const results = reaping.sources.map((source) => estimateApplicationReapingOpening({ source, strongestOneStack, castsPerSecond: rate, seconds }));
+    const results = reaping.sources.map((source) =>
+      estimateApplicationReapingOpening({ source, strongestOneStack, castsPerSecond: rate, seconds }),
+    );
     reapingBySource = results.map((result, index) => {
       const steadyDps = (reaping.sources[index].minimum?.reapingDps + reaping.sources[index].maximum?.reapingDps) / 2;
-      return { source: reaping.sources[index].source, trigger: reaping.sources[index].trigger, baseDurationSeconds: reaping.sources[index].baseDurationSeconds, baseRecoverySeconds: reaping.sources[index].baseRecoverySeconds, timed: Boolean(result), steadyDps, dps: result ? result.expectedDps * maxAfflictionScale : steadyDps };
+      return {
+        source: reaping.sources[index].source,
+        trigger: reaping.sources[index].trigger,
+        baseDurationSeconds: reaping.sources[index].baseDurationSeconds,
+        baseRecoverySeconds: reaping.sources[index].baseRecoverySeconds,
+        timed: Boolean(result),
+        steadyDps,
+        dps: result ? result.expectedDps * maxAfflictionScale : steadyDps,
+      };
     });
     reapingDps = reapingBySource.reduce((sum, item) => sum + item.dps, 0);
-    reapingTiming = results.every(Boolean) ? "application-timed expectation" : results.some(Boolean) ? "mixed expectation and steady-rate approximation" : "steady-rate approximation";
+    reapingTiming = results.every(Boolean)
+      ? "application-timed expectation"
+      : results.some(Boolean)
+        ? "mixed expectation and steady-rate approximation"
+        : "steady-rate approximation";
   }
   return {
-    seconds, uses, explosions,
+    seconds,
+    uses,
+    explosions,
     igniteMode: strongestOneStack.mode || "one-stack",
     beamDps: beamDamage / seconds,
     resistanceScale,
@@ -265,26 +373,53 @@ export function estimateFiveSecondOpening({ delivery, nativeCycle, strongestOneS
     reapingDps,
     reapingBySource,
     reapingTiming,
-    totalDpsApproximation: beamDamage / seconds + igniteDamage / seconds + reapingDps
+    totalDpsApproximation: beamDamage / seconds + igniteDamage / seconds + reapingDps,
   };
 }
 
-export function simulateFiveSecondVariation({ delivery, nativeCycle, ignite, reaping = null, criticalChancePercent = 0, criticalDamagePercent = 150, seconds = 5, sampleCount = 1024 }) {
-  if (!delivery?.applicable || !nativeCycle || !ignite || !(seconds > 0) || !(nativeCycle.castsPerSecond > 0)) return null;
+export function simulateFiveSecondVariation({
+  delivery,
+  nativeCycle,
+  ignite,
+  reaping = null,
+  criticalChancePercent = 0,
+  criticalDamagePercent = 150,
+  seconds = 5,
+  sampleCount = 1024,
+}) {
+  if (!delivery?.applicable || !nativeCycle || !ignite || !(seconds > 0) || !(nativeCycle.castsPerSecond > 0))
+    return null;
   let seed = 0x9e3779b9;
-  const random = () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return (seed >>> 0) / 4294967296; };
+  const random = () => {
+    seed ^= seed << 13;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    return (seed >>> 0) / 4294967296;
+  };
   const roll = ({ min, max }) => min + (max - min) * random();
   const chance = Math.max(0, Math.min(1, ignite.applicationChancePercent / 100));
-  const notIgnitedChance = Math.max(0, Math.min(1, (ignite.notIgnitedApplicationChancePercent ?? ignite.applicationChancePercent) / 100));
+  const notIgnitedChance = Math.max(
+    0,
+    Math.min(1, (ignite.notIgnitedApplicationChancePercent ?? ignite.applicationChancePercent) / 100),
+  );
   const critChance = Math.max(0, Math.min(1, criticalChancePercent / 100));
   const critMultiplier = Math.max(1, criticalDamagePercent / 100);
   const limit = ignite.maximumActiveStacks ?? 1;
   const stacksPerApplication = ignite.stacksPerApplication ?? 1;
   const duration = ignite.durationSeconds ?? 4;
-  const damagePerBase = (ignite.mode === "multi-stack" ? ignite.damagePerBase : ignite.expectedBaseDamage > 0 ? ignite.expectedDps / ignite.expectedBaseDamage : 0) * maxAfflictionWindowScale(ignite.maxAffliction, seconds);
+  const damagePerBase =
+    (ignite.mode === "multi-stack"
+      ? ignite.damagePerBase
+      : ignite.expectedBaseDamage > 0
+        ? ignite.expectedDps / ignite.expectedBaseDamage
+        : 0) * maxAfflictionWindowScale(ignite.maxAffliction, seconds);
   const sources = reaping?.sources || [];
-  const timedSources = sources.filter((source) => ["inflicting Ignite", "inflicting an ailment"].includes(source.trigger));
-  const steadyReapingDamage = sources.filter((source) => !timedSources.includes(source)).reduce((sum, source) => sum + (source.minimum.reapingDps + source.maximum.reapingDps) / 2 * seconds, 0);
+  const timedSources = sources.filter((source) =>
+    ["inflicting Ignite", "inflicting an ailment"].includes(source.trigger),
+  );
+  const steadyReapingDamage = sources
+    .filter((source) => !timedSources.includes(source))
+    .reduce((sum, source) => sum + ((source.minimum.reapingDps + source.maximum.reapingDps) / 2) * seconds, 0);
   const resistanceScale = openingResistanceScale(delivery, nativeCycle.castsPerSecond, seconds);
   const uses = Math.floor(nativeCycle.castsPerSecond * seconds + 1e-9);
   // Only the strongest rolls can count: each application adds `copies` stacks and at
@@ -305,32 +440,43 @@ export function simulateFiveSecondVariation({ delivery, nativeCycle, ignite, rea
     };
     let igniteExpiresAt = 0;
     const ready = timedSources.map(() => 0);
-    let damage = (delivery.bardSourceDps ?? delivery.bardRelatedDps ?? 0) * seconds * resistanceScale + steadyReapingDamage;
+    let damage =
+      (delivery.bardSourceDps ?? delivery.bardRelatedDps ?? 0) * seconds * resistanceScale + steadyReapingDamage;
     const phase = random();
     let nextTick = phase;
     const activeDot = (time) => {
       if (time >= igniteExpiresAt - 1e-9) active.length = 0;
-      let sum = 0, counted = 0;
-      for (const base of active) for (let copy = 0; copy < copies && counted < limitCount; copy++, counted++) sum += base;
+      let sum = 0,
+        counted = 0;
+      for (const base of active)
+        for (let copy = 0; copy < copies && counted < limitCount; copy++, counted++) sum += base;
       return sum * damagePerBase;
     };
     for (let use = 1; use <= uses; use++) {
       const time = use / nativeCycle.castsPerSecond;
-      while (nextTick <= time + 1e-9 && nextTick <= seconds) { damage += activeDot(nextTick); nextTick += 1; }
+      while (nextTick <= time + 1e-9 && nextTick <= seconds) {
+        damage += activeDot(nextTick);
+        nextTick += 1;
+      }
       damage += roll(nativeCycle.beam) * (random() < critChance ? critMultiplier : 1) * resistanceScale;
-      if (use % nativeCycle.cycleUses === 0) damage += roll(nativeCycle.explosion) * (random() < critChance ? critMultiplier : 1) * resistanceScale;
+      if (use % nativeCycle.cycleUses === 0)
+        damage += roll(nativeCycle.explosion) * (random() < critChance ? critMultiplier : 1) * resistanceScale;
       if (random() < (time >= igniteExpiresAt - 1e-9 ? notIgnitedChance : chance)) {
         if (time >= igniteExpiresAt - 1e-9) active.length = 0;
         keep(roll(ignite.baseRange));
         igniteExpiresAt = time + duration;
-        for (let index = 0; index < timedSources.length; index++) if (time + 1e-9 >= ready[index]) {
-          const source = timedSources[index];
-          damage += activeDot(time) * source.minimum.effectiveDurationSeconds * (source.trueDamageScale ?? 1);
-          ready[index] = time + source.minimum.recoverySeconds;
-        }
+        for (let index = 0; index < timedSources.length; index++)
+          if (time + 1e-9 >= ready[index]) {
+            const source = timedSources[index];
+            damage += activeDot(time) * source.minimum.effectiveDurationSeconds * (source.trueDamageScale ?? 1);
+            ready[index] = time + source.minimum.recoverySeconds;
+          }
       }
     }
-    while (nextTick <= seconds) { damage += activeDot(nextTick); nextTick += 1; }
+    while (nextTick <= seconds) {
+      damage += activeDot(nextTick);
+      nextTick += 1;
+    }
     samples.push(damage / seconds);
   }
   samples.sort((a, b) => a - b);
@@ -339,5 +485,14 @@ export function simulateFiveSecondVariation({ delivery, nativeCycle, ignite, rea
     const lower = Math.floor(position);
     return samples[lower] + (samples[Math.ceil(position)] - samples[lower]) * (position - lower);
   };
-  return { lowDps: percentile(0.1), highDps: percentile(0.9), meanDps: samples.reduce((sum, value) => sum + value, 0) / samples.length, sampleCount, seconds, percentileRange: "10th–90th", assumptions: "uniform hit rolls and one retained ailment roll per application; independent critical strikes; shared Ignite expiration; one-second Ignite ticks with random phase; fixed Bard residual; expected Scorch resistance uptime" };
+  return {
+    lowDps: percentile(0.1),
+    highDps: percentile(0.9),
+    meanDps: samples.reduce((sum, value) => sum + value, 0) / samples.length,
+    sampleCount,
+    seconds,
+    percentileRange: "10th–90th",
+    assumptions:
+      "uniform hit rolls and one retained ailment roll per application; independent critical strikes; shared Ignite expiration; one-second Ignite ticks with random phase; fixed Bard residual; expected Scorch resistance uptime",
+  };
 }

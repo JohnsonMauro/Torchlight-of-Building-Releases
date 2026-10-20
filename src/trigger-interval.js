@@ -5,8 +5,20 @@
 // "Selena DoT Stat Calc" v0.3, user-provided 2026-10-13) uses cooldown ÷ ((1 + CDR + castSpeed × share) × (1 + additional cast
 // speed)). Skill hits pass their whole cast-speed bonus as `castIncreasedPercent` (additional factor 1, no CDR term: the
 // skill's own cooldown caps the rate separately), so their reading is unchanged.
-export function castSpeedScaledTriggerInterval(intervalSeconds, { share = 0, castIncreasedPercent = 0, castAdditionalFactor = 1, cooldownRecoveryPercent = 0, cooldownAdditionalFactor = 1 } = {}) {
-  const divisor = (1 + cooldownRecoveryPercent / 100 + share * castIncreasedPercent / 100) * castAdditionalFactor * cooldownAdditionalFactor;
+export function castSpeedScaledTriggerInterval(
+  intervalSeconds,
+  {
+    share = 0,
+    castIncreasedPercent = 0,
+    castAdditionalFactor = 1,
+    cooldownRecoveryPercent = 0,
+    cooldownAdditionalFactor = 1,
+  } = {},
+) {
+  const divisor =
+    (1 + cooldownRecoveryPercent / 100 + (share * castIncreasedPercent) / 100) *
+    castAdditionalFactor *
+    cooldownAdditionalFactor;
   return intervalSeconds / Math.max(0.0001, divisor);
 }
 
@@ -28,22 +40,78 @@ export function castSpeedScaledTriggerInterval(intervalSeconds, { share = 0, cas
  * @param {boolean} p.channeled the skill is channeled (never triggered)
  * @returns {null|{ intervalSeconds, triggerIntervalSeconds, effectiveCooldownSeconds, castsPerSecond, cooldownSeconds, triggerSeconds, castSpeedScaled, share, castIncreasedPercent, castAdditionalFactor, cooldownRecoveryPercent, cooldownAdditionalFactor, cooldownSources, source, medium }}
  */
-export function activationMediumDotTrigger({ setup = null, castRate = null, cooldownLines = [], cooldownSeconds = 0, channeled = false } = {}) {
+export function activationMediumDotTrigger({
+  setup = null,
+  castRate = null,
+  cooldownLines = [],
+  cooldownSeconds = 0,
+  channeled = false,
+} = {}) {
   const effects = setup?.supportEffects;
   if (channeled || !effects) return null;
-  const trigger = (effects.trigger || []).find((item) => ["interval", "target"].includes(item.kind) && item.interval > 0 && item.status !== "Inactive" && item.status !== "Not modeled");
+  const trigger = (effects.trigger || []).find(
+    (item) =>
+      ["interval", "target"].includes(item.kind) &&
+      item.interval > 0 &&
+      item.status !== "Inactive" &&
+      item.status !== "Not modeled",
+  );
   if (!trigger) return null;
-  const shareDetail = (effects.triggerDetail || []).find((item) => item.kind === "castSpeedShare" && item.support === trigger.support);
+  const shareDetail = (effects.triggerDetail || []).find(
+    (item) => item.kind === "castSpeedShare" && item.support === trigger.support,
+  );
   const castSpeedScaled = Boolean(trigger.castSpeedScaled && shareDetail);
-  const share = castSpeedScaled ? shareDetail.share ?? 0 : 0;
+  const share = castSpeedScaled ? (shareDetail.share ?? 0) : 0;
   const castIncreasedPercent = Number(castRate?.increasedPercent) || 0;
   const increasedFactor = 1 + castIncreasedPercent / 100;
-  const castAdditionalFactor = castRate?.baseRate > 0 && increasedFactor > 0 && castRate.castsPerSecond > 0 ? castRate.castsPerSecond / castRate.baseRate / increasedFactor : 1;
-  const cooldownSources = [...cooldownLines, ...(effects.cooldown || []).map((line) => ({ source: line.source, text: line.text, value: line.value, additional: Boolean(line.additional) }))];
-  const cooldownRecoveryPercent = cooldownSources.filter((line) => !line.additional).reduce((sum, line) => sum + line.value, 0);
-  const cooldownAdditionalFactor = cooldownSources.filter((line) => line.additional).reduce((factor, line) => factor * Math.max(0, 1 + line.value / 100), 1);
-  const triggerIntervalSeconds = castSpeedScaled ? castSpeedScaledTriggerInterval(trigger.interval, { share, castIncreasedPercent, castAdditionalFactor, cooldownRecoveryPercent, cooldownAdditionalFactor }) : trigger.interval;
-  const effectiveCooldownSeconds = cooldownSeconds > 0 ? cooldownSeconds / Math.max(0.0001, (1 + cooldownRecoveryPercent / 100) * cooldownAdditionalFactor) : 0;
+  const castAdditionalFactor =
+    castRate?.baseRate > 0 && increasedFactor > 0 && castRate.castsPerSecond > 0
+      ? castRate.castsPerSecond / castRate.baseRate / increasedFactor
+      : 1;
+  const cooldownSources = [
+    ...cooldownLines,
+    ...(effects.cooldown || []).map((line) => ({
+      source: line.source,
+      text: line.text,
+      value: line.value,
+      additional: Boolean(line.additional),
+    })),
+  ];
+  const cooldownRecoveryPercent = cooldownSources
+    .filter((line) => !line.additional)
+    .reduce((sum, line) => sum + line.value, 0);
+  const cooldownAdditionalFactor = cooldownSources
+    .filter((line) => line.additional)
+    .reduce((factor, line) => factor * Math.max(0, 1 + line.value / 100), 1);
+  const triggerIntervalSeconds = castSpeedScaled
+    ? castSpeedScaledTriggerInterval(trigger.interval, {
+        share,
+        castIncreasedPercent,
+        castAdditionalFactor,
+        cooldownRecoveryPercent,
+        cooldownAdditionalFactor,
+      })
+    : trigger.interval;
+  const effectiveCooldownSeconds =
+    cooldownSeconds > 0
+      ? cooldownSeconds / Math.max(0.0001, (1 + cooldownRecoveryPercent / 100) * cooldownAdditionalFactor)
+      : 0;
   const intervalSeconds = Math.max(triggerIntervalSeconds, effectiveCooldownSeconds);
-  return { intervalSeconds, triggerIntervalSeconds, effectiveCooldownSeconds, castsPerSecond: 1 / intervalSeconds, cooldownSeconds: trigger.interval, skillCooldownSeconds: cooldownSeconds, castSpeedScaled, share, castIncreasedPercent, castAdditionalFactor: castSpeedScaled ? castAdditionalFactor : 1, cooldownRecoveryPercent, cooldownAdditionalFactor, cooldownSources, source: trigger.source, medium: trigger.support || String(trigger.source || "").replace(/^Support: /, "") };
+  return {
+    intervalSeconds,
+    triggerIntervalSeconds,
+    effectiveCooldownSeconds,
+    castsPerSecond: 1 / intervalSeconds,
+    cooldownSeconds: trigger.interval,
+    skillCooldownSeconds: cooldownSeconds,
+    castSpeedScaled,
+    share,
+    castIncreasedPercent,
+    castAdditionalFactor: castSpeedScaled ? castAdditionalFactor : 1,
+    cooldownRecoveryPercent,
+    cooldownAdditionalFactor,
+    cooldownSources,
+    source: trigger.source,
+    medium: trigger.support || String(trigger.source || "").replace(/^Support: /, ""),
+  };
 }

@@ -6,9 +6,13 @@ import { heroTraitKeyword, heroTraitKeywordSegments, heroTraitKeywordsIn } from 
 
 /** A stretch of trait text as HTML, with the hero's keywords in the keyword style. */
 export function traitKeywordTextHtml(heroId, text) {
-  return heroTraitKeywordSegments(heroId, text).map((segment) => segment.keyword
-    ? `<span class="keyword-roll-name trait-keyword" data-trait-keyword="${escapeHtml(segment.keyword)}">${escapeHtml(segment.text)}</span>`
-    : escapeHtml(segment.text)).join("");
+  return heroTraitKeywordSegments(heroId, text)
+    .map((segment) =>
+      segment.keyword
+        ? `<span class="keyword-roll-name trait-keyword" data-trait-keyword="${escapeHtml(segment.keyword)}">${escapeHtml(segment.text)}</span>`
+        : escapeHtml(segment.text),
+    )
+    .join("");
 }
 
 /**
@@ -29,9 +33,11 @@ export function traitGrantNoteHtml(entry) {
 export function traitKeywordDetailsHtml(heroId, lines = []) {
   const names = heroTraitKeywordsIn(heroId, lines);
   if (!names.length) return "";
-  const definitions = names.map((name) => {
-    const entry = heroTraitKeyword(heroId, name);
-    return `<div class="trait-keyword-definition" data-trait-keyword-definition="${escapeHtml(name)}"><span class="keyword-roll-name">${escapeHtml(name)}</span><em>${escapeHtml(entry.kind || "Keyword")}</em>${entry.effect.map((line) => `<span class="trait-keyword-line">${escapeHtml(line)}</span>`).join("")}</div>`;
-  }).join("");
+  const definitions = names
+    .map((name) => {
+      const entry = heroTraitKeyword(heroId, name);
+      return `<div class="trait-keyword-definition" data-trait-keyword-definition="${escapeHtml(name)}"><span class="keyword-roll-name">${escapeHtml(name)}</span><em>${escapeHtml(entry.kind || "Keyword")}</em>${entry.effect.map((line) => `<span class="trait-keyword-line">${escapeHtml(line)}</span>`).join("")}</div>`;
+    })
+    .join("");
   return `<small class="trait-keyword-hint">Hold Alt for details</small><div class="trait-keyword-details">${definitions}</div>`;
 }

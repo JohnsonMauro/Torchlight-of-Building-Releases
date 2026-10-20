@@ -52,7 +52,10 @@ export function tokenizeFormula(text) {
   let at = 0;
   while (at < source.length) {
     const char = source[at];
-    if (/\s/.test(char)) { at += 1; continue; }
+    if (/\s/.test(char)) {
+      at += 1;
+      continue;
+    }
     if (char === "[") {
       const end = source.indexOf("]", at);
       if (end < 0) throw new SyntaxError(`Unclosed reference at ${at} in ${source}`);
@@ -61,11 +64,23 @@ export function tokenizeFormula(text) {
       continue;
     }
     const number = source.slice(at).match(/^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/);
-    if (number) { tokens.push({ type: "num", value: Number(number[0]), at }); at += number[0].length; continue; }
+    if (number) {
+      tokens.push({ type: "num", value: Number(number[0]), at });
+      at += number[0].length;
+      continue;
+    }
     const word = source.slice(at).match(/^[A-Za-z_][A-Za-z_0-9]*(?:\.[A-Za-z_][A-Za-z_0-9]*)*/);
-    if (word) { tokens.push({ type: ["and", "or", "not"].includes(word[0]) ? word[0] : "name", text: word[0], at }); at += word[0].length; continue; }
+    if (word) {
+      tokens.push({ type: ["and", "or", "not"].includes(word[0]) ? word[0] : "name", text: word[0], at });
+      at += word[0].length;
+      continue;
+    }
     const operator = OPERATORS.find((candidate) => source.startsWith(candidate, at));
-    if (operator) { tokens.push({ type: "op", text: operator, at }); at += operator.length; continue; }
+    if (operator) {
+      tokens.push({ type: "op", text: operator, at });
+      at += operator.length;
+      continue;
+    }
     throw new SyntaxError(`Unexpected '${char}' at ${at} in ${source}`);
   }
   return tokens;
@@ -81,11 +96,27 @@ export function parseReference(text) {
   let match = raw.match(/^S(\d+)(?::(\d+))?$/);
   if (match) return { kind: "S", id: Number(match[1]), index: match[2] ? Number(match[2]) : 1, raw };
   match = raw.match(/^([AO])(\d+)([XEB])?(?:#([\d|+]+))?(?:<(min|max)>)?$/);
-  if (match) return { kind: match[1], id: Number(match[2]), part: match[3] ?? null, tags: parseTags(match[4]), range: match[5] ?? null, raw };
+  if (match)
+    return {
+      kind: match[1],
+      id: Number(match[2]),
+      part: match[3] ?? null,
+      tags: parseTags(match[4]),
+      range: match[5] ?? null,
+      raw,
+    };
   match = raw.match(/^([LNFM])(\d+)(?:#([\d|+]+))?$/);
   if (match) return { kind: match[1], id: Number(match[2]), tags: parseTags(match[3]), raw };
   match = raw.match(/^D(\d+)(?:,(\d+))?(?:#([\d|+]+))?(?:<(min|max)>)?$/);
-  if (match) return { kind: "D", id: Number(match[1]), hand: match[2] === undefined ? null : Number(match[2]), tags: parseTags(match[3]), range: match[4] ?? null, raw };
+  if (match)
+    return {
+      kind: "D",
+      id: Number(match[1]),
+      hand: match[2] === undefined ? null : Number(match[2]),
+      tags: parseTags(match[3]),
+      range: match[4] ?? null,
+      raw,
+    };
   match = raw.match(/^userdefine:(\d+)$/);
   if (match) return { kind: "userdefine", id: Number(match[1]), raw };
   match = raw.match(/^weapon:(\d+),(\d+)(?:#([\d|+]+))?$/);
@@ -106,18 +137,31 @@ export function parseFormula(text) {
   const peek = () => tokens[position];
   const isOp = (op) => peek()?.type === "op" && peek().text === op;
   const next = () => tokens[position++];
-  const expect = (op) => { if (!isOp(op)) throw new SyntaxError(`Expected '${op}' at token ${position} in ${text}`); next(); };
+  const expect = (op) => {
+    if (!isOp(op)) throw new SyntaxError(`Expected '${op}' at token ${position} in ${text}`);
+    next();
+  };
 
   function atom() {
     const token = next();
     if (!token) throw new SyntaxError(`Unexpected end of formula: ${text}`);
     if (token.type === "num") return { type: "num", value: token.value };
     if (token.type === "ref") return { type: "ref", ref: parseReference(token.text) };
-    if (token.type === "op" && token.text === "(") { const inner = expression(); expect(")"); return inner; }
+    if (token.type === "op" && token.text === "(") {
+      const inner = expression();
+      expect(")");
+      return inner;
+    }
     if (token.type === "name") {
       expect("(");
       const args = [];
-      if (!isOp(")")) { args.push(expression()); while (isOp(",")) { next(); args.push(expression()); } }
+      if (!isOp(")")) {
+        args.push(expression());
+        while (isOp(",")) {
+          next();
+          args.push(expression());
+        }
+      }
       expect(")");
       return { type: "call", name: token.text, args };
     }
@@ -125,30 +169,60 @@ export function parseFormula(text) {
   }
   function power() {
     const base = atom();
-    if (isOp("^")) { next(); return { type: "binary", op: "^", left: base, right: unary() }; }
+    if (isOp("^")) {
+      next();
+      return { type: "binary", op: "^", left: base, right: unary() };
+    }
     return base;
   }
   function unary() {
-    if (isOp("-")) { next(); return { type: "unary", op: "-", arg: unary() }; }
-    if (peek()?.type === "not") { next(); return { type: "unary", op: "not", arg: unary() }; }
+    if (isOp("-")) {
+      next();
+      return { type: "unary", op: "-", arg: unary() };
+    }
+    if (peek()?.type === "not") {
+      next();
+      return { type: "unary", op: "not", arg: unary() };
+    }
     return power();
   }
   function binaryLevel(operand, ops) {
     return () => {
       let left = operand();
-      while (peek()?.type === "op" && ops.has(peek().text)) { const op = next().text; left = { type: "binary", op, left, right: operand() }; }
+      while (peek()?.type === "op" && ops.has(peek().text)) {
+        const op = next().text;
+        left = { type: "binary", op, left, right: operand() };
+      }
       return left;
     };
   }
   const product = binaryLevel(unary, new Set(["*", "/", "%"]));
   const sum = binaryLevel(product, new Set(["+", "-"]));
   const compare = binaryLevel(sum, COMPARE);
-  function and() { let left = compare(); while (peek()?.type === "and") { next(); left = { type: "and", left, right: compare() }; } return left; }
-  function expression() { let left = and(); while (peek()?.type === "or") { next(); left = { type: "or", left, right: and() }; } return left; }
+  function and() {
+    let left = compare();
+    while (peek()?.type === "and") {
+      next();
+      left = { type: "and", left, right: compare() };
+    }
+    return left;
+  }
+  function expression() {
+    let left = and();
+    while (peek()?.type === "or") {
+      next();
+      left = { type: "or", left, right: and() };
+    }
+    return left;
+  }
 
   const values = [expression()];
-  while (isOp("|")) { next(); values.push(expression()); }
-  if (position !== tokens.length) throw new SyntaxError(`Unexpected '${peek().text ?? peek().type}' at ${peek().at} in ${text}`);
+  while (isOp("|")) {
+    next();
+    values.push(expression());
+  }
+  if (position !== tokens.length)
+    throw new SyntaxError(`Unexpected '${peek().text ?? peek().type}' at ${peek().at} in ${text}`);
   return { type: "formula", values };
 }
 
@@ -162,7 +236,8 @@ export function parseFormulaCached(text) {
 export function formulaReferences(node, out = []) {
   if (!node || typeof node !== "object") return out;
   if (node.type === "ref") out.push(node.ref);
-  for (const child of [node.left, node.right, node.arg, ...(node.args ?? []), ...(node.values ?? [])]) formulaReferences(child, out);
+  for (const child of [node.left, node.right, node.arg, ...(node.args ?? []), ...(node.values ?? [])])
+    formulaReferences(child, out);
   return out;
 }
 
@@ -181,18 +256,27 @@ const truthy = (value) => value !== false && value !== null && value !== undefin
 // Evaluate one AST node. resolve(ref) returns a number (or boolean), or undefined when the value is not known.
 // state collects { unknown: Set<reference key>, errors: [] }.
 export function evaluateNode(node, resolve, state = { unknown: new Set(), errors: [] }) {
-  const fail = (reason) => { state.unknown.add(reason); return UNKNOWN; };
+  const fail = (reason) => {
+    state.unknown.add(reason);
+    return UNKNOWN;
+  };
   const numeric = (value, what) => {
     if (value === UNKNOWN) return UNKNOWN;
-    if (typeof value !== "number") { state.errors.push(`${what}: ${typeof value} operand`); return UNKNOWN; }
+    if (typeof value !== "number") {
+      state.errors.push(`${what}: ${typeof value} operand`);
+      return UNKNOWN;
+    }
     return value;
   };
   switch (node.type) {
-    case "num": return node.value;
+    case "num":
+      return node.value;
     case "ref": {
       if (node.ref.kind === "unknown") return fail(`reference:${node.ref.raw}`);
       const value = resolve(node.ref);
-      return value === undefined || value === null || (typeof value === "number" && Number.isNaN(value)) ? fail(referenceKey(node.ref)) : value;
+      return value === undefined || value === null || (typeof value === "number" && Number.isNaN(value))
+        ? fail(referenceKey(node.ref))
+        : value;
     }
     case "unary": {
       const value = evaluateNode(node.arg, resolve, state);
@@ -217,35 +301,57 @@ export function evaluateNode(node, resolve, state = { unknown: new Set(), errors
         // the absorbed factor are listed in state.absorbed instead of state.unknown.
         const leftState = { unknown: new Set(), errors: [], zeroAbsorbs: true, absorbed: state.absorbed };
         const rightState = { unknown: new Set(), errors: [], zeroAbsorbs: true, absorbed: state.absorbed };
-        const left = evaluateNode(node.left, resolve, leftState), right = evaluateNode(node.right, resolve, rightState);
+        const left = evaluateNode(node.left, resolve, leftState),
+          right = evaluateNode(node.right, resolve, rightState);
         const zero = (value, own) => value === 0 && !own.errors.length;
-        if ((zero(left, leftState) && right === UNKNOWN && !rightState.errors.length) || (zero(right, rightState) && left === UNKNOWN && !leftState.errors.length)) {
+        if (
+          (zero(left, leftState) && right === UNKNOWN && !rightState.errors.length) ||
+          (zero(right, rightState) && left === UNKNOWN && !leftState.errors.length)
+        ) {
           (left === UNKNOWN ? leftState : rightState).unknown.forEach((item) => state.absorbed?.add(item));
           return 0;
         }
-        for (const child of [leftState, rightState]) { child.unknown.forEach((item) => state.unknown.add(item)); state.errors.push(...child.errors); }
+        for (const child of [leftState, rightState]) {
+          child.unknown.forEach((item) => state.unknown.add(item));
+          state.errors.push(...child.errors);
+        }
         if (left === UNKNOWN || right === UNKNOWN) return UNKNOWN;
-        const a = numeric(left, "*"), b = numeric(right, "*");
+        const a = numeric(left, "*"),
+          b = numeric(right, "*");
         return a === UNKNOWN || b === UNKNOWN ? UNKNOWN : a * b;
       }
-      const left = evaluateNode(node.left, resolve, state), right = evaluateNode(node.right, resolve, state);
+      const left = evaluateNode(node.left, resolve, state),
+        right = evaluateNode(node.right, resolve, state);
       if (left === UNKNOWN || right === UNKNOWN) return UNKNOWN;
       if (node.op === "==") return left === right;
       if (node.op === "~=") return left !== right;
-      const a = numeric(left, node.op), b = numeric(right, node.op);
+      const a = numeric(left, node.op),
+        b = numeric(right, node.op);
       if (a === UNKNOWN || b === UNKNOWN) return UNKNOWN;
       switch (node.op) {
-        case "+": return a + b;
-        case "-": return a - b;
-        case "*": return a * b;
-        case "/": return a / b; // Lua float division: x / 0 = ±inf, 0 / 0 = nan
-        case "%": return a - Math.floor(a / b) * b;
-        case "^": return a ** b;
-        case "<": return a < b;
-        case ">": return a > b;
-        case "<=": return a <= b;
-        case ">=": return a >= b;
-        default: state.errors.push(`operator ${node.op}`); return UNKNOWN;
+        case "+":
+          return a + b;
+        case "-":
+          return a - b;
+        case "*":
+          return a * b;
+        case "/":
+          return a / b; // Lua float division: x / 0 = ±inf, 0 / 0 = nan
+        case "%":
+          return a - Math.floor(a / b) * b;
+        case "^":
+          return a ** b;
+        case "<":
+          return a < b;
+        case ">":
+          return a > b;
+        case "<=":
+          return a <= b;
+        case ">=":
+          return a >= b;
+        default:
+          state.errors.push(`operator ${node.op}`);
+          return UNKNOWN;
       }
     }
     case "call": {
@@ -272,7 +378,14 @@ export function evaluateFormula(formula, resolve, options = {}) {
     return value === UNKNOWN ? null : value;
   });
   const complete = values.every((value) => typeof value === "number") && !state.errors.length;
-  return { values, value: values[0], complete, unknown: [...state.unknown], errors: state.errors, absorbed: [...state.absorbed] };
+  return {
+    values,
+    value: values[0],
+    complete,
+    unknown: [...state.unknown],
+    errors: state.errors,
+    absorbed: [...state.absorbed],
+  };
 }
 
 // ---- Panel evaluator (rows that reference rows) -----------------------------------------------------------------------
@@ -295,33 +408,61 @@ export function createPanelEvaluator({ rows, resolve, overrides = {}, zeroAbsorb
       const replaced = override(id);
       if (replaced !== undefined && replaced !== null) {
         const values = Array.isArray(replaced) ? replaced : [replaced];
-        const result = { id, values, value: values[0], complete: values.every((value) => typeof value === "number"), unknown: [], errors: [], overridden: true };
+        const result = {
+          id,
+          values,
+          value: values[0],
+          complete: values.every((value) => typeof value === "number"),
+          unknown: [],
+          errors: [],
+          overridden: true,
+        };
         memo.set(id, result);
         return result;
       }
       const row = byId.get(id);
-      if (!row) { const result = { id, values: [null], value: null, complete: false, unknown: [`row:S${id}`], errors: [] }; memo.set(id, result); return result; }
-      if (visiting.has(id)) { const result = { id, values: [null], value: null, complete: false, unknown: [], errors: [`cycle at S${id}`] }; return result; }
+      if (!row) {
+        const result = { id, values: [null], value: null, complete: false, unknown: [`row:S${id}`], errors: [] };
+        memo.set(id, result);
+        return result;
+      }
+      if (visiting.has(id)) {
+        const result = { id, values: [null], value: null, complete: false, unknown: [], errors: [`cycle at S${id}`] };
+        return result;
+      }
       visiting.add(id);
       // Child rows' reasons are attached after the evaluation, so a child absorbed by a 0 factor (zeroAbsorbs) moves its
       // reasons to `absorbed` instead of `unknown`.
-      const children = new Map(), errors = [];
+      const children = new Map(),
+        errors = [];
       let result;
       try {
-        result = evaluateFormula(row.formula, (ref) => {
-          if (ref.kind === "S") {
-            const child = rowResult(ref.id);
-            children.set(referenceKey(ref), child);
-            const value = child.values[ref.index - 1];
-            return value === undefined ? null : value;
-          }
-          return resolve ? resolve(ref, { row, root }) : undefined;
-        }, { zeroAbsorbs });
+        result = evaluateFormula(
+          row.formula,
+          (ref) => {
+            if (ref.kind === "S") {
+              const child = rowResult(ref.id);
+              children.set(referenceKey(ref), child);
+              const value = child.values[ref.index - 1];
+              return value === undefined ? null : value;
+            }
+            return resolve ? resolve(ref, { row, root }) : undefined;
+          },
+          { zeroAbsorbs },
+        );
       } catch (error) {
-        result = { values: [null], value: null, complete: false, unknown: [], errors: [`parse: ${error.message}`], absorbed: [] };
+        result = {
+          values: [null],
+          value: null,
+          complete: false,
+          unknown: [],
+          errors: [`parse: ${error.message}`],
+          absorbed: [],
+        };
       }
       visiting.delete(id);
-      const unknown = new Set(), absorbed = new Set();
+      const unknown = new Set(),
+        absorbed = new Set();
       // A child row that is unknown for its own reasons: list those reasons, not the row reference.
       const expand = (item, into) => {
         const child = children.get(item);
@@ -329,8 +470,7 @@ export function createPanelEvaluator({ rows, resolve, overrides = {}, zeroAbsorb
           child.unknown.forEach((reason) => into.add(reason));
           (child.absorbed ?? []).forEach((reason) => absorbed.add(reason));
           if (into === unknown) child.errors.forEach((error) => errors.push(error));
-        }
-        else into.add(item);
+        } else into.add(item);
       };
       result.unknown.forEach((item) => expand(item, unknown));
       result.absorbed.forEach((item) => expand(item, absorbed));
@@ -340,7 +480,16 @@ export function createPanelEvaluator({ rows, resolve, overrides = {}, zeroAbsorb
         (child.absorbed ?? []).forEach((reason) => absorbed.add(reason));
       }
       errors.push(...result.errors);
-      const final = { id, name: row.name ?? null, values: result.values, value: result.values[0], complete: result.complete && !unknown.size && !errors.length, unknown: [...unknown], errors: [...new Set(errors)], absorbed: [...absorbed] };
+      const final = {
+        id,
+        name: row.name ?? null,
+        values: result.values,
+        value: result.values[0],
+        complete: result.complete && !unknown.size && !errors.length,
+        unknown: [...unknown],
+        errors: [...new Set(errors)],
+        absorbed: [...absorbed],
+      };
       memo.set(id, final);
       if (trace) steps.push(final);
       return final;

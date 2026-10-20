@@ -56,16 +56,30 @@ export const IGNITE_TAGS = Object.freeze({
 const T = IGNITE_TAGS;
 
 // Scorching Beam: Spell / Fire / Channeled / Area / Beam, the main skill, and "this skill".
-export const scorchingBeamSkillTags = Object.freeze(new Set([T.SPELL, T.CHANNELED, T.AREA, T.BEAM, T.FIRE_SKILL, T.MAIN_SKILL, T.THIS_SKILL]));
+export const scorchingBeamSkillTags = Object.freeze(
+  new Set([T.SPELL, T.CHANNELED, T.AREA, T.BEAM, T.FIRE_SKILL, T.MAIN_SKILL, T.THIS_SKILL]),
+);
 // States that hold on the training dummy under the best-case rules (Boss within 10 m, Ignited, Cursed,
 // at max Affliction, Blur and Bard active).
-export const DUMMY_STATE_TAGS = Object.freeze(new Set([T.IGNITED, T.CURSED, T.MAX_AFFLICTION, T.BLUR, T.BARD, T.ELITE, T.BOSS]));
+export const DUMMY_STATE_TAGS = Object.freeze(
+  new Set([T.IGNITED, T.CURSED, T.MAX_AFFLICTION, T.BLUR, T.BARD, T.ELITE, T.BOSS]),
+);
 
 const STATE_NAMES = {
-  [T.IGNITED]: "target Ignited", [T.CURSED]: "target Cursed", [T.MAX_AFFLICTION]: "target at max Affliction",
-  [T.BLUR]: "Blur active", [T.BARD]: "Bard form", [T.ELITE]: "target Elite", [T.BOSS]: "target Boss",
-  4000120: "target Shocked", 4000121: "target Numbed", 4000110: "target Frostbitten", 4000112: "target Frozen",
-  4000150: "target Trauma", 4000160: "target Wilt", 4000411: "at Full Life",
+  [T.IGNITED]: "target Ignited",
+  [T.CURSED]: "target Cursed",
+  [T.MAX_AFFLICTION]: "target at max Affliction",
+  [T.BLUR]: "Blur active",
+  [T.BARD]: "Bard form",
+  [T.ELITE]: "target Elite",
+  [T.BOSS]: "target Boss",
+  4000120: "target Shocked",
+  4000121: "target Numbed",
+  4000110: "target Frostbitten",
+  4000112: "target Frozen",
+  4000150: "target Trauma",
+  4000160: "target Wilt",
+  4000411: "at Full Life",
 };
 const isStateTag = (tag) => (tag >= 4000000 && tag < 5000000) || tag === T.ELITE || tag === T.BOSS || tag === T.RARE;
 const isSkillTypeTag = (tag) => tag >= 6000000 && tag < 7000000;
@@ -129,17 +143,25 @@ function pRefsOf(...values) {
 // Gate strings from the index ("10{tag=4000060} & 188{probability=p0}") -> [{ node, text, tag? }].
 function parseGates(cond) {
   if (!cond) return [];
-  return String(cond).split(" & ").map((text) => {
-    const m = text.match(/(?:^|:)(\d+)\{/);
-    const tag = text.match(/\btag=(\d+)/);
-    return { node: m ? Number(m[1]) : null, text, ...(tag ? { tag: Number(tag[1]) } : {}) };
-  });
+  return String(cond)
+    .split(" & ")
+    .map((text) => {
+      const m = text.match(/(?:^|:)(\d+)\{/);
+      const tag = text.match(/\btag=(\d+)/);
+      return { node: m ? Number(m[1]) : null, text, ...(tag ? { tag: Number(tag[1]) } : {}) };
+    });
 }
 
 // One index write -> normalized write { kind, id, mod, tags, ... } (or null for nodes handled elsewhere).
 function normalizeWrite(raw, base) {
   const p = raw.params || {};
-  const common = { ...base, node: raw.node ?? 101, tags: raw.tags || {}, cond: raw.cond, pRefs: pRefsOf(raw.value, raw.upper, raw.params) };
+  const common = {
+    ...base,
+    node: raw.node ?? 101,
+    tags: raw.tags || {},
+    cond: raw.cond,
+    pRefs: pRefsOf(raw.value, raw.upper, raw.params),
+  };
   if (raw.to?.includes(8)) common.onEnemy = true;
   if (raw.to?.includes(3)) common.onMinion = true;
   if (raw.attr !== undefined) {
@@ -148,19 +170,59 @@ function normalizeWrite(raw, base) {
     return w;
   }
   switch (raw.node) {
-    case 108: return { ...common, kind: "field", id: p.field, value: p.value };
-    case 343: return { ...common, kind: "extraStacks", id: p.keyValue, keyType: p.keyType, value: p.layerNum, probability: p.probability };
-    case 381: return { ...common, kind: "flatToBase", id: p.ailmentType, value: p.percent, upper: p.percentMax };
-    case 114: return { ...common, kind: "convert", id: p.to, mod: p.toMod, from: p.from, fromValue: p.fromValue, value: p.toLowerValue, upper: p.toUpperValue, tags: p.toTags || {} };
-    case 119: return { ...common, kind: "perStat", id: p.to, mod: p.toMod, from: p.from, fromValue: p.fromValue, value: p.toLowerValue, upper: p.toUpperValue, tags: p.toTags || {} };
-    case 631: return { ...common, kind: "reap", id: null, value: p.reapTime };
-    case 627: return { ...common, kind: "resource", id: p.resourceType, value: p.numValue, percent: p.curPercent };
-    case 301: return { ...common, kind: "gainBuff", id: p.buff, value: p.num };
-    case 302: return { ...common, kind: "refreshBuff", id: p.buff };
-    case 1017: return { ...common, kind: "talentGrant", id: p.talentId };
-    case 306: return null; // buff carrier; its buffAttr children are the writes
-    case 111: return null; // row routing, handled in rowsToWrites
-    default: return { ...common, kind: "node", id: raw.node, value: undefined };
+    case 108:
+      return { ...common, kind: "field", id: p.field, value: p.value };
+    case 343:
+      return {
+        ...common,
+        kind: "extraStacks",
+        id: p.keyValue,
+        keyType: p.keyType,
+        value: p.layerNum,
+        probability: p.probability,
+      };
+    case 381:
+      return { ...common, kind: "flatToBase", id: p.ailmentType, value: p.percent, upper: p.percentMax };
+    case 114:
+      return {
+        ...common,
+        kind: "convert",
+        id: p.to,
+        mod: p.toMod,
+        from: p.from,
+        fromValue: p.fromValue,
+        value: p.toLowerValue,
+        upper: p.toUpperValue,
+        tags: p.toTags || {},
+      };
+    case 119:
+      return {
+        ...common,
+        kind: "perStat",
+        id: p.to,
+        mod: p.toMod,
+        from: p.from,
+        fromValue: p.fromValue,
+        value: p.toLowerValue,
+        upper: p.toUpperValue,
+        tags: p.toTags || {},
+      };
+    case 631:
+      return { ...common, kind: "reap", id: null, value: p.reapTime };
+    case 627:
+      return { ...common, kind: "resource", id: p.resourceType, value: p.numValue, percent: p.curPercent };
+    case 301:
+      return { ...common, kind: "gainBuff", id: p.buff, value: p.num };
+    case 302:
+      return { ...common, kind: "refreshBuff", id: p.buff };
+    case 1017:
+      return { ...common, kind: "talentGrant", id: p.talentId };
+    case 306:
+      return null; // buff carrier; its buffAttr children are the writes
+    case 111:
+      return null; // row routing, handled in rowsToWrites
+    default:
+      return { ...common, kind: "node", id: raw.node, value: undefined };
   }
 }
 
@@ -169,10 +231,12 @@ function normalizeWrite(raw, base) {
 function entryWrites(entry) {
   const rows = entry.rows || [];
   const routed = new Map(); // 0-based row index -> "enemy" | "minion"
-  for (const row of rows) for (const w of row.writes || []) {
-    if (w.node !== 111) continue;
-    for (const n of w.params?.affixes || []) routed.set(n - 1, w.to?.includes(8) ? "enemy" : w.to?.includes(3) ? "minion" : "self");
-  }
+  for (const row of rows)
+    for (const w of row.writes || []) {
+      if (w.node !== 111) continue;
+      for (const n of w.params?.affixes || [])
+        routed.set(n - 1, w.to?.includes(8) ? "enemy" : w.to?.includes(3) ? "minion" : "self");
+    }
   const out = [];
   rows.forEach((row, index) => {
     const gates = parseGates(row.cond);
@@ -181,10 +245,16 @@ function entryWrites(entry) {
     if (routed.get(index) === "minion") base.onMinion = true;
     for (const raw of row.writes || []) {
       if (raw.node === 629) {
-        for (const inst of raw.inst || []) for (const innerRow of inst.rows || []) for (const innerRaw of innerRow.writes || []) {
-          const w = normalizeWrite(innerRaw, { ...base, gates: [...gates, ...parseGates(innerRow.cond)], trigger: base.trigger ?? innerRow.trigger?.id });
-          if (w) out.push({ ...w, viaBuff: raw.params?.buffId, viaAffix: inst.id, viaArg: inst.args, pRefs: [] });
-        }
+        for (const inst of raw.inst || [])
+          for (const innerRow of inst.rows || [])
+            for (const innerRaw of innerRow.writes || []) {
+              const w = normalizeWrite(innerRaw, {
+                ...base,
+                gates: [...gates, ...parseGates(innerRow.cond)],
+                trigger: base.trigger ?? innerRow.trigger?.id,
+              });
+              if (w) out.push({ ...w, viaBuff: raw.params?.buffId, viaAffix: inst.id, viaArg: inst.args, pRefs: [] });
+            }
         continue;
       }
       const w = normalizeWrite(raw, base);
@@ -197,16 +267,33 @@ function entryWrites(entry) {
 // Normalized writes of one indexed affix (its whole-template entry), or null when the id is not indexed.
 export function writesForAffixId(index, id) {
   let partEntry = null;
-  for (const entries of Object.values(index)) for (const entry of entries) {
-    if (entry.id !== id) continue;
-    if (!entry.part) return entryWrites(entry);
-    partEntry ??= entry;
-  }
+  for (const entries of Object.values(index))
+    for (const entry of entries) {
+      if (entry.id !== id) continue;
+      if (!entry.part) return entryWrites(entry);
+      partEntry ??= entry;
+    }
   return partEntry ? entryWrites(partEntry) : null;
 }
 
-const signatureOf = (writes) => writes.map((w) => `${w.kind}:${w.id}/${w.mod ?? "-"}@${w.onEnemy ? "e" : w.onMinion ? "m" : "s"}${JSON.stringify(w.tags)}${w.viaBuff ?? ""}`).sort().join(" ");
-const ORIGIN_CATEGORY = { gear: "gear", talent: "talent", core: "talent", prism: "talent", slate: "slate", pact: "pact", kismet: "pact", memory: "hero" };
+const signatureOf = (writes) =>
+  writes
+    .map(
+      (w) =>
+        `${w.kind}:${w.id}/${w.mod ?? "-"}@${w.onEnemy ? "e" : w.onMinion ? "m" : "s"}${JSON.stringify(w.tags)}${w.viaBuff ?? ""}`,
+    )
+    .sort()
+    .join(" ");
+const ORIGIN_CATEGORY = {
+  gear: "gear",
+  talent: "talent",
+  core: "talent",
+  prism: "talent",
+  slate: "slate",
+  pact: "pact",
+  kismet: "pact",
+  memory: "hero",
+};
 
 // Resolve one planner line. Whole-template matches win over one-line-of-a-multi-line-affix matches;
 // a part match keeps only the writes bound to that part's $Pn$. Several distinct write signatures stay
@@ -219,7 +306,10 @@ export function resolveAffixLine(text, index, { origin } = {}) {
     const key = shape(candidate.text);
     const entries = index[key];
     if (!entries?.length) continue;
-    const via = [baseShape(candidate.text) !== key ? "alias" : null, candidate.prefixed ? "prefix" : null].filter(Boolean).join("+") || "direct";
+    const via =
+      [baseShape(candidate.text) !== key ? "alias" : null, candidate.prefixed ? "prefix" : null]
+        .filter(Boolean)
+        .join("+") || "direct";
     const whole = entries.filter((e) => !e.part);
     const pool = whole.length ? whole : entries;
     const resolved = pool.map((entry) => {
@@ -239,7 +329,12 @@ export function resolveAffixLine(text, index, { origin } = {}) {
     if (ambiguous && origin) {
       const category = ORIGIN_CATEGORY[origin];
       const byOrigin = resolved.filter((r) => r.entry.source?.includes(category));
-      if (byOrigin.length && new Set(byOrigin.map((r) => r.signature)).size === 1) { chosen = byOrigin; ambiguous = false; resolvedBy = "origin"; groups = [byOrigin[0].signature]; }
+      if (byOrigin.length && new Set(byOrigin.map((r) => r.signature)).size === 1) {
+        chosen = byOrigin;
+        ambiguous = false;
+        resolvedBy = "origin";
+        groups = [byOrigin[0].signature];
+      }
     }
     const first = chosen[0];
     const alternatives = [...new Set(chosen.map((r) => r.signature))].map((sig) => {
@@ -248,8 +343,16 @@ export function resolveAffixLine(text, index, { origin } = {}) {
     });
     return {
       alternatives,
-      text, shape: key, via, ids: chosen.map((r) => r.entry.id), allIds: resolved.map((r) => r.entry.id),
-      part: Boolean(first.entry.part), writes: first.writes, params: first.params, ambiguous, resolvedBy,
+      text,
+      shape: key,
+      via,
+      ids: chosen.map((r) => r.entry.id),
+      allIds: resolved.map((r) => r.entry.id),
+      part: Boolean(first.entry.part),
+      writes: first.writes,
+      params: first.params,
+      ambiguous,
+      resolvedBy,
       empty: chosen.every((r) => !(r.entry.rows || []).some((row) => row.writes?.length || row.cond)),
     };
   }
@@ -265,7 +368,9 @@ function bindOrder(numbers, order) {
   if (!order) return {};
   if (numbers.length !== order.length) return null;
   const out = {};
-  order.forEach((p, i) => { if (!(`p${p}` in out)) out[`p${p}`] = numbers[i]; });
+  order.forEach((p, i) => {
+    if (!(`p${p}` in out)) out[`p${p}`] = numbers[i];
+  });
   return out;
 }
 
@@ -274,7 +379,7 @@ function bindOrder(numbers, order) {
 // GetEffectScale: × effectScale (1 for gear and talents; 1 + Blur Effect inside buff 220).
 export function writeValue(write, values, { multiplier = 1, effectScale = 1, field = "value" } = {}) {
   const expr = write?.[field];
-  const params = Array.isArray(values) ? Object.fromEntries(values.map((v, i) => [`p${i}`, v])) : (values || {});
+  const params = Array.isArray(values) ? Object.fromEntries(values.map((v, i) => [`p${i}`, v])) : values || {};
   const raw = evaluate(expr, params, effectScale);
   return raw == null || Number.isNaN(raw) ? null : raw * multiplier;
 }
@@ -295,7 +400,8 @@ function evaluate(expr, params, scale) {
     else if (token === "scale") stack.push(scale);
     else if (/^-?[\d.]+(e-?\d+)?$/.test(token)) stack.push(Number(token));
     else if (["*", "/", "+", "-"].includes(token)) {
-      const b = stack.pop(), a = stack.pop();
+      const b = stack.pop(),
+        a = stack.pop();
       stack.push(token === "*" ? a * b : token === "/" ? a / b : token === "+" ? a + b : a - b);
     } else return NaN; // calls such as GetAttr(...) are not evaluated here
   }
@@ -328,7 +434,8 @@ function conditionOf(write, states) {
   ];
   if (!parts.length) return null;
   const stateKnown = !write.trigger && !otherGates.length && !write.cond;
-  const holds = stateKnown && states ? required.every((t) => states.has(t)) && !forbidden.some((t) => states.has(t)) : null;
+  const holds =
+    stateKnown && states ? required.every((t) => states.has(t)) && !forbidden.some((t) => states.has(t)) : null;
   return { text: parts.join("; "), required, forbidden, trigger: write.trigger ?? null, holds };
 }
 
@@ -342,42 +449,56 @@ export function classifyIgniteWrite(write, { skillTags = scorchingBeamSkillTags,
   const condition = conditionOf(write, states);
   const ok = (bucket, layer, extra = {}) => ({ bucket, layer: layer ?? BUCKETS[bucket], condition, ...extra });
   if (write.onMinion || (write.tags?.mine || []).includes(T.MINION)) return excluded("minion only");
-  const attr = write.kind === "attr" || write.kind === "perStat" || write.kind === "convert" ? baseAttr(write.id) : null;
+  const attr =
+    write.kind === "attr" || write.kind === "perStat" || write.kind === "convert" ? baseAttr(write.id) : null;
   const viaLayer = write.viaBuff !== undefined ? ` via buff ${write.viaBuff}` : "";
   const perStat = write.kind === "perStat" || write.kind === "convert" ? ` per stat ${write.from}` : "";
 
   if (write.onEnemy) {
-    if (write.kind === "attr" && (attr === 5101 || attr === 5741)) return ok("targetFireResistance", `${BUCKETS.targetFireResistance} (enemy-side mod ${write.mod})`);
+    if (write.kind === "attr" && (attr === 5101 || attr === 5741))
+      return ok("targetFireResistance", `${BUCKETS.targetFireResistance} (enemy-side mod ${write.mod})`);
     if (write.kind === "attr" && attr === 5720 && write.mod === 4) return ok("targetDamageTaken");
     if (write.kind === "reap") return ok("reapingSource");
-    if (write.kind === "resource" && write.id === 6) return ok("reapingSource", `${BUCKETS.reapingSource} (removes target Affliction on Reap)`);
+    if (write.kind === "resource" && write.id === 6)
+      return ok("reapingSource", `${BUCKETS.reapingSource} (removes target Affliction on Reap)`);
     return excluded(`enemy-side ${write.kind} ${write.id}/${write.mod ?? "-"} is not an Ignite input`);
   }
 
   switch (write.kind) {
-    case "talentGrant": return ok("unresolved", `Unresolved: talent grant (node 1017, talentId ${write.id})`);
-    case "reap": return ok("reapingSource");
+    case "talentGrant":
+      return ok("unresolved", `Unresolved: talent grant (node 1017, talentId ${write.id})`);
+    case "reap":
+      return ok("reapingSource");
     case "extraStacks":
       if (write.id !== T.IGNITE) return excluded(`extra stacks of ${write.id}`);
       if (mine.some((t) => t !== T.THIS_SKILL)) return excluded(`extra stacks with tags ${mine.join(",")}`);
       return ok("extraStacks", undefined, { pairKey: "extraStacks" });
-    case "flatToBase": return write.id === 3 ? ok("baseIgniteFromFlat") : excluded(`flat-to-base for ailment type ${write.id}`);
+    case "flatToBase":
+      return write.id === 3 ? ok("baseIgniteFromFlat") : excluded(`flat-to-base for ailment type ${write.id}`);
     case "gainBuff":
       if (write.id === 220) return ok("blur", `${BUCKETS.blur} (gains Blur, buff 220)`);
-      if (write.id === 380) return ok("focusBlessing", `${BUCKETS.focusBlessing} (buff 380 on trigger ${write.trigger ?? "-"})`);
+      if (write.id === 380)
+        return ok("focusBlessing", `${BUCKETS.focusBlessing} (buff 380 on trigger ${write.trigger ?? "-"})`);
       if (write.id === 3441) return ok("fireInfiltration");
       if (write.id === 3491) return ok("unresolved", "Unresolved: buff 3491 (Torment, config_char_buff)");
       return excluded(`gains buff ${write.id}`);
-    case "refreshBuff": return write.id === 220 ? ok("blur", `${BUCKETS.blur} (refreshes Blur)`) : excluded(`refreshes buff ${write.id}`);
-    case "resource": return write.id === 2 ? ok("blur", `${BUCKETS.blur} (Blur Rating gain)`) : excluded(`resource ${write.id}`);
-    case "node": return excluded(`effect node ${write.id}`);
-    case "field": return classifyField(write, mine, skillTags, ok);
-    default: break;
+    case "refreshBuff":
+      return write.id === 220 ? ok("blur", `${BUCKETS.blur} (refreshes Blur)`) : excluded(`refreshes buff ${write.id}`);
+    case "resource":
+      return write.id === 2 ? ok("blur", `${BUCKETS.blur} (Blur Rating gain)`) : excluded(`resource ${write.id}`);
+    case "node":
+      return excluded(`effect node ${write.id}`);
+    case "field":
+      return classifyField(write, mine, skillTags, ok);
+    default:
+      break;
   }
 
   // Attribute writes (101, buffAttr, per-stat 119 / conversion 114 targets).
-  if (write.kind === "convert" && write.id === 20064672) return ok("afflictionPerSecond", `${BUCKETS.afflictionPerSecond} (converted from ${write.from})`);
-  if (write.kind === "perStat" && write.id === 20064672) return ok("afflictionPerSecond", `${BUCKETS.afflictionPerSecond} (per stat ${write.from})`);
+  if (write.kind === "convert" && write.id === 20064672)
+    return ok("afflictionPerSecond", `${BUCKETS.afflictionPerSecond} (converted from ${write.from})`);
+  if (write.kind === "perStat" && write.id === 20064672)
+    return ok("afflictionPerSecond", `${BUCKETS.afflictionPerSecond} (per stat ${write.from})`);
   if (STAGE_B_ATTRS.has(write.id) || STAGE_B_ATTRS.has(attr)) {
     if (attr === 5107 || attr === 5727 || attr === 5719) {
       if (write.mod === 2) return excluded("added flat damage (hit)");
@@ -388,43 +509,58 @@ export function classifyIgniteWrite(write, { skillTags = scorchingBeamSkillTags,
       if (foreign) return excluded(`tag ${foreign} is not on the Ignite damage event`);
       const layer = `${write.mod === 3 ? BUCKETS.increased : BUCKETS.additional}${perStat}${viaLayer}`;
       if (write.mod === 3) return ok("increased", layer);
-      if (write.mod === 4) return mine.includes(T.IGNITE) ? ok("additionalIgnite", `${BUCKETS.additionalIgnite}${perStat}${viaLayer}`) : ok("additional", layer);
+      if (write.mod === 4)
+        return mine.includes(T.IGNITE)
+          ? ok("additionalIgnite", `${BUCKETS.additionalIgnite}${perStat}${viaLayer}`)
+          : ok("additional", layer);
       return excluded(`attr ${write.id} mod ${write.mod}`);
     }
   }
   switch (attr) {
-    case 5823: return write.mod === 2 && mine.every((t) => t === T.THIS_SKILL) ? ok("baseIgnite") : excluded(`base Ignite mod ${write.mod} tags ${mine.join(",")}`);
+    case 5823:
+      return write.mod === 2 && mine.every((t) => t === T.THIS_SKILL)
+        ? ok("baseIgnite")
+        : excluded(`base Ignite mod ${write.mod} tags ${mine.join(",")}`);
     case 3604: {
       if (!mine.includes(T.IGNITE)) return excluded("stage-A ailment bonus for another ailment");
       const crit = mine.includes(T.CRIT);
       const foreign = mine.filter((t) => t !== T.IGNITE && t !== T.CRIT && !skillTags.has(t));
       if (foreign.length) return excluded(`skill tag ${foreign.join(",")} is not on the inflicting skill (stage A)`);
       const extra = crit ? { critOnly: true } : {};
-      if (write.mod === 4) return ok("stageA", crit ? `${BUCKETS.stageA} (crit-applied Ignites only)` : undefined, extra);
+      if (write.mod === 4)
+        return ok("stageA", crit ? `${BUCKETS.stageA} (crit-applied Ignites only)` : undefined, extra);
       if (write.mod === 3) return ok("stageAIncreased", undefined, extra);
       return excluded(`3604 mod ${write.mod}`);
     }
     case 3601: {
-      if (mine.some((t) => t !== T.IGNITE && t !== T.AILMENT && t !== T.ELEMENTAL_AILMENT)) return excluded(`ailment duration for ${mine.join(",")}`);
+      if (mine.some((t) => t !== T.IGNITE && t !== T.AILMENT && t !== T.ELEMENTAL_AILMENT))
+        return excluded(`ailment duration for ${mine.join(",")}`);
       if (write.mod === 3) return ok("durationIncreased");
       if (write.mod === 4) return ok("durationAdditional");
       return excluded(`3601 mod ${write.mod}`);
     }
-    case 3440: return write.mod === 1 && mine.includes(T.IGNITE) ? ok("limit") : excluded(`buff limit for ${mine.join(",") || "untagged"}`);
+    case 3440:
+      return write.mod === 1 && mine.includes(T.IGNITE)
+        ? ok("limit")
+        : excluded(`buff limit for ${mine.join(",") || "untagged"}`);
     case 5724: {
-      if (mine.some((t) => t !== T.IGNITE && t !== T.THIS_SKILL && t !== T.AILMENT)) return excluded(`Affliction effect for ${mine.join(",")}`);
+      if (mine.some((t) => t !== T.IGNITE && t !== T.THIS_SKILL && t !== T.AILMENT))
+        return excluded(`Affliction effect for ${mine.join(",")}`);
       if (write.mod === 3) return ok("afflictionEffect");
       if (write.mod === 4) return ok("afflictionEffectAdditional");
       return excluded(`5724 mod ${write.mod}`);
     }
     case 5104: {
-      if (mine.includes(T.CRIT)) return ok("firePenetration", `${BUCKETS.firePenetration} (crit-applied only)`, { critOnly: true });
+      if (mine.includes(T.CRIT))
+        return ok("firePenetration", `${BUCKETS.firePenetration} (crit-applied only)`, { critOnly: true });
       if (mine.some((t) => !IGNITE_SCOPE.has(t))) return excluded(`Fire penetration for ${mine.join(",")}`);
       return ok("firePenetration");
     }
     case 6008: {
-      if (mine.some((t) => t !== T.IGNITE && t !== T.THIS_SKILL)) return excluded(`Reaping Duration share of ${mine.join(",")} (not Ignite)`);
-      if (write.mod === 3) return ok("reapingDuration", `${BUCKETS.reapingDuration}${viaLayer}${write.viaCarrier ? " (timed buff)" : ""}`);
+      if (mine.some((t) => t !== T.IGNITE && t !== T.THIS_SKILL))
+        return excluded(`Reaping Duration share of ${mine.join(",")} (not Ignite)`);
+      if (write.mod === 3)
+        return ok("reapingDuration", `${BUCKETS.reapingDuration}${viaLayer}${write.viaCarrier ? " (timed buff)" : ""}`);
       if (write.mod === 4) return ok("reapingDurationAdditional");
       return excluded(`6008 mod ${write.mod}`);
     }
@@ -433,7 +569,8 @@ export function classifyIgniteWrite(write, { skillTags = scorchingBeamSkillTags,
       if (write.mod === 4) return ok("reapingRecoveryAdditional");
       return excluded(`6009 mod ${write.mod}`);
     }
-    case 3: return ok("intelligence");
+    case 3:
+      return ok("intelligence");
     case 6002: {
       const foreign = mine.filter((t) => !skillTags.has(t));
       return foreign.length ? excluded(`cast speed for ${foreign.join(",")}`) : ok("castRate");
@@ -444,31 +581,55 @@ export function classifyIgniteWrite(write, { skillTags = scorchingBeamSkillTags,
       if (all.includes(T.BLUR_STATUS)) return ok("blur", `${BUCKETS.blur} (Blur Effect)`);
       return excluded(`buff effect for ${all.join(",") || "untagged"}`);
     }
-    case 3442: return (write.tags?.mine || []).includes(T.FOCUS_BLESSING_STATUS) ? ok("focusBlessing", `${BUCKETS.focusBlessing} (max stacks)`) : excluded("max stacks of another buff");
-    case 5806: case 5812: return write.mod === 4 ? ok("maxMinDamage") : excluded(`${attr} mod ${write.mod}`);
-    default: return excluded(`attr ${write.id}/${write.mod ?? "-"} is not an Ignite input`);
+    case 3442:
+      return (write.tags?.mine || []).includes(T.FOCUS_BLESSING_STATUS)
+        ? ok("focusBlessing", `${BUCKETS.focusBlessing} (max stacks)`)
+        : excluded("max stacks of another buff");
+    case 5806:
+    case 5812:
+      return write.mod === 4 ? ok("maxMinDamage") : excluded(`${attr} mod ${write.mod}`);
+    default:
+      return excluded(`attr ${write.id}/${write.mod ?? "-"} is not an Ignite input`);
   }
 }
 
 function classifyField(write, mine, skillTags, ok) {
   switch (write.id) {
-    case 2006480: case 2006591: {
+    case 2006480:
+    case 2006591: {
       const foreign = mine.filter((t) => !skillTags.has(t) && t !== T.IGNITE);
       if (foreign.length) return excluded(`Ignite chance for ${foreign.join(",")}`);
       const notIgnited = (write.tags?.notOthers || []).includes(T.IGNITED);
-      return ok("chance", notIgnited ? `${BUCKETS.chance} (only vs a not-yet-Ignited target)` : write.id === 2006591 ? `${BUCKETS.chance} (elemental ailment chance)` : undefined);
+      return ok(
+        "chance",
+        notIgnited
+          ? `${BUCKETS.chance} (only vs a not-yet-Ignited target)`
+          : write.id === 2006591
+            ? `${BUCKETS.chance} (elemental ailment chance)`
+            : undefined,
+      );
     }
-    case 2006249: return mine.every((t) => t === T.AILMENT || t === T.IGNITE) ? ok("enhancement") : excluded(`damage enhancement for ${mine.join(",")}`);
+    case 2006249:
+      return mine.every((t) => t === T.AILMENT || t === T.IGNITE)
+        ? ok("enhancement")
+        : excluded(`damage enhancement for ${mine.join(",")}`);
     case 2010024: {
       const foreign = mine.filter((t) => !skillTags.has(t));
       return foreign.length ? excluded(`damage to Life for ${foreign.join(",")}`) : ok("damageToLife");
     }
-    case 2006467: return ok("afflictionPerSecond");
-    case 2600611: return ok("extraStacks", `${BUCKETS.extraStacks} (field 2600611)`, { pairKey: "extraStacks" });
-    case 2006400: return ok("skillLevel");
-    case 2010090: return ok("curseSlots");
-    case 2006510: case 2006520: return excluded(`chance for another ailment (field ${write.id})`);
-    default: return excluded(`field ${write.id} is not an Ignite input`);
+    case 2006467:
+      return ok("afflictionPerSecond");
+    case 2600611:
+      return ok("extraStacks", `${BUCKETS.extraStacks} (field 2600611)`, { pairKey: "extraStacks" });
+    case 2006400:
+      return ok("skillLevel");
+    case 2010090:
+      return ok("curseSlots");
+    case 2006510:
+    case 2006520:
+      return excluded(`chance for another ailment (field ${write.id})`);
+    default:
+      return excluded(`field ${write.id} is not an Ignite input`);
   }
 }
 
@@ -477,39 +638,78 @@ function classifyField(write, mine, skillTags, ok) {
 
 // { lines: [{ text, origin, source, multiplier, ids, via, writes: [{ write, class }], buckets: { bucket: value } , condition }],
 //   unmatched: [line], unresolved: [line], ambiguous: [line] }
-export function attributeIgniteLedger(modifierTexts, index, { skillTags = scorchingBeamSkillTags, states = DUMMY_STATE_TAGS, effectScales = {} } = {}) {
-  const lines = [], unmatched = [], unresolved = [], ambiguous = [];
+export function attributeIgniteLedger(
+  modifierTexts,
+  index,
+  { skillTags = scorchingBeamSkillTags, states = DUMMY_STATE_TAGS, effectScales = {} } = {},
+) {
+  const lines = [],
+    unmatched = [],
+    unresolved = [],
+    ambiguous = [];
   for (const line of modifierTexts || []) {
     // Lines the planner derived (resolved conditions, combat states: src/line-effects.js) are not tooltip affixes.
     if (line.lineEffect) continue;
     const resolved = resolveAffixLine(line.text, index, { origin: line.origin });
     const base = { text: line.text, origin: line.origin, source: line.source, multiplier: line.multiplier ?? 1 };
-    if (!resolved) { const out = { ...base, status: "unmatched", writes: [], buckets: {} }; lines.push(out); unmatched.push(out); continue; }
-    const classify = (list) => list.map((write) => ({ write, class: classifyIgniteWrite(write, { skillTags, states }) }));
+    if (!resolved) {
+      const out = { ...base, status: "unmatched", writes: [], buckets: {} };
+      lines.push(out);
+      unmatched.push(out);
+      continue;
+    }
+    const classify = (list) =>
+      list.map((write) => ({ write, class: classifyIgniteWrite(write, { skillTags, states }) }));
     const writes = classify(resolved.writes);
     // An ambiguous shape whose candidates all land in the same Ignite buckets is not ambiguous for Ignite.
     let isAmbiguous = resolved.ambiguous;
     if (isAmbiguous) {
-      const bucketSet = (list) => [...new Set(list.map((w) => w.class.bucket).filter((b) => b !== EXCLUDED))].sort().join(",");
+      const bucketSet = (list) =>
+        [...new Set(list.map((w) => w.class.bucket).filter((b) => b !== EXCLUDED))].sort().join(",");
       isAmbiguous = new Set(resolved.alternatives.map((alt) => bucketSet(classify(alt.writes)))).size > 1;
     }
-    const buckets = {}, seenPairs = new Set();
+    const buckets = {},
+      seenPairs = new Set();
     const conditions = [];
     for (const { write, class: c } of writes) {
       if (c.bucket === EXCLUDED || c.bucket === "unresolved") continue;
-      if (c.pairKey) { if (seenPairs.has(c.pairKey)) continue; seenPairs.add(c.pairKey); }
+      if (c.pairKey) {
+        if (seenPairs.has(c.pairKey)) continue;
+        seenPairs.add(c.pairKey);
+      }
       const params = write.viaArg ? write.viaArg : resolved.params;
       const scale = write.viaBuff !== undefined ? (effectScales[write.viaBuff] ?? 1) : 1;
       const value = writeValue(write, params, { multiplier: base.multiplier, effectScale: scale });
-      const upper = write.upper !== undefined && write.upper !== 0 ? writeValue(write, params, { multiplier: base.multiplier, effectScale: scale, field: "upper" }) : null;
+      const upper =
+        write.upper !== undefined && write.upper !== 0
+          ? writeValue(write, params, { multiplier: base.multiplier, effectScale: scale, field: "upper" })
+          : null;
       const current = buckets[c.bucket];
-      if (upper != null) buckets[c.bucket] = { min: (current?.min ?? 0) + (value ?? 0), max: (current?.max ?? 0) + upper };
+      if (upper != null)
+        buckets[c.bucket] = { min: (current?.min ?? 0) + (value ?? 0), max: (current?.max ?? 0) + upper };
       else buckets[c.bucket] = (typeof current === "number" ? current : 0) + (value ?? 0);
       if (c.condition) conditions.push(c.condition.text);
     }
     const hasUnresolved = writes.some((w) => w.class.bucket === "unresolved") || resolved.empty;
-    const status = isAmbiguous ? "ambiguous" : Object.keys(buckets).length ? "bucketed" : hasUnresolved ? "unresolved" : "none";
-    const out = { ...base, status, ids: resolved.ids, via: resolved.via, shape: resolved.shape, ambiguous: isAmbiguous, ambiguousShape: resolved.ambiguous, writes, buckets, condition: conditions.length ? [...new Set(conditions)].join(" | ") : null };
+    const status = isAmbiguous
+      ? "ambiguous"
+      : Object.keys(buckets).length
+        ? "bucketed"
+        : hasUnresolved
+          ? "unresolved"
+          : "none";
+    const out = {
+      ...base,
+      status,
+      ids: resolved.ids,
+      via: resolved.via,
+      shape: resolved.shape,
+      ambiguous: isAmbiguous,
+      ambiguousShape: resolved.ambiguous,
+      writes,
+      buckets,
+      condition: conditions.length ? [...new Set(conditions)].join(" | ") : null,
+    };
     lines.push(out);
     if (status === "unresolved") unresolved.push(out);
     if (isAmbiguous) ambiguous.push(out);
@@ -533,55 +733,121 @@ export function sumBucket(ledger, bucket, filter = () => true) {
 // Regex side: the bucket the planner's own parsers put each line in today (§1, §4 method).
 
 const GEAR_KEYS = {
-  "damagePercent:increased": "increased", "damageOverTimePercent:increased": "increased", "elementalDamagePercent:increased": "increased",
-  "additionalIgniteDamagePercent:more": "additionalIgnite", "additionalFireDamagePercent:more": "additional",
-  "baseIgniteDamage:flat": "baseIgnite", "additionalIgniteStacks:flat": "extraStacks",
-  "igniteChancePercent:increased": "chance", "damagingAilmentChancePercent:increased": "chance", "ailmentChancePercent:increased": "chance",
-  "igniteDurationPercent:increased": "durationIncreased", "ailmentDurationPercent:increased": "durationIncreased",
-  "igniteLimit:flat": "limit", "afflictionEffectPercent:increased": "afflictionEffect",
-  "afflictionPerSecond:flat": "afflictionPerSecond", "afflictionPerSecondPerAfflictionEffectPercent:ratio": "afflictionPerSecond",
+  "damagePercent:increased": "increased",
+  "damageOverTimePercent:increased": "increased",
+  "elementalDamagePercent:increased": "increased",
+  "additionalIgniteDamagePercent:more": "additionalIgnite",
+  "additionalFireDamagePercent:more": "additional",
+  "baseIgniteDamage:flat": "baseIgnite",
+  "additionalIgniteStacks:flat": "extraStacks",
+  "igniteChancePercent:increased": "chance",
+  "damagingAilmentChancePercent:increased": "chance",
+  "ailmentChancePercent:increased": "chance",
+  "igniteDurationPercent:increased": "durationIncreased",
+  "ailmentDurationPercent:increased": "durationIncreased",
+  "igniteLimit:flat": "limit",
+  "afflictionEffectPercent:increased": "afflictionEffect",
+  "afflictionPerSecond:flat": "afflictionPerSecond",
+  "afflictionPerSecondPerAfflictionEffectPercent:ratio": "afflictionPerSecond",
   "ailmentDamageEnhancementPercent:increased": "enhancement",
-  "reapingDurationPercent:increased": "reapingDuration", "reapingRecoverySpeedPercent:increased": "reapingRecovery",
-  "intelligence:flat": "intelligence", "auraEffectPercent:increased": "auraEffect", "deepPainAuraEffectPercent:increased": "auraEffect",
-  "blurEffectPercent:increased": "blur", "fireSkillLevel:flat": "skillLevel", "spellSkillLevel:flat": "skillLevel",
-  "castSpeedPercent:increased": "castRate", "castSpeedPercent:more": "castRate",
+  "reapingDurationPercent:increased": "reapingDuration",
+  "reapingRecoverySpeedPercent:increased": "reapingRecovery",
+  "intelligence:flat": "intelligence",
+  "auraEffectPercent:increased": "auraEffect",
+  "deepPainAuraEffectPercent:increased": "auraEffect",
+  "blurEffectPercent:increased": "blur",
+  "fireSkillLevel:flat": "skillLevel",
+  "spellSkillLevel:flat": "skillLevel",
+  "castSpeedPercent:increased": "castRate",
+  "castSpeedPercent:more": "castRate",
 };
 const TALENT_KEYS = {
-  baseIgniteDamage: "baseIgnite", damagePercent: "increased", damageOverTimePercent: "increased", fireDamageOverTimePercent: "increased",
-  additionalDamageToLifePercent: "damageToLife", additionalIgniteStacks: "extraStacks",
-  igniteChancePercent: "chance", damagingAilmentChancePercent: "chance", ailmentChancePercent: "chance",
-  igniteDurationPercent: "durationIncreased", ailmentDurationPercent: "durationIncreased", igniteLimit: "limit",
-  afflictionEffectPercent: "afflictionEffect", afflictionPerSecond: "afflictionPerSecond",
-  firePenetrationAgainstIgnitedPercent: "firePenetration", reapingDurationPercent: "reapingDuration", reapingRecoverySpeedPercent: "reapingRecovery",
+  baseIgniteDamage: "baseIgnite",
+  damagePercent: "increased",
+  damageOverTimePercent: "increased",
+  fireDamageOverTimePercent: "increased",
+  additionalDamageToLifePercent: "damageToLife",
+  additionalIgniteStacks: "extraStacks",
+  igniteChancePercent: "chance",
+  damagingAilmentChancePercent: "chance",
+  ailmentChancePercent: "chance",
+  igniteDurationPercent: "durationIncreased",
+  ailmentDurationPercent: "durationIncreased",
+  igniteLimit: "limit",
+  afflictionEffectPercent: "afflictionEffect",
+  afflictionPerSecond: "afflictionPerSecond",
+  firePenetrationAgainstIgnitedPercent: "firePenetration",
+  reapingDurationPercent: "reapingDuration",
+  reapingRecoverySpeedPercent: "reapingRecovery",
   igniteChanceAgainstNotIgnitedPercent: "chance", // conditional chance: theoretical-sources.js → 5 s / 20 s windows only
   enemyAllResistanceAtMaxAfflictionPercent: "targetFireResistance", // time share at max Affliction (max-affliction-resistance.js)
-  attackAndCastSpeedPercent: "castRate", castSpeedPercent: "castRate", channeledAttackAndCastSpeedPercent: "castRate",
-  focusBlessingStacksOnReap: "focusBlessing", inflictsFireInfiltrationAgainstIgnited: "fireInfiltration",
+  attackAndCastSpeedPercent: "castRate",
+  castSpeedPercent: "castRate",
+  channeledAttackAndCastSpeedPercent: "castRate",
+  focusBlessingStacksOnReap: "focusBlessing",
+  inflictsFireInfiltrationAgainstIgnited: "fireInfiltration",
   auraEffectPercent: "auraEffect",
 };
 const SLATE_KEYS = {
-  baseIgniteDamage: "baseIgnite", additionalIgniteStacks: "extraStacks", igniteChancePercent: "chance", damagingAilmentChancePercent: "chance",
-  ailmentChancePercent: "chance", igniteDurationPercent: "durationIncreased", ailmentDurationPercent: "durationIncreased", igniteLimit: "limit",
-  additionalFireDamagePercent: "additional", additionalDamageToLifePercent: "damageToLife", dazeAdditionalAilmentDamagePercent: "additional",
-  maxFocusBlessingStacks: "focusBlessing", auraEffectPercent: "auraEffect", attackAndCastSpeedPercent: "castRate", castSpeedPercent: "castRate",
-  reapingRecoverySpeedPercent: "reapingRecovery", igniteChanceAgainstNotIgnitedPercent: "chance", enemyAllResistanceAtMaxAfflictionPercent: "targetFireResistance",
+  baseIgniteDamage: "baseIgnite",
+  additionalIgniteStacks: "extraStacks",
+  igniteChancePercent: "chance",
+  damagingAilmentChancePercent: "chance",
+  ailmentChancePercent: "chance",
+  igniteDurationPercent: "durationIncreased",
+  ailmentDurationPercent: "durationIncreased",
+  igniteLimit: "limit",
+  additionalFireDamagePercent: "additional",
+  additionalDamageToLifePercent: "damageToLife",
+  dazeAdditionalAilmentDamagePercent: "additional",
+  maxFocusBlessingStacks: "focusBlessing",
+  auraEffectPercent: "auraEffect",
+  attackAndCastSpeedPercent: "castRate",
+  castSpeedPercent: "castRate",
+  reapingRecoverySpeedPercent: "reapingRecovery",
+  igniteChanceAgainstNotIgnitedPercent: "chance",
+  enemyAllResistanceAtMaxAfflictionPercent: "targetFireResistance",
 };
 const PACT_KEYS = {
-  damagePercent: "increased", elementalDamagePercent: "increased", fireDamagePercent: "increased", damageOverTimePercent: "increased",
-  chanceToIgniteTargetsPercent: "chance", additionalIgniteDurationPercent: "durationAdditional", ailmentDurationPercent: "durationIncreased",
-  afflictionEffectPercent: "afflictionEffect", reapingDurationPercent: "reapingDuration", reapingRecoverySpeedPercent: "reapingRecovery",
-  outgoingAdditionalDamagePercent: "additional", additionalDamageOverTimePercent: "additional", igniteLimit: "limit",
-  castSpeedPercent: "castRate", attackAndCastSpeedPercent: "castRate", auraEffectPercent: "auraEffect",
+  damagePercent: "increased",
+  elementalDamagePercent: "increased",
+  fireDamagePercent: "increased",
+  damageOverTimePercent: "increased",
+  chanceToIgniteTargetsPercent: "chance",
+  additionalIgniteDurationPercent: "durationAdditional",
+  ailmentDurationPercent: "durationIncreased",
+  afflictionEffectPercent: "afflictionEffect",
+  reapingDurationPercent: "reapingDuration",
+  reapingRecoverySpeedPercent: "reapingRecovery",
+  outgoingAdditionalDamagePercent: "additional",
+  additionalDamageOverTimePercent: "additional",
+  igniteLimit: "limit",
+  castSpeedPercent: "castRate",
+  attackAndCastSpeedPercent: "castRate",
+  auraEffectPercent: "auraEffect",
 };
 const MEMORY_KEYS = {
-  damagePercent: "increased", damageOverTimePercent: "increased", elementalDamagePercent: "increased", firedamage: "increased",
-  afflictionEffectPercent: "afflictionEffect", reapingDurationPercent: "reapingDuration", reapingRecoverySpeedPercent: "reapingRecovery",
-  intelligence: "intelligence", castSpeedPercent: "castRate",
+  damagePercent: "increased",
+  damageOverTimePercent: "increased",
+  elementalDamagePercent: "increased",
+  firedamage: "increased",
+  afflictionEffectPercent: "afflictionEffect",
+  reapingDurationPercent: "reapingDuration",
+  reapingRecoverySpeedPercent: "reapingRecovery",
+  intelligence: "intelligence",
+  castSpeedPercent: "castRate",
 };
-const CORE_KEYS = { afflictionPerSecond: "afflictionPerSecond", additionalAfflictionEffectPercent: "afflictionEffectAdditional", additionalDamagePercent: "additional", additionalDamageOverTimePercent: "additional" };
+const CORE_KEYS = {
+  afflictionPerSecond: "afflictionPerSecond",
+  additionalAfflictionEffectPercent: "afflictionEffectAdditional",
+  additionalDamagePercent: "additional",
+  additionalDamageOverTimePercent: "additional",
+};
 
-const SKILL_LEVEL = /([+-]\d+)\s+(?:to\s+)?([A-Za-z]+(?:\s+[A-Za-z]+){0,2})\s+(?:Skill Levels?\b|Skills['’]? Levels?\b)/i; // skill-level-bonuses.js
-const BLUR_DOT = /^Blur gains an additional effect:\s*\+([\d.]+)% (additional )?Damage Over Time for (?:each|every 1) Blur Rating$/i; // blur-effects.js
+const SKILL_LEVEL =
+  /([+-]\d+)\s+(?:to\s+)?([A-Za-z]+(?:\s+[A-Za-z]+){0,2})\s+(?:Skill Levels?\b|Skills['’]? Levels?\b)/i; // skill-level-bonuses.js
+const BLUR_DOT =
+  /^Blur gains an additional effect:\s*\+([\d.]+)% (additional )?Damage Over Time for (?:each|every 1) Blur Rating$/i; // blur-effects.js
 const firstNumber = (text) => Math.abs(extractLineValues(text)[0] ?? NaN);
 
 function capturedTalentNode(source) {
@@ -603,9 +869,17 @@ function capturedTalentKey(node, text) {
   const byValue = keys.filter((k) => typeof effects[k] === "number" && Math.abs(effects[k]) === n);
   if (byValue.length === 1) return { key: byValue[0], how: "captured effectsPerRank (value match)" };
   if (keys.length === 1) return { key: keys[0], how: "captured effectsPerRank (single key)" };
-  const words = text.toLowerCase().replace(/[^a-z ]/g, " ").split(/\s+/).filter((w) => w.length > 3);
-  const scored = (byValue.length ? byValue : keys).map((k) => ({ k, s: words.filter((w) => k.toLowerCase().includes(w.slice(0, 5))).length })).sort((a, b) => b.s - a.s);
-  return scored[0]?.s ? { key: scored[0].k, how: "captured effectsPerRank (keyword match)" } : { key: null, how: "captured node has no key for this clause" };
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z ]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 3);
+  const scored = (byValue.length ? byValue : keys)
+    .map((k) => ({ k, s: words.filter((w) => k.toLowerCase().includes(w.slice(0, 5))).length }))
+    .sort((a, b) => b.s - a.s);
+  return scored[0]?.s
+    ? { key: scored[0].k, how: "captured effectsPerRank (keyword match)" }
+    : { key: null, how: "captured node has no key for this clause" };
 }
 
 function recognizedBucket(note, text) {
@@ -629,16 +903,29 @@ function auxiliaryBucket(line) {
   const blurOrigin = BLUR_ORIGINS.has(line.origin);
   const blurDot = blurOrigin && text.match(BLUR_DOT);
   if (blurDot) return { bucket: blurDot[2] ? "additional" : "increased", key: "blur DoT", how: "blur-effects.js" };
-  if (blurOrigin && /^Daze$|additional Ailment Damage while Blur is active/i.test(text)) return { bucket: "additional", key: "Daze", how: "blur-effects.js (Daze)" };
-  if (blurOrigin && /^\+?[\d.]+% Blur Effect$/i.test(text)) return { bucket: "blur", key: "blurEffectPercent", how: "blur-effects.js (own regex)" };
-  if (blurOrigin && (/^Refreshes Blur upon gaining Blur/i.test(text) || /Blur Rating per second/i.test(text))) return { bucket: "blur", key: "blur source", how: "blur-effects.js" };
-  if (blurOrigin && parseBlurSource(text, line.source)) return { bucket: "blur", key: "blur source", how: "blur-sources.js" };
+  if (blurOrigin && /^Daze$|additional Ailment Damage while Blur is active/i.test(text))
+    return { bucket: "additional", key: "Daze", how: "blur-effects.js (Daze)" };
+  if (blurOrigin && /^\+?[\d.]+% Blur Effect$/i.test(text))
+    return { bucket: "blur", key: "blurEffectPercent", how: "blur-effects.js (own regex)" };
+  if (blurOrigin && (/^Refreshes Blur upon gaining Blur/i.test(text) || /Blur Rating per second/i.test(text)))
+    return { bucket: "blur", key: "blur source", how: "blur-effects.js" };
+  if (blurOrigin && parseBlurSource(text, line.source))
+    return { bucket: "blur", key: "blur source", how: "blur-sources.js" };
   if (SKILL_LEVEL.test(text)) return { bucket: "skillLevel", key: "skill level", how: "skill-level-bonuses.js" };
-  if (/^You can (?:cast|inflict) (\d+) additional Curses?$/i.test(text)) return { bucket: "curseSlots", key: "curse limit", how: "curse-limit.js" };
-  if ((line.origin === "gear" || line.origin === "pact") && parseReapingSource(text, line.source)) return { bucket: "reapingSource", key: "reaping source", how: "reaping-sources.js" };
-  if (line.origin === "gear" && /^Reaping removes/i.test(text)) return { bucket: "reapingSource", key: "afflictionRemovedPercent", how: "reaping-sources.js" };
-  if (line.origin === "gear" && parseBlessingRecovery(line.text)) return { bucket: "reapingRecovery", key: "blessing reaping recovery", how: "blessing-gear-effects.js" };
-  if (/(?:gain(?:s)?|grant(?:s)?) (?:\d+ stacks?(?:\(s\))? of |a stack(?: of)? )?Focus Blessing\b|^\+\d+ (?:to )?Max Focus Blessing Stacks$/i.test(text)) return { bucket: "focusBlessing", key: "Focus Blessing", how: "blessing-model.js" };
+  if (/^You can (?:cast|inflict) (\d+) additional Curses?$/i.test(text))
+    return { bucket: "curseSlots", key: "curse limit", how: "curse-limit.js" };
+  if ((line.origin === "gear" || line.origin === "pact") && parseReapingSource(text, line.source))
+    return { bucket: "reapingSource", key: "reaping source", how: "reaping-sources.js" };
+  if (line.origin === "gear" && /^Reaping removes/i.test(text))
+    return { bucket: "reapingSource", key: "afflictionRemovedPercent", how: "reaping-sources.js" };
+  if (line.origin === "gear" && parseBlessingRecovery(line.text))
+    return { bucket: "reapingRecovery", key: "blessing reaping recovery", how: "blessing-gear-effects.js" };
+  if (
+    /(?:gain(?:s)?|grant(?:s)?) (?:\d+ stacks?(?:\(s\))? of |a stack(?: of)? )?Focus Blessing\b|^\+\d+ (?:to )?Max Focus Blessing Stacks$/i.test(
+      text,
+    )
+  )
+    return { bucket: "focusBlessing", key: "Focus Blessing", how: "blessing-model.js" };
   return null;
 }
 
@@ -661,37 +948,71 @@ export function regexIgniteBucket(line, { mechanics, heroMemories, coreTalents }
       else if (/minion/i.test(text)) parsed = { bucket: null, key: "minion clause", how };
     } else {
       const keys = Object.keys(parseTalentEffects(text).effects);
-      if (keys.length) parsed = { bucket: keys.map((k) => TALENT_KEYS[k]).find(Boolean) ?? null, key: keys.join("+"), how: "candidate-sources.js parseTalentEffects" };
+      if (keys.length)
+        parsed = {
+          bucket: keys.map((k) => TALENT_KEYS[k]).find(Boolean) ?? null,
+          key: keys.join("+"),
+          how: "candidate-sources.js parseTalentEffects",
+        };
     }
   } else if (line.origin === "slate") {
     const totals = aggregateSlateEffects({ slates: [{ id: "crosscheck", fixed: [line.text] }] });
     const keys = Object.keys(totals).filter((k) => totals[k]);
-    if (keys.length) parsed = { bucket: keys.map((k) => SLATE_KEYS[k]).find(Boolean) ?? null, key: keys.join("+"), how: "engine.js slateNumericEffects" };
+    if (keys.length)
+      parsed = {
+        bucket: keys.map((k) => SLATE_KEYS[k]).find(Boolean) ?? null,
+        key: keys.join("+"),
+        how: "engine.js slateNumericEffects",
+      };
   } else if (line.origin === "kismet") {
     const effect = parseKismetEffect(text);
-    if (effect) parsed = { bucket: PACT_KEYS[effect.stat] ?? null, key: effect.stat, how: "kismet-effects.js parseKismetEffect" };
+    if (effect)
+      parsed = { bucket: PACT_KEYS[effect.stat] ?? null, key: effect.stat, how: "kismet-effects.js parseKismetEffect" };
   } else if (line.origin === "pact") {
     const effect = nativePactspiritNodeEffect({ effect: text });
-    if (effect) parsed = { bucket: PACT_KEYS[effect.stat] ?? null, key: effect.stat, how: "pactspirit-levels.js nativePactspiritNodeEffect" };
-    else if (/^\+([0-9.]+)% additional damage$/i.test(text)) parsed = { bucket: "additional", key: "outgoingAdditionalDamagePercent", how: "engine.js calculatePactCandidate" };
-    else if (/^\+([0-9.]+)% additional Reaping Recovery Speed$/i.test(text)) parsed = { bucket: "reapingRecoveryAdditional", key: "additionalReapingRecoverySpeedPercent", how: "engine.js calculatePactCandidate → theoretical-sources.js (multiplies Reaping recovery)" };
-    else if (/additional damage taken$/i.test(text)) parsed = { bucket: null, key: "additionalDamageTakenPercent", how: "engine.js calculatePactCandidate (defense)" };
+    if (effect)
+      parsed = {
+        bucket: PACT_KEYS[effect.stat] ?? null,
+        key: effect.stat,
+        how: "pactspirit-levels.js nativePactspiritNodeEffect",
+      };
+    else if (/^\+([0-9.]+)% additional damage$/i.test(text))
+      parsed = {
+        bucket: "additional",
+        key: "outgoingAdditionalDamagePercent",
+        how: "engine.js calculatePactCandidate",
+      };
+    else if (/^\+([0-9.]+)% additional Reaping Recovery Speed$/i.test(text))
+      parsed = {
+        bucket: "reapingRecoveryAdditional",
+        key: "additionalReapingRecoverySpeedPercent",
+        how: "engine.js calculatePactCandidate → theoretical-sources.js (multiplies Reaping recovery)",
+      };
+    else if (/additional damage taken$/i.test(text))
+      parsed = { bucket: null, key: "additionalDamageTakenPercent", how: "engine.js calculatePactCandidate (defense)" };
   } else if (line.origin === "memory") {
     const found = (heroMemories?.lines || []).find((m) => normalizePercentageText(m.text) === text);
     if (found) parsed = { bucket: MEMORY_KEYS[found.stat] ?? null, key: found.stat, how: "hero-memory-model.js" };
   } else if (line.origin === "core") {
     const name = String(line.source).replace(/^.* core: /, "");
-    if (/Ignite limit/i.test(text) && name === "Starfire") parsed = { bucket: "limit", key: "Starfire", how: "planner.js igniteLimit" };
-    const coreLine = (coreTalents?.lines || []).find((c) => c.source === name && Math.abs(c.value) === firstNumber(text) && CORE_KEYS[c.stat]
-      && (c.stat !== "afflictionPerSecond" || /Affliction inflicted per second/i.test(text))
-      && (c.stat !== "additionalAfflictionEffectPercent" || /Affliction effect/i.test(text))
-      && (!/DamageOverTime/.test(c.stat) || /Damage Over Time/i.test(text)));
+    if (/Ignite limit/i.test(text) && name === "Starfire")
+      parsed = { bucket: "limit", key: "Starfire", how: "planner.js igniteLimit" };
+    const coreLine = (coreTalents?.lines || []).find(
+      (c) =>
+        c.source === name &&
+        Math.abs(c.value) === firstNumber(text) &&
+        CORE_KEYS[c.stat] &&
+        (c.stat !== "afflictionPerSecond" || /Affliction inflicted per second/i.test(text)) &&
+        (c.stat !== "additionalAfflictionEffectPercent" || /Affliction effect/i.test(text)) &&
+        (!/DamageOverTime/.test(c.stat) || /Damage Over Time/i.test(text)),
+    );
     if (coreLine) parsed = { bucket: CORE_KEYS[coreLine.stat], key: coreLine.stat, how: "core-talent-model.js" };
   }
   if (parsed?.bucket) return parsed;
   const note = mechanics?.recognized?.get?.(text);
   const fromMechanics = recognizedBucket(note, text);
-  if (fromMechanics?.bucket) return { bucket: fromMechanics.bucket, key: `build-mechanics: ${note}`, how: "build-mechanics.js" };
+  if (fromMechanics?.bucket)
+    return { bucket: fromMechanics.bucket, key: `build-mechanics: ${note}`, how: "build-mechanics.js" };
   const aux = auxiliaryBucket(line);
   if (aux) return aux;
   if (parsed) return { ...parsed, bucket: null, unused: true };
@@ -704,16 +1025,26 @@ const EQUIVALENT = {
   additional: new Set(["additional", "stageA"]),
   additionalIgnite: new Set(["additionalIgnite"]),
 };
-const sameLayer = (regexBucket, attrBuckets) => attrBuckets.some((b) => b === regexBucket || EQUIVALENT[regexBucket]?.has(b));
+const sameLayer = (regexBucket, attrBuckets) =>
+  attrBuckets.some((b) => b === regexBucket || EQUIVALENT[regexBucket]?.has(b));
 
 export const VERDICTS = Object.freeze({
-  AGREE: "agree", AGREE_NONE: "agree-none", REGEX_DROPS: "regex-drops", DISAGREE: "disagree",
-  UNRESOLVED: "unresolved", UNMATCHED: "unmatched", AMBIGUOUS: "ambiguous",
+  AGREE: "agree",
+  AGREE_NONE: "agree-none",
+  REGEX_DROPS: "regex-drops",
+  DISAGREE: "disagree",
+  UNRESOLVED: "unresolved",
+  UNMATCHED: "unmatched",
+  AMBIGUOUS: "ambiguous",
 });
 
 // Per-line comparison. planner: { modifierTexts, mechanics, heroMemories?, coreTalents? } (a calculatePlanner result).
 export function compareIgniteLedgers(planner, attributeLedger) {
-  const context = { mechanics: planner.mechanics, heroMemories: planner.heroMemories, coreTalents: planner.coreTalents };
+  const context = {
+    mechanics: planner.mechanics,
+    heroMemories: planner.heroMemories,
+    coreTalents: planner.coreTalents,
+  };
   return attributeLedger.lines.map((line) => {
     const regex = regexIgniteBucket(line, context);
     const attrBuckets = Object.keys(line.buckets || {});
@@ -726,10 +1057,19 @@ export function compareIgniteLedgers(planner, attributeLedger) {
     else verdict = sameLayer(regex.bucket, attrBuckets) ? VERDICTS.AGREE : VERDICTS.DISAGREE;
     const reasons = (line.writes || []).filter((w) => w.class.bucket === EXCLUDED).map((w) => w.class.reason);
     return {
-      text: line.text, origin: line.origin, source: line.source, ids: line.ids || [], via: line.via,
-      regexBucket: regex.bucket, regexKey: regex.key, regexHow: regex.how,
-      attrBucket: attrBuckets.length ? attrBuckets.join("+") : null, attrValue: line.buckets, condition: line.condition,
-      excludedReasons: [...new Set(reasons)], verdict,
+      text: line.text,
+      origin: line.origin,
+      source: line.source,
+      ids: line.ids || [],
+      via: line.via,
+      regexBucket: regex.bucket,
+      regexKey: regex.key,
+      regexHow: regex.how,
+      attrBucket: attrBuckets.length ? attrBuckets.join("+") : null,
+      attrValue: line.buckets,
+      condition: line.condition,
+      excludedReasons: [...new Set(reasons)],
+      verdict,
     };
   });
 }
@@ -740,5 +1080,11 @@ export function crossCheckIgnite(planner, index, context = {}) {
   const comparison = compareIgniteLedgers(planner, ledger);
   const counts = {};
   for (const row of comparison) counts[row.verdict] = (counts[row.verdict] || 0) + 1;
-  return { ledger, comparison, counts, total: comparison.length, resolved: comparison.length - (counts.unmatched || 0) };
+  return {
+    ledger,
+    comparison,
+    counts,
+    total: comparison.length,
+    resolved: comparison.length - (counts.unmatched || 0),
+  };
 }

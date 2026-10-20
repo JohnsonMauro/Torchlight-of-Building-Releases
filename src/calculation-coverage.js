@@ -10,7 +10,20 @@ import { allHeroTraitsSs13 } from "./data/heroes/all-hero-traits-ss13.generated.
 import { baseTraitDescriptionForLevel, endsArtificialMoonSection } from "./hero-memory-rules.js";
 import { artificialMoonGate } from "./hero-memory-rules.js";
 import { heroTraitSlotLevel } from "./character-stats.js";
-import { refineCoverage, engineLineStatus, neutralStatuses, routeStatus, coverageContext, combineStatuses, dazeStatus, heroModuleLineStatus, skillLevelLineStatus, intelligenceLineStatus, mainStatLineStatus, nameReadCoreStatus } from "./line-coverage.js";
+import {
+  refineCoverage,
+  engineLineStatus,
+  neutralStatuses,
+  routeStatus,
+  coverageContext,
+  combineStatuses,
+  dazeStatus,
+  heroModuleLineStatus,
+  skillLevelLineStatus,
+  intelligenceLineStatus,
+  mainStatLineStatus,
+  nameReadCoreStatus,
+} from "./line-coverage.js";
 import { isNameReadCoreClause, nameReadCoreGrant } from "./granted-core-lines.js";
 import { matchTalentTextClause, talentKeyRoute } from "./talent-text-effects.js";
 import { prismMutationDownside } from "./prism-crafting.js";
@@ -20,7 +33,9 @@ import { weaponLocalLineKind, weaponHands, weaponTypeOf, readWeapon } from "./we
 import { TRAIT_SLOT_GRANTS, YOUGA_ULTIMATE_ONE_ID } from "./trait-board-grants.js";
 
 export function coverageBadge(status, title = "") {
-  const titleAttribute = title ? ` title="${String(title).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")}"` : "";
+  const titleAttribute = title
+    ? ` title="${String(title).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")}"`
+    : "";
   return `<b class="calc-coverage ${status === "In calc" ? "calculated" : neutralStatuses.has(status) ? "neutral" : "pending"}"${titleAttribute}>${status}</b>`;
 }
 
@@ -31,29 +46,42 @@ function baseGearLineCoverage(item, text, active, block, lowResources, blurEffec
   const nameRead = nameReadCoreGrant(String(text || "").split(/\r?\n/)[0]);
   if (nameRead) return nameReadCoreStatus(nameRead.name);
   if (item.corrosionModifiers?.length && item.implicitModifiers?.includes(text)) return "Replaced by corrosion";
-  if (/^\+[\d.]+\s*%\s+(?:damage|Critical Strike Rating) if you have Blocked recently$/i.test(text)) return block?.recentlyActive ? "In calc" : "Inactive";
+  if (/^\+[\d.]+\s*%\s+(?:damage|Critical Strike Rating) if you have Blocked recently$/i.test(text))
+    return block?.recentlyActive ? "In calc" : "Inactive";
   // Movement Speed is summed by the stat sheet; no reader turns it into damage (src/attack-hit-profiles.js: "no Movement
   // Speed total"; survey 2026-10-13 §4.3), and movement-driven buffs are assumed held anyway.
   if (/^(?:Feline Steps: )?\+[\d.]+\s*% Movement Speed$/i.test(text)) return "Counted in stats";
-  if (/^Blur gains an additional effect:.*Damage Over Time.*Blur Rating$/i.test(text)) return blurEffects?.active ? "In calc" : "Inactive";
+  if (/^Blur gains an additional effect:.*Damage Over Time.*Blur Rating$/i.test(text))
+    return blurEffects?.active ? "In calc" : "Inactive";
   // "<Aura> gains an additional effect: <modifiers>" (Pantheon's Elegy): part of that Aura's buff while it is active
   // (src/aura-gained-effects.js; Aura Effect scaling provisional). Partly / Not modeled when a clause has no reader.
   const gainedAura = auraGainedLineStatus(text, coverageContext());
   if (gainedAura) return gainedAura;
   // The refresh itself is planner-only (Blur is assumed held); a trailing "+X% Blur Effect" is in calc.
   // TLIDB writes "+50 %" with a space (Valerie's Night Stroll corroded; survey 2026-10-13 §4.1).
-  if (/^Refreshes Blur upon gaining Blur/i.test(text)) return /[\d.]+ ?% Blur Effect$/i.test(text) ? (blurEffects?.active ? "In calc" : "Inactive") : "Planner only";
-  if (/^Grants [\d.]+ Blur Rating per second when equipped in the right Ring slot$/i.test(text)) return item.slot === "rightRing" ? "In calc" : "Inactive";
+  if (/^Refreshes Blur upon gaining Blur/i.test(text))
+    return /[\d.]+ ?% Blur Effect$/i.test(text) ? (blurEffects?.active ? "In calc" : "Inactive") : "Planner only";
+  if (/^Grants [\d.]+ Blur Rating per second when equipped in the right Ring slot$/i.test(text))
+    return item.slot === "rightRing" ? "In calc" : "Inactive";
   // Folklore of Locking Fingers' left-ring grant: a Blur source (src/blur-sources.js) once the item sits in the left Ring slot.
-  if (/^Grants Blur [\d.]+ ?s after losing Blur when equipped in the left Ring slot$/i.test(text)) return item.slot === "leftRing" && blurEffects?.active ? "In calc" : "Inactive";
+  if (/^Grants Blur [\d.]+ ?s after losing Blur when equipped in the left Ring slot$/i.test(text))
+    return item.slot === "leftRing" && blurEffects?.active ? "In calc" : "Inactive";
   if (/Stealth Stab/.test(text)) return blurEffects?.active || blurEffects?.afterEnd ? "In calc" : "Inactive";
-  const conditional = normalizePercentageText(text).match(/^([+-][\d.]+)% additional damage taken (?:when |while )?(?:at |on )?Low (Life|Mana)$/i);
+  const conditional = normalizePercentageText(text).match(
+    /^([+-][\d.]+)% additional damage taken (?:when |while )?(?:at |on )?Low (Life|Mana)$/i,
+  );
   // Own damage taken at Low Life / Mana is defence (src/effective-hp.js sums it): "Counted in stats" while the condition
   // holds, never "In calc" (gear-pact batch chunk 2; it moves no dummy damage).
-  if (conditional) return lowResources?.[conditional[2].toLowerCase() === "life" ? "lowLife" : "lowMana"] ? "Counted in stats" : "Inactive";
+  if (conditional)
+    return lowResources?.[conditional[2].toLowerCase() === "life" ? "lowLife" : "lowMana"]
+      ? "Counted in stats"
+      : "Inactive";
   if (parseBlessingRecovery(text)) return "In calc";
   if (text === "Poisoned Relief") return "In calc";
-  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
   if (!lines.length) return "Not modeled";
   // Weapon base and weapon-local lines ("6 - 6 Physical Damage", "+64% Gear Physical Damage", "Adds 68–84 Physical Damage to
   // the gear", "+54% gear Attack Speed", "+85% Attack Critical Strike Rating for this gear"): src/weapon-damage-model.js
@@ -65,13 +93,20 @@ function baseGearLineCoverage(item, text, active, block, lowResources, blurEffec
     // A local damage percent needs damage of its kind on the weapon ("Gear Elemental Damage" on a Physical-only sword).
     const damage = readWeapon(item)?.damage || {};
     if (/Gear Physical Damage$/i.test(lines[0]) && !damage.Physical) return "Inactive";
-    if (/Gear Elemental Damage$/i.test(lines[0]) && !["Fire", "Cold", "Lightning"].some((type) => damage[type])) return "Inactive";
+    if (/Gear Elemental Damage$/i.test(lines[0]) && !["Fire", "Cold", "Lightning"].some((type) => damage[type]))
+      return "Inactive";
     const planner = coverageContext();
     if (!planner?.activation) return "In calc";
-    return (planner.skillHits || []).some((hit) => hit.modeled && hit.rate?.speedType === "attack-speed") ? "In calc" : "Inactive";
+    return (planner.skillHits || []).some((hit) => hit.modeled && hit.rate?.speedType === "attack-speed")
+      ? "In calc"
+      : "Inactive";
   }
-  const recognized = new Set(collectNormalizedGearModifiers([{ ...item, modifiers: lines, corrosionModifiers: [] }]).map((entry) => entry.text));
-  for (const line of lines) if (parseBlockModifier(line) || /^You can (?:cast|inflict) \d+ additional Curses?$/i.test(line)) recognized.add(line);
+  const recognized = new Set(
+    collectNormalizedGearModifiers([{ ...item, modifiers: lines, corrosionModifiers: [] }]).map((entry) => entry.text),
+  );
+  for (const line of lines)
+    if (parseBlockModifier(line) || /^You can (?:cast|inflict) \d+ additional Curses?$/i.test(line))
+      recognized.add(line);
   for (const line of lines) {
     // Trauma- / Wilt-only Reaps are left to the engine layer, which checks that the ailment is on the dummy (chunk 3).
     const reap = parseReapingSource(line, item.name);
@@ -82,12 +117,18 @@ function baseGearLineCoverage(item, text, active, block, lowResources, blurEffec
   // reader takes are summed by the stat sheet (survey 2026-10-13 §4.3: they read In calc). Multi-line rows judge each line.
   const lineStatus = (line) => gearStatStatus(item, line) ?? defenceStatStatus(item, line) ?? "In calc";
   if (lines.length === 1 && recognized.has(lines[0])) return lineStatus(lines[0]);
-  return lines.every((line) => recognized.has(line)) ? combineStatuses(lines.map(lineStatus)) : recognized.size ? "Partly modeled" : "Not modeled";
+  return lines.every((line) => recognized.has(line))
+    ? combineStatuses(lines.map(lineStatus))
+    : recognized.size
+      ? "Partly modeled"
+      : "Not modeled";
 }
 
 function effectiveReapingReset(item, line) {
-  return (item.modifiers || []).some(text => parseReapingSource(text, item.name)?.trigger === "full Affliction")
-    && /^Reaping removes (?:enemy's Affliction|[\d.]+% Affliction from enemies)$/i.test(normalizePercentageText(line));
+  return (
+    (item.modifiers || []).some((text) => parseReapingSource(text, item.name)?.trigger === "full Affliction") &&
+    /^Reaping removes (?:enemy's Affliction|[\d.]+% Affliction from enemies)$/i.test(normalizePercentageText(line))
+  );
 }
 
 // Engine-aware status of one parsed clause (talent batch T7): the shared table's route (src/talent-text-effects.js)
@@ -111,13 +152,19 @@ function combineClauseStatuses(statuses) {
 
 function baseTalentLineCoverage(text, active) {
   if (!active) return "Not allocated";
-  const clauses = normalizePercentageText(text).split("|").map((line) => line.trim()).filter(Boolean);
-  return combineClauseStatuses(clauses.map((clause) => parsedClauseStatus(clause, "talent") ?? (parseBlockModifier(clause) ? "In calc" : null)));
+  const clauses = normalizePercentageText(text)
+    .split("|")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return combineClauseStatuses(
+    clauses.map((clause) => parsedClauseStatus(clause, "talent") ?? (parseBlockModifier(clause) ? "In calc" : null)),
+  );
 }
 
 export function talentEffectCoverage(key, value, rank) {
   if (!(rank > 0)) return "Not allocated";
-  if (typeof value === "number" || key === "inflictsFireInfiltrationAgainstIgnited" && value === true) return routeStatus(talentKeyRoute(key), key, coverageContext()) ?? "In calc";
+  if (typeof value === "number" || (key === "inflictsFireInfiltrationAgainstIgnited" && value === true))
+    return routeStatus(talentKeyRoute(key), key, coverageContext()) ?? "In calc";
   return "Not verified";
 }
 
@@ -140,20 +187,56 @@ function baseSlateLineCoverage(text, active) {
 // Gear stats by engine family (src/engine.js modifierPatterns), for the engine-aware gear badge (talent batch T7).
 // Stats not listed (weapon bases, defences, attributes, skill levels) keep their old "In calc".
 const GEAR_STAT_ROUTES = {
-  spellCriticalStrikeRating: "crit", spellCriticalStrikeRatingPercent: "crit", criticalStrikeDamagePercent: "crit",
+  spellCriticalStrikeRating: "crit",
+  spellCriticalStrikeRatingPercent: "crit",
+  criticalStrikeDamagePercent: "crit",
   castSpeedPercent: "attackAndCastSpeed",
-  afflictionPerSecond: "affliction", afflictionEffectPercent: "affliction", afflictionPerSecondPerAfflictionEffectPercent: "affliction",
-  igniteLimit: "ignite", igniteDurationPercent: "ignite", igniteChancePercent: "ignite", additionalIgniteDamagePercent: "ignite", baseIgniteDamage: "ignite", additionalIgniteStacks: "ignite",
-  ailmentDurationPercent: "ailment", damagingAilmentChancePercent: "ailment", ailmentChancePercent: "ailment", ailmentDamageEnhancementPercent: "ailment",
-  reapingDurationPercent: "reaping", reapingRecoverySpeedPercent: "reaping",
-  damageOverTimePercent: "dot", damagePercent: "damage", additionalFireDamagePercent: "damage", elementalDamagePercent: "damage"
+  afflictionPerSecond: "affliction",
+  afflictionEffectPercent: "affliction",
+  afflictionPerSecondPerAfflictionEffectPercent: "affliction",
+  igniteLimit: "ignite",
+  igniteDurationPercent: "ignite",
+  igniteChancePercent: "ignite",
+  additionalIgniteDamagePercent: "ignite",
+  baseIgniteDamage: "ignite",
+  additionalIgniteStacks: "ignite",
+  ailmentDurationPercent: "ailment",
+  damagingAilmentChancePercent: "ailment",
+  ailmentChancePercent: "ailment",
+  ailmentDamageEnhancementPercent: "ailment",
+  reapingDurationPercent: "reaping",
+  reapingRecoverySpeedPercent: "reaping",
+  damageOverTimePercent: "dot",
+  damagePercent: "damage",
+  additionalFireDamagePercent: "damage",
+  elementalDamagePercent: "damage",
 };
 // Defence stats (survey 2026-10-13 §4.3: 282 armor / Energy Shield / Evasion / Life / resistance lines read In calc with no
 // damage effect). They are summed by the stat sheet (src/character-stats.js, src/effective-hp.js): "Counted in stats";
 // immunities "No DPS effect". A resistance stays In calc where the build carries a line that scales with that resistance
 // ("For every 1% Fire Resistance, +X% Critical Strike Damage"; such a line moved the Trauma build).
-const DEFENCE_STATS = new Set(["gearArmor", "gearEvasion", "gearEnergyShield", "maxEnergyShield", "maxLifePercent", "maxEnergyShieldPercent", "elementalResistancePercent", "fireResistancePercent", "coldResistancePercent", "lightningResistancePercent", "erosionResistancePercent", "frostbiteImmunity", "elementalAilmentAvoidancePercent"]);
-const RESISTANCE_TYPES = { elementalResistancePercent: ["Fire", "Cold", "Lightning", "Elemental"], fireResistancePercent: ["Fire", "Elemental"], coldResistancePercent: ["Cold", "Elemental"], lightningResistancePercent: ["Lightning", "Elemental"], erosionResistancePercent: ["Erosion"] };
+const DEFENCE_STATS = new Set([
+  "gearArmor",
+  "gearEvasion",
+  "gearEnergyShield",
+  "maxEnergyShield",
+  "maxLifePercent",
+  "maxEnergyShieldPercent",
+  "elementalResistancePercent",
+  "fireResistancePercent",
+  "coldResistancePercent",
+  "lightningResistancePercent",
+  "erosionResistancePercent",
+  "frostbiteImmunity",
+  "elementalAilmentAvoidancePercent",
+]);
+const RESISTANCE_TYPES = {
+  elementalResistancePercent: ["Fire", "Cold", "Lightning", "Elemental"],
+  fireResistancePercent: ["Fire", "Elemental"],
+  coldResistancePercent: ["Cold", "Elemental"],
+  lightningResistancePercent: ["Lightning", "Elemental"],
+  erosionResistancePercent: ["Erosion"],
+};
 function ownResistanceReader(types, planner) {
   const pattern = new RegExp(`(?:for every|per) \\+?[\\d.]*% (?:effective )?(?:${types.join("|")}) Resistance`, "i");
   return (planner?.modifierTexts || []).some((line) => pattern.test(normalizePercentageText(String(line.text ?? ""))));
@@ -161,7 +244,12 @@ function ownResistanceReader(types, planner) {
 function defenceStatStatus(item, line) {
   const entries = collectNormalizedGearModifiers([{ ...item, modifiers: [line], corrosionModifiers: [] }]);
   if (!entries.length || !entries.every((entry) => DEFENCE_STATS.has(entry.stat))) return null;
-  if (entries.some((entry) => RESISTANCE_TYPES[entry.stat] && ownResistanceReader(RESISTANCE_TYPES[entry.stat], coverageContext()))) return "In calc";
+  if (
+    entries.some(
+      (entry) => RESISTANCE_TYPES[entry.stat] && ownResistanceReader(RESISTANCE_TYPES[entry.stat], coverageContext()),
+    )
+  )
+    return "In calc";
   return entries.every((entry) => entry.type === "flag") ? "No DPS effect" : "Counted in stats";
 }
 
@@ -170,9 +258,21 @@ function gearStatStatus(item, line) {
   const level = skillLevelLineStatus(normalizePercentageText(line).trim(), coverageContext());
   if (level) return level;
   // Intelligence / All Stats: main-stat damage only where a ledger takes Intelligence (gear-pact batch chunk 2).
-  if (collectNormalizedGearModifiers([{ ...item, modifiers: [line], corrosionModifiers: [] }]).some((entry) => entry.stat === "intelligence")) return mainStatLineStatus(normalizePercentageText(line).trim(), coverageContext()) ?? intelligenceLineStatus(coverageContext());
+  if (
+    collectNormalizedGearModifiers([{ ...item, modifiers: [line], corrosionModifiers: [] }]).some(
+      (entry) => entry.stat === "intelligence",
+    )
+  )
+    return (
+      mainStatLineStatus(normalizePercentageText(line).trim(), coverageContext()) ??
+      intelligenceLineStatus(coverageContext())
+    );
   const entries = collectNormalizedGearModifiers([{ ...item, modifiers: [line], corrosionModifiers: [] }]);
-  const statuses = entries.map((entry) => GEAR_STAT_ROUTES[entry.stat] ? routeStatus(GEAR_STAT_ROUTES[entry.stat], entry.stat, coverageContext()) : null).filter(Boolean);
+  const statuses = entries
+    .map((entry) =>
+      GEAR_STAT_ROUTES[entry.stat] ? routeStatus(GEAR_STAT_ROUTES[entry.stat], entry.stat, coverageContext()) : null,
+    )
+    .filter(Boolean);
   return statuses.length && statuses.every((status) => status !== "In calc") ? statuses[0] : null;
 }
 
@@ -180,27 +280,48 @@ function gearStatStatus(item, line) {
 // "+1 to Max Tenacity Blessing Stacks" read Not modeled on the prism while the same clause read In calc on gear). The
 // "When activating 2 Legendary Medium Talent within the area," lead is the activation rule (src/prism-crafting.js
 // prismNodeAffixes applies the effect once two are allocated); the body is judged like any other line.
-const PRISM_AREA_LEAD = /^(?:When activating 2 Legendary Medium Talent within the area,|All (?:Micro|Medium|Legendary Medium) Talent within the area also gain:)\s*/i;
+const PRISM_AREA_LEAD =
+  /^(?:When activating 2 Legendary Medium Talent within the area,|All (?:Micro|Medium|Legendary Medium) Talent within the area also gain:)\s*/i;
 function prismLegendaryClauseStatus(clause) {
   const text = normalizePercentageText(String(clause || "")).trim();
   if (/Mutated Core Talents no longer replace the original talent/i.test(text)) return "In calc";
-  if (/^Points can be allocated to all .+ within the area|within the area can ignore prerequisite/i.test(text)) return "Planner only";
+  if (/^Points can be allocated to all .+ within the area|within the area can ignore prerequisite/i.test(text))
+    return "Planner only";
   const body = text.replace(PRISM_AREA_LEAD, "");
   return refineCoverage("Not modeled", body.replace(/;\s*/g, "\n"));
 }
 const prismLegendaryClauses = (affix) => {
   const text = normalizePercentageText(String(affix || "")).trim();
-  if (/Mutated Core Talents/i.test(text)) return text.split(/;\s*(?=Mutated Core Talents)/).map((part) => part.trim()).filter(Boolean);
+  if (/Mutated Core Talents/i.test(text))
+    return text
+      .split(/;\s*(?=Mutated Core Talents)/)
+      .map((part) => part.trim())
+      .filter(Boolean);
   const lead = text.match(PRISM_AREA_LEAD)?.[0] || "";
-  return text.slice(lead.length).split(/;\s*/).map((part) => `${lead}${part}`.trim()).filter(Boolean);
+  return text
+    .slice(lead.length)
+    .split(/;\s*/)
+    .map((part) => `${lead}${part}`.trim())
+    .filter(Boolean);
 };
 
 /** Coverage of a prism's base or affix; `clause` (legendary affixes) judges one clause of it. */
 export function prismAffixCoverage(prism, kind, clause = null) {
-  if (kind === "base" && prism?.type === "ethereal" && ["Fire's Allure", "Fiery Fantasy"].includes(prism.base)) return "In calc";
+  if (kind === "base" && prism?.type === "ethereal" && ["Fire's Allure", "Fiery Fantasy"].includes(prism.base))
+    return "In calc";
   if (kind === "legendaryAffix" && clause) return prismLegendaryClauseStatus(clause);
-  if (kind === "legendaryAffix" && /Mutated Core Talents no longer replace the original talent/i.test(prism?.legendaryAffix || "")) return prismMutationDownside(prism) === "-30 to All Stats" ? "Partly modeled" : "In calc";
-  if (kind === "legendaryAffix" && prism?.legendaryAffix && prism?.type !== "inverse" && !/also gain:|Mutated Core Talents/i.test(prism.legendaryAffix)) return combineStatuses(prismLegendaryClauses(prism.legendaryAffix).map(prismLegendaryClauseStatus));
+  if (
+    kind === "legendaryAffix" &&
+    /Mutated Core Talents no longer replace the original talent/i.test(prism?.legendaryAffix || "")
+  )
+    return prismMutationDownside(prism) === "-30 to All Stats" ? "Partly modeled" : "In calc";
+  if (
+    kind === "legendaryAffix" &&
+    prism?.legendaryAffix &&
+    prism?.type !== "inverse" &&
+    !/also gain:|Mutated Core Talents/i.test(prism.legendaryAffix)
+  )
+    return combineStatuses(prismLegendaryClauses(prism.legendaryAffix).map(prismLegendaryClauseStatus));
   if (kind === "radiusAffix") return "Planner only";
   if (prism?.type === "inverse") return "Partly modeled";
   // Phantasmagoria's +75% is already inside its rare rolls: TLIDB lists each Phantasmagoria rare
@@ -212,24 +333,34 @@ export function prismAffixCoverage(prism, kind, clause = null) {
   // Every other base's text reaches the readers as "[Base] clause" lines (src/modifier-texts.js; core audit batch B1): the
   // base affix combines the statuses of those clauses.
   if (kind === "base" && prism?.type === "ethereal") {
-    const coreLines = (coverageContext()?.modifierTexts || []).filter((line) => line.grantedCore === prism.base && line.origin === "core");
+    const coreLines = (coverageContext()?.modifierTexts || []).filter(
+      (line) => line.grantedCore === prism.base && line.origin === "core",
+    );
     if (coreLines.length) return combineStatuses(coreLines.map((line) => refineCoverage("Not modeled", line.text)));
   }
   if (kind === "base") return "Not independently modeled";
   if (kind === "rareAffix" && /Block Ratio/.test(prism?.rareAffix || "")) return "In calc";
-  if (["rareAffix", "legendaryAffix"].includes(kind) && /also gain: \+?[\d.]+% (?:Sealed Mana Compensation|Aura Effect)$/i.test(prism?.[kind] || "")) return "In calc";
+  if (
+    ["rareAffix", "legendaryAffix"].includes(kind) &&
+    /also gain: \+?[\d.]+% (?:Sealed Mana Compensation|Aura Effect)$/i.test(prism?.[kind] || "")
+  )
+    return "In calc";
   const gained = String(prism?.[kind] || "").match(/also gain:\s*(.+)$/i)?.[1];
   return gained ? refineCoverage("Not modeled", gained.replace(/;\s*/g, "\n")) : "Not modeled";
 }
 
 // Badge tooltip for prism affixes whose status needs a reason.
-export const EFFORTLESS_COMMAND_REASON = "Not modeled: Effortless Command has no affix record in the SS13 or SS14 game tables (TLIDB shows only its id 1204411023), so there is nothing to model yet (core audit Q12).";
+export const EFFORTLESS_COMMAND_REASON =
+  "Not modeled: Effortless Command has no affix record in the SS13 or SS14 game tables (TLIDB shows only its id 1204411023), so there is nothing to model yet (core audit Q12).";
 export function prismAffixCoverageReason(prism, kind) {
-  if (kind === "base" && prism?.type === "ethereal" && prism.base === "Effortless Command") return EFFORTLESS_COMMAND_REASON;
+  if (kind === "base" && prism?.type === "ethereal" && prism.base === "Effortless Command")
+    return EFFORTLESS_COMMAND_REASON;
   if (kind !== "legendaryAffix") return "";
   const downside = prismMutationDownside(prism);
-  if (downside === "-30 to All Stats") return "Core kept and added: in calc. -30 to All Stats: the Intelligence part lowers main-stat damage in calc; Strength and Dexterity are not modeled.";
-  if (downside === "-5% Elemental Resistance") return "Core kept and added: in calc. -5% Elemental Resistance lowers your Fire, Cold and Lightning Resistance (affects Fire Resistance scaling lines).";
+  if (downside === "-30 to All Stats")
+    return "Core kept and added: in calc. -30 to All Stats: the Intelligence part lowers main-stat damage in calc; Strength and Dexterity are not modeled.";
+  if (downside === "-5% Elemental Resistance")
+    return "Core kept and added: in calc. -5% Elemental Resistance lowers your Fire, Cold and Lightning Resistance (affects Fire Resistance scaling lines).";
   if (downside === "-8% Defense") return "Core kept and added: in calc. -8% Defense has no damage effect.";
   return "";
 }
@@ -239,7 +370,10 @@ export function prismAffixCoverageReason(prism, kind) {
 // level 5 (src/hero-memory-model.js heroMemories.artificialMoon / artificialMoonGate; src/character-stats.js
 // heroTraitStatLines drops them otherwise), for every hero. A badge receives one line, so the moon section is looked up in
 // the base trait's catalog and per-level texts (progression "( a / b / c )" lists match any listed or substituted value).
-const squash = (text) => normalizePercentageText(String(text || "")).replace(/\s+/g, " ").trim();
+const squash = (text) =>
+  normalizePercentageText(String(text || ""))
+    .replace(/\s+/g, " ")
+    .trim();
 const moonLinePatterns = new Map();
 function artificialMoonPatterns(heroId) {
   if (moonLinePatterns.has(heroId)) return moonLinePatterns.get(heroId);
@@ -247,7 +381,10 @@ function artificialMoonPatterns(heroId) {
   const sources = [base?.description, baseTraitDescriptionForLevel(heroId, "")].filter(Boolean);
   const patterns = [];
   for (const source of sources) {
-    const lines = String(source).split("\n").map((part) => part.trim()).filter(Boolean);
+    const lines = String(source)
+      .split("\n")
+      .map((part) => part.trim())
+      .filter(Boolean);
     const header = lines.findIndex((part) => /^Artificial Moon:$/i.test(part));
     if (header < 0) continue;
     for (const moonLine of lines.slice(header + 1)) {
@@ -277,7 +414,8 @@ function artificialMoonState(planner = coverageContext()) {
   if (!planner) return null;
   return planner.heroMemories?.artificialMoonGate ?? artificialMoonGate(planner.state?.hero);
 }
-const moonGatedOff = (heroId, traitName, line) => artificialMoonState()?.active === false && isArtificialMoonTraitLine(heroId, traitName, line);
+const moonGatedOff = (heroId, traitName, line) =>
+  artificialMoonState()?.active === false && isArtificialMoonTraitLine(heroId, traitName, line);
 // A 45 / 60 / 75 trait with no hero memory in its slot is inactive at level 0 (user-stated rule 2026-10-13;
 // src/hero-memory-rules.js slotTraitLevel). Only judged with a planner whose hero is this hero.
 const NO_MEMORY_REASON = "no hero memory installed";
@@ -298,15 +436,24 @@ const WIND_STALKER_ID = "erika-wind-stalker";
 // Thea – Wisdom of The Gods and Youga – The Ultimate One (trait trees, 2026-10-15): their tree traits print TLIDB progressions
 // too, so their badges read the levelled line the same way (plain stat lines In calc through the generic readers; lines no
 // reader or module models stay Not modeled).
-const THEA_WISDOM_ID = "thea-wisdom-of-the-gods", YOUGA_ULTIMATE_ID = "youga-the-ultimate-one";
+const THEA_WISDOM_ID = "thea-wisdom-of-the-gods",
+  YOUGA_ULTIMATE_ID = "youga-the-ultimate-one";
 // "Counted in stats": a module's stat line that feeds no damage reader in this build (Rehan – Split Form's Max Life; hero trait audit B10).
 const PASS_THROUGH = ["Not modeled", "Partly modeled", "No DPS effect", "Not on dummy", "Counted in stats"];
 // The heroes read like Wind Stalker (every levelled line; Dance of the Deep has its own Terra rule below). Hero trait audit
 // 2026-10-19 (research/hero-traits-audit-2026-10-19.md F1): every other hero's tooltip prints the TLIDB progressions too, which
 // no reader matches ("(+45 / +52 / … ) % additional damage taken …" read Not modeled while the levelled line moved the
 // damage), so every hero but Sing with the Tide (own rule; its traits stay out of planner.modifierTexts) reads them this way.
-const LEVELLED_GENERIC_HEROES = new Set([WIND_STALKER_ID, THEA_WISDOM_ID, YOUGA_ULTIMATE_ID, ...Object.keys(allHeroTraitsSs13).filter((id) => id !== DANCE_OF_THE_DEEP_ID && id !== "selena-sing-with-the-tide")]);
-const LEVELLED_BADGE_HEROES = new Map([[DANCE_OF_THE_DEEP_ID, new Set(["Not modeled", "Partly modeled"])], ...[...LEVELLED_GENERIC_HEROES].map((id) => [id, new Set(PASS_THROUGH)])]);
+const LEVELLED_GENERIC_HEROES = new Set([
+  WIND_STALKER_ID,
+  THEA_WISDOM_ID,
+  YOUGA_ULTIMATE_ID,
+  ...Object.keys(allHeroTraitsSs13).filter((id) => id !== DANCE_OF_THE_DEEP_ID && id !== "selena-sing-with-the-tide"),
+]);
+const LEVELLED_BADGE_HEROES = new Map([
+  [DANCE_OF_THE_DEEP_ID, new Set(["Not modeled", "Partly modeled"])],
+  ...[...LEVELLED_GENERIC_HEROES].map((id) => [id, new Set(PASS_THROUGH)]),
+]);
 const PROGRESSION = /\(\s*[^()]*\/[^()]*\)/g;
 function progressionPattern(line) {
   const escape = (part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, " ?");
@@ -315,31 +462,54 @@ function progressionPattern(line) {
 function levelledTraitLine(heroId, traitName, line, planner) {
   if (!planner?.modifierTexts || planner.state?.hero?.selectedHeroId !== heroId) return null;
   const pattern = progressionPattern(line);
-  return planner.modifierTexts.find((item) => item.origin === "trait" && String(item.source || "").startsWith(`Hero trait: ${traitName} (`) && pattern.test(squash(item.text))) || null;
+  return (
+    planner.modifierTexts.find(
+      (item) =>
+        item.origin === "trait" &&
+        String(item.source || "").startsWith(`Hero trait: ${traitName} (`) &&
+        pattern.test(squash(item.text)),
+    ) || null
+  );
 }
 function levelledLineState(heroId, traitName, line, planner = coverageContext()) {
   const levelled = levelledTraitLine(heroId, traitName, line, planner);
   if (levelled) {
-    const entry = (planner.lineEffects?.lines || []).find((item) => item.source === levelled.source && squash(item.text) === squash(levelled.text));
+    const entry = (planner.lineEffects?.lines || []).find(
+      (item) => item.source === levelled.source && squash(item.text) === squash(levelled.text),
+    );
     if (entry) {
       // A line the condition layer leaves unmodeled (its "unmodeled" scope, e.g. "for skills cast by Spell Burst") that an engine
       // reader claims (src/line-coverage.js engineLineStatus: the skill-hit Spell Burst model) reads what the engine says, as the
       // same line on gear does (hero trait audit B1, F6: Inspiration Overflow moved the dummy figure while it badged Not modeled).
       if (entry.status === "Not modeled" || entry.status === "Partly modeled") {
         const engine = engineLineStatus(levelled.text, planner);
-        if (engine === "In calc" || engine === "Inactive") return { status: engine, reason: engine === "Inactive" ? entry.conditionText || "" : "" };
+        if (engine === "In calc" || engine === "Inactive")
+          return { status: engine, reason: engine === "Inactive" ? entry.conditionText || "" : "" };
       }
-      if (LEVELLED_BADGE_HEROES.get(heroId)?.has(entry.status)) return { status: entry.status, reason: entry.conditionText || "" };
+      if (LEVELLED_BADGE_HEROES.get(heroId)?.has(entry.status))
+        return { status: entry.status, reason: entry.conditionText || "" };
       return { status: entry.active ? "In calc" : "Inactive", reason: entry.conditionText || "" };
     }
   }
-  const text = levelled ? levelled.text : squash(line).replace(PROGRESSION, (list) => list.slice(1, -1).split("/")[0].trim());
-  const status = heroModuleLineStatus(heroId, text, planner) ?? residualNonDamageStatus(normalizePercentageText(String(text)))?.status ?? refineCoverage("Not modeled", text);
+  const text = levelled
+    ? levelled.text
+    : squash(line).replace(PROGRESSION, (list) => list.slice(1, -1).split("/")[0].trim());
+  const status =
+    heroModuleLineStatus(heroId, text, planner) ??
+    residualNonDamageStatus(normalizePercentageText(String(text)))?.status ??
+    refineCoverage("Not modeled", text);
   // A module line the line-effects layer did not carry (an inactive grant): the module's own condition names what is missing.
-  const reason = status !== "In calc" && planner?.lineEffects?.state ? resolveHeroModules([{ text, source: "coverage", origin: "trait", multiplier: 1 }], { ...planner.lineEffects.state, heroId }).entries[0]?.conditionText || "" : "";
+  const reason =
+    status !== "In calc" && planner?.lineEffects?.state
+      ? resolveHeroModules([{ text, source: "coverage", origin: "trait", multiplier: 1 }], {
+          ...planner.lineEffects.state,
+          heroId,
+        }).entries[0]?.conditionText || ""
+      : "";
   return { status, reason: heroId === DANCE_OF_THE_DEEP_ID && status !== "Inactive" ? "" : reason };
 }
-const danceLineState = (traitName, line, planner = coverageContext()) => levelledLineState(DANCE_OF_THE_DEEP_ID, traitName, line, planner);
+const danceLineState = (traitName, line, planner = coverageContext()) =>
+  levelledLineState(DANCE_OF_THE_DEEP_ID, traitName, line, planner);
 
 // Trait clauses that change the dummy's damage but wait for a hero engine (hero trait audit 2026-10-19 F5, batch B1): before
 // 2026-10-19 they badged No DPS effect / Not on dummy (a word match on "Movement Speed", "Trait Skill", "summoned", ...). They
@@ -347,7 +517,7 @@ const danceLineState = (traitName, line, planner = coverageContext()) => levelle
 const ENGINE = {
   b12bomb: ["B12", "Bing's bomb engine (Bomb Throwing Speed)"],
   b12whimsy: ["B12", "Bing's Whimsy / Ingenuity Overload engine"],
-  b11: ["B11", "Rosa's No Guard / Mercury Pts engine"]
+  b11: ["B11", "Rosa's No Guard / Mercury Pts engine"],
 };
 const HERO_ENGINE_PENDING = {
   // Carino (Ranger of Glory, Lethal Flash, Zealot of War): modeled by hero trait audit B9 (src/carino-traits.js, src/hero-trait-modules.js
@@ -355,15 +525,27 @@ const HERO_ENGINE_PENDING = {
   // Erika – Lightning Shadow and Vendetta's Sting: modeled by hero trait audit B5 (src/erika-traits.js, src/hero-trait-modules.js).
   // Rehan (Anger, Seething Silhouette): modeled by hero trait audit B10 (src/rehan-traits.js, src/hero-trait-modules.js "rage" / "burst" /
   // "spirit"); Hysteria's Rage gains (left to B10 by B2) are read there, its Missing Life line by the generic reader (B2).
-  "bing-blast-nova": [[/^Base Bomb Throwing Speed is/i, "b12bomb"], [/additional Bomb Throwing Speed( while moving)?$/i, "b12bomb"]],
-  "bing-creative-genius": [[/^Gains 2 Inspiration Machines/i, "b12whimsy"], [/^Instantly restores 80 Ingenuity Essence/i, "b12whimsy"], [/^Effect of Whimsy Signal enhanced to/i, "b12whimsy"], [/Whimsy Essence Recovery Speed$/i, "b12whimsy"], [/^When casting Ingenuity Overload ?, gains Buff Effect/i, "b12whimsy"]],
+  "bing-blast-nova": [
+    [/^Base Bomb Throwing Speed is/i, "b12bomb"],
+    [/additional Bomb Throwing Speed( while moving)?$/i, "b12bomb"],
+  ],
+  "bing-creative-genius": [
+    [/^Gains 2 Inspiration Machines/i, "b12whimsy"],
+    [/^Instantly restores 80 Ingenuity Essence/i, "b12whimsy"],
+    [/^Effect of Whimsy Signal enhanced to/i, "b12whimsy"],
+    [/Whimsy Essence Recovery Speed$/i, "b12whimsy"],
+    [/^When casting Ingenuity Overload ?, gains Buff Effect/i, "b12whimsy"],
+  ],
   // Thea (Wisdom of The Gods, Incarnation of the Gods, Blasphemer): modeled by hero trait audit B7 (src/thea-traits.js,
   // src/hero-trait-modules.js "theaWisdom" / "theaIncarnation" / "theaBlasphemer").
   // Youga – Spacetime Elapse: modeled by hero trait audit B4 (src/hero-trait-modules.js "elapse").
   // Moto (Order Calling, Charge Calling) and Iris (Growing Breeze, Vigilant Breeze): modeled by hero trait audit B6
   // (src/moto-iris-traits.js; src/hero-trait-modules.js "overload" / "chargeCalling" / "irisGrowing" / "irisVigilant").
   "rosa-high-court-chariot": [[/^For every 1 ?% Block Ratio, .*additional No Guard Effect/i, "b11"]],
-  "rosa-unsullied-blade": [[/^Mana can be consumed via methods other than Mystic Mercury/i, "b11"], [/^For every 1000 Max Mana you have, \+10 ?% Max Mercury Pts/i, "b11"]]
+  "rosa-unsullied-blade": [
+    [/^Mana can be consumed via methods other than Mystic Mercury/i, "b11"],
+    [/^For every 1000 Max Mana you have, \+10 ?% Max Mercury Pts/i, "b11"],
+  ],
   // Sage – Licorice Note: modeled by hero trait audit B8 (src/sage-traits.js, src/hero-trait-modules.js "sageScent").
 };
 /** The engine a hero trait line waits for ({ batch, engine }), or null. */
@@ -378,8 +560,10 @@ const pendingReason = (pending) => `Not modeled: needs ${pending.engine} (hero t
 // Youga – The Ultimate One's board lines (src/trait-board-grants.js): what the planner applies. The Clockwork Core line and the
 // trait skills' effects are read by src/youga-ultimate-one.js (the module's badge and the skill badges carry their reasons).
 function yougaBoardLineReason(line) {
-  const text = squash(line), grant = TRAIT_SLOT_GRANTS[text];
-  if (grant) return `${text}: applied. ${grant.skill} (Lv. 20 trait skill; the skill takes no energy, supports added to it cost energy as usual) takes Active slot ${grant.row + 1}, and the skill placed there is left out of the calculation${text === "Spacetime Conqueror" ? "; -15% Movement Speed is read" : ""}. What ${grant.skill} does on the dummy is on its skill badge (src/youga-ultimate-one.js).`;
+  const text = squash(line),
+    grant = TRAIT_SLOT_GRANTS[text];
+  if (grant)
+    return `${text}: applied. ${grant.skill} (Lv. 20 trait skill; the skill takes no energy, supports added to it cost energy as usual) takes Active slot ${grant.row + 1}, and the skill placed there is left out of the calculation${text === "Spacetime Conqueror" ? "; -15% Movement Speed is read" : ""}. What ${grant.skill} does on the dummy is on its skill badge (src/youga-ultimate-one.js).`;
   return "";
 }
 
@@ -398,7 +582,8 @@ export function heroTraitLineCoverageReason(heroId, traitName, line, selected) {
   }
   // Dance of the Deep base trait (user-confirmed 2026-10-13): "+X% additional Terra Skill Damage" reaches Terra skills' hits
   // only, not a Terra skill's own damage over time (Frost Terra, Thornfield).
-  if (selected && /additional Terra Skill Damage$/i.test(squash(line))) return "Terra Skill Damage reaches Terra skills' hits only, not their own damage over time (user-confirmed 2026-10-13)";
+  if (selected && /additional Terra Skill Damage$/i.test(squash(line)))
+    return "Terra Skill Damage reaches Terra skills' hits only, not their own damage over time (user-confirmed 2026-10-13)";
   return "";
 }
 
@@ -410,11 +595,20 @@ export function heroTraitLineCoverage(heroId, traitName, line, selected) {
   // Other heroes (talent batch chunk 4): trait lines are build lines (origin "trait"), so the engine-line layer reads them
   // per engine (In calc, Inactive, No DPS effect, …) and the hero modules (src/hero-trait-modules.js) give their own status.
   // A line no module claims and that cannot change dummy damage (headers, trait controls: residual batch §6) is neutral.
-  if (heroId === DANCE_OF_THE_DEEP_ID) return /^Artificial Moon:?$/i.test(squash(line)) ? "No DPS effect" : danceLineState(traitName, line).status;
+  if (heroId === DANCE_OF_THE_DEEP_ID)
+    return /^Artificial Moon:?$/i.test(squash(line)) ? "No DPS effect" : danceLineState(traitName, line).status;
   // Youga's Spacetime Dictator / Conqueror / Overlord: the slot replacement is applied (src/trait-board-grants.js).
   if (heroId === YOUGA_ULTIMATE_ONE_ID && TRAIT_SLOT_GRANTS[squash(line)]) return "In calc";
-  if (LEVELLED_GENERIC_HEROES.has(heroId)) return /^Artificial Moon:?$/i.test(squash(line)) ? "No DPS effect" : levelledLineState(heroId, traitName, line).status;
-  if (heroId !== "selena-sing-with-the-tide") return heroModuleLineStatus(heroId, line, coverageContext()) ?? residualNonDamageStatus(normalizePercentageText(String(line || "")))?.status ?? refineCoverage("Not modeled", line);
+  if (LEVELLED_GENERIC_HEROES.has(heroId))
+    return /^Artificial Moon:?$/i.test(squash(line))
+      ? "No DPS effect"
+      : levelledLineState(heroId, traitName, line).status;
+  if (heroId !== "selena-sing-with-the-tide")
+    return (
+      heroModuleLineStatus(heroId, line, coverageContext()) ??
+      residualNonDamageStatus(normalizePercentageText(String(line || "")))?.status ??
+      refineCoverage("Not modeled", line)
+    );
   return selenaTideLineStatus(line, coverageContext());
 }
 
@@ -424,11 +618,13 @@ export function heroTraitLineCoverage(heroId, traitName, line, selected) {
 // taken on the Tide, Wave Aria, Idyll stacks and Murmurs' Tide Effect, each In calc while its condition holds in the build.
 // Loud Song on its own is not modeled (the planner assumes Bard; Ceaseless Tide holds both).
 function selenaTideLineStatus(line, planner) {
-  const text = normalizePercentageText(String(line || "")).replace(/\s+/g, " ").trim();
+  const text = normalizePercentageText(String(line || ""))
+    .replace(/\s+/g, " ")
+    .trim();
   const conditions = planner?.conditions || null;
   // The Tide entries apply only with Selena (Sing with the Tide) selected (src/theoretical-sources.js checks the hero id).
   const selena = !planner?.state?.hero || planner.state.hero.selectedHeroId === "selena-sing-with-the-tide";
-  const held = (key) => !conditions ? "In calc" : selena && conditions[key] ? "In calc" : "Inactive";
+  const held = (key) => (!conditions ? "In calc" : selena && conditions[key] ? "In calc" : "Inactive");
   // Selena traits batch (2026-10-13; src/selena-tide.js): Loud Song is in calc only through Ceaseless Tide (deemed Loud Song
   // while Bard; the planner keeps the Bard state otherwise), Chantey of Sinking with it, Undersea Ballad's Skill Area share
   // while the Tide holds, Sea Foam's count from the build's channel lines, and the Artificial Moon line while an equipped memory
@@ -440,11 +636,26 @@ function selenaTideLineStatus(line, planner) {
   // Ceaseless Tide (src/selena-tide.js, src/planner.js loudSongSpeedLines); before 2026-10-19 it badged No DPS effect
   // (hero trait audit B1, F6).
   if (/^In Loud Song form, /i.test(text)) return tide?.ceaselessTide ? "In calc" : "Not modeled";
-  if (/^For every 1 s in the Loud Song state/i.test(text)) return !tide ? "Not modeled" : tide.chantey.stacks > 0 ? "In calc" : "Inactive";
-  if (/Skill Area is also applied to Tide Effect/i.test(text)) return !tide ? "Not modeled" : tide.undersea.selected && tide.tideUp ? "In calc" : "Inactive";
-  if (/Skill Area and .*Skill Effect Duration when on the Tide$/i.test(text)) return !tide ? "Not modeled" : tide.artificialMoon.lines.length ? "In calc" : "Inactive";
-  if (/^In the Bard state, it is possible to move while casting Spell Channeled Skills, and .*additional Channeled Skill Damage$/i.test(text)) return "In calc";
-  if (/^In the Bard state, (?:Attack Channeled Skills and Attack Mobility Skills cannot be used|the Main Skill is auto channeled while moving|the bubble no longer leaves a Tide)/i.test(text) || /^After losing all Tides/i.test(text) || /^Tide ?'s area is no longer affected by Skill Area$/i.test(text)) return "No DPS effect";
+  if (/^For every 1 s in the Loud Song state/i.test(text))
+    return !tide ? "Not modeled" : tide.chantey.stacks > 0 ? "In calc" : "Inactive";
+  if (/Skill Area is also applied to Tide Effect/i.test(text))
+    return !tide ? "Not modeled" : tide.undersea.selected && tide.tideUp ? "In calc" : "Inactive";
+  if (/Skill Area and .*Skill Effect Duration when on the Tide$/i.test(text))
+    return !tide ? "Not modeled" : tide.artificialMoon.lines.length ? "In calc" : "Inactive";
+  if (
+    /^In the Bard state, it is possible to move while casting Spell Channeled Skills, and .*additional Channeled Skill Damage$/i.test(
+      text,
+    )
+  )
+    return "In calc";
+  if (
+    /^In the Bard state, (?:Attack Channeled Skills and Attack Mobility Skills cannot be used|the Main Skill is auto channeled while moving|the bubble no longer leaves a Tide)/i.test(
+      text,
+    ) ||
+    /^After losing all Tides/i.test(text) ||
+    /^Tide ?'s area is no longer affected by Skill Area$/i.test(text)
+  )
+    return "No DPS effect";
   // Bard Song channel: the planner's Bard residual is a measured stand-in, not a model of the song (src/scorching-beam-delivery.js).
   // User-stated 2026-10-13 (uncertain): Bard Song turns non-channeled skills into channeled ones; its interval and max stacks
   // are unknown, so those skills keep their normal casts (planner.singWithTheTide.bardSong lists them).
@@ -453,11 +664,14 @@ function selenaTideLineStatus(line, planner) {
   if (/^When contacting a Tide ?, gains the following Tide Effect/i.test(text)) return held("tideContact");
   if (/additional damage taken by enemies on the Tide$/i.test(text)) return held("onTheTide");
   if (/^Tide grants an additional effect:/i.test(text)) return held("waveAria");
-  if (/^Tide grants the following additional effects: For every 1 m moved in the Tide/i.test(text)) return held("idyll");
-  if (/^In the Bard state, .*Tide Duration and .*additional Tide Effect$/i.test(text)) return planner?.murmursTideEffectPercent > 0 || !planner ? "In calc" : "Inactive";
+  if (/^Tide grants the following additional effects: For every 1 m moved in the Tide/i.test(text))
+    return held("idyll");
+  if (/^In the Bard state, .*Tide Duration and .*additional Tide Effect$/i.test(text))
+    return planner?.murmursTideEffectPercent > 0 || !planner ? "In calc" : "Inactive";
   // Sea Foam Nocturne: the count from the build's Max / Min Channeled Stacks, supports included (user-confirmed 2026-10-13),
   // plus the manual extra fields; the bubble flying speed has no DPS effect.
-  if (/^For every \+1 max or min Channeled Stacks/i.test(text)) return tide && !tide.seaFoamNocturne.applied ? "Inactive" : "In calc";
+  if (/^For every \+1 max or min Channeled Stacks/i.test(text))
+    return tide && !tide.seaFoamNocturne.applied ? "Inactive" : "In calc";
   if (/Channeled Stacks/i.test(text)) return "Partly modeled";
   return residualNonDamageStatus(text)?.status ?? refineCoverage("Not modeled", text);
 }
@@ -471,36 +685,71 @@ export function heroTraitCoverage(heroId, traitName, lines, selected) {
   // Sea Foam's "Min Channeled Stacks takes effect twice on Bard Song" belongs to the Bard Song channel (not modeled).
   if (heroId === "selena-sing-with-the-tide" && traitName === "Sea Foam Nocturne") return "Partly modeled";
   // Undersea Ballad and Chantey of Sinking: user-confirmed readings 2026-10-13 (increased Tide Effect).
-  if (heroId === "selena-sing-with-the-tide" && ["Sing with the Tide", "Wave Aria", "Murmurs of the Distant Tide", "Undersea Ballad", "Chantey of Sinking"].includes(traitName)) return "In calc";
+  if (
+    heroId === "selena-sing-with-the-tide" &&
+    [
+      "Sing with the Tide",
+      "Wave Aria",
+      "Murmurs of the Distant Tide",
+      "Undersea Ballad",
+      "Chantey of Sinking",
+    ].includes(traitName)
+  )
+    return "In calc";
   // Artificial Moon lines that are gated off are Inactive (heroTraitCoverageReason names what is missing); they do not
   // lower the trait's coverage, and the bare header has no badge of its own.
-  const counted = lines.filter((line) => !/^Artificial Moon:?$/i.test(squash(line)) && !moonGatedOff(heroId, traitName, line));
+  const counted = lines.filter(
+    (line) => !/^Artificial Moon:?$/i.test(squash(line)) && !moonGatedOff(heroId, traitName, line),
+  );
   const statuses = counted.map((line) => heroTraitLineCoverage(heroId, traitName, line, true));
   if (lines.length && !statuses.length) return "Inactive";
   if (statuses.length && statuses.every((status) => status === "In calc")) return "In calc";
   // Dance of the Deep: a line whose condition does not hold in this build (Inactive) or that cannot change dummy damage is
   // neutral; the trait is In calc when every other line is, Inactive when no line applies (badge batch 2026-10-13).
   // The same rule reads Idyll of the Tide (its "switch to Bard" line has no DPS effect).
-  if ((heroId === DANCE_OF_THE_DEEP_ID || LEVELLED_GENERIC_HEROES.has(heroId) || heroId === "selena-sing-with-the-tide") && statuses.every((status) => status === "In calc" || status === "Inactive" || neutralStatuses.has(status))) {
+  if (
+    (heroId === DANCE_OF_THE_DEEP_ID ||
+      LEVELLED_GENERIC_HEROES.has(heroId) ||
+      heroId === "selena-sing-with-the-tide") &&
+    statuses.every((status) => status === "In calc" || status === "Inactive" || neutralStatuses.has(status))
+  ) {
     if (statuses.includes("In calc")) return "In calc";
     if (statuses.includes("Inactive")) return "Inactive";
     return combineStatuses(statuses);
   }
-  return statuses.some((status) => status === "In calc" || status === "Partly modeled") ? "Partly modeled" : "Not modeled";
+  return statuses.some((status) => status === "In calc" || status === "Partly modeled")
+    ? "Partly modeled"
+    : "Not modeled";
 }
 
 /** Badge tooltip for a trait whose Artificial Moon lines are off for want of the memory; "" otherwise. */
 export function heroTraitCoverageReason(heroId, traitName, lines, selected) {
   if (!selected) return "";
-  if (noMemoryInSlot(heroId, traitName)) return `Inactive: ${NO_MEMORY_REASON} (the trait starts at level 0 until a memory is in its slot).`;
+  if (noMemoryInSlot(heroId, traitName))
+    return `Inactive: ${NO_MEMORY_REASON} (the trait starts at level 0 until a memory is in its slot).`;
   const gated = (lines || []).find((line) => moonGatedOff(heroId, traitName, line));
   if (gated) return `Artificial Moon lines: Inactive. ${artificialMoonState().reason}.`;
   // Lines waiting for a hero engine (HERO_ENGINE_PENDING) name it after the Inactive list (hero trait audit B1).
-  const pending = (lines || []).filter((line) => !moonGatedOff(heroId, traitName, line) && heroTraitPendingEngine(heroId, line));
-  const pendingText = pending.length ? `${pending.map((line) => `${squash(line)} (${pendingReason(heroTraitPendingEngine(heroId, line))})`).join("; ")}.` : "";
+  const pending = (lines || []).filter(
+    (line) => !moonGatedOff(heroId, traitName, line) && heroTraitPendingEngine(heroId, line),
+  );
+  const pendingText = pending.length
+    ? `${pending.map((line) => `${squash(line)} (${pendingReason(heroTraitPendingEngine(heroId, line))})`).join("; ")}.`
+    : "";
   if (heroId === DANCE_OF_THE_DEEP_ID || LEVELLED_GENERIC_HEROES.has(heroId)) {
-    const inactive = (lines || []).filter((line) => !/^Artificial Moon:?$/i.test(squash(line)) && heroTraitLineCoverage(heroId, traitName, line, true) === "Inactive");
-    const inactiveText = inactive.length ? `Inactive in this build: ${inactive.map((line) => { const reason = heroTraitLineCoverageReason(heroId, traitName, line, true); return reason ? `${squash(line)} (${reason})` : squash(line); }).join("; ")}.` : "";
+    const inactive = (lines || []).filter(
+      (line) =>
+        !/^Artificial Moon:?$/i.test(squash(line)) &&
+        heroTraitLineCoverage(heroId, traitName, line, true) === "Inactive",
+    );
+    const inactiveText = inactive.length
+      ? `Inactive in this build: ${inactive
+          .map((line) => {
+            const reason = heroTraitLineCoverageReason(heroId, traitName, line, true);
+            return reason ? `${squash(line)} (${reason})` : squash(line);
+          })
+          .join("; ")}.`
+      : "";
     return [inactiveText, pendingText].filter(Boolean).join(" ");
   }
   if (pendingText) return pendingText;
@@ -513,11 +762,18 @@ export function gearLineCoverage(item, text, active, block, lowResources, blurEf
   // keyword's badge summarizes the effect lines it carries.
   const named = namedGearAffixLines(text);
   if (named.length) return gearLineCoverage(item, named.join("\n"), active, block, lowResources, blurEffects);
-  return refineCoverage(baseGearLineCoverage(item, text, active, block, lowResources, blurEffects), text, undefined, (clause) => baseGearLineCoverage(item, clause, active, block, lowResources, blurEffects));
+  return refineCoverage(
+    baseGearLineCoverage(item, text, active, block, lowResources, blurEffects),
+    text,
+    undefined,
+    (clause) => baseGearLineCoverage(item, clause, active, block, lowResources, blurEffects),
+  );
 }
 
 export function talentLineCoverage(text, active) {
-  return refineCoverage(baseTalentLineCoverage(text, active), text, undefined, (clause) => baseTalentLineCoverage(clause, active));
+  return refineCoverage(baseTalentLineCoverage(text, active), text, undefined, (clause) =>
+    baseTalentLineCoverage(clause, active),
+  );
 }
 
 export function slateLineCoverage(text, active) {
@@ -528,16 +784,28 @@ export function slateLineCoverage(text, active) {
   // No DPS effect, and 4 unmodeled ones read In calc from the slate table.
   const raw = String(text || "");
   const coreName = raw.match(/Core Talent:\s*([A-Z][^—|·]*?) — /)?.[1]?.trim() || null;
-  const body = raw.split(/(\s+\|\s+|\s+·\s+)/).map((part) => part.replace(/^[^:|·]+:\s*[^:|·]*Talent[^:|·]*:\s*/i, "").replace(/^[A-Z][^—|·:]*? — /, "")).join("");
+  const body = raw
+    .split(/(\s+\|\s+|\s+·\s+)/)
+    .map((part) => part.replace(/^[^:|·]+:\s*[^:|·]*Talent[^:|·]*:\s*/i, "").replace(/^[A-Z][^—|·:]*? — /, ""))
+    .join("");
   if (coreName && active) {
     // A Pedigree core's clauses read as the same core's on the panel (the core tooltip's per-clause rule): clauses the core
     // applies by name (Affliction, Starfire's Ignite limit …; src/granted-core-lines.js) by the core rule, Daze by its Blur
     // state, the rest by their readers over "Not independently modeled" (not the slate-table base, which read Last Stand's
     // "Block Ratio is set to 0%" In calc from the slate while the panel's copy reads No DPS effect).
-    const clauses = body.split(/\s+\|\s+|\s+·\s+/).map((part) => part.trim()).filter(Boolean);
+    const clauses = body
+      .split(/\s+\|\s+|\s+·\s+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
     if (coreName === "Daze") return dazeStatus(coverageContext());
-    const statuses = clauses.map((clause) => isNameReadCoreClause(coreName, clause) ? nameReadCoreStatus(coreName) : refineCoverage("Not independently modeled", clause));
+    const statuses = clauses.map((clause) =>
+      isNameReadCoreClause(coreName, clause)
+        ? nameReadCoreStatus(coreName)
+        : refineCoverage("Not independently modeled", clause),
+    );
     return statuses.length === 1 ? statuses[0] : combineStatuses(statuses);
   }
-  return refineCoverage(baseSlateLineCoverage(body, active), body, undefined, (clause) => baseSlateLineCoverage(clause, active));
+  return refineCoverage(baseSlateLineCoverage(body, active), body, undefined, (clause) =>
+    baseSlateLineCoverage(clause, active),
+  );
 }

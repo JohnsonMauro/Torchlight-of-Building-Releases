@@ -8,7 +8,19 @@
 // it also matches the find bar's own <input> value and takes focus out of the input, and
 // re-focusing the input restarts every "find next" at the first match.
 
-const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "TEXTAREA", "INPUT", "SELECT", "OPTION", "SVG", "CANVAS", "IFRAME"]);
+const SKIP_TAGS = new Set([
+  "SCRIPT",
+  "STYLE",
+  "NOSCRIPT",
+  "TEMPLATE",
+  "TEXTAREA",
+  "INPUT",
+  "SELECT",
+  "OPTION",
+  "SVG",
+  "CANVAS",
+  "IFRAME",
+]);
 const TYPE_DEBOUNCE_MS = 120;
 const RERENDER_DEBOUNCE_MS = 150;
 
@@ -62,15 +74,19 @@ export function matchCounterText(index, count, query) {
 
 /** True for Ctrl+F (Cmd+F on macOS), without Alt. */
 export function isFindShortcut(event) {
-  return Boolean(event && (event.ctrlKey || event.metaKey) && !event.altKey && String(event.key || "").toLowerCase() === "f");
+  return Boolean(
+    event && (event.ctrlKey || event.metaKey) && !event.altKey && String(event.key || "").toLowerCase() === "f",
+  );
 }
 
 function barMarkup() {
-  return `<input type="text" class="find-bar-input" aria-label="Find on page" placeholder="Find" spellcheck="false" autocomplete="off">`
-    + `<span class="find-bar-count" aria-live="polite"></span>`
-    + `<button type="button" class="find-bar-button" data-find-step="-1" aria-label="Previous match" title="Previous match (Shift+Enter)">&#8593;</button>`
-    + `<button type="button" class="find-bar-button" data-find-step="1" aria-label="Next match" title="Next match (Enter)">&#8595;</button>`
-    + `<button type="button" class="find-bar-button find-bar-close" data-find-close aria-label="Close find bar" title="Close (Esc)">&times;</button>`;
+  return (
+    `<input type="text" class="find-bar-input" aria-label="Find on page" placeholder="Find" spellcheck="false" autocomplete="off">` +
+    `<span class="find-bar-count" aria-live="polite"></span>` +
+    `<button type="button" class="find-bar-button" data-find-step="-1" aria-label="Previous match" title="Previous match (Shift+Enter)">&#8593;</button>` +
+    `<button type="button" class="find-bar-button" data-find-step="1" aria-label="Next match" title="Next match (Enter)">&#8595;</button>` +
+    `<button type="button" class="find-bar-button find-bar-close" data-find-close aria-label="Close find bar" title="Close (Esc)">&times;</button>`
+  );
 }
 
 /** Installs the find bar on `doc` once. Returns the controller (open / close / search) for tests. */
@@ -100,7 +116,12 @@ export function installFindBar(doc = globalThis.document) {
     if (visibleCache.has(element)) return visibleCache.get(element);
     let visible;
     if (typeof element.checkVisibility === "function") {
-      visible = element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true, opacityProperty: true, visibilityProperty: true });
+      visible = element.checkVisibility({
+        checkOpacity: true,
+        checkVisibilityCSS: true,
+        opacityProperty: true,
+        visibilityProperty: true,
+      });
     } else {
       const style = win.getComputedStyle(element);
       visible = element.getClientRects().length > 0 && style.visibility !== "hidden" && style.opacity !== "0";
@@ -115,11 +136,14 @@ export function installFindBar(doc = globalThis.document) {
     const walker = doc.createTreeWalker(doc.body, win.NodeFilter.SHOW_ELEMENT | win.NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         if (node.nodeType === 1) {
-          if (node === bar || SKIP_TAGS.has(node.tagName.toUpperCase()) || node.hidden) return win.NodeFilter.FILTER_REJECT;
+          if (node === bar || SKIP_TAGS.has(node.tagName.toUpperCase()) || node.hidden)
+            return win.NodeFilter.FILTER_REJECT;
           return win.NodeFilter.FILTER_SKIP;
         }
         if (!node.nodeValue || !node.nodeValue.trim()) return win.NodeFilter.FILTER_SKIP;
-        return node.parentElement && elementVisible(node.parentElement) ? win.NodeFilter.FILTER_ACCEPT : win.NodeFilter.FILTER_SKIP;
+        return node.parentElement && elementVisible(node.parentElement)
+          ? win.NodeFilter.FILTER_ACCEPT
+          : win.NodeFilter.FILTER_SKIP;
       },
     });
     for (let node = walker.nextNode(); node; node = walker.nextNode()) nodes.push(node);
@@ -129,7 +153,12 @@ export function installFindBar(doc = globalThis.document) {
   // Our own DOM edits must not wake the re-render observer.
   function quietly(edit) {
     observer?.disconnect();
-    try { edit(); } finally { observer?.takeRecords?.(); if (!bar.hidden) watch(); }
+    try {
+      edit();
+    } finally {
+      observer?.takeRecords?.();
+      if (!bar.hidden) watch();
+    }
   }
 
   function clearMarks() {
@@ -147,7 +176,10 @@ export function installFindBar(doc = globalThis.document) {
 
   function highlight(text) {
     const nodes = textNodes();
-    const found = findMatchesInSegments(nodes.map((node) => node.nodeValue), text);
+    const found = findMatchesInSegments(
+      nodes.map((node) => node.nodeValue),
+      text,
+    );
     const created = [];
     // Wrap from the end of each node backwards so earlier offsets stay valid.
     for (let i = found.length - 1; i >= 0; i--) {
@@ -176,12 +208,16 @@ export function installFindBar(doc = globalThis.document) {
       clearMarks();
       marks = query ? highlight(query) : [];
     });
-    index = keepIndex ? keepMatchIndex(previous, marks.length) : (marks.length ? 0 : -1);
+    index = keepIndex ? keepMatchIndex(previous, marks.length) : marks.length ? 0 : -1;
     render(scroll);
   }
 
   function step(direction) {
-    if (input.value !== query) { clearTimeout(typeTimer); query = input.value; search(); }
+    if (input.value !== query) {
+      clearTimeout(typeTimer);
+      query = input.value;
+      search();
+    }
     if (!marks.length) return;
     index = stepMatchIndex(index, marks.length, direction);
     render(true);
@@ -193,10 +229,18 @@ export function installFindBar(doc = globalThis.document) {
         if (bar.hidden || !query) return;
         if (records.every((record) => bar.contains(record.target))) return;
         clearTimeout(rerenderTimer);
-        rerenderTimer = setTimeout(() => { if (!bar.hidden && query) search({ keepIndex: true, scroll: false }); }, RERENDER_DEBOUNCE_MS);
+        rerenderTimer = setTimeout(() => {
+          if (!bar.hidden && query) search({ keepIndex: true, scroll: false });
+        }, RERENDER_DEBOUNCE_MS);
       });
     }
-    observer?.observe(doc.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["hidden"] });
+    observer?.observe(doc.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
   }
 
   function placeBelowHeader() {
@@ -213,7 +257,10 @@ export function installFindBar(doc = globalThis.document) {
     input.select();
     if (wasHidden) {
       watch();
-      if (input.value) { query = input.value; search(); }
+      if (input.value) {
+        query = input.value;
+        search();
+      }
     }
   }
 
@@ -229,11 +276,21 @@ export function installFindBar(doc = globalThis.document) {
 
   input.addEventListener("input", () => {
     clearTimeout(typeTimer);
-    typeTimer = setTimeout(() => { query = input.value; search(); }, TYPE_DEBOUNCE_MS);
+    typeTimer = setTimeout(() => {
+      query = input.value;
+      search();
+    }, TYPE_DEBOUNCE_MS);
   });
   input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); step(event.shiftKey ? -1 : 1); }
-    else if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(); }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      event.stopPropagation();
+      step(event.shiftKey ? -1 : 1);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+    }
   });
   bar.addEventListener("click", (event) => {
     const button = event.target.closest("button");
@@ -243,16 +300,34 @@ export function installFindBar(doc = globalThis.document) {
     if (!bar.hidden) input.focus();
   });
   bar.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && event.target !== input) { event.preventDefault(); event.stopPropagation(); close(); }
+    if (event.key === "Escape" && event.target !== input) {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+    }
   });
-  win.addEventListener("keydown", (event) => {
-    if (!isFindShortcut(event)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    open();
-  }, true);
+  win.addEventListener(
+    "keydown",
+    (event) => {
+      if (!isFindShortcut(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      open();
+    },
+    true,
+  );
 
-  const controller = { open, close, search: () => search(), get matchCount() { return marks.length; }, get currentIndex() { return index; } };
+  const controller = {
+    open,
+    close,
+    search: () => search(),
+    get matchCount() {
+      return marks.length;
+    },
+    get currentIndex() {
+      return index;
+    },
+  };
   doc.__tliFindBar = controller;
   return controller;
 }

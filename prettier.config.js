@@ -2,5 +2,5 @@
 // printWidth 120: long expressions stay on one searchable line without the multi-thousand-character lines.
 /** @type {import("prettier").Config} */
 export default {
-  printWidth: 120
+  printWidth: 120,
 };

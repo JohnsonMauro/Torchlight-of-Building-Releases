@@ -24,7 +24,8 @@ import { MAX_RESISTANCE_DEFAULT_PERCENT } from "./game-attribute-defaults.js";
 // Not sourced (provisional): that the level-85 dummy's 30% sits in attr 5101 (and not in Elemental Resistance 5741, which the
 // client adds to it unmultiplied).
 
-export const IGNITED_FIRE_RESISTANCE_LINE = /^Additionally increases Ignited enemies' Fire Resistance by (\d+(?:\.\d+)?) ?%$/i;
+export const IGNITED_FIRE_RESISTANCE_LINE =
+  /^Additionally increases Ignited enemies' Fire Resistance by (\d+(?:\.\d+)?) ?%$/i;
 
 // Readings of the line, for comparing against the dummy references (research/residual-batch-2026-10-12.md run 18):
 // - afterReductions: the sourced attribute order above, (base + Scorch + Allure + max-Affliction) × multiplier, then the cap;
@@ -33,16 +34,26 @@ export const IGNITED_FIRE_RESISTANCE_LINE = /^Additionally increases Ignited ene
 // - hitsOnly: as afterReductions on hits; Ignite and its Reaps keep the unmultiplied resistance;
 // - floor: as afterReductions, but the multiplied resistance does not go below a floor (no floor is sourced; comparison only);
 // - off: the line is recognized but not applied.
-export const IGNITED_FIRE_RESISTANCE_READINGS = Object.freeze(["afterReductions", "beforeReductions", "nonNegative", "hitsOnly", "floor", "off"]);
+export const IGNITED_FIRE_RESISTANCE_READINGS = Object.freeze([
+  "afterReductions",
+  "beforeReductions",
+  "nonNegative",
+  "hitsOnly",
+  "floor",
+  "off",
+]);
 export const DUMMY_MAX_FIRE_RESISTANCE_PERCENT = MAX_RESISTANCE_DEFAULT_PERCENT;
 
 let activeReading = "off";
 let activeFloorPercent = -Infinity;
 /** The reading the planner applies (see IGNITED_FIRE_RESISTANCE_READINGS). */
-export function ignitedFireResistanceReading() { return activeReading; }
+export function ignitedFireResistanceReading() {
+  return activeReading;
+}
 /** Selects the reading (tests and comparison scripts); returns the previous one. */
 export function setIgnitedFireResistanceReading(reading, { floorPercent = -Infinity } = {}) {
-  if (!IGNITED_FIRE_RESISTANCE_READINGS.includes(reading)) throw new RangeError(`Unknown Ignited Fire Resistance reading: ${reading}`);
+  if (!IGNITED_FIRE_RESISTANCE_READINGS.includes(reading))
+    throw new RangeError(`Unknown Ignited Fire Resistance reading: ${reading}`);
   const previous = activeReading;
   activeReading = reading;
   activeFloorPercent = floorPercent;
@@ -54,7 +65,10 @@ export function ignitedFireResistanceLines(modifierTexts = []) {
   const lines = [];
   for (const line of modifierTexts) {
     if (line.origin === "derived") continue;
-    const match = normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim().match(IGNITED_FIRE_RESISTANCE_LINE);
+    const match = normalizePercentageText(String(line.text ?? ""))
+      .replace(/\s+/g, " ")
+      .trim()
+      .match(IGNITED_FIRE_RESISTANCE_LINE);
     if (match) lines.push({ source: line.source, text: line.text, value: Number(match[1]) * (line.multiplier ?? 1) });
   }
   return lines;
@@ -73,7 +87,16 @@ export function ignitedFireResistanceLines(modifierTexts = []) {
  * @returns {{ lines, multiplier, reading, applies, unmultipliedPercent, hitPercent, dotPercent, capped, maxPercent, dotFlatChange }}
  *   dotFlatChange(r): the change of the DoT resistance when one more flat 5101 write r (e.g. −8 at max Affliction) holds.
  */
-export function ignitedFireResistance({ modifierTexts = [], ignited = false, basePercent = 30, reductionPercent = 0, fixed = false, reading = activeReading, maxPercent = DUMMY_MAX_FIRE_RESISTANCE_PERCENT, floorPercent = activeFloorPercent } = {}) {
+export function ignitedFireResistance({
+  modifierTexts = [],
+  ignited = false,
+  basePercent = 30,
+  reductionPercent = 0,
+  fixed = false,
+  reading = activeReading,
+  maxPercent = DUMMY_MAX_FIRE_RESISTANCE_PERCENT,
+  floorPercent = activeFloorPercent,
+} = {}) {
   const lines = ignitedFireResistanceLines(modifierTexts);
   const multiplier = lines.reduce((factor, line) => factor * (1 + line.value / 100), 1);
   const fixedValue = fixed === true ? 0 : Number.isFinite(fixed) ? fixed : null;
@@ -88,9 +111,18 @@ export function ignitedFireResistance({ modifierTexts = [], ignited = false, bas
     return Math.min(x * multiplier, maxPercent);
   };
   return {
-    lines, multiplier, reading, applies, ignited, basePercent, reductionPercent, maxPercent,
-    unmultipliedPercent: flat, hitPercent: at(flat, false), dotPercent: at(flat, true),
+    lines,
+    multiplier,
+    reading,
+    applies,
+    ignited,
+    basePercent,
+    reductionPercent,
+    maxPercent,
+    unmultipliedPercent: flat,
+    hitPercent: at(flat, false),
+    dotPercent: at(flat, true),
     capped: applies && reading !== "beforeReductions" && flat * multiplier > maxPercent,
-    dotFlatChange: (change) => at(flat + change, true) - at(flat, true)
+    dotFlatChange: (change) => at(flat + change, true) - at(flat, true),
   };
 }

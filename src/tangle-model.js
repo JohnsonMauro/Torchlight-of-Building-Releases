@@ -42,7 +42,11 @@ const ATTACH_LINE = /^You can (?:apply|attach) (\d+(?:\.\d+)?) additional Tangle
 const DURATION_LINE = /^([+-]\d+(?:\.\d+)?)% (additional )?Tangle Duration$/i;
 const round = (value) => Math.round(value * 10000) / 10000;
 
-const clean = (text) => normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim().replace(/^\[[^\]]+\]\s*/, "");
+const clean = (text) =>
+  normalizePercentageText(String(text ?? ""))
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^\[[^\]]+\]\s*/, "");
 export const isDormantEntanglementLine = (text) => /^Has Dormant Entanglement$/i.test(clean(text));
 export const isTangleAttachLine = (text) => ATTACH_LINE.test(clean(text));
 export const isTangleDurationLine = (text) => DURATION_LINE.test(clean(text));
@@ -52,7 +56,14 @@ export function tangleSetups(setups = [], activeNames = new Set()) {
   // The Tangle supports cannot support Channeled Skills (TLIDB support text; manual rule 1001020421). A support a trait sets
   // aside (replaced by Youga's Clockwork Core, or blocked by "Non-Main Skills cannot be tangled": `traitReplaced` /
   // `disabledReason`) makes no Tangle.
-  return setups.filter((setup) => activeNames.has(setup.name) && !(setup.tags || []).includes("Channeled") && (setup.supports || []).some((support) => !support?.traitReplaced && !support?.disabledReason && TANGLE_SUPPORTS.includes(support?.name)));
+  return setups.filter(
+    (setup) =>
+      activeNames.has(setup.name) &&
+      !(setup.tags || []).includes("Channeled") &&
+      (setup.supports || []).some(
+        (support) => !support?.traitReplaced && !support?.disabledReason && TANGLE_SUPPORTS.includes(support?.name),
+      ),
+  );
 }
 
 // Youga – The Ultimate One's Clockwork Core (src/youga-ultimate-one.js): the supported skill is attached to the Core as a
@@ -60,18 +71,40 @@ export function tangleSetups(setups = [], activeNames = new Set()) {
 // none is inactivated, and Dormant Entanglement gives it nothing. `coreSetupKey` names it; `extraQuantity` carries Max Tangle
 // Quantity lines a trait derives (Artificial Moon: +1 per +1 Max Sentry Quantity). `conditions.tangleTriggers` is the cadence
 // switch (core audit B8).
-export function resolveTangles({ setups = [], activeNames = new Set(), modifierTexts = [], coreSetupKey = null, extraQuantity = [], conditions = {} } = {}) {
-  const core = coreSetupKey ? setups.find((setup) => setup.setupKey === coreSetupKey && activeNames.has(setup.name)) || null : null;
+export function resolveTangles({
+  setups = [],
+  activeNames = new Set(),
+  modifierTexts = [],
+  coreSetupKey = null,
+  extraQuantity = [],
+  conditions = {},
+} = {}) {
+  const core = coreSetupKey
+    ? setups.find((setup) => setup.setupKey === coreSetupKey && activeNames.has(setup.name)) || null
+    : null;
   const tangle = tangleSetups(setups, activeNames).filter((setup) => setup !== core);
   const quantitySources = [];
   for (const line of modifierTexts) {
     const match = clean(line.text).match(/^\+(\d+) (?:to )?Max Tangle Quantity$/i);
-    if (match) quantitySources.push({ source: line.source, text: clean(line.text), value: Number(match[1]) * (line.multiplier ?? 1) });
+    if (match)
+      quantitySources.push({
+        source: line.source,
+        text: clean(line.text),
+        value: Number(match[1]) * (line.multiplier ?? 1),
+      });
   }
   quantitySources.push(...extraQuantity);
-  const maxQuantity = Math.min(HIGHEST_MAX_TANGLE_QUANTITY, BASE_MAX_TANGLE_QUANTITY + quantitySources.reduce((sum, line) => sum + line.value, 0));
+  const maxQuantity = Math.min(
+    HIGHEST_MAX_TANGLE_QUANTITY,
+    BASE_MAX_TANGLE_QUANTITY + quantitySources.reduce((sum, line) => sum + line.value, 0),
+  );
   // Tangles one enemy takes: 1 + "You can apply N additional Tangle(s) to enemies" (core audit B8).
-  const attachSources = modifierTexts.flatMap((line) => { const match = clean(line.text).match(ATTACH_LINE); return match ? [{ source: line.source, text: clean(line.text), value: Number(match[1]) * (line.multiplier ?? 1) }] : []; });
+  const attachSources = modifierTexts.flatMap((line) => {
+    const match = clean(line.text).match(ATTACH_LINE);
+    return match
+      ? [{ source: line.source, text: clean(line.text), value: Number(match[1]) * (line.multiplier ?? 1) }]
+      : [];
+  });
   const attachPerEnemy = TANGLES_ATTACHED_PER_ENEMY + attachSources.reduce((sum, line) => sum + line.value, 0);
   const activated = tangle.length ? Math.min(maxQuantity, Math.floor(attachPerEnemy)) : 0;
   const inactivated = tangle.length ? Math.max(0, maxQuantity - activated) : 0;
@@ -80,31 +113,89 @@ export function resolveTangles({ setups = [], activeNames = new Set(), modifierT
   // Holding Dormant Entanglement twice does not add a second keyword effect.
   const additionalPercent = hasDormant && tangle.length ? DORMANT_ENTANGLEMENT_PER_INACTIVATED * inactivated : 0;
   const attachText = `${attachPerEnemy} per enemy: 1${attachSources.length ? ` + ${attachSources.map((item) => `${item.value} (${item.source})`).join(" + ")}` : ", provisional: one Tangle per enemy"}`;
-  const reason = !hasDormant ? "no Dormant Entanglement source"
-    : !tangle.length && core ? `${core.name} is attached to Clockwork Core at Max Tangle Quantity (${maxQuantity}): every Tangle is activated, none inactivated`
-    : !tangle.length ? "no Tangle skill in the build (Spell Tangle, Activation Medium: Tangle or Manifold Entanglement on an active Spell)"
-      : !inactivated ? `no inactivated Tangle (Max Tangle Quantity ${maxQuantity}, ${activated} attached to the dummy; ${attachText})`
-        : `+${DORMANT_ENTANGLEMENT_PER_INACTIVATED}% additional Tangle Damage × ${inactivated} inactivated Tangle${inactivated === 1 ? "" : "s"} (Max Tangle Quantity ${maxQuantity}: base ${BASE_MAX_TANGLE_QUANTITY}${quantitySources.length ? ` + ${quantitySources.reduce((sum, line) => sum + line.value, 0)}` : ""}, cap ${HIGHEST_MAX_TANGLE_QUANTITY}; ${activated} attached to the single dummy, ${attachText}) on ${tangle.map((setup) => setup.name).join(", ")}`;
+  const reason = !hasDormant
+    ? "no Dormant Entanglement source"
+    : !tangle.length && core
+      ? `${core.name} is attached to Clockwork Core at Max Tangle Quantity (${maxQuantity}): every Tangle is activated, none inactivated`
+      : !tangle.length
+        ? "no Tangle skill in the build (Spell Tangle, Activation Medium: Tangle or Manifold Entanglement on an active Spell)"
+        : !inactivated
+          ? `no inactivated Tangle (Max Tangle Quantity ${maxQuantity}, ${activated} attached to the dummy; ${attachText})`
+          : `+${DORMANT_ENTANGLEMENT_PER_INACTIVATED}% additional Tangle Damage × ${inactivated} inactivated Tangle${inactivated === 1 ? "" : "s"} (Max Tangle Quantity ${maxQuantity}: base ${BASE_MAX_TANGLE_QUANTITY}${quantitySources.length ? ` + ${quantitySources.reduce((sum, line) => sum + line.value, 0)}` : ""}, cap ${HIGHEST_MAX_TANGLE_QUANTITY}; ${activated} attached to the single dummy, ${attachText}) on ${tangle.map((setup) => setup.name).join(", ")}`;
   // Trigger cadence (core audit B8, switch tangleTriggers): every activated Tangle triggers the Spell at its casting interval.
   const reading = conditions.tangleTriggers !== false;
   const rateFactor = reading && activated > 1 ? activated : 1;
-  const cadence = !tangle.length ? "no Tangle skill in the build"
-    : activated <= 1 ? `${activated} Tangle activated on the single dummy: one use per casting interval (the ordinary cast rate)`
-      : reading ? `${activated} Tangles activated on the single dummy (${attachText}; Max Tangle Quantity ${maxQuantity}), each triggering the Spell at its casting interval: uses × ${activated} (manual rule 1001020420; provisional, switch "Every activated Tangle triggers its Spell")`
+  const cadence = !tangle.length
+    ? "no Tangle skill in the build"
+    : activated <= 1
+      ? `${activated} Tangle activated on the single dummy: one use per casting interval (the ordinary cast rate)`
+      : reading
+        ? `${activated} Tangles activated on the single dummy (${attachText}; Max Tangle Quantity ${maxQuantity}), each triggering the Spell at its casting interval: uses × ${activated} (manual rule 1001020420; provisional, switch "Every activated Tangle triggers its Spell")`
         : `${activated} Tangles activated, one use per casting interval (switch "Every activated Tangle triggers its Spell" off)`;
   // Duration: no DPS effect while the build recasts its Tangle Skill within it (best case).
-  const durationSources = modifierTexts.flatMap((line) => { const match = clean(line.text).match(DURATION_LINE); return match ? [{ source: line.source, text: clean(line.text), value: Number(match[1]) * (line.multiplier ?? 1), additional: Boolean(match[2]) }] : []; });
-  const durationSeconds = round(BASE_TANGLE_DURATION_SECONDS * Math.max(0, 1 + durationSources.filter((item) => !item.additional).reduce((sum, item) => sum + item.value, 0) / 100) * durationSources.filter((item) => item.additional).reduce((product, item) => product * (1 + item.value / 100), 1));
-  const line = additionalPercent ? { source: `Dormant Entanglement (${dormantSources[0].source})`, text: `+${additionalPercent}% additional Tangle Damage (${DORMANT_ENTANGLEMENT_PER_INACTIVATED}% × ${inactivated} inactivated Tangle${inactivated === 1 ? "" : "s"}; game hyperlink 766; inactivated count provisional)`, value: additionalPercent, category: "Additional damage", provisional: true } : null;
+  const durationSources = modifierTexts.flatMap((line) => {
+    const match = clean(line.text).match(DURATION_LINE);
+    return match
+      ? [
+          {
+            source: line.source,
+            text: clean(line.text),
+            value: Number(match[1]) * (line.multiplier ?? 1),
+            additional: Boolean(match[2]),
+          },
+        ]
+      : [];
+  });
+  const durationSeconds = round(
+    BASE_TANGLE_DURATION_SECONDS *
+      Math.max(
+        0,
+        1 + durationSources.filter((item) => !item.additional).reduce((sum, item) => sum + item.value, 0) / 100,
+      ) *
+      durationSources.filter((item) => item.additional).reduce((product, item) => product * (1 + item.value / 100), 1),
+  );
+  const line = additionalPercent
+    ? {
+        source: `Dormant Entanglement (${dormantSources[0].source})`,
+        text: `+${additionalPercent}% additional Tangle Damage (${DORMANT_ENTANGLEMENT_PER_INACTIVATED}% × ${inactivated} inactivated Tangle${inactivated === 1 ? "" : "s"}; game hyperlink 766; inactivated count provisional)`,
+        value: additionalPercent,
+        category: "Additional damage",
+        provisional: true,
+      }
+    : null;
   return {
-    setups: [...tangle, ...(core ? [core] : [])].map((setup) => ({ name: setup.name, setupKey: setup.setupKey, ...(setup === core ? { clockworkCore: true, activated: maxQuantity, inactivated: 0 } : {}) })), maxQuantity, quantitySources, activated, inactivated,
-    attachPerEnemy, attachSources, durationSeconds, durationSources,
+    setups: [...tangle, ...(core ? [core] : [])].map((setup) => ({
+      name: setup.name,
+      setupKey: setup.setupKey,
+      ...(setup === core ? { clockworkCore: true, activated: maxQuantity, inactivated: 0 } : {}),
+    })),
+    maxQuantity,
+    quantitySources,
+    activated,
+    inactivated,
+    attachPerEnemy,
+    attachSources,
+    durationSeconds,
+    durationSources,
     // Uses × activated Tangles on each ordinary Tangle Skill (never the Clockwork Core skill, whose Tangles youga-ultimate-one.js reads).
-    triggers: { reading, activated, rateFactor, applied: rateFactor > 1, text: cadence, setupKeys: rateFactor > 1 ? tangle.map((setup) => setup.setupKey) : [] },
-    dormant: { present: hasDormant, sources: dormantSources.map((item) => item.source), additionalPercent, active: Boolean(additionalPercent), reason },
+    triggers: {
+      reading,
+      activated,
+      rateFactor,
+      applied: rateFactor > 1,
+      text: cadence,
+      setupKeys: rateFactor > 1 ? tangle.map((setup) => setup.setupKey) : [],
+    },
+    dormant: {
+      present: hasDormant,
+      sources: dormantSources.map((item) => item.source),
+      additionalPercent,
+      active: Boolean(additionalPercent),
+      reason,
+    },
     // Additional-damage lines per Tangle setup key, for that setup's hits and its own DoT (plain data: the planner result is
     // compared structurally across save / reload).
-    linesBySetup: Object.fromEntries(line ? tangle.map((setup) => [setup.setupKey, [line]]) : [])
+    linesBySetup: Object.fromEntries(line ? tangle.map((setup) => [setup.setupKey, [line]]) : []),
   };
 }
 
@@ -121,31 +212,76 @@ export function tangleHitEffects(tangles, setupKey) {
 // cadence reading) or the Dormant Entanglement count; the duration never moves a dummy figure.
 export function tangleAttachStatus(tangles) {
   const ordinary = (tangles?.setups || []).filter((setup) => !setup.clockworkCore);
-  if (!ordinary.length) return { status: "Inactive", reason: (tangles?.setups || []).length ? "Clockwork Core's Tangles attach to the Core, not to enemies" : "no Tangle skill in the build (Spell Tangle, Activation Medium: Tangle or Manifold Entanglement on an active Spell)" };
-  if (tangles.triggers?.reading !== false || tangles.dormant?.present) return { status: "In calc", reason: `${tangles.triggers?.text || ""}${tangles.dormant?.present ? `; Dormant Entanglement: ${tangles.dormant.reason}` : ""}` };
-  return { status: "No DPS effect", reason: "the cadence switch is off and no Dormant Entanglement reads the inactivated count" };
+  if (!ordinary.length)
+    return {
+      status: "Inactive",
+      reason: (tangles?.setups || []).length
+        ? "Clockwork Core's Tangles attach to the Core, not to enemies"
+        : "no Tangle skill in the build (Spell Tangle, Activation Medium: Tangle or Manifold Entanglement on an active Spell)",
+    };
+  if (tangles.triggers?.reading !== false || tangles.dormant?.present)
+    return {
+      status: "In calc",
+      reason: `${tangles.triggers?.text || ""}${tangles.dormant?.present ? `; Dormant Entanglement: ${tangles.dormant.reason}` : ""}`,
+    };
+  return {
+    status: "No DPS effect",
+    reason: "the cadence switch is off and no Dormant Entanglement reads the inactivated count",
+  };
 }
 export function tangleDurationStatus(tangles) {
   if (!(tangles?.setups || []).length) return { status: "Inactive", reason: "no Tangle skill in the build" };
-  return { status: "No DPS effect", reason: `Tangle Duration ${tangles.durationSeconds ?? BASE_TANGLE_DURATION_SECONDS} s: Max Tangle Quantity is held while the build recasts its Tangle Skill within it (best case, own buffs pre-built), so the duration only sets how often it must be recast` };
+  return {
+    status: "No DPS effect",
+    reason: `Tangle Duration ${tangles.durationSeconds ?? BASE_TANGLE_DURATION_SECONDS} s: Max Tangle Quantity is held while the build recasts its Tangle Skill within it (best case, own buffs pre-built), so the duration only sets how often it must be recast`,
+  };
 }
 
 /** A resolved-line entry (src/line-effects.js shape) so the badge and the line list show the status with its reason. */
 export function dormantEntanglementLineEntries(tangles, modifierTexts = []) {
-  return modifierTexts.filter((line) => isDormantEntanglementLine(line.text)).map((line) => ({
-    source: line.source, origin: line.origin, text: clean(line.text), condition: "dormantEntanglement", params: {}, group: null,
-    active: tangles.dormant.active, conditionText: tangles.dormant.reason, provisional: tangles.dormant.active, factor: null, bodies: [],
-    status: tangles.dormant.active ? "In calc" : "Inactive"
-  }));
+  return modifierTexts
+    .filter((line) => isDormantEntanglementLine(line.text))
+    .map((line) => ({
+      source: line.source,
+      origin: line.origin,
+      text: clean(line.text),
+      condition: "dormantEntanglement",
+      params: {},
+      group: null,
+      active: tangles.dormant.active,
+      conditionText: tangles.dormant.reason,
+      provisional: tangles.dormant.active,
+      factor: null,
+      bodies: [],
+      status: tangles.dormant.active ? "In calc" : "Inactive",
+    }));
 }
 
 /** The attach and duration lines' entries (core audit B8), in the same shape. */
 export function tangleLineEntries(tangles, modifierTexts = []) {
-  const entry = (line, condition, status, reason, provisional = false) => ({ source: line.source, origin: line.origin, text: clean(line.text), condition, params: {}, group: null,
-    active: status === "In calc", conditionText: reason, provisional, factor: null, bodies: [], status });
+  const entry = (line, condition, status, reason, provisional = false) => ({
+    source: line.source,
+    origin: line.origin,
+    text: clean(line.text),
+    condition,
+    params: {},
+    group: null,
+    active: status === "In calc",
+    conditionText: reason,
+    provisional,
+    factor: null,
+    bodies: [],
+    status,
+  });
   return modifierTexts.flatMap((line) => {
-    if (isTangleAttachLine(line.text)) { const { status, reason } = tangleAttachStatus(tangles); return [entry(line, "tangleAttach", status, reason, status === "In calc")]; }
-    if (isTangleDurationLine(line.text)) { const { status, reason } = tangleDurationStatus(tangles); return [entry(line, "tangleDuration", status, reason)]; }
+    if (isTangleAttachLine(line.text)) {
+      const { status, reason } = tangleAttachStatus(tangles);
+      return [entry(line, "tangleAttach", status, reason, status === "In calc")];
+    }
+    if (isTangleDurationLine(line.text)) {
+      const { status, reason } = tangleDurationStatus(tangles);
+      return [entry(line, "tangleDuration", status, reason)];
+    }
     return [];
   });
 }

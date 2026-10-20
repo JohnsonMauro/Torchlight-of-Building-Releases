@@ -25,7 +25,10 @@ export const AURA_GAINED_EFFECT = /^((?:Precise: )?[A-Za-z' -]+?) gains an addit
 const AURA_NAMES = new Set([...Object.keys(auraScalingSs13), "Flame Focus", "Precise: Flame Focus"]);
 export const isAuraName = (name) => AURA_NAMES.has(String(name || "").trim());
 
-const clean = (text) => normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim();
+const clean = (text) =>
+  normalizePercentageText(String(text ?? ""))
+    .replace(/\s+/g, " ")
+    .trim();
 
 // Clause text → Aura buff stat key (src/aura-damage.js AURA_STAT_SCOPES; src/data/skills/aura-scaling-ss13.js affixStats).
 const STAT_CLAUSES = [
@@ -43,12 +46,15 @@ const STAT_CLAUSES = [
   [/^([+-]?\d+(?:\.\d+)?)% additional Damage Over Time$/i, ["additionalDamageOverTimePercent"]],
   [/^([+-]?\d+(?:\.\d+)?) Affliction (?:inflicted )?per second$/i, ["afflictionPerSecond"]],
   [/^([+-]?\d+(?:\.\d+)?)% chance to inflict Ailments$/i, ["ailmentChancePercent"]],
-  [/^([+-]?\d+(?:\.\d+)?)% Ailment Duration$/i, ["ailmentDurationPercent"]]
+  [/^([+-]?\d+(?:\.\d+)?)% Ailment Duration$/i, ["ailmentDurationPercent"]],
 ];
 
 /** The clauses of an added effect: comma / "and" joins between signed modifiers (one clause per modifier). */
 export function splitGainedClauses(body) {
-  return clean(body).split(/,\s*(?=[+-]?\d)|\s+and\s+(?=[+-]\d)/).map((part) => part.trim().replace(/\.$/, "")).filter(Boolean);
+  return clean(body)
+    .split(/,\s*(?=[+-]?\d)|\s+and\s+(?=[+-]\d)/)
+    .map((part) => part.trim().replace(/\.$/, ""))
+    .filter(Boolean);
 }
 
 /** Parse one line: { aura, clauses: [{ text, stats?, readers }] } or null when it is not an Aura's added effect. */
@@ -77,7 +83,7 @@ export function auraGainedEffects(modifierTexts = []) {
     const parsed = parseAuraGainedLine(line.text);
     if (!parsed) continue;
     const multiplier = line.multiplier ?? 1;
-    const entry = byAura[parsed.aura] ??= { sources: [] };
+    const entry = (byAura[parsed.aura] ??= { sources: [] });
     for (const clause of parsed.clauses) {
       if (clause.stats) {
         for (const stat of clause.stats) {
@@ -85,7 +91,8 @@ export function auraGainedEffects(modifierTexts = []) {
           if (stat === "castSpeedPercent" || stat === "attackSpeedPercent") entry[stat] = (entry[stat] || 0) + value;
           else (entry.stats ??= {})[stat] = (entry.stats[stat] || 0) + value;
         }
-      } else if (clause.readers.length) (entry.clauses ??= []).push({ text: clause.text, multiplier, source: line.source, origin: line.origin });
+      } else if (clause.readers.length)
+        (entry.clauses ??= []).push({ text: clause.text, multiplier, source: line.source, origin: line.origin });
       else (entry.unread ??= []).push({ text: clause.text, source: line.source });
     }
     entry.sources.push({ source: line.source, text: clean(line.text) });
@@ -105,7 +112,8 @@ const scaleClause = (text, factor) => {
 };
 
 /** The Aura Effect factor an Aura entry scales its values by (src/engine.js calculateAuraLedger). */
-export const auraEffectFactor = (entry) => (1 + (Number(entry?.auraEffectPercent) || 0) / 100) * (Number(entry?.additionalAuraEffectFactor) || 1);
+export const auraEffectFactor = (entry) =>
+  (1 + (Number(entry?.auraEffectPercent) || 0) / 100) * (Number(entry?.additionalAuraEffectFactor) || 1);
 
 /**
  * Derived plain lines for the active Aura entries' added-effect clauses that have no Aura stat key, each scaled by that Aura's
@@ -119,7 +127,15 @@ export function auraGainedEffectLines(auraEntries = []) {
     for (const clause of entry?.gainedEffects?.clauses || []) {
       const text = scaleClause(clause.text.replace(/^(\d)/, "+$1"), factor * clause.multiplier);
       const conditionText = `while ${entry.name} is active (added Aura effect × ${round(factor)} Aura Effect; provisional)`;
-      lines.push({ text, source: `Aura: ${entry.name} (${clause.source})`, origin: clause.origin, multiplier: 1, aura: entry.name, derivedFrom: `${entry.name} gains an additional effect: ${clause.text}`, lineEffect: { conditional: true, key: "auraGainedEffect", conditionText, provisional: true } });
+      lines.push({
+        text,
+        source: `Aura: ${entry.name} (${clause.source})`,
+        origin: clause.origin,
+        multiplier: 1,
+        aura: entry.name,
+        derivedFrom: `${entry.name} gains an additional effect: ${clause.text}`,
+        lineEffect: { conditional: true, key: "auraGainedEffect", conditionText, provisional: true },
+      });
     }
   }
   return lines;
@@ -142,10 +158,17 @@ export function auraGainedLineStatus(text, planner) {
 
 /** Cast Speed lines from the active Aura entries' scaled added effects (src/engine.js calculateAuraLedger output). */
 export function auraCastSpeedLines(auraEntries = []) {
-  return auraEntries.filter((entry) => entry.gainedEffects?.castSpeedPercent && Number(entry.effectiveEffects?.castSpeedPercent) > 0).map((entry) => {
-    const value = entry.effectiveEffects.castSpeedPercent;
-    return { source: `Aura: ${entry.name} (${entry.gainedEffects.sources.map((item) => item.source).join(", ")})`, text: `+${value}% Cast Speed (${entry.gainedEffects.castSpeedPercent}% × (1 + ${entry.auraEffectPercent}% Aura Effect)${entry.additionalAuraEffectFactor !== 1 ? ` × ${entry.additionalAuraEffectFactor}` : ""}; added Aura effect scaled like the Aura's own values, provisional)`, value, additional: false };
-  });
+  return auraEntries
+    .filter((entry) => entry.gainedEffects?.castSpeedPercent && Number(entry.effectiveEffects?.castSpeedPercent) > 0)
+    .map((entry) => {
+      const value = entry.effectiveEffects.castSpeedPercent;
+      return {
+        source: `Aura: ${entry.name} (${entry.gainedEffects.sources.map((item) => item.source).join(", ")})`,
+        text: `+${value}% Cast Speed (${entry.gainedEffects.castSpeedPercent}% × (1 + ${entry.auraEffectPercent}% Aura Effect)${entry.additionalAuraEffectFactor !== 1 ? ` × ${entry.additionalAuraEffectFactor}` : ""}; added Aura effect scaled like the Aura's own values, provisional)`,
+        value,
+        additional: false,
+      };
+    });
 }
 
 /** Stat-sheet lines (Cast Speed and Attack Speed) from the active Aura entries' scaled added effects. */
@@ -153,8 +176,20 @@ export function auraSpeedStatLines(auraEntries = []) {
   const lines = [];
   for (const entry of auraEntries.filter((item) => item.gainedEffects)) {
     const source = `Aura: ${entry.name} (${entry.gainedEffects.sources.map((item) => item.source).join(", ")})`;
-    if (entry.gainedEffects.castSpeedPercent && Number(entry.effectiveEffects?.castSpeedPercent) > 0) lines.push({ source, origin: "aura", text: `+${entry.effectiveEffects.castSpeedPercent}% Cast Speed`, multiplier: 1 });
-    if (entry.gainedEffects.attackSpeedPercent && Number(entry.effectiveEffects?.attackSpeedPercent) > 0) lines.push({ source, origin: "aura", text: `+${entry.effectiveEffects.attackSpeedPercent}% Attack Speed`, multiplier: 1 });
+    if (entry.gainedEffects.castSpeedPercent && Number(entry.effectiveEffects?.castSpeedPercent) > 0)
+      lines.push({
+        source,
+        origin: "aura",
+        text: `+${entry.effectiveEffects.castSpeedPercent}% Cast Speed`,
+        multiplier: 1,
+      });
+    if (entry.gainedEffects.attackSpeedPercent && Number(entry.effectiveEffects?.attackSpeedPercent) > 0)
+      lines.push({
+        source,
+        origin: "aura",
+        text: `+${entry.effectiveEffects.attackSpeedPercent}% Attack Speed`,
+        multiplier: 1,
+      });
   }
   return lines;
 }

@@ -23,7 +23,12 @@ const N = "([\\d.]+)";
 const S = "([+-][\\d.]+)";
 const num = (match) => Number(match[1]);
 const flag = () => true;
-const rule = (source, keys, scope = "both", route = "utility") => ({ pattern: new RegExp(source, "i"), keys: typeof keys === "string" ? [[keys, num]] : keys, scope, route });
+const rule = (source, keys, scope = "both", route = "utility") => ({
+  pattern: new RegExp(source, "i"),
+  keys: typeof keys === "string" ? [[keys, num]] : keys,
+  scope,
+  route,
+});
 
 export const TALENT_TEXT_RULES = Object.freeze([
   rule(`^\\+${N}% Aura Effect$`, "auraEffectPercent", "both", "aura"),
@@ -48,7 +53,12 @@ export const TALENT_TEXT_RULES = Object.freeze([
   rule(`^\\+${N}% Spell Critical Strike Damage$`, "spellCriticalStrikeDamagePercent", "both", "spellCrit"),
   // T1: cast speed from talents and slates reaches spells, the beam and channeled skill DoTs (cast-rate ledger);
   // attacks read their speed from the weapon model (modifier texts), which already counted these lines.
-  rule(`^\\+${N}% Attack and Cast Speed for Channeled Skills$`, "channeledAttackAndCastSpeedPercent", "both", "channeledSpeed"),
+  rule(
+    `^\\+${N}% Attack and Cast Speed for Channeled Skills$`,
+    "channeledAttackAndCastSpeedPercent",
+    "both",
+    "channeledSpeed",
+  ),
   rule(`^${S}% Attack and Cast Speed$`, "attackAndCastSpeedPercent", "both", "attackAndCastSpeed"),
   rule(`^${S}% Cast Speed$`, "castSpeedPercent", "both", "castSpeed"),
   rule(`^\\+${N}% Reaping Duration$`, "reapingDurationPercent", "talent", "reaping"),
@@ -56,9 +66,19 @@ export const TALENT_TEXT_RULES = Object.freeze([
   rule(`^\\+${N}% Affliction Effect$`, "afflictionEffectPercent", "both", "affliction"),
   // T2: the game wording is "Affliction inflicted per second"; "Affliction per second" is kept for older captures.
   rule(`^\\+${N} Affliction (?:inflicted )?per second$`, "afflictionPerSecond", "both", "affliction"),
-  rule(`^${S}% All Resistance when the enemy has max Affliction$`, "enemyAllResistanceAtMaxAfflictionPercent", "both", "affliction"),
+  rule(
+    `^${S}% All Resistance when the enemy has max Affliction$`,
+    "enemyAllResistanceAtMaxAfflictionPercent",
+    "both",
+    "affliction",
+  ),
   rule(`^\\+${N}% (?:chance to Ignite targets|Ignite chance)$`, "igniteChancePercent", "both", "ignite"),
-  rule(`^\\+${N}% Ignite Chance against enemies that haven['’]t been Ignited$`, "igniteChanceAgainstNotIgnitedPercent", "both", "ignite"),
+  rule(
+    `^\\+${N}% Ignite Chance against enemies that haven['’]t been Ignited$`,
+    "igniteChanceAgainstNotIgnitedPercent",
+    "both",
+    "ignite",
+  ),
   rule(`^\\+${N}% chance to inflict Damaging Ailments$`, "damagingAilmentChancePercent", "talent", "ailment"),
   // The slate rule has always accepted a trailing qualifier here (unanchored end); kept as it was.
   rule(`^\\+${N}% chance to inflict Damaging Ailments`, "damagingAilmentChancePercent", "slate", "ailment"),
@@ -68,10 +88,20 @@ export const TALENT_TEXT_RULES = Object.freeze([
   rule(`^\\+(\\d+) Ignite limit$`, "igniteLimit", "both", "ignite"),
   rule(`^Inflicts (\\d+) additional stack(?:\\(s\\)|s)? of Ignite$`, "additionalIgniteStacks", "both", "ignite"),
   rule(`^Adds\\s+([\\d.]+)\\s*[–-]\\s*\\1\\s+Base (?:Ignite|Ailment) Damage$`, "baseIgniteDamage", "talent", "ignite"),
-  rule(`^Adds (\\d+(?:\\.\\d+)?)\\s*[–-]\\s*\\d+(?:\\.\\d+)? Base (?:Ignite|Ailment) Damage$`, "baseIgniteDamage", "slate", "ignite"),
+  rule(
+    `^Adds (\\d+(?:\\.\\d+)?)\\s*[–-]\\s*\\d+(?:\\.\\d+)? Base (?:Ignite|Ailment) Damage$`,
+    "baseIgniteDamage",
+    "slate",
+    "ignite",
+  ),
   // T2 / T6: captured-only keys of the Warlord nodes ([4,2], [5,2]); now read from the text everywhere.
   rule(`^\\+${N}% Fire Penetration against Ignited enemies$`, "firePenetrationAgainstIgnitedPercent", "both", "ignite"),
-  rule(`^Inflicts Fire Infiltration when dealing Fire Damage to Ignited enemies$`, [["inflictsFireInfiltrationAgainstIgnited", flag]], "both", "ignite"),
+  rule(
+    `^Inflicts Fire Infiltration when dealing Fire Damage to Ignited enemies$`,
+    [["inflictsFireInfiltrationAgainstIgnited", flag]],
+    "both",
+    "ignite",
+  ),
   // T6: the other keys the Selena capture carries. No damage ledger reads them from the talent totals (the Blur,
   // Blessing and skill-level models read the node text themselves); they keep the captured and text paths equal.
   rule(`^\\+${N}% Movement Speed$`, "movementSpeedPercent", "talent", "utility"),
@@ -79,23 +109,54 @@ export const TALENT_TEXT_RULES = Object.freeze([
   rule(`^${S}% Skill Effect Duration$`, "skillEffectDurationPercent", "talent", "utility"),
   rule(`^\\+${N}% Energy Shield Charge Speed$`, "energyShieldChargeSpeedPercent", "talent", "utility"),
   rule(`^Gains (\\d+) stack\\(s\\) of Focus Blessing when Reaping$`, "focusBlessingStacksOnReap", "talent", "utility"),
-  rule(`^When Reaping, immediately starts Charging Energy Shield\\. Interval: ${N} s$`, [["startsEnergyShieldChargeOnReap", flag], ["intervalSeconds", num]], "talent", "utility"),
+  rule(
+    `^When Reaping, immediately starts Charging Energy Shield\\. Interval: ${N} s$`,
+    [
+      ["startsEnergyShieldChargeOnReap", flag],
+      ["intervalSeconds", num],
+    ],
+    "talent",
+    "utility",
+  ),
   rule(`^\\+${N}% chance to gain Blur when Reaping$`, "chanceToGainBlurOnReapPercent", "talent", "utility"),
   rule(`^\\+(\\d+) to All Skills' Levels$`, "allSkillLevels", "talent", "utility"),
   rule(`^\\+?${N}% Blur Effect$`, "blurEffectPercent", "talent", "utility"),
-  rule(`^Gains Blur when Energy Shield starts to Charge$`, [["gainsBlurWhenEnergyShieldStartsCharging", flag]], "talent", "utility"),
+  rule(
+    `^Gains Blur when Energy Shield starts to Charge$`,
+    [["gainsBlurWhenEnergyShieldStartsCharging", flag]],
+    "talent",
+    "utility",
+  ),
   rule(`^\\+${N}% Movement Speed while Blur is active$`, "movementSpeedWhileBlurPercent", "talent", "utility"),
-  rule(`^Movement Speed cannot be reduced to below the base value while Blur is active$`, [["movementSpeedCannotFallBelowBaseWhileBlur", flag]], "talent", "utility"),
+  rule(
+    `^Movement Speed cannot be reduced to below the base value while Blur is active$`,
+    [["movementSpeedCannotFallBelowBaseWhileBlur", flag]],
+    "talent",
+    "utility",
+  ),
   // Slate-only keys (the slate totals' own consumers; talent copies of these lines reach the engines through
   // their modifier texts and the Blessing / Blur models).
   rule(`^\\+${N} Dexterity$`, "dexterity", "slate", "utility"),
   rule(`^\\+${N}% Attack Speed$`, "attackSpeedPercent", "slate", "utility"),
-  rule(`^([-−][\\d.]+) (?:Attack )?Skill Cost$`, [["attackSkillCostFlat", (match) => Number(match[1].replace("−", "-"))]], "slate", "utility"),
-  rule(`^Daze$|additional Ailment Damage while Blur is active`, [["dazeAdditionalAilmentDamagePercent", () => 25], ["dazeCrowdControlEffectPercent", () => 40]], "slate", "utility"),
+  rule(
+    `^([-−][\\d.]+) (?:Attack )?Skill Cost$`,
+    [["attackSkillCostFlat", (match) => Number(match[1].replace("−", "-"))]],
+    "slate",
+    "utility",
+  ),
+  rule(
+    `^Daze$|additional Ailment Damage while Blur is active`,
+    [
+      ["dazeAdditionalAilmentDamagePercent", () => 25],
+      ["dazeCrowdControlEffectPercent", () => 40],
+    ],
+    "slate",
+    "utility",
+  ),
   rule(`^\\+${N}% additional Fire Damage$`, "additionalFireDamagePercent", "slate", "damage"),
   rule(`^\\+${N}% additional Max Damage$`, "additionalMaxDamagePercent", "slate", "hit"),
   rule(`^\\+(\\d+) (?:to )?Max Focus Blessing Stacks$`, "maxFocusBlessingStacks", "slate", "utility"),
-  rule(`^\\+(\\d+) (?:to )?Max Tenacity Blessing Stacks$`, "maxTenacityBlessingStacks", "slate", "utility")
+  rule(`^\\+(\\d+) (?:to )?Max Tenacity Blessing Stacks$`, "maxTenacityBlessingStacks", "slate", "utility"),
 ]);
 
 const rulesFor = (scope) => TALENT_TEXT_RULES.filter((item) => item.scope === "both" || item.scope === scope);
@@ -113,9 +174,13 @@ export function matchTalentTextClause(text, scope = "talent") {
 
 /** Every key the table can produce for a scope (the slate totals start them at 0). */
 export function talentTextKeys(scope = "talent") {
-  return [...new Set((scope === "slate" ? SLATE_RULES : TALENT_RULES).flatMap((item) => item.keys.map(([key]) => key)))];
+  return [
+    ...new Set((scope === "slate" ? SLATE_RULES : TALENT_RULES).flatMap((item) => item.keys.map(([key]) => key))),
+  ];
 }
 
 /** The route of a key (for the engine-aware badges). */
 const KEY_ROUTES = new Map(TALENT_TEXT_RULES.flatMap((item) => item.keys.map(([key]) => [key, item.route])));
-export function talentKeyRoute(key) { return KEY_ROUTES.get(key) || "utility"; }
+export function talentKeyRoute(key) {
+  return KEY_ROUTES.get(key) || "utility";
+}

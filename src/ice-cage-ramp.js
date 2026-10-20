@@ -16,7 +16,12 @@ import { hitTypeShares, partFactorAt, scheduleLevelAt, timedBoundaries, timedWin
 export const ICE_CAGE_STACK_INTERVAL_SECONDS = 1;
 
 /** The Ice Cage's ramp schedule: 1 stack at t = 0, +1 per second, held at `maxStacks`. */
-export const iceCageSchedule = (maxStacks) => ({ kind: "ramp", maxStacks, intervalSeconds: ICE_CAGE_STACK_INTERVAL_SECONDS, startStacks: 1 });
+export const iceCageSchedule = (maxStacks) => ({
+  kind: "ramp",
+  maxStacks,
+  intervalSeconds: ICE_CAGE_STACK_INTERVAL_SECONDS,
+  startStacks: 1,
+});
 
 /** Stacks on the dummy at `time` seconds from engagement (one per second from t = 0, held at the cap). */
 export function iceCageStacksAt(time, maxStacks) {
@@ -24,10 +29,17 @@ export function iceCageStacksAt(time, maxStacks) {
   return scheduleLevelAt(iceCageSchedule(maxStacks), time);
 }
 
-const activeCages = (cages) => (cages || []).filter((cage) => cage && cage.active && cage.perStackPercent > 0 && cage.stacks > 0);
+const activeCages = (cages) =>
+  (cages || []).filter((cage) => cage && cage.active && cage.perStackPercent > 0 && cage.stacks > 0);
 
 /** The active cages as timed-effect parts: one multiplier each on Cold damage, hits and DoTs. */
-export const iceCageParts = (cages) => activeCages(cages).map((cage) => ({ type: "Cold", reach: "all", percent: cage.perStackPercent, schedule: iceCageSchedule(cage.stacks) }));
+export const iceCageParts = (cages) =>
+  activeCages(cages).map((cage) => ({
+    type: "Cold",
+    reach: "all",
+    percent: cage.perStackPercent,
+    schedule: iceCageSchedule(cage.stacks),
+  }));
 
 /** Cold damage factor at `time` relative to the full-stack value: Π (1 + p·k(t)) / (1 + p·N). 1 once every cage is full. */
 export function iceCageFactorAt(cages, time) {
@@ -57,6 +69,10 @@ export function iceCageRampText(cages) {
   const active = activeCages(cages);
   if (!active.length) return "";
   const cage = active[0];
-  const steps = Array.from({ length: cage.stacks }, (_, index) => `${index + 1} stack${index ? "s" : ""}${index + 1 < cage.stacks ? ` during ${index}–${index + 1} s` : ` from ${index} s on`}`).join(", ");
+  const steps = Array.from(
+    { length: cage.stacks },
+    (_, index) =>
+      `${index + 1} stack${index ? "s" : ""}${index + 1 < cage.stacks ? ` during ${index}–${index + 1} s` : ` from ${index} s on`}`,
+  ).join(", ");
   return `the 5 s / 20 s windows and the recount build it on the clean dummy at 1 stack per second (${steps}; +${cage.perStackPercent}% per stack, added); prison duration ≥ ${cage.stacks} s assumed so the ${cage.stacks} stacks hold after the ramp (the duration is not in the tooltip); sustained figures hold ${cage.stacks} stacks`;
 }

@@ -31,7 +31,10 @@ export const SECTION_HELP = {
     items: [
       { action: "Click", text: "a node to add a point." },
       { action: "Right-click", text: "a node to remove a point." },
-      { action: "Right-click", text: "an empty node to fill it to max points, along with every node leading up to it." },
+      {
+        action: "Right-click",
+        text: "an empty node to fill it to max points, along with every node leading up to it.",
+      },
       { action: "Right-click", text: "a Prism's node to remove the Prism." },
       { action: "Drag", text: "a Prism to another node in the same tree to move it." },
       { action: "Right-click", text: "a core talent slot to clear it." },
@@ -47,7 +50,10 @@ export const SECTION_HELP = {
       { action: "A / D", text: "rotate the slate while dragging it or while it is selected." },
       { action: "W / S", text: "flip the slate while dragging it or while it is selected." },
       { action: "Wheel", text: "over the board with a slate selected rotates it (flips a Pedigree slate)." },
-      { action: "Right-click", text: "a crafted slate in the list to place it in the first free spot, or beside a full grid." },
+      {
+        action: "Right-click",
+        text: "a crafted slate in the list to place it in the first free spot, or beside a full grid.",
+      },
       { action: "Right-click", text: "a placed or parked slate to remove it." },
       { action: "Alt", text: "held over a core slate's tooltip shows its details." },
     ],
@@ -77,7 +83,10 @@ export const SECTION_HELP = {
     items: [
       { action: "Right-click", text: "a filled pact slot to remove the Pactspirit." },
       { action: "Right-click", text: "a node, in slot mode, to craft a Kismet or pick Fates." },
-      { action: "Drag", text: "a Kismet, in slot mode, onto another allocated node of its kind to move it, or swap the two." },
+      {
+        action: "Drag",
+        text: "a Kismet, in slot mode, onto another allocated node of its kind to move it, or swap the two.",
+      },
       { action: "Right-click", text: "while dragging a Kismet to drop a copy instead." },
       { action: "Right-click", text: "a Kismet or Fate node, outside slot mode, to clear it." },
       { action: "Enter", text: "or Space activates a focused node." },
@@ -87,7 +96,7 @@ export const SECTION_HELP = {
     title: "Dummy recount",
     items: [
       { action: "Click", text: "a legend item or bar to leave that source out; click again to bring it back." },
-      { action: "Click", text: "\"Show all\" to bring every source back." },
+      { action: "Click", text: '"Show all" to bring every source back.' },
       { action: "Click", text: "a shortened number for the full figure (Enter or Space work too)." },
     ],
   },
@@ -108,7 +117,8 @@ export const SECTION_HELP = {
   },
 };
 
-const FOOTER = "Anywhere: click a dropdown or type to search it; Enter picks, Esc closes. Ctrl + F: find text on the page";
+const FOOTER =
+  "Anywhere: click a dropdown or type to search it; Enter picks, Esc closes. Ctrl + F: find text on the page";
 
 /** The small circular "?" for a section header. Unknown keys render nothing. */
 export function qolHelpButton(key) {
@@ -117,7 +127,8 @@ export function qolHelpButton(key) {
   return `<button type="button" class="qol-help" data-qol-help="${escapeHtml(key)}" aria-label="${escapeHtml(section.title)} controls">?</button>`;
 }
 
-const listHtml = (items) => `<ul class="qol-help-list">${items.map((item) => `<li><kbd>${escapeHtml(item.action)}</kbd><span>${escapeHtml(item.text)}</span></li>`).join("")}</ul>`;
+const listHtml = (items) =>
+  `<ul class="qol-help-list">${items.map((item) => `<li><kbd>${escapeHtml(item.action)}</kbd><span>${escapeHtml(item.text)}</span></li>`).join("")}</ul>`;
 
 /**
  * Tooltip body for a section: only that section's controls. Talents (talent panel header) and

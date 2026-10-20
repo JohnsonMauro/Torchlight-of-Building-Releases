@@ -131,5 +131,5 @@ export const prismRareAffixes = [
   "All Micro Talent within the area also gain: +7% Origin of Spirit Magus effect",
   "All Medium Talent within the area also gain: +7% Origin of Spirit Magus effect",
   "All Legendary Medium Talent within the area also gain: 10.5% Sealed Mana Compensation",
-  "All Legendary Medium Talent within the area also gain: +88% Terra Charge Recovery Speed"
+  "All Legendary Medium Talent within the area also gain: +88% Terra Charge Recovery Speed",
 ];

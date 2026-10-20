@@ -60,18 +60,29 @@ async function throughStream(Stream, bytes) {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.length;
-    if (total > MAX_EXPANDED_BYTES) { await reader.cancel(); throw new TypeError("Build code expands too far"); }
+    if (total > MAX_EXPANDED_BYTES) {
+      await reader.cancel();
+      throw new TypeError("Build code expands too far");
+    }
     chunks.push(value);
   }
   const out = new Uint8Array(total);
   let offset = 0;
-  for (const chunk of chunks) { out.set(chunk, offset); offset += chunk.length; }
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  }
   return out;
 }
 
 // CompressionStream "deflate-raw" (browsers, Electron, Node 21.2+); node:zlib where the stream lacks the format.
 function streamSupports(Stream) {
-  try { new Stream("deflate-raw"); return true; } catch { return false; }
+  try {
+    new Stream("deflate-raw");
+    return true;
+  } catch {
+    return false;
+  }
 }
 async function deflateRaw(bytes) {
   if (streamSupports(globalThis.CompressionStream)) return throughStream(globalThis.CompressionStream, bytes);
@@ -80,19 +91,26 @@ async function deflateRaw(bytes) {
 }
 async function inflateRaw(bytes) {
   if (streamSupports(globalThis.DecompressionStream)) {
-    try { return await throughStream(globalThis.DecompressionStream, bytes); }
-    catch { throw new TypeError("That build code could not be decompressed"); }
+    try {
+      return await throughStream(globalThis.DecompressionStream, bytes);
+    } catch {
+      throw new TypeError("That build code could not be decompressed");
+    }
   }
   const zlib = await import("node:zlib");
-  try { return new Uint8Array(zlib.inflateRawSync(bytes, { maxOutputLength: MAX_EXPANDED_BYTES })); }
-  catch { throw new TypeError("That build code could not be decompressed"); }
+  try {
+    return new Uint8Array(zlib.inflateRawSync(bytes, { maxOutputLength: MAX_EXPANDED_BYTES }));
+  } catch {
+    throw new TypeError("That build code could not be decompressed");
+  }
 }
 
 // ---- The string table (src/data/build-code-dictionary-v3.js) ----
 
 function tableFromJson(json, expectedCount) {
   const list = JSON.parse(json);
-  if (!Array.isArray(list) || list.length !== expectedCount || !list.every((item) => typeof item === "string")) throw new TypeError("Build code dictionary is damaged");
+  if (!Array.isArray(list) || list.length !== expectedCount || !list.every((item) => typeof item === "string"))
+    throw new TypeError("Build code dictionary is damaged");
   return Object.freeze({ list, index: new Map(list.map((item, i) => [item, i])) });
 }
 
@@ -102,13 +120,23 @@ export function loadBuildCodeTable() {
   tablePromise ||= (async () => {
     const { BUILD_CODE_DICTIONARY_V3: dictionary } = await import("./data/build-code-dictionary-v3.js");
     return tableFromJson(utf8Decode(await inflateRaw(base64UrlToBytes(dictionary.deflated))), dictionary.count);
-  })().catch((error) => { tablePromise = null; throw error; });
+  })().catch((error) => {
+    tablePromise = null;
+    throw error;
+  });
   return tablePromise;
 }
 
 const syncTables = new WeakMap();
 function syncTable(dictionary, inflateRawSync) {
-  if (!syncTables.has(dictionary)) syncTables.set(dictionary, tableFromJson(utf8Decode(new Uint8Array(inflateRawSync(base64UrlToBytes(dictionary.deflated)))), dictionary.count));
+  if (!syncTables.has(dictionary))
+    syncTables.set(
+      dictionary,
+      tableFromJson(
+        utf8Decode(new Uint8Array(inflateRawSync(base64UrlToBytes(dictionary.deflated)))),
+        dictionary.count,
+      ),
+    );
   return syncTables.get(dictionary);
 }
 
@@ -135,7 +163,8 @@ function unpackString(table, text) {
 function mapStrings(value, map) {
   if (typeof value === "string") return map(value);
   if (Array.isArray(value)) return value.map((item) => mapStrings(item, map));
-  if (isPlainObject(value)) return Object.fromEntries(Object.entries(value).map(([key, item]) => [map(key), mapStrings(item, map)]));
+  if (isPlainObject(value))
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [map(key), mapStrings(item, map)]));
   return value;
 }
 
@@ -146,20 +175,26 @@ function applyItemDiff(base, set, removed, order) {
   const value = (key) => (Object.hasOwn(set, key) ? set[key] : base[key]);
   if (order) return Object.fromEntries(order.map((key) => [key, value(key)]));
   const gone = new Set(removed);
-  const entries = Object.keys(base).filter((key) => !gone.has(key)).map((key) => [key, value(key)]);
+  const entries = Object.keys(base)
+    .filter((key) => !gone.has(key))
+    .map((key) => [key, value(key)]);
   for (const key of Object.keys(set)) if (!Object.hasOwn(base, key)) entries.push([key, set[key]]);
   return Object.fromEntries(entries);
 }
 
 function itemReference(base, index, item) {
   const set = {};
-  for (const key of Object.keys(item)) if (!Object.hasOwn(base, key) || !sameJson(item[key], base[key])) set[key] = item[key];
+  for (const key of Object.keys(item))
+    if (!Object.hasOwn(base, key) || !sameJson(item[key], base[key])) set[key] = item[key];
   const removed = Object.keys(base).filter((key) => !Object.hasOwn(item, key));
-  const order = sameList(Object.keys(applyItemDiff(base, set, removed, null)), Object.keys(item)) ? null : Object.keys(item);
+  const order = sameList(Object.keys(applyItemDiff(base, set, removed, null)), Object.keys(item))
+    ? null
+    : Object.keys(item);
   const parts = [index, set, removed, order];
   while (parts.length > 1) {
     const last = parts[parts.length - 1];
-    if (last === null || (Array.isArray(last) && !last.length) || (isPlainObject(last) && !Object.keys(last).length)) parts.pop();
+    if (last === null || (Array.isArray(last) && !last.length) || (isPlainObject(last) && !Object.keys(last).length))
+      parts.pop();
     else break;
   }
   return { [MARKER]: parts.map((part) => part ?? null) };
@@ -169,7 +204,7 @@ const keysFor = (table) => ({
   overrides: packString(table, "equipmentOverrides"),
   inventory: packString(table, "equipmentInventory"),
   source: packString(table, "sourceInventoryId"),
-  id: packString(table, "id")
+  id: packString(table, "id"),
 });
 
 /** The packed form of a state object (strings tabled, equipped items referenced). */
@@ -201,7 +236,13 @@ export function unpackBuildState(packed, table) {
       if (!isReference(overrides[slot])) continue;
       const [index, set = {}, removed = [], order = null] = overrides[slot][MARKER];
       const base = Array.isArray(inventory) && Number.isInteger(index) ? inventory[index] : undefined;
-      if (!isPlainObject(base) || !isPlainObject(set) || !Array.isArray(removed) || !(order === null || Array.isArray(order))) throw new TypeError("Invalid build code item reference");
+      if (
+        !isPlainObject(base) ||
+        !isPlainObject(set) ||
+        !Array.isArray(removed) ||
+        !(order === null || Array.isArray(order))
+      )
+        throw new TypeError("Invalid build code item reference");
       overrides[slot] = applyItemDiff(base, set, removed, order);
     }
   }
@@ -211,10 +252,18 @@ export function unpackBuildState(packed, table) {
 /** The packed JSON for an export JSON text, or null when packing would not give that exact text back. */
 export function packBuildJson(json, table) {
   let state;
-  try { state = JSON.parse(json); } catch { return null; }
+  try {
+    state = JSON.parse(json);
+  } catch {
+    return null;
+  }
   if (!isPlainObject(state)) return null;
   const packed = JSON.stringify(packBuildState(state, table));
-  try { return unpackBuildJson(packed, table) === json ? packed : null; } catch { return null; }
+  try {
+    return unpackBuildJson(packed, table) === json ? packed : null;
+  } catch {
+    return null;
+  }
 }
 
 /** The export JSON text for a packed JSON text. */
@@ -239,7 +288,11 @@ export async function compactBuildCode(code) {
   if (isCompactBuildCode(text)) return text;
   const bytes = base64UrlToBytes(text);
   let packed = null;
-  try { packed = packBuildJson(utf8Decode(bytes), await loadBuildCodeTable()); } catch { packed = null; }
+  try {
+    packed = packBuildJson(utf8Decode(bytes), await loadBuildCodeTable());
+  } catch {
+    packed = null;
+  }
   if (packed !== null) return `${COMPACT_BUILD_CODE_PREFIX}${bytesToBase64Url(await deflateRaw(utf8Encode(packed)))}`;
   return legacyCompactBuildCode(text);
 }
@@ -254,7 +307,11 @@ function originalCode(version, inflated, table) {
   const text = utf8Decode(inflated);
   if (version === "TLB2") return bytesToBase64Url(inflated);
   let json;
-  try { json = unpackBuildJson(text, table); } catch { throw new TypeError("That build code could not be read"); }
+  try {
+    json = unpackBuildJson(text, table);
+  } catch {
+    throw new TypeError("That build code could not be read");
+  }
   const bytes = utf8Encode(json);
   if (bytes.length > MAX_EXPANDED_BYTES) throw new TypeError("Build code expands too far");
   return bytesToBase64Url(bytes);
@@ -278,7 +335,14 @@ export function expandBuildCodeSync(text, { inflateRawSync, dictionary } = {}) {
   const version = compactCodeVersion(trimmed);
   if (!version) return trimmed;
   let inflated;
-  try { inflated = new Uint8Array(inflateRawSync(compactBody(trimmed, `${version}:`), { maxOutputLength: MAX_EXPANDED_BYTES })); }
-  catch (error) { throw error instanceof TypeError && /oversized|characters/.test(error.message) ? error : new TypeError("That build code could not be decompressed"); }
+  try {
+    inflated = new Uint8Array(
+      inflateRawSync(compactBody(trimmed, `${version}:`), { maxOutputLength: MAX_EXPANDED_BYTES }),
+    );
+  } catch (error) {
+    throw error instanceof TypeError && /oversized|characters/.test(error.message)
+      ? error
+      : new TypeError("That build code could not be decompressed");
+  }
   return originalCode(version, inflated, version === "TLB3" ? syncTable(dictionary, inflateRawSync) : null);
 }

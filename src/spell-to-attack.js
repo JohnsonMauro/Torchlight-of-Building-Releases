@@ -9,8 +9,12 @@ import { classifyDamageLine } from "./damage-line-classifier.js";
 // ailment and Minion lines are not copied. Provisional (open question rosa-unsullied-blade-spell-to-attack): which Spell bonuses the game copies is not in the
 // readable tables; a skill with both tags would take a line twice (no such damage skill in the catalog).
 
-export const SPELL_TO_ATTACK_LINE = /^Bonus and additional bonus to Spell Damage (?:and )?also apply to Attack Damage$/i;
-const clean = (text) => normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim();
+export const SPELL_TO_ATTACK_LINE =
+  /^Bonus and additional bonus to Spell Damage (?:and )?also apply to Attack Damage$/i;
+const clean = (text) =>
+  normalizePercentageText(String(text ?? ""))
+    .replace(/\s+/g, " ")
+    .trim();
 
 /** { sources: the build's carrying lines, copies: derived Attack lines } from planner.modifierTexts. */
 export function spellToAttackLines(modifierTexts = []) {
@@ -21,12 +25,33 @@ export function spellToAttackLines(modifierTexts = []) {
     if (line.spellToAttack) continue;
     const text = clean(line.text);
     const parsed = classifyDamageLine(text);
-    if (!parsed || parsed.kind !== "damage" || parsed.minion || parsed.ailments || !parsed.skillTags || parsed.skillTags.size !== 1 || !parsed.skillTags.has("Spell")) continue;
+    if (
+      !parsed ||
+      parsed.kind !== "damage" ||
+      parsed.minion ||
+      parsed.ailments ||
+      !parsed.skillTags ||
+      parsed.skillTags.size !== 1 ||
+      !parsed.skillTags.has("Spell")
+    )
+      continue;
     const copy = text.replace(/\bSpell\b/, "Attack");
     const check = classifyDamageLine(copy);
     if (!check || !check.skillTags?.has("Attack")) continue;
-    copies.push({ text: copy, source: `${line.source} → Attack Damage (${sources[0].source})`, origin: line.origin, multiplier: line.multiplier ?? 1, derivedFrom: line.text, spellToAttack: true,
-      lineEffect: { conditional: false, key: "spellToAttack", conditionText: "Spell Damage bonuses also apply to Attack Damage", provisional: true } });
+    copies.push({
+      text: copy,
+      source: `${line.source} → Attack Damage (${sources[0].source})`,
+      origin: line.origin,
+      multiplier: line.multiplier ?? 1,
+      derivedFrom: line.text,
+      spellToAttack: true,
+      lineEffect: {
+        conditional: false,
+        key: "spellToAttack",
+        conditionText: "Spell Damage bonuses also apply to Attack Damage",
+        provisional: true,
+      },
+    });
   }
   return { sources, copies };
 }

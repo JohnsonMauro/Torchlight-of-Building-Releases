@@ -5,7 +5,11 @@ import { skillTimingSs13 } from "./data/skills/skill-timing-ss13.generated.js";
 // Minion core mechanics the planner resolves around the Minion engine (core audit batch B7, research/core-talents-audit-2026-10-18.md
 // §5; src/minion-damage-model.js reads the results as Minion layers). Pure functions of the build's lines and the settled models.
 
-const norm = (text) => normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim().replace(/^\[[^\]]+\]\s*/, "");
+const norm = (text) =>
+  normalizePercentageText(String(text ?? ""))
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^\[[^\]]+\]\s*/, "");
 const round = (value) => Math.round(value * 10000) / 10000;
 const sourceOf = (lines, pattern) => lines.find((line) => pattern.test(norm(line.text))) || null;
 
@@ -26,16 +30,44 @@ export function commanderGambitState(modifierTexts = [], blessings = null) {
   const triple = sourceOf(modifierTexts, GAMBIT_TRIPLE);
   if (!share && !triple) return null;
   const held = share ? (blessings?.entries || []).filter((entry) => entry.stacks > 0) : [];
-  const lines = [], applied = [];
+  const lines = [],
+    applied = [];
   for (const entry of held) {
     const stacks = entry.maxStacks * (triple ? 3 : 1);
     const base = blessingBaseEffects[entry.name] || {};
     const label = `Commander's Gambit: ${entry.name} Blessing on the Minions (${stacks} stacks = ${triple ? `3 × your ${entry.maxStacks}` : `your ${entry.maxStacks}`} max; user-confirmed 2026-10-19)`;
-    if (base.additionalDamagePerStack) lines.push({ kind: "additional", value: base.additionalDamagePerStack * stacks, source: label, text: `+${round(base.additionalDamagePerStack * stacks)}% additional Minion Damage (${entry.name} Blessing: +${base.additionalDamagePerStack}% × ${stacks} stacks)` });
-    if (base.attackAndCastSpeedPerStack) lines.push({ kind: "speed", value: base.attackAndCastSpeedPerStack * stacks, additional: false, attack: true, cast: true, source: label, text: `+${round(base.attackAndCastSpeedPerStack * stacks)}% Minion Attack and Cast Speed (${entry.name} Blessing: +${base.attackAndCastSpeedPerStack}% × ${stacks} stacks)` });
-    applied.push({ name: entry.name, stacks, playerMax: entry.maxStacks, damage: Boolean(base.additionalDamagePerStack || base.attackAndCastSpeedPerStack) });
+    if (base.additionalDamagePerStack)
+      lines.push({
+        kind: "additional",
+        value: base.additionalDamagePerStack * stacks,
+        source: label,
+        text: `+${round(base.additionalDamagePerStack * stacks)}% additional Minion Damage (${entry.name} Blessing: +${base.additionalDamagePerStack}% × ${stacks} stacks)`,
+      });
+    if (base.attackAndCastSpeedPerStack)
+      lines.push({
+        kind: "speed",
+        value: base.attackAndCastSpeedPerStack * stacks,
+        additional: false,
+        attack: true,
+        cast: true,
+        source: label,
+        text: `+${round(base.attackAndCastSpeedPerStack * stacks)}% Minion Attack and Cast Speed (${entry.name} Blessing: +${base.attackAndCastSpeedPerStack}% × ${stacks} stacks)`,
+      });
+    applied.push({
+      name: entry.name,
+      stacks,
+      playerMax: entry.maxStacks,
+      damage: Boolean(base.additionalDamagePerStack || base.attackAndCastSpeedPerStack),
+    });
   }
-  return { share: share ? { source: share.source, text: norm(share.text), meters: Number(norm(share.text).match(GAMBIT_SHARE)[1]) } : null, triple: triple ? { source: triple.source, text: norm(triple.text) } : null, blessings: applied, lines };
+  return {
+    share: share
+      ? { source: share.source, text: norm(share.text), meters: Number(norm(share.text).match(GAMBIT_SHARE)[1]) }
+      : null,
+    triple: triple ? { source: triple.source, text: norm(triple.text) } : null,
+    blessings: applied,
+    lines,
+  };
 }
 
 // ---- Empower (Alchemist core) ------------------------------------------------------------------------------------------------
@@ -55,8 +87,19 @@ export function applySpiritMagiLimit(minions = [], modifierTexts = []) {
     minion.inactiveReason = `${line.source}: the number of Max Spirit Magi in the map is 1; ${kept.name} is kept (the highest steady DPS: best case)`;
     minion.notes = [...(minion.notes || []), minion.inactiveReason];
   }
-  if (kept && dropped.length) kept.assumptions.push({ id: "spiritMagiLimit", value: kept.name, text: `${line.source}: one Spirit Magus in the map (game affix 249336224); ${kept.name} is kept over ${dropped.map((minion) => minion.name).join(", ")} (the highest steady DPS: best case).` });
-  return { source: line.source, text: norm(line.text), magi: magi.length, kept: kept?.name || null, dropped: dropped.map((minion) => minion.name) };
+  if (kept && dropped.length)
+    kept.assumptions.push({
+      id: "spiritMagiLimit",
+      value: kept.name,
+      text: `${line.source}: one Spirit Magus in the map (game affix 249336224); ${kept.name} is kept over ${dropped.map((minion) => minion.name).join(", ")} (the highest steady DPS: best case).`,
+    });
+  return {
+    source: line.source,
+    text: norm(line.text),
+    magi: magi.length,
+    kept: kept?.name || null,
+    dropped: dropped.map((minion) => minion.name),
+  };
 }
 
 // ---- Dark Advance (Ethereal Prism core) -------------------------------------------------------------------------------------
@@ -69,12 +112,26 @@ const DARK_GATE_CDR = /^\+?(\d+(?:\.\d+)?)% additional Cooldown Recovery Speed t
 
 /** Dark Gate on the board: { active, cooldownSeconds, uptime, sources } (src/line-conditions.js darkGateRecently). */
 export function darkGateState({ setups = [], activeNames = new Set(), modifierTexts = [] } = {}) {
-  const setup = setups.find((item) => item.name === "Dark Gate" && item.enabled !== false && activeNames.has(item.name)) || null;
+  const setup =
+    setups.find((item) => item.name === "Dark Gate" && item.enabled !== false && activeNames.has(item.name)) || null;
   const baseCooldown = skillTimingSs13["Dark Gate"]?.cooldown || 5;
-  const sources = modifierTexts.map((line) => ({ line, match: norm(line.text).match(DARK_GATE_CDR) })).filter((item) => item.match).map(({ line, match }) => ({ source: line.source, text: norm(line.text), value: Number(match[1]) * (line.multiplier ?? 1) }));
+  const sources = modifierTexts
+    .map((line) => ({ line, match: norm(line.text).match(DARK_GATE_CDR) }))
+    .filter((item) => item.match)
+    .map(({ line, match }) => ({
+      source: line.source,
+      text: norm(line.text),
+      value: Number(match[1]) * (line.multiplier ?? 1),
+    }));
   const factor = sources.reduce((product, item) => product * (1 + item.value / 100), 1);
   const cooldownSeconds = baseCooldown / factor;
-  return { active: Boolean(setup), baseCooldownSeconds: baseCooldown, cooldownSeconds, uptime: Math.min(1, DARK_GATE_BUFF_SECONDS / cooldownSeconds), sources };
+  return {
+    active: Boolean(setup),
+    baseCooldownSeconds: baseCooldown,
+    cooldownSeconds,
+    uptime: Math.min(1, DARK_GATE_BUFF_SECONDS / cooldownSeconds),
+    sources,
+  };
 }
 
 // ---- Bond (God of Machines core Boss "Can obtain Bond"; Machinist core Burning Aggression) ------------------------------------
@@ -95,7 +152,7 @@ const BOND_LINES = {
   increasedWhileHaving: /^\+?([+-]?\d+(?:\.\d+)?)% Minion Damage while having Bond$/i,
   atMax: /^\+?([+-]?\d+(?:\.\d+)?)% additional Minion Damage at Max Bond stacks$/i,
   perStack: /^\+?([+-]?\d+(?:\.\d+)?)% additional Minion Damage for each stack of Bond$/i,
-  critPerStacks: /^\+?([+-]?\d+(?:\.\d+)?)% Minion Critical Strike Rating for every (\d+) stacks? of Bond$/i
+  critPerStacks: /^\+?([+-]?\d+(?:\.\d+)?)% Minion Critical Strike Rating for every (\d+) stacks? of Bond$/i,
 };
 
 /** Bond from the build's lines: { canObtain, maxStacks, intervalSeconds, prebuilt, sources, readTexts, layersAt(stacks), stacksAt(t, summonCast) }. */
@@ -109,7 +166,13 @@ export function bondState(modifierTexts = [], { prebuilt = true } = {}) {
         const match = text.match(pattern);
         if (!match) continue;
         const multiplier = line.multiplier ?? 1;
-        sources[key].push({ source: line.source, text, origin: line.origin, value: match[1] != null ? Number(match[1]) * multiplier : null, every: match[2] != null ? Number(match[2]) : null });
+        sources[key].push({
+          source: line.source,
+          text,
+          origin: line.origin,
+          value: match[1] != null ? Number(match[1]) * multiplier : null,
+          every: match[2] != null ? Number(match[2]) : null,
+        });
         readTexts.add(text);
         break;
       }
@@ -124,19 +187,69 @@ export function bondState(modifierTexts = [], { prebuilt = true } = {}) {
   const layersAt = (stacks) => {
     if (!canObtain || stacks <= 0) return [];
     const out = [
-      { kind: "increased", value: BOND.damagePerStack * stacks, source: label(stacks), text: `+${BOND.damagePerStack * stacks}% Minion Damage (Bond: +${BOND.damagePerStack}% × ${stacks} stacks)`, bond: true },
-      { kind: "speed", value: BOND.speedPerStack * stacks, additional: false, attack: true, cast: true, source: label(stacks), text: `+${BOND.speedPerStack * stacks}% Minion Attack and Cast Speed (Bond: +${BOND.speedPerStack}% × ${stacks} stacks)`, bond: true }
+      {
+        kind: "increased",
+        value: BOND.damagePerStack * stacks,
+        source: label(stacks),
+        text: `+${BOND.damagePerStack * stacks}% Minion Damage (Bond: +${BOND.damagePerStack}% × ${stacks} stacks)`,
+        bond: true,
+      },
+      {
+        kind: "speed",
+        value: BOND.speedPerStack * stacks,
+        additional: false,
+        attack: true,
+        cast: true,
+        source: label(stacks),
+        text: `+${BOND.speedPerStack * stacks}% Minion Attack and Cast Speed (Bond: +${BOND.speedPerStack}% × ${stacks} stacks)`,
+        bond: true,
+      },
     ];
-    for (const item of sources.whileHaving) out.push({ kind: "additional", value: item.value, source: item.source, text: item.text, bond: true });
-    for (const item of sources.increasedWhileHaving) out.push({ kind: "increased", value: item.value, source: item.source, text: item.text, bond: true });
-    if (stacks >= maxStacks) for (const item of sources.atMax) out.push({ kind: "additional", value: item.value, source: item.source, text: item.text, bond: true });
-    for (const item of sources.perStack) out.push({ kind: "additional", value: item.value * stacks, source: item.source, text: `${item.text} (× ${stacks} stacks)`, bond: true });
-    for (const item of sources.critPerStacks) out.push({ kind: "critRating", value: item.value * Math.floor(stacks / Math.max(1, item.every || 1)), additional: false, flat: false, source: item.source, text: `${item.text} (${stacks} stacks)`, bond: true });
+    for (const item of sources.whileHaving)
+      out.push({ kind: "additional", value: item.value, source: item.source, text: item.text, bond: true });
+    for (const item of sources.increasedWhileHaving)
+      out.push({ kind: "increased", value: item.value, source: item.source, text: item.text, bond: true });
+    if (stacks >= maxStacks)
+      for (const item of sources.atMax)
+        out.push({ kind: "additional", value: item.value, source: item.source, text: item.text, bond: true });
+    for (const item of sources.perStack)
+      out.push({
+        kind: "additional",
+        value: item.value * stacks,
+        source: item.source,
+        text: `${item.text} (× ${stacks} stacks)`,
+        bond: true,
+      });
+    for (const item of sources.critPerStacks)
+      out.push({
+        kind: "critRating",
+        value: item.value * Math.floor(stacks / Math.max(1, item.every || 1)),
+        additional: false,
+        flat: false,
+        source: item.source,
+        text: `${item.text} (${stacks} stacks)`,
+        bond: true,
+      });
     return out.filter((item) => item.value !== 0);
   };
   // Stacks held at time t (s from the start of the window; the Minion arrives after the summon cast).
-  const stacksAt = (time, summonCast = 0) => !canObtain ? 0 : prebuilt ? maxStacks : Math.max(0, Math.min(maxStacks, Math.floor((time - summonCast) / intervalSeconds + 1e-9)));
-  return { canObtain, maxStacks, intervalSeconds, prebuilt, sources, readTexts, layersAt, stacksAt, any: readTexts.size > 0 };
+  const stacksAt = (time, summonCast = 0) =>
+    !canObtain
+      ? 0
+      : prebuilt
+        ? maxStacks
+        : Math.max(0, Math.min(maxStacks, Math.floor((time - summonCast) / intervalSeconds + 1e-9)));
+  return {
+    canObtain,
+    maxStacks,
+    intervalSeconds,
+    prebuilt,
+    sources,
+    readTexts,
+    layersAt,
+    stacksAt,
+    any: readTexts.size > 0,
+  };
 }
 
 // ---- Orders (God of Machines core): "+50% additional Summon Skill Cast Speed" ----------------------------------------------
@@ -152,10 +265,18 @@ export function summonCastSpeed(modifierTexts = []) {
   const sources = [];
   for (const line of modifierTexts) {
     const match = norm(line.text).match(SUMMON_CAST_SPEED);
-    if (match) sources.push({ source: line.source, text: norm(line.text), value: Number(match[1]) * (line.multiplier ?? 1), additional: Boolean(match[2]) });
+    if (match)
+      sources.push({
+        source: line.source,
+        text: norm(line.text),
+        value: Number(match[1]) * (line.multiplier ?? 1),
+        additional: Boolean(match[2]),
+      });
   }
   const increased = sources.filter((item) => !item.additional).reduce((total, item) => total + item.value, 0);
-  const factor = Math.max(0.01, 1 + increased / 100) * sources.filter((item) => item.additional).reduce((product, item) => product * (1 + item.value / 100), 1);
+  const factor =
+    Math.max(0.01, 1 + increased / 100) *
+    sources.filter((item) => item.additional).reduce((product, item) => product * (1 + item.value / 100), 1);
   return { factor, sources };
 }
 
@@ -172,13 +293,27 @@ export const COMMAND_FAMILIES = Object.freeze(["synthetic-troop", "module"]);
 
 /** Command from "+N Command per second" lines: { sources, perSecond, full, points, lines (Minion layers) } or null. */
 export function commandState(modifierTexts = [], { full = true } = {}) {
-  const sources = modifierTexts.flatMap((line) => { const match = norm(line.text).match(COMMAND_GAIN); return match ? [{ source: line.source, text: norm(line.text), value: Number(match[1]) * (line.multiplier ?? 1) }] : []; });
+  const sources = modifierTexts.flatMap((line) => {
+    const match = norm(line.text).match(COMMAND_GAIN);
+    return match
+      ? [{ source: line.source, text: norm(line.text), value: Number(match[1]) * (line.multiplier ?? 1) }]
+      : [];
+  });
   if (!sources.length) return null;
   const perSecond = sources.reduce((total, item) => total + item.value, 0);
   const points = full && perSecond > 0 ? COMMAND_CAP : 0;
   const value = points * COMMAND_DAMAGE_PER_POINT;
   const text = `+${value}% additional Minion Damage (Command ${points} × +${COMMAND_DAMAGE_PER_POINT}% per point for Synthetic Troop Minions; ${perSecond} Command per second builds to the cap of ${COMMAND_CAP}: user-supplied 2026-10-19, best case)`;
-  return { sources, perSecond, full, points, value, lines: value ? [{ kind: "additional", value, source: `Command (${sources.map((item) => item.source).join(", ")})`, text }] : [] };
+  return {
+    sources,
+    perSecond,
+    full,
+    points,
+    value,
+    lines: value
+      ? [{ kind: "additional", value, source: `Command (${sources.map((item) => item.source).join(", ")})`, text }]
+      : [],
+  };
 }
 
 // ---- Isomorphic Arms (God of Machines core) ----------------------------------------------------------------------------------
@@ -204,24 +339,51 @@ const minionWordings = (text) => {
  * src/minion-damage-model.js classifyMinionLine, `localKind` src/weapon-damage-model.js weaponLocalLineKind, `itemTexts` the main-hand
  * item's modifier texts (effectiveGearModifierTexts).
  */
-export function isomorphicArmsState(modifierTexts = [], { weaponAttack = null, itemTexts = [], classify = null, localKind = null } = {}) {
+export function isomorphicArmsState(
+  modifierTexts = [],
+  { weaponAttack = null, itemTexts = [], classify = null, localKind = null } = {},
+) {
   const line = sourceOf(modifierTexts, ISOMORPHIC);
   if (!line) return null;
   const main = weaponAttack?.mainHand?.weapon ? weaponAttack.mainHand : null;
-  if (!main) return { source: line.source, weapon: null, lines: [], unread: [], reason: "no main-hand weapon is equipped" };
+  if (!main)
+    return { source: line.source, weapon: null, lines: [], unread: [], reason: "no main-hand weapon is equipped" };
   const label = `Isomorphic Arms: the main-hand ${main.name} (user-supplied 2026-10-19, provisional)`;
-  const lines = [], unread = [], read = [];
+  const lines = [],
+    unread = [],
+    read = [];
   for (const [type, range] of Object.entries(main.damage || {})) {
     if (!(range.max > 0)) continue;
-    lines.push({ kind: "added", type, min: range.min, max: range.max, source: label, text: `Adds ${round(range.min)} - ${round(range.max)} ${type} Damage to Minions (the main-hand weapon's own ${type} damage: base and local affixes)` });
+    lines.push({
+      kind: "added",
+      type,
+      min: range.min,
+      max: range.max,
+      source: label,
+      text: `Adds ${round(range.min)} - ${round(range.max)} ${type} Damage to Minions (the main-hand weapon's own ${type} damage: base and local affixes)`,
+    });
   }
   for (const raw of itemTexts) {
     const text = norm(raw);
     if (!text || (localKind && localKind(text))) continue;
-    const parsed = classify ? minionWordings(text).map((wording) => ({ wording, parsed: classify(wording) })).find((item) => item.parsed) : null;
-    if (!parsed || parsed.parsed.kind === "added" && !(parsed.parsed.max > 0)) { unread.push(text); continue; }
+    const parsed = classify
+      ? minionWordings(text)
+          .map((wording) => ({ wording, parsed: classify(wording) }))
+          .find((item) => item.parsed)
+      : null;
+    if (!parsed || (parsed.parsed.kind === "added" && !(parsed.parsed.max > 0))) {
+      unread.push(text);
+      continue;
+    }
     read.push(text);
     lines.push({ ...parsed.parsed, source: label, text: `${parsed.wording} (the weapon's "${text}")` });
   }
-  return { source: line.source, weapon: { name: main.name, type: main.type, damage: main.damage }, lines, read, unread, reason: null };
+  return {
+    source: line.source,
+    weapon: { name: main.name, type: main.type, damage: main.damage },
+    lines,
+    read,
+    unread,
+    reason: null,
+  };
 }

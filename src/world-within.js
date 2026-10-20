@@ -6,14 +6,26 @@
 // the stat-sheet pool without Aura buffs; steps are rounded down. The chance joins the Magus's Enhanced-skill chance
 // (src/minion-damage-model.js spiritMagusState) as a "+X% chance for Spirit Magi to use an Enhanced Skill" line for that Magus.
 
-export const WORLD_WITHIN_LINE = /^For every (\d+(?:\.\d+)?) ?% Fire, Cold, Lightning Resistance, or Erosion Resistance, or every (\d+) Armor, \+?(\d+(?:\.\d+)?) ?% chance for the corresponding Spirit Magi to use an Enhanced Skill ?, up to \+?(\d+(?:\.\d+)?) ?%$/i;
-export const WORLD_WITHIN_MAGUS_STAT = Object.freeze({ "Fire Magus": "Fire", "Frost Magus": "Cold", "Thunder Magus": "Lightning", "Erosion Magus": "Erosion", "Rock Magus": "Armor" });
+export const WORLD_WITHIN_LINE =
+  /^For every (\d+(?:\.\d+)?) ?% Fire, Cold, Lightning Resistance, or Erosion Resistance, or every (\d+) Armor, \+?(\d+(?:\.\d+)?) ?% chance for the corresponding Spirit Magi to use an Enhanced Skill ?, up to \+?(\d+(?:\.\d+)?) ?%$/i;
+export const WORLD_WITHIN_MAGUS_STAT = Object.freeze({
+  "Fire Magus": "Fire",
+  "Frost Magus": "Cold",
+  "Thunder Magus": "Lightning",
+  "Erosion Magus": "Erosion",
+  "Rock Magus": "Armor",
+});
 const round = (value) => Math.round(value * 10000) / 10000;
 
 /** The line's numbers ({ every, armorEvery, per, cap }) or null. */
 export function parseWorldWithin(text) {
-  const match = String(text ?? "").replace(/\s+/g, " ").trim().match(WORLD_WITHIN_LINE);
-  return match ? { every: Number(match[1]), armorEvery: Number(match[2]), per: Number(match[3]), cap: Number(match[4]) } : null;
+  const match = String(text ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .match(WORLD_WITHIN_LINE);
+  return match
+    ? { every: Number(match[1]), armorEvery: Number(match[2]), per: Number(match[3]), cap: Number(match[4]) }
+    : null;
 }
 
 /** The chance each Magus gains: { [magus]: { stat, value, chance } } from { resistances: { Fire, Cold, … }, armor }. */

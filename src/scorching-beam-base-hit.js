@@ -14,7 +14,11 @@ function parsePacket(label) {
 // keep the captured (disabled) Selena setup beside a custom enabled one (e.g. the no-gear Iris dummy-reference states);
 // the first-by-name pick read the captured setup's level and supports there.
 export function findScorchingBeamSetup(setups = []) {
-  return setups.find((setup) => setup.name === "Scorching Beam" && setup.enabled !== false) || setups.find((setup) => setup.name === "Scorching Beam") || null;
+  return (
+    setups.find((setup) => setup.name === "Scorching Beam" && setup.enabled !== false) ||
+    setups.find((setup) => setup.name === "Scorching Beam") ||
+    null
+  );
 }
 
 // Levels 1–20 read the game rows (config_skill_damage 461 / 462); level 20 and above keep the TLIDB level-20 packets
@@ -28,10 +32,20 @@ export function scorchingBeamBaseHits({ effectiveLevel = 20, levelFactor = 1 } =
   const beam = parsePacket("Fire Beam");
   const explosion = parsePacket("Fire Explosion");
   if (!beam || !explosion) return null;
-  const maxChannelStacks = Number(skill.effects.find((text) => /Maximum \d+ channeled stacks/i.test(text))?.match(/Maximum (\d+)/i)?.[1] || 5);
+  const maxChannelStacks = Number(
+    skill.effects.find((text) => /Maximum \d+ channeled stacks/i.test(text))?.match(/Maximum (\d+)/i)?.[1] || 5,
+  );
   const rowLevel = Math.trunc(Number(effectiveLevel));
   if (rowLevel >= 1 && rowLevel < 20 && levelRow("beam", rowLevel) && levelRow("explosion", rowLevel)) {
-    return { beam: levelRow("beam", rowLevel), explosion: levelRow("explosion", rowLevel), effectiveLevel, referenceLevel: rowLevel, modeledLevel: true, levelSource: scorchingBeamSs13.levelRows.source, maxChannelStacks };
+    return {
+      beam: levelRow("beam", rowLevel),
+      explosion: levelRow("explosion", rowLevel),
+      effectiveLevel,
+      referenceLevel: rowLevel,
+      modeledLevel: true,
+      levelSource: scorchingBeamSs13.levelRows.source,
+      maxChannelStacks,
+    };
   }
   const modeledLevel = effectiveLevel >= 20;
   const factor = modeledLevel && Number.isFinite(levelFactor) && levelFactor > 0 ? levelFactor : 1;
@@ -42,7 +56,7 @@ export function scorchingBeamBaseHits({ effectiveLevel = 20, levelFactor = 1 } =
     effectiveLevel,
     referenceLevel: 20,
     modeledLevel,
-    maxChannelStacks
+    maxChannelStacks,
   };
 }
 
@@ -52,9 +66,12 @@ export function scorchingBeamBaseHits({ effectiveLevel = 20, levelFactor = 1 } =
 // first effect hit deals 100%, "Most skills' subsequent on hit damage is 70%", read as every hit after the first at
 // ×0.7 (1 + 0.7 × extra), for the beam ticks and for the explosions alike (each Beam explodes at its end). The in-game
 // Scattershot run (2026-10-12) shows all three Beams reaching the dummy.
-export function scorchingBeamShotgunFactor(beams = 1, coefficientPercent = scorchingBeamSs13.rules.shotgunFalloffCoefficientPercent) {
+export function scorchingBeamShotgunFactor(
+  beams = 1,
+  coefficientPercent = scorchingBeamSs13.rules.shotgunFalloffCoefficientPercent,
+) {
   const extra = Math.max(0, Math.trunc(Number(beams) || 1) - 1);
-  return 1 + extra * (Number(coefficientPercent) || 0) / 100;
+  return 1 + (extra * (Number(coefficientPercent) || 0)) / 100;
 }
 
 // The stripped Guard level-20 panel reports 76.44–141.61 Fire Spell Damage.
@@ -72,10 +89,21 @@ export const strippedBeamHitCoefficientEvidence = Object.freeze({
   tooltipBeam,
   minimumRatio: strippedBeamHitCoefficient,
   maximumRatio: panelRange[1] / tooltipBeam.max,
-  status: "observed town-panel ratio; underlying game rule unresolved"
+  status: "observed town-panel ratio; underlying game rule unresolved",
 });
 
-export function scorchingBeamSustainedHits({ effectiveLevel = 20, levelFactor = 1, damageFactor = 1, maxDamageFactor = 1, minDamageFactor = 1, addedFireDamage = { min: 0, max: 0 }, castsPerSecond = 3.003003, criticalChancePercent = 5, criticalDamagePercent = 150, beams = 1 } = {}) {
+export function scorchingBeamSustainedHits({
+  effectiveLevel = 20,
+  levelFactor = 1,
+  damageFactor = 1,
+  maxDamageFactor = 1,
+  minDamageFactor = 1,
+  addedFireDamage = { min: 0, max: 0 },
+  castsPerSecond = 3.003003,
+  criticalChancePercent = 5,
+  criticalDamagePercent = 150,
+  beams = 1,
+} = {}) {
   const packets = scorchingBeamBaseHits({ effectiveLevel, levelFactor });
   if (!packets) return null;
   const cycleUses = packets.maxChannelStacks;
@@ -84,14 +112,21 @@ export function scorchingBeamSustainedHits({ effectiveLevel = 20, levelFactor = 
   const shotgunFactor = scorchingBeamShotgunFactor(beamCount);
   const packetFactor = strippedBeamHitCoefficient * Math.max(0, damageFactor) * shotgunFactor;
   // Additional Min / Max Damage scale the lower / upper roll of each packet before averaging (2026-10-14 for Min).
-  const scale = (range) => ({ min: (range.min + addedFireDamage.min * 0.41) * packetFactor * (minDamageFactor === 1 ? 1 : Math.max(0, minDamageFactor)), max: (range.max + addedFireDamage.max * 0.41) * packetFactor * Math.max(0, maxDamageFactor) });
+  const scale = (range) => ({
+    min:
+      (range.min + addedFireDamage.min * 0.41) *
+      packetFactor *
+      (minDamageFactor === 1 ? 1 : Math.max(0, minDamageFactor)),
+    max: (range.max + addedFireDamage.max * 0.41) * packetFactor * Math.max(0, maxDamageFactor),
+  });
   const beam = scale(packets.beam);
   const explosion = scale(packets.explosion);
   const perUse = {
     min: beam.min + explosion.min / cycleUses,
-    max: beam.max + explosion.max / cycleUses
+    max: beam.max + explosion.max / cycleUses,
   };
-  const criticalFactor = 1 + Math.max(0, Math.min(100, criticalChancePercent)) / 100 * (criticalDamagePercent / 100 - 1);
+  const criticalFactor =
+    1 + (Math.max(0, Math.min(100, criticalChancePercent)) / 100) * (criticalDamagePercent / 100 - 1);
   const safeRate = Math.max(0, castsPerSecond);
   const averagePerUse = (perUse.min + perUse.max) / 2;
   const windowSeconds = 5;
@@ -122,8 +157,8 @@ export function scorchingBeamSustainedHits({ effectiveLevel = 20, levelFactor = 
       explosions: explosionsInWindow,
       beamDamage: beamUsesInWindow * averageBeamDamage * criticalFactor,
       explosionDamage: explosionsInWindow * averageExplosionDamage * criticalFactor,
-      totalDamage: windowSeconds * averagePerUse * safeRate * criticalFactor
+      totalDamage: windowSeconds * averagePerUse * safeRate * criticalFactor,
     },
-    packetFactor
+    packetFactor,
   };
 }

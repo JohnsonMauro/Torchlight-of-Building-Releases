@@ -52,7 +52,7 @@ export const AURA_STAT_SCOPES = Object.freeze({
   additionalMaxEnergyShieldPercent: { kind: "none", reason: "Energy Shield (defense)" },
   armor: { kind: "none", reason: "Armor (defense)" },
   additionalArmorPercent: { kind: "none", reason: "Armor (defense)" },
-  movementSpeedPercent: { kind: "none", reason: "Movement Speed" }
+  movementSpeedPercent: { kind: "none", reason: "Movement Speed" },
 });
 
 // Damage types with a damaging ailment engine other than Ignite (src/ailment-model.js).
@@ -70,15 +70,33 @@ export function auraDamageModifierTexts(auraEntries = [], damageTypes = AILMENT_
   for (const entry of auraEntries) {
     for (const [stat, value] of Object.entries(entry?.effectiveEffects || {})) {
       const scope = AURA_STAT_SCOPES[stat];
-      if (scope?.kind !== "damageType" || !AILMENT_DAMAGE_TYPES.has(scope.type) || !damageTypes.has(scope.type) || !Number.isFinite(value) || value === 0) continue;
-      lines.push({ text: `${value > 0 ? "+" : ""}${round(value)}% additional ${scope.type} Damage`, source: `Aura: ${entry.name}`, origin: "derived", multiplier: 1, aura: entry.name, stat });
+      if (
+        scope?.kind !== "damageType" ||
+        !AILMENT_DAMAGE_TYPES.has(scope.type) ||
+        !damageTypes.has(scope.type) ||
+        !Number.isFinite(value) ||
+        value === 0
+      )
+        continue;
+      lines.push({
+        text: `${value > 0 ? "+" : ""}${round(value)}% additional ${scope.type} Damage`,
+        source: `Aura: ${entry.name}`,
+        origin: "derived",
+        multiplier: 1,
+        aura: entry.name,
+        stat,
+      });
     }
   }
   return lines;
 }
 
 const signed = (value) => `${value >= 0 ? "+" : ""}${Number(Number(value).toFixed(2))}`;
-const addedSpellDamageOfType = (type) => new RegExp(`^Adds\\s+[\\d.]+\\s*[–-]\\s*[\\d.]+\\s+${type} Damage(?:\\s+to\\s+(?:Spells|Attacks and Spells|your Attacks and Spells))?$`, "i");
+const addedSpellDamageOfType = (type) =>
+  new RegExp(
+    `^Adds\\s+[\\d.]+\\s*[–-]\\s*[\\d.]+\\s+${type} Damage(?:\\s+to\\s+(?:Spells|Attacks and Spells|your Attacks and Spells))?$`,
+    "i",
+  );
 
 // Classify an aura whose effects matched no ledger contribution. Returns { status, reason } with
 // the skill-coverage statuses, or null when a stat has no known scope.
@@ -88,17 +106,41 @@ export function auraScopeCoverage(entry, planner) {
   const hitKeys = new Set((planner?.skillHits || []).filter((hit) => hit.modeled).map((hit) => hit.setupKey));
   const hitSetups = (planner?.activation?.setups || []).filter((setup) => hitKeys.has(setup.setupKey));
   const mainTags = new Set([...(main?.tags || []), ...hitSetups.flatMap((setup) => setup.tags || [])]);
-  const modeledAilmentTypes = new Set(Object.values(planner?.ailments || {}).filter((ailment) => ailment?.modeled).map((ailment) => ailment.damageType));
+  const modeledAilmentTypes = new Set(
+    Object.values(planner?.ailments || {})
+      .filter((ailment) => ailment?.modeled)
+      .map((ailment) => ailment.damageType),
+  );
   const texts = (planner?.modifierTexts || []).map((line) => line.text || "");
-  const inCalc = [], notModeled = [], noEffect = [], inactive = [];
+  const inCalc = [],
+    notModeled = [],
+    noEffect = [],
+    inactive = [];
   for (const [stat, value] of Object.entries(entry?.effectiveEffects || {})) {
     if (!Number.isFinite(value) || value === 0) continue;
     const scope = AURA_STAT_SCOPES[stat];
-    const label = `${signed(value)}${/Percent$/.test(stat) ? "%" : ""} ${stat.replace(/Percent$/, "").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase()}`;
-    if (scope?.requiresSkillTag && !mainTags.has(scope.requiresSkillTag)) { inactive.push(`${label}: ${main?.name || "the skill inflicting the ailment"} is not an ${scope.requiresSkillTag} skill`); continue; }
-    if (!scope || scope.kind === "ledger") { notModeled.push(label); continue; }
-    if (scope.kind === "resistance") { inCalc.push(`${label} (resistance model)`); continue; }
-    if (scope.kind === "none") { noEffect.push(`${label}: ${scope.reason}`); continue; }
+    const label = `${signed(value)}${/Percent$/.test(stat) ? "%" : ""} ${stat
+      .replace(/Percent$/, "")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .toLowerCase()}`;
+    if (scope?.requiresSkillTag && !mainTags.has(scope.requiresSkillTag)) {
+      inactive.push(
+        `${label}: ${main?.name || "the skill inflicting the ailment"} is not an ${scope.requiresSkillTag} skill`,
+      );
+      continue;
+    }
+    if (!scope || scope.kind === "ledger") {
+      notModeled.push(label);
+      continue;
+    }
+    if (scope.kind === "resistance") {
+      inCalc.push(`${label} (resistance model)`);
+      continue;
+    }
+    if (scope.kind === "none") {
+      noEffect.push(`${label}: ${scope.reason}`);
+      continue;
+    }
     if (scope.kind === "skillTag") {
       if (mainTags.has(scope.tag)) notModeled.push(`${label} (${scope.tag} skills)`);
       else noEffect.push(`${label}: ${main?.name || "the main skill"} is not a ${scope.tag} skill`);
@@ -107,10 +149,15 @@ export function auraScopeCoverage(entry, planner) {
     // damageType (a Physical/Erosion line reaching a modeled ailment matches a contribution first)
     if (modeledAilmentTypes.has(scope.type)) notModeled.push(label);
     else if (mainTags.has(scope.type)) notModeled.push(`${label} (${main?.name} ${scope.type} hits)`);
-    else if (texts.some((text) => addedSpellDamageOfType(scope.type).test(text))) notModeled.push(`${label} (added ${scope.type} damage on the beam is modeled as Fire)`);
+    else if (texts.some((text) => addedSpellDamageOfType(scope.type).test(text)))
+      notModeled.push(`${label} (added ${scope.type} damage on the beam is modeled as Fire)`);
     else noEffect.push(`${label}: the build deals no ${scope.type} damage`);
   }
-  if (notModeled.length) return { status: inCalc.length ? "Partly modeled" : "Not modeled", reason: `not applied: ${notModeled.join(", ")}` };
+  if (notModeled.length)
+    return {
+      status: inCalc.length ? "Partly modeled" : "Not modeled",
+      reason: `not applied: ${notModeled.join(", ")}`,
+    };
   if (inCalc.length) return { status: "In calc", reason: inCalc.join(", ") };
   if (inactive.length) return { status: "Inactive", reason: [...inactive, ...noEffect].join("; ") };
   if (noEffect.length) return { status: "No DPS effect", reason: noEffect.join("; ") };

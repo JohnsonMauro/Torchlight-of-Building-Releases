@@ -22,7 +22,13 @@ function parseVersion(value) {
   const match = VERSION_PATTERN.exec(String(value ?? "").trim());
   if (!match) return null;
   const pre = match[4] ? match[4].split(".") : [];
-  return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]), pre, text: `${match[1]}.${match[2]}.${match[3]}${match[4] ? `-${match[4]}` : ""}` };
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+    pre,
+    text: `${match[1]}.${match[2]}.${match[3]}${match[4] ? `-${match[4]}` : ""}`,
+  };
 }
 
 function comparePrerelease(a, b) {
@@ -32,8 +38,13 @@ function comparePrerelease(a, b) {
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
     if (a[i] === undefined) return -1;
     if (b[i] === undefined) return 1;
-    const numA = /^\d+$/.test(a[i]), numB = /^\d+$/.test(b[i]);
-    if (numA && numB) { const diff = Number(a[i]) - Number(b[i]); if (diff) return Math.sign(diff); continue; }
+    const numA = /^\d+$/.test(a[i]),
+      numB = /^\d+$/.test(b[i]);
+    if (numA && numB) {
+      const diff = Number(a[i]) - Number(b[i]);
+      if (diff) return Math.sign(diff);
+      continue;
+    }
     if (numA !== numB) return numA ? -1 : 1;
     if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
   }
@@ -66,12 +77,17 @@ function classifyUpdateError(error) {
 
 /** Release page of one version; only tags that look like tags, else the latest release page. */
 function releaseNotesUrl(tag, version) {
-  const name = /^[\w.-]{1,80}$/.test(String(tag || "")) ? String(tag) : (parseVersion(version) ? `v${parseVersion(version).text}` : "");
+  const name = /^[\w.-]{1,80}$/.test(String(tag || ""))
+    ? String(tag)
+    : parseVersion(version)
+      ? `v${parseVersion(version).text}`
+      : "";
   return name ? `${RELEASES_URL}/tag/${encodeURIComponent(name)}` : RELEASE_PAGE_URL;
 }
 
 /** Only pages of the releases repo may be opened from a status (the API's html_url is checked). */
-const trustedReleaseUrl = (url) => (typeof url === "string" && url.startsWith(`${RELEASES_URL}/`) ? url : RELEASE_PAGE_URL);
+const trustedReleaseUrl = (url) =>
+  typeof url === "string" && url.startsWith(`${RELEASES_URL}/`) ? url : RELEASE_PAGE_URL;
 
 /** One GitHub API lookup of the latest release: { kind: "available" | "none" | "no-release" | "error", version, notesUrl }. */
 async function checkLatestRelease({ fetch, currentVersion, userAgent, timeoutMs = CHECK_TIMEOUT_MS }) {
@@ -80,7 +96,7 @@ async function checkLatestRelease({ fetch, currentVersion, userAgent, timeoutMs 
   try {
     const response = await fetch(LATEST_RELEASE_API_URL, {
       headers: { "User-Agent": userAgent, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
-      signal: controller?.signal
+      signal: controller?.signal,
     });
     if (response.status === 404) return { kind: "no-release" };
     if (!response.ok) return { kind: "error" };
@@ -164,7 +180,10 @@ function createUpdateController(deps) {
 
   /** Runs one check (concurrent callers share it). Automatic checks only ever show an available update. */
   async function check({ manual = false } = {}) {
-    if (!inflight) inflight = runCheck().finally(() => { inflight = null; });
+    if (!inflight)
+      inflight = runCheck().finally(() => {
+        inflight = null;
+      });
     const result = await inflight;
     if (busyWithDownload()) return publish({ ...status });
     if (result.kind === "available") {
@@ -203,9 +222,13 @@ function createUpdateController(deps) {
     download,
     install,
     current: () => (hidden ? null : status),
-    dismiss: () => { hidden = true; if (!busyWithDownload()) status = null; return true; },
+    dismiss: () => {
+      hidden = true;
+      if (!busyWithDownload()) status = null;
+      return true;
+    },
     openReleasePage: () => openExternal(RELEASE_PAGE_URL),
-    openReleaseNotes: () => openExternal(notesUrl)
+    openReleaseNotes: () => openExternal(notesUrl),
   };
 }
 
@@ -221,5 +244,5 @@ module.exports = {
   releaseNotesUrl,
   trustedReleaseUrl,
   checkLatestRelease,
-  createUpdateController
+  createUpdateController,
 };

@@ -8,12 +8,16 @@ import { activeRareBaseFor, rareBaseById } from "./rare-base-lookup.js";
 /** `item` on the regular base when it sits on a legacy duplicate (the same object otherwise). */
 export function migrateLegacyRareBase(item) {
   if (!item || typeof item !== "object" || ["legendary", "captured", "vorax"].includes(item.rarity)) return item;
-  const legacy = rareBaseById(item.baseId), active = activeRareBaseFor(legacy);
+  const legacy = rareBaseById(item.baseId),
+    active = activeRareBaseFor(legacy);
   if (!active) return item;
   const swapImplicits = (lines) => {
     if (!Array.isArray(lines)) return lines;
     const rest = [...lines];
-    for (const line of legacy.modifiers) { const index = rest.indexOf(line); if (index >= 0) rest.splice(index, 1); }
+    for (const line of legacy.modifiers) {
+      const index = rest.indexOf(line);
+      if (index >= 0) rest.splice(index, 1);
+    }
     return [...active.modifiers, ...rest];
   };
   return {

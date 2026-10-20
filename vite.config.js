@@ -15,7 +15,7 @@ function runtimeAssets() {
     apply: "build",
     closeBundle() {
       cpSync(resolve("src/assets"), resolve(outDir, "src/assets"), { recursive: true });
-    }
+    },
   };
 }
 
@@ -30,10 +30,13 @@ function gameLogEndpoint() {
           await handleGameLogSnapshotsRequest(request, response);
         } catch (error) {
           server.config.logger.error(`game-log endpoint: ${error.message}`);
-          if (!response.headersSent) { response.statusCode = 500; response.end(); }
+          if (!response.headersSent) {
+            response.statusCode = 500;
+            response.end();
+          }
         }
       });
-    }
+    },
   };
 }
 
@@ -42,5 +45,5 @@ export default defineConfig({
   server: { host: "127.0.0.1", port: 4173, strictPort: true },
   preview: { host: "127.0.0.1", strictPort: true },
   build: { outDir, emptyOutDir: true, sourcemap: true },
-  plugins: [runtimeAssets(), gameLogEndpoint()]
+  plugins: [runtimeAssets(), gameLogEndpoint()],
 });

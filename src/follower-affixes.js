@@ -18,12 +18,14 @@ export const tartarusAffixById = (id) => affixIndex.get(Number(id)) || null;
 /** The skill's support affix slots at `tier`: { random, optional, total } (random: Drop pool; optional: Drop or Forge). */
 export function tartarusAffixSlots(skill, tier) {
   const slots = skill?.tiers?.[tier];
-  const random = Number(slots?.randomSupports) || 0, optional = Number(slots?.optionalSupports) || 0;
+  const random = Number(slots?.randomSupports) || 0,
+    optional = Number(slots?.optionalSupports) || 0;
   return { random, optional, total: random + optional };
 }
 
 /** The pool a slot draws from: "drop" for the random slots, "any" (Drop or Forge) for the optional third slot. */
-export const tartarusAffixSlotPool = (skill, tier, index) => index < tartarusAffixSlots(skill, tier).random ? "drop" : "any";
+export const tartarusAffixSlotPool = (skill, tier, index) =>
+  index < tartarusAffixSlots(skill, tier).random ? "drop" : "any";
 
 /** The affixes slot `index` of `skill` at `tier` can hold, Drop pool first (TLIDB order), then the Forge pool. */
 export function tartarusAffixChoices(skill, tier, index) {
@@ -35,14 +37,17 @@ export function tartarusAffixChoices(skill, tier, index) {
 }
 
 /** The roll ranges of an affix's values ({ index, min, max } for each parameter whose min and max differ; none on 2026-10-19). */
-export const tartarusAffixRanges = (affix) => (affix?.values || []).map(([min, max], index) => ({ index, min, max })).filter((range) => range.min !== range.max);
+export const tartarusAffixRanges = (affix) =>
+  (affix?.values || []).map(([min, max], index) => ({ index, min, max })).filter((range) => range.min !== range.max);
 
 /** The affix's text with its rolled values (a range's top when no roll is stored; all affixes are fixed on 2026-10-19). */
 export function tartarusAffixLines(affix, rolls = []) {
   const ranges = tartarusAffixRanges(affix);
   if (!ranges.length) return [...(affix?.lines || [])];
   // A ranged value is written "(min–max)" in no current affix; a future one would need its template: keep TLIDB's text.
-  return [...affix.lines].map((line) => ranges.reduce((text, range, k) => text.replace(String(range.max), String(rolls[k] ?? range.max)), line));
+  return [...affix.lines].map((line) =>
+    ranges.reduce((text, range, k) => text.replace(String(range.max), String(rolls[k] ?? range.max)), line),
+  );
 }
 
 /**
@@ -64,7 +69,10 @@ export function normalizeTartarusAffixes(skill, tier, stored, limit = Infinity) 
     names.add(affix.name);
     const ranges = tartarusAffixRanges(affix);
     if (!ranges.length) return { id };
-    const rolls = ranges.map((range, k) => { const roll = Number(value?.rolls?.[k]); return Number.isFinite(roll) ? Math.min(range.max, Math.max(range.min, roll)) : range.max; });
+    const rolls = ranges.map((range, k) => {
+      const roll = Number(value?.rolls?.[k]);
+      return Number.isFinite(roll) ? Math.min(range.max, Math.max(range.min, roll)) : range.max;
+    });
     return { id, rolls };
   });
 }

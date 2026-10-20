@@ -5,7 +5,11 @@ import { skillGameTagsSs13 } from "./data/skills/support-eligibility-ss13.genera
 // (src/skill-hit-model.js sentryQuantity); Heat Up's cast-recently buff by src/line-conditions.js (sentryCastRecently); Co-resonance's
 // Cast / Attack Speed → Cast Frequency by src/skill-hit-model.js.
 
-const norm = (text) => normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim().replace(/^\[[^\]]+\]\s*/, "");
+const norm = (text) =>
+  normalizePercentageText(String(text ?? ""))
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^\[[^\]]+\]\s*/, "");
 const round = (value) => Math.round(value * 10000) / 10000;
 
 // ---- Overly Modified (God of Machines core) --------------------------------------------------------------------------------
@@ -15,14 +19,21 @@ const round = (value) => Math.round(value * 10000) / 10000;
 // player's casts (manual rule 1001011821). The ailments a skill inflicts inherit its classification, and Reaps settle those scaled DoTs
 // (user-supplied 2026-10-19, Google AI Mode answer, not tested in game; src/ailment-applications.js). Scorching Beam's own hit ledger
 // and its Ignite path are not scaled per inflicting skill.
-const OVERLY = /^\+?([+-]?\d+(?:\.\d+)?)% additional Sentry Damage, ([+-]?\d+(?:\.\d+)?)% non-Sentry Active Skill damage$/i;
+const OVERLY =
+  /^\+?([+-]?\d+(?:\.\d+)?)% additional Sentry Damage, ([+-]?\d+(?:\.\d+)?)% non-Sentry Active Skill damage$/i;
 
 /** Overly Modified lines of the build: { sentryPercent, nonSentryPercent, sources } or null. */
 export function overlyModifiedState(modifierTexts = []) {
   const sources = [];
   for (const line of modifierTexts) {
     const match = norm(line.text).match(OVERLY);
-    if (match) sources.push({ source: line.source, text: norm(line.text), sentry: Number(match[1]) * (line.multiplier ?? 1), nonSentry: Number(match[2]) * (line.multiplier ?? 1) });
+    if (match)
+      sources.push({
+        source: line.source,
+        text: norm(line.text),
+        sentry: Number(match[1]) * (line.multiplier ?? 1),
+        nonSentry: Number(match[2]) * (line.multiplier ?? 1),
+      });
   }
   if (!sources.length) return null;
   // Several copies: each is its own buff on the cast (multiplied).
@@ -46,5 +57,11 @@ export function overlyModifiedLine(state, setup) {
   const value = sentry ? state.sentryPercent : active ? state.nonSentryPercent : 0;
   if (!value) return null;
   const which = sentry ? "a Sentry Skill" : "a non-Sentry Active Skill";
-  return { source: state.sources.map((item) => item.source).join(" + "), text: `${value >= 0 ? "+" : ""}${round(value)}% additional damage (Overly Modified: ${setup.name} is ${which}; game affix 734641, a buff on the cast)`, value: round(value), category: "Additional damage", overlyModified: sentry ? "sentry" : "nonSentry" };
+  return {
+    source: state.sources.map((item) => item.source).join(" + "),
+    text: `${value >= 0 ? "+" : ""}${round(value)}% additional damage (Overly Modified: ${setup.name} is ${which}; game affix 734641, a buff on the cast)`,
+    value: round(value),
+    category: "Additional damage",
+    overlyModified: sentry ? "sentry" : "nonSentry",
+  };
 }

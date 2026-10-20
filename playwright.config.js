@@ -18,10 +18,16 @@ export default defineConfig({
   use: { channel: "chrome", trace: "retain-on-failure" },
   projects: [
     { name: "source", use: { baseURL: url(sourcePort) } },
-    { name: "build", use: { baseURL: url(buildPort) } }
+    { name: "build", use: { baseURL: url(buildPort) } },
   ],
   webServer: [
-    { command: "node scripts/serve.js", env: { PORT: String(sourcePort) }, url: url(sourcePort), reuseExistingServer: false, timeout: 30_000 },
-    { command: `vite preview --port ${buildPort}`, url: url(buildPort), reuseExistingServer: false, timeout: 30_000 }
-  ]
+    {
+      command: "node scripts/serve.js",
+      env: { PORT: String(sourcePort) },
+      url: url(sourcePort),
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+    { command: `vite preview --port ${buildPort}`, url: url(buildPort), reuseExistingServer: false, timeout: 30_000 },
+  ],
 });

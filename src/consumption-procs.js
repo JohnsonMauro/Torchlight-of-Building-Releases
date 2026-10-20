@@ -31,21 +31,48 @@ export function consumptionShare(gainPerSecond, castsPerSecond) {
 // One gain source's rate (stacks per second), or { unmodeled } with the reason. `facts` is the planner's measured hit pass
 // (null on the measuring pass: a hit-driven rate is then held at its interval cap, as the other rate-driven effects are).
 function agilitySourceRate(text, facts) {
-  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  const clean = String(text || "")
+    .replace(/\s+/g, " ")
+    .trim();
   const stacks = Number(clean.match(/gain (\d+) stacks?(?:\(s\))? of Agility/i)?.[1]) || 1;
-  if (/Mobility Skill/i.test(clean)) return { unmodeled: "Agility from using Mobility Skills (the Mobility Skill use rate is not modeled)" };
-  if (/upon reaching Max Multistrike|max stacks of Agility/i.test(clean)) return { unmodeled: "max-stack Agility grants (their event rate is not modeled)" };
+  if (/Mobility Skill/i.test(clean))
+    return { unmodeled: "Agility from using Mobility Skills (the Mobility Skill use rate is not modeled)" };
+  if (/upon reaching Max Multistrike|max stacks of Agility/i.test(clean))
+    return { unmodeled: "max-stack Agility grants (their event rate is not modeled)" };
   let match = clean.match(/upon inflicting damage\. Interval: ([\d.]+) ?s/i);
-  if (match) { const cap = 1 / num(match[1]); return { rate: facts?.hitsPerSecond != null ? Math.min(cap, facts.hitsPerSecond) : cap, how: `1 per ${num(match[1])} s while hitting` }; }
-  match = clean.match(/([\d.()–-]+)% chance to gain \d+ stacks? of Agility Blessing on Critical Strike(?:\. Interval: ([\d.]+) ?s)?/i);
   if (match) {
-    const chance = num(match[1]) / 100, cap = match[2] ? 1 / num(match[2]) : Infinity;
+    const cap = 1 / num(match[1]);
+    return {
+      rate: facts?.hitsPerSecond != null ? Math.min(cap, facts.hitsPerSecond) : cap,
+      how: `1 per ${num(match[1])} s while hitting`,
+    };
+  }
+  match = clean.match(
+    /([\d.()–-]+)% chance to gain \d+ stacks? of Agility Blessing on Critical Strike(?:\. Interval: ([\d.]+) ?s)?/i,
+  );
+  if (match) {
+    const chance = num(match[1]) / 100,
+      cap = match[2] ? 1 / num(match[2]) : Infinity;
     if (!Number.isFinite(chance)) return { unmodeled: "a rolled chance range" };
-    const rate = facts?.critHitsPerSecond != null ? Math.min(cap, chance * facts.critHitsPerSecond) * stacks : (Number.isFinite(cap) ? cap * stacks : Infinity);
-    return { rate, how: `${round(chance * 100)}% of crit hits${facts?.critHitsPerSecond != null ? ` (${round(facts.critHitsPerSecond)}/s)` : ""}${match[2] ? `, at most 1 per ${num(match[2])} s` : ""}` };
+    const rate =
+      facts?.critHitsPerSecond != null
+        ? Math.min(cap, chance * facts.critHitsPerSecond) * stacks
+        : Number.isFinite(cap)
+          ? cap * stacks
+          : Infinity;
+    return {
+      rate,
+      how: `${round(chance * 100)}% of crit hits${facts?.critHitsPerSecond != null ? ` (${round(facts.critHitsPerSecond)}/s)` : ""}${match[2] ? `, at most 1 per ${num(match[2])} s` : ""}`,
+    };
   }
   match = clean.match(/([\d.]+)% chance to gain \d+ stacks? of Agility Blessing on hit/i);
-  if (match) { const chance = num(match[1]) / 100; return { rate: facts?.hitsPerSecond != null ? chance * facts.hitsPerSecond * stacks : Infinity, how: `${round(chance * 100)}% of hits${facts?.hitsPerSecond != null ? ` (${round(facts.hitsPerSecond)}/s)` : ""}` }; }
+  if (match) {
+    const chance = num(match[1]) / 100;
+    return {
+      rate: facts?.hitsPerSecond != null ? chance * facts.hitsPerSecond * stacks : Infinity,
+      how: `${round(chance * 100)}% of hits${facts?.hitsPerSecond != null ? ` (${round(facts.hitsPerSecond)}/s)` : ""}`,
+    };
+  }
   match = clean.match(/(?:per|every) ([\d.]+) ?s\b/i);
   if (match && num(match[1]) > 0) return { rate: stacks / num(match[1]), how: `${stacks} per ${num(match[1])} s` };
   return { unmodeled: "its gain rate is not modeled" };
@@ -54,23 +81,45 @@ function agilitySourceRate(text, facts) {
 /** Agility Blessing gain rate from the Blessing model's available gain sources. */
 export function agilityGainRate(entry, facts = null) {
   const sources = (entry?.gainSources || []).filter((source) => source.available);
-  const read = sources.map((source) => ({ source: source.source, text: source.text, ...agilitySourceRate(source.text, facts) }));
-  const modeled = read.filter((item) => item.rate != null), unmodeled = read.filter((item) => item.unmodeled);
+  const read = sources.map((source) => ({
+    source: source.source,
+    text: source.text,
+    ...agilitySourceRate(source.text, facts),
+  }));
+  const modeled = read.filter((item) => item.rate != null),
+    unmodeled = read.filter((item) => item.unmodeled);
   return { perSecond: modeled.reduce((sum, item) => sum + item.rate, 0), modeled, unmodeled, any: sources.length > 0 };
 }
 
 /** Blur gain rate from the Blur model's available sources (src/blur-sources.js). */
 export function blurGainRate(sources = [], facts = null) {
-  const read = sources.filter((source) => source.available).map((source) => {
-    const text = String(source.text || "");
-    const chanceMatch = text.match(/([\d.]+)% chance to (?:gain|regain) Blur/i);
-    const chance = chanceMatch ? Number(chanceMatch[1]) / 100 : 1;
-    if (source.trigger === "Reaping") return facts?.reapsPerSecond != null ? { ...source, rate: chance * facts.reapsPerSecond, how: `${round(chance * 100)}% of Reaps (${round(facts.reapsPerSecond)}/s)` } : { ...source, rate: Infinity, how: "per Reap (rate measured by the hit pass)" };
-    const wilt = text.match(/per (\d+) stacks of Wilt inflicted/i);
-    if (wilt) return facts?.wiltSuccessesPerSecond != null ? { ...source, rate: facts.wiltSuccessesPerSecond / Number(wilt[1]), how: `1 per ${wilt[1]} Wilt stacks (${round(facts.wiltSuccessesPerSecond)} stacks/s)` } : { ...source, rate: Infinity, how: "per Wilt stacks (rate measured by the hit pass)" };
-    return { ...source, unmodeled: `${source.trigger}: its Blur gain rate is not modeled` };
-  });
-  const modeled = read.filter((item) => item.rate != null), unmodeled = read.filter((item) => item.unmodeled);
+  const read = sources
+    .filter((source) => source.available)
+    .map((source) => {
+      const text = String(source.text || "");
+      const chanceMatch = text.match(/([\d.]+)% chance to (?:gain|regain) Blur/i);
+      const chance = chanceMatch ? Number(chanceMatch[1]) / 100 : 1;
+      if (source.trigger === "Reaping")
+        return facts?.reapsPerSecond != null
+          ? {
+              ...source,
+              rate: chance * facts.reapsPerSecond,
+              how: `${round(chance * 100)}% of Reaps (${round(facts.reapsPerSecond)}/s)`,
+            }
+          : { ...source, rate: Infinity, how: "per Reap (rate measured by the hit pass)" };
+      const wilt = text.match(/per (\d+) stacks of Wilt inflicted/i);
+      if (wilt)
+        return facts?.wiltSuccessesPerSecond != null
+          ? {
+              ...source,
+              rate: facts.wiltSuccessesPerSecond / Number(wilt[1]),
+              how: `1 per ${wilt[1]} Wilt stacks (${round(facts.wiltSuccessesPerSecond)} stacks/s)`,
+            }
+          : { ...source, rate: Infinity, how: "per Wilt stacks (rate measured by the hit pass)" };
+      return { ...source, unmodeled: `${source.trigger}: its Blur gain rate is not modeled` };
+    });
+  const modeled = read.filter((item) => item.rate != null),
+    unmodeled = read.filter((item) => item.unmodeled);
   return { perSecond: modeled.reduce((sum, item) => sum + item.rate, 0), modeled, unmodeled, any: read.length > 0 };
 }
 
@@ -81,10 +130,27 @@ function settle(gain, castsPerSecond, what) {
   const unread = gain.unmodeled.map((item) => `${item.source}: ${item.unmodeled}`);
   if (!gain.any) return { active: false, reason: `no ${what} source in the build` };
   if (!(casts > 0)) return { active: false, reason: "no active Main Skill" };
-  if (gain.perSecond >= casts) return { active: true, share: 1, gainPerSecond: gain.perSecond, castsPerSecond: casts, reason: `${what} gain ${Number.isFinite(gain.perSecond) ? `${round(gain.perSecond)}/s` : "held (rate measured by the hit pass)"} ≥ ${round(casts)} Main Skill casts/s: every cast finds one (${parts.join("; ")})` };
-  if (unread.length) return { active: null, reason: `${what} gain rate not modeled (${unread.join("; ")})${parts.length ? `; the modeled part (${round(gain.perSecond)}/s) is below ${round(casts)} casts/s` : ""}` };
+  if (gain.perSecond >= casts)
+    return {
+      active: true,
+      share: 1,
+      gainPerSecond: gain.perSecond,
+      castsPerSecond: casts,
+      reason: `${what} gain ${Number.isFinite(gain.perSecond) ? `${round(gain.perSecond)}/s` : "held (rate measured by the hit pass)"} ≥ ${round(casts)} Main Skill casts/s: every cast finds one (${parts.join("; ")})`,
+    };
+  if (unread.length)
+    return {
+      active: null,
+      reason: `${what} gain rate not modeled (${unread.join("; ")})${parts.length ? `; the modeled part (${round(gain.perSecond)}/s) is below ${round(casts)} casts/s` : ""}`,
+    };
   const share = consumptionShare(gain.perSecond, casts);
-  return { active: share > 0, share, gainPerSecond: gain.perSecond, castsPerSecond: casts, reason: `${what} gain ${round(gain.perSecond)}/s ÷ ${round(casts)} Main Skill casts/s: ${round(share * 100)}% of casts find one (${parts.join("; ")})` };
+  return {
+    active: share > 0,
+    share,
+    gainPerSecond: gain.perSecond,
+    castsPerSecond: casts,
+    reason: `${what} gain ${round(gain.perSecond)}/s ÷ ${round(casts)} Main Skill casts/s: ${round(share * 100)}% of casts find one (${parts.join("; ")})`,
+  };
 }
 
 /**
@@ -97,43 +163,82 @@ function settle(gain, castsPerSecond, what) {
  * @param {number} p.castsPerSecond     Main Skill casts per second (the hit pass's measured rate, else the early estimate)
  * @param {object|null} p.facts         measured rates (hitsPerSecond, critHitsPerSecond, reapsPerSecond, wiltSuccessesPerSecond)
  */
-export function resolveConsumption({ texts = [], agility = null, blurSources = [], blurActive = false, castsPerSecond = 0, facts = null } = {}) {
+export function resolveConsumption({
+  texts = [],
+  agility = null,
+  blurSources = [],
+  blurActive = false,
+  castsPerSecond = 0,
+  facts = null,
+} = {}) {
   const has = (pattern) => texts.some((text) => pattern.test(text));
   const thunderclap = has(/^If you have Agility Blessing stacks when casting the Main Skill, consumes \d+ stack/i);
   const waiting = has(/^Consumes all Agility Blessing every \d+ ?s\. For each stack consumed/i);
   const stab = has(/^While Blur is active, loses Blur after casting a Main Skill/i);
-  const result = { measured: Boolean(facts), castsPerSecond: round(castsPerSecond || 0), agility: null, blur: null, waitingAttack: null, agilityHeld: null };
+  const result = {
+    measured: Boolean(facts),
+    castsPerSecond: round(castsPerSecond || 0),
+    agility: null,
+    blur: null,
+    waitingAttack: null,
+    agilityHeld: null,
+  };
   if (!thunderclap && !waiting && !stab) return result;
   const maxStacks = agility?.maxStacks ?? 0;
   const cannotGain = agility && agility.gainSources?.some((source) => source.available) && !agility.stacks;
   if (thunderclap) {
     const gain = agilityGainRate(agility, facts);
-    result.agility = cannotGain ? { active: false, reason: "Agility Blessing cannot be gained" } : settle(gain, castsPerSecond, "Agility Blessing");
+    result.agility = cannotGain
+      ? { active: false, reason: "Agility Blessing cannot be gained" }
+      : settle(gain, castsPerSecond, "Agility Blessing");
   }
   if (waiting) {
     const gain = agilityGainRate(agility, facts);
     const T = WAITING_ATTACK_SECONDS;
-    if (!gain.any || cannotGain || !(maxStacks > 0)) result.waitingAttack = { active: false, reason: cannotGain ? "Agility Blessing cannot be gained" : "no Agility Blessing source in the build" };
-    else if (gain.unmodeled.length && !(gain.perSecond * T >= maxStacks)) result.waitingAttack = { active: null, reason: `Agility gain rate not modeled (${gain.unmodeled.map((item) => `${item.source}: ${item.unmodeled}`).join("; ")})` };
+    if (!gain.any || cannotGain || !(maxStacks > 0))
+      result.waitingAttack = {
+        active: false,
+        reason: cannotGain ? "Agility Blessing cannot be gained" : "no Agility Blessing source in the build",
+      };
+    else if (gain.unmodeled.length && !(gain.perSecond * T >= maxStacks))
+      result.waitingAttack = {
+        active: null,
+        reason: `Agility gain rate not modeled (${gain.unmodeled.map((item) => `${item.source}: ${item.unmodeled}`).join("; ")})`,
+      };
     else {
       // Stacks consumed every 8 s: the stacks rebuilt since the last consumption (from 0), capped at max. The buff lasts 8 s and
       // the timer is 8 s, so it is always up (uptime 1). Agility's own effect sees the rebuilding stacks' time average.
       const rate = gain.perSecond;
       const consumed = Math.min(maxStacks, rate * T);
       const fill = rate > 0 ? maxStacks / rate : Infinity;
-      const held = fill <= T ? maxStacks * (1 - fill / (2 * T)) : rate * T / 2;
-      result.waitingAttack = { active: consumed > 0, stacksConsumed: round(consumed), heldAverage: round(held), maxStacks, gainPerSecond: Number.isFinite(rate) ? round(rate) : null,
-        reason: `every ${T} s all Agility stacks are consumed: ${round(consumed)} stacks (gain ${Number.isFinite(rate) ? `${round(rate)}/s` : "held"}, max ${maxStacks}; ${gain.modeled.map((item) => `${item.source}: ${item.how}`).join("; ")}) → +${T} s buff, always up; the consumed Agility's own effect is lost, the rebuilding stacks average ${round(held)} of ${maxStacks} (Q5 / Q14, user-confirmed 2026-10-18)` };
-      result.agilityHeld = { stacks: round(held), reason: `Waiting Attack consumes all Agility every ${T} s: ${round(held)} of ${maxStacks} stacks held on average (Q14, user-confirmed 2026-10-18)` };
+      const held = fill <= T ? maxStacks * (1 - fill / (2 * T)) : (rate * T) / 2;
+      result.waitingAttack = {
+        active: consumed > 0,
+        stacksConsumed: round(consumed),
+        heldAverage: round(held),
+        maxStacks,
+        gainPerSecond: Number.isFinite(rate) ? round(rate) : null,
+        reason: `every ${T} s all Agility stacks are consumed: ${round(consumed)} stacks (gain ${Number.isFinite(rate) ? `${round(rate)}/s` : "held"}, max ${maxStacks}; ${gain.modeled.map((item) => `${item.source}: ${item.how}`).join("; ")}) → +${T} s buff, always up; the consumed Agility's own effect is lost, the rebuilding stacks average ${round(held)} of ${maxStacks} (Q5 / Q14, user-confirmed 2026-10-18)`,
+      };
+      result.agilityHeld = {
+        stacks: round(held),
+        reason: `Waiting Attack consumes all Agility every ${T} s: ${round(held)} of ${maxStacks} stacks held on average (Q14, user-confirmed 2026-10-18)`,
+      };
     }
   }
   if (thunderclap && result.agility?.active && !result.agilityHeld) {
     const keeps = result.agility.share >= 1 && result.agility.gainPerSecond >= castsPerSecond;
-    if (!keeps) result.agilityHeld = { stacks: 0, reason: `Thunderclap spends each Agility stack on the next Main Skill cast (gain ${round(result.agility.gainPerSecond)}/s < ${round(castsPerSecond)} casts/s): none held (Q5, user-confirmed 2026-10-18)` };
+    if (!keeps)
+      result.agilityHeld = {
+        stacks: 0,
+        reason: `Thunderclap spends each Agility stack on the next Main Skill cast (gain ${round(result.agility.gainPerSecond)}/s < ${round(castsPerSecond)} casts/s): none held (Q5, user-confirmed 2026-10-18)`,
+      };
   }
   if (stab) {
     const gain = blurGainRate(blurSources, facts);
-    result.blur = !blurActive ? { active: false, reason: gain.any ? "Blur is off (condition 'Blur')" : "no Blur source in the build" } : settle(gain, castsPerSecond, "Blur");
+    result.blur = !blurActive
+      ? { active: false, reason: gain.any ? "Blur is off (condition 'Blur')" : "no Blur source in the build" }
+      : settle(gain, castsPerSecond, "Blur");
   }
   return result;
 }

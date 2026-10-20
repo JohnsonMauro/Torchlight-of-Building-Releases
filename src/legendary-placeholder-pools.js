@@ -8,12 +8,32 @@ import { beltBlendsSs13 } from "./data/gear/belt-blends-ss13.generated.js";
 import { inlineKeywordParts } from "./inline-keywords.js";
 
 // Belt blends whose text starts with their bracketed name: normalized text -> name.
-const normalizeLines = (text) => String(text || "").split("\n").map((line) => line.replace(/(\d)\s+%/g, "$1%").replace(/\s+/g, " ").trim()).filter(Boolean).join("\n");
-const beltBlendKeywords = new Map(beltBlendsSs13.map((blend) => [blend.modifier.match(/^\[([^\]]+)\]\s/)?.[1], blend]).filter(([name]) => name).map(([name, blend]) => [normalizeLines(blend.modifier), name]));
+const normalizeLines = (text) =>
+  String(text || "")
+    .split("\n")
+    .map((line) =>
+      line
+        .replace(/(\d)\s+%/g, "$1%")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean)
+    .join("\n");
+const beltBlendKeywords = new Map(
+  beltBlendsSs13
+    .map((blend) => [blend.modifier.match(/^\[([^\]]+)\]\s/)?.[1], blend])
+    .filter(([name]) => name)
+    .map(([name, blend]) => [normalizeLines(blend.modifier), name]),
+);
 
 const RANGE = /\((-?\d+(?:\.\d+)?)\s*[–-]\s*(-?\d+(?:\.\d+)?)\)/g;
 const NUMBER = /-?\d+(?:\.\d+)?/g;
-const normalize = (text) => String(text || "").replace(/\s+%/g, "%").replace(/\s+/g, " ").trim().toLowerCase();
+const normalize = (text) =>
+  String(text || "")
+    .replace(/\s+%/g, "%")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 const shape = (text) => normalize(text).replace(RANGE, "#").replace(NUMBER, "#");
 
 /** The pool for catalog line `index` of legendary `sourceId`, or null when that line is not a resolved placeholder. */
@@ -35,7 +55,9 @@ export function placeholderOptionTemplate(option, corroded = false) {
 /** Every template the line can carry (normal and corroded forms of each roll), for the editor's line alignment. */
 export function placeholderTemplates(sourceId, index) {
   const pool = placeholderPool(sourceId, index);
-  return pool ? [...new Set(pool.options.flatMap((option) => [option.template, option.corrodedTemplate]).filter(Boolean))] : [];
+  return pool
+    ? [...new Set(pool.options.flatMap((option) => [option.template, option.corrodedTemplate]).filter(Boolean))]
+    : [];
 }
 
 /**
@@ -59,7 +81,9 @@ export function placeholderOptionForText(sourceId, index, text, corroded = false
 
 /** Every roll template of every placeholder line of legendary `sourceId` (the load-time reconcile treats them as known lines). */
 export function allPlaceholderTemplates(sourceId) {
-  return Object.keys(legendaryPlaceholderPoolsSs13[sourceId]?.slots || {}).flatMap((index) => placeholderTemplates(sourceId, Number(index)));
+  return Object.keys(legendaryPlaceholderPoolsSs13[sourceId]?.slots || {}).flatMap((index) =>
+    placeholderTemplates(sourceId, Number(index)),
+  );
 }
 
 /** Legendary ids with at least one resolved placeholder. */
@@ -68,7 +92,12 @@ export function legendaryIdsWithPlaceholderPools() {
 }
 
 // Keyword rolls (Pantheon's Elegy's Dirges): keyword -> effect lines, for the tooltip / dialog keyword display.
-const keywordEffects = new Map(Object.values(legendaryPlaceholderPoolsSs13).flatMap((entry) => entry.pools.flatMap((pool) => pool.options)).filter((option) => option.keyword).map((option) => [option.keyword, option.effect || []]));
+const keywordEffects = new Map(
+  Object.values(legendaryPlaceholderPoolsSs13)
+    .flatMap((entry) => entry.pools.flatMap((pool) => pool.options))
+    .filter((option) => option.keyword)
+    .map((option) => [option.keyword, option.effect || []]),
+);
 
 /**
  * Splits a saved keyword roll ("Goddess of Hunting's Dirge\n<effect lines>\n<corroded extra lines>") into its keyword, its
@@ -79,7 +108,8 @@ export function keywordRollParts(text) {
   const lines = String(text || "").split("\n");
   const keyword = lines[0].trim();
   const effect = keywordEffects.get(keyword);
-  if (effect) return { keyword, effect: lines.slice(1, 1 + effect.length), rest: lines.slice(1 + effect.length), named: false };
+  if (effect)
+    return { keyword, effect: lines.slice(1, 1 + effect.length), rest: lines.slice(1 + effect.length), named: false };
   // A named gear affix (src/named-gear-affixes.js: Wield My Sword, Absolve My Sin, Castling, …): the saved line is only the
   // name, so its effect lines come from the table; any following lines (a corroded donor's "+(12–15)% Block Ratio") stay as rest.
   const named = namedGearAffixLines(keyword);
@@ -87,10 +117,30 @@ export function keywordRollParts(text) {
   // A belt blend with a bracketed name ("[Reflection] +6% additional damage …\nMinions …", src/data/gear/belt-blends-ss13.generated.js):
   // the name is the keyword and every line, the first without its bracket, is an effect line. Only a blend's own text matches.
   const blendName = beltBlendKeywords.get(normalizeLines(text));
-  if (blendName) return { keyword: blendName, effect: [lines[0].trim().slice(blendName.length + 2).trim(), ...lines.slice(1).map((line) => line.trim())].filter(Boolean), rest: [], named: true };
+  if (blendName)
+    return {
+      keyword: blendName,
+      effect: [
+        lines[0]
+          .trim()
+          .slice(blendName.length + 2)
+          .trim(),
+        ...lines.slice(1).map((line) => line.trim()),
+      ].filter(Boolean),
+      rest: [],
+      named: true,
+    };
   // An inline keyword (src/inline-keywords.js: Eternity's "… stack(s) of Eternal Morale on defeat …"): the keyword sits mid-line,
   // so the line keeps its text around it (`inline`), and each effect line carries the keyword's own badge (`statuses`).
   const inline = inlineKeywordParts(text);
-  if (inline) return { keyword: inline.keyword, effect: inline.effect.map((line) => line.text), rest: [], named: false, inline: { before: inline.before, after: inline.after }, statuses: inline.effect.map(({ status, reason }) => ({ status, reason })) };
+  if (inline)
+    return {
+      keyword: inline.keyword,
+      effect: inline.effect.map((line) => line.text),
+      rest: [],
+      named: false,
+      inline: { before: inline.before, after: inline.after },
+      statuses: inline.effect.map(({ status, reason }) => ({ status, reason })),
+    };
   return null;
 }

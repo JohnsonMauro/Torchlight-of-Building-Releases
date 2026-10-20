@@ -1,15 +1,18 @@
 import { ACTIVE_SLOT_MAGUS_LEVEL_NOTE } from "./magus-active-slot.js";
 
-const levelPattern = /([+-]\d+)\s+(?:to\s+)?([A-Za-z]+(?:\s+[A-Za-z]+){0,2})\s+(?:Skill Levels?\b|Skills['’]? Levels?\b)/gi;
+const levelPattern =
+  /([+-]\d+)\s+(?:to\s+)?([A-Za-z]+(?:\s+[A-Za-z]+){0,2})\s+(?:Skill Levels?\b|Skills['’]? Levels?\b)/gi;
 
 // A skill takes "Active Skill Level" lines when it is an active-role skill, or a Spirit Magus that Iris placed in an active skill
 // slot (`activeSlotMagus`, set by src/planner.js from src/magus-active-slot.js `magusTakesActiveSkillLevels`; user-confirmed
 // 2026-10-19). An Aura-slot Magus stays Aura-role and does not.
-const takesActiveLevels = (skill) => skill.role !== "aura" && skill.role !== "support" || skill.activeSlotMagus === true;
+const takesActiveLevels = (skill) =>
+  (skill.role !== "aura" && skill.role !== "support") || skill.activeSlotMagus === true;
 
 function matchingBonusDetail(text, skill) {
   const tags = new Set((skill.tags || []).map((tag) => tag.toLowerCase()));
-  let total = 0, activeSlot = 0;
+  let total = 0,
+    activeSlot = 0;
   for (const match of String(text || "").matchAll(levelPattern)) {
     const suffix = String(text).slice(match.index + match[0].length);
     if (/^\s+(?:for each|for every|when|while|if|per)\b/i.test(suffix)) continue;
@@ -24,9 +27,18 @@ function matchingBonusDetail(text, skill) {
     const tagged = tags.has(category) || (words.length > 1 && words.every((word) => tags.has(word)));
     // "+N <tag> Active Skill Level": the Active part is the role, the other words are tags the skill needs. Each match counts
     // once, so a line is never added twice through two categories.
-    const activeTagged = words.length > 1 && words.includes("active") && takesActiveLevels(skill) && words.filter((word) => word !== "active").every((word) => tags.has(word));
-    const activeLine = category === "active" && takesActiveLevels(skill) || activeTagged;
-    const applies = category === "all" || activeLine || category === "passive" && skill.role === "aura" || category === "main" && skill.role === "main" || tagged;
+    const activeTagged =
+      words.length > 1 &&
+      words.includes("active") &&
+      takesActiveLevels(skill) &&
+      words.filter((word) => word !== "active").every((word) => tags.has(word));
+    const activeLine = (category === "active" && takesActiveLevels(skill)) || activeTagged;
+    const applies =
+      category === "all" ||
+      activeLine ||
+      (category === "passive" && skill.role === "aura") ||
+      (category === "main" && skill.role === "main") ||
+      tagged;
     if (!applies) continue;
     total += Number(match[1]);
     if (activeLine && !tagged && skill.role === "aura") activeSlot += Number(match[1]);
@@ -45,10 +57,18 @@ export function skillLevelLineApplies(text, skill) {
 // slots, 4 Aura slots read as the Passive Skill slots: provisional), `sources.emptySkillSlots`.
 const EMPTY_SLOT_LEVEL = /^\+(\d+) (Main|Passive|Active) Skill Levels? for each empty (Passive|Active) Skill Slot$/i;
 export function emptySlotLevelLine(text) {
-  const match = String(text || "").replace(/\s+/g, " ").trim().match(EMPTY_SLOT_LEVEL);
+  const match = String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .match(EMPTY_SLOT_LEVEL);
   return match ? { per: Number(match[1]), target: match[2].toLowerCase(), slot: match[3].toLowerCase() } : null;
 }
-export const emptySlotLevelApplies = (line, skill) => line.target === "main" ? skill.role === "main" : line.target === "passive" ? skill.role === "aura" : takesActiveLevels(skill);
+export const emptySlotLevelApplies = (line, skill) =>
+  line.target === "main"
+    ? skill.role === "main"
+    : line.target === "passive"
+      ? skill.role === "aura"
+      : takesActiveLevels(skill);
 
 export function skillLevelBonus(skill, sources) {
   const contributions = [];
@@ -57,25 +77,39 @@ export function skillLevelBonus(skill, sources) {
     if (empty) {
       const slots = Math.max(0, Number(sources.emptySkillSlots?.[empty.slot]) || 0);
       const levels = emptySlotLevelApplies(empty, skill) ? Math.trunc(empty.per * slots * multiplier) : 0;
-      if (levels) contributions.push({ name, text, levels, provisional: `${slots} empty ${empty.slot} slot${slots === 1 ? "" : "s"} on the skill board (provisional)` });
+      if (levels)
+        contributions.push({
+          name,
+          text,
+          levels,
+          provisional: `${slots} empty ${empty.slot} slot${slots === 1 ? "" : "s"} on the skill board (provisional)`,
+        });
       return;
     }
     const detail = matchingBonusDetail(text, skill);
     const levels = Math.trunc(detail.total * multiplier);
     // Shown in the level breakdown with the rule that lets an active-slot Magus take it.
-    if (levels) contributions.push({ name: detail.activeSlot ? `${name} · ${ACTIVE_SLOT_MAGUS_LEVEL_NOTE}` : name, text, levels, ...(detail.activeSlot ? { activeSlotMagus: true } : {}) });
+    if (levels)
+      contributions.push({
+        name: detail.activeSlot ? `${name} · ${ACTIVE_SLOT_MAGUS_LEVEL_NOTE}` : name,
+        text,
+        levels,
+        ...(detail.activeSlot ? { activeSlotMagus: true } : {}),
+      });
   };
   for (const item of sources.gear || []) {
     for (const modifier of [...(item.modifiers || []), ...(item.corrosionModifiers || [])]) add(modifier, item.name);
   }
   for (const panel of sources.talents || []) {
     for (const node of panel.allocatedNodes || []) {
-      if (node.rank > 0 && !node.replacedBy) add(node.description, `${panel.name} talent`, node.rank * (node.inverseEffectMultiplier ?? 1));
+      if (node.rank > 0 && !node.replacedBy)
+        add(node.description, `${panel.name} talent`, node.rank * (node.inverseEffectMultiplier ?? 1));
     }
     for (const core of panel.activeCores || []) add(core.description, `${panel.name} core talent`);
   }
   for (const slate of sources.slates || []) {
-    for (const affix of [...(slate.fixed || []), ...(slate.brands || []), ...(slate.copiedTalents || [])]) add(affix, slate.name);
+    for (const affix of [...(slate.fixed || []), ...(slate.brands || []), ...(slate.copiedTalents || [])])
+      add(affix, slate.name);
   }
   return { total: contributions.reduce((sum, entry) => sum + entry.levels, 0), contributions };
 }

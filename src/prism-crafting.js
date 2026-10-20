@@ -1,56 +1,99 @@
 import { prismRareAffixes } from "./prism-rare-affixes.js";
 
 export const etherealPrismBases = [
-  "Haze", "Phantasmagoria", "One For All", "Unwavering Fortress", "Unstoppable Force",
-  "Hare's Agility", "Sweeping Fury", "Keen Intellect", "Towering Presence", "Spell Ripple",
-  "Juggernaut", "Adaptive Defense", "Unmatched Valor", "Self-Delusion", "Escalating Affliction",
-  "Commander's Gambit", "Circle of Life", "Miraculous Touch", "Dark Advance",
-  "Effortless Command", "Crushing Blast", "Storm's Command", "Fire's Allure", "Fiery Fantasy"
+  "Haze",
+  "Phantasmagoria",
+  "One For All",
+  "Unwavering Fortress",
+  "Unstoppable Force",
+  "Hare's Agility",
+  "Sweeping Fury",
+  "Keen Intellect",
+  "Towering Presence",
+  "Spell Ripple",
+  "Juggernaut",
+  "Adaptive Defense",
+  "Unmatched Valor",
+  "Self-Delusion",
+  "Escalating Affliction",
+  "Commander's Gambit",
+  "Circle of Life",
+  "Miraculous Touch",
+  "Dark Advance",
+  "Effortless Command",
+  "Crushing Blast",
+  "Storm's Command",
+  "Fire's Allure",
+  "Fiery Fantasy",
 ];
 
 export const inverseImageRolls = {
-  micro: { label:"Micro Talent Effect Range", min:-100, max:200 },
-  medium: { label:"Medium Talent Effect Range", min:-100, max:100 },
-  legendary: { label:"Legendary Medium Talent Effect Range", min:-100, max:50 }
+  micro: { label: "Micro Talent Effect Range", min: -100, max: 200 },
+  medium: { label: "Medium Talent Effect Range", min: -100, max: 100 },
+  legendary: { label: "Legendary Medium Talent Effect Range", min: -100, max: 50 },
 };
 
 export function inverseImageRoll(item, kind) {
-  const range=inverseImageRolls[kind];
-  const value=Number(item?.inverseRolls?.[kind]);
-  return Number.isFinite(value)?Math.max(range.min,Math.min(range.max,Math.round(value))):range.min;
+  const range = inverseImageRolls[kind];
+  const value = Number(item?.inverseRolls?.[kind]);
+  return Number.isFinite(value) ? Math.max(range.min, Math.min(range.max, Math.round(value))) : range.min;
 }
 
 export const prismAffixes = {
   radius: [
-    "The Effect Area expands to 3x3 Rectangle", "The Effect Area expands to 3x4 Rectangle",
-    "The Effect Area expands to 4x3 Rectangle", "The Effect Area expands to 2x2 Rectangle",
-    "The Effect Area expands to 7x1 Rectangle", "The Effect Area expands to 2x4 Rectangle",
-    "The Effect Area expands to 4x2 Rectangle"
+    "The Effect Area expands to 3x3 Rectangle",
+    "The Effect Area expands to 3x4 Rectangle",
+    "The Effect Area expands to 4x3 Rectangle",
+    "The Effect Area expands to 2x2 Rectangle",
+    "The Effect Area expands to 7x1 Rectangle",
+    "The Effect Area expands to 2x4 Rectangle",
+    "The Effect Area expands to 4x2 Rectangle",
   ],
   rare: prismRareAffixes,
   legendary: [
-    ...[1,2,3].flatMap((count)=>["Micro","Medium"].map((size)=>`Points can be allocated to all ${size} Talent within the area ${count} additional time(s)`)),
+    ...[1, 2, 3].flatMap((count) =>
+      ["Micro", "Medium"].map(
+        (size) => `Points can be allocated to all ${size} Talent within the area ${count} additional time(s)`,
+      ),
+    ),
     "All Legendary Medium Talent within the area can ignore prerequisite point requirements",
     "All Legendary Medium Talent within the area can ignore prerequisite point requirements; All Medium Talent within the area can ignore prerequisite point requirements",
-    ...[1,2].flatMap((count)=>["Tenacity","Agility","Focus"].map((blessing)=>`When activating 2 Legendary Medium Talent within the area, +${count} to Max ${blessing} Blessing Stacks`)),
-    ...[1,2].map((count)=>`When activating 2 Legendary Medium Talent within the area, Gains a stack of Fortitude when using a Melee Skill; Owns ${count} additional stack(s) of Fortitude`),
-    ...[40,100].flatMap((effect)=>[
+    ...[1, 2].flatMap((count) =>
+      ["Tenacity", "Agility", "Focus"].map(
+        (blessing) =>
+          `When activating 2 Legendary Medium Talent within the area, +${count} to Max ${blessing} Blessing Stacks`,
+      ),
+    ),
+    ...[1, 2].map(
+      (count) =>
+        `When activating 2 Legendary Medium Talent within the area, Gains a stack of Fortitude when using a Melee Skill; Owns ${count} additional stack(s) of Fortitude`,
+    ),
+    ...[40, 100].flatMap((effect) => [
       `When activating 2 Legendary Medium Talent within the area, Inflicts Frail when dealing Spell Damage; +${effect}% Frail Effect`,
       `When activating 2 Legendary Medium Talent within the area, Gains Attack Aggression when casting an Attack Skill; +${effect}% Attack Aggression Effect`,
       `When activating 2 Legendary Medium Talent within the area, Gains Spell Aggression when casting a Spell Skill; +${effect}% Spell Aggression Effect`,
       `When activating 2 Legendary Medium Talent within the area, Gains a stack of Torment when dealing Damage Over Time; +${effect}% Torment Effect`,
-      ...["Cold","Fire","Lightning"].map((element)=>`When activating 2 Legendary Medium Talent within the area, Inflicts ${element} Infiltration on hit; +${effect}% ${element} Infiltration Effect`)
+      ...["Cold", "Fire", "Lightning"].map(
+        (element) =>
+          `When activating 2 Legendary Medium Talent within the area, Inflicts ${element} Infiltration on hit; +${effect}% ${element} Infiltration Effect`,
+      ),
     ]),
-    ...[100,120].map((rating)=>`When activating 2 Legendary Medium Talent within the area, Has ${rating} point(s) of fixed Blur Rating`),
-    ...[100,175].map((chance)=>`When activating 2 Legendary Medium Talent within the area, +${chance}% chance to gain a Barrier upon casting a Defensive Skill`),
+    ...[100, 120].map(
+      (rating) =>
+        `When activating 2 Legendary Medium Talent within the area, Has ${rating} point(s) of fixed Blur Rating`,
+    ),
+    ...[100, 175].map(
+      (chance) =>
+        `When activating 2 Legendary Medium Talent within the area, +${chance}% chance to gain a Barrier upon casting a Defensive Skill`,
+    ),
     "When activating 2 Legendary Medium Talent within the area, You can cast 1 additional Curses; Gains 1 Lv. 1 random curse for 5 s after casting a Curse Skill",
     "When activating 2 Legendary Medium Talent within the area, Immune to crowd control effects; -25% Defense",
     "When activating 2 Legendary Medium Talent within the area, Immune to crowd control effects",
     "When activating 2 Legendary Medium Talent within the area, -100% Curse effect against you",
     "When activating 2 Legendary Medium Talent within the area, Immune to Elemental Ailments; -8% Elemental Resistance",
     "When activating 2 Legendary Medium Talent within the area, Immune to Elemental Ailments",
-    ...[1,2].map((count)=>`When activating 2 Legendary Medium Talent within the area, +${count} Max Bond stacks`)
-  ]
+    ...[1, 2].map((count) => `When activating 2 Legendary Medium Talent within the area, +${count} Max Bond stacks`),
+  ],
 };
 
 // Mutated Core affixes (TLIDB Ethereal Prism page, Random Affix list, read 2026-10-10;
@@ -62,29 +105,87 @@ export const prismAffixes = {
 export const prismMutationDownsides = ["-5% Elemental Resistance", "-30 to All Stats", "-8% Defense"];
 export const prismMutationCoreEffects = new Map([
   ["One For All", "Gains Cold and Lightning Resistance equal to 50% of Fire Resistance"],
-  ["Unwavering Fortress", "Gains Bulwark equal to 1.5% of Armor and reduces 100% Non-True Damage taken every 10s. Bulwark is refreshed when gained again; Your Max Life is set to 100; Your Evasion and Max Energy Shield are fixed at 0"],
-  ["Unstoppable Force", "When a Combo Finisher is in Multistrike, it is guaranteed to deal damage equal to the Max Multistrike Count"],
-  ["Hare's Agility", "When exiting Stand Still, gains 1 stack of buff that lasts for 2s, up to 5 times; +14% additional damage dealt to enemies in proximity for each stack of buff. +8% Attack Speed"],
-  ["Sweeping Fury", "On hit, Main Ranged Horizontal Projectile Skills have a 100% chance to cast an additional Main Skill, whose projectiles fire in a ring and deal -60% additional damage. Interval: 0.03s. Does not affect Sentry Skills, Vertical Skills, and Channeled Skills.; Projectile Quantity Upper limit: 5; +2 Horizontal Projectile Penetration(s)"],
-  ["Keen Intellect", "For every Active Empower Skill equipped, +13% additional Spell Damage (multiplies); For every Active Curse Skill equipped, +6% Elemental and Erosion Resistance Penetration and +6% Armor DMG Mitigation Penetration.; For every Active Defensive Skill equipped, +13% additional Max Mana (multiplies); For every Active Mobility Skill equipped, +13% additional Cast Speed (multiplies)"],
-  ["Towering Presence", "Adds 100% of the Main-Hand Weapon damage to Spells; Adds 75% of Main-Hand Weapon's Critical Strike Rating to the Base Critical Strike Rating of Spell Skills; -99% additional Ailment Damage"],
-  ["Spell Ripple", "Main Spell Skills on hit have a 50% chance to spawn a Pulse, dealing True Damage equal to 150% of Hit Damage. Interval: 0.03s"],
-  ["Juggernaut", "-10% additional Armor and -2% Elemental and Erosion Resistance for enemies on Critical Strike for 8 s. Stacks up to 10 times"],
-  ["Adaptive Defense", "If you haven't been hit recently, +40% Injury Buffer. This effect lasts for another 4s when you are hit; Gains 1 stack(s) of Deflection every 0.5 s if you have been hit recently"],
+  [
+    "Unwavering Fortress",
+    "Gains Bulwark equal to 1.5% of Armor and reduces 100% Non-True Damage taken every 10s. Bulwark is refreshed when gained again; Your Max Life is set to 100; Your Evasion and Max Energy Shield are fixed at 0",
+  ],
+  [
+    "Unstoppable Force",
+    "When a Combo Finisher is in Multistrike, it is guaranteed to deal damage equal to the Max Multistrike Count",
+  ],
+  [
+    "Hare's Agility",
+    "When exiting Stand Still, gains 1 stack of buff that lasts for 2s, up to 5 times; +14% additional damage dealt to enemies in proximity for each stack of buff. +8% Attack Speed",
+  ],
+  [
+    "Sweeping Fury",
+    "On hit, Main Ranged Horizontal Projectile Skills have a 100% chance to cast an additional Main Skill, whose projectiles fire in a ring and deal -60% additional damage. Interval: 0.03s. Does not affect Sentry Skills, Vertical Skills, and Channeled Skills.; Projectile Quantity Upper limit: 5; +2 Horizontal Projectile Penetration(s)",
+  ],
+  [
+    "Keen Intellect",
+    "For every Active Empower Skill equipped, +13% additional Spell Damage (multiplies); For every Active Curse Skill equipped, +6% Elemental and Erosion Resistance Penetration and +6% Armor DMG Mitigation Penetration.; For every Active Defensive Skill equipped, +13% additional Max Mana (multiplies); For every Active Mobility Skill equipped, +13% additional Cast Speed (multiplies)",
+  ],
+  [
+    "Towering Presence",
+    "Adds 100% of the Main-Hand Weapon damage to Spells; Adds 75% of Main-Hand Weapon's Critical Strike Rating to the Base Critical Strike Rating of Spell Skills; -99% additional Ailment Damage",
+  ],
+  [
+    "Spell Ripple",
+    "Main Spell Skills on hit have a 50% chance to spawn a Pulse, dealing True Damage equal to 150% of Hit Damage. Interval: 0.03s",
+  ],
+  [
+    "Juggernaut",
+    "-10% additional Armor and -2% Elemental and Erosion Resistance for enemies on Critical Strike for 8 s. Stacks up to 10 times",
+  ],
+  [
+    "Adaptive Defense",
+    "If you haven't been hit recently, +40% Injury Buffer. This effect lasts for another 4s when you are hit; Gains 1 stack(s) of Deflection every 0.5 s if you have been hit recently",
+  ],
   ["Unmatched Valor", "Has 130 point(s) of fixed Fervor Rating"],
-  ["Self-Delusion", "+12% additional Erosion Damage to an enemy for each type of Crowd Control Effect they are under; Crowd Control Effects inflicted are reflected back onto you"],
-  ["Escalating Affliction", "Changes the effect of each point of Affliction to: 0.1% - +3% additional Damage Over Time taken. Refreshes every 1s and is affected by Lucky Damage bonuses; 90% of the bonuses and additional bonuses for Max Damage is also applied to Damage Over Time"],
-  ["Commander's Gambit", "-100% additional Tenacity Blessing, Agility Blessing, and Focus Blessing Effect; When gaining any Blessing, Minions within 10m also gain it; Minions' Max Blessing Stacks are three times your own"],
-  ["Circle of Life", "Gains Growth equal to 80% of the nearest Spirit Magus every 1s, and Growth gains Return Speed equal to Command; For every 10 Growth, +1% additional damage for Spirit Magi, 0.1% additional Physique and 0.5% Skill Area for yourself"],
-  ["Miraculous Touch", "Triggers Miraculous Gain when casting an Elixir Skill; Elixir Skills gain 1 Charging Progress every second"],
-  ["Dark Advance", "Moves in the target direction when casting Dark Gate; +3 Max Charges for Dark Gate; +50% additional Cooldown Recovery Speed to Dark Gate; +30% additional Minion Damage if a Dark Gate has been cast recently"],
+  [
+    "Self-Delusion",
+    "+12% additional Erosion Damage to an enemy for each type of Crowd Control Effect they are under; Crowd Control Effects inflicted are reflected back onto you",
+  ],
+  [
+    "Escalating Affliction",
+    "Changes the effect of each point of Affliction to: 0.1% - +3% additional Damage Over Time taken. Refreshes every 1s and is affected by Lucky Damage bonuses; 90% of the bonuses and additional bonuses for Max Damage is also applied to Damage Over Time",
+  ],
+  [
+    "Commander's Gambit",
+    "-100% additional Tenacity Blessing, Agility Blessing, and Focus Blessing Effect; When gaining any Blessing, Minions within 10m also gain it; Minions' Max Blessing Stacks are three times your own",
+  ],
+  [
+    "Circle of Life",
+    "Gains Growth equal to 80% of the nearest Spirit Magus every 1s, and Growth gains Return Speed equal to Command; For every 10 Growth, +1% additional damage for Spirit Magi, 0.1% additional Physique and 0.5% Skill Area for yourself",
+  ],
+  [
+    "Miraculous Touch",
+    "Triggers Miraculous Gain when casting an Elixir Skill; Elixir Skills gain 1 Charging Progress every second",
+  ],
+  [
+    "Dark Advance",
+    "Moves in the target direction when casting Dark Gate; +3 Max Charges for Dark Gate; +50% additional Cooldown Recovery Speed to Dark Gate; +30% additional Minion Damage if a Dark Gate has been cast recently",
+  ],
   ["Effortless Command", ""], // TLIDB shows only the raw id 1204411023 here; Effortless Command by id/base order
-  ["Crushing Blast", "Enemies have a 25% chance to explode when defeated by an Attack or Spell, dealing True Damage equal to 250% of their Max Life to enemies within a 6 m radius; +30% additional damage to Elites"],
-  ["Storm's Command", "+35% additional Attack Damage for each different Warcry cast for 8 s; -99% additional Empower Skill and Defensive Skill Effect"],
-  ["Fire's Allure", "Inflicts Scorch instead of Ignite; Nearby enemies within 10m -10% Fire Resistance for each stack of Scorch on them"],
-  ["Fiery Fantasy", "+3% additional Ignite Damage, up to +150% , for every +1% Ignite Chance above 100%; +3% additional Wilt Damage, up to +150% , for every +1% Wilt Chance above 100%; +3% additional Trauma Damage, up to +150% , for every +1% Trauma Chance above 100%"]
+  [
+    "Crushing Blast",
+    "Enemies have a 25% chance to explode when defeated by an Attack or Spell, dealing True Damage equal to 250% of their Max Life to enemies within a 6 m radius; +30% additional damage to Elites",
+  ],
+  [
+    "Storm's Command",
+    "+35% additional Attack Damage for each different Warcry cast for 8 s; -99% additional Empower Skill and Defensive Skill Effect",
+  ],
+  [
+    "Fire's Allure",
+    "Inflicts Scorch instead of Ignite; Nearby enemies within 10m -10% Fire Resistance for each stack of Scorch on them",
+  ],
+  [
+    "Fiery Fantasy",
+    "+3% additional Ignite Damage, up to +150% , for every +1% Ignite Chance above 100%; +3% additional Wilt Damage, up to +150% , for every +1% Wilt Chance above 100%; +3% additional Trauma Damage, up to +150% , for every +1% Trauma Chance above 100%",
+  ],
 ]);
-const mutationPrefix = "Mutated Core Talents no longer replace the original talent, but add the following to the Core Talent in the current Talent Panel:";
+const mutationPrefix =
+  "Mutated Core Talents no longer replace the original talent, but add the following to the Core Talent in the current Talent Panel:";
 export function prismMutationAffix(base, downside) {
   const effect = prismMutationCoreEffects.get(base);
   return `${downside}; ${mutationPrefix} [${base}]${effect ? ` ${effect}` : ""}`;
@@ -101,7 +202,10 @@ export function prismSupportsLegendaryAffix(prism) {
 }
 
 export function prismHasMutatedCore(prism) {
-  return prismSupportsLegendaryAffix(prism) && /\bMutated Core Talents no longer replace the original talent\b/i.test(prism.legendaryAffix || "");
+  return (
+    prismSupportsLegendaryAffix(prism) &&
+    /\bMutated Core Talents no longer replace the original talent\b/i.test(prism.legendaryAffix || "")
+  );
 }
 
 // The downside-free wording below predates the TLIDB list; it stays selectable so saved
@@ -109,7 +213,9 @@ export function prismHasMutatedCore(prism) {
 export function prismLegendaryAffixesForBase(base) {
   if (base === "Haze") return [];
   const mutation = `Mutated Core Talents no longer replace the original talent, but add [${base}] to the Core Talent in the current Talent Panel`;
-  const variants = prismMutationCoreEffects.has(base) ? prismMutationDownsides.map((downside) => prismMutationAffix(base, downside)) : [];
+  const variants = prismMutationCoreEffects.has(base)
+    ? prismMutationDownsides.map((downside) => prismMutationAffix(base, downside))
+    : [];
   return [...prismAffixes.legendary, ...variants, mutation];
 }
 
@@ -121,10 +227,13 @@ export function prismMutationDownside(prism) {
 }
 
 export function prismBaseEffect(type, base, legendaryAffix = "") {
-  if (type === "inverse") return "Reflects all Talents within the range to the mirrored area. All Talents within the reflected area have no prerequisites.";
-  if (base === "Haze") return "No fixed core talent effect. The selected Core Talents remain active; this Prism can still have its own random affixes.";
+  if (type === "inverse")
+    return "Reflects all Talents within the range to the mirrored area. All Talents within the reflected area have no prerequisites.";
+  if (base === "Haze")
+    return "No fixed core talent effect. The selected Core Talents remain active; this Prism can still have its own random affixes.";
   if (base === "Phantasmagoria") return "+75% to the effects of Random Affixes on this Prism.";
-  if (prismHasMutatedCore({type,base,legendaryAffix})) return `Adds ${base} to the selected Core Talent of the Advanced Talent Panel.`;
+  if (prismHasMutatedCore({ type, base, legendaryAffix }))
+    return `Adds ${base} to the selected Core Talent of the Advanced Talent Panel.`;
   return `Replaces the Core Talent of the Advanced Talent Panel with ${base}.`;
 }
 
@@ -133,30 +242,43 @@ export function prismReplacesCore(prism) {
 }
 
 export function prismArea(prismOrRadiusAffix) {
-  if(prismOrRadiusAffix?.type==="inverse")return "3x3";
-  const radiusAffix=typeof prismOrRadiusAffix==="string"?prismOrRadiusAffix:prismOrRadiusAffix?.radiusAffix;
+  if (prismOrRadiusAffix?.type === "inverse") return "3x3";
+  const radiusAffix = typeof prismOrRadiusAffix === "string" ? prismOrRadiusAffix : prismOrRadiusAffix?.radiusAffix;
   return radiusAffix?.match(/\d+x\d+/)?.[0] || "1x1";
 }
 
 export function prismAreaBounds(prismOrRadiusAffix, coordinate, columns = 7, rows = 5) {
   const [areaWidth, areaHeight] = prismArea(prismOrRadiusAffix).split("x").map(Number);
   const [column, row] = coordinate.split(",").map(Number);
-  if(prismOrRadiusAffix?.type==="inverse"){
-    const left=Math.max(0,column-1),top=Math.max(0,row-1);
-    return {left,top,width:Math.min(columns-1,column+1)-left+1,height:Math.min(rows-1,row+1)-top+1};
+  if (prismOrRadiusAffix?.type === "inverse") {
+    const left = Math.max(0, column - 1),
+      top = Math.max(0, row - 1);
+    return {
+      left,
+      top,
+      width: Math.min(columns - 1, column + 1) - left + 1,
+      height: Math.min(rows - 1, row + 1) - top + 1,
+    };
   }
-  const width = Math.min(areaWidth, columns), height = Math.min(areaHeight, rows);
+  const width = Math.min(areaWidth, columns),
+    height = Math.min(areaHeight, rows);
   return {
     left: Math.max(0, Math.min(columns - width, column - Math.floor((width - 1) / 2))),
     top: Math.max(0, Math.min(rows - height, row - Math.floor((height - 1) / 2))),
-    width, height
+    width,
+    height,
   };
 }
 
 export function inverseImageReflectedBounds(prism, coordinate, columns = 7, rows = 5) {
   if (prism?.type !== "inverse" || !coordinate) return null;
   const source = prismAreaBounds(prism, coordinate, columns, rows);
-  return { left:columns-source.left-source.width, top:rows-source.top-source.height, width:source.width, height:source.height };
+  return {
+    left: columns - source.left - source.width,
+    top: rows - source.top - source.height,
+    width: source.width,
+    height: source.height,
+  };
 }
 
 export function inverseImageReflectionMap(nodes, prism, coordinate, columns = 7, rows = 5) {
@@ -164,10 +286,11 @@ export function inverseImageReflectionMap(nodes, prism, coordinate, columns = 7,
   if (prism?.type !== "inverse" || !coordinate) return reflected;
   const source = prismAreaBounds(prism, coordinate, columns, rows);
   for (const node of nodes) {
-    const [x,y] = node.coordinate;
-    if (x < source.left || x >= source.left+source.width || y < source.top || y >= source.top+source.height) continue;
-    const target = [columns-1-x, rows-1-y];
-    reflected.set(target.join(","), { source:node, sourceCoordinate:node.coordinate.join(","), coordinate:target });
+    const [x, y] = node.coordinate;
+    if (x < source.left || x >= source.left + source.width || y < source.top || y >= source.top + source.height)
+      continue;
+    const target = [columns - 1 - x, rows - 1 - y];
+    reflected.set(target.join(","), { source: node, sourceCoordinate: node.coordinate.join(","), coordinate: target });
   }
   return reflected;
 }
@@ -189,14 +312,14 @@ export function inverseImageTalentNodes(nodes, prism, coordinate, columns = 7, r
   const reflectedNode = (reflection) => ({
     ...reflection.source,
     coordinate: reflection.coordinate,
-    reflectedFrom: reflection.sourceCoordinate
+    reflectedFrom: reflection.sourceCoordinate,
   });
   return [
     ...nodes.map((node) => {
       const reflection = reflections.get(node.coordinate.join(","));
       return reflection ? reflectedNode(reflection) : node;
     }),
-    ...[...reflections].filter(([target]) => !occupied.has(target)).map(([, reflection]) => reflectedNode(reflection))
+    ...[...reflections].filter(([target]) => !occupied.has(target)).map(([, reflection]) => reflectedNode(reflection)),
   ];
 }
 
@@ -207,28 +330,44 @@ export function inverseImageEffectMultiplier(prism, nodeType) {
 }
 
 export function prismNodeAffixes(prism, nodeType, rank, activeLegendaryCount = 0) {
-  const typeLabel = { micro:"Micro", medium:"Medium", legendary:"Legendary Medium" }[nodeType];
+  const typeLabel = { micro: "Micro", medium: "Medium", legendary: "Legendary Medium" }[nodeType];
   if (!typeLabel || !prism) return [];
   const result = [];
-  for (const [tier, affix] of [["Rare", prism.rareAffix], ["Legendary", prism.legendaryAffix]]) {
+  for (const [tier, affix] of [
+    ["Rare", prism.rareAffix],
+    ["Legendary", prism.legendaryAffix],
+  ]) {
     if (!affix) continue;
-    for (const clause of affix.split(/;\s*(?=All (?:Micro|Medium|Legendary Medium) Talent within the area can ignore)/)) {
-      const applies = clause.startsWith(`All ${typeLabel} Talent within the area also gain:`)
-        || clause.startsWith(`All ${typeLabel} Talent within the area can ignore`)
-        || clause.startsWith(`Points can be allocated to all ${typeLabel} Talent within the area`)
-        || (nodeType === "legendary" && clause.startsWith("When activating 2 Legendary Medium Talent within the area,"));
+    for (const clause of affix.split(
+      /;\s*(?=All (?:Micro|Medium|Legendary Medium) Talent within the area can ignore)/,
+    )) {
+      const applies =
+        clause.startsWith(`All ${typeLabel} Talent within the area also gain:`) ||
+        clause.startsWith(`All ${typeLabel} Talent within the area can ignore`) ||
+        clause.startsWith(`Points can be allocated to all ${typeLabel} Talent within the area`) ||
+        (nodeType === "legendary" && clause.startsWith("When activating 2 Legendary Medium Talent within the area,"));
       if (!applies) continue;
       const needsTwo = clause.startsWith("When activating 2 Legendary Medium Talent within the area,");
       const effect = clause.replace(/^All (?:Micro|Medium|Legendary Medium) Talent within the area also gain:\s*/, "");
-      const perPoint = clause.startsWith(`All ${typeLabel} Talent within the area also gain:`) && nodeType !== "legendary";
-      const scaledEffect = perPoint && rank > 1
-        ? effect.replace(/(?<![\w.])([+-]?\d+(?:\.\d+)?)(?=%|\s+[A-Za-z])/g, (_, amount) => `${amount.startsWith("+") ? "+" : ""}${Number((Number(amount) * rank).toFixed(4))}`)
-        : effect;
+      const perPoint =
+        clause.startsWith(`All ${typeLabel} Talent within the area also gain:`) && nodeType !== "legendary";
+      const scaledEffect =
+        perPoint && rank > 1
+          ? effect.replace(
+              /(?<![\w.])([+-]?\d+(?:\.\d+)?)(?=%|\s+[A-Za-z])/g,
+              (_, amount) => `${amount.startsWith("+") ? "+" : ""}${Number((Number(amount) * rank).toFixed(4))}`,
+            )
+          : effect;
       result.push({
         tier,
         effect: scaledEffect,
         active: rank > 0 && (!needsTwo || activeLegendaryCount >= 2),
-        reason: rank <= 0 ? "Allocate this talent to activate" : needsTwo && activeLegendaryCount < 2 ? `${activeLegendaryCount}/2 Legendary Medium talents allocated in area` : "Active"
+        reason:
+          rank <= 0
+            ? "Allocate this talent to activate"
+            : needsTwo && activeLegendaryCount < 2
+              ? `${activeLegendaryCount}/2 Legendary Medium talents allocated in area`
+              : "Active",
       });
     }
   }

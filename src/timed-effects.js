@@ -49,24 +49,32 @@ export function scheduleLevelAt(schedule, time) {
     return Math.min(max, start + (Number.isFinite(interval) ? Math.floor(t / interval + EPS) : 0));
   }
   if (schedule.kind === "periodic") {
-    const duration = Math.max(0, Number(schedule.durationSeconds) || 0), period = Number(schedule.periodSeconds) || 0;
+    const duration = Math.max(0, Number(schedule.durationSeconds) || 0),
+      period = Number(schedule.periodSeconds) || 0;
     const start = Math.max(0, Number(schedule.startSeconds) || 0);
     if (!(duration > 0) || t < start - EPS) return 0;
     if (!(period > 0) || duration >= period - EPS) return 1;
-    const phase = (t - start) - Math.floor((t - start) / period + EPS) * period;
+    const phase = t - start - Math.floor((t - start) / period + EPS) * period;
     return phase < duration - EPS ? 1 : 0;
   }
   if (schedule.kind === "full") return Number.isFinite(schedule.level) ? schedule.level : 1;
-  if (schedule.kind === "sum") return (schedule.schedules || []).reduce((sum, item) => sum + scheduleLevelAt(item, time), 0);
+  if (schedule.kind === "sum")
+    return (schedule.schedules || []).reduce((sum, item) => sum + scheduleLevelAt(item, time), 0);
   if (schedule.kind === "chance") {
     const { p, rate, cap, first } = chanceParameters(schedule);
     if (!(p > 0) || !(rate > 0) || t < first - EPS) return 0;
     return 1 - (1 - p) ** Math.min(cap, Math.floor((t - first) * rate + EPS) + 1);
   }
-  if (schedule.kind === "union") return 1 - (schedule.schedules || []).reduce((rest, item) => rest * (1 - Math.min(1, scheduleLevelAt(item, time))), 1);
+  if (schedule.kind === "union")
+    return (
+      1 - (schedule.schedules || []).reduce((rest, item) => rest * (1 - Math.min(1, scheduleLevelAt(item, time))), 1)
+    );
   if (schedule.kind === "steps") {
     let level = 0;
-    for (const [at, value] of schedule.points || []) { if (at <= t + EPS) level = Number(value) || 0; else break; }
+    for (const [at, value] of schedule.points || []) {
+      if (at <= t + EPS) level = Number(value) || 0;
+      else break;
+    }
     return level;
   }
   return 0;
@@ -74,8 +82,13 @@ export function scheduleLevelAt(schedule, time) {
 
 function chanceParameters(schedule) {
   const p = Math.max(0, Math.min(1, (Number(schedule.chancePercent) || 0) / 100));
-  const rate = Math.max(0, Number(schedule.hitsPerSecond) || 0), duration = Math.max(0, Number(schedule.durationSeconds) || 0);
-  const first = Number.isFinite(schedule.firstHitSeconds) ? Math.max(0, schedule.firstHitSeconds) : rate > 0 ? 1 / rate : Infinity;
+  const rate = Math.max(0, Number(schedule.hitsPerSecond) || 0),
+    duration = Math.max(0, Number(schedule.durationSeconds) || 0);
+  const first = Number.isFinite(schedule.firstHitSeconds)
+    ? Math.max(0, schedule.firstHitSeconds)
+    : rate > 0
+      ? 1 / rate
+      : Infinity;
   return { p, rate, cap: rate * duration, first };
 }
 
@@ -84,14 +97,19 @@ export function sustainedLevel(schedule) {
   if (!schedule) return 0;
   if (schedule.kind === "ramp") return Math.max(0, Number(schedule.maxStacks) || 0);
   if (schedule.kind === "periodic") {
-    const duration = Math.max(0, Number(schedule.durationSeconds) || 0), period = Number(schedule.periodSeconds) || 0;
+    const duration = Math.max(0, Number(schedule.durationSeconds) || 0),
+      period = Number(schedule.periodSeconds) || 0;
     if (!(duration > 0)) return 0;
     return period > 0 ? Math.min(1, duration / period) : 1;
   }
   if (schedule.kind === "full") return Number.isFinite(schedule.level) ? schedule.level : 1;
   if (schedule.kind === "sum") return (schedule.schedules || []).reduce((sum, item) => sum + sustainedLevel(item), 0);
-  if (schedule.kind === "chance") { const { p, cap } = chanceParameters(schedule); return p > 0 ? 1 - (1 - p) ** cap : 0; }
-  if (schedule.kind === "union") return 1 - (schedule.schedules || []).reduce((rest, item) => rest * (1 - Math.min(1, sustainedLevel(item))), 1);
+  if (schedule.kind === "chance") {
+    const { p, cap } = chanceParameters(schedule);
+    return p > 0 ? 1 - (1 - p) ** cap : 0;
+  }
+  if (schedule.kind === "union")
+    return 1 - (schedule.schedules || []).reduce((rest, item) => rest * (1 - Math.min(1, sustainedLevel(item))), 1);
   if (schedule.kind === "steps") return Number(schedule.sustained) || 0;
   return 0;
 }
@@ -99,17 +117,25 @@ export function sustainedLevel(schedule) {
 /** Times in (0, horizon) where the level changes, sorted. */
 export function scheduleEdges(schedule, horizon = TIMED_EFFECT_HORIZON_SECONDS) {
   const edges = new Set();
-  const push = (time) => { if (time > EPS && time < horizon - EPS) edges.add(Math.round(time * 1e9) / 1e9); };
+  const push = (time) => {
+    if (time > EPS && time < horizon - EPS) edges.add(Math.round(time * 1e9) / 1e9);
+  };
   if (schedule?.kind === "ramp") {
-    const max = Math.max(0, Number(schedule.maxStacks) || 0), start = Math.max(0, Math.min(max, schedule.startStacks ?? 1));
+    const max = Math.max(0, Number(schedule.maxStacks) || 0),
+      start = Math.max(0, Math.min(max, schedule.startStacks ?? 1));
     const interval = Number(schedule.intervalSeconds) > 0 ? Number(schedule.intervalSeconds) : Infinity;
     if (Number.isFinite(interval)) for (let index = 1; index <= max - start; index++) push(index * interval);
   } else if (schedule?.kind === "periodic") {
-    const duration = Math.max(0, Number(schedule.durationSeconds) || 0), period = Number(schedule.periodSeconds) || 0;
+    const duration = Math.max(0, Number(schedule.durationSeconds) || 0),
+      period = Number(schedule.periodSeconds) || 0;
     const start = Math.max(0, Number(schedule.startSeconds) || 0);
     if (duration > 0) {
       push(start);
-      if (period > 0 && duration < period - EPS) for (let cast = start; cast < horizon; cast += period) { push(cast); push(cast + duration); }
+      if (period > 0 && duration < period - EPS)
+        for (let cast = start; cast < horizon; cast += period) {
+          push(cast);
+          push(cast + duration);
+        }
     }
   } else if (schedule?.kind === "steps") {
     for (const [at] of schedule.points || []) push(Number(at));
@@ -118,7 +144,9 @@ export function scheduleEdges(schedule, horizon = TIMED_EFFECT_HORIZON_SECONDS) 
   } else if (schedule?.kind === "chance") {
     // One edge per hit until the hit count reaches the sustained exponent; the level is constant after that.
     const { p, rate, cap, first } = chanceParameters(schedule);
-    if (p > 0 && rate > 0) for (let index = 0; index < Math.ceil(cap - EPS) + 1 && first + index / rate < horizon; index++) push(first + index / rate);
+    if (p > 0 && rate > 0)
+      for (let index = 0; index < Math.ceil(cap - EPS) + 1 && first + index / rate < horizon; index++)
+        push(first + index / rate);
   }
   return [...edges].sort((a, b) => a - b);
 }
@@ -127,13 +155,16 @@ export function scheduleEdges(schedule, horizon = TIMED_EFFECT_HORIZON_SECONDS) 
 export function partFactorAt(part, time) {
   const percent = Number(part?.percent) || 0;
   if (!percent) return 1;
-  const sustained = 1 + percent * sustainedLevel(part.schedule) / 100;
+  const sustained = 1 + (percent * sustainedLevel(part.schedule)) / 100;
   if (!(sustained > 0)) return 1;
-  return (1 + percent * scheduleLevelAt(part.schedule, time) / 100) / sustained;
+  return (1 + (percent * scheduleLevelAt(part.schedule, time)) / 100) / sustained;
 }
 
-const reachesSource = (part, share) => (!part.keys || part.keys.includes(share?.key)) && (part.reach === "hit" ? Boolean(share?.hit) : part.reach === "dot" ? !share?.hit : true);
-const reachesType = (part, type) => !part.type || part.type === type || (part.type === "Elemental" && ELEMENTAL.has(type));
+const reachesSource = (part, share) =>
+  (!part.keys || part.keys.includes(share?.key)) &&
+  (part.reach === "hit" ? Boolean(share?.hit) : part.reach === "dot" ? !share?.hit : true);
+const reachesType = (part, type) =>
+  !part.type || part.type === type || (part.type === "Elemental" && ELEMENTAL.has(type));
 
 /** Factor of a damage source (its share) at `time`: Σ over its types of share × Π the parts that reach that type. */
 export function sourceFactorAt(parts, share, time, partFactor = partFactorAt) {
@@ -141,7 +172,8 @@ export function sourceFactorAt(parts, share, time, partFactor = partFactorAt) {
   if (!active.length) return 1;
   const types = Object.entries(share?.types || {}).filter(([, value]) => Number.isFinite(value) && value > 0);
   const typed = types.reduce((sum, [, value]) => sum + value, 0);
-  const product = (type) => active.filter((part) => reachesType(part, type)).reduce((factor, part) => factor * partFactor(part, time), 1);
+  const product = (type) =>
+    active.filter((part) => reachesType(part, type)).reduce((factor, part) => factor * partFactor(part, time), 1);
   return types.reduce((sum, [type, value]) => sum + value * product(type), 0) + Math.max(0, 1 - typed) * product(null);
 }
 
@@ -157,7 +189,8 @@ export function timedWindowFactor(parts, share, seconds) {
   if (!(seconds > 0) || !(parts || []).some((part) => part && Number(part.percent))) return 1;
   const edges = [0, ...timedBoundaries(parts, seconds), seconds];
   let total = 0;
-  for (let index = 0; index + 1 < edges.length; index++) total += sourceFactorAt(parts, share, edges[index]) * (edges[index + 1] - edges[index]);
+  for (let index = 0; index + 1 < edges.length; index++)
+    total += sourceFactorAt(parts, share, edges[index]) * (edges[index + 1] - edges[index]);
   return total / seconds;
 }
 
@@ -169,7 +202,9 @@ export function hitTypeShares(hit) {
   const key = hit?.key ? { key: hit.key } : {};
   if (!(total > 0)) return { hit: true, types: hit?.damageType ? { [hit.damageType]: 1 } : {}, ...key };
   const types = {};
-  for (const component of components) if (component.type && Number(component.perUse) > 0) types[component.type] = (types[component.type] || 0) + Number(component.perUse) / total;
+  for (const component of components)
+    if (component.type && Number(component.perUse) > 0)
+      types[component.type] = (types[component.type] || 0) + Number(component.perUse) / total;
   return { hit: true, types, ...key };
 }
 
@@ -178,9 +213,17 @@ export function hitTypeShares(hit) {
  * `edges[i]` the start of segment i (edges[0] = 0) and `factors[i]` its factor, plus the sources' shares by recount key.
  */
 export function recountTimedEffects(parts, shares = {}, horizon = TIMED_EFFECT_HORIZON_SECONDS) {
-  const series = (parts || []).filter((part) => part && Number(part.percent)).map((part) => {
-    const edges = [0, ...scheduleEdges(part.schedule, horizon)];
-    return { type: part.type || null, reach: part.reach || "all", ...(part.keys ? { keys: [...part.keys] } : {}), edges, factors: edges.map((edge) => partFactorAt(part, edge)) };
-  });
+  const series = (parts || [])
+    .filter((part) => part && Number(part.percent))
+    .map((part) => {
+      const edges = [0, ...scheduleEdges(part.schedule, horizon)];
+      return {
+        type: part.type || null,
+        reach: part.reach || "all",
+        ...(part.keys ? { keys: [...part.keys] } : {}),
+        edges,
+        factors: edges.map((edge) => partFactorAt(part, edge)),
+      };
+    });
   return series.length ? { parts: series, shares } : null;
 }

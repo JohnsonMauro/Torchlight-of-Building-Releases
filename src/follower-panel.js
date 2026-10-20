@@ -2,13 +2,40 @@ import { escapeHtml } from "./html.js";
 import { coverageBadge } from "./calculation-coverage.js";
 import { combineStatuses, plannerEngines, refineCoverage } from "./line-coverage.js";
 import {
-  followers, followerRarities, followerById, followerRarityById, followerSelection, followerSkillSlots, followerSkillSlotQuantity,
-  tartarusSkillByName, tartarusKeyword, normalizeFollowerState,
-  followerLineStatus, plainFollowerLine, missingFollowerEngine, staticFollowerLineReading, FOLLOWER_BUFFS, FOLLOWER_MAX_SLOTS, FOLLOWER_RARITY_SCHEME,
-  followerSkillEntryName, followerSkillEntryTier, tartarusSkillTierName, staticFollowerAffixReading, tartarusSkillTiers,
-  followerInitialSkillRule, followerSlotSkills, staticFollowerTraitReading
+  followers,
+  followerRarities,
+  followerById,
+  followerRarityById,
+  followerSelection,
+  followerSkillSlots,
+  followerSkillSlotQuantity,
+  tartarusSkillByName,
+  tartarusKeyword,
+  normalizeFollowerState,
+  followerLineStatus,
+  plainFollowerLine,
+  missingFollowerEngine,
+  staticFollowerLineReading,
+  FOLLOWER_BUFFS,
+  FOLLOWER_MAX_SLOTS,
+  FOLLOWER_RARITY_SCHEME,
+  followerSkillEntryName,
+  followerSkillEntryTier,
+  tartarusSkillTierName,
+  staticFollowerAffixReading,
+  tartarusSkillTiers,
+  followerInitialSkillRule,
+  followerSlotSkills,
+  staticFollowerTraitReading,
 } from "./follower-model.js";
-import { tartarusAffixById, tartarusAffixChoices, tartarusAffixLines, tartarusAffixRanges, tartarusAffixSlotPool, tartarusAffixSlots } from "./follower-affixes.js";
+import {
+  tartarusAffixById,
+  tartarusAffixChoices,
+  tartarusAffixLines,
+  tartarusAffixRanges,
+  tartarusAffixSlotPool,
+  tartarusAffixSlots,
+} from "./follower-affixes.js";
 
 // The Hero panel's FOLLOWER tab (2026-10-15; design: the orchestrator's brief). The panel header is a HERO | FOLLOWER tab strip
 // in the Hero Trait / Trait Path tab style; the FOLLOWER tab shows a card mirroring the hero card (portrait, name, a rarity line
@@ -40,7 +67,9 @@ export function readHeroPanelTab(buildId) {
   try {
     const stored = JSON.parse(globalThis.localStorage?.getItem(TAB_STORAGE_KEY) || "{}");
     return stored && stored[buildId] === "follower" ? "follower" : "hero";
-  } catch { return "hero"; }
+  } catch {
+    return "hero";
+  }
 }
 
 /** Remembers a build view's Hero panel tab (UI state only; failures are ignored). */
@@ -50,13 +79,14 @@ export function writeHeroPanelTab(buildId, tab) {
     if (!storage || !buildId) return;
     const stored = JSON.parse(storage.getItem(TAB_STORAGE_KEY) || "{}");
     const next = stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
-    if (tab === "follower") next[buildId] = "follower"; else delete next[buildId];
+    if (tab === "follower") next[buildId] = "follower";
+    else delete next[buildId];
     storage.setItem(TAB_STORAGE_KEY, JSON.stringify(next));
   } catch {}
 }
 
 const rarityClass = (rarity) => `follower-rarity follower-rarity-${escapeHtml(rarity?.id || "rare")}`;
-const tintClass = (rarity) => rarity?.id ? ` follower-tint-${escapeHtml(rarity.id)}` : "";
+const tintClass = (rarity) => (rarity?.id ? ` follower-tint-${escapeHtml(rarity.id)}` : "");
 const skillTitle = (skill, tier) => `${skill.shortName}${tier ? ` ${tier}` : ""}`;
 
 // ---- Line coverage ---------------------------------------------------------------------------------------------------
@@ -64,42 +94,73 @@ const skillTitle = (skill, tier) => `${skill.shortName}${tier ? ` ${tier}` : ""}
 // else the same rules on the text. A modeled buff in calc is refined by the engine layer (a build without its engine reads
 // Inactive); a plain player line reads like the same gear line.
 export function followerLineCoverage(text, { skill = null, kind = "skill", planner = null, follower = null } = {}) {
-  const entry = (planner?.follower?.lines || []).find((line) => line.text === text && (line.skill || null) === (skill?.name || null));
+  const entry = (planner?.follower?.lines || []).find(
+    (line) => line.text === text && (line.skill || null) === (skill?.name || null),
+  );
   const buff = skill ? FOLLOWER_BUFFS.find((item) => item.skill === skill.name && item.pattern.test(text)) : null;
   if (entry?.toggle) {
     if (!entry.active) return { status: "Inactive", reason: entry.reason };
     // src/planner.js settles a buff the build cannot use (no damage over time, no Spell damage, no Steep Strike hit); a planner
     // that was not settled is checked here the same way.
     const missing = buff ? missingFollowerEngine(buff.engine, planner, plannerEngines(planner)) : "";
-    return missing ? { status: "Inactive", reason: `${entry.derivedText}: ${missing}` } : { status: entry.status || "In calc", reason: `${entry.derivedText}: ${entry.reason}` };
+    return missing
+      ? { status: "Inactive", reason: `${entry.derivedText}: ${missing}` }
+      : { status: entry.status || "In calc", reason: `${entry.derivedText}: ${entry.reason}` };
   }
   // 2026-10-17: the planner's reading of every other equipped line (own damage, marks on the dummy, skill-specific rules).
   if (entry?.status) return { status: entry.status, reason: entry.reason };
   // Not equipped: the same resolver on the skill alone (src/follower-model.js staticFollowerLineReading), or on the ULT letter
   // without skills for its special effect (staticFollowerTraitReading).
-  const reading = skill ? staticFollowerLineReading(text, skill) : kind === "trait" && follower ? staticFollowerTraitReading(text, follower) : null;
+  const reading = skill
+    ? staticFollowerLineReading(text, skill)
+    : kind === "trait" && follower
+      ? staticFollowerTraitReading(text, follower)
+      : null;
   if (reading) return reading;
   if (buff) {
     const derived = buff.derive(text.match(buff.pattern));
-    return { status: "In calc", reason: `${derived.summary} (best case when equipped; switch: Config tab, best-case assumptions)` };
+    return {
+      status: "In calc",
+      reason: `${derived.summary} (best case when equipped; switch: Config tab, best-case assumptions)`,
+    };
   }
   const plain = plainFollowerLine(text);
-  if (plain) return { status: refineCoverage("Not modeled", plain, planner || undefined), reason: `read as "${plain}" for you` };
+  if (plain)
+    return { status: refineCoverage("Not modeled", plain, planner || undefined), reason: `read as "${plain}" for you` };
   return followerLineStatus(text, kind);
 }
 
 /** One support affix line's badge: the planner's reading when equipped, else the same rules on the skill alone. */
 export function followerAffixLineCoverage(text, { skill, affix, planner = null } = {}) {
-  const entry = (planner?.follower?.lines || []).find((line) => line.text === text && line.affix === affix?.id && line.skill === skill?.name);
-  if (entry?.toggle && entry.active) return { status: entry.status || "In calc", reason: `${entry.derivedText}: ${entry.reason}` };
+  const entry = (planner?.follower?.lines || []).find(
+    (line) => line.text === text && line.affix === affix?.id && line.skill === skill?.name,
+  );
+  if (entry?.toggle && entry.active)
+    return { status: entry.status || "In calc", reason: `${entry.derivedText}: ${entry.reason}` };
   if (entry?.status) return { status: entry.status, reason: entry.reason };
-  return staticFollowerAffixReading(text, skill, affix) || { status: "Not modeled", reason: "no reader for this support affix on the follower yet" };
+  return (
+    staticFollowerAffixReading(text, skill, affix) || {
+      status: "Not modeled",
+      reason: "no reader for this support affix on the follower yet",
+    }
+  );
 }
 
 const skillCoverage = (skill, planner, affixes = []) => {
-  const lines = [...skill.lines.map((text) => followerLineCoverage(text, { skill, planner })), ...affixes.flatMap((item) => item.lines.map((text) => followerAffixLineCoverage(text, { skill, affix: item.affix, planner })))];
+  const lines = [
+    ...skill.lines.map((text) => followerLineCoverage(text, { skill, planner })),
+    ...affixes.flatMap((item) =>
+      item.lines.map((text) => followerAffixLineCoverage(text, { skill, affix: item.affix, planner })),
+    ),
+  ];
   const status = combineStatuses(lines.map((line) => line.status));
-  const reasons = [...new Set(lines.filter((line) => line.status !== "In calc" && line.status !== "No DPS effect").map((line) => `${line.status}: ${line.reason}`))];
+  const reasons = [
+    ...new Set(
+      lines
+        .filter((line) => line.status !== "In calc" && line.status !== "No DPS effect")
+        .map((line) => `${line.status}: ${line.reason}`),
+    ),
+  ];
   return { status, reason: reasons.join("; ") };
 };
 
@@ -114,7 +175,9 @@ function cardMarkup(selection, artwork) {
 
 /** The ULT letter's special effects ({ name, lines, modifierId }; one per letter in the game data), or []. */
 export function followerSpecialEffects(follower) {
-  return follower?.kind === "named" && follower.traitName ? [{ name: follower.traitName, lines: follower.traitLines, modifierId: follower.specialEffect?.modifierId ?? null }] : [];
+  return follower?.kind === "named" && follower.traitName
+    ? [{ name: follower.traitName, lines: follower.traitLines, modifierId: follower.specialEffect?.modifierId ?? null }]
+    : [];
 }
 
 // The card's ULT special effect (2026-10-19 user request, as on the in-game letter tooltip): the game ties each effect to its
@@ -125,7 +188,12 @@ function specialEffectMarkup(follower) {
   const effects = followerSpecialEffects(follower);
   if (!effects.length) return "";
   if (effects.length > 1) {
-    const options = effects.map((effect, index) => `<option value="${escapeHtml(effect.name)}"${index ? "" : " selected"}>${escapeHtml(effect.name)}</option>`).join("");
+    const options = effects
+      .map(
+        (effect, index) =>
+          `<option value="${escapeHtml(effect.name)}"${index ? "" : " selected"}>${escapeHtml(effect.name)}</option>`,
+      )
+      .join("");
     return `<div class="special-affix-block follower-special-effect-choice"><label class="activation-roll-kind activation-affix-choice"><span>Special effect</span><select data-follower-special-effect data-native-select aria-label="Special effect">${options}</select></label></div>`;
   }
   const name = escapeHtml(effects[0].name);
@@ -135,7 +203,8 @@ function specialEffectMarkup(follower) {
 // The hidden select a slot's searchable dropdown reads: the empty choice, then the eligible skills by kind; a skill in another
 // slot is disabled (each skill once), so the dropdown leaves it out.
 function slotRowsMarkup(selection, state, planner, artwork) {
-  if (!selection) return `<div class="hero-traits-pending follower-pending"><strong>Select a follower</strong><span>Choose a follower to equip its Tartarus Skills.</span><button type="button" class="button" data-change-follower>Choose Follower</button></div>`;
+  if (!selection)
+    return `<div class="hero-traits-pending follower-pending"><strong>Select a follower</strong><span>Choose a follower to equip its Tartarus Skills.</span><button type="button" class="button" data-change-follower>Choose Follower</button></div>`;
   const { follower, rarity } = selection;
   const stored = normalizeFollowerState(state?.followers).skills;
   const chosen = stored.map(followerSkillEntryName);
@@ -144,7 +213,8 @@ function slotRowsMarkup(selection, state, planner, artwork) {
     // Slot 1 is the letter's initial skill (2026-10-19 rework).
     const initial = index === 0;
     const skill = tartarusSkillByName(chosen[index]);
-    if (!skill) return `<div class="follower-skill-slot-wrap"><button type="button" class="hero-tier follower-skill-slot empty" data-follower-skill-slot="${index}" aria-label="${initial ? "Choose the initial skill (slot 1)" : `Choose a Tartarus Skill for slot ${index + 1}`}">${label}<span class="follower-skill-art"><b aria-hidden="true">+</b></span><span class="tier-divider"></span><span class="follower-skill-info"><small>${initial ? "Initial skill" : "Empty slot"}</small><strong>${initial ? "Choose the initial skill" : "Choose a Tartarus Skill"}</strong></span></button></div>`;
+    if (!skill)
+      return `<div class="follower-skill-slot-wrap"><button type="button" class="hero-tier follower-skill-slot empty" data-follower-skill-slot="${index}" aria-label="${initial ? "Choose the initial skill (slot 1)" : `Choose a Tartarus Skill for slot ${index + 1}`}">${label}<span class="follower-skill-art"><b aria-hidden="true">+</b></span><span class="tier-divider"></span><span class="follower-skill-info"><small>${initial ? "Initial skill" : "Empty slot"}</small><strong>${initial ? "Choose the initial skill" : "Choose a Tartarus Skill"}</strong></span></button></div>`;
     const tier = followerSkillEntryTier(stored[index]);
     return `<div class="follower-skill-slot-wrap"><button type="button" class="hero-tier follower-skill-slot filled" data-follower-skill-slot="${index}" data-follower-skill-tooltip="${escapeHtml(skill.name)}" aria-label="${escapeHtml(tartarusSkillTierName(skill, tier))}, ${initial ? "initial skill, " : ""}slot ${index + 1}; right-click to clear">${label}<span class="follower-skill-art">${artwork(skill.icon, skill.name, "hero-choice-art follower-skill-icon")}</span><span class="tier-divider"></span><span class="follower-skill-info"><small>${initial ? "Initial skill" : escapeHtml(KIND_LABEL[skill.kind] || "Tartarus Skill")}</small><strong>${escapeHtml(skillTitle(skill, tier))}</strong><small class="follower-skill-summary">${escapeHtml(followerSkillSummary(stored[index]))}</small></span></button></div>`;
   });
@@ -154,7 +224,9 @@ function slotRowsMarkup(selection, state, planner, artwork) {
 // A filled slot row's summary (2026-10-19 user request: the editor moved into the skill picker): "Tier III · Catalyst, Stable
 // Charge", or "Tier III · No affixes".
 export function followerSkillSummary(entry) {
-  const names = (entry && typeof entry === "object" ? entry.affixes || [] : []).map((value) => value ? tartarusAffixById(value.id)?.name : null).filter(Boolean);
+  const names = (entry && typeof entry === "object" ? entry.affixes || [] : [])
+    .map((value) => (value ? tartarusAffixById(value.id)?.name : null))
+    .filter(Boolean);
   return `Tier ${followerSkillEntryTier(entry)} · ${names.length ? names.join(", ") : "No affixes"}`;
 }
 
@@ -166,7 +238,13 @@ export function followerSkillSummary(entry) {
 // The selects are native (data-native-select: no type-to-search popup) with dark options.
 const draftOf = (entry) => {
   const name = followerSkillEntryName(entry);
-  return name ? { name, tier: followerSkillEntryTier(entry), affixes: entry && typeof entry === "object" ? [...(entry.affixes || [])] : [] } : null;
+  return name
+    ? {
+        name,
+        tier: followerSkillEntryTier(entry),
+        affixes: entry && typeof entry === "object" ? [...(entry.affixes || [])] : [],
+      }
+    : null;
 };
 
 /**
@@ -180,28 +258,40 @@ export function followerSkillDraft(state, slot, name) {
   const entry = current.skills[slot];
   if (followerSkillEntryName(entry) === skill.name) return draftOf(entry);
   const rule = slot === 0 ? followerInitialSkillRule(current.rarity) : null;
-  return rule && tartarusSkillTiers(skill).includes(rule.tier) ? { name: skill.name, tier: rule.tier, affixes: [] } : draftOf(skill.name);
+  return rule && tartarusSkillTiers(skill).includes(rule.tier)
+    ? { name: skill.name, tier: rule.tier, affixes: [] }
+    : draftOf(skill.name);
 }
 
 /** The state with the draft saved in slot `slot` (skill, tier and affixes together; a skill moved from another slot leaves it). */
 export function applyFollowerSkillDraft(state, slot, draft) {
   if (!draft?.name) return normalizeFollowerState(state?.followers);
   const moved = setFollowerSkill(state, slot, draft.name);
-  const skills = moved.skills.map((item, index) => index === slot ? { name: draft.name, tier: draft.tier, affixes: draft.affixes || [] } : item);
+  const skills = moved.skills.map((item, index) =>
+    index === slot ? { name: draft.name, tier: draft.tier, affixes: draft.affixes || [] } : item,
+  );
   return normalizeFollowerState({ ...moved, skills });
 }
 
 /** The draft at `tier` (the still-valid affixes stay, as setFollowerSkillTier keeps them); every slot, the initial skill too. */
 export function followerDraftWithTier(state, slot, draft, tier) {
-  return draftOf(setFollowerSkillTier({ followers: applyFollowerSkillDraft(state, slot, draft) }, slot, tier).skills[slot]);
+  return draftOf(
+    setFollowerSkillTier({ followers: applyFollowerSkillDraft(state, slot, draft) }, slot, tier).skills[slot],
+  );
 }
 
 /** The draft with support affix `affixSlot` set to `id` (null clears it). */
 export function followerDraftWithAffix(state, slot, draft, affixSlot, id, rolls = null) {
-  return draftOf(setFollowerSkillAffix({ followers: applyFollowerSkillDraft(state, slot, draft) }, slot, affixSlot, id, rolls).skills[slot]);
+  return draftOf(
+    setFollowerSkillAffix({ followers: applyFollowerSkillDraft(state, slot, draft) }, slot, affixSlot, id, rolls)
+      .skills[slot],
+  );
 }
 
-const tierSlotNote = (skill, tier) => { const slots = tartarusAffixSlots(skill, tier); return !slots.total ? "no affix slots" : `${slots.total} affix slot${slots.total === 1 ? "" : "s"}`; };
+const tierSlotNote = (skill, tier) => {
+  const slots = tartarusAffixSlots(skill, tier);
+  return !slots.total ? "no affix slots" : `${slots.total} affix slot${slots.total === 1 ? "" : "s"}`;
+};
 
 /**
  * The Tier select of the preview card's "Tier:" fact row (2026-10-19 user decision: the dropdown sits in the row; every slot,
@@ -210,7 +300,12 @@ const tierSlotNote = (skill, tier) => { const slots = tartarusAffixSlots(skill, 
 export function followerTierSelectMarkup(draft, { initial = null } = {}) {
   const skill = tartarusSkillByName(draft?.name);
   if (!skill) return "";
-  const options = tartarusSkillTiers(skill).map((item) => `<option value="${item}"${item === draft.tier ? " selected" : ""}>${item} · ${tierSlotNote(skill, item)}${initial && item === initial.tier ? ` (${initial.rarityName ? `${initial.rarityName} ` : ""}default)` : ""}</option>`).join("");
+  const options = tartarusSkillTiers(skill)
+    .map(
+      (item) =>
+        `<option value="${item}"${item === draft.tier ? " selected" : ""}>${item} · ${tierSlotNote(skill, item)}${initial && item === initial.tier ? ` (${initial.rarityName ? `${initial.rarityName} ` : ""}default)` : ""}</option>`,
+    )
+    .join("");
   return `<select class="planner-select follower-tier-select" data-follower-draft-tier data-native-select aria-label="${initial ? "Initial skill tier" : "Tier"}">${options}</select>`;
 }
 
@@ -224,19 +319,46 @@ export function followerSkillEditorMarkup(draft) {
   const blocks = Array.from({ length: total }, (_, index) => {
     const current = Number(chosen[index]?.id) || null;
     // One affix of a name per skill: an affix chosen in another slot is disabled.
-    const taken = new Set(chosen.map((value, k) => k !== index && value ? tartarusAffixById(value.id)?.name : null).filter(Boolean));
-    const option = (affix) => `<option value="${affix.id}"${affix.id === current ? " selected" : ""}${taken.has(affix.name) ? " disabled" : ""}>${escapeHtml(affix.name)}</option>`;
+    const taken = new Set(
+      chosen.map((value, k) => (k !== index && value ? tartarusAffixById(value.id)?.name : null)).filter(Boolean),
+    );
+    const option = (affix) =>
+      `<option value="${affix.id}"${affix.id === current ? " selected" : ""}${taken.has(affix.name) ? " disabled" : ""}>${escapeHtml(affix.name)}</option>`;
     const choices = tartarusAffixChoices(skill, tier, index);
     const any = tartarusAffixSlotPool(skill, tier, index) === "any";
-    const groups = any ? [["Drop", choices.filter((affix) => affix.pool === "drop")], ["Tempering", choices.filter((affix) => affix.pool === "forge")]] : [[null, choices]];
-    const options = groups.map(([label, list]) => list.length ? (label ? `<optgroup label="${label}">${list.map(option).join("")}</optgroup>` : list.map(option).join("")) : "").join("");
+    const groups = any
+      ? [
+          ["Drop", choices.filter((affix) => affix.pool === "drop")],
+          ["Tempering", choices.filter((affix) => affix.pool === "forge")],
+        ]
+      : [[null, choices]];
+    const options = groups
+      .map(([label, list]) =>
+        list.length
+          ? label
+            ? `<optgroup label="${label}">${list.map(option).join("")}</optgroup>`
+            : list.map(option).join("")
+          : "",
+      )
+      .join("");
     const affix = current ? tartarusAffixById(current) : null;
     const label = `Support affix ${index + 1}${any ? " · Drop or Tempering" : ""}`;
-    const rolls = tartarusAffixRanges(affix).map((range, k) => `<input class="affix-roll-number" type="number" min="${range.min}" max="${range.max}" step="1" value="${escapeHtml(String(chosen[index]?.rolls?.[k] ?? range.max))}" data-follower-draft-roll="${index}:${k}" aria-label="${escapeHtml(affix.name)} roll ${k + 1}">`).join("");
-    const text = affix ? tartarusAffixLines(affix, chosen[index]?.rolls || []).map((line) => `<p>${escapeHtml(line)}</p>`).join("") : "";
+    const rolls = tartarusAffixRanges(affix)
+      .map(
+        (range, k) =>
+          `<input class="affix-roll-number" type="number" min="${range.min}" max="${range.max}" step="1" value="${escapeHtml(String(chosen[index]?.rolls?.[k] ?? range.max))}" data-follower-draft-roll="${index}:${k}" aria-label="${escapeHtml(affix.name)} roll ${k + 1}">`,
+      )
+      .join("");
+    const text = affix
+      ? tartarusAffixLines(affix, chosen[index]?.rolls || [])
+          .map((line) => `<p>${escapeHtml(line)}</p>`)
+          .join("")
+      : "";
     return `<div class="follower-affix-block"><label class="follower-affix-field"><span class="follower-affix-label">${escapeHtml(label)}</span><select class="planner-select" data-follower-draft-affix="${index}" data-native-select aria-label="${escapeHtml(label)}"><option value="">None</option>${options}</select></label>${rolls}${text ? `<div class="follower-affix-text">${text}</div>` : ""}</div>`;
   });
-  return blocks.length ? `<section class="follower-skill-editor" aria-label="${escapeHtml(skill.shortName)} support affixes">${blocks.join("")}</section>` : "";
+  return blocks.length
+    ? `<section class="follower-skill-editor" aria-label="${escapeHtml(skill.shortName)} support affixes">${blocks.join("")}</section>`
+    : "";
 }
 
 /** The FOLLOWER tab's content: the follower card and the skill slot rows. */
@@ -249,19 +371,30 @@ export function followerPanelMarkup({ state, planner = null, artwork }) {
 // One card per follower and rarity (a species follower in each of its rarities, a named follower in Origin), as TLIDB lists
 // the Recommendation Letters.
 export function followerPickerOptions(query = "") {
-  const needle = String(query || "").trim().toLowerCase();
-  return followers.flatMap((follower) => follower.rarities.map((rarityId) => ({ follower, rarity: followerRarityById(rarityId) })))
-    .filter(({ follower, rarity }) => !needle || `${follower.displayName} ${follower.species} ${follower.title} ${follower.traitName} ${rarity.name}`.toLowerCase().includes(needle));
+  const needle = String(query || "")
+    .trim()
+    .toLowerCase();
+  return followers
+    .flatMap((follower) => follower.rarities.map((rarityId) => ({ follower, rarity: followerRarityById(rarityId) })))
+    .filter(
+      ({ follower, rarity }) =>
+        !needle ||
+        `${follower.displayName} ${follower.species} ${follower.title} ${follower.traitName} ${rarity.name}`
+          .toLowerCase()
+          .includes(needle),
+    );
 }
 
 export function followerPickerMarkup(query, state) {
   const current = normalizeFollowerState(state?.followers);
   const options = followerPickerOptions(query);
   if (!options.length) return '<p class="hero-selector-empty">No followers match that search.</p>';
-  return options.map(({ follower, rarity }) => {
-    const selected = current.followerId === follower.id && current.rarity === rarity.id;
-    return `<button type="button" class="hero-selector-card follower-selector-card${tintClass(rarity)} ${selected ? "selected" : ""}" data-select-follower="${escapeHtml(follower.id)}" data-follower-rarity="${escapeHtml(rarity.id)}" data-follower-tooltip="${escapeHtml(follower.id)}" data-follower-tooltip-rarity="${escapeHtml(rarity.id)}" aria-pressed="${selected}">${follower.portrait ? `<img src="${escapeHtml(follower.portrait)}" alt="">` : `<span class="hero-card-fallback" aria-hidden="true">${escapeHtml(follower.name.slice(0, 2).toUpperCase())}</span>`}<strong>${escapeHtml(follower.displayName)}</strong><small class="${rarityClass(rarity)}">${escapeHtml(rarity.name)} · ${followerSkillSlotQuantity(follower, rarity.id)} skill slot${followerSkillSlotQuantity(follower, rarity.id) === 1 ? "" : "s"}</small></button>`;
-  }).join("");
+  return options
+    .map(({ follower, rarity }) => {
+      const selected = current.followerId === follower.id && current.rarity === rarity.id;
+      return `<button type="button" class="hero-selector-card follower-selector-card${tintClass(rarity)} ${selected ? "selected" : ""}" data-select-follower="${escapeHtml(follower.id)}" data-follower-rarity="${escapeHtml(rarity.id)}" data-follower-tooltip="${escapeHtml(follower.id)}" data-follower-tooltip-rarity="${escapeHtml(rarity.id)}" aria-pressed="${selected}">${follower.portrait ? `<img src="${escapeHtml(follower.portrait)}" alt="">` : `<span class="hero-card-fallback" aria-hidden="true">${escapeHtml(follower.name.slice(0, 2).toUpperCase())}</span>`}<strong>${escapeHtml(follower.displayName)}</strong><small class="${rarityClass(rarity)}">${escapeHtml(rarity.name)} · ${followerSkillSlotQuantity(follower, rarity.id)} skill slot${followerSkillSlotQuantity(follower, rarity.id) === 1 ? "" : "s"}</small></button>`;
+    })
+    .join("");
 }
 
 /** The state with support affix `affixSlot` of skill slot `slot` set to affix `id` (null clears it); the slot keeps its tier. */
@@ -273,7 +406,7 @@ export function setFollowerSkillAffix(state, slot, affixSlot, id, rolls = null) 
   const tier = followerSkillEntryTier(entry);
   const affixes = [...(entry && typeof entry === "object" ? entry.affixes : [])];
   affixes[affixSlot] = id ? { id: Number(id), ...(rolls ? { rolls } : {}) } : null;
-  const skills = current.skills.map((item, index) => index === slot ? { name, tier, affixes } : item);
+  const skills = current.skills.map((item, index) => (index === slot ? { name, tier, affixes } : item));
   return normalizeFollowerState({ ...current, skills });
 }
 
@@ -288,14 +421,23 @@ export function setFollowerSkillTier(state, slot, tier) {
   const name = followerSkillEntryName(entry);
   const skill = tartarusSkillByName(name);
   if (!name || !tartarusSkillTiers(skill).includes(tier)) return current;
-  const chosen = (entry && typeof entry === "object" ? entry.affixes : []).map((value, index) => value ? { ...value, index } : null).filter(Boolean);
+  const chosen = (entry && typeof entry === "object" ? entry.affixes : [])
+    .map((value, index) => (value ? { ...value, index } : null))
+    .filter(Boolean);
   const { total } = tartarusAffixSlots(skill, tier);
   const fits = (value, index) => tartarusAffixChoices(skill, tier, index).some((affix) => affix.id === value.id);
   const affixes = Array.from({ length: total }, () => null);
   const rest = [];
-  for (const value of chosen) { if (value.index < total && fits(value, value.index)) affixes[value.index] = { id: value.id, ...(value.rolls ? { rolls: value.rolls } : {}) }; else rest.push(value); }
-  for (const value of rest) { const free = affixes.findIndex((item, index) => !item && fits(value, index)); if (free >= 0) affixes[free] = { id: value.id, ...(value.rolls ? { rolls: value.rolls } : {}) }; }
-  const skills = current.skills.map((item, index) => index === slot ? { name, tier, affixes } : item);
+  for (const value of chosen) {
+    if (value.index < total && fits(value, value.index))
+      affixes[value.index] = { id: value.id, ...(value.rolls ? { rolls: value.rolls } : {}) };
+    else rest.push(value);
+  }
+  for (const value of rest) {
+    const free = affixes.findIndex((item, index) => !item && fits(value, index));
+    if (free >= 0) affixes[free] = { id: value.id, ...(value.rolls ? { rolls: value.rolls } : {}) };
+  }
+  const skills = current.skills.map((item, index) => (index === slot ? { name, tier, affixes } : item));
   return normalizeFollowerState({ ...current, skills });
 }
 
@@ -309,15 +451,26 @@ export function pickFollower(state, followerId, rarity) {
   if (!follower) return normalizeFollowerState(state?.followers);
   const current = normalizeFollowerState(state?.followers);
   // Another rarity starts the initial skill at that rarity's default tier (its still-valid affixes stay).
-  const previous = current.skills.map((entry, index) => index === 0 && entry && typeof entry === "object" && current.rarity !== rarity ? { name: entry.name, affixes: entry.affixes } : entry);
-  return normalizeFollowerState({ followerId, rarity, rarityScheme: FOLLOWER_RARITY_SCHEME, skills: Array.from({ length: followerSkillSlots(follower, rarity) }, (_, index) => previous[index] ?? null) });
+  const previous = current.skills.map((entry, index) =>
+    index === 0 && entry && typeof entry === "object" && current.rarity !== rarity
+      ? { name: entry.name, affixes: entry.affixes }
+      : entry,
+  );
+  return normalizeFollowerState({
+    followerId,
+    rarity,
+    rarityScheme: FOLLOWER_RARITY_SCHEME,
+    skills: Array.from({ length: followerSkillSlots(follower, rarity) }, (_, index) => previous[index] ?? null),
+  });
 }
 
 /** The state with slot `index` set to `name` (null clears it); a skill moved from another slot keeps its tier and affixes. */
 export function setFollowerSkill(state, index, name) {
   const current = normalizeFollowerState(state?.followers);
   const moved = name ? current.skills.find((entry) => followerSkillEntryName(entry) === name) : null;
-  const skills = current.skills.map((entry, slot) => slot === index ? (name ? moved ?? name : null) : followerSkillEntryName(entry) === name ? null : entry);
+  const skills = current.skills.map((entry, slot) =>
+    slot === index ? (name ? (moved ?? name) : null) : followerSkillEntryName(entry) === name ? null : entry,
+  );
   return normalizeFollowerState({ ...current, skills });
 }
 
@@ -335,10 +488,27 @@ export function followerSkillTooltipHtml(skillName, { state, planner = null } = 
   const affixes = equipped?.affixes || [];
   const coverage = inactive ? { status: "Inactive", reason: inactive.reason } : skillCoverage(skill, planner, affixes);
   const slots = tier ? tartarusAffixSlots(skill, tier) : null;
-  const supportText = !slots?.total ? "no support affix slots" : `${slots.random} support affix slot${slots.random === 1 ? "" : "s"}${slots.optional ? ` and ${slots.optional} that may be empty (Tempering fills it)` : ""}, ${affixes.length} chosen`;
-  const timing = [skill.castTime ? `Cast ${skill.castTime} s` : "", skill.cooldown ? `Cooldown ${skill.cooldown} s` : "", skill.level ? `Lv. ${skill.level}` : ""].filter(Boolean).join(" · ");
+  const supportText = !slots?.total
+    ? "no support affix slots"
+    : `${slots.random} support affix slot${slots.random === 1 ? "" : "s"}${slots.optional ? ` and ${slots.optional} that may be empty (Tempering fills it)` : ""}, ${affixes.length} chosen`;
+  const timing = [
+    skill.castTime ? `Cast ${skill.castTime} s` : "",
+    skill.cooldown ? `Cooldown ${skill.cooldown} s` : "",
+    skill.level ? `Lv. ${skill.level}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const keywords = (skill.keywords || []).map((name) => tartarusKeyword(name)).filter(Boolean);
-  const affixMarkup = affixes.map((item) => item.lines.map((text, index) => { const line = followerAffixLineCoverage(text, { skill, affix: item.affix, planner }); return `<p>${index ? "" : `<b>${escapeHtml(item.affix.name)}:</b> `}${escapeHtml(text)} ${coverageBadge(line.status, line.reason)}</p>`; }).join("")).join("");
+  const affixMarkup = affixes
+    .map((item) =>
+      item.lines
+        .map((text, index) => {
+          const line = followerAffixLineCoverage(text, { skill, affix: item.affix, planner });
+          return `<p>${index ? "" : `<b>${escapeHtml(item.affix.name)}:</b> `}${escapeHtml(text)} ${coverageBadge(line.status, line.reason)}</p>`;
+        })
+        .join(""),
+    )
+    .join("");
   return `<div class="hero-trait-tooltip-head"><strong>${escapeHtml(tartarusSkillTierName(skill, tier))}</strong>${coverageBadge(coverage.status, coverage.reason)}<em>${escapeHtml(KIND_LABEL[skill.kind] || "Tartarus Skill")}</em></div><small class="hero-trait-unlock">${escapeHtml([skill.tags.join(", "), `Followers: ${skill.species.join(", ")}`].filter(Boolean).join(" · "))}</small><div class="hero-trait-effects">${skill.lines.map((text) => `<p>${escapeHtml(text)}</p>`).join("")}${keywords.map((keyword) => `<p class="follower-keyword"><b>${escapeHtml(keyword.name)}:</b> ${escapeHtml(keyword.text.join(" "))}</p>`).join("")}${affixMarkup ? `<p><b>Support affixes</b></p>${affixMarkup}` : ""}</div><small class="hero-trait-source">${escapeHtml([timing, tier ? `Tier ${tier}: ${supportText}` : ""].filter(Boolean).join(" · "))}</small>`;
 }
 
@@ -347,8 +517,20 @@ export function followerTooltipHtml(followerId, { state, planner = null, rarityI
   const selection = followerSelection(state);
   const follower = selection?.follower?.id === followerId ? selection.follower : followerById(followerId);
   if (!follower) return null;
-  const rarity = rarityId && follower.rarities.includes(rarityId) ? followerRarityById(rarityId) : selection?.follower?.id === follower.id ? selection.rarity : followerRarityById(follower.rarities[follower.rarities.length - 1]);
-  const lines = follower.traitLines.map((text) => ({ text, coverage: followerLineCoverage(text, { kind: "trait", planner: selection?.follower?.id === follower.id ? planner : null, follower }) }));
+  const rarity =
+    rarityId && follower.rarities.includes(rarityId)
+      ? followerRarityById(rarityId)
+      : selection?.follower?.id === follower.id
+        ? selection.rarity
+        : followerRarityById(follower.rarities[follower.rarities.length - 1]);
+  const lines = follower.traitLines.map((text) => ({
+    text,
+    coverage: followerLineCoverage(text, {
+      kind: "trait",
+      planner: selection?.follower?.id === follower.id ? planner : null,
+      follower,
+    }),
+  }));
   const badge = lines.length ? coverageBadge(combineStatuses(lines.map((line) => line.coverage.status))) : "";
   // A ULT letter's special effect (one per letter; game modifier specialEffect.modifierId) with its coverage badges.
   const effect = followerSpecialEffects(follower)[0] || null;
@@ -373,12 +555,20 @@ export function tartarusSkillRarity(skill, tier = null) {
  */
 export function followerTooltipRarity({ state, followerId = null, rarityId = null, skillName = null } = {}) {
   const selection = followerSelection(state);
-  if (skillName) return tartarusSkillRarity(tartarusSkillByName(skillName), [...(selection?.skills || []), ...(selection?.inactiveSkills || [])].find((entry) => entry.skill.name === skillName)?.tier || null);
+  if (skillName)
+    return tartarusSkillRarity(
+      tartarusSkillByName(skillName),
+      [...(selection?.skills || []), ...(selection?.inactiveSkills || [])].find(
+        (entry) => entry.skill.name === skillName,
+      )?.tier || null,
+    );
   if (!followerId) return selection?.rarity?.id || null;
   const follower = followerById(followerId);
   if (!follower) return null;
   if (rarityId && follower.rarities.includes(rarityId)) return rarityId;
-  return selection?.follower?.id === follower.id ? selection.rarity?.id || null : follower.rarities[follower.rarities.length - 1];
+  return selection?.follower?.id === follower.id
+    ? selection.rarity?.id || null
+    : follower.rarities[follower.rarities.length - 1];
 }
 
 // ---- Skill picker ---------------------------------------------------------------------------------------------------
@@ -417,27 +607,60 @@ export function followerSkillSelectorView({ state, slot, query = "", choiceIndex
   const initial = rule ? { ...rule, rarityName: selection.rarity?.name || "" } : null;
   const chosen = normalizeFollowerState(state?.followers).skills.map(followerSkillEntryName);
   const others = new Set(chosen.filter((name, index) => name && index !== slot));
-  const needle = String(query || "").trim().toLowerCase();
-  const matches = entries.map((entry, index) => ({ entry, index })).filter(({ entry }) => !needle || [entry.name, entry.shortName, ...entry.tags, ...entry.lines].join(" ").toLowerCase().includes(needle));
-  const row = ({ entry, index }) => `<button type="button" class="selector-result${tintClass({ id: tartarusSkillRarity(entry) })} ${index === choiceIndex ? "selected" : ""}" data-selector-choice="${index}">${artwork(entry.icon, entry.name, "support-art")}<span><strong>${escapeHtml(entry.name)}</strong><small>${entry.tags.map((tag) => `<em>${escapeHtml(tag)}</em>`).join("")}</small></span></button>`;
-  const resultsHtml = ["tartarus", "origin"].map((kind) => {
-    const group = matches.filter(({ entry }) => entry.kind === kind);
-    return group.length ? `<h4 class="follower-selector-group">${escapeHtml(KIND_LABEL[kind])}s</h4>${group.map(row).join("")}` : "";
-  }).join("") || `<p class="muted">No matching entries.</p>`;
+  const needle = String(query || "")
+    .trim()
+    .toLowerCase();
+  const matches = entries
+    .map((entry, index) => ({ entry, index }))
+    .filter(
+      ({ entry }) =>
+        !needle ||
+        [entry.name, entry.shortName, ...entry.tags, ...entry.lines].join(" ").toLowerCase().includes(needle),
+    );
+  const row = ({ entry, index }) =>
+    `<button type="button" class="selector-result${tintClass({ id: tartarusSkillRarity(entry) })} ${index === choiceIndex ? "selected" : ""}" data-selector-choice="${index}">${artwork(entry.icon, entry.name, "support-art")}<span><strong>${escapeHtml(entry.name)}</strong><small>${entry.tags.map((tag) => `<em>${escapeHtml(tag)}</em>`).join("")}</small></span></button>`;
+  const resultsHtml =
+    ["tartarus", "origin"]
+      .map((kind) => {
+        const group = matches.filter(({ entry }) => entry.kind === kind);
+        return group.length
+          ? `<h4 class="follower-selector-group">${escapeHtml(KIND_LABEL[kind])}s</h4>${group.map(row).join("")}`
+          : "";
+      })
+      .join("") || `<p class="muted">No matching entries.</p>`;
   const title = `Select ${selection ? `${selection.follower.displayName} ${initial ? "initial skill" : `skill ${slot + 1}`}` : "Tartarus Skill"} · ${entries.length} available`;
   const entry = entries[choiceIndex];
-  if (!entry) return { title, resultsHtml, detailHtml: `<p>Select a skill to configure</p>`, confirmDisabled: true, confirmLabel: "Confirm" };
+  if (!entry)
+    return {
+      title,
+      resultsHtml,
+      detailHtml: `<p>Select a skill to configure</p>`,
+      confirmDisabled: true,
+      confirmLabel: "Confirm",
+    };
   const installed = others.has(entry.name);
   // Max 1 Origin Tartarus Skill per follower (game text): another slot's Origin skill blocks a second, like Installed.
-  const limitReached = !installed && entry.kind === "origin" && chosen.some((name, index) => index !== slot && tartarusSkillByName(name)?.kind === "origin");
+  const limitReached =
+    !installed &&
+    entry.kind === "origin" &&
+    chosen.some((name, index) => index !== slot && tartarusSkillByName(name)?.kind === "origin");
   const effects = entry.lines.filter((line) => !/:$/.test(line));
   // The editor works on the highlighted skill's draft (src/app.js); without one, the slot's own values or the skill's defaults.
   const editorDraft = draft?.name === entry.name ? draft : followerSkillDraft(state, slot, entry.name);
   const editor = followerSkillEditorMarkup(editorDraft);
   // The "Tier:" row holds the Tier select (2026-10-19 user decision); the header names the draft's tier ("Black Hole II").
   const tierRow = `<div class="follower-tier-row"><span>Tier:</span>${followerTierSelectMarkup(editorDraft, { initial })}</div>`;
-  const facts = [["Cast Time", Number.isFinite(entry.castTime) ? `${entry.castTime} s` : ""], ["Cooldown", Number.isFinite(entry.cooldown) ? `${entry.cooldown} s` : ""]].filter(([, value]) => value);
+  const facts = [
+    ["Cast Time", Number.isFinite(entry.castTime) ? `${entry.castTime} s` : ""],
+    ["Cooldown", Number.isFinite(entry.cooldown) ? `${entry.cooldown} s` : ""],
+  ].filter(([, value]) => value);
   const headerTier = editorDraft?.tier || tartarusSkillTiers(entry).at(-1);
   const detailHtml = `<article class="selector-preview${tintClass({ id: tartarusSkillRarity(entry) })}"><div class="selector-preview-head">${artwork(entry.icon, entry.name, "support-art")}<h3>${escapeHtml(tartarusSkillTierName(entry, headerTier))}</h3><small>Lv. ${escapeHtml(String(entry.level ?? 20))}</small><div class="selector-tags">${entry.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div></div><div class="selector-facts"><div class="selector-stat-rows">${tierRow}${facts.map(([label, value]) => `<div><span>${escapeHtml(label)}:</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</div><div class="selector-effect-list"><h4>${escapeHtml(entry.name)}:</h4>${effects.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div>${editor}${entry.source ? `<a href="${escapeHtml(entry.source)}" target="_blank" rel="noreferrer">Open TLIDB source</a>` : ""}${installed ? `<p class="comparison-warning">${escapeHtml(entry.shortName || entry.name)} is already in another skill slot.</p>` : ""}${limitReached ? `<p class="comparison-warning">Max 1 Origin Tartarus Skill per follower: another slot already holds one.</p>` : ""}</div></article>`;
-  return { title, resultsHtml, detailHtml, confirmDisabled: installed || limitReached, confirmLabel: installed ? "Installed" : limitReached ? "Limit reached" : "Confirm" };
+  return {
+    title,
+    resultsHtml,
+    detailHtml,
+    confirmDisabled: installed || limitReached,
+    confirmLabel: installed ? "Installed" : limitReached ? "Limit reached" : "Confirm",
+  };
 }

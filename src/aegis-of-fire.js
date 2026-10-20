@@ -30,32 +30,58 @@ const round = (value, places = 3) => Math.round(value * 10 ** places) / 10 ** pl
 const supportText = (support) => {
   const effects = (support.effects || []).map(String);
   const configured = effects.find((line) => /^Configured T\d affix:/.test(line));
-  return normalizePercentageText(configured && /^Activation Medium:/.test(support.name) ? configured : effects.join(" | "));
+  return normalizePercentageText(
+    configured && /^Activation Medium:/.test(support.name) ? configured : effects.join(" | "),
+  );
 };
-const supportLevel = (support) => Math.max(1, Math.min(40, Math.round(support?.effectiveLevel || support?.level || 20)));
+const supportLevel = (support) =>
+  Math.max(1, Math.min(40, Math.round(support?.effectiveLevel || support?.level || 20)));
 
 function ironFortification(support) {
   const record = supportProgressionSs13["Iron Fortification"];
   const level = supportLevel(support);
   const column = record?.columns?.find((item) => /Armor while the supported skill lasts/i.test(item.heading));
   const armor = parseProgressionCell(column?.values?.[String(level)])?.[0];
-  const rate = Number(normalizePercentageText(record?.baseEffect || "").match(/\+([\d.]+)% Armor Effective Rate against non-Physical Damage/i)?.[1]) || 0;
-  return { source: `Iron Fortification Lv${level}`, level, armor: Number.isFinite(armor) ? armor : 0, nonPhysicalArmorRatePercent: rate };
+  const rate =
+    Number(
+      normalizePercentageText(record?.baseEffect || "").match(
+        /\+([\d.]+)% Armor Effective Rate against non-Physical Damage/i,
+      )?.[1],
+    ) || 0;
+  return {
+    source: `Iron Fortification Lv${level}`,
+    level,
+    armor: Number.isFinite(armor) ? armor : 0,
+    nonPhysicalArmorRatePercent: rate,
+  };
 }
 
 /** Aegis of Fire's state for the defence view: on the board, the best-case switch, its block chance, uptime and support effects. */
 export function aegisOfFireState(planner = {}) {
-  const lines = (planner.modifierTexts || []).filter((line) => line.origin !== "derived" && AEGIS_LINE.test(String(line.text || "")));
+  const lines = (planner.modifierTexts || []).filter(
+    (line) => line.origin !== "derived" && AEGIS_LINE.test(String(line.text || "")),
+  );
   const activeNames = planner.activation?.activeNames || new Set();
-  const setup = (planner.activation?.setups || []).find((item) => item.name === AEGIS_OF_FIRE && item.enabled !== false && activeNames.has(item.name));
+  const setup = (planner.activation?.setups || []).find(
+    (item) => item.name === AEGIS_OF_FIRE && item.enabled !== false && activeNames.has(item.name),
+  );
   const requested = requestedCombatConditions(planner.state?.combat || {}).aegisOfFire !== false;
-  if (!setup) return { onBoard: false, requested, active: false, lines, reason: "Aegis of Fire is not an active skill on the board" };
+  if (!setup)
+    return {
+      onBoard: false,
+      requested,
+      active: false,
+      lines,
+      reason: "Aegis of Fire is not an active skill on the board",
+    };
   const text = normalizePercentageText((setup.effects || []).join("\n"));
   const attackBlockChancePercent = Number(text.match(/([\d.]+)% Attack Block Chance while the skill lasts/i)?.[1]) || 0;
   const spellBlockChancePercent = Number(text.match(/([\d.]+)% Spell Block Chance while the skill lasts/i)?.[1]) || 0;
   const baseDurationSeconds = Number(text.match(/Lasts ([\d.]+) ?s/i)?.[1]) || 5;
   // Duration: base × (1 + Skill Effect Duration) × Activation Medium additional Duration (the Aim model's rule, src/aim-model.js).
-  let durationPercent = 0, additionalDuration = 1, trigger = null;
+  let durationPercent = 0,
+    additionalDuration = 1,
+    trigger = null;
   const supports = (setup.supports || []).filter((support) => support.enabled !== false);
   for (const support of supports) {
     const own = supportText(support);
@@ -68,21 +94,35 @@ export function aegisOfFireState(planner = {}) {
     if (Number.isFinite(prepares) && prepares > 0) trigger = { source: support.name, everySeconds: prepares };
   }
   for (const line of planner.modifierTexts || []) {
-    const match = normalizePercentageText(String(line.text || "")).trim().match(/^([+-][\d.]+)% Skill Effect Duration$/i);
+    const match = normalizePercentageText(String(line.text || ""))
+      .trim()
+      .match(/^([+-][\d.]+)% Skill Effect Duration$/i);
     if (match) durationPercent += Number(match[1]) * (Number.isFinite(line.multiplier) ? line.multiplier : 1);
   }
   const durationSeconds = baseDurationSeconds * Math.max(0, 1 + durationPercent / 100) * additionalDuration;
   // Without a trigger the best case is a manual recast when the buff ends (provisional).
   const recastSeconds = trigger ? trigger.everySeconds : durationSeconds;
-  const uptimePercent = recastSeconds > 0 ? Math.min(100, durationSeconds / recastSeconds * 100) : 0;
+  const uptimePercent = recastSeconds > 0 ? Math.min(100, (durationSeconds / recastSeconds) * 100) : 0;
   const fortification = supports.find((support) => support.name === "Iron Fortification");
   const armor = fortification ? ironFortification(fortification) : null;
   const active = requested && uptimePercent > 0;
-  const recast = trigger ? `${trigger.source.replace(/^Activation Medium: /, "")} every ${round(trigger.everySeconds)} s` : "manual recast when it ends (best case)";
+  const recast = trigger
+    ? `${trigger.source.replace(/^Activation Medium: /, "")} every ${round(trigger.everySeconds)} s`
+    : "manual recast when it ends (best case)";
   return {
-    onBoard: true, requested, active, lines, setupKey: setup.setupKey || setup.instanceId,
-    attackBlockChancePercent, spellBlockChancePercent, durationSeconds: round(durationSeconds), recastSeconds: round(recastSeconds), uptimePercent: round(uptimePercent, 2), recast, armor,
-    summary: `lasts ${round(durationSeconds)} s, ${recast}: uptime ${round(uptimePercent, 2)}%`
+    onBoard: true,
+    requested,
+    active,
+    lines,
+    setupKey: setup.setupKey || setup.instanceId,
+    attackBlockChancePercent,
+    spellBlockChancePercent,
+    durationSeconds: round(durationSeconds),
+    recastSeconds: round(recastSeconds),
+    uptimePercent: round(uptimePercent, 2),
+    recast,
+    armor,
+    summary: `lasts ${round(durationSeconds)} s, ${recast}: uptime ${round(uptimePercent, 2)}%`,
   };
 }
 
@@ -91,11 +131,28 @@ export function aegisOfFireAssumption(planner) {
   const aegis = aegisOfFireState(planner);
   if (!aegis.onBoard && !aegis.lines.length) return null;
   const effects = [
-    ...(aegis.onBoard ? [`+${aegis.attackBlockChancePercent}% Attack / +${aegis.spellBlockChancePercent}% Spell Block Chance`] : []),
-    ...(aegis.armor ? [`+${aegis.armor.armor} Armor and +${aegis.armor.nonPhysicalArmorRatePercent}% Armor Effective Rate against non-Physical Damage (${aegis.armor.source})`] : []),
-    ...aegis.lines.map((line) => `${line.source}: ${line.text}`)
+    ...(aegis.onBoard
+      ? [`+${aegis.attackBlockChancePercent}% Attack / +${aegis.spellBlockChancePercent}% Spell Block Chance`]
+      : []),
+    ...(aegis.armor
+      ? [
+          `+${aegis.armor.armor} Armor and +${aegis.armor.nonPhysicalArmorRatePercent}% Armor Effective Rate against non-Physical Damage (${aegis.armor.source})`,
+        ]
+      : []),
+    ...aegis.lines.map((line) => `${line.source}: ${line.text}`),
   ];
-  const note = !aegis.requested ? "Off: Effective HP without Aegis of Fire" : aegis.active ? `Best case for Effective HP: ${aegis.summary}` : `Not applied: ${aegis.reason}`;
-  return { id: "condition:aegisOfFire", toggle: "aegisOfFire", label: "Aegis of Fire active (Effective HP)", on: aegis.requested, value: aegis.active, note,
-    text: `Aegis of Fire: ${!aegis.requested ? "inactive (condition off)" : aegis.active ? `best case, up when a hit lands (${aegis.summary})` : `not applied: ${aegis.reason}`}; effects (Effective HP only, no damage figure): ${effects.join("; ")}.` };
+  const note = !aegis.requested
+    ? "Off: Effective HP without Aegis of Fire"
+    : aegis.active
+      ? `Best case for Effective HP: ${aegis.summary}`
+      : `Not applied: ${aegis.reason}`;
+  return {
+    id: "condition:aegisOfFire",
+    toggle: "aegisOfFire",
+    label: "Aegis of Fire active (Effective HP)",
+    on: aegis.requested,
+    value: aegis.active,
+    note,
+    text: `Aegis of Fire: ${!aegis.requested ? "inactive (condition off)" : aegis.active ? `best case, up when a hit lands (${aegis.summary})` : `not applied: ${aegis.reason}`}; effects (Effective HP only, no damage figure): ${effects.join("; ")}.`,
+  };
 }

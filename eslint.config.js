@@ -6,15 +6,15 @@ export default [
   {
     files: ["**/*.js"],
     ...js.configs.recommended,
-    languageOptions: { ecmaVersion: "latest", sourceType: "module", globals: { ...globals.browser } }
+    languageOptions: { ecmaVersion: "latest", sourceType: "module", globals: { ...globals.browser } },
   },
   {
     files: ["scripts/**/*.js", "tests/**/*.js", "*.config.js", "src/game-log-local.js"],
-    languageOptions: { globals: { ...globals.node } }
+    languageOptions: { globals: { ...globals.node } },
   },
   {
     files: ["electron/**/*.cjs"],
     ...js.configs.recommended,
-    languageOptions: { ecmaVersion: "latest", sourceType: "commonjs", globals: { ...globals.node } }
-  }
+    languageOptions: { ecmaVersion: "latest", sourceType: "commonjs", globals: { ...globals.node } },
+  },
 ];

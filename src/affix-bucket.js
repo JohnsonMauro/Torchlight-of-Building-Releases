@@ -30,7 +30,8 @@ export async function loadAffixBuckets() {
 }
 export const affixBucketsLoaded = () => AFFIX_BUCKETS !== null;
 function requireData() {
-  if (!AFFIX_BUCKETS) throw new Error("affix bucket data is not loaded: await loadAffixBuckets() first (src/affix-bucket.js)");
+  if (!AFFIX_BUCKETS)
+    throw new Error("affix bucket data is not loaded: await loadAffixBuckets() first (src/affix-bucket.js)");
   return AFFIX_BUCKETS;
 }
 
@@ -67,7 +68,11 @@ export function affixBucket(text) {
     ids: found.entry.candidates.map((c) => c.id),
     buckets,
     bucket: buckets.length === 1 ? buckets[0] : null,
-    attrs: [...new Set(found.entry.candidates.flatMap((c) => c.writes.filter((w) => BUCKET_ATTR_KINDS.has(w.b)).map((w) => w.a)))],
+    attrs: [
+      ...new Set(
+        found.entry.candidates.flatMap((c) => c.writes.filter((w) => BUCKET_ATTR_KINDS.has(w.b)).map((w) => w.a)),
+      ),
+    ],
     writes,
     prefixed: found.prefixed,
   };

@@ -21,22 +21,38 @@ const round4 = (value) => Math.round(value * 10000) / 10000;
  */
 export function conditionalAuraEffect(modifierTexts = [], state = {}) {
   const lines = [];
-  let percent = 0, conditionalPercent = 0, perSealedManaCompensation = 0;
+  let percent = 0,
+    conditionalPercent = 0,
+    perSealedManaCompensation = 0;
   for (const line of modifierTexts) {
     if (line.origin === "derived" || line.lineEffect) continue;
-    const text = normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim();
+    const text = normalizePercentageText(String(line.text ?? ""))
+      .replace(/\s+/g, " ")
+      .trim();
     const split = splitCondition(text);
     if (!split || !split.bodies.length || !split.bodies.every((body) => AURA_BODY.test(body))) continue;
     const resolved = resolveLineCondition(split.condition, state);
-    const bodyValue = split.bodies.reduce((sum, body) => sum + Number(body.match(AURA_BODY)[1]), 0) * (line.multiplier ?? 1);
+    const bodyValue =
+      split.bodies.reduce((sum, body) => sum + Number(body.match(AURA_BODY)[1]), 0) * (line.multiplier ?? 1);
     const value = bodyValue * (resolved.factor ?? 1);
     const active = resolved.active === true && state.auraCount > 0;
     const perSmc = split.condition.key === "perSealedManaCompensation";
     // Game affix 898342 is a linear attribute conversion (node 114, Sealed Mana Compensation → Aura Effect): the rate holds even
     // when the global SMC is 0, since an Aura's own supports (Restrain) give it SMC of its own.
     if (perSmc && state.auraCount > 0) perSealedManaCompensation += bodyValue / split.condition.params.every;
-    if (active) { percent += value; if (!perSmc) conditionalPercent += value; }
-    lines.push({ text, source: line.source, value, active, key: split.condition.key, conditionText: state.auraCount > 0 ? resolved.conditionText : "no active Aura", provisional: Boolean(resolved.provisional) });
+    if (active) {
+      percent += value;
+      if (!perSmc) conditionalPercent += value;
+    }
+    lines.push({
+      text,
+      source: line.source,
+      value,
+      active,
+      key: split.condition.key,
+      conditionText: state.auraCount > 0 ? resolved.conditionText : "no active Aura",
+      provisional: Boolean(resolved.provisional),
+    });
   }
   return { percent: round4(percent), conditionalPercent: round4(conditionalPercent), perSealedManaCompensation, lines };
 }

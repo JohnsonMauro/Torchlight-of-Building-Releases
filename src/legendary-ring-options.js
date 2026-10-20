@@ -1,12 +1,12 @@
 export const folkloreRingOptions = {
   left: {
     normal: "Grants Blur 1 s after losing Blur when equipped in the left Ring slot",
-    corroded: "Grants Blur 0.5 s after losing Blur when equipped in the left Ring slot"
+    corroded: "Grants Blur 0.5 s after losing Blur when equipped in the left Ring slot",
   },
   right: {
     normal: "Grants 9 Blur Rating per second when equipped in the right Ring slot",
-    corroded: "Grants 10 Blur Rating per second when equipped in the right Ring slot"
-  }
+    corroded: "Grants 10 Blur Rating per second when equipped in the right Ring slot",
+  },
 };
 
 export function folkloreRingModifier(option = "left", corroded = false) {

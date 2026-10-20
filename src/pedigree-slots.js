@@ -16,14 +16,20 @@ export const pedigreeSlotTypes = [
   ["Lv.2 Core Talent"],
 ];
 
-const talentNodes = Object.entries(divinitySlateAffixesSs13).flatMap(([god, affixes]) => affixes.map((affix) => ({ ...affix, god })));
+const talentNodes = Object.entries(divinitySlateAffixesSs13).flatMap(([god, affixes]) =>
+  affixes.map((affix) => ({ ...affix, god })),
+);
 export const pedigreeAffixPool = [...talentNodes, ...pedigreeCoreAffixesSs13];
 
 // Same value the slate editor stores for a legendary-template option.
-export const pedigreeAffixValue = ({ tree, name, effect, talentName }) => `${tree}: ${name}: ${talentName ? `${talentName} — ` : ""}${effect}`;
+export const pedigreeAffixValue = ({ tree, name, effect, talentName }) =>
+  `${tree}: ${name}: ${talentName ? `${talentName} — ` : ""}${effect}`;
 
-const validValues = pedigreeSlotTypes.map((types) => new Set(pedigreeAffixPool.filter((affix) => types.includes(affix.name)).map(pedigreeAffixValue)));
-export const isPedigreeSlate = (slate) => (slate?.template || slate?.name) === PEDIGREE_OF_GODS && Array.isArray(slate?.affixes);
+const validValues = pedigreeSlotTypes.map(
+  (types) => new Set(pedigreeAffixPool.filter((affix) => types.includes(affix.name)).map(pedigreeAffixValue)),
+);
+export const isPedigreeSlate = (slate) =>
+  (slate?.template || slate?.name) === PEDIGREE_OF_GODS && Array.isArray(slate?.affixes);
 export const isValidPedigreeAffix = (index, value) => !value || Boolean(validValues[index]?.has(value));
 
 // Saved values that are not a Pedigree talent node for their slot (an older pool, an import) are

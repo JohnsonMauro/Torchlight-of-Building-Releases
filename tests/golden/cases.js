@@ -19,7 +19,8 @@ function withHero(state, heroId, pick) {
   const traits = allHeroTraitsSs13[heroId]?.traits || [];
   for (const level of TRAIT_LEVELS) {
     const options = traits.filter((trait) => trait.level === level);
-    if (options.length) next.hero.selectedTraits[`level${level}`] = (pick === "first" ? options[0] : options.at(-1)).name;
+    if (options.length)
+      next.hero.selectedTraits[`level${level}`] = (pick === "first" ? options[0] : options.at(-1)).name;
   }
   return next;
 }
@@ -38,10 +39,11 @@ export function goldenInputs() {
     { id: "youga-l94/manual-conditions", state: withCombat(youga, { conditionMode: "manual" }) },
     { id: "youga-l94/fire-res-0", state: withCombat(youga, { targetFireResistancePercent: 0 }) },
     { id: "youga-l94/fire-res-75", state: withCombat(youga, { targetFireResistancePercent: 75 }) },
-    { id: "youga-l94/affliction-0", state: withCombat(youga, { afflictionAverage: 0, afflictionPeak: 0 }) }
+    { id: "youga-l94/affliction-0", state: withCombat(youga, { afflictionAverage: 0, afflictionPeak: 0 }) },
   ];
   for (const hero of heroCatalogSs13) {
-    for (const pick of ["first", "last"]) inputs.push({ id: `hero/${hero.id}/${pick}`, state: withHero(youga, hero.id, pick) });
+    for (const pick of ["first", "last"])
+      inputs.push({ id: `hero/${hero.id}/${pick}`, state: withHero(youga, hero.id, pick) });
   }
   return inputs;
 }

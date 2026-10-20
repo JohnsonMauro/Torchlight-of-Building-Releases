@@ -21,14 +21,21 @@ import { KEYWORD_RADII_METERS } from "./dummy-target.js";
 export const MARK_KEYWORD = Object.freeze({
   evasionPercent: -20,
   critDamageTakenAdditionalPercent: 10,
-  source: "TLIDB Mark keyword tooltip: \"The target is locked on. -20% Evasion and +10% additional Critical Strike Damage taken\""
+  source:
+    'TLIDB Mark keyword tooltip: "The target is locked on. -20% Evasion and +10% additional Critical Strike Damage taken"',
 });
 
 const NUM = "([+-]?\\d+(?:\\.\\d+)?)";
-export const MARK_SOURCE_LINE = new RegExp(`^\\+?${NUM}% chance to Mark the (?:enemy|target) on (Critical Strike|hit)$`, "i");
+export const MARK_SOURCE_LINE = new RegExp(
+  `^\\+?${NUM}% chance to Mark the (?:enemy|target) on (Critical Strike|hit)$`,
+  "i",
+);
 export const MARK_EFFECT_LINE = new RegExp(`^${NUM}% Mark Effect$`, "i");
 export const MARK_EFFECT_ELITE_LINE = new RegExp(`^${NUM}% Mark Effect when an Elite is in proximity$`, "i");
-const clean = (text) => normalizePercentageText(String(text || "")).replace(/\s+/g, " ").trim();
+const clean = (text) =>
+  normalizePercentageText(String(text || ""))
+    .replace(/\s+/g, " ")
+    .trim();
 const round = (value) => Math.round(value * 10000) / 10000;
 
 /** Which Mark kind a line is ("source", "effect", "effectElite"), or null. */
@@ -48,20 +55,73 @@ export function markLineKind(text) {
  * @param {boolean} p.enabled the targetMarked switch (best case on)
  * @param {boolean} p.nearTarget the Distance group (close to the dummy unless the Distant alternative is chosen)
  */
-export function resolveMark({ modifierTexts = [], enabled = true, nearTarget = true, extraSources = [], extraEffects = [] } = {}) {
-  const sources = [...extraSources], effects = [...extraEffects];
+export function resolveMark({
+  modifierTexts = [],
+  enabled = true,
+  nearTarget = true,
+  extraSources = [],
+  extraEffects = [],
+} = {}) {
+  const sources = [...extraSources],
+    effects = [...extraEffects];
   for (const line of modifierTexts) {
     const text = clean(line.text);
     let match;
-    if ((match = text.match(MARK_SOURCE_LINE))) sources.push({ source: line.source, text: line.text, origin: line.origin, chancePercent: Number(match[1]) * (line.multiplier ?? 1), on: /critical/i.test(match[2]) ? "crit" : "hit" });
-    else if ((match = text.match(MARK_EFFECT_LINE))) effects.push({ source: line.source, text: line.text, origin: line.origin, value: Number(match[1]) * (line.multiplier ?? 1), active: true });
-    else if ((match = text.match(MARK_EFFECT_ELITE_LINE))) effects.push({ source: line.source, text: line.text, origin: line.origin, value: Number(match[1]) * (line.multiplier ?? 1), active: nearTarget, condition: nearTarget ? `the dummy is a Boss (so an Elite) and the player stands close, inside Proximity (${KEYWORD_RADII_METERS.proximity} m)` : `the Distant alternative stands ${KEYWORD_RADII_METERS.distant} m away, outside Proximity (${KEYWORD_RADII_METERS.proximity} m)` });
+    if ((match = text.match(MARK_SOURCE_LINE)))
+      sources.push({
+        source: line.source,
+        text: line.text,
+        origin: line.origin,
+        chancePercent: Number(match[1]) * (line.multiplier ?? 1),
+        on: /critical/i.test(match[2]) ? "crit" : "hit",
+      });
+    else if ((match = text.match(MARK_EFFECT_LINE)))
+      effects.push({
+        source: line.source,
+        text: line.text,
+        origin: line.origin,
+        value: Number(match[1]) * (line.multiplier ?? 1),
+        active: true,
+      });
+    else if ((match = text.match(MARK_EFFECT_ELITE_LINE)))
+      effects.push({
+        source: line.source,
+        text: line.text,
+        origin: line.origin,
+        value: Number(match[1]) * (line.multiplier ?? 1),
+        active: nearTarget,
+        condition: nearTarget
+          ? `the dummy is a Boss (so an Elite) and the player stands close, inside Proximity (${KEYWORD_RADII_METERS.proximity} m)`
+          : `the Distant alternative stands ${KEYWORD_RADII_METERS.distant} m away, outside Proximity (${KEYWORD_RADII_METERS.proximity} m)`,
+      });
   }
   const effectPercent = effects.filter((line) => line.active).reduce((total, line) => total + line.value, 0);
   const critDamageTakenPercent = MARK_KEYWORD.critDamageTakenAdditionalPercent * Math.max(0, 1 + effectPercent / 100);
   const apply = enabled && sources.length > 0;
-  const critOnlyLine = apply ? { source: "Mark on the dummy (best case, provisional)", text: `+${round(critDamageTakenPercent)}% additional Critical Strike Damage taken = ${MARK_KEYWORD.critDamageTakenAdditionalPercent}% × (1 + ${round(effectPercent)}% Mark Effect) (${MARK_KEYWORD.source}; crit share only)`, value: critDamageTakenPercent, origin: "derived" } : null;
-  return { sources, effects, effectPercent, critDamageTakenPercent, enabled, apply, critOnlyLine, keyword: MARK_KEYWORD, active: false, reason: !sources.length ? "no Mark source in the build" : !enabled ? "the Marked dummy assumption is off" : "pending" };
+  const critOnlyLine = apply
+    ? {
+        source: "Mark on the dummy (best case, provisional)",
+        text: `+${round(critDamageTakenPercent)}% additional Critical Strike Damage taken = ${MARK_KEYWORD.critDamageTakenAdditionalPercent}% × (1 + ${round(effectPercent)}% Mark Effect) (${MARK_KEYWORD.source}; crit share only)`,
+        value: critDamageTakenPercent,
+        origin: "derived",
+      }
+    : null;
+  return {
+    sources,
+    effects,
+    effectPercent,
+    critDamageTakenPercent,
+    enabled,
+    apply,
+    critOnlyLine,
+    keyword: MARK_KEYWORD,
+    active: false,
+    reason: !sources.length
+      ? "no Mark source in the build"
+      : !enabled
+        ? "the Marked dummy assumption is off"
+        : "pending",
+  };
 }
 
 /** Settle `active` from the computed hits: an on-hit source needs a modeled hit, an on-crit source a modeled hit that can crit. */
@@ -76,6 +136,8 @@ export function settleMark(mark, hits = []) {
   const active = onHit || onCrit || onStalker;
   const reason = active
     ? `best case: the dummy stays Marked (${mark.sources.map((line) => `${line.source}: ${line.text}`).join("; ")}${onCrit && !onHit ? `; ${critting.map((hit) => hit.name).join(", ")} can crit` : ""}); duration not sourced (provisional)`
-    : modeled.length ? "no modeled hit can Critical Strike, so the on-crit Mark never lands" : "no modeled hit applies the Mark";
+    : modeled.length
+      ? "no modeled hit can Critical Strike, so the on-crit Mark never lands"
+      : "no modeled hit applies the Mark";
   return { ...mark, active, reason };
 }

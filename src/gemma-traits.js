@@ -29,9 +29,21 @@ const EPS = 1e-9;
 const round = (value) => Math.round(value * 10000) / 10000;
 
 /** Frostfire Rampage cycle: { durationSeconds, cooldownSeconds, periodSeconds, uptime, castsBound, endsPerSecond, radianceAverage(peak) }. */
-export function frostfireCycle({ baseDurationSeconds = 5, baseCooldownSeconds = 10, durationPercent = 0, cooldownRecoveryPercent = 0, cooldownRecoveryAdditional = [], castsNeeded = 5, castsPerSecond = null } = {}) {
+export function frostfireCycle({
+  baseDurationSeconds = 5,
+  baseCooldownSeconds = 10,
+  durationPercent = 0,
+  cooldownRecoveryPercent = 0,
+  cooldownRecoveryAdditional = [],
+  castsNeeded = 5,
+  castsPerSecond = null,
+} = {}) {
   const durationSeconds = Math.max(0, baseDurationSeconds * (1 + durationPercent / 100));
-  const recovery = Math.max(EPS, (1 + cooldownRecoveryPercent / 100) * cooldownRecoveryAdditional.reduce((product, value) => product * (1 + value / 100), 1));
+  const recovery = Math.max(
+    EPS,
+    (1 + cooldownRecoveryPercent / 100) *
+      cooldownRecoveryAdditional.reduce((product, value) => product * (1 + value / 100), 1),
+  );
   const cooldownSeconds = baseCooldownSeconds / recovery;
   const castSeconds = castsPerSecond > 0 ? castsNeeded / castsPerSecond : castsPerSecond === 0 ? Infinity : 0;
   const periodSeconds = Math.max(cooldownSeconds, castSeconds);
@@ -39,9 +51,14 @@ export function frostfireCycle({ baseDurationSeconds = 5, baseCooldownSeconds = 
   const ends = Number.isFinite(periodSeconds) && durationSeconds < periodSeconds - EPS;
   const m = Math.min(3, periodSeconds);
   return {
-    durationSeconds: round(durationSeconds), cooldownSeconds: round(cooldownSeconds), periodSeconds: Number.isFinite(periodSeconds) ? round(periodSeconds) : Infinity,
-    castsBound: castSeconds > cooldownSeconds + EPS, castSeconds: Number.isFinite(castSeconds) ? round(castSeconds) : Infinity, uptime: round(uptime), ends,
-    radianceShare: ends ? round((m - m * m / 6) / periodSeconds) : 0
+    durationSeconds: round(durationSeconds),
+    cooldownSeconds: round(cooldownSeconds),
+    periodSeconds: Number.isFinite(periodSeconds) ? round(periodSeconds) : Infinity,
+    castsBound: castSeconds > cooldownSeconds + EPS,
+    castSeconds: Number.isFinite(castSeconds) ? round(castSeconds) : Infinity,
+    uptime: round(uptime),
+    ends,
+    radianceShare: ends ? round((m - (m * m) / 6) / periodSeconds) : 0,
   };
 }
 
@@ -54,7 +71,12 @@ export function frostfireLevels(cycle, startSeconds, time) {
   let radiance = 0;
   if (cycle.ends) {
     // The latest end at or before t: this cycle's end if passed, else the previous cycle's.
-    const end = phase >= cycle.durationSeconds - EPS ? startSeconds + n * cycle.periodSeconds + cycle.durationSeconds : n > 0 ? startSeconds + (n - 1) * cycle.periodSeconds + cycle.durationSeconds : null;
+    const end =
+      phase >= cycle.durationSeconds - EPS
+        ? startSeconds + n * cycle.periodSeconds + cycle.durationSeconds
+        : n > 0
+          ? startSeconds + (n - 1) * cycle.periodSeconds + cycle.durationSeconds
+          : null;
     if (end !== null && time - end < 3) radiance = Math.max(0, 1 - (time - end) / 3);
   }
   return { rampage, radiance };
@@ -76,43 +98,85 @@ export function stepsOf(levelAt, edges, horizon = HORIZON_SECONDS, step = 0.25) 
 }
 
 /** Cold Pulse hit times from t = 0 (base pulses every interval; Blooming Frost Flower's extra pulses). */
-export function coldPulseTimes({ intervalSeconds = 4, blooming = false, otherFrostbiteOnHit = false, horizon = HORIZON_SECONDS * 2 } = {}) {
+export function coldPulseTimes({
+  intervalSeconds = 4,
+  blooming = false,
+  otherFrostbiteOnHit = false,
+  horizon = HORIZON_SECONDS * 2,
+} = {}) {
   const times = [];
   let lastExtra = -Infinity;
   if (blooming && otherFrostbiteOnHit) for (let t = 0; t < horizon; t += 2) times.push(t);
   for (let t = 0; t < horizon; t += intervalSeconds) {
     times.push(t);
-    if (blooming && !otherFrostbiteOnHit && t - lastExtra >= 2 - EPS) { times.push(t); lastExtra = t; }
+    if (blooming && !otherFrostbiteOnHit && t - lastExtra >= 2 - EPS) {
+      times.push(t);
+      lastExtra = t;
+    }
   }
   return times.sort((a, b) => a - b);
 }
 
 /** Cold Pulse state: pulses per second, Dance of Frost stacks (hits within 8 s, up to 4) and a debuff's uptime (duration s after each hit). */
-export function coldPulseState({ intervalSeconds = 4, blooming = false, otherFrostbiteOnHit = false, stackWindowSeconds = 8, maxStacks = 4, buffSeconds = 6 } = {}) {
+export function coldPulseState({
+  intervalSeconds = 4,
+  blooming = false,
+  otherFrostbiteOnHit = false,
+  stackWindowSeconds = 8,
+  maxStacks = 4,
+  buffSeconds = 6,
+} = {}) {
   const times = coldPulseTimes({ intervalSeconds, blooming, otherFrostbiteOnHit });
   const horizon = HORIZON_SECONDS * 2;
-  const stacksAt = (t) => Math.min(maxStacks, times.filter((at) => at <= t + EPS && at > t - stackWindowSeconds + EPS).length);
-  const upAt = (seconds) => (t) => times.some((at) => at <= t + EPS && at > t - seconds + EPS) ? 1 : 0;
+  const stacksAt = (t) =>
+    Math.min(maxStacks, times.filter((at) => at <= t + EPS && at > t - stackWindowSeconds + EPS).length);
+  const upAt = (seconds) => (t) => (times.some((at) => at <= t + EPS && at > t - seconds + EPS) ? 1 : 0);
   // Long-run averages over the second half of the simulated span (the cycle is periodic by then).
-  const average = (levelAt) => { let total = 0, count = 0; for (let t = horizon / 2; t < horizon - stackWindowSeconds; t += 0.05) { total += levelAt(t); count++; } return count ? total / count : 0; };
+  const average = (levelAt) => {
+    let total = 0,
+      count = 0;
+    for (let t = horizon / 2; t < horizon - stackWindowSeconds; t += 0.05) {
+      total += levelAt(t);
+      count++;
+    }
+    return count ? total / count : 0;
+  };
   const steady = times.filter((t) => t >= horizon / 2 && t < horizon - stackWindowSeconds);
   const pulsesPerSecond = steady.length / (horizon / 2 - stackWindowSeconds);
-  const edges = [...new Set(times.flatMap((t) => [t, t + stackWindowSeconds, t + buffSeconds]))].filter((t) => t < HORIZON_SECONDS);
+  const edges = [...new Set(times.flatMap((t) => [t, t + stackWindowSeconds, t + buffSeconds]))].filter(
+    (t) => t < HORIZON_SECONDS,
+  );
   return {
-    intervalSeconds, blooming, otherFrostbiteOnHit, pulsesPerSecond: round(pulsesPerSecond),
-    stacks: round(average(stacksAt)), stacksAt,
-    buffUptime: (seconds) => round(average(upAt(seconds))), upAt,
-    stackSteps: () => stepsOf(stacksAt, edges), upSteps: (seconds) => stepsOf(upAt(seconds), edges)
+    intervalSeconds,
+    blooming,
+    otherFrostbiteOnHit,
+    pulsesPerSecond: round(pulsesPerSecond),
+    stacks: round(average(stacksAt)),
+    stacksAt,
+    buffUptime: (seconds) => round(average(upAt(seconds))),
+    upAt,
+    stackSteps: () => stepsOf(stacksAt, edges),
+    upSteps: (seconds) => stepsOf(upAt(seconds), edges),
   };
 }
 
 /** Purgatory casts from t = 0: active intervals [[start, end]] with charges recovering one at a time on the cooldown. */
-export function purgatoryIntervals({ durationSeconds = 5, cooldownSeconds = 8, charges = 1, horizon = HORIZON_SECONDS } = {}) {
+export function purgatoryIntervals({
+  durationSeconds = 5,
+  cooldownSeconds = 8,
+  charges = 1,
+  horizon = HORIZON_SECONDS,
+} = {}) {
   const intervals = [];
-  let held = charges, recoverAt = Infinity, t = 0;
+  let held = charges,
+    recoverAt = Infinity,
+    t = 0;
   for (let guard = 0; guard < 10000 && t < horizon; guard++) {
     // Charges that came back before t.
-    while (recoverAt <= t + EPS) { held++; recoverAt = held < charges ? recoverAt + cooldownSeconds : Infinity; }
+    while (recoverAt <= t + EPS) {
+      held++;
+      recoverAt = held < charges ? recoverAt + cooldownSeconds : Infinity;
+    }
     if (held >= 1) {
       held--;
       if (recoverAt === Infinity) recoverAt = t + cooldownSeconds;

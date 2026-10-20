@@ -16,10 +16,12 @@ import { normalizePercentageText } from "./percentage-text.js";
 // Ominous (Ill Omen needs enemy Max Life) has no effect on the dummy.
 const TAKEN_PATTERNS = [
   /^\+(\d+(?:\.\d+)?)% additional (Hit|Physical|Fire|Cold|Lightning|Erosion) Damage taken by Cursed enemies\.?$/i,
-  /^Cursed enemies \+(\d+(?:\.\d+)?)% additional (Hit|Physical|Fire|Cold|Lightning|Erosion) Damage taken\.?$/i
+  /^Cursed enemies \+(\d+(?:\.\d+)?)% additional (Hit|Physical|Fire|Cold|Lightning|Erosion) Damage taken\.?$/i,
 ];
 export const DEDICATED_CURSE_MODELS = new Set(["Scorch", "Entangled Pain"]);
-export const NO_DUMMY_EFFECT_CURSES = { Ominous: "Ill Omen needs enemy Max Life; the dummy has none (the curse still uses a curse slot)" };
+export const NO_DUMMY_EFFECT_CURSES = {
+  Ominous: "Ill Omen needs enemy Max Life; the dummy has none (the curse still uses a curse slot)",
+};
 
 /** The "+X% additional <Type> Damage taken" a curse applies (Lv.20 TLIDB text), or null. */
 export function curseTakenEffect(name, effects = allSkillEffectsSs13[name] || []) {
@@ -28,7 +30,13 @@ export function curseTakenEffect(name, effects = allSkillEffectsSs13[name] || []
     const text = normalizePercentageText(line).trim();
     for (const pattern of TAKEN_PATTERNS) {
       const match = text.match(pattern);
-      if (match) return { name, value: Number(match[1]), type: match[2][0].toUpperCase() + match[2].slice(1).toLowerCase(), sourceText: text };
+      if (match)
+        return {
+          name,
+          value: Number(match[1]),
+          type: match[2][0].toUpperCase() + match[2].slice(1).toLowerCase(),
+          sourceText: text,
+        };
     }
   }
   return null;

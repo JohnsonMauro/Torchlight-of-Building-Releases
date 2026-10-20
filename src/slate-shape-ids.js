@@ -17,12 +17,72 @@
 // plannerIndex is the planner's crafted shape key <god>-<index> (Z1, L1, O1, T1 in slateShapeCodes). The planner has no
 // Z2 / L2 keys: they use the Z / L key, flipped.
 export const CRAFTED_SLATE_SHAPES = {
-  1011: { code: "Z1", plannerIndex: 0, cells: [[0,0],[0,1],[1,1],[1,2]], confirmed: true },
-  1021: { code: "Z2", plannerIndex: 0, cells: [[1,0],[0,1],[1,1],[0,2]], confirmed: false },
-  1031: { code: "L1", plannerIndex: 1, cells: [[0,0],[1,0],[2,0],[2,1]], confirmed: false },
-  1041: { code: "L2", plannerIndex: 1, cells: [[0,0],[1,0],[2,0],[0,1]], confirmed: true },
-  1051: { code: "O1", plannerIndex: 2, cells: [[0,0],[1,0],[0,1],[1,1]], confirmed: false },
-  1061: { code: "T1", plannerIndex: 3, cells: [[1,0],[0,1],[1,1],[2,1]], confirmed: true }
+  1011: {
+    code: "Z1",
+    plannerIndex: 0,
+    cells: [
+      [0, 0],
+      [0, 1],
+      [1, 1],
+      [1, 2],
+    ],
+    confirmed: true,
+  },
+  1021: {
+    code: "Z2",
+    plannerIndex: 0,
+    cells: [
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [0, 2],
+    ],
+    confirmed: false,
+  },
+  1031: {
+    code: "L1",
+    plannerIndex: 1,
+    cells: [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [2, 1],
+    ],
+    confirmed: false,
+  },
+  1041: {
+    code: "L2",
+    plannerIndex: 1,
+    cells: [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [0, 1],
+    ],
+    confirmed: true,
+  },
+  1051: {
+    code: "O1",
+    plannerIndex: 2,
+    cells: [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
+    ],
+    confirmed: false,
+  },
+  1061: {
+    code: "T1",
+    plannerIndex: 3,
+    cells: [
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [2, 1],
+    ],
+    confirmed: true,
+  },
 };
 
 /** The Direction a slate takes when the dump leaves it out (the game's default turn). */
@@ -41,4 +101,12 @@ export const gameDirectionTurn = (direction) => {
 export const craftedSlateGod = (baseName) => String(baseName || "").replace(/'s? Divinity$/, "") || null;
 
 /** The planner's god key for a god name (the keys of the crafted shape catalog). */
-export const plannerGodKey = (god) => ({ "Goddess of Deception": "deception", "Goddess of Hunting": "hunting", "Goddess of Knowledge": "knowledge", "God of Machines": "machines", "God of Might": "might", "God of War": "war" }[god] || null);
+export const plannerGodKey = (god) =>
+  ({
+    "Goddess of Deception": "deception",
+    "Goddess of Hunting": "hunting",
+    "Goddess of Knowledge": "knowledge",
+    "God of Machines": "machines",
+    "God of Might": "might",
+    "God of War": "war",
+  })[god] || null;

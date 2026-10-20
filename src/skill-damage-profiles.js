@@ -56,7 +56,8 @@ import { VENDETTA_PROFILES } from "./vendetta-model.js";
 
 const dotLine = /Deals (\d+(?:\.\d+)?) (?:Spell |Attack )?(\w+) Damage every second/i;
 const hitLine = /Deals (\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?) (?:Spell |Attack )?(\w+) Damage\b/i;
-const dotRange = /Deals (\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+(?:\.\d+)?))? (?:Spell |Attack )?(\w+) Damage to enemies within it every ([\d.]+)s/i;
+const dotRange =
+  /Deals (\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+(?:\.\d+)?))? (?:Spell |Attack )?(\w+) Damage to enemies within it every ([\d.]+)s/i;
 
 function wiltingBeamPerSecondAtLevel(level) {
   const entry = skillProgressionSs13["Wilting Beam"];
@@ -69,34 +70,59 @@ function wiltingBeamPerSecondAtLevel(level) {
 
 const WILTING_BEAM = Object.freeze({
   name: "Wilting Beam",
-  kind: "dot", engine: "skill-dot",
-  damageType: "Erosion", spell: true,
+  kind: "dot",
+  engine: "skill-dot",
+  damageType: "Erosion",
+  spell: true,
   tags: ["Spell", "Channeled", "Erosion", "Persistent", "Area", "Beam", "Intelligence"],
-  delivery: "channel-beam", castIntervalSeconds: 0.333, channeled: true, beam: true, maxChanneledStacks: 5,
+  delivery: "channel-beam",
+  castIntervalSeconds: 0.333,
+  channeled: true,
+  beam: true,
+  maxChanneledStacks: 5,
   // The DoT status: refreshed by every beam use; one status per target (user-confirmed 2026-10-10:
   // "+1 Beams" does not add separate statuses).
-  dot: { durationSeconds: 2, perSecondAtLevel: wiltingBeamPerSecondAtLevel, stacking: "strongest", referenceLevel: 20, referencePerSecond: 981 },
+  dot: {
+    durationSeconds: 2,
+    perSecondAtLevel: wiltingBeamPerSecondAtLevel,
+    stacking: "strongest",
+    referenceLevel: 20,
+    referencePerSecond: 981,
+  },
   // Built-in Reaping: on reaching max channeled stacks (game record, affix 879177), 0.5 s of its DoT,
   // 1.25 s cooldown (TLIDB values). The planner sets usesPerSecond and usesPerTrigger = max − start + 1:
   // the channel starts at base 1 + Min Channeled Stacks (user-observed 2026-10-10: 1, and 3 with Channel
   // Preparation Lv16) and, provisionally, restarts there after the max-stack Reap (src/planner.js).
   // In-game runs 2026-10-10 (research/wilting-beam-test-2026-10-10.md): recount ≈ DoT DPS × 1.32–1.36 (10 s
   // average) with min stacks 1 or 3, consistent with a cooldown-bound 0.5 s / 1.25 s Reap.
-  builtInReaping: { source: "Wilting Beam: Reaping (built-in)", trigger: "max channeled stacks", baseDurationSeconds: 0.5, baseRecoverySeconds: 1.25, builtIn: true, note: "Fires when the channel reaches max stacks (game record), limited by its cooldown; Reaping Duration, Reaping Recovery Speed and Affliction scale it (user-confirmed 2026-10-10)." },
+  builtInReaping: {
+    source: "Wilting Beam: Reaping (built-in)",
+    trigger: "max channeled stacks",
+    baseDurationSeconds: 0.5,
+    baseRecoverySeconds: 1.25,
+    builtIn: true,
+    note: "Fires when the channel reaches max stacks (game record), limited by its cooldown; Reaping Duration, Reaping Recovery Speed and Affliction scale it (user-confirmed 2026-10-10).",
+  },
   canInflictHitAilments: false,
-  sources: { tlidb: "https://tlidb.com/en/Wilting_Beam", gameData: "config_skill_damage group 431 (levels 1–20)" }
+  sources: { tlidb: "https://tlidb.com/en/Wilting_Beam", gameData: "config_skill_damage group 431 (levels 1–20)" },
 });
 
 const SCORCHING_BEAM = Object.freeze({
   name: "Scorching Beam",
-  kind: "hit", engine: "scorching-beam",
-  damageType: "Fire", spell: true,
+  kind: "hit",
+  engine: "scorching-beam",
+  damageType: "Fire",
+  spell: true,
   tags: scorchingBeamSs13.tags.map((tag) => tag[0].toUpperCase() + tag.slice(1)),
-  delivery: "channel-beam", castIntervalSeconds: scorchingBeamSs13.baseCastIntervalSeconds, channeled: true, beam: true, maxChanneledStacks: scorchingBeamSs13.baseMaxChanneledStacks,
+  delivery: "channel-beam",
+  castIntervalSeconds: scorchingBeamSs13.baseCastIntervalSeconds,
+  channeled: true,
+  beam: true,
+  maxChanneledStacks: scorchingBeamSs13.baseMaxChanneledStacks,
   hits: scorchingBeamSs13.hits,
   builtInReaping: null,
   canInflictHitAilments: true,
-  sources: { tlidb: scorchingBeamSs13.source, gameData: "config_skill_damage groups 461/462 (levels 1–20)" }
+  sources: { tlidb: scorchingBeamSs13.source, gameData: "config_skill_damage groups 461/462 (levels 1–20)" },
 });
 
 // Skill-DoT profiles built from a config_skill_damage DoT row (src/data/skills/skill-hit-damage-ss13.generated.js),
@@ -104,8 +130,13 @@ const SCORCHING_BEAM = Object.freeze({
 // frozen past 20. `refreshPerSecond` fixes the application cadence when it is not the main skill's channel rate
 // (a cooldown-bound area); `recast` gives a Terra skill's recast cadence (planner: recast.perSecond(cast-speed factor)). Batches 1 and 3 of
 // research/skill-inventory-2026-10-11.md (2026-10-11).
-const catalogTags = (name) => (tlidbSkillCatalogSs13.find((entry) => entry.name === name)?.tags || []);
-const TERRA_CHARGE_DOT = { source: "Terra Charge", text: "+26% additional damage for the skill for every Terra Charge consumed (TLIDB; max 1 stack, 1 per 0.5 s: observed on the in-game Frost Terra Lv16 tooltip 2026-10-12, so every cast at up to 2 casts/s consumes one)", value: 26, category: "Additional damage" };
+const catalogTags = (name) => tlidbSkillCatalogSs13.find((entry) => entry.name === name)?.tags || [];
+const TERRA_CHARGE_DOT = {
+  source: "Terra Charge",
+  text: "+26% additional damage for the skill for every Terra Charge consumed (TLIDB; max 1 stack, 1 per 0.5 s: observed on the in-game Frost Terra Lv16 tooltip 2026-10-12, so every cast at up to 2 casts/s consumes one)",
+  value: 26,
+  category: "Additional damage",
+};
 // Terra recast cadence (spell-terra DoT profiles): one Terra at a time (max base Terra quantity 1), so a recast replaces
 // the Terra and its new ground effect applies the 2 s status again (strongest application: it refreshes, it does not
 // stack). Best case, as in the user's Frost Terra Lv16 run (2026-10-12: recast whenever a Terra Charge was available),
@@ -116,57 +147,171 @@ const TERRA_CHARGE_DOT = { source: "Terra Charge", text: "+26% additional damage
 function terraRecast(name) {
   const timing = skillTimingSs13[name];
   if (!timing) return null;
-  const useTimeSeconds = timing.useTime ?? 1, speedType = timing.speedType || "fixed", chargeIntervalSeconds = timing.cooldown || 0.5;
+  const useTimeSeconds = timing.useTime ?? 1,
+    speedType = timing.speedType || "fixed",
+    chargeIntervalSeconds = timing.cooldown || 0.5;
   return Object.freeze({
-    useTimeSeconds, speedType, chargeIntervalSeconds, source: `game Split ${timing.splitId}: use time ${useTimeSeconds} s (${speedType}), Terra Charge every ${chargeIntervalSeconds} s`,
-    perSecond: (castSpeedFactor = 1) => 1 / Math.max(speedType === "cast-speed" && castSpeedFactor > 0 ? useTimeSeconds / castSpeedFactor : useTimeSeconds, chargeIntervalSeconds)
+    useTimeSeconds,
+    speedType,
+    chargeIntervalSeconds,
+    source: `game Split ${timing.splitId}: use time ${useTimeSeconds} s (${speedType}), Terra Charge every ${chargeIntervalSeconds} s`,
+    perSecond: (castSpeedFactor = 1) =>
+      1 /
+      Math.max(
+        speedType === "cast-speed" && castSpeedFactor > 0 ? useTimeSeconds / castSpeedFactor : useTimeSeconds,
+        chargeIntervalSeconds,
+      ),
   });
 }
-function dotProfile(name, { groupId, durationSeconds, delivery, channeled = false, castIntervalSeconds = null, refreshPerSecond = null, extraAdditional = [], perAdditionalMaxStackAdditionalPercent = null, notes = [], gameNote = "", unmodeled = [], randomRoll = null }) {
+function dotProfile(
+  name,
+  {
+    groupId,
+    durationSeconds,
+    delivery,
+    channeled = false,
+    castIntervalSeconds = null,
+    refreshPerSecond = null,
+    extraAdditional = [],
+    perAdditionalMaxStackAdditionalPercent = null,
+    notes = [],
+    gameNote = "",
+    unmodeled = [],
+    randomRoll = null,
+  },
+) {
   const table = skillHitDamageSs13[name] || skillHitDamageNewSkills[name];
   const group = (table?.groups || []).find((item) => item.id === groupId) || null;
-  const row = (level) => group?.levels?.[String(Math.max(1, Math.min(20, Math.floor(level || 20))))]?.entries?.[0] || null;
+  const row = (level) =>
+    group?.levels?.[String(Math.max(1, Math.min(20, Math.floor(level || 20))))]?.entries?.[0] || null;
   const perSecondAtLevel = (level) => row(level)?.min ?? 0;
   const tags = catalogTags(name);
   const damageType = row(20)?.type || null;
   return Object.freeze({
-    name, kind: "dot", engine: group ? "skill-dot" : null, damageType, spell: tags.includes("Spell"), tags,
-    delivery, castIntervalSeconds, channeled, beam: tags.includes("Beam"), maxChanneledStacks: channeled ? skillTimingSs13[name]?.channel?.maxStacks ?? 5 : null,
-    dot: { durationSeconds, perSecondAtLevel, stacking: "strongest", referenceLevel: 20, referencePerSecond: perSecondAtLevel(20) },
-    refreshPerSecond, recast: delivery === "spell-terra" ? terraRecast(name) : null, extraAdditional, perAdditionalMaxStackAdditionalPercent,
-    builtInReaping: null, canInflictHitAilments: false, randomRoll: randomRoll ? Object.freeze({ ...randomRoll }) : null,
-    notes, unmodeled, reason: group ? null : `no game DoT row linked for ${name}`,
-    sources: { tlidb: table?.tlidb || null, gameData: group ? `config_skill_damage group ${groupId} (levels 1–20, DoT row${gameNote ? `; ${gameNote}` : ""})` : null, timing: skillTimingSs13[name] ? `SkillEditor Split ${skillTimingSs13[name].splitId}` : null }
+    name,
+    kind: "dot",
+    engine: group ? "skill-dot" : null,
+    damageType,
+    spell: tags.includes("Spell"),
+    tags,
+    delivery,
+    castIntervalSeconds,
+    channeled,
+    beam: tags.includes("Beam"),
+    maxChanneledStacks: channeled ? (skillTimingSs13[name]?.channel?.maxStacks ?? 5) : null,
+    dot: {
+      durationSeconds,
+      perSecondAtLevel,
+      stacking: "strongest",
+      referenceLevel: 20,
+      referencePerSecond: perSecondAtLevel(20),
+    },
+    refreshPerSecond,
+    recast: delivery === "spell-terra" ? terraRecast(name) : null,
+    extraAdditional,
+    perAdditionalMaxStackAdditionalPercent,
+    builtInReaping: null,
+    canInflictHitAilments: false,
+    randomRoll: randomRoll ? Object.freeze({ ...randomRoll }) : null,
+    notes,
+    unmodeled,
+    reason: group ? null : `no game DoT row linked for ${name}`,
+    sources: {
+      tlidb: table?.tlidb || null,
+      gameData: group
+        ? `config_skill_damage group ${groupId} (levels 1–20, DoT row${gameNote ? `; ${gameNote}` : ""})`
+        : null,
+      timing: skillTimingSs13[name] ? `SkillEditor Split ${skillTimingSs13[name].splitId}` : null,
+    },
   });
 }
 
-const SKILL_DOT_PROFILES = Object.freeze(Object.fromEntries([
-  // Batch 1: spell channels whose own damage is a status (Wilting Beam shape: refreshed by every channel use).
-  dotProfile("Mind Control", { groupId: 251, durationSeconds: 2, delivery: "channel-other", channeled: true, castIntervalSeconds: 0.333, perAdditionalMaxStackAdditionalPercent: 21.5,
-    notes: ["Mind Control: one Link reaches the single dummy (3 + 1 per channeled stack links need other enemies); the DoT (TLIDB: lasts 2 s) is refreshed by every channel use. The 0.5% Max Life per second per link is leech, not damage."] }),
-  dotProfile("Path of Flames", { groupId: 161, durationSeconds: 2, delivery: "channel-other", channeled: true, castIntervalSeconds: 0.333, perAdditionalMaxStackAdditionalPercent: 21.5,
-    notes: ["Path of Flames: the Fire Path's DoT (TLIDB: lasts 2 s) is taken as refreshed every channel use with the dummy standing on the path (best case; laying the path needs the character to move). The dash hit at max stacks (group 162) carries 0 damage in every game row and is not modeled."] }),
-  // Batch 3: Terra ground effects whose only damage is the DoT, with the Terra Charge line. Cadence: recast whenever a
-  // Terra Charge is available (terraRecast above; Frost Terra Lv16 dummy run 2026-10-12, tests/frost-terra-dummy-reference.test.js:
-  // the 2 s status stays up, uptime 1). The earlier once-per-6 s reading came from the Flame Jet Lv16 run (2026-10-11), which
-  // is kept for the skill-hit Terras (src/skill-hit-profiles.js); the two runs disagree for the DoT share (see the test).
-  dotProfile("Frost Terra", { groupId: 271, durationSeconds: 2, delivery: "spell-terra", extraAdditional: [{ ...TERRA_CHARGE_DOT, source: "Frost Terra: Terra Charge" }],
-    notes: ["Frost Terra: TLIDB: the Terra lasts 6 s (one at a time); 484 Persistent Cold Damage every second for 2 s. Best case: recast whenever a Terra Charge is available (1 per 0.5 s, use time 1 s fixed), so each new Terra re-applies the 2 s status and it stays up. \"Inflicts Frostbite when this skill deals damage\": the dummy is Frostbitten (Base Frostbite Rating 10: +10% additional Cold Damage taken, src/combat-states.js)."] }),
-  dotProfile("Thornfield", { groupId: 1201, durationSeconds: 2, delivery: "spell-terra", extraAdditional: [{ ...TERRA_CHARGE_DOT, source: "Thornfield: Terra Charge" }],
-    notes: ["Thornfield: TLIDB: the Terra lasts 6 s (one at a time); 486 Persistent Physical Damage every second for 2 s. Best case: recast whenever a Terra Charge is available (as Frost Terra; not checked in game for Thornfield), so the 2 s status stays up. \"1.25% additional damage for this skill for every 100 Max Life, up to +100%\" is not applied (the character's Max Life is not read here); the self True Damage has no DPS effect."] }),
-  // Black Hole (Empower): a 4 s area ticking every 0.5 s (game description; DoT row 561), one per 10 s cooldown (game Split 430451).
-  dotProfile("Black Hole", { groupId: 561, durationSeconds: 4, delivery: "spell-area", refreshPerSecond: 1 / 10,
-    notes: ["Black Hole: game Split 430451: 0.8 s cast, 10 s cooldown (TLIDB's \"Effect Cooldown: 1 s\" is the Affliction effect's); the dummy sits in the hole for its 4 s, so the DoT runs 4 s of every 10 s. Cooldown Recovery Speed is not applied to this cadence. Its 100 Affliction on DoT and the Euphoria (+3.5% additional DoT per 10 Affliction) are not modeled."], gameNote: "ticks every 0.5 s for 4 s" }),
-  // Voltaic Ripple (new skill, 2026-10-15): DoT row 1261 (src/data/skills/skill-hit-damage-new-skills.generated.js; Lv.1–20 equal
-  // the TLIDB level table, 580 Lightning per second at Lv.20). TLIDB: an electric ring inflicting Voltage for 2 s, 1 s cast,
-  // 2 s cooldown, one Terra at a time; the cooldown bounds the cadence at one cast per 2 s, which re-applies the 2 s status as
-  // it ends (uptime 1; casting faster is not possible and Cooldown Recovery Speed cannot raise an uptime of 1).
-  dotProfile("Voltaic Ripple", { groupId: 1261, durationSeconds: 2, delivery: "spell-terra", refreshPerSecond: 1 / 2,
-    extraAdditional: [{ source: "Voltaic Ripple: Terra Charge", text: "+26% additional damage for the skill for every Terra Charge consumed (TLIDB; max 1 stack, 1 per 0.5 s, so every cast, one per 2 s cooldown, consumes one)", value: 26, category: "Additional damage" }],
-    // Voltage's random roll (src/lucky-damage.js, read by src/skill-dot-model.js): ×1 without Lucky, the best of two with Lucky Damage.
-    randomRoll: { label: "Voltage roll", minPercent: 50, maxPercent: 150 },
-    notes: ["Voltaic Ripple: \"This damage changes randomly between 50% and 150%\" averages to 100% (the midpoint), so the listed value is the plain average; with Lucky Damage the game rolls twice and keeps the higher (manual \"Lucky & Unlucky\"), 50% + 100% × 2/3 = 116.67%, ×1.1667 (Very Lucky: best of three, ×1.25). The dummy is read as inside the ring for the whole 2 s (best case). A faster cadence (Cooldown Recovery Speed, an Activation Medium trigger) cannot raise the uptime above 1."], gameNote: "Voltage, 2 s" })
-].map((profile) => [profile.name, profile])));
+const SKILL_DOT_PROFILES = Object.freeze(
+  Object.fromEntries(
+    [
+      // Batch 1: spell channels whose own damage is a status (Wilting Beam shape: refreshed by every channel use).
+      dotProfile("Mind Control", {
+        groupId: 251,
+        durationSeconds: 2,
+        delivery: "channel-other",
+        channeled: true,
+        castIntervalSeconds: 0.333,
+        perAdditionalMaxStackAdditionalPercent: 21.5,
+        notes: [
+          "Mind Control: one Link reaches the single dummy (3 + 1 per channeled stack links need other enemies); the DoT (TLIDB: lasts 2 s) is refreshed by every channel use. The 0.5% Max Life per second per link is leech, not damage.",
+        ],
+      }),
+      dotProfile("Path of Flames", {
+        groupId: 161,
+        durationSeconds: 2,
+        delivery: "channel-other",
+        channeled: true,
+        castIntervalSeconds: 0.333,
+        perAdditionalMaxStackAdditionalPercent: 21.5,
+        notes: [
+          "Path of Flames: the Fire Path's DoT (TLIDB: lasts 2 s) is taken as refreshed every channel use with the dummy standing on the path (best case; laying the path needs the character to move). The dash hit at max stacks (group 162) carries 0 damage in every game row and is not modeled.",
+        ],
+      }),
+      // Batch 3: Terra ground effects whose only damage is the DoT, with the Terra Charge line. Cadence: recast whenever a
+      // Terra Charge is available (terraRecast above; Frost Terra Lv16 dummy run 2026-10-12, tests/frost-terra-dummy-reference.test.js:
+      // the 2 s status stays up, uptime 1). The earlier once-per-6 s reading came from the Flame Jet Lv16 run (2026-10-11), which
+      // is kept for the skill-hit Terras (src/skill-hit-profiles.js); the two runs disagree for the DoT share (see the test).
+      dotProfile("Frost Terra", {
+        groupId: 271,
+        durationSeconds: 2,
+        delivery: "spell-terra",
+        extraAdditional: [{ ...TERRA_CHARGE_DOT, source: "Frost Terra: Terra Charge" }],
+        notes: [
+          'Frost Terra: TLIDB: the Terra lasts 6 s (one at a time); 484 Persistent Cold Damage every second for 2 s. Best case: recast whenever a Terra Charge is available (1 per 0.5 s, use time 1 s fixed), so each new Terra re-applies the 2 s status and it stays up. "Inflicts Frostbite when this skill deals damage": the dummy is Frostbitten (Base Frostbite Rating 10: +10% additional Cold Damage taken, src/combat-states.js).',
+        ],
+      }),
+      dotProfile("Thornfield", {
+        groupId: 1201,
+        durationSeconds: 2,
+        delivery: "spell-terra",
+        extraAdditional: [{ ...TERRA_CHARGE_DOT, source: "Thornfield: Terra Charge" }],
+        notes: [
+          'Thornfield: TLIDB: the Terra lasts 6 s (one at a time); 486 Persistent Physical Damage every second for 2 s. Best case: recast whenever a Terra Charge is available (as Frost Terra; not checked in game for Thornfield), so the 2 s status stays up. "1.25% additional damage for this skill for every 100 Max Life, up to +100%" is not applied (the character\'s Max Life is not read here); the self True Damage has no DPS effect.',
+        ],
+      }),
+      // Black Hole (Empower): a 4 s area ticking every 0.5 s (game description; DoT row 561), one per 10 s cooldown (game Split 430451).
+      dotProfile("Black Hole", {
+        groupId: 561,
+        durationSeconds: 4,
+        delivery: "spell-area",
+        refreshPerSecond: 1 / 10,
+        notes: [
+          "Black Hole: game Split 430451: 0.8 s cast, 10 s cooldown (TLIDB's \"Effect Cooldown: 1 s\" is the Affliction effect's); the dummy sits in the hole for its 4 s, so the DoT runs 4 s of every 10 s. Cooldown Recovery Speed is not applied to this cadence. Its 100 Affliction on DoT and the Euphoria (+3.5% additional DoT per 10 Affliction) are not modeled.",
+        ],
+        gameNote: "ticks every 0.5 s for 4 s",
+      }),
+      // Voltaic Ripple (new skill, 2026-10-15): DoT row 1261 (src/data/skills/skill-hit-damage-new-skills.generated.js; Lv.1–20 equal
+      // the TLIDB level table, 580 Lightning per second at Lv.20). TLIDB: an electric ring inflicting Voltage for 2 s, 1 s cast,
+      // 2 s cooldown, one Terra at a time; the cooldown bounds the cadence at one cast per 2 s, which re-applies the 2 s status as
+      // it ends (uptime 1; casting faster is not possible and Cooldown Recovery Speed cannot raise an uptime of 1).
+      dotProfile("Voltaic Ripple", {
+        groupId: 1261,
+        durationSeconds: 2,
+        delivery: "spell-terra",
+        refreshPerSecond: 1 / 2,
+        extraAdditional: [
+          {
+            source: "Voltaic Ripple: Terra Charge",
+            text: "+26% additional damage for the skill for every Terra Charge consumed (TLIDB; max 1 stack, 1 per 0.5 s, so every cast, one per 2 s cooldown, consumes one)",
+            value: 26,
+            category: "Additional damage",
+          },
+        ],
+        // Voltage's random roll (src/lucky-damage.js, read by src/skill-dot-model.js): ×1 without Lucky, the best of two with Lucky Damage.
+        randomRoll: { label: "Voltage roll", minPercent: 50, maxPercent: 150 },
+        notes: [
+          'Voltaic Ripple: "This damage changes randomly between 50% and 150%" averages to 100% (the midpoint), so the listed value is the plain average; with Lucky Damage the game rolls twice and keeps the higher (manual "Lucky & Unlucky"), 50% + 100% × 2/3 = 116.67%, ×1.1667 (Very Lucky: best of three, ×1.25). The dummy is read as inside the ring for the whole 2 s (best case). A faster cadence (Cooldown Recovery Speed, an Activation Medium trigger) cannot raise the uptime above 1.',
+        ],
+        gameNote: "Voltage, 2 s",
+      }),
+    ].map((profile) => [profile.name, profile]),
+  ),
+);
 
 // Generic spell hits (engine "skill-hit", src/skill-hit-model.js): the batch-2a profiles from
 // src/skill-hit-profiles.js (game damage rows + Split timing), registered beside the dedicated ones.
@@ -174,7 +319,15 @@ const SKILL_DOT_PROFILES = Object.freeze(Object.fromEntries([
 // Minion skills ("% of Base Damage": Spirit Magus, Synthetic Troop and Modularization skills) go through the Minion
 // engine (src/minion-damage-model.js, engine "minion"); a setup of any of a Minion's skills activates that Minion.
 // Vendetta / Endless Vendetta (src/vendetta-model.js, engine "trigger-main") deal no damage of their own: they trigger the Main Skill.
-export const SKILL_DAMAGE_PROFILES = Object.freeze({ ...SKILL_HIT_PROFILES, ...ATTACK_HIT_PROFILES, ...SKILL_DOT_PROFILES, ...MINION_SKILL_PROFILES, ...VENDETTA_PROFILES, "Scorching Beam": SCORCHING_BEAM, "Wilting Beam": WILTING_BEAM });
+export const SKILL_DAMAGE_PROFILES = Object.freeze({
+  ...SKILL_HIT_PROFILES,
+  ...ATTACK_HIT_PROFILES,
+  ...SKILL_DOT_PROFILES,
+  ...MINION_SKILL_PROFILES,
+  ...VENDETTA_PROFILES,
+  "Scorching Beam": SCORCHING_BEAM,
+  "Wilting Beam": WILTING_BEAM,
+});
 
 const effectsOf = (setup) => [...(allSkillEffectsSs13[setup?.name] || []), ...(setup?.effects || [])].join("\n");
 
@@ -185,11 +338,39 @@ export function inferDamageProfile(setup) {
   if (SKILL_DAMAGE_PROFILES[setup.name]) return SKILL_DAMAGE_PROFILES[setup.name];
   const text = effectsOf(setup);
   let match = text.match(dotRange);
-  if (match) return { name: setup.name, kind: "dot", engine: null, damageType: match[3], tags: setup.tags || [], delivery: "area-tick", tickSeconds: Number(match[4]), reason: `${match[3]} damage over time every ${match[4]} s (area tick) has no model yet` };
+  if (match)
+    return {
+      name: setup.name,
+      kind: "dot",
+      engine: null,
+      damageType: match[3],
+      tags: setup.tags || [],
+      delivery: "area-tick",
+      tickSeconds: Number(match[4]),
+      reason: `${match[3]} damage over time every ${match[4]} s (area tick) has no model yet`,
+    };
   match = text.match(dotLine);
-  if (match) return { name: setup.name, kind: "dot", engine: null, damageType: match[2], tags: setup.tags || [], delivery: "unknown", reason: `${match[2]} damage over time skill without a delivery model` };
+  if (match)
+    return {
+      name: setup.name,
+      kind: "dot",
+      engine: null,
+      damageType: match[2],
+      tags: setup.tags || [],
+      delivery: "unknown",
+      reason: `${match[2]} damage over time skill without a delivery model`,
+    };
   match = text.match(hitLine);
-  if (match) return { name: setup.name, kind: "hit", engine: null, damageType: match[3], tags: setup.tags || [], delivery: "unknown", reason: `${match[3]} hits (${match[1]}–${match[2]} at Lv.20) need a hit model (cast rate, added damage, crit) for this skill` };
+  if (match)
+    return {
+      name: setup.name,
+      kind: "hit",
+      engine: null,
+      damageType: match[3],
+      tags: setup.tags || [],
+      delivery: "unknown",
+      reason: `${match[3]} hits (${match[1]}–${match[2]} at Lv.20) need a hit model (cast rate, added damage, crit) for this skill`,
+    };
   return null;
 }
 
@@ -205,8 +386,25 @@ export function collectSkillDamageSources({ setups = [], activeNames = new Set()
     if (!profile) continue;
     const active = activeNames.has(setup.name);
     const status = !active ? "inactive" : profile.engine ? "modeled" : "not modeled";
-    const reason = !active ? "not active in the current Energy allocation" : profile.engine === "minion" ? `minion engine (${profile.summon})` : profile.engine === "trigger-main" ? "triggers the Main Skill (trigger-main engine)" : profile.engine ? `${profile.engine} engine` : profile.reason || "no damage model for this skill";
-    sources.push({ setupKey: setup.setupKey || setup.instanceId || setup.name, name: setup.name, role: setup.role, enabled: setup.enabled !== false, active, profile, status, reason });
+    const reason = !active
+      ? "not active in the current Energy allocation"
+      : profile.engine === "minion"
+        ? `minion engine (${profile.summon})`
+        : profile.engine === "trigger-main"
+          ? "triggers the Main Skill (trigger-main engine)"
+          : profile.engine
+            ? `${profile.engine} engine`
+            : profile.reason || "no damage model for this skill";
+    sources.push({
+      setupKey: setup.setupKey || setup.instanceId || setup.name,
+      name: setup.name,
+      role: setup.role,
+      enabled: setup.enabled !== false,
+      active,
+      profile,
+      status,
+      reason,
+    });
   }
   return sources;
 }

@@ -28,20 +28,27 @@ export const TERRA_CHARGE_BASE_PERCENT = 26;
 export const TERRA_CHARGE_INTERVAL_SECONDS = 0.5;
 const num = (text) => Number(String(text).replace("−", "-"));
 const round = (value) => Math.round(value * 10000) / 10000;
-const clean = (line) => String(line?.text ?? "").replace(/\s+/g, " ").replace(/(\d) %/g, "$1%").trim();
+const clean = (line) =>
+  String(line?.text ?? "")
+    .replace(/\s+/g, " ")
+    .replace(/(\d) %/g, "$1%")
+    .trim();
 
 const MAX_CHARGE = /^(?:\+(\d+) Max Terra Charge Stacks?|Max Terra Charge Stacks? \+(\d+))$/i;
-const SPELL_BURST_SHARE = /^Any increase\/decrease on Max Spell Burst Stacks is also applied to Max Terra Charge Stacks, up to \+(\d+)$/i;
+const SPELL_BURST_SHARE =
+  /^Any increase\/decrease on Max Spell Burst Stacks is also applied to Max Terra Charge Stacks, up to \+(\d+)$/i;
 const RECOVERY = /^\+?(-?\d+(?:\.\d+)?)% Terra Charge (?:Recovery|Restoration) Speed$/i;
 // Current text: "Each Terra Charge consumed by Terra skills now grants 32% Damage Bonus to that Terra skill" (TLIDB); the earlier
 // wording is kept for saved text.
-const MOON = /^(?:Increases damage provided by Terra Skills to (\d+(?:\.\d+)?)% for every 1 Terra Charge they consume|Each Terra Charge consumed by Terra skills now grants (\d+(?:\.\d+)?)% Damage Bonus to that Terra skill)$/i;
+const MOON =
+  /^(?:Increases damage provided by Terra Skills to (\d+(?:\.\d+)?)% for every 1 Terra Charge they consume|Each Terra Charge consumed by Terra skills now grants (\d+(?:\.\d+)?)% Damage Bonus to that Terra skill)$/i;
 const PARADISE = /^Enemies within the Main Terra Skill's area are cursed with Lv\. (\d+) Ominous$/i;
 // Gash (Crimson Gash: "When consuming Terra Charge, gains N stack(s) of Gash for every M stack(s) of Terra Charge consumed"). Per
 // stack (official patch notes, Crimson Gash): +12% additional Terra Skill Damage (multiplies), −40% Terra Charge Recovery Speed,
 // up to 8 stacks, lasts 3 s.
 export const GASH = Object.freeze({ additionalPercent: 12, recoveryPercent: -40, maxStacks: 8, durationSeconds: 3 });
-export const GASH_GAIN_TEXT = /^When consuming Terra Charge, gains (\d+(?:\.\d+)?) stack\(s\) of Gash for every (\d+(?:\.\d+)?) stack\(s\) of Terra Charge consumed$/i;
+export const GASH_GAIN_TEXT =
+  /^When consuming Terra Charge, gains (\d+(?:\.\d+)?) stack\(s\) of Gash for every (\d+(?:\.\d+)?) stack\(s\) of Terra Charge consumed$/i;
 const GASH_GAIN = GASH_GAIN_TEXT;
 
 /**
@@ -54,38 +61,64 @@ const GASH_GAIN = GASH_GAIN_TEXT;
 export function settleGash(charges, castIntervalSeconds = null, { minimum = 0 } = {}) {
   // recoverySpeedPercent / recoverySources stay the build's stat lines (the character panel's figure); Gash is a combat buff.
   const base = charges.recoverySpeedPercent;
-  const intervalAt = (stacks) => TERRA_CHARGE_INTERVAL_SECONDS / Math.max(0.01, 1 + (base + GASH.recoveryPercent * stacks) / 100);
+  const intervalAt = (stacks) =>
+    TERRA_CHARGE_INTERVAL_SECONDS / Math.max(0.01, 1 + (base + GASH.recoveryPercent * stacks) / 100);
   const gash = charges.gash;
   if (!gash) return charges;
   const held = (stacks) => {
     const interval = intervalAt(stacks);
     const cast = castIntervalSeconds > 0 ? castIntervalSeconds : interval;
     const consumed = Math.max(minimum, Math.min(charges.maxCharges, cast / interval));
-    return Math.min(GASH.maxStacks, gash.perCharge * consumed / cast * GASH.durationSeconds);
+    return Math.min(GASH.maxStacks, ((gash.perCharge * consumed) / cast) * GASH.durationSeconds);
   };
-  let low = 0, high = GASH.maxStacks;
+  let low = 0,
+    high = GASH.maxStacks;
   if (held(high) >= high) low = high;
-  else for (let step = 0; step < 60; step++) { const mid = (low + high) / 2; if (held(mid) > mid) low = mid; else high = mid; }
+  else
+    for (let step = 0; step < 60; step++) {
+      const mid = (low + high) / 2;
+      if (held(mid) > mid) low = mid;
+      else high = mid;
+    }
   const stacks = round(low);
   const recoveryPercent = round(GASH.recoveryPercent * stacks);
-  return { ...charges, combatRecoverySpeedPercent: round(base + recoveryPercent), chargeIntervalSeconds: intervalAt(stacks),
-    gash: { ...gash, stacks, recoveryPercent, castIntervalSeconds, detail: `${GASH.recoveryPercent}% Terra Charge Recovery Speed per Gash stack × ${stacks} held (${round(gash.perCharge)} per charge consumed, ${GASH.durationSeconds} s each, up to ${GASH.maxStacks})` } };
+  return {
+    ...charges,
+    combatRecoverySpeedPercent: round(base + recoveryPercent),
+    chargeIntervalSeconds: intervalAt(stacks),
+    gash: {
+      ...gash,
+      stacks,
+      recoveryPercent,
+      castIntervalSeconds,
+      detail: `${GASH.recoveryPercent}% Terra Charge Recovery Speed per Gash stack × ${stacks} held (${round(gash.perCharge)} per charge consumed, ${GASH.durationSeconds} s each, up to ${GASH.maxStacks})`,
+    },
+  };
 }
 
 /** Terra Charge state from the build's lines (any hero; the Dance traits supply most of them). */
 export function resolveTerraCharges(modifierTexts = [], { maxSpellBurst = 0 } = {}) {
-  const maxSources = [], recoverySources = [];
-  let perChargePercent = TERRA_CHARGE_BASE_PERCENT, perChargeSource = null, gash = null;
+  const maxSources = [],
+    recoverySources = [];
+  let perChargePercent = TERRA_CHARGE_BASE_PERCENT,
+    perChargeSource = null,
+    gash = null;
   for (const line of modifierTexts) {
-    const text = clean(line), multiplier = line.multiplier ?? 1;
+    const text = clean(line),
+      multiplier = line.multiplier ?? 1;
     let match = text.match(GASH_GAIN);
     if (match) {
-      const perCharge = num(match[1]) / Math.max(1e-9, num(match[2])) * multiplier;
-      gash = gash ? { ...gash, perCharge: gash.perCharge + perCharge, text: `${gash.text}; ${text}` } : { source: line.source, text, perCharge };
+      const perCharge = (num(match[1]) / Math.max(1e-9, num(match[2]))) * multiplier;
+      gash = gash
+        ? { ...gash, perCharge: gash.perCharge + perCharge, text: `${gash.text}; ${text}` }
+        : { source: line.source, text, perCharge };
       continue;
     }
     match = text.match(MAX_CHARGE);
-    if (match) { maxSources.push({ source: line.source, text, value: num(match[1] ?? match[2]) * multiplier }); continue; }
+    if (match) {
+      maxSources.push({ source: line.source, text, value: num(match[1] ?? match[2]) * multiplier });
+      continue;
+    }
     match = text.match(SPELL_BURST_SHARE);
     if (match) {
       const value = Math.min(num(match[1]), maxSpellBurst);
@@ -93,15 +126,31 @@ export function resolveTerraCharges(modifierTexts = [], { maxSpellBurst = 0 } = 
       continue;
     }
     match = text.match(RECOVERY);
-    if (match) { recoverySources.push({ source: line.source, text, value: num(match[1]) * multiplier }); continue; }
+    if (match) {
+      recoverySources.push({ source: line.source, text, value: num(match[1]) * multiplier });
+      continue;
+    }
     match = text.match(MOON);
-    if (match && line.origin === "trait") { perChargePercent = num(match[1] ?? match[2]); perChargeSource = { source: line.source, text }; }
+    if (match && line.origin === "trait") {
+      perChargePercent = num(match[1] ?? match[2]);
+      perChargeSource = { source: line.source, text };
+    }
   }
   const maxCharges = Math.max(1, 1 + maxSources.reduce((sum, item) => sum + item.value, 0));
   const recoverySpeedPercent = recoverySources.reduce((sum, item) => sum + item.value, 0);
   const chargeIntervalSeconds = TERRA_CHARGE_INTERVAL_SECONDS / Math.max(0.01, 1 + recoverySpeedPercent / 100);
-  const charges = { perChargePercent, perChargeSource, maxCharges, maxSources, recoverySpeedPercent, combatRecoverySpeedPercent: recoverySpeedPercent, recoverySources, chargeIntervalSeconds, gash,
-    isDefault: perChargePercent === TERRA_CHARGE_BASE_PERCENT && maxCharges === 1 && !gash };
+  const charges = {
+    perChargePercent,
+    perChargeSource,
+    maxCharges,
+    maxSources,
+    recoverySpeedPercent,
+    combatRecoverySpeedPercent: recoverySpeedPercent,
+    recoverySources,
+    chargeIntervalSeconds,
+    gash,
+    isDefault: perChargePercent === TERRA_CHARGE_BASE_PERCENT && maxCharges === 1 && !gash,
+  };
   // Charge-bound cadence by default; a fixed recast interval re-settles it (terraChargesAtInterval).
   return settleGash(charges);
 }
@@ -116,10 +165,17 @@ export function terraChargesAtInterval(charges, castIntervalSeconds, { minimum =
 // resolveTerraCharges reads. They apply to that skill only (frost-terra audit 2026-10-13; before, no rule read them).
 export function setupTerraChargeLines(setup) {
   const clauses = setup?.supportEffects?.clauses || [];
-  return clauses.filter((clause) => clause.family === "terraCharge" && clause.value).map((clause) => ({
-    source: clause.source, origin: "support", multiplier: 1,
-    text: clause.kind === "max" ? `Max Terra Charge Stacks +${clause.value}` : `${clause.value >= 0 ? "+" : ""}${clause.value}% Terra Charge Restoration Speed`
-  }));
+  return clauses
+    .filter((clause) => clause.family === "terraCharge" && clause.value)
+    .map((clause) => ({
+      source: clause.source,
+      origin: "support",
+      multiplier: 1,
+      text:
+        clause.kind === "max"
+          ? `Max Terra Charge Stacks +${clause.value}`
+          : `${clause.value >= 0 ? "+" : ""}${clause.value}% Terra Charge Restoration Speed`,
+    }));
 }
 
 /** Terra Charge state of one setup: the build's lines plus its own support clauses. */
@@ -141,7 +197,11 @@ export function terraChargesConsumed(charges, castIntervalSeconds, { minimum = 1
 export function terraChargeLine(line, charges, consumed) {
   if (!line || !charges || (charges.isDefault && consumed === 1)) return line;
   const value = round(charges.perChargePercent * consumed);
-  return { ...line, value, text: `+${charges.perChargePercent}% additional damage for every Terra Charge consumed × ${round(consumed)} consumed per cast (Max Terra Charge ${charges.maxCharges}; keyword: a cast consumes all its charges${charges.perChargeSource ? `; ${charges.perChargeSource.text}` : ""}) = +${value}%` };
+  return {
+    ...line,
+    value,
+    text: `+${charges.perChargePercent}% additional damage for every Terra Charge consumed × ${round(consumed)} consumed per cast (Max Terra Charge ${charges.maxCharges}; keyword: a cast consumes all its charges${charges.perChargeSource ? `; ${charges.perChargeSource.text}` : ""}) = +${value}%`,
+  };
 }
 
 /** A skill-hit Terra profile with its Terra Charge line for the build (recast when the Terra expires). */
@@ -150,7 +210,11 @@ export function withTerraCharges(profile, charges) {
   const interval = profile.useModel?.kind === "terra" ? profile.useModel.durationSeconds || 6 : 6;
   const atInterval = terraChargesAtInterval(charges, interval);
   const consumed = terraChargesConsumed(atInterval, interval);
-  return { ...profile, terraCharge: terraChargeLine(profile.terraCharge, atInterval, consumed), terraChargesConsumed: consumed };
+  return {
+    ...profile,
+    terraCharge: terraChargeLine(profile.terraCharge, atInterval, consumed),
+    terraChargesConsumed: consumed,
+  };
 }
 
 /**
@@ -161,20 +225,57 @@ export function withTerraCharges(profile, charges) {
  * @param {Set<string>} p.activeNames active skill names
  * @param {number} p.maxSpellBurst Σ "+N Max Spell Burst"
  */
-export function resolveDanceOfTheDeep({ state, modifierTexts = [], resolvedMain = null, activeNames = new Set(), maxSpellBurst = 0, extraChargeLines = [] } = {}) {
+export function resolveDanceOfTheDeep({
+  state,
+  modifierTexts = [],
+  resolvedMain = null,
+  activeNames = new Set(),
+  maxSpellBurst = 0,
+  extraChargeLines = [],
+} = {}) {
   const selected = state?.hero?.selectedHeroId === DANCE_OF_THE_DEEP;
-  const mainIsTerra = Boolean(resolvedMain && activeNames.has(resolvedMain.name) && (resolvedMain.tags || []).includes("Terra"));
+  const mainIsTerra = Boolean(
+    resolvedMain && activeNames.has(resolvedMain.name) && (resolvedMain.tags || []).includes("Terra"),
+  );
   // The Main Skill's Terra Charge: the build's lines plus its own support clauses (setupTerraChargeLines; Ground Divide).
   const charges = resolveTerraCharges([...modifierTexts, ...extraChargeLines], { maxSpellBurst });
-  const paradiseLine = selected ? modifierTexts.find((line) => line.origin === "trait" && PARADISE.test(clean(line))) : null;
+  const paradiseLine = selected
+    ? modifierTexts.find((line) => line.origin === "trait" && PARADISE.test(clean(line)))
+    : null;
   const cursed = Boolean(paradiseLine && mainIsTerra);
-  const blocksNonMainTerra = selected && modifierTexts.some((line) => line.origin === "trait" && /^Non-Main Terra Skill cannot deal damage$/i.test(clean(line)));
-  const assumptions = !selected ? [] : [
-    { id: "dance:mainTerra", value: mainIsTerra, text: `Dance of the Deep: ${mainIsTerra ? `Main Terra Skill ${resolvedMain.name} centred on you and following you, the dummy inside its area (best case: you stand within 10 m)` : "no active Main Terra Skill, so the Main Terra clauses are inactive"}; Terra skills that are not the Main Skill deal no damage.` },
-    !charges.isDefault && { id: "dance:terraCharges", value: charges.maxCharges, text: `Terra Charge: +${charges.perChargePercent}% per charge consumed${charges.perChargeSource ? " (Artificial Moon)" : ""}, Max Terra Charge ${charges.maxCharges}${charges.maxSources.length ? ` (${charges.maxSources.map((item) => `${item.source}: +${item.value}`).join(", ")})` : ""}; a cast consumes all charges gained since the last cast, up to the max (keyword), at the planner's recast cadence; charge every ${round(charges.chargeIntervalSeconds)} s${charges.gash ? ` (Gash: ${charges.gash.stacks} stacks held, ${GASH.recoveryPercent}% Terra Charge Recovery Speed each)` : ""}.` },
-    paradiseLine && { id: "dance:paradise", value: cursed, text: `The Paradise I Curse: the dummy is ${cursed ? "Cursed (Lv. 1 Ominous inside the Main Terra Skill's area; Ill Omen is counted separately in the Ill Omen line (best case, Elite loop); the curse does not take a curse slot: user-confirmed 2026-10-13)" : "not Cursed by it (no active Main Terra Skill)"}.` }
-  ].filter(Boolean);
-  return { selected, mainIsTerra, charges, cursed, paradiseSource: paradiseLine?.source || null, blocksNonMainTerra, assumptions };
+  const blocksNonMainTerra =
+    selected &&
+    modifierTexts.some(
+      (line) => line.origin === "trait" && /^Non-Main Terra Skill cannot deal damage$/i.test(clean(line)),
+    );
+  const assumptions = !selected
+    ? []
+    : [
+        {
+          id: "dance:mainTerra",
+          value: mainIsTerra,
+          text: `Dance of the Deep: ${mainIsTerra ? `Main Terra Skill ${resolvedMain.name} centred on you and following you, the dummy inside its area (best case: you stand within 10 m)` : "no active Main Terra Skill, so the Main Terra clauses are inactive"}; Terra skills that are not the Main Skill deal no damage.`,
+        },
+        !charges.isDefault && {
+          id: "dance:terraCharges",
+          value: charges.maxCharges,
+          text: `Terra Charge: +${charges.perChargePercent}% per charge consumed${charges.perChargeSource ? " (Artificial Moon)" : ""}, Max Terra Charge ${charges.maxCharges}${charges.maxSources.length ? ` (${charges.maxSources.map((item) => `${item.source}: +${item.value}`).join(", ")})` : ""}; a cast consumes all charges gained since the last cast, up to the max (keyword), at the planner's recast cadence; charge every ${round(charges.chargeIntervalSeconds)} s${charges.gash ? ` (Gash: ${charges.gash.stacks} stacks held, ${GASH.recoveryPercent}% Terra Charge Recovery Speed each)` : ""}.`,
+        },
+        paradiseLine && {
+          id: "dance:paradise",
+          value: cursed,
+          text: `The Paradise I Curse: the dummy is ${cursed ? "Cursed (Lv. 1 Ominous inside the Main Terra Skill's area; Ill Omen is counted separately in the Ill Omen line (best case, Elite loop); the curse does not take a curse slot: user-confirmed 2026-10-13)" : "not Cursed by it (no active Main Terra Skill)"}.`,
+        },
+      ].filter(Boolean);
+  return {
+    selected,
+    mainIsTerra,
+    charges,
+    cursed,
+    paradiseSource: paradiseLine?.source || null,
+    blocksNonMainTerra,
+    assumptions,
+  };
 }
 
 // Activation Medium: Terra (Selena Dance traits, user answers 2026-10-13). Granted to the Main Terra Skill by Silencing
@@ -191,7 +292,14 @@ export function resolveDanceOfTheDeep({ state, modifierTexts = [], resolvedMain 
 //   the charges refill to max, every Max Terra Charge × charge interval, and consumes them all (the dummy stands within 10 m);
 // - the seal is a flat 20% of Mana, or of Life with Drenched Hem. Sealed Mana Compensation does not reduce it
 //   (user-confirmed 2026-10-13).
-export const ACTIVATION_MEDIUM_TERRA = Object.freeze({ additionalPercent: 30, sealPercent: 20, triggerMeters: 25, movementSpeedPercent: -30, movementSeconds: 2, source: "TLIDB Activation_Medium_Terra (2026-10-13)" });
+export const ACTIVATION_MEDIUM_TERRA = Object.freeze({
+  additionalPercent: 30,
+  sealPercent: 20,
+  triggerMeters: 25,
+  movementSpeedPercent: -30,
+  movementSeconds: 2,
+  source: "TLIDB Activation_Medium_Terra (2026-10-13)",
+});
 const AM_TERRA_GRANT = /^The Main Terra Skill is supported by Activation Medium: Terra$/i;
 const AM_TERRA_LIFE = /^Activation Medium: Terra seals Life instead$/i;
 
@@ -200,7 +308,14 @@ export function resolveActivationMediumTerra({ modifierTexts = [], mainIsTerra =
   const grant = modifierTexts.find((line) => line.origin === "trait" && AM_TERRA_GRANT.test(clean(line)));
   const life = modifierTexts.find((line) => line.origin === "trait" && AM_TERRA_LIFE.test(clean(line)));
   const active = Boolean(grant && mainIsTerra);
-  return { ...ACTIVATION_MEDIUM_TERRA, active, granted: Boolean(grant), grantSource: grant?.source || null, sealsLife: Boolean(life), sealSource: life?.source || null };
+  return {
+    ...ACTIVATION_MEDIUM_TERRA,
+    active,
+    granted: Boolean(grant),
+    grantSource: grant?.source || null,
+    sealsLife: Boolean(life),
+    sealSource: life?.source || null,
+  };
 }
 
 /** The Main Terra Skill's trigger interval under Activation Medium: Terra: the time for its charges to refill to the max. */
@@ -227,17 +342,48 @@ export function activationMediumTerraInterval(charges) {
 export function windRhythmTerraTrigger({ setup = null, castRate = null, modifierTexts = [] } = {}) {
   // The shared Activation Medium DoT trigger (src/trigger-interval.js activationMediumDotTrigger), Wind Rhythm only; the Terra's
   // Split cooldown is its Terra Charge gain, not a use cooldown, so nothing caps the trigger rate here.
-  const wind = activationMediumDotTrigger({ setup, castRate, cooldownLines: buildCooldownRecoveryLines(modifierTexts), cooldownSeconds: 0 });
+  const wind = activationMediumDotTrigger({
+    setup,
+    castRate,
+    cooldownLines: buildCooldownRecoveryLines(modifierTexts),
+    cooldownSeconds: 0,
+  });
   if (!wind?.castSpeedScaled) return null;
-  const { intervalSeconds, share, castIncreasedPercent, castAdditionalFactor, cooldownRecoveryPercent, cooldownAdditionalFactor } = wind;
+  const {
+    intervalSeconds,
+    share,
+    castIncreasedPercent,
+    castAdditionalFactor,
+    cooldownRecoveryPercent,
+    cooldownAdditionalFactor,
+  } = wind;
   const text = `${setup.name}: triggered by Activation Medium: Wind Rhythm every ${round(intervalSeconds)} s = ${wind.cooldownSeconds} s ÷ ((1 + ${round(cooldownRecoveryPercent)}% Cooldown Recovery Speed + ${round(share * 100)}% × ${round(castIncreasedPercent)}% Cast Speed) × ${round(castAdditionalFactor)} additional Cast Speed${cooldownAdditionalFactor !== 1 ? ` × ${round(cooldownAdditionalFactor)} additional Cooldown Recovery Speed` : ""}) (no use time; the creator's calc v0.3, user-provided 2026-10-13; provisional); ${round(1 / intervalSeconds)} casts/s. Triggered only, so the manual-use penalty does not apply.`;
-  return { intervalSeconds, castsPerSecond: 1 / intervalSeconds, cooldownSeconds: wind.cooldownSeconds, share, castIncreasedPercent, castAdditionalFactor, cooldownRecoveryPercent, cooldownAdditionalFactor, cooldownSources: wind.cooldownSources, source: wind.source, text };
+  return {
+    intervalSeconds,
+    castsPerSecond: 1 / intervalSeconds,
+    cooldownSeconds: wind.cooldownSeconds,
+    share,
+    castIncreasedPercent,
+    castAdditionalFactor,
+    cooldownRecoveryPercent,
+    cooldownAdditionalFactor,
+    cooldownSources: wind.cooldownSources,
+    source: wind.source,
+    text,
+  };
 }
 
 /** The build's "±X% [additional] Cooldown Recovery Speed" lines ({ source, text, value, additional }). */
 export function buildCooldownRecoveryLines(modifierTexts = []) {
-  return modifierTexts.map((line) => ({ line, parsed: classifyHitLine(line.text, { targetCursed: false }) })).filter(({ parsed }) => parsed?.kind === "cooldownRecovery")
-    .map(({ line, parsed }) => ({ source: line.source, text: line.text, value: parsed.value * (line.multiplier ?? 1), additional: parsed.additional }));
+  return modifierTexts
+    .map((line) => ({ line, parsed: classifyHitLine(line.text, { targetCursed: false }) }))
+    .filter(({ parsed }) => parsed?.kind === "cooldownRecovery")
+    .map(({ line, parsed }) => ({
+      source: line.source,
+      text: line.text,
+      value: parsed.value * (line.multiplier ?? 1),
+      additional: parsed.additional,
+    }));
 }
 
 // The Cycle I Resist (TLIDB Dance_of_the_Deep, research/tlidb-dance-of-the-deep.html; game affixes 480006336 / 591569216):
@@ -257,8 +403,10 @@ export function buildCooldownRecoveryLines(modifierTexts = []) {
 // not an increase / decrease (game: the share reads increased rating, attr 48021 mod 3).
 // User-confirmed (2026-10-13): the Reap settles every DoT active on the dummy (all ailments and skill DoTs), like the other
 // Reaping sources (src/reaping-model.js; the source carries no dotKeys).
-const CYCLE_REAP = /^When casting a Terra Skill, if the previous Main Terra Skill hasn't ended, Reaps Damage Over Time equal to (\d+(?:\.\d+)?)% of the previous skill's remaining duration from enemies within this skill's Area$/i;
-const CYCLE_DURATION = /^(\d+(?:\.\d+)?)% of the increase\/decrease on Critical Strike Rating is also applied to Terra Skill Duration$/i;
+const CYCLE_REAP =
+  /^When casting a Terra Skill, if the previous Main Terra Skill hasn't ended, Reaps Damage Over Time equal to (\d+(?:\.\d+)?)% of the previous skill's remaining duration from enemies within this skill's Area$/i;
+const CYCLE_DURATION =
+  /^(\d+(?:\.\d+)?)% of the increase\/decrease on Critical Strike Rating is also applied to Terra Skill Duration$/i;
 const TERRA_DURATION = /^\+(\d+(?:\.\d+)?)% Terra Skill Duration$/i;
 const CRIT_RATING = /^([+-]\d+(?:\.\d+)?)% (?:(.+?) )?Critical Strike Rating(?: for the supported skill)?$/i;
 
@@ -268,10 +416,16 @@ export function critRatingScopeReaches(scope, tags = []) {
   if (/\bMinions?\b/i.test(scope)) return false;
   const own = new Set((tags || []).map((tag) => String(tag).toLowerCase()));
   // "Attack and Spell": either part reaching the skill is enough; "Cold Spell": every word must.
-  return String(scope).split(/\s+and\s+/i).some((part) => {
-    const words = part.replace(/\bSkills?\b/gi, " ").split(/\s+/).map((word) => word.trim()).filter(Boolean);
-    return words.length > 0 && words.every((word) => own.has(word.toLowerCase()));
-  });
+  return String(scope)
+    .split(/\s+and\s+/i)
+    .some((part) => {
+      const words = part
+        .replace(/\bSkills?\b/gi, " ")
+        .split(/\s+/)
+        .map((word) => word.trim())
+        .filter(Boolean);
+      return words.length > 0 && words.every((word) => own.has(word.toLowerCase()));
+    });
 }
 
 /**
@@ -281,12 +435,25 @@ export function critRatingScopeReaches(scope, tags = []) {
  * it). No internal cooldown: every recast Reaps (user, 2026-10-13: the tooltip shows none).
  * @returns {{ active, reap, terraDurationSeconds, ... } | null} null when the trait is not selected
  */
-export function resolveCycleResist({ modifierTexts = [], mainIsTerra = false, castIntervalSeconds = 0, baseTerraSeconds = 6, mainTags = [], mainSupportClauses = [] } = {}) {
+export function resolveCycleResist({
+  modifierTexts = [],
+  mainIsTerra = false,
+  castIntervalSeconds = 0,
+  baseTerraSeconds = 6,
+  mainTags = [],
+  mainSupportClauses = [],
+} = {}) {
   const traits = modifierTexts.filter((line) => line.origin === "trait");
   const reapLine = traits.find((line) => CYCLE_REAP.test(clean(line)));
   if (!reapLine) return null;
   const sharePercent = num(traits.map((line) => clean(line).match(CYCLE_DURATION)).find(Boolean)?.[1] ?? 0);
-  const durationLines = modifierTexts.filter((line) => TERRA_DURATION.test(clean(line))).map((line) => ({ source: line.source, text: clean(line), value: num(clean(line).match(TERRA_DURATION)[1]) * (line.multiplier ?? 1) }));
+  const durationLines = modifierTexts
+    .filter((line) => TERRA_DURATION.test(clean(line)))
+    .map((line) => ({
+      source: line.source,
+      text: clean(line),
+      value: num(clean(line).match(TERRA_DURATION)[1]) * (line.multiplier ?? 1),
+    }));
   // "the increase/decrease on Critical Strike Rating" (user-confirmed 2026-10-13): every ±X% Critical Strike Rating line that
   // reaches the Main Terra (no scope, or a scope of its own tags such as Spell / Cold / Terra), and the Main Terra's own support
   // rating lines ("for the supported skill", Control Spell's −50%). Minion lines and other skill types are left out.
@@ -303,25 +470,51 @@ export function resolveCycleResist({ modifierTexts = [], mainIsTerra = false, ca
     critLines.push({ source: clause.source, text: clause.text, value: clause.value });
   }
   const critIncreasePercent = critLines.reduce((sum, item) => sum + item.value, 0);
-  const durationPercent = durationLines.reduce((sum, item) => sum + item.value, 0) + critIncreasePercent * sharePercent / 100;
+  const durationPercent =
+    durationLines.reduce((sum, item) => sum + item.value, 0) + (critIncreasePercent * sharePercent) / 100;
   const terraDurationSeconds = baseTerraSeconds * (1 + durationPercent / 100);
   const rollPercent = num(clean(reapLine).match(CYCLE_REAP)[1]);
   const interval = castIntervalSeconds > 0 ? castIntervalSeconds : Infinity;
   const recastsPerReap = Number.isFinite(interval) ? 1 : Infinity;
   const reapIntervalSeconds = interval;
   const remainingSeconds = Math.max(0, terraDurationSeconds - interval);
-  const baseReapSeconds = rollPercent / 100 * remainingSeconds;
+  const baseReapSeconds = (rollPercent / 100) * remainingSeconds;
   const active = Boolean(mainIsTerra && baseReapSeconds > 0 && Number.isFinite(reapIntervalSeconds));
   const text = `The Cycle I Resist: every ${round(reapIntervalSeconds)} s (on every Main Terra recast; no internal cooldown, user 2026-10-13: the tooltip shows none) Reaps ${rollPercent}% × ${round(remainingSeconds)} s remaining (Terra ${round(terraDurationSeconds)} s = ${baseTerraSeconds} s × (1 + ${round(durationPercent)}% Terra Skill Duration, ${sharePercent}% of +${round(critIncreasePercent)}% Critical Strike Rating included) − ${round(interval)} s) = ${round(baseReapSeconds)} s of Damage Over Time before Reaping Duration`;
   return {
-    active, rollPercent, sharePercent, critIncreasePercent, critLines, durationLines, durationPercent, terraDurationSeconds, castIntervalSeconds: interval,
-    recastsPerReap, reapIntervalSeconds, remainingSeconds, baseReapSeconds, text, source: reapLine.source,
+    active,
+    rollPercent,
+    sharePercent,
+    critIncreasePercent,
+    critLines,
+    durationLines,
+    durationPercent,
+    terraDurationSeconds,
+    castIntervalSeconds: interval,
+    recastsPerReap,
+    reapIntervalSeconds,
+    remainingSeconds,
+    baseReapSeconds,
+    text,
+    source: reapLine.source,
     // No dotKeys: the Reap settles every DoT on the dummy (user-confirmed 2026-10-13).
-    reap: active ? { source: `${reapLine.source}: The Cycle I Resist`, trigger: "skill use", baseDurationSeconds: baseReapSeconds, baseRecoverySeconds: reapIntervalSeconds, usesPerSecond: 1 / reapIntervalSeconds, cycleResist: true, note: `${text}; it settles every DoT on the dummy (user-confirmed 2026-10-13)` } : null
+    reap: active
+      ? {
+          source: `${reapLine.source}: The Cycle I Resist`,
+          trigger: "skill use",
+          baseDurationSeconds: baseReapSeconds,
+          baseRecoverySeconds: reapIntervalSeconds,
+          usesPerSecond: 1 / reapIntervalSeconds,
+          cycleResist: true,
+          note: `${text}; it settles every DoT on the dummy (user-confirmed 2026-10-13)`,
+        }
+      : null,
   };
 }
 
 /** Whether Dance of the Deep's "Non-Main Terra Skill cannot deal damage" stops this setup's damage. */
 export function danceBlocksSetup(dance, setup, resolvedMain) {
-  return Boolean(dance?.blocksNonMainTerra && (setup?.tags || []).includes("Terra") && setup?.setupKey !== resolvedMain?.setupKey);
+  return Boolean(
+    dance?.blocksNonMainTerra && (setup?.tags || []).includes("Terra") && setup?.setupKey !== resolvedMain?.setupKey,
+  );
 }

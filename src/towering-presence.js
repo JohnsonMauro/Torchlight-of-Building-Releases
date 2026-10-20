@@ -15,8 +15,13 @@
 // crit regex reads, so only the Spell-aware readers use them (a plain "Adds … to Spells" line also reaches attack hits today).
 
 export const WEAPON_TO_SPELLS_LINE = /^Adds (\d+(?:\.\d+)?)% of the Main-Hand Weapon damage to Spells$/i;
-export const WEAPON_CRIT_TO_SPELLS_LINE = /^Adds (\d+(?:\.\d+)?)% of Main-Hand Weapon['’]s Critical Strike Rating to the Base Critical Strike Rating of Spell Skills$/i;
-const clean = (text) => String(text ?? "").replace(/[’]/g, "'").replace(/\s+/g, " ").trim();
+export const WEAPON_CRIT_TO_SPELLS_LINE =
+  /^Adds (\d+(?:\.\d+)?)% of Main-Hand Weapon['’]s Critical Strike Rating to the Base Critical Strike Rating of Spell Skills$/i;
+const clean = (text) =>
+  String(text ?? "")
+    .replace(/[’]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
 const round = (value) => Math.round(value * 10000) / 10000;
 
 /**
@@ -24,42 +29,64 @@ const round = (value) => Math.round(value * 10000) / 10000;
  * `weaponAttack` is src/weapon-damage-model.js calculateWeaponAttack's result.
  */
 export function weaponToSpellEntries(modifierTexts = [], weaponAttack = null) {
-  const damageSources = [], critSources = [];
+  const damageSources = [],
+    critSources = [];
   for (const line of modifierTexts) {
     if (line.origin === "derived") continue;
     const text = clean(line.text);
     let match = text.match(WEAPON_TO_SPELLS_LINE);
-    if (match) { damageSources.push({ source: line.source, text, percent: Number(match[1]) * (line.multiplier ?? 1) }); continue; }
+    if (match) {
+      damageSources.push({ source: line.source, text, percent: Number(match[1]) * (line.multiplier ?? 1) });
+      continue;
+    }
     match = text.match(WEAPON_CRIT_TO_SPELLS_LINE);
     if (match) critSources.push({ source: line.source, text, percent: Number(match[1]) * (line.multiplier ?? 1) });
   }
   const out = { lines: [], damage: [], critRating: 0, weapon: null, damageSources, critSources, reason: null };
   if (!damageSources.length && !critSources.length) return out;
   const main = weaponAttack?.mainHand?.weapon ? weaponAttack.mainHand : null;
-  if (!main) { out.reason = "no main-hand weapon is equipped"; return out; }
+  if (!main) {
+    out.reason = "no main-hand weapon is equipped";
+    return out;
+  }
   out.weapon = { name: main.name, type: main.type, damage: main.damage, critRating: main.critRating };
   for (const source of damageSources) {
     const share = source.percent / 100;
     for (const [type, range] of Object.entries(main.damage || {})) {
-      const min = range.min * share, max = range.max * share;
+      const min = range.min * share,
+        max = range.max * share;
       if (!(max > 0)) continue;
       out.damage.push({ type, min, max, source: source.source });
       out.lines.push({
         text: `Main-hand weapon damage to Spells: ${round(min)}–${round(max)} ${type} (${source.percent}% of the main-hand ${main.name}'s ${round(range.min)}–${round(range.max)} ${type} weapon damage)`,
-        source: source.source, origin: "derived", multiplier: 1, derivedFrom: source.text,
-        weaponToSpells: { type, min, max, note: `${source.text}: ${source.percent}% × the main-hand ${main.type}'s own ${type} damage ${round(range.min)}–${round(range.max)} (its base and local affixes) = ${round(min)}–${round(max)} added to Spells (game affix 101080215, field 2006260; reading provisional)` }
+        source: source.source,
+        origin: "derived",
+        multiplier: 1,
+        derivedFrom: source.text,
+        weaponToSpells: {
+          type,
+          min,
+          max,
+          note: `${source.text}: ${source.percent}% × the main-hand ${main.type}'s own ${type} damage ${round(range.min)}–${round(range.max)} (its base and local affixes) = ${round(min)}–${round(max)} added to Spells (game affix 101080215, field 2006260; reading provisional)`,
+        },
       });
     }
     if (!out.damage.length) out.reason = `the main-hand ${main.name} has no weapon damage line`;
   }
   for (const source of critSources) {
-    const rating = (main.critRating || 0) * source.percent / 100;
+    const rating = ((main.critRating || 0) * source.percent) / 100;
     if (!(rating > 0)) continue;
     out.critRating += rating;
     out.lines.push({
       text: `Main-hand weapon crit to Spell skills: base rating +${round(rating)} (${source.percent}% of the main-hand ${main.name}'s rating ${round(main.critRating)})`,
-      source: source.source, origin: "derived", multiplier: 1, derivedFrom: source.text,
-      spellBaseCritRating: { value: rating, note: `${source.text}: ${source.percent}% × the main-hand ${main.type}'s ${round(main.critRating)} Critical Strike Rating = +${round(rating)} base rating for Spell skills (game affix 838374, node 339)` }
+      source: source.source,
+      origin: "derived",
+      multiplier: 1,
+      derivedFrom: source.text,
+      spellBaseCritRating: {
+        value: rating,
+        note: `${source.text}: ${source.percent}% × the main-hand ${main.type}'s ${round(main.critRating)} Critical Strike Rating = +${round(rating)} base rating for Spell skills (game affix 838374, node 339)`,
+      },
     });
   }
   return out;

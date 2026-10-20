@@ -21,7 +21,11 @@ export const BUILD_CODE_CLIPBOARD_NOTE = "(Your build code is on your clipboard:
 /** Characters of the main text's first line appended to a title left at its prefix. */
 export const TITLE_APPEND_MAX = 80;
 /** The main text field(s) per form, in preference order, for the title's auto-append. */
-export const MAIN_TEXT_FIELDS = Object.freeze({ bug: Object.freeze(["what_happened"]), calculation: Object.freeze(["suspect", "ingame_figures"]), answer: Object.freeze(["answer"]) });
+export const MAIN_TEXT_FIELDS = Object.freeze({
+  bug: Object.freeze(["what_happened"]),
+  calculation: Object.freeze(["suspect", "ingame_figures"]),
+  answer: Object.freeze(["answer"]),
+});
 
 export const feedbackForm = (key) => FEEDBACK_FORMS[key] || null;
 const blank = (value) => !String(value ?? "").trim();
@@ -35,7 +39,13 @@ export function prefillValues(formKey, context = {}) {
   const { version = "", platform = "" } = context;
   const withTitle = (values) => ({ [TITLE_FIELD]: defaultIssueTitle(formKey, values, context), ...values });
   if (formKey === "calculation") {
-    return withTitle({ skill: context.skill || "", hero: context.hero || "", planner_figures: plannerFiguresText(context.figures || {}), app_version: version, platform });
+    return withTitle({
+      skill: context.skill || "",
+      hero: context.hero || "",
+      planner_figures: plannerFiguresText(context.figures || {}),
+      app_version: version,
+      platform,
+    });
   }
   if (formKey === "bug") {
     const areas = feedbackForm("bug").fields.find((field) => field.id === "area").options;
@@ -43,7 +53,12 @@ export function prefillValues(formKey, context = {}) {
   }
   if (formKey === "answer") {
     const entry = context.entry || {};
-    return withTitle({ question_id: entry.id || "", question: entry.question || "", planner_now: entry.current || "", app_version: version });
+    return withTitle({
+      question_id: entry.id || "",
+      question: entry.question || "",
+      planner_now: entry.current || "",
+      app_version: version,
+    });
   }
   return {};
 }
@@ -73,7 +88,9 @@ export function defaultIssueTitle(formKey, values = {}, context = {}) {
 /** Whether a title is still only its prefix (the form's bare prefix or the default title for these values). */
 export function titleIsPrefixOnly(formKey, title, values = {}, context = {}) {
   const text = String(title ?? "").trim();
-  return [feedbackForm(formKey)?.titlePrefix || "", defaultIssueTitle(formKey, values, context)].some((prefix) => prefix.trim() === text);
+  return [feedbackForm(formKey)?.titlePrefix || "", defaultIssueTitle(formKey, values, context)].some(
+    (prefix) => prefix.trim() === text,
+  );
 }
 
 /**
@@ -85,9 +102,18 @@ export function completeIssueTitle(formKey, title, values = {}, context = {}) {
   if (!titleIsPrefixOnly(formKey, base, values, context)) return base;
   const main = (MAIN_TEXT_FIELDS[formKey] || []).map((id) => String(values[id] ?? "")).find((value) => !blank(value));
   if (!main) return base;
-  const line = main.split(/\r?\n/).map((text) => text.trim()).find(Boolean);
+  const line = main
+    .split(/\r?\n/)
+    .map((text) => text.trim())
+    .find(Boolean);
   const list = chars(line);
-  const snippet = list.length <= TITLE_APPEND_MAX ? line : `${list.slice(0, TITLE_APPEND_MAX - 1).join("").trimEnd()}…`;
+  const snippet =
+    list.length <= TITLE_APPEND_MAX
+      ? line
+      : `${list
+          .slice(0, TITLE_APPEND_MAX - 1)
+          .join("")
+          .trimEnd()}…`;
   const joiner = !base || /[:–-]$/.test(base) || /\]$/.test(base) ? " " : " – ";
   return `${base}${joiner}${snippet}`.trim();
 }
@@ -102,7 +128,10 @@ export function buildCodeIncluded(formKey, { buildCode = "", includeBuildCode = 
 export function missingRequired(formKey, values = {}, options = {}) {
   const form = feedbackForm(formKey);
   if (!form) return [];
-  const fields = form.fields.filter((field) => field.required).filter((field) => (field.id === BUILD_CODE_FIELD ? !buildCodeIncluded(formKey, options) : blank(values[field.id]))).map((field) => field.id);
+  const fields = form.fields
+    .filter((field) => field.required)
+    .filter((field) => (field.id === BUILD_CODE_FIELD ? !buildCodeIncluded(formKey, options) : blank(values[field.id])))
+    .map((field) => field.id);
   return blank(values[TITLE_FIELD]) ? [TITLE_FIELD, ...fields] : fields;
 }
 
@@ -112,7 +141,8 @@ export function fullReportText(formKey, values = {}, options = {}) {
   const title = String(options.title ?? form.titlePrefix).trim();
   const sections = [title];
   for (const field of form.fields) {
-    const value = field.id === BUILD_CODE_FIELD ? (buildCodeIncluded(formKey, options) ? options.buildCode : "") : values[field.id];
+    const value =
+      field.id === BUILD_CODE_FIELD ? (buildCodeIncluded(formKey, options) ? options.buildCode : "") : values[field.id];
     if (blank(value)) continue;
     sections.push(`### ${field.label}\n\n${String(value).trim()}`);
   }
@@ -130,11 +160,19 @@ export function fullReportText(formKey, values = {}, options = {}) {
 export function feedbackSubmission(formKey, values = {}, options = {}) {
   const form = feedbackForm(formKey);
   const context = options.context || {};
-  const title = completeIssueTitle(formKey, options.title ?? values[TITLE_FIELD] ?? defaultIssueTitle(formKey, values, context), values, context);
+  const title = completeIssueTitle(
+    formKey,
+    options.title ?? values[TITLE_FIELD] ?? defaultIssueTitle(formKey, values, context),
+    values,
+    context,
+  );
   const fieldsWith = (code) => {
     const fields = [[TITLE_FIELD, title, { trim: formKey === "answer" }]];
     for (const field of form.fields) {
-      if (field.id === BUILD_CODE_FIELD) { if (code) fields.push([field.id, code]); continue; }
+      if (field.id === BUILD_CODE_FIELD) {
+        if (code) fields.push([field.id, code]);
+        continue;
+      }
       const value = field.type === "dropdown" && !field.options.includes(values[field.id]) ? "" : values[field.id];
       fields.push([field.id, String(value ?? "").trim(), { trim: field.type === "textarea" }]);
     }
@@ -145,11 +183,16 @@ export function feedbackSubmission(formKey, values = {}, options = {}) {
   if (withCode && compact) {
     const codeMax = options.codeMax ?? URL_WITH_CODE_MAX;
     const attempt = issueFormUrlInfo(form.template, fieldsWith(compact), { repo: options.repo, max: codeMax });
-    if (!attempt.trimmed.length && attempt.url.length <= codeMax) return { url: attempt.url, title, trimmed: [], codeInUrl: true, copyKind: "", copyText: "" };
+    if (!attempt.trimmed.length && attempt.url.length <= codeMax)
+      return { url: attempt.url, title, trimmed: [], codeInUrl: true, copyKind: "", copyText: "" };
   }
-  const { url, trimmed } = issueFormUrlInfo(form.template, fieldsWith(withCode ? BUILD_CODE_CLIPBOARD_NOTE : ""), { repo: options.repo, max: options.max });
+  const { url, trimmed } = issueFormUrlInfo(form.template, fieldsWith(withCode ? BUILD_CODE_CLIPBOARD_NOTE : ""), {
+    repo: options.repo,
+    max: options.max,
+  });
   const base = { url, title, trimmed, codeInUrl: false };
-  if (trimmed.length) return { ...base, copyKind: "full", copyText: fullReportText(formKey, values, { ...options, title }) };
+  if (trimmed.length)
+    return { ...base, copyKind: "full", copyText: fullReportText(formKey, values, { ...options, title }) };
   if (withCode) return { ...base, copyKind: "code", copyText: String(options.buildCode) };
   return { ...base, copyKind: "", copyText: "" };
 }
@@ -157,8 +200,10 @@ export function feedbackSubmission(formKey, values = {}, options = {}) {
 /** The toast after Send, by what was copied and whether the clipboard worked. */
 export function sendToast(copyKind, copied) {
   if (!copyKind) return "GitHub opened in your browser";
-  if (!copied) return "GitHub opened. The clipboard was unavailable: use Export and paste your build code into Build code";
-  if (copyKind === "full") return "GitHub opened. Some text was too long for the link: the full report is on your clipboard";
+  if (!copied)
+    return "GitHub opened. The clipboard was unavailable: use Export and paste your build code into Build code";
+  if (copyKind === "full")
+    return "GitHub opened. Some text was too long for the link: the full report is on your clipboard";
   return "GitHub opened. Paste your build code into Build code";
 }
 
@@ -177,7 +222,8 @@ export function draftValues(formKey, values = {}, prefilled = {}, context = {}) 
   const form = feedbackForm(formKey);
   const out = {};
   const title = String(values[TITLE_FIELD] ?? "");
-  if (form && TITLE_FIELD in values && title.trim() !== defaultIssueTitle(formKey, values, context).trim()) out[TITLE_FIELD] = title;
+  if (form && TITLE_FIELD in values && title.trim() !== defaultIssueTitle(formKey, values, context).trim())
+    out[TITLE_FIELD] = title;
   for (const field of form?.fields || []) {
     if (field.id === BUILD_CODE_FIELD || AUTO_FIELD_IDS.includes(field.id) || !blank(prefilled[field.id])) continue;
     if (!blank(values[field.id])) out[field.id] = String(values[field.id]);
@@ -189,28 +235,36 @@ function readAll(storage) {
   try {
     const parsed = JSON.parse(storage?.getItem(FEEDBACK_DRAFTS_KEY) || "{}");
     return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-  } catch { return {}; }
+  } catch {
+    return {};
+  }
 }
 function writeAll(storage, drafts) {
   try {
     if (Object.keys(drafts).length) storage?.setItem(FEEDBACK_DRAFTS_KEY, JSON.stringify(drafts));
     else storage?.removeItem(FEEDBACK_DRAFTS_KEY);
     return true;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 /** The saved draft for a key ({ values, includeBuildCode }) or null. */
 export function readDraft(storage, draftKey) {
   const draft = readAll(storage)[draftKey];
   if (!draft || typeof draft !== "object") return null;
-  const values = draft.values && typeof draft.values === "object" ? Object.fromEntries(Object.entries(draft.values).filter(([, value]) => typeof value === "string")) : {};
+  const values =
+    draft.values && typeof draft.values === "object"
+      ? Object.fromEntries(Object.entries(draft.values).filter(([, value]) => typeof value === "string"))
+      : {};
   return { values, includeBuildCode: Boolean(draft.includeBuildCode) };
 }
 
 /** Saves (or, when empty, removes) one draft; other drafts and other storage keys are untouched. */
 export function saveDraft(storage, draftKey, { values = {}, includeBuildCode = false } = {}) {
   const drafts = readAll(storage);
-  if (Object.keys(values).length || includeBuildCode) drafts[draftKey] = { values, includeBuildCode: Boolean(includeBuildCode) };
+  if (Object.keys(values).length || includeBuildCode)
+    drafts[draftKey] = { values, includeBuildCode: Boolean(includeBuildCode) };
   else delete drafts[draftKey];
   return writeAll(storage, drafts);
 }

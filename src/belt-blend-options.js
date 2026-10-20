@@ -18,11 +18,14 @@ export function beltBlendDescription(entry) {
 }
 
 export function beltBlendOptions(selectedId = "") {
-  return `<option value="">None</option>${BELT_BLEND_CATEGORIES.map((category) => `<optgroup label="${category}">${beltBlendsSs13
-    .filter((entry) => entry.category === category)
-    .map((entry) => {
-      const description = beltBlendDescription(entry);
-      return `<option value="${entry.id}"${description ? ` data-option-description="${escapeHtml(description)}"` : ""} ${entry.id === selectedId ? "selected" : ""}>${escapeHtml(entry.label)}</option>`;
-    })
-    .join("")}</optgroup>`).join("")}`;
+  return `<option value="">None</option>${BELT_BLEND_CATEGORIES.map(
+    (category) =>
+      `<optgroup label="${category}">${beltBlendsSs13
+        .filter((entry) => entry.category === category)
+        .map((entry) => {
+          const description = beltBlendDescription(entry);
+          return `<option value="${entry.id}"${description ? ` data-option-description="${escapeHtml(description)}"` : ""} ${entry.id === selectedId ? "selected" : ""}>${escapeHtml(entry.label)}</option>`;
+        })
+        .join("")}</optgroup>`,
+  ).join("")}`;
 }

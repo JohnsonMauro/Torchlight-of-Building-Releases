@@ -22,7 +22,11 @@ export const COMBO_STARTERS_PER_CYCLE = 2;
 export const MAX_COMBO_POINTS_DEFAULT = 4;
 
 /** Points a Finisher consumes: Starters × points per Starter, capped by the skill's max Combo Points (text). */
-export function consumedComboPoints({ starters = COMBO_STARTERS_PER_CYCLE, pointsPerStarter = COMBO_POINTS_PER_STARTER, maxPoints = MAX_COMBO_POINTS_DEFAULT } = {}) {
+export function consumedComboPoints({
+  starters = COMBO_STARTERS_PER_CYCLE,
+  pointsPerStarter = COMBO_POINTS_PER_STARTER,
+  maxPoints = MAX_COMBO_POINTS_DEFAULT,
+} = {}) {
   return Math.min(maxPoints ?? Infinity, starters * pointsPerStarter);
 }
 

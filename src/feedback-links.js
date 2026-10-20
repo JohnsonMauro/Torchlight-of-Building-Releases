@@ -35,7 +35,12 @@ export function issueFormUrl(template, fields, options = {}) {
 
 /** issueFormUrl's URL plus the keys of the fields it had to trim ({ url, trimmed }). */
 export function issueFormUrlInfo(template, fields, { repo = ANSWER_REPO, max = ANSWER_URL_MAX } = {}) {
-  const list = fields.map(([key, value, options = {}]) => ({ key, value: String(value ?? ""), trim: Boolean(options.trim), prefix: options.prefix ?? "" }));
+  const list = fields.map(([key, value, options = {}]) => ({
+    key,
+    value: String(value ?? ""),
+    trim: Boolean(options.trim),
+    prefix: options.prefix ?? "",
+  }));
   const lengths = new Map(list.filter((field) => field.trim).map((field) => [field.key, chars(field.value).length]));
   const limits = new Map(lengths);
   const build = () => {
@@ -66,19 +71,24 @@ export function answerIssueUrl(entry, { version = "" } = {}) {
     ["question_id", entry?.id],
     ["question", entry?.question, { trim: true }],
     ["planner_now", entry?.current, { trim: true }],
-    ["app_version", version]
+    ["app_version", version],
   ]);
 }
 
 const plain = (value) => (Number.isFinite(value) ? String(Math.round(value)) : "—");
 
 /** The planner's figures for the calculation report, one labelled plain number per line ("—" when not modeled). */
-export function plannerFiguresText({ sustainedDps = null, fiveSecondDamage = null, twentySecondDps = null, recountLast5sDps = null } = {}) {
+export function plannerFiguresText({
+  sustainedDps = null,
+  fiveSecondDamage = null,
+  twentySecondDps = null,
+  recountLast5sDps = null,
+} = {}) {
   return [
     `Sustained DPS (total modeled): ${plain(sustainedDps)}`,
     `First 5 s damage (total, not DPS): ${plain(fiveSecondDamage)}`,
     `20 s average DPS: ${plain(twentySecondDps)}`,
-    `Recount "Average DPS in 5s" (last 5 s): ${plain(recountLast5sDps)}`
+    `Recount "Average DPS in 5s" (last 5 s): ${plain(recountLast5sDps)}`,
   ].join("\n");
 }
 
@@ -90,7 +100,7 @@ export function calculationReportUrl({ skill = "", hero = "", figures = {}, vers
     ["planner_figures", plannerFiguresText(figures), { trim: true }],
     ["hero", hero],
     ["app_version", version],
-    ["platform", platform]
+    ["platform", platform],
   ]);
 }
 
@@ -100,7 +110,7 @@ export function bugReportUrl({ area = "", version = "", platform = "" } = {}) {
     ["title", "", { prefix: "[Bug] " }],
     ["area", BUG_AREAS.includes(area) ? area : ""],
     ["app_version", version],
-    ["platform", platform]
+    ["platform", platform],
   ]);
 }
 

@@ -8,10 +8,15 @@ export function canonicalValue(value) {
   if (typeof value === "bigint") return `[bigint ${value}]`;
   if (value === undefined) return "[undefined]";
   if (value === null || typeof value !== "object") return value;
-  if (value instanceof Map) return { "[Map]": [...value].map(([key, entry]) => [canonicalValue(key), canonicalValue(entry)]) };
+  if (value instanceof Map)
+    return { "[Map]": [...value].map(([key, entry]) => [canonicalValue(key), canonicalValue(entry)]) };
   if (value instanceof Set) return { "[Set]": [...value].map(canonicalValue) };
   if (Array.isArray(value)) return value.map(canonicalValue);
-  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalValue(value[key])]));
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, canonicalValue(value[key])]),
+  );
 }
 
 export const canonicalJson = (value) => JSON.stringify(canonicalValue(value));
@@ -25,7 +30,7 @@ export function resultSummary(result) {
     dps5s: recount.fiveSeconds?.dps ?? null,
     dps20s: recount.twentySeconds?.dps ?? null,
     dpsSteady: recount.steady?.dps ?? null,
-    warnings: Array.isArray(result?.warnings) ? result.warnings.length : null
+    warnings: Array.isArray(result?.warnings) ? result.warnings.length : null,
   };
 }
 
@@ -43,7 +48,8 @@ export function differingPaths(left, right, path = "$", out = [], limit = 40) {
   const keys = Array.isArray(left)
     ? Array.from({ length: Math.max(left.length, right.length) }, (_, index) => index)
     : [...new Set([...Object.keys(left), ...Object.keys(right)])].sort();
-  for (const key of keys) differingPaths(left[key], right[key], Array.isArray(left) ? `${path}[${key}]` : `${path}.${key}`, out, limit);
+  for (const key of keys)
+    differingPaths(left[key], right[key], Array.isArray(left) ? `${path}[${key}]` : `${path}.${key}`, out, limit);
   return out;
 }
 

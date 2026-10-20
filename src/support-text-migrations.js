@@ -10,11 +10,17 @@ const catalogEffects = new Map(tlidbSupportCatalogSs13.map((entry) => [entry.nam
 
 function migrateSupport(support) {
   const effects = catalogEffects.get(support?.name);
-  if (!effects || !Array.isArray(support.effects) || JSON.stringify(support.effects) === JSON.stringify(effects)) return support;
+  if (!effects || !Array.isArray(support.effects) || JSON.stringify(support.effects) === JSON.stringify(effects))
+    return support;
   return { ...support, effects: [...effects] };
 }
 
 /** Saved custom supports by setup key, with catalog supports reading the catalog's current effect text. */
 export function migrateCustomSupports(customSupports = {}) {
-  return Object.fromEntries(Object.entries(customSupports).map(([key, supports]) => [key, Array.isArray(supports) ? supports.map(migrateSupport) : supports]));
+  return Object.fromEntries(
+    Object.entries(customSupports).map(([key, supports]) => [
+      key,
+      Array.isArray(supports) ? supports.map(migrateSupport) : supports,
+    ]),
+  );
 }

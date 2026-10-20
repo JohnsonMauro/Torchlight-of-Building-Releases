@@ -16,7 +16,10 @@ import { normalizePercentageText } from "./percentage-text.js";
 export const ONLY_DAMAGE_TYPE_LINE = /^You can only deal (Physical|Fire|Cold|Lightning|Erosion) Damage$/i;
 export const AILMENT_DAMAGE_TYPES = Object.freeze({ ignite: "Fire", trauma: "Physical", wilt: "Erosion" });
 const cap = (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-const clean = (text) => normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim();
+const clean = (text) =>
+  normalizePercentageText(String(text ?? ""))
+    .replace(/\s+/g, " ")
+    .trim();
 const SOURCE_NOTE = "user-confirmed 2026-10-18";
 
 /**
@@ -33,8 +36,15 @@ export function damageTypeRestriction(modifierTexts = []) {
   const types = [...new Set(found.map((entry) => entry.type))];
   const type = types.length === 1 ? types[0] : null;
   // The working names the core when a source is Extreme Coldness (panel, Pedigree slate or "[Extreme Coldness]" gear grant).
-  const name = found.some((entry) => /Extreme Coldness/i.test(`${entry.source} ${entry.text}`)) ? "Extreme Coldness" : `"You can only deal ${type || types.join("/")} Damage"`;
-  return { type, types, sources: found, label: `${name}: non-${type || types.join("/")} damage removed (${SOURCE_NOTE})` };
+  const name = found.some((entry) => /Extreme Coldness/i.test(`${entry.source} ${entry.text}`))
+    ? "Extreme Coldness"
+    : `"You can only deal ${type || types.join("/")} Damage"`;
+  return {
+    type,
+    types,
+    sources: found,
+    label: `${name}: non-${type || types.join("/")} damage removed (${SOURCE_NOTE})`,
+  };
 }
 
 /** True when damage of `type` is removed by the restriction. */
@@ -55,6 +65,6 @@ export function restrictionLine(restriction, type, what = "damage") {
     value: -100,
     category: "Additional damage",
     origin: "derived",
-    restriction: true
+    restriction: true,
   };
 }

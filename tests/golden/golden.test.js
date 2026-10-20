@@ -10,7 +10,10 @@ const expected = JSON.parse(readFileSync(new URL("./expected.json", import.meta.
 const inputs = goldenInputs();
 
 test("golden cases match the recorded set", () => {
-  assert.deepEqual(inputs.map(({ id }) => id), Object.keys(expected.cases));
+  assert.deepEqual(
+    inputs.map(({ id }) => id),
+    Object.keys(expected.cases),
+  );
 });
 
 for (const { id, state } of inputs) {
@@ -19,6 +22,10 @@ for (const { id, state } of inputs) {
     const recorded = expected.cases[id];
     assert.ok(recorded, `no recorded result for ${id}; run pnpm golden:update`);
     assert.deepEqual(resultSummary(result), recorded.summary, `${id}: headline figures changed`);
-    assert.equal(sha256(canonicalJson(result)), recorded.sha256, `${id}: result changed; run pnpm golden:diff -- HEAD "${id}"`);
+    assert.equal(
+      sha256(canonicalJson(result)),
+      recorded.sha256,
+      `${id}: result changed; run pnpm golden:diff -- HEAD "${id}"`,
+    );
   });
 }

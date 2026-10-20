@@ -4,10 +4,17 @@
 import { legendaryGearSs13 } from "./data/gear/legendary-gear-ss13.generated.js";
 
 export const GRAFT_LEGENDARY_IDS = Object.freeze(["Lone_Walkers_Boots", "Pantheons_Elegy", "Eternity"]);
-const graftNames = new Set(legendaryGearSs13.filter((entry) => GRAFT_LEGENDARY_IDS.includes(entry.id)).map((entry) => entry.name.toLowerCase()));
+const graftNames = new Set(
+  legendaryGearSs13.filter((entry) => GRAFT_LEGENDARY_IDS.includes(entry.id)).map((entry) => entry.name.toLowerCase()),
+);
 
 export function usesVoraxCard(item) {
-  return graftNames.has(String(item?.name || "").replace(/ - Priceless$/i, "").trim().toLowerCase());
+  return graftNames.has(
+    String(item?.name || "")
+      .replace(/ - Priceless$/i, "")
+      .trim()
+      .toLowerCase(),
+  );
 }
 
 /**

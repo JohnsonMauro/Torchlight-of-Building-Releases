@@ -6,13 +6,19 @@ import { normalizePercentageText } from "./percentage-text.js";
 // (user-confirmed 2026-10-09). A skill-type word ("Projectile", "Spell", "Attack", "Melee") scopes it to skills with that tag.
 // Hero trait audit B2 (2026-10-19): Feline Fury's "+20% additional attack damage for Critical Strikes" (game affix 12176885: attr
 // 5719 additional on crit hits) is the same rule with the tag word before "damage".
-const CRIT_ONLY = /^\+(\d+(?:\.\d+)?)% additional (?:damage on (?:(Projectile|Spell|Attack|Melee|Ranged) )?Critical Strikes?|(?:(Projectile|Spell|Attack|Melee|Ranged) )?damage for Critical Strikes)$/i;
+const CRIT_ONLY =
+  /^\+(\d+(?:\.\d+)?)% additional (?:damage on (?:(Projectile|Spell|Attack|Melee|Ranged) )?Critical Strikes?|(?:(Projectile|Spell|Attack|Melee|Ranged) )?damage for Critical Strikes)$/i;
 
 /** The rule a line follows ({ value, tag }) or null. */
 export function classifyCritOnlyLine(text) {
-  const match = normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim().match(CRIT_ONLY);
+  const match = normalizePercentageText(String(text ?? ""))
+    .replace(/\s+/g, " ")
+    .trim()
+    .match(CRIT_ONLY);
   const tag = match?.[2] || match?.[3];
-  return match ? { value: Number(match[1]), tag: tag ? tag[0].toUpperCase() + tag.slice(1).toLowerCase() : null } : null;
+  return match
+    ? { value: Number(match[1]), tag: tag ? tag[0].toUpperCase() + tag.slice(1).toLowerCase() : null }
+    : null;
 }
 
 /** Crit-only additional lines that reach a hit of a skill with `tags`: [{ source, text, value }]. */

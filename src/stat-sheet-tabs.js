@@ -6,14 +6,28 @@
 export const STAT_TAB_STORAGE_KEY = "tli-builder:stat-sheet-tab:v1";
 
 export function readStoredStatTab(storage = session()) {
-  try { return storage?.getItem(STAT_TAB_STORAGE_KEY) || null; } catch { return null; }
+  try {
+    return storage?.getItem(STAT_TAB_STORAGE_KEY) || null;
+  } catch {
+    return null;
+  }
 }
 
 export function storeStatTab(key, storage = session()) {
-  try { storage?.setItem(STAT_TAB_STORAGE_KEY, key); } catch { /* storage unavailable */ }
+  try {
+    storage?.setItem(STAT_TAB_STORAGE_KEY, key);
+  } catch {
+    /* storage unavailable */
+  }
 }
 
-function session() { try { return globalThis.sessionStorage || null; } catch { return null; } }
+function session() {
+  try {
+    return globalThis.sessionStorage || null;
+  } catch {
+    return null;
+  }
+}
 
 /** Shows the tab `key` inside `root` (the element holding the tab list and its panels). */
 export function selectStatTab(root, key, { focus = false } = {}) {
@@ -45,7 +59,16 @@ export function installStatSheetTabs(doc) {
     if (!tab || !root) return;
     const tabs = [...root.querySelectorAll("[data-stat-tab]")];
     const index = tabs.indexOf(tab);
-    const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index - 1 + tabs.length) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : -1;
+    const next =
+      event.key === "ArrowRight"
+        ? (index + 1) % tabs.length
+        : event.key === "ArrowLeft"
+          ? (index - 1 + tabs.length) % tabs.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? tabs.length - 1
+              : -1;
     if (next < 0) return;
     event.preventDefault();
     selectStatTab(root, tabs[next].dataset.statTab, { focus: true });

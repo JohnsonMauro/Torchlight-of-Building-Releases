@@ -3,8 +3,20 @@ import { gameDamageLayer } from "./affix-bucket.js";
 import { auraSpeedStatLines } from "./aura-gained-effects.js";
 import { heroById } from "./data/heroes/hero-catalog-ss13.js";
 import { allHeroTraitsSs13 } from "./data/heroes/all-hero-traits-ss13.generated.js";
-import { baseTraitDescriptionForLevel, artificialMoonGate, slotTraitLevel, nonBaseTraitLevelExtras, endsArtificialMoonSection } from "./hero-memory-rules.js";
-import { heroTraitTree, heroTreeSelections, treeRowSlotKeys, TREE_ROW_LEVELS, EXTRA_PICK_LEVEL } from "./hero-trait-tree.js";
+import {
+  baseTraitDescriptionForLevel,
+  artificialMoonGate,
+  slotTraitLevel,
+  nonBaseTraitLevelExtras,
+  endsArtificialMoonSection,
+} from "./hero-memory-rules.js";
+import {
+  heroTraitTree,
+  heroTreeSelections,
+  treeRowSlotKeys,
+  TREE_ROW_LEVELS,
+  EXTRA_PICK_LEVEL,
+} from "./hero-trait-tree.js";
 import { legendaryBaseDefenseLines } from "./legendary-base-lines.js";
 import { heroTraitKeywordPlainLines } from "./inline-keywords.js";
 
@@ -28,7 +40,12 @@ const NUM = "([+-]?\\d+(?:\\.\\d+)?)";
 const ELEMENTS = ["Fire", "Cold", "Lightning", "Erosion"];
 const lower = (value) => value.toLowerCase();
 const title = (value) => value[0].toUpperCase() + value.slice(1).toLowerCase();
-const camel = (value) => value.replace(/['’]/g, "").split(/\s+/).map((word, index) => index ? title(word) : word.toLowerCase()).join("");
+const camel = (value) =>
+  value
+    .replace(/['’]/g, "")
+    .split(/\s+/)
+    .map((word, index) => (index ? title(word) : word.toLowerCase()))
+    .join("");
 
 // stat key → label, group, display unit. Dynamic keys (skill levels, typed damage taken,
 // ailment-specific Reaping Duration) are described by `describeStat`.
@@ -93,16 +110,31 @@ const STATS = {
   spellBurstChargeSpeed: ["Spell Burst Charge Speed", "Utility", "%"],
   maxFocusBlessingStacks: ["Max Focus Blessing stacks", "Utility", ""],
   maxTenacityBlessingStacks: ["Max Tenacity Blessing stacks", "Utility", ""],
-  maxAgilityBlessingStacks: ["Max Agility Blessing stacks", "Utility", ""]
+  maxAgilityBlessingStacks: ["Max Agility Blessing stacks", "Utility", ""],
 };
 const ORDER = Object.keys(STATS);
 
 export function describeStat(key) {
-  if (STATS[key]) { const [label, group, unit] = STATS[key]; return { key, label, group, unit }; }
+  if (STATS[key]) {
+    const [label, group, unit] = STATS[key];
+    return { key, label, group, unit };
+  }
   let match = key.match(/^skillLevel:(.+)$/);
-  if (match) return { key, label: match[1] === "All" ? "All Skills' Levels" : `${match[1]} Skill Level`, group: "Utility", unit: "" };
+  if (match)
+    return {
+      key,
+      label: match[1] === "All" ? "All Skills' Levels" : `${match[1]} Skill Level`,
+      group: "Utility",
+      unit: "",
+    };
   match = key.match(/^damageTaken:(.+)$/);
-  if (match) return { key, label: match[1] === "All" ? "Damage taken" : `${match[1]} Damage taken`, group: "Defense", unit: "%" };
+  if (match)
+    return {
+      key,
+      label: match[1] === "All" ? "Damage taken" : `${match[1]} Damage taken`,
+      group: "Defense",
+      unit: "%",
+    };
   match = key.match(/^effectReceived:(.+)$/);
   if (match) return { key, label: `${match[1]} Effect received`, group: "Defense", unit: "%" };
   match = key.match(/^reapingDuration:(.+)$/);
@@ -111,77 +143,149 @@ export function describeStat(key) {
 }
 
 const c = (stat, bucket, value) => ({ stat, bucket, value });
-const splitNames = (list) => list.split(/\s*,\s*(?:and\s+)?|\s+and\s+/).map((part) => part.trim()).filter(Boolean);
+const splitNames = (list) =>
+  list
+    .split(/\s*,\s*(?:and\s+)?|\s+and\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
 const resourceKey = { life: "maxLife", mana: "maxMana", "energy shield": "maxEnergyShield" };
 const defenseKey = { armor: "armor", armour: "armor", evasion: "evasion", "energy shield": "maxEnergyShield" };
-const elementsOf = (name) => name === "Elemental" ? ELEMENTS.slice(0, 3) : name === "All" ? ELEMENTS : [name];
+const elementsOf = (name) => (name === "Elemental" ? ELEMENTS.slice(0, 3) : name === "All" ? ELEMENTS : [name]);
 // "Attack and Spell" and unscoped lines count toward the general stat.
-const scoped = (scope, base) => !scope || /and/i.test(scope) ? base : `${lower(scope)}${base[0].toUpperCase()}${base.slice(1)}`;
+const scoped = (scope, base) =>
+  !scope || /and/i.test(scope) ? base : `${lower(scope)}${base[0].toUpperCase()}${base.slice(1)}`;
 const rule = (source, build, flags = "i") => [new RegExp(source.replaceAll("NUM", NUM), flags), build];
 
 // Each rule: [pattern, (match, signed) → contributions]. `signed` is true when the line
 // carries an explicit + or - (weapon base values are unsigned: "500 Critical Strike Rating").
 const RULES = [
-  rule("^NUM (Strength|Dexterity|Intelligence)(?: and (Strength|Dexterity|Intelligence))?$", (m) => [m[2], m[3]].filter(Boolean).map((name) => c(lower(name), "flat", +m[1]))),
-  rule("^NUM (?:to )?All Stats$", (m) => ["strength", "dexterity", "intelligence"].map((stat) => c(stat, "flat", +m[1]))),
-  rule("^NUM% (Strength|Dexterity|Intelligence)(?: and (Strength|Dexterity|Intelligence))?$", (m) => [m[2], m[3]].filter(Boolean).map((name) => c(lower(name), "increased", +m[1]))),
-  rule("^NUM% (?:to )?All Stats$", (m) => ["strength", "dexterity", "intelligence"].map((stat) => c(stat, "increased", +m[1]))),
+  rule("^NUM (Strength|Dexterity|Intelligence)(?: and (Strength|Dexterity|Intelligence))?$", (m) =>
+    [m[2], m[3]].filter(Boolean).map((name) => c(lower(name), "flat", +m[1])),
+  ),
+  rule("^NUM (?:to )?All Stats$", (m) =>
+    ["strength", "dexterity", "intelligence"].map((stat) => c(stat, "flat", +m[1])),
+  ),
+  rule("^NUM% (Strength|Dexterity|Intelligence)(?: and (Strength|Dexterity|Intelligence))?$", (m) =>
+    [m[2], m[3]].filter(Boolean).map((name) => c(lower(name), "increased", +m[1])),
+  ),
+  rule("^NUM% (?:to )?All Stats$", (m) =>
+    ["strength", "dexterity", "intelligence"].map((stat) => c(stat, "increased", +m[1])),
+  ),
   // "-99% additional Intelligence" (Fool's Crown), "-99% additional Dexterity and Intelligence" (Magnus' Scar): a multiplier on the
   // attribute total (gear uniques round 2).
-  rule("^NUM% additional (Strength|Dexterity|Intelligence)(?: and (Strength|Dexterity|Intelligence))?$", (m) => [m[2], m[3]].filter(Boolean).map((name) => c(lower(name), "additional", +m[1]))),
+  rule("^NUM% additional (Strength|Dexterity|Intelligence)(?: and (Strength|Dexterity|Intelligence))?$", (m) =>
+    [m[2], m[3]].filter(Boolean).map((name) => c(lower(name), "additional", +m[1])),
+  ),
   rule("^NUM Max (Life|Mana|Energy Shield)$", (m) => [c(resourceKey[lower(m[2])], "flat", +m[1])]),
-  rule("^NUM% (additional )?(Max (?:Life|Mana|Energy Shield)(?:(?:\\s*,\\s*(?:and\\s+)?|\\s+and\\s+)Max (?:Life|Mana|Energy Shield))*)$", (m) =>
-    splitNames(m[3]).map((name) => c(resourceKey[lower(name.replace(/^Max\s+/i, ""))], m[2] ? "additional" : "increased", +m[1]))),
-  rule("^NUM(%?) gear (Armou?r|Evasion|Energy Shield)$", (m) => [c(defenseKey[lower(m[3])], m[2] ? "gearIncreased" : "gearFlat", +m[1])]),
-  rule("^NUM gear (Armou?r|Evasion|Energy Shield),? (?:and )?NUM gear (Armou?r|Evasion|Energy Shield)$", (m) => [c(defenseKey[lower(m[2])], "gearFlat", +m[1]), c(defenseKey[lower(m[4])], "gearFlat", +m[3])]),
+  rule(
+    "^NUM% (additional )?(Max (?:Life|Mana|Energy Shield)(?:(?:\\s*,\\s*(?:and\\s+)?|\\s+and\\s+)Max (?:Life|Mana|Energy Shield))*)$",
+    (m) =>
+      splitNames(m[3]).map((name) =>
+        c(resourceKey[lower(name.replace(/^Max\s+/i, ""))], m[2] ? "additional" : "increased", +m[1]),
+      ),
+  ),
+  rule("^NUM(%?) gear (Armou?r|Evasion|Energy Shield)$", (m) => [
+    c(defenseKey[lower(m[3])], m[2] ? "gearIncreased" : "gearFlat", +m[1]),
+  ]),
+  rule("^NUM gear (Armou?r|Evasion|Energy Shield),? (?:and )?NUM gear (Armou?r|Evasion|Energy Shield)$", (m) => [
+    c(defenseKey[lower(m[2])], "gearFlat", +m[1]),
+    c(defenseKey[lower(m[4])], "gearFlat", +m[3]),
+  ]),
   rule("^NUM(%?) (Armou?r|Evasion)$", (m) => [c(defenseKey[lower(m[3])], m[2] ? "increased" : "flat", +m[1])]),
   rule("^NUM% Defense$", (m) => [c("defense", "increased", +m[1])]),
   rule("^NUM% Energy Shield Charge Speed$", (m) => [c("energyShieldChargeSpeed", "increased", +m[1])]),
-  rule("^NUM% additional Energy Shield Charge Interval$", (m) => [c("energyShieldChargeInterval", "additional", +m[1])]),
-  rule("^NUM% (Attack and Spell|Attack|Spell) Block Chance$", (m) => (/and/i.test(m[2]) ? ["attack", "spell"] : [lower(m[2])]).map((kind) => c(`${kind}BlockChance`, "increased", +m[1]))),
+  rule("^NUM% additional Energy Shield Charge Interval$", (m) => [
+    c("energyShieldChargeInterval", "additional", +m[1]),
+  ]),
+  rule("^NUM% (Attack and Spell|Attack|Spell) Block Chance$", (m) =>
+    (/and/i.test(m[2]) ? ["attack", "spell"] : [lower(m[2])]).map((kind) =>
+      c(`${kind}BlockChance`, "increased", +m[1]),
+    ),
+  ),
   rule("^NUM% Block Ratio$", (m) => [c("blockRatio", "increased", +m[1])]),
   // Above the base 30% / 60% (src/block-model.js). Wield My Sword / Absolve My Sin raise both with one line.
   rule("^NUM% Block Ratio (?:Upper [Ll]imit|[Mm]aximum)$", (m) => [c("blockRatioUpperLimit", "increased", +m[1])]),
-  rule("^NUM% Block Ratio and Block Ratio Upper Limit$", (m) => [c("blockRatio", "increased", +m[1]), c("blockRatioUpperLimit", "increased", +m[1])]),
+  rule("^NUM% Block Ratio and Block Ratio Upper Limit$", (m) => [
+    c("blockRatio", "increased", +m[1]),
+    c("blockRatioUpperLimit", "increased", +m[1]),
+  ]),
   rule("^NUM% Injury Buffer$", (m) => [c("injuryBuffer", "increased", +m[1])]),
   rule("^NUM% chance to avoid damage$", (m) => [c("damageAvoidance", "increased", +m[1])]),
   rule("^NUM% chance to avoid Elemental Ailments$", (m) => [c("elementalAilmentAvoidance", "increased", +m[1])]),
   rule("^NUM% Life Regeneration Speed$", (m) => [c("lifeRegenerationSpeed", "increased", +m[1])]),
   rule("^NUM% Energy Shield Regain$", (m) => [c("energyShieldRegain", "increased", +m[1])]),
-  rule("^NUM% additional Energy Shield Regain Interval$", (m) => [c("energyShieldRegainInterval", "additional", +m[1])]),
+  rule("^NUM% additional Energy Shield Regain Interval$", (m) => [
+    c("energyShieldRegainInterval", "additional", +m[1]),
+  ]),
   // Life Regain and the shared Regain Interval (Regain model, 2026-10-14; src/regain-model.js): Life Regain and Shield Regain
   // have separate intervals (TLIDB Regain page), so an unscoped "Regain Interval" line reaches both.
   rule("^NUM% Life Regain$", (m) => [c("lifeRegain", "increased", +m[1])]),
-  rule("^NUM% Life Regain and (?:Energy )?Shield Regain$", (m) => [c("lifeRegain", "increased", +m[1]), c("energyShieldRegain", "increased", +m[1])]),
+  rule("^NUM% Life Regain and (?:Energy )?Shield Regain$", (m) => [
+    c("lifeRegain", "increased", +m[1]),
+    c("energyShieldRegain", "increased", +m[1]),
+  ]),
   rule("^NUM% additional Life Regain Interval$", (m) => [c("lifeRegainInterval", "additional", +m[1])]),
-  rule("^NUM% additional Regain Interval$", (m) => [c("lifeRegainInterval", "additional", +m[1]), c("energyShieldRegainInterval", "additional", +m[1])]),
+  rule("^NUM% additional Regain Interval$", (m) => [
+    c("lifeRegainInterval", "additional", +m[1]),
+    c("energyShieldRegainInterval", "additional", +m[1]),
+  ]),
   rule("^NUM% Sealed Mana Compensation$", (m) => [c("sealedManaCompensation", "increased", +m[1])]),
-  rule("^NUM% (Max )?((?:Fire|Cold|Lightning|Erosion|Elemental|All)(?:(?:\\s*,\\s*(?:and\\s+)?|\\s+and\\s+)(?:Fire|Cold|Lightning|Erosion))*) Resistances?$", (m) => {
-    const elements = [...new Set(splitNames(m[3]).flatMap((name) => elementsOf(title(name))))];
-    return elements.map((element) => c(m[2] ? `max${element}Resistance` : `${lower(element)}Resistance`, "increased", +m[1]));
-  }),
-  rule("^NUM% (Attack and Cast|Attack|Cast) Speed$", (m) => (/and/i.test(m[2]) ? ["attack", "cast"] : [lower(m[2])]).map((kind) => c(`${kind}Speed`, "increased", +m[1]))),
-  rule("^NUM Attack Speed$", (m, signed) => signed ? [] : [c("weaponAttackSpeed", "base", +m[1])]),
-  rule("^NUM(%?) (?:(Attack and Spell|Attack|Spell) )?Critical Strike Rating$", (m, signed) => !m[2] && !m[3] && !signed
-    ? [c("weaponCriticalStrikeRating", "base", +m[1])]
-    : [c(scoped(m[3], "criticalStrikeRating"), m[2] ? "increased" : "flat", +m[1])]),
-  rule("^NUM% (?:(Attack and Spell|Attack|Spell) )?Critical Strike Damage$", (m) => [c(scoped(m[2], "criticalStrikeDamage"), "increased", +m[1])]),
+  rule(
+    "^NUM% (Max )?((?:Fire|Cold|Lightning|Erosion|Elemental|All)(?:(?:\\s*,\\s*(?:and\\s+)?|\\s+and\\s+)(?:Fire|Cold|Lightning|Erosion))*) Resistances?$",
+    (m) => {
+      const elements = [...new Set(splitNames(m[3]).flatMap((name) => elementsOf(title(name))))];
+      return elements.map((element) =>
+        c(m[2] ? `max${element}Resistance` : `${lower(element)}Resistance`, "increased", +m[1]),
+      );
+    },
+  ),
+  rule("^NUM% (Attack and Cast|Attack|Cast) Speed$", (m) =>
+    (/and/i.test(m[2]) ? ["attack", "cast"] : [lower(m[2])]).map((kind) => c(`${kind}Speed`, "increased", +m[1])),
+  ),
+  rule("^NUM Attack Speed$", (m, signed) => (signed ? [] : [c("weaponAttackSpeed", "base", +m[1])])),
+  rule("^NUM(%?) (?:(Attack and Spell|Attack|Spell) )?Critical Strike Rating$", (m, signed) =>
+    !m[2] && !m[3] && !signed
+      ? [c("weaponCriticalStrikeRating", "base", +m[1])]
+      : [c(scoped(m[3], "criticalStrikeRating"), m[2] ? "increased" : "flat", +m[1])],
+  ),
+  rule("^NUM% (?:(Attack and Spell|Attack|Spell) )?Critical Strike Damage$", (m) => [
+    c(scoped(m[2], "criticalStrikeDamage"), "increased", +m[1]),
+  ]),
   rule("^NUM Affliction inflicted per second$", (m) => [c("afflictionPerSecond", "flat", +m[1])]),
-  rule("^NUM% (additional )?(Affliction|Aura|Curse|Blur|Focus Buff) Effect$", (m) => [c(`${camel(m[3])}Effect`, m[2] ? "additional" : "increased", +m[1])]),
+  rule("^NUM% (additional )?(Affliction|Aura|Curse|Blur|Focus Buff) Effect$", (m) => [
+    c(`${camel(m[3])}Effect`, m[2] ? "additional" : "increased", +m[1]),
+  ]),
   rule("^NUM% Movement Speed$", (m) => [c("movementSpeed", "increased", +m[1])]),
-  rule("^NUM% (?:(Ignite|Wilt|Trauma|Frostbite|Shock|Numbed) )?Reaping Duration$", (m) => [c(m[2] ? `reapingDuration:${title(m[2])}` : "reapingDuration", "increased", +m[1])]),
-  rule("^NUM% (additional )?Reaping Recovery Speed$", (m) => [c("reapingRecoverySpeed", m[2] ? "additional" : "increased", +m[1])]),
+  rule("^NUM% (?:(Ignite|Wilt|Trauma|Frostbite|Shock|Numbed) )?Reaping Duration$", (m) => [
+    c(m[2] ? `reapingDuration:${title(m[2])}` : "reapingDuration", "increased", +m[1]),
+  ]),
+  rule("^NUM% (additional )?Reaping Recovery Speed$", (m) => [
+    c("reapingRecoverySpeed", m[2] ? "additional" : "increased", +m[1]),
+  ]),
   rule("^NUM to All Skills['’] Levels?$", (m) => [c("skillLevel:All", "flat", +m[1])]),
-  rule("^NUM ((?:[A-Z][\\w'-]* )*?)Skill Levels?$", (m) => [c(`skillLevel:${m[2].trim() || "All"}`, "flat", +m[1])], ""),
-  rule("^NUM% (additional )?(?:(Physical|Fire|Cold|Lightning|Erosion|Elemental|Ignite|Wilt|Trauma|Spell|Attack|Ailment) )?Damage taken$", (m) => [c(`damageTaken:${m[3] ? title(m[3]) : "All"}`, m[2] ? "additional" : "increased", +m[1])]),
-  rule("^NUM% (Ignite|Wilt|Trauma|Frostbite|Shock|Numbed|Freeze) Effect received$", (m) => [c(`effectReceived:${title(m[2])}`, "increased", +m[1])]),
+  rule(
+    "^NUM ((?:[A-Z][\\w'-]* )*?)Skill Levels?$",
+    (m) => [c(`skillLevel:${m[2].trim() || "All"}`, "flat", +m[1])],
+    "",
+  ),
+  rule(
+    "^NUM% (additional )?(?:(Physical|Fire|Cold|Lightning|Erosion|Elemental|Ignite|Wilt|Trauma|Spell|Attack|Ailment) )?Damage taken$",
+    (m) => [c(`damageTaken:${m[3] ? title(m[3]) : "All"}`, m[2] ? "additional" : "increased", +m[1])],
+  ),
+  rule("^NUM% (Ignite|Wilt|Trauma|Frostbite|Shock|Numbed|Freeze) Effect received$", (m) => [
+    c(`effectReceived:${title(m[2])}`, "increased", +m[1]),
+  ]),
   rule("^NUM% Skill Area$", (m) => [c("skillArea", "increased", +m[1])]),
   rule("^NUM (Attack )?Skill Cost$", (m) => [c(m[2] ? "attackSkillCost" : "skillCost", "flat", +m[1])]),
   rule("^NUM% Skill Effect Duration$", (m) => [c("skillEffectDuration", "increased", +m[1])]),
   rule("^NUM% Cooldown Recovery Speed$", (m) => [c("cooldownRecoverySpeed", "increased", +m[1])]),
   rule("^NUM% Projectile Speed$", (m) => [c("projectileSpeed", "increased", +m[1])]),
-  rule("^NUM% (additional )?Spell Burst Charge Speed$", (m) => [c("spellBurstChargeSpeed", m[2] ? "additional" : "increased", +m[1])]),
-  rule("^NUM to Max (Focus|Tenacity|Agility) Blessing Stacks$", (m) => [c(`max${title(m[2])}BlessingStacks`, "flat", +m[1])])
+  rule("^NUM% (additional )?Spell Burst Charge Speed$", (m) => [
+    c("spellBurstChargeSpeed", m[2] ? "additional" : "increased", +m[1]),
+  ]),
+  rule("^NUM to Max (Focus|Tenacity|Agility) Blessing Stacks$", (m) => [
+    c(`max${title(m[2])}BlessingStacks`, "flat", +m[1]),
+  ]),
 ];
 
 // "Feline Steps: +6% Movement Speed" style prefixes name the effect, not the stat. A prefix
@@ -190,13 +294,20 @@ const RULES = [
 // Blessing stack (src/combat-states.js, src/blessing-model.js), not as a panel stat.
 const stripName = (text) => {
   const match = text.match(/^((?:[A-Z][\w' ]+: )+)(?=[+-]?\d)/);
-  return match && !/\b(?:when|while|if|after|during|upon|per|every|recently|additional effect|base effect of)\b/i.test(match[1]) ? text.slice(match[1].length) : text;
+  return match &&
+    !/\b(?:when|while|if|after|during|upon|per|every|recently|additional effect|base effect of)\b/i.test(match[1])
+    ? text.slice(match[1].length)
+    : text;
 };
 
 // Contributions for one clause (value before the source's rank multiplier), or [] when the
 // clause is not a plain character stat.
 export function parseCharacterStatClause(text) {
-  const clean = stripName(normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim());
+  const clean = stripName(
+    normalizePercentageText(String(text ?? ""))
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
   if (!clean) return [];
   const signed = /^[+-]/.test(clean);
   for (const [pattern, build] of RULES) {
@@ -205,7 +316,8 @@ export function parseCharacterStatClause(text) {
     const out = build(match, signed).filter((item) => item.stat && Number.isFinite(item.value));
     // Game bucket for the shapes src/affix-bucket.js applies (2026-10-17 game bucket code); the wording rule otherwise.
     const layer = out.length ? gameDamageLayer(text) : null;
-    if (layer) for (const item of out) if (item.bucket === "increased" || item.bucket === "additional") item.bucket = layer;
+    if (layer)
+      for (const item of out) if (item.bucket === "increased" || item.bucket === "additional") item.bucket = layer;
     if (out.length) return out;
   }
   return [];
@@ -227,10 +339,14 @@ export function heroTraitLevelBonus(modifierTexts = []) {
   const bonus = { all: 0, nonBase: 0, sources: [] };
   for (const line of modifierTexts) {
     if (line.origin === "memory") continue; // per-slot: memoryOwnHeroTraitLevel
-    const match = String(line.text ?? "").replace(/\s+/g, " ").trim().match(/^\+(\d+) to (Non-Base )?Hero Trait Level$/i);
+    const match = String(line.text ?? "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .match(/^\+(\d+) to (Non-Base )?Hero Trait Level$/i);
     if (!match) continue;
     const value = Number(match[1]) * (line.multiplier ?? 1);
-    if (match[2]) bonus.nonBase += value; else bonus.all += value;
+    if (match[2]) bonus.nonBase += value;
+    else bonus.all += value;
     bonus.sources.push({ source: line.source, text: line.text, value });
   }
   return bonus;
@@ -275,7 +391,11 @@ export function heroTraitSlotLevel(state = {}, traitName, levelBonus = { all: 0,
   const keys = hero.id === "selena-sing-with-the-tide" ? [`level${row}`] : [`${hero.id}:level${row}`, `level${row}`];
   // Bing – Creative Genius's sixth rank (Q-H2, provisional; src/hero-memory-rules.js nonBaseTraitLevelExtras).
   const extras = nonBaseTraitLevelExtras(hero.id, artificialMoonGate(state.hero).active);
-  return { row, keys, level: slotTraitLevel(state.hero, keys, (levelBonus.all || 0) + (levelBonus.nonBase || 0), extras) };
+  return {
+    row,
+    keys,
+    level: slotTraitLevel(state.hero, keys, (levelBonus.all || 0) + (levelBonus.nonBase || 0), extras),
+  };
 }
 
 export function heroTraitStatLines(state = {}, baseTraitLevel = 1, levelBonus = { all: 0, nonBase: 0 }, options = {}) {
@@ -292,7 +412,8 @@ export function heroTraitStatLines(state = {}, baseTraitLevel = 1, levelBonus = 
   // Bing – Creative Genius: the base trait's Artificial Moon "+1 to Non-Base Hero Trait Level" raises these traits and opens a
   // sixth rank (Q-H2, provisional; src/hero-memory-rules.js nonBaseTraitLevelExtras).
   const levelExtras = nonBaseTraitLevelExtras(hero.id, moonActive);
-  const tierLevel = (key, levelKey) => slotTraitLevel(state.hero, [key, levelKey], (levelBonus.all || 0) + (levelBonus.nonBase || 0), levelExtras);
+  const tierLevel = (key, levelKey) =>
+    slotTraitLevel(state.hero, [key, levelKey], (levelBonus.all || 0) + (levelBonus.nonBase || 0), levelExtras);
   if (base) picks.push({ trait: base, level: Math.max(1, Math.min(5, Number(baseTraitLevel) || 1)) }); // base-slot memory only (user-confirmed 2026-10-13)
   // One-per-level picks. Tree heroes pick on the tree (below); a tree hero's selectedTraits stay read as before (a game-log
   // import wrote Selena's path there before 2026-10-15; the planner UI never does). A revamped hero's earlier picks whose
@@ -326,21 +447,59 @@ export function heroTraitStatLines(state = {}, baseTraitLevel = 1, levelBonus = 
     });
     // The moon section ends at a line that starts another section (Sage's "Damage Ingredient …" catalogue, hero trait audit B8 F4:
     // the ingredient options are not moon effects); with the gate shut its lines are skipped and the next section is kept.
-    let moon = false, skipMoon = false;
-    for (const line of text.split("\n").map((part) => part.trim()).filter(Boolean)) {
-      if (/^Artificial Moon:$/i.test(line)) { if (trait === base && moonActive) { moon = true; continue; } if (trait !== base) break; skipMoon = true; continue; }
-      if ((moon || skipMoon) && endsArtificialMoonSection(line)) { moon = false; skipMoon = false; }
+    let moon = false,
+      skipMoon = false;
+    for (const line of text
+      .split("\n")
+      .map((part) => part.trim())
+      .filter(Boolean)) {
+      if (/^Artificial Moon:$/i.test(line)) {
+        if (trait === base && moonActive) {
+          moon = true;
+          continue;
+        }
+        if (trait !== base) break;
+        skipMoon = true;
+        continue;
+      }
+      if ((moon || skipMoon) && endsArtificialMoonSection(line)) {
+        moon = false;
+        skipMoon = false;
+      }
       if (skipMoon) continue;
-      lines.push({ text: line, source: `Hero trait: ${trait.name} (Lv ${level}${moon ? ", Artificial Moon" : ""})`, origin: "trait", multiplier: 1, ...(moon ? { artificialMoon: true } : {}) });
+      lines.push({
+        text: line,
+        source: `Hero trait: ${trait.name} (Lv ${level}${moon ? ", Artificial Moon" : ""})`,
+        origin: "trait",
+        multiplier: 1,
+        ...(moon ? { artificialMoon: true } : {}),
+      });
       // A keyword line with stat lines of its own (Youga's "Spacetime Conqueror": -15% Movement Speed; src/inline-keywords.js
       // heroTraitKeywords) adds them as trait lines, so the generic readers apply them.
-      for (const plain of heroTraitKeywordPlainLines(hero.id, line)) lines.push({ text: plain, source: `Hero trait: ${trait.name} (Lv ${level}) · ${line}`, origin: "trait", multiplier: 1, derivedFrom: line });
+      for (const plain of heroTraitKeywordPlainLines(hero.id, line))
+        lines.push({
+          text: plain,
+          source: `Hero trait: ${trait.name} (Lv ${level}) · ${line}`,
+          origin: "trait",
+          multiplier: 1,
+          derivedFrom: line,
+        });
     }
   }
   return lines;
 }
 
-const emptyTotal = (key) => ({ ...describeStat(key), flat: 0, increased: 0, additional: 1, gearFlat: 0, gearIncreased: 0, base: 0, sources: [], gearItems: new Map() });
+const emptyTotal = (key) => ({
+  ...describeStat(key),
+  flat: 0,
+  increased: 0,
+  additional: 1,
+  gearFlat: 0,
+  gearIncreased: 0,
+  base: 0,
+  sources: [],
+  gearItems: new Map(),
+});
 
 // Totals for the planner's build. `planner.modifierTexts` already holds gear (implicits, base
 // affixes, crafted, legendary and corrosion lines), talents with ranks, cores, prisms, slates,
@@ -353,11 +512,15 @@ export function characterStatTotals(planner, options = {}) {
   const lines = [
     // Conditional lines the line-effects resolver made active (src/line-effects.js) are combat states, not panel stats.
     // Trait lines come from heroTraitStatLines below (planner.modifierTexts carries the same lines since talent batch chunk 4).
-    ...(planner?.modifierTexts || []).filter((line) => line.origin !== "derived" && line.origin !== "trait" && !line.lineEffect?.conditional),
-    ...heroTraitStatLines(planner?.state, planner?.heroMemories?.baseTraitLevel, undefined, { artificialMoon: planner?.heroMemories?.artificialMoon }),
+    ...(planner?.modifierTexts || []).filter(
+      (line) => line.origin !== "derived" && line.origin !== "trait" && !line.lineEffect?.conditional,
+    ),
+    ...heroTraitStatLines(planner?.state, planner?.heroMemories?.baseTraitLevel, undefined, {
+      artificialMoon: planner?.heroMemories?.artificialMoon,
+    }),
     // An active Aura's added Attack and Cast Speed (Pantheon's Elegy on Precise: Swiftness; src/aura-gained-effects.js), scaled by its Aura Effect.
     ...auraSpeedStatLines(planner?.aura?.entries || []),
-    ...(options.legendaryBaseLines ? legendaryBaseDefenseLines(planner?.equipment?.candidateItems || []) : [])
+    ...(options.legendaryBaseLines ? legendaryBaseDefenseLines(planner?.equipment?.candidateItems || []) : []),
   ];
   const totals = new Map();
   const unmatched = [];
@@ -365,9 +528,16 @@ export function characterStatTotals(planner, options = {}) {
   const dualSeen = new Set();
   for (const line of lines) {
     const dual = line.origin === "kismet" && String(line.source).match(/Dual Kismet: (.+)$/)?.[1];
-    if (dual) { const key = `${dual}|${line.text}`; if (dualSeen.has(key)) continue; dualSeen.add(key); }
+    if (dual) {
+      const key = `${dual}|${line.text}`;
+      if (dualSeen.has(key)) continue;
+      dualSeen.add(key);
+    }
     const contributions = parseCharacterStatClause(line.text);
-    if (!contributions.length) { unmatched.push(line); continue; }
+    if (!contributions.length) {
+      unmatched.push(line);
+      continue;
+    }
     const multiplier = Number.isFinite(line.multiplier) ? line.multiplier : 1;
     for (const item of contributions) {
       if (!totals.has(item.stat)) totals.set(item.stat, emptyTotal(item.stat));
@@ -388,11 +558,16 @@ export function characterStatTotals(planner, options = {}) {
   return { stats, byKey: Object.fromEntries(stats.map((stat) => [stat.key, stat])), unmatched };
 }
 
-const rank = (key) => { const index = ORDER.indexOf(key); return index < 0 ? ORDER.length : index; };
+const rank = (key) => {
+  const index = ORDER.indexOf(key);
+  return index < 0 ? ORDER.length : index;
+};
 const round = (value) => Math.round(value * 1000) / 1000;
 
 function finalize(total, planner) {
-  total.gearTotal = round([...total.gearItems.values()].reduce((sum, gear) => sum + gear.flat * (1 + gear.increased / 100), 0));
+  total.gearTotal = round(
+    [...total.gearItems.values()].reduce((sum, gear) => sum + gear.flat * (1 + gear.increased / 100), 0),
+  );
   delete total.gearItems;
   total.flat = round(total.flat);
   total.increased = round(total.increased);
@@ -401,9 +576,11 @@ function finalize(total, planner) {
     // Character base attributes are 0 (the SS21 panel's Strength -10 = +20 gear - 30 All Stats).
     total.value = round(total.flat * (1 + total.increased / 100) * total.additional);
     total.formula = total.additional !== 1 ? "flat × (1 + increased%) × additional" : "flat × (1 + increased%)";
-    total.damagePath = total.key === "intelligence" && planner?.theoretical?.ledger?.some((entry) => /Total Intelligence/.test(entry.source))
-      ? "Main-stat damage in calc (0.5% additional per point)"
-      : "Not used by the modeled damage path";
+    total.damagePath =
+      total.key === "intelligence" &&
+      planner?.theoretical?.ledger?.some((entry) => /Total Intelligence/.test(entry.source))
+        ? "Main-stat damage in calc (0.5% additional per point)"
+        : "Not used by the modeled damage path";
     return;
   }
   if (["maxLife", "maxMana", "maxEnergyShield", "armor", "evasion"].includes(total.key)) {
@@ -411,44 +588,84 @@ function finalize(total, planner) {
     total.formula = "components only: character base values and the scope of Defense are not sourced";
     return;
   }
-  if (total.base) { total.value = null; total.formula = "weapon base value, per weapon (not summed)"; return; }
+  if (total.base) {
+    total.value = null;
+    total.formula = "weapon base value, per weapon (not summed)";
+    return;
+  }
   if (total.unit === "%") {
     total.value = round(total.increased + total.flat);
     total.formula = total.additional !== 1 ? "sum of % lines; additional lines multiply separately" : "sum of % lines";
     const element = total.key.match(/^(fire|cold|lightning|erosion)Resistance$/)?.[1];
     const entry = element && planner?.resistances?.entries?.find((item) => item.element.toLowerCase() === element);
-    if (entry) { total.capped = entry.effective; total.maximum = entry.maximum; }
+    if (entry) {
+      total.capped = entry.effective;
+      total.maximum = entry.maximum;
+    }
     return;
   }
   total.value = total.flat;
-  total.formula = total.increased || total.additional !== 1 ? "flat sum; increased / additional % shown beside it" : "sum of flat lines";
+  total.formula =
+    total.increased || total.additional !== 1
+      ? "flat sum; increased / additional % shown beside it"
+      : "sum of flat lines";
 }
 
 // Display rows grouped for the stat sheet. Each row carries a breakdown for its hover text.
 const signedText = (value, unit = "") => `${value > 0 ? "+" : ""}${Math.round(value * 100) / 100}${unit}`;
-const BUCKET_LABEL = { flat: "flat", increased: "increased", additional: "additional", gearFlat: "gear flat", gearIncreased: "gear % (this item)", base: "weapon base" };
+const BUCKET_LABEL = {
+  flat: "flat",
+  increased: "increased",
+  additional: "additional",
+  gearFlat: "gear flat",
+  gearIncreased: "gear % (this item)",
+  base: "weapon base",
+};
 export function characterStatRows(totals, format = (value) => String(Math.round(value * 100) / 100)) {
   const groups = Object.fromEntries(characterStatGroups.map((group) => [group, []]));
   for (const stat of totals.stats) {
     const extras = [];
-    if (stat.increased && stat.unit !== "%" && stat.group !== "Attributes") extras.push(`${signedText(stat.increased, "%")} increased`);
+    if (stat.increased && stat.unit !== "%" && stat.group !== "Attributes")
+      extras.push(`${signedText(stat.increased, "%")} increased`);
     if (stat.additional !== 1) extras.push(`×${stat.additional} additional`);
     let value;
-    if (stat.base) value = stat.sources.filter((item) => item.bucket === "base").map((item) => format(item.value)).join(" / ");
-    else if (stat.value === null) value = [
-      stat.flat ? `${signedText(stat.flat)} flat` : null,
-      stat.gearFlat ? `gear ${format(stat.gearFlat)}${stat.gearIncreased ? ` → ${format(stat.gearTotal)}` : ""}` : null,
-      ...extras
-    ].filter(Boolean).join(" · ") || "—";
+    if (stat.base)
+      value = stat.sources
+        .filter((item) => item.bucket === "base")
+        .map((item) => format(item.value))
+        .join(" / ");
+    else if (stat.value === null)
+      value =
+        [
+          stat.flat ? `${signedText(stat.flat)} flat` : null,
+          stat.gearFlat
+            ? `gear ${format(stat.gearFlat)}${stat.gearIncreased ? ` → ${format(stat.gearTotal)}` : ""}`
+            : null,
+          ...extras,
+        ]
+          .filter(Boolean)
+          .join(" · ") || "—";
     else if (stat.group === "Attributes") value = format(stat.value);
-    else if (stat.unit === "%") value = [stat.value || !extras.length ? signedText(stat.value, "%") : null, ...extras, Number.isFinite(stat.capped) ? `${format(stat.capped)}% applied (max ${format(stat.maximum)}%)` : null].filter(Boolean).join(" · ");
+    else if (stat.unit === "%")
+      value = [
+        stat.value || !extras.length ? signedText(stat.value, "%") : null,
+        ...extras,
+        Number.isFinite(stat.capped) ? `${format(stat.capped)}% applied (max ${format(stat.maximum)}%)` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
     else value = [stat.value || !extras.length ? signedText(stat.value) : null, ...extras].filter(Boolean).join(" · ");
     const breakdown = [
       `${stat.label} · ${stat.formula}`,
       ...(stat.damagePath ? [stat.damagePath] : []),
-      ...stat.sources.map((item) => `${item.source}: ${item.text} → ${signedText(item.value, ["flat", "gearFlat", "base"].includes(item.bucket) && stat.unit !== "%" ? "" : "%")} ${BUCKET_LABEL[item.bucket]}`)
+      ...stat.sources.map(
+        (item) =>
+          `${item.source}: ${item.text} → ${signedText(item.value, ["flat", "gearFlat", "base"].includes(item.bucket) && stat.unit !== "%" ? "" : "%")} ${BUCKET_LABEL[item.bucket]}`,
+      ),
     ].join("\n");
     groups[stat.group].push({ label: stat.label, value, breakdown, key: stat.key });
   }
-  return characterStatGroups.map((group) => ({ title: group, rows: groups[group] })).filter((group) => group.rows.length);
+  return characterStatGroups
+    .map((group) => ({ title: group, rows: groups[group] }))
+    .filter((group) => group.rows.length);
 }

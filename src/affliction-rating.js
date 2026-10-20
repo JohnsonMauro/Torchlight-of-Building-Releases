@@ -18,7 +18,14 @@ const round = (value, digits) => Math.round(value * 10 ** digits) / 10 ** digits
 
 export function deriveAfflictionRating({ afflictionPerSecond = 0, removers = [] } = {}) {
   const rate = Math.max(0, Number(afflictionPerSecond) || 0);
-  if (!(rate > 0)) return { rating: 0, afflictionPerSecond: 0, firstFullSeconds: Infinity, limitingRemover: null, text: "Affliction 0 (the build inflicts no Affliction per second)." };
+  if (!(rate > 0))
+    return {
+      rating: 0,
+      afflictionPerSecond: 0,
+      firstFullSeconds: Infinity,
+      limitingRemover: null,
+      text: "Affliction 0 (the build inflicts no Affliction per second).",
+    };
   const firstFullSeconds = 100 / rate;
   let best = null;
   for (const remover of removers) {
@@ -27,12 +34,31 @@ export function deriveAfflictionRating({ afflictionPerSecond = 0, removers = [] 
     const fillSeconds = removed / rate;
     const intervalSeconds = Math.max(Math.max(0, remover.recoverySeconds || 0), fillSeconds);
     const average = ((100 - removed / 2) * fillSeconds + 100 * (intervalSeconds - fillSeconds)) / intervalSeconds;
-    if (!best || average < best.average) best = { source: remover.source, removedPercent: removed, fillSeconds, intervalSeconds, recoverySeconds: remover.recoverySeconds || 0, average };
+    if (!best || average < best.average)
+      best = {
+        source: remover.source,
+        removedPercent: removed,
+        fillSeconds,
+        intervalSeconds,
+        recoverySeconds: remover.recoverySeconds || 0,
+        average,
+      };
   }
   const perSecond = round(rate, 3);
-  if (!best) return { rating: 100, afflictionPerSecond: rate, firstFullSeconds, limitingRemover: null,
-    text: `Affliction 100 (${perSecond}/s, nothing removes it; full after ${round(firstFullSeconds, 3)} s).` };
+  if (!best)
+    return {
+      rating: 100,
+      afflictionPerSecond: rate,
+      firstFullSeconds,
+      limitingRemover: null,
+      text: `Affliction 100 (${perSecond}/s, nothing removes it; full after ${round(firstFullSeconds, 3)} s).`,
+    };
   const waits = best.intervalSeconds > best.fillSeconds + 1e-12;
-  return { rating: best.average, afflictionPerSecond: rate, firstFullSeconds, limitingRemover: best,
-    text: `Affliction avg ${round(best.average, 1)} (fills ${round(100 - best.removedPercent, 1)}→100 in ${round(best.fillSeconds, 3)} s at ${perSecond}/s, ${best.removedPercent}% removed on each ${best.source} Reap${waits ? `; waits ${round(best.intervalSeconds - best.fillSeconds, 3)} s at 100 for the ${round(best.recoverySeconds, 3)} s recovery` : ""}).` };
+  return {
+    rating: best.average,
+    afflictionPerSecond: rate,
+    firstFullSeconds,
+    limitingRemover: best,
+    text: `Affliction avg ${round(best.average, 1)} (fills ${round(100 - best.removedPercent, 1)}→100 in ${round(best.fillSeconds, 3)} s at ${perSecond}/s, ${best.removedPercent}% removed on each ${best.source} Reap${waits ? `; waits ${round(best.intervalSeconds - best.fillSeconds, 3)} s at 100 for the ${round(best.recoverySeconds, 3)} s recovery` : ""}).`,
+  };
 }

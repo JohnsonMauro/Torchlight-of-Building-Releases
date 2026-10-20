@@ -5,24 +5,29 @@ const key = (panel, coordinate) => `${panel}:${Array.isArray(coordinate) ? coord
 const rank = (ranks, panel, coordinate) => Number(ranks[key(panel, coordinate)] || 0);
 
 export function talentPointTotals(layouts, ranks) {
-  const panels = Object.fromEntries(Object.entries(layouts).map(([panel,graph]) => [panel, graph.nodes.reduce((sum,node) => sum + rank(ranks,panel,node.coordinate), 0)]));
-  return { panels, total: Object.values(panels).reduce((sum,value) => sum + value, 0), maximum: MAX_TALENT_POINTS };
+  const panels = Object.fromEntries(
+    Object.entries(layouts).map(([panel, graph]) => [
+      panel,
+      graph.nodes.reduce((sum, node) => sum + rank(ranks, panel, node.coordinate), 0),
+    ]),
+  );
+  return { panels, total: Object.values(panels).reduce((sum, value) => sum + value, 0), maximum: MAX_TALENT_POINTS };
 }
 
 export function talentPredecessors(graph, coordinate) {
-  const [x,y] = coordinate;
-  return graph.edges.flatMap(([x1,y1,x2,y2]) => {
-    if (x2 === x && y2 === y && x1 < x) return [[x1,y1]];
-    if (x1 === x && y1 === y && x2 < x) return [[x2,y2]];
+  const [x, y] = coordinate;
+  return graph.edges.flatMap(([x1, y1, x2, y2]) => {
+    if (x2 === x && y2 === y && x1 < x) return [[x1, y1]];
+    if (x1 === x && y1 === y && x2 < x) return [[x2, y2]];
     return [];
   });
 }
 
 export function talentSuccessors(graph, coordinate) {
-  const [x,y] = coordinate;
-  return graph.edges.flatMap(([x1,y1,x2,y2]) => {
-    if (x1 === x && y1 === y && x2 > x) return [[x2,y2]];
-    if (x2 === x && y2 === y && x1 > x) return [[x1,y1]];
+  const [x, y] = coordinate;
+  return graph.edges.flatMap(([x1, y1, x2, y2]) => {
+    if (x1 === x && y1 === y && x2 > x) return [[x2, y2]];
+    if (x2 === x && y2 === y && x1 > x) return [[x1, y1]];
     return [];
   });
 }
@@ -30,79 +35,139 @@ export function talentSuccessors(graph, coordinate) {
 const connectedPredecessors = (graph, coordinate, prerequisiteFreeCoordinates) =>
   talentPredecessors(graph, coordinate).filter((before) => !prerequisiteFreeCoordinates?.has(before.join(",")));
 
-export function canAllocateTalent({ panel, node, graph, layouts, ranks, prismCoordinate, prerequisiteFreeCoordinates }) {
-  if (node.coordinate.join(",") === prismCoordinate) return { allowed:false, reason:"Prism replaces this talent node" };
+export function canAllocateTalent({
+  panel,
+  node,
+  graph,
+  layouts,
+  ranks,
+  prismCoordinate,
+  prerequisiteFreeCoordinates,
+}) {
+  if (node.coordinate.join(",") === prismCoordinate)
+    return { allowed: false, reason: "Prism replaces this talent node" };
   const totals = talentPointTotals(layouts, ranks);
-  const current = rank(ranks,panel,node.coordinate);
-  if (current >= node.maxRank) return { allowed:false, reason:"Maximum rank reached" };
-  if (totals.total >= MAX_TALENT_POINTS) return { allowed:false, reason:`Maximum ${MAX_TALENT_POINTS} talent points reached` };
-  if (prerequisiteFreeCoordinates?.has(node.coordinate.join(","))) return { allowed:true, reason:"Talent in reflected area has no prerequisites" };
+  const current = rank(ranks, panel, node.coordinate);
+  if (current >= node.maxRank) return { allowed: false, reason: "Maximum rank reached" };
+  if (totals.total >= MAX_TALENT_POINTS)
+    return { allowed: false, reason: `Maximum ${MAX_TALENT_POINTS} talent points reached` };
+  if (prerequisiteFreeCoordinates?.has(node.coordinate.join(",")))
+    return { allowed: true, reason: "Talent in reflected area has no prerequisites" };
   const threshold = TALENT_THRESHOLDS[node.coordinate[0]] || 0;
-  if (totals.panels[panel] < threshold) return { allowed:false, reason:`Requires ${threshold} points in ${panel}` };
-  const connected = connectedPredecessors(graph,node.coordinate,prerequisiteFreeCoordinates);
-  if (connected.length && !connected.some((coordinate) => coordinate.join(",") === prismCoordinate || rank(ranks,panel,coordinate) > 0)) return { allowed:false, reason:"Requires an allocated connected talent to the left" };
-  return { allowed:true, reason:"Available" };
+  if (totals.panels[panel] < threshold) return { allowed: false, reason: `Requires ${threshold} points in ${panel}` };
+  const connected = connectedPredecessors(graph, node.coordinate, prerequisiteFreeCoordinates);
+  if (
+    connected.length &&
+    !connected.some((coordinate) => coordinate.join(",") === prismCoordinate || rank(ranks, panel, coordinate) > 0)
+  )
+    return { allowed: false, reason: "Requires an allocated connected talent to the left" };
+  return { allowed: true, reason: "Available" };
 }
 
-export function allocateTalentWithPrerequisites({ panel, node, graph, layouts, ranks, prismCoordinate, prerequisiteFreeCoordinates }) {
+export function allocateTalentWithPrerequisites({
+  panel,
+  node,
+  graph,
+  layouts,
+  ranks,
+  prismCoordinate,
+  prerequisiteFreeCoordinates,
+}) {
   const nextRanks = { ...ranks };
   const nodeByCoordinate = new Map(graph.nodes.map((entry) => [entry.coordinate.join(","), entry]));
   const added = [];
   const addPoint = (entry) => {
-    const rule = canAllocateTalent({ panel, node:entry, graph, layouts, ranks:nextRanks, prismCoordinate, prerequisiteFreeCoordinates });
+    const rule = canAllocateTalent({
+      panel,
+      node: entry,
+      graph,
+      layouts,
+      ranks: nextRanks,
+      prismCoordinate,
+      prerequisiteFreeCoordinates,
+    });
     if (!rule.allowed) return rule;
-    const entryKey = key(panel,entry.coordinate);
-    nextRanks[entryKey] = rank(nextRanks,panel,entry.coordinate) + 1;
+    const entryKey = key(panel, entry.coordinate);
+    nextRanks[entryKey] = rank(nextRanks, panel, entry.coordinate) + 1;
     added.push(entryKey);
-    return { allowed:true, reason:"Available" };
+    return { allowed: true, reason: "Available" };
   };
   const fillRequiredPath = (entry, visiting = new Set()) => {
     const entryKey = entry.coordinate.join(",");
-    if (visiting.has(entryKey)) return { allowed:false, reason:"Talent path contains a cycle" };
-    if (prerequisiteFreeCoordinates?.has(entryKey)) return { allowed:true, reason:"Reflected area starts this path" };
-    const predecessors = connectedPredecessors(graph,entry.coordinate,prerequisiteFreeCoordinates)
+    if (visiting.has(entryKey)) return { allowed: false, reason: "Talent path contains a cycle" };
+    if (prerequisiteFreeCoordinates?.has(entryKey)) return { allowed: true, reason: "Reflected area starts this path" };
+    const predecessors = connectedPredecessors(graph, entry.coordinate, prerequisiteFreeCoordinates)
       .map((coordinate) => nodeByCoordinate.get(coordinate.join(",")))
       .filter(Boolean)
-      .sort((a,b) => Number(b.coordinate.join(",") === prismCoordinate) - Number(a.coordinate.join(",") === prismCoordinate)
-        || rank(nextRanks,panel,b.coordinate) - rank(nextRanks,panel,a.coordinate)
-        || Number(prerequisiteFreeCoordinates?.has(b.coordinate.join(","))) - Number(prerequisiteFreeCoordinates?.has(a.coordinate.join(","))));
-    if (!predecessors.length) return { allowed:true, reason:"Available" };
+      .sort(
+        (a, b) =>
+          Number(b.coordinate.join(",") === prismCoordinate) - Number(a.coordinate.join(",") === prismCoordinate) ||
+          rank(nextRanks, panel, b.coordinate) - rank(nextRanks, panel, a.coordinate) ||
+          Number(prerequisiteFreeCoordinates?.has(b.coordinate.join(","))) -
+            Number(prerequisiteFreeCoordinates?.has(a.coordinate.join(","))),
+      );
+    if (!predecessors.length) return { allowed: true, reason: "Available" };
     const predecessor = predecessors[0];
-    if (predecessor.coordinate.join(",") === prismCoordinate) return { allowed:true, reason:"Prism connects this path" };
+    if (predecessor.coordinate.join(",") === prismCoordinate)
+      return { allowed: true, reason: "Prism connects this path" };
     const nextVisiting = new Set(visiting).add(entryKey);
-    const earlier = fillRequiredPath(predecessor,nextVisiting);
+    const earlier = fillRequiredPath(predecessor, nextVisiting);
     if (!earlier.allowed) return earlier;
-    while (rank(nextRanks,panel,predecessor.coordinate) < predecessor.maxRank) {
+    while (rank(nextRanks, panel, predecessor.coordinate) < predecessor.maxRank) {
       const result = addPoint(predecessor);
       if (!result.allowed) return result;
     }
-    return { allowed:true, reason:"Available" };
+    return { allowed: true, reason: "Available" };
   };
-  if (rank(nextRanks,panel,node.coordinate) === 0 && !prerequisiteFreeCoordinates?.has(node.coordinate.join(","))) {
+  if (rank(nextRanks, panel, node.coordinate) === 0 && !prerequisiteFreeCoordinates?.has(node.coordinate.join(","))) {
     const path = fillRequiredPath(node);
-    if (!path.allowed) return { ...path, ranks, added:[] };
+    if (!path.allowed) return { ...path, ranks, added: [] };
   }
   const result = addPoint(node);
   return result.allowed
-    ? { allowed:true, reason:"Allocated", ranks:nextRanks, added }
-    : { ...result, ranks, added:[] };
+    ? { allowed: true, reason: "Allocated", ranks: nextRanks, added }
+    : { ...result, ranks, added: [] };
 }
 
-export function allocateTalentToMaxWithPrerequisites({ panel, node, graph, layouts, ranks, prismCoordinate, prerequisiteFreeCoordinates }) {
+export function allocateTalentToMaxWithPrerequisites({
+  panel,
+  node,
+  graph,
+  layouts,
+  ranks,
+  prismCoordinate,
+  prerequisiteFreeCoordinates,
+}) {
   const maximum = node.maxRank || (node.effectsPerRank ? 3 : 1);
   let nextRanks = ranks;
   const added = [];
-  while (rank(nextRanks,panel,node.coordinate) < maximum) {
-    const result = allocateTalentWithPrerequisites({ panel, node, graph, layouts, ranks:nextRanks, prismCoordinate, prerequisiteFreeCoordinates });
-    if (!result.allowed) return { allowed:false, reason:result.reason, ranks, added:[] };
+  while (rank(nextRanks, panel, node.coordinate) < maximum) {
+    const result = allocateTalentWithPrerequisites({
+      panel,
+      node,
+      graph,
+      layouts,
+      ranks: nextRanks,
+      prismCoordinate,
+      prerequisiteFreeCoordinates,
+    });
+    if (!result.allowed) return { allowed: false, reason: result.reason, ranks, added: [] };
     nextRanks = result.ranks;
     added.push(...result.added);
   }
-  return { allowed:true, reason:"Allocated to maximum", ranks:nextRanks, added };
+  return { allowed: true, reason: "Allocated to maximum", ranks: nextRanks, added };
 }
 
-export function pruneInvalidTalentRanks({ panel, graph, layouts, ranks, prismCoordinate, prerequisiteFreeCoordinates }) {
-  const nextRanks = { ...ranks }, removed = [];
+export function pruneInvalidTalentRanks({
+  panel,
+  graph,
+  layouts,
+  ranks,
+  prismCoordinate,
+  prerequisiteFreeCoordinates,
+}) {
+  const nextRanks = { ...ranks },
+    removed = [];
   let changed = true;
   while (changed) {
     changed = false;
@@ -111,67 +176,117 @@ export function pruneInvalidTalentRanks({ panel, graph, layouts, ranks, prismCoo
       const coordinate = node.coordinate.join(",");
       if (!rank(nextRanks, panel, node.coordinate)) continue;
       const free = prerequisiteFreeCoordinates?.has(coordinate);
-      const connected = connectedPredecessors(graph,node.coordinate,prerequisiteFreeCoordinates);
-      const invalid = coordinate === prismCoordinate
-        || !free && (points < (TALENT_THRESHOLDS[node.coordinate[0]] || 0)
-          || connected.length > 0 && !connected.some((before) => before.join(",") === prismCoordinate || rank(nextRanks, panel, before) > 0));
+      const connected = connectedPredecessors(graph, node.coordinate, prerequisiteFreeCoordinates);
+      const invalid =
+        coordinate === prismCoordinate ||
+        (!free &&
+          (points < (TALENT_THRESHOLDS[node.coordinate[0]] || 0) ||
+            (connected.length > 0 &&
+              !connected.some(
+                (before) => before.join(",") === prismCoordinate || rank(nextRanks, panel, before) > 0,
+              ))));
       if (!invalid) continue;
       nextRanks[key(panel, node.coordinate)] = 0;
       removed.push(key(panel, node.coordinate));
       changed = true;
     }
   }
-  return { ranks:nextRanks, removed };
+  return { ranks: nextRanks, removed };
 }
 
 export function canRemoveTalent({ panel, node, graph, layouts, ranks, prismCoordinate, prerequisiteFreeCoordinates }) {
-  const current = rank(ranks,panel,node.coordinate);
-  if (!current) return { allowed:false, reason:"No points allocated" };
-  const nextRanks = { ...ranks, [key(panel,node.coordinate)]:current - 1 };
-  const totals = talentPointTotals(layouts,nextRanks);
-  const gated = graph.nodes.find((candidate) => rank(nextRanks,panel,candidate.coordinate) > 0 && !prerequisiteFreeCoordinates?.has(candidate.coordinate.join(",")) && totals.panels[panel] < (TALENT_THRESHOLDS[candidate.coordinate[0]] || 0));
-  if (gated) return { allowed:false, reason:`A later talent still requires ${TALENT_THRESHOLDS[gated.coordinate[0]]} panel points` };
-  if (current === 1 && talentSuccessors(graph,node.coordinate).some((coordinate) => rank(nextRanks,panel,coordinate) > 0 && !prerequisiteFreeCoordinates?.has(coordinate.join(",")) && !connectedPredecessors(graph,coordinate,prerequisiteFreeCoordinates).some((predecessor) => predecessor.join(",") === prismCoordinate || rank(nextRanks,panel,predecessor) > 0))) return { allowed:false, reason:"A connected talent to the right still depends on this node" };
-  return { allowed:true, reason:"Removable" };
+  const current = rank(ranks, panel, node.coordinate);
+  if (!current) return { allowed: false, reason: "No points allocated" };
+  const nextRanks = { ...ranks, [key(panel, node.coordinate)]: current - 1 };
+  const totals = talentPointTotals(layouts, nextRanks);
+  const gated = graph.nodes.find(
+    (candidate) =>
+      rank(nextRanks, panel, candidate.coordinate) > 0 &&
+      !prerequisiteFreeCoordinates?.has(candidate.coordinate.join(",")) &&
+      totals.panels[panel] < (TALENT_THRESHOLDS[candidate.coordinate[0]] || 0),
+  );
+  if (gated)
+    return {
+      allowed: false,
+      reason: `A later talent still requires ${TALENT_THRESHOLDS[gated.coordinate[0]]} panel points`,
+    };
+  if (
+    current === 1 &&
+    talentSuccessors(graph, node.coordinate).some(
+      (coordinate) =>
+        rank(nextRanks, panel, coordinate) > 0 &&
+        !prerequisiteFreeCoordinates?.has(coordinate.join(",")) &&
+        !connectedPredecessors(graph, coordinate, prerequisiteFreeCoordinates).some(
+          (predecessor) => predecessor.join(",") === prismCoordinate || rank(nextRanks, panel, predecessor) > 0,
+        ),
+    )
+  )
+    return { allowed: false, reason: "A connected talent to the right still depends on this node" };
+  return { allowed: true, reason: "Removable" };
 }
 
-export function removeTalentWithDependents({ panel, node, graph, layouts, ranks, prismCoordinate, prerequisiteFreeCoordinates }) {
-  const current = rank(ranks,panel,node.coordinate);
-  if (!current) return { allowed:false, reason:"No points allocated", ranks };
-  const nextRanks = { ...ranks, [key(panel,node.coordinate)]:current - 1 };
+export function removeTalentWithDependents({
+  panel,
+  node,
+  graph,
+  layouts,
+  ranks,
+  prismCoordinate,
+  prerequisiteFreeCoordinates,
+}) {
+  const current = rank(ranks, panel, node.coordinate);
+  if (!current) return { allowed: false, reason: "No points allocated", ranks };
+  const nextRanks = { ...ranks, [key(panel, node.coordinate)]: current - 1 };
   const removed = [];
   const clearDependents = (pending) => {
     while (pending.length) {
       const coordinate = pending.shift();
-      for (const successor of talentSuccessors(graph,coordinate)) {
-        const successorKey = key(panel,successor);
-        if (!rank(nextRanks,panel,successor) || prerequisiteFreeCoordinates?.has(successor.join(","))) continue;
-        if (connectedPredecessors(graph,successor,prerequisiteFreeCoordinates).some((predecessor) => predecessor.join(",") === prismCoordinate || rank(nextRanks,panel,predecessor) > 0)) continue;
+      for (const successor of talentSuccessors(graph, coordinate)) {
+        const successorKey = key(panel, successor);
+        if (!rank(nextRanks, panel, successor) || prerequisiteFreeCoordinates?.has(successor.join(","))) continue;
+        if (
+          connectedPredecessors(graph, successor, prerequisiteFreeCoordinates).some(
+            (predecessor) => predecessor.join(",") === prismCoordinate || rank(nextRanks, panel, predecessor) > 0,
+          )
+        )
+          continue;
         nextRanks[successorKey] = 0;
         removed.push(successorKey);
         pending.push(successor);
       }
     }
   };
-  const connected = talentSuccessors(graph,node.coordinate).filter((coordinate) => rank(nextRanks,panel,coordinate) > 0 && !prerequisiteFreeCoordinates?.has(coordinate.join(",")) && !connectedPredecessors(graph,coordinate,prerequisiteFreeCoordinates).some((predecessor) => predecessor.join(",") === prismCoordinate));
+  const connected = talentSuccessors(graph, node.coordinate).filter(
+    (coordinate) =>
+      rank(nextRanks, panel, coordinate) > 0 &&
+      !prerequisiteFreeCoordinates?.has(coordinate.join(",")) &&
+      !connectedPredecessors(graph, coordinate, prerequisiteFreeCoordinates).some(
+        (predecessor) => predecessor.join(",") === prismCoordinate,
+      ),
+  );
   for (const coordinate of connected) {
-    const connectedKey = key(panel,coordinate);
+    const connectedKey = key(panel, coordinate);
     nextRanks[connectedKey] = 0;
     removed.push(connectedKey);
   }
   clearDependents(connected);
   while (true) {
-    const totals = talentPointTotals(layouts,nextRanks);
-    const gated = graph.nodes.filter((candidate) => rank(nextRanks,panel,candidate.coordinate) > 0 && !prerequisiteFreeCoordinates?.has(candidate.coordinate.join(",")) && totals.panels[panel] < (TALENT_THRESHOLDS[candidate.coordinate[0]] || 0));
+    const totals = talentPointTotals(layouts, nextRanks);
+    const gated = graph.nodes.filter(
+      (candidate) =>
+        rank(nextRanks, panel, candidate.coordinate) > 0 &&
+        !prerequisiteFreeCoordinates?.has(candidate.coordinate.join(",")) &&
+        totals.panels[panel] < (TALENT_THRESHOLDS[candidate.coordinate[0]] || 0),
+    );
     if (!gated.length) break;
     for (const candidate of gated) {
-      const candidateKey = key(panel,candidate.coordinate);
+      const candidateKey = key(panel, candidate.coordinate);
       nextRanks[candidateKey] = 0;
       removed.push(candidateKey);
     }
     clearDependents(gated.map((candidate) => candidate.coordinate));
   }
-  return { allowed:true, reason:"Removed", ranks:nextRanks, removed };
+  return { allowed: true, reason: "Removed", ranks: nextRanks, removed };
 }
 
 // A talent's effect text at its allocated rank, with an Inverse Image roll on a reflected node
@@ -186,20 +301,26 @@ const formatScaled = (value) => String(Number(value.toFixed(4)));
 
 export function scaleTalentEffectText(text, factor) {
   if (!Number.isFinite(factor) || factor === 1) return String(text ?? "");
-  return String(text ?? "").split(" | ").map((clause) => {
-    const numbers = [...clause.matchAll(TALENT_NUMBER)];
-    if (!numbers.length) return clause;
-    const range = /^Adds\s/i.test(clause) ? numbers.slice(0, 2) : [];
-    const values = numbers.filter((match) => (match[1] || match[3]) && !/(?:\bper|\bevery|\bup to)\s*$/i.test(clause.slice(0, match.index)));
-    const scaled = new Set(range.length ? range : values.length ? values : numbers.slice(0, 1));
-    let out = "", offset = 0;
-    for (const match of numbers) {
-      if (!scaled.has(match)) continue;
-      out += clause.slice(offset, match.index) + `${match[1]}${formatScaled(Number(match[2]) * factor)}${match[3]}`;
-      offset = match.index + match[0].length;
-    }
-    return out + clause.slice(offset);
-  }).join(" | ");
+  return String(text ?? "")
+    .split(" | ")
+    .map((clause) => {
+      const numbers = [...clause.matchAll(TALENT_NUMBER)];
+      if (!numbers.length) return clause;
+      const range = /^Adds\s/i.test(clause) ? numbers.slice(0, 2) : [];
+      const values = numbers.filter(
+        (match) => (match[1] || match[3]) && !/(?:\bper|\bevery|\bup to)\s*$/i.test(clause.slice(0, match.index)),
+      );
+      const scaled = new Set(range.length ? range : values.length ? values : numbers.slice(0, 1));
+      let out = "",
+        offset = 0;
+      for (const match of numbers) {
+        if (!scaled.has(match)) continue;
+        out += clause.slice(offset, match.index) + `${match[1]}${formatScaled(Number(match[2]) * factor)}${match[3]}`;
+        offset = match.index + match[0].length;
+      }
+      return out + clause.slice(offset);
+    })
+    .join(" | ");
 }
 
 export function talentEffectText(description, rank, inverseMultiplier = 1) {

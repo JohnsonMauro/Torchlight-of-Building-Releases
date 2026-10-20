@@ -19,17 +19,21 @@ const EVENTS = [
   [/^while standing still$/i, () => ({ event: "standingStill" })],
   [/^(?:when hitting an enemy|on hit|upon hit)$/i, () => ({ event: "hit" })],
   [/^if you have inflicted Frostbite recently$/i, () => ({ event: "frostbite" })],
-  [/^when inflicting Paralysis$/i, () => ({ event: "paralysis" })]
+  [/^when inflicting Paralysis$/i, () => ({ event: "paralysis" })],
 ];
-const LINE = /^Triggers? (?:a )?Lv\. (\d+) (.+?) (every [\d.]+ ?s|when moving|while standing still|when hitting an enemy|on hit|upon hit|if you have inflicted Frostbite recently|when inflicting Paralysis)\.?(?: (?:Interval|Cooldown): ([\d.]+) ?s\.?)?$/i;
+const LINE =
+  /^Triggers? (?:a )?Lv\. (\d+) (.+?) (every [\d.]+ ?s|when moving|while standing still|when hitting an enemy|on hit|upon hit|if you have inflicted Frostbite recently|when inflicting Paralysis)\.?(?: (?:Interval|Cooldown): ([\d.]+) ?s\.?)?$/i;
 const MOVING_EVERY = /^When moving, triggers (?:a )?Lv\. (\d+) (.+?) every ([\d.]+) ?s\.?$/i;
 const OTHER_TRIGGER = /^(?:\+?[\d.]+% chance to )?Triggers? (?:a )?Lv\. \d+ /i;
 
 /** The trigger a line describes: { name, level, event, intervalSeconds } | { unmodeled: reason } | null. */
 export function parseItemTrigger(text) {
-  const clean = normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim();
+  const clean = normalizePercentageText(String(text ?? ""))
+    .replace(/\s+/g, " ")
+    .trim();
   let match = clean.match(MOVING_EVERY);
-  if (match) return { name: match[2].trim(), level: Number(match[1]), event: "moving", intervalSeconds: Number(match[3]) };
+  if (match)
+    return { name: match[2].trim(), level: Number(match[1]), event: "moving", intervalSeconds: Number(match[3]) };
   match = clean.match(LINE);
   if (match) {
     if (/ Curse$/i.test(match[2])) return null; // curse triggers belong to src/curse-effects.js
@@ -42,9 +46,16 @@ export function parseItemTrigger(text) {
   // A curse named without the word "Curse" (Dual Kismet: Spindle, "Triggers Lv. 25 Corruption upon inflicting damage. Cooldown:
   // 0.2s") is a gear-triggered curse too (src/build-mechanics.js; pact scripted-effects batch 2026-10-13).
   const namedCurse = clean.match(/^Triggers? Lv\. \d+ ([\w']+(?: [\w']+)*?) upon inflicting damage\b/i)?.[1];
-  if (namedCurse && (curseTakenEffect(namedCurse) || DEDICATED_CURSE_MODELS.has(namedCurse) || NO_DUMMY_EFFECT_CURSES[namedCurse])) return null;
+  if (
+    namedCurse &&
+    (curseTakenEffect(namedCurse) || DEDICATED_CURSE_MODELS.has(namedCurse) || NO_DUMMY_EFFECT_CURSES[namedCurse])
+  )
+    return null;
   if (OTHER_TRIGGER.test(clean) && !/ Curse\b/i.test(clean)) {
-    if (/Mobility Skill|starting to move/i.test(clean)) return { notOnDummy: "the event (a Mobility Skill, starting to move) does not happen in a stationary dummy test" };
+    if (/Mobility Skill|starting to move/i.test(clean))
+      return {
+        notOnDummy: "the event (a Mobility Skill, starting to move) does not happen in a stationary dummy test",
+      };
     if (/defeat|kill/i.test(clean)) return { notOnDummy: "the training dummy is never defeated" };
     return { unmodeled: "a chance-based or other trigger event has no rate model" };
   }
@@ -54,18 +65,37 @@ export function parseItemTrigger(text) {
 /** Whether the event holds in this build's state: { active, reason }. */
 export function itemTriggerEvent(trigger, state = {}) {
   switch (trigger.event) {
-    case "always": return { active: true, reason: `every ${trigger.intervalSeconds} s` };
-    case "moving": return state.moving !== false ? { active: true, reason: "moving (movement group: compared with standing still)" } : { active: false, reason: "standing still" };
-    case "standingStill": return state.moving === false ? { active: true, reason: "standing still (movement group)" } : { active: false, reason: "moving (movement group)" };
-    case "hit": return state.anyHit ? { active: true, reason: "the build hits more often than once per interval (provisional)" } : { active: false, reason: "no modeled hit" };
-    case "frostbite": return (state.enemyAilments || []).includes("Frostbite") ? { active: true, reason: "Frostbite on the dummy (enemy-ailment model)" } : { active: false, reason: "the build inflicts no Frostbite" };
+    case "always":
+      return { active: true, reason: `every ${trigger.intervalSeconds} s` };
+    case "moving":
+      return state.moving !== false
+        ? { active: true, reason: "moving (movement group: compared with standing still)" }
+        : { active: false, reason: "standing still" };
+    case "standingStill":
+      return state.moving === false
+        ? { active: true, reason: "standing still (movement group)" }
+        : { active: false, reason: "moving (movement group)" };
+    case "hit":
+      return state.anyHit
+        ? { active: true, reason: "the build hits more often than once per interval (provisional)" }
+        : { active: false, reason: "no modeled hit" };
+    case "frostbite":
+      return (state.enemyAilments || []).includes("Frostbite")
+        ? { active: true, reason: "Frostbite on the dummy (enemy-ailment model)" }
+        : { active: false, reason: "the build inflicts no Frostbite" };
     // Paralysis held by an on-hit source (debuffs.paralysis), or inflicted on its own clock (2026-10-14): Grudge's / Cripple's
     // chance Paralysis on a supported skill's hits and Witch Antelope's turns (`scheduledParalysis`: their labels).
     case "paralysis": {
       if (state.paralysis) return { active: true, reason: "Paralysis on the dummy (combat states)" };
       const scheduled = (state.scheduledParalysis || []).filter(Boolean);
-      return scheduled.length ? { active: true, reason: `Paralysis inflicted by ${scheduled.join(", ")} (combat states; each inflicting can trigger it, at most once per interval)` } : { active: false, reason: "the build inflicts no Paralysis" };
+      return scheduled.length
+        ? {
+            active: true,
+            reason: `Paralysis inflicted by ${scheduled.join(", ")} (combat states; each inflicting can trigger it, at most once per interval)`,
+          }
+        : { active: false, reason: "the build inflicts no Paralysis" };
     }
-    default: return { active: false, reason: "unknown event" };
+    default:
+      return { active: false, reason: "unknown event" };
   }
 }

@@ -5,18 +5,28 @@ import { normalizePercentageText } from "./percentage-text.js";
 // (user-confirmed 2026-10-12: a gear "Cannot inflict [Ailment]" applies build-wide),
 // unlike the skill-scoped "The supported skill cannot inflict X" (src/ailment-applications.js ailmentBlockFor). Only builds
 // carrying such a line change. "Cannot inflict Reap" is read by the Reaping layers (src/reaping-sources.js).
-const BLOCK = /^(?:Cannot|Unable to) inflict ((?:(?:Ignite|Trauma|Wilt|Frostbite|Numbed|Freeze|Shock)(?:, | and |, and )?)+)$/i;
+const BLOCK =
+  /^(?:Cannot|Unable to) inflict ((?:(?:Ignite|Trauma|Wilt|Frostbite|Numbed|Freeze|Shock)(?:, | and |, and )?)+)$/i;
 
 /** The ailments a line blocks build-wide (capitalized names), or []. */
 export function blockedAilmentsOf(text) {
-  const match = normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim().match(BLOCK);
+  const match = normalizePercentageText(String(text ?? ""))
+    .replace(/\s+/g, " ")
+    .trim()
+    .match(BLOCK);
   if (!match) return [];
-  return match[1].split(/,\s*(?:and\s+)?|\s+and\s+/i).map((name) => name.trim()).filter(Boolean).map((name) => name[0].toUpperCase() + name.slice(1).toLowerCase());
+  return match[1]
+    .split(/,\s*(?:and\s+)?|\s+and\s+/i)
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .map((name) => name[0].toUpperCase() + name.slice(1).toLowerCase());
 }
 
 /** The first build-wide block of `ailmentName` ("Ignite", "Wilt", …): { source, text } or null. */
 export function buildWideAilmentBlock(modifierTexts = [], ailmentName) {
   const name = String(ailmentName || "").toLowerCase();
-  for (const line of modifierTexts) if (blockedAilmentsOf(line.text).some((item) => item.toLowerCase() === name)) return { source: line.source, text: normalizePercentageText(String(line.text)).trim() };
+  for (const line of modifierTexts)
+    if (blockedAilmentsOf(line.text).some((item) => item.toLowerCase() === name))
+      return { source: line.source, text: normalizePercentageText(String(line.text)).trim() };
   return null;
 }

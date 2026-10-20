@@ -32,7 +32,7 @@ export function shotgunTotal(hits, coefficient = 0.7) {
 export const SHOTGUN_REACH = Object.freeze({
   fan: "a projectile fan: about half reach the dummy standing close, ceil(n / 2) (Chromatic Shot runs 2026-10-12), one at range",
   half: "about half of the projectiles aim at the enemy, ceil(n / 2) (provisional)",
-  all: "every one reaches the dummy"
+  all: "every one reaches the dummy",
 });
 
 /** Effects of a volley of `count` that reach the dummy. */
@@ -60,7 +60,12 @@ export function shotgunVolley(falloff, { nearTarget = true } = {}) {
 export function shotgunProfileNote(count, factor, reach = "all") {
   const volley = shotgunVolley({ count, factor, reach });
   const percent = Math.round(factor * 100);
-  const landed = volley.reach === "fan" ? `a projectile fan: ${volley.reached} of ${volley.count} reach the dummy standing close (ceil(n / 2); one at range)` : volley.reach === "half" ? `about half aim at the enemy: ${volley.reached} of ${volley.count} reach the dummy` : `all ${volley.count} reach the dummy`;
+  const landed =
+    volley.reach === "fan"
+      ? `a projectile fan: ${volley.reached} of ${volley.count} reach the dummy standing close (ceil(n / 2); one at range)`
+      : volley.reach === "half"
+        ? `about half aim at the enemy: ${volley.reached} of ${volley.count} reach the dummy`
+        : `all ${volley.count} reach the dummy`;
   return `${volley.count} effects can hit the same enemy at a ${percent}% Shotgun Effect coefficient; ${landed}; the first at 100% and each further one at ${percent}%: 1 + ${factor} × ${volley.reached - 1} = ×${Math.round(volley.total * 10000) / 10000} (linear: game hit rule repeatDmgDecPercent; src/shotgun-effect.js)`;
 }
 

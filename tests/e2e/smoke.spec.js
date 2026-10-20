@@ -4,11 +4,13 @@ import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { PlannerPage, VIEWS } from "./pages/planner-page.js";
 
-const youga = JSON.parse(readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"));
+const youga = JSON.parse(
+  readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
+);
 
 const builds = [
   { name: "default library", state: null, heroTrait: "Sing with the Tide" },
-  { name: "Youga The Ultimate One L94", state: youga, heroTrait: "The Ultimate One" }
+  { name: "Youga The Ultimate One L94", state: youga, heroTrait: "The Ultimate One" },
 ];
 
 for (const build of builds) {

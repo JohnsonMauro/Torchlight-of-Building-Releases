@@ -3,7 +3,9 @@ import { supportProgressionSs13 } from "./data/skills/support-progression-ss13.g
 
 function levelValueInLine(line, numberIndexes, value) {
   const numbers = [...line.matchAll(/[+-]?\d+(?:\.\d+)?/g)];
-  const values = String(value).split(",").map((part) => part.trim());
+  const values = String(value)
+    .split(",")
+    .map((part) => part.trim());
   if (values.length !== numberIndexes.length) return line;
   let result = line;
   for (let valueIndex = values.length - 1; valueIndex >= 0; valueIndex--) {
@@ -34,11 +36,15 @@ export function supportDisplaySs13(entry, level) {
       exactCount++;
     }
   }
-  const multiplier = record.stats?.manaMultiplier?.replace(/\.0(?=%)/, "") || `${entry?.manaCostMultiplierPercent || 100}%`;
+  const multiplier =
+    record.stats?.manaMultiplier?.replace(/\.0(?=%)/, "") || `${entry?.manaCostMultiplierPercent || 100}%`;
   return {
     facts: [["Mana Multiplier", multiplier]],
-    effects: [description && requestedLevel === selectedLevel ? description : lines.join("\n"), ...(entry?.effects || []).slice(1)],
-    hasLevelProgression: exactCount > 0 || !columns.length && requestedLevel === 20,
+    effects: [
+      description && requestedLevel === selectedLevel ? description : lines.join("\n"),
+      ...(entry?.effects || []).slice(1),
+    ],
+    hasLevelProgression: exactCount > 0 || (!columns.length && requestedLevel === 20),
     matchedColumns: exactCount,
   };
 }

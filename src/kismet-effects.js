@@ -15,14 +15,22 @@ import { kismetAffixesWithRolls, normalizeKismetRolls } from "./kismet-crafting.
 // Several Star Trails add up (duplicate kismets stack additively, user-confirmed for Micro Fates 2026-10-11).
 const STAR_TRAIL = /^\+?(\d+(?:\.\d+)?)% for the effects of Micro Fates in the same Pact Branch$/i;
 
-const spiritOfSlot = (key) => String(key ?? "").replace(/:extra:(?:micro|medium):\d+$/, "").replace(/:\d+$/, "");
+const spiritOfSlot = (key) =>
+  String(key ?? "")
+    .replace(/:extra:(?:micro|medium):\d+$/, "")
+    .replace(/:\d+$/, "");
 
 /** The allocated kismet slot keys of a pact spirit: inner and mid nodes, plus its Fate slots while the destiny node is allocated. */
 export function activeKismetSlotKeys(state = {}, spirit) {
   const nodes = orderedPactspiritNodes(pactspiritTreesSs13[spirit]);
-  const keys = nodes.flatMap((node, index) => ["inner", "mid"].includes(node.ring) && state.nativeNodeQuantities?.[`${spirit}:${index}`] === 1 ? [`${spirit}:${index}`] : []);
+  const keys = nodes.flatMap((node, index) =>
+    ["inner", "mid"].includes(node.ring) && state.nativeNodeQuantities?.[`${spirit}:${index}`] === 1
+      ? [`${spirit}:${index}`]
+      : [],
+  );
   const destiny = nodes.findIndex((node) => node.ring === "destiny");
-  if (destiny >= 0 && state.nativeNodeQuantities?.[`${spirit}:${destiny}`] === 1) keys.push(...fateExtraSlots(spirit, state.fateUnlocks?.[spirit]).map((slot) => slot.key));
+  if (destiny >= 0 && state.nativeNodeQuantities?.[`${spirit}:${destiny}`] === 1)
+    keys.push(...fateExtraSlots(spirit, state.fateUnlocks?.[spirit]).map((slot) => slot.key));
   return keys;
 }
 
@@ -64,7 +72,9 @@ export function kismetSlotTexts(state = {}, key, rolls = undefined) {
   const entry = slot && kismetCatalogSs13.find((item) => item.name === slot.name);
   if (!entry) return [];
   const { scale } = microFateEffectScale(state, key);
-  return kismetAffixesWithRolls(entry, rolls ?? normalizeKismetRolls(entry, slot.rolls)).map((text) => scaleKismetAffix(text, scale));
+  return kismetAffixesWithRolls(entry, rolls ?? normalizeKismetRolls(entry, slot.rolls)).map((text) =>
+    scaleKismetAffix(text, scale),
+  );
 }
 
 /**
@@ -109,7 +119,9 @@ export function kismetSlotDisplayTexts(state = {}, key, rolls = undefined) {
   const entry = slot && kismetCatalogSs13.find((item) => item.name === slot.name);
   if (!entry) return [];
   const boost = microFateEffectScale(state, key);
-  return kismetAffixesWithRolls(entry, rolls ?? normalizeKismetRolls(entry, slot.rolls)).map((text) => boostedKismetAffixText(text, boost));
+  return kismetAffixesWithRolls(entry, rolls ?? normalizeKismetRolls(entry, slot.rolls)).map((text) =>
+    boostedKismetAffixText(text, boost),
+  );
 }
 
 export function activeKismetEffects(state = {}) {
@@ -118,13 +130,19 @@ export function activeKismetEffects(state = {}) {
     if (!spirit || state.activeSpirits?.[spirit] === false) continue;
     for (const key of activeKismetSlotKeys(state, spirit)) {
       const slot = state.kismetSlots?.[key];
-      const entry = slot && kismetCatalogSs13.find(item => item.name === slot.name);
+      const entry = slot && kismetCatalogSs13.find((item) => item.name === slot.name);
       if (!entry) continue;
       // A Micro Fate in a spirit with Star Trail carries its boosted value; `baseText` keeps the rolled one (pact badge audit 2026-10-13).
       const boost = microFateEffectScale(state, key);
       for (const baseText of kismetAffixesWithRolls(entry, normalizeKismetRolls(entry, slot.rolls))) {
         const text = scaleKismetAffix(baseText, boost.scale);
-        lines.push({ source: `${spirit} · ${entry.name}`, name: entry.name, text, key, ...(boost.scale !== 1 ? { baseText, effectScale: boost.scale, starTrail: boost.sources } : {}) });
+        lines.push({
+          source: `${spirit} · ${entry.name}`,
+          name: entry.name,
+          text,
+          key,
+          ...(boost.scale !== 1 ? { baseText, effectScale: boost.scale, starTrail: boost.sources } : {}),
+        });
       }
     }
   }
@@ -134,20 +152,37 @@ export function activeKismetEffects(state = {}) {
 export function parseKismetEffect(text) {
   text = normalizePercentageText(text);
   const match = text.match(/^([+-]?[\d.]+)% (.+)$/);
-  const stat = match && {
-    "damage": "damagePercent", "spell damage": "spellDamagePercent", "elemental damage": "elementalDamagePercent",
-    "fire damage": "fireDamagePercent", "damage over time": "damageOverTimePercent",
-    "cast speed": "castSpeedPercent", "attack and cast speed": "attackAndCastSpeedPercent",
-    "aura effect": "auraEffectPercent", "affliction effect": "afflictionEffectPercent", "reaping duration": "reapingDurationPercent",
-    "reaping recovery speed": "reapingRecoverySpeedPercent", "critical strike rating": "criticalStrikeRatingPercent",
-    "critical strike damage": "criticalStrikeDamagePercent", "chance to ignite targets": "chanceToIgniteTargetsPercent", "ignite chance": "chanceToIgniteTargetsPercent",
-    "chance to inflict damaging ailments": "damagingAilmentChancePercent",
-    "additional ignite duration": "additionalIgniteDurationPercent", "ailment duration": "ailmentDurationPercent",
-    "fire resistance": "fireResistancePercent", "cold resistance": "coldResistancePercent", "lightning resistance": "lightningResistancePercent", "erosion resistance": "erosionResistancePercent",
-    "elemental resistance": "elementalResistancePercent", "chance to avoid damage": "damageAvoidanceChancePercent",
-    "additional damage": "outgoingAdditionalDamagePercent", "additional damage over time": "additionalDamageOverTimePercent",
-    "additional damage taken": "additionalDamageTakenPercent"
-  }[match[2].toLowerCase()];
+  const stat =
+    match &&
+    {
+      damage: "damagePercent",
+      "spell damage": "spellDamagePercent",
+      "elemental damage": "elementalDamagePercent",
+      "fire damage": "fireDamagePercent",
+      "damage over time": "damageOverTimePercent",
+      "cast speed": "castSpeedPercent",
+      "attack and cast speed": "attackAndCastSpeedPercent",
+      "aura effect": "auraEffectPercent",
+      "affliction effect": "afflictionEffectPercent",
+      "reaping duration": "reapingDurationPercent",
+      "reaping recovery speed": "reapingRecoverySpeedPercent",
+      "critical strike rating": "criticalStrikeRatingPercent",
+      "critical strike damage": "criticalStrikeDamagePercent",
+      "chance to ignite targets": "chanceToIgniteTargetsPercent",
+      "ignite chance": "chanceToIgniteTargetsPercent",
+      "chance to inflict damaging ailments": "damagingAilmentChancePercent",
+      "additional ignite duration": "additionalIgniteDurationPercent",
+      "ailment duration": "ailmentDurationPercent",
+      "fire resistance": "fireResistancePercent",
+      "cold resistance": "coldResistancePercent",
+      "lightning resistance": "lightningResistancePercent",
+      "erosion resistance": "erosionResistancePercent",
+      "elemental resistance": "elementalResistancePercent",
+      "chance to avoid damage": "damageAvoidanceChancePercent",
+      "additional damage": "outgoingAdditionalDamagePercent",
+      "additional damage over time": "additionalDamageOverTimePercent",
+      "additional damage taken": "additionalDamageTakenPercent",
+    }[match[2].toLowerCase()];
   if (stat) return { stat, value: Number(match[1]) };
   if (/^\+1 Ignite limit$/i.test(text)) return { stat: "igniteLimit", value: 1 };
   return null;

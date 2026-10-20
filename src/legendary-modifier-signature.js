@@ -13,7 +13,9 @@ export function legendaryModifierSignature(text) {
 // still a legendary line, not an extra, so it is not appended a second time.
 export function reconcileLegendaryModifiers(item, knownSignatures) {
   const legendary = new Set(item.legendaryModifiers || []);
-  const extras = (item.modifiers || []).filter((text) => !knownSignatures.has(legendaryModifierSignature(text)) && !legendary.has(text));
+  const extras = (item.modifiers || []).filter(
+    (text) => !knownSignatures.has(legendaryModifierSignature(text)) && !legendary.has(text),
+  );
   item.modifiers = [...(item.legendaryModifiers || []), ...extras];
   return item;
 }

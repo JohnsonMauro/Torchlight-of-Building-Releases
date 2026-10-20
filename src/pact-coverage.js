@@ -13,19 +13,33 @@ const STAR_TRAIL = /^\+?[\d.]+% for the effects of Micro Fates in the same Pact 
  * "No DPS effect" whatever it boosted.
  */
 export function kismetAffixCoverage(affix, { key = null, planner = coverageContext() } = {}) {
-  const text = normalizePercentageText(String(affix ?? "")).replace(/\s+/g, " ").trim();
+  const text = normalizePercentageText(String(affix ?? ""))
+    .replace(/\s+/g, " ")
+    .trim();
   if (STAR_TRAIL.test(text) && planner?.state?.pacts) return starTrailCoverage(key, planner);
-  return refineCoverage(parseKismetEffect(affix) || parseBlockModifier(affix) ? "In calc" : "Not modeled", affix, planner);
+  return refineCoverage(
+    parseKismetEffect(affix) || parseBlockModifier(affix) ? "In calc" : "Not modeled",
+    affix,
+    planner,
+  );
 }
 
 function starTrailCoverage(key, planner) {
   const pacts = planner.state.pacts;
-  const spirit = String(key ?? "").replace(/:extra:(?:micro|medium):\d+$/, "").replace(/:\d+$/, "");
+  const spirit = String(key ?? "")
+    .replace(/:extra:(?:micro|medium):\d+$/, "")
+    .replace(/:\d+$/, "");
   const keys = activeKismetSlotKeys(pacts, spirit);
   if (!keys.includes(key)) return "Inactive";
-  const boosted = keys.filter((other) => microFateEffectScale(pacts, other).sources.some((source) => source.key === key));
+  const boosted = keys.filter((other) =>
+    microFateEffectScale(pacts, other).sources.some((source) => source.key === key),
+  );
   if (!boosted.length) return "Inactive";
-  return combineStatuses(boosted.flatMap((other) => kismetSlotTexts(pacts, other).map((affix) => kismetAffixCoverage(affix, { key: other, planner }))));
+  return combineStatuses(
+    boosted.flatMap((other) =>
+      kismetSlotTexts(pacts, other).map((affix) => kismetAffixCoverage(affix, { key: other, planner })),
+    ),
+  );
 }
 
 // A level effect that joins two stats with "; " ("+7% additional damage; +7% additional Minion Damage": Cloudgatherer - Violet,
@@ -39,7 +53,14 @@ const splitJoinedClauses = (text) => String(text ?? "").replace(/;\s*(?=[+-]?\d)
 const DESTINY_SLOTS = /^\+\d+ \* \d+(?:\.\d+)?% damage \+\d+ \* \d+(?:\.\d+)?% Minion Damage$/i;
 
 export function pactEffectCoverage(text) {
-  if (DESTINY_SLOTS.test(normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim())) return "In calc";
+  if (
+    DESTINY_SLOTS.test(
+      normalizePercentageText(String(text ?? ""))
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+  )
+    return "In calc";
   const clauses = splitJoinedClauses(text);
   return refineCoverage(basePactEffectCoverage(clauses), clauses, undefined, basePactEffectCoverage);
 }
@@ -49,7 +70,8 @@ function basePactEffectCoverage(text) {
   if (text === "+6% Damage · +6% Minion Damage") return "In calc";
   if (text.startsWith("Undetermined Fate installed")) return "Planner only";
   if (/^\+[\d.]+% additional (?:damage|Reaping Recovery Speed)$/i.test(text)) return "In calc";
-  if (/^[+-]?[\d.]+% additional Physical Damage taken when there (?:is|are) only 1 enem(?:y|ies) Nearby$/i.test(text)) return "In calc";
+  if (/^[+-]?[\d.]+% additional Physical Damage taken when there (?:is|are) only 1 enem(?:y|ies) Nearby$/i.test(text))
+    return "In calc";
   const parsed = nativePactspiritNodeEffect({ effect: text });
   if (parsed && !["experienceEarnedPercent", "experienceLossPercent"].includes(parsed.stat)) return "In calc";
   return "Not modeled";

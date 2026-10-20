@@ -38,17 +38,31 @@ export function stacksHeld(eventsPerSecond, seconds, maxStacks) {
  *   - Eeeendless Mana and Make it Quick: no limit left; the planner keeps the Eeeendless Mana rate and asks for an in-game count.
  * `playerCastsPerSecond` null (the first pass, before the hits): the frequency rate stands in.
  */
-export function illusionRate({ intervalSeconds = 1.5, count = 1, castFrequencyPercent = 0, endlessMana = false, makeItQuick = false, playerCastsPerSecond = null } = {}) {
-  const frequencyRate = count * (1 + castFrequencyPercent / 100) / intervalSeconds;
+export function illusionRate({
+  intervalSeconds = 1.5,
+  count = 1,
+  castFrequencyPercent = 0,
+  endlessMana = false,
+  makeItQuick = false,
+  playerCastsPerSecond = null,
+} = {}) {
+  const frequencyRate = (count * (1 + castFrequencyPercent / 100)) / intervalSeconds;
   if (!endlessMana) return { usesPerSecond: frequencyRate, basis: "frequency", frequencyRate, open: false };
   const measured = Number.isFinite(playerCastsPerSecond) && playerCastsPerSecond > 0;
-  return { usesPerSecond: measured ? count * playerCastsPerSecond : frequencyRate, basis: measured ? "casting action" : "frequency (no cast rate measured yet)", frequencyRate, open: Boolean(makeItQuick) };
+  return {
+    usesPerSecond: measured ? count * playerCastsPerSecond : frequencyRate,
+    basis: measured ? "casting action" : "frequency (no cast rate measured yet)",
+    frequencyRate,
+    open: Boolean(makeItQuick),
+  };
 }
 
 /** Eeeendless Mana: +X% additional Illusion Damage for every +4% Cast Frequency (whole steps). */
-export const endlessManaDamage = (castFrequencyPercent, perStepPercent, stepPercent = 4) => Math.floor(Math.max(0, castFrequencyPercent) / stepPercent + EPS) * perStepPercent;
+export const endlessManaDamage = (castFrequencyPercent, perStepPercent, stepPercent = 4) =>
+  Math.floor(Math.max(0, castFrequencyPercent) / stepPercent + EPS) * perStepPercent;
 /** Make it Quick: share% of the Cast Speed bonuses (increased) as additional Illusion Damage, up to the cap. */
-export const makeItQuickDamage = (castSpeedIncreasedPercent, sharePercent, capPercent = 300) => Math.min(capPercent, Math.max(0, castSpeedIncreasedPercent) * sharePercent / 100);
+export const makeItQuickDamage = (castSpeedIncreasedPercent, sharePercent, capPercent = 300) =>
+  Math.min(capPercent, (Math.max(0, castSpeedIncreasedPercent) * sharePercent) / 100);
 
 /**
  * The Main Skill's hit with the Illusion stream (src/planner.js). Spell Burst (game manual; src/skill-hit-model.js): the Illusion's
@@ -65,29 +79,59 @@ export function settleIllusionStream({ hit, illusion, telepathy = false }) {
   const B = sb ? sb.bonusFactor || 1 : 1;
   const N = sb ? sb.maxSpellBurst || 0 : 0;
   const charge = sb ? sb.fullChargeSeconds : Infinity;
-  const ownManual = illusion.playerCasts ? Math.max(0, (hit.rate.usesPerSecond || 0) - (sb?.extraUsesPerSecond || 0)) : 0;
+  const ownManual = illusion.playerCasts
+    ? Math.max(0, (hit.rate.usesPerSecond || 0) - (sb?.extraUsesPerSecond || 0))
+    : 0;
   const uI = illusion.usesPerSecond;
   const D = illusion.damageFactor;
-  let usesP, burstP, usesI, burstI, aI = 0, aP = 0;
+  let usesP,
+    burstP,
+    usesI,
+    burstI,
+    aI = 0,
+    aP = 0;
   if (sb) {
     aI = uI > 0 ? 1 / Math.max(charge, 1 / uI) : 0;
     const attempts = ownManual + (telepathy ? aI : 0);
     aP = attempts > 0 ? 1 / Math.max(charge, 1 / attempts) : 0;
     const fromOwn = attempts > 0 ? ownManual / attempts : 0;
-    usesP = ownManual + N * aP; burstP = N * aP + aP * fromOwn;
-    usesI = uI + N * aI; burstI = (1 + N) * aI;
+    usesP = ownManual + N * aP;
+    burstP = N * aP + aP * fromOwn;
+    usesI = uI + N * aI;
+    burstI = (1 + N) * aI;
   } else {
-    usesP = illusion.playerCasts ? hit.rate.usesPerSecond || 0 : 0; burstP = 0;
-    usesI = uI; burstI = 0;
+    usesP = illusion.playerCasts ? hit.rate.usesPerSecond || 0 : 0;
+    burstP = 0;
+    usesI = uI;
+    burstI = 0;
   }
   const playerDps = base * (usesP + (B - 1) * burstP);
   const illusionDps = base * D * (usesI + (B - 1) * burstI);
   const totalRate = usesP + usesI;
   const dps = playerDps + illusionDps;
   return {
-    playerUsesPerSecond: usesP, illusionUsesPerSecond: usesI, totalRate, dps, perUse: totalRate > 0 ? dps / totalRate : 0, playerDps, illusionDps,
-    spellBurst: sb ? { maxSpellBurst: N, fullChargeSeconds: charge, bonusFactor: B, illusionActivationsPerSecond: aI, playerActivationsPerSecond: aP, telepathy: Boolean(telepathy), playerBurstCastsPerSecond: burstP, illusionBurstCastsPerSecond: burstI } : null,
-    note: sb ? `Spell Burst on the Illusion's casts: ${round(aI)} activations/s (its own charge, ${N} stack(s), ${round(charge)} s)${telepathy ? `; Telepathy Expert: each also attempts yours, ${round(aP)} activations/s of yours` : ""} (provisional)` : ""
+    playerUsesPerSecond: usesP,
+    illusionUsesPerSecond: usesI,
+    totalRate,
+    dps,
+    perUse: totalRate > 0 ? dps / totalRate : 0,
+    playerDps,
+    illusionDps,
+    spellBurst: sb
+      ? {
+          maxSpellBurst: N,
+          fullChargeSeconds: charge,
+          bonusFactor: B,
+          illusionActivationsPerSecond: aI,
+          playerActivationsPerSecond: aP,
+          telepathy: Boolean(telepathy),
+          playerBurstCastsPerSecond: burstP,
+          illusionBurstCastsPerSecond: burstI,
+        }
+      : null,
+    note: sb
+      ? `Spell Burst on the Illusion's casts: ${round(aI)} activations/s (its own charge, ${N} stack(s), ${round(charge)} s)${telepathy ? `; Telepathy Expert: each also attempts yours, ${round(aP)} activations/s of yours` : ""} (provisional)`
+      : "",
   };
 }
 
@@ -99,9 +143,18 @@ export function settleIllusionStream({ hit, illusion, telepathy = false }) {
  * since the last move. Spacetime Speed-up's stacks are the whole seconds the Spacetime has lasted at the release (up to its max).
  * "Additional Damage" (also recorded) has no separate model and is not counted.
  */
-export function twistedSpacetime({ intervalSeconds = 2, recordPercent = 0, bonusPercent = 0, speedUpPercent = 0, speedUpMaxStacks = 0 } = {}) {
-  const shareAt = (lastedSeconds) => recordPercent / 100 * (1 + (bonusPercent + speedUpPercent * Math.min(speedUpMaxStacks, Math.floor(Math.max(0, lastedSeconds) + EPS))) / 100);
-  const sustainedShare = recordPercent / 100 * (1 + (bonusPercent + speedUpPercent * speedUpMaxStacks) / 100);
+export function twistedSpacetime({
+  intervalSeconds = 2,
+  recordPercent = 0,
+  bonusPercent = 0,
+  speedUpPercent = 0,
+  speedUpMaxStacks = 0,
+} = {}) {
+  const shareAt = (lastedSeconds) =>
+    (recordPercent / 100) *
+    (1 +
+      (bonusPercent + speedUpPercent * Math.min(speedUpMaxStacks, Math.floor(Math.max(0, lastedSeconds) + EPS))) / 100);
+  const sustainedShare = (recordPercent / 100) * (1 + (bonusPercent + speedUpPercent * speedUpMaxStacks) / 100);
   // Released share of a window's DoT and Reaping: the releases at k × interval inside [0, W), each of one interval's record.
   const windowFactor = (seconds) => {
     if (!(seconds > 0)) return sustainedShare;
@@ -109,7 +162,16 @@ export function twistedSpacetime({ intervalSeconds = 2, recordPercent = 0, bonus
     for (let k = 1; k * intervalSeconds < seconds - EPS; k++) total += shareAt(k * intervalSeconds) * intervalSeconds;
     return total / seconds;
   };
-  return { intervalSeconds, recordPercent, bonusPercent, speedUpPercent, speedUpMaxStacks, sustainedShare, shareAt, windowFactor };
+  return {
+    intervalSeconds,
+    recordPercent,
+    bonusPercent,
+    speedUpPercent,
+    speedUpMaxStacks,
+    sustainedShare,
+    shareAt,
+    windowFactor,
+  };
 }
 
 /**

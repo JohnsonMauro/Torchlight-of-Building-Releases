@@ -1,8 +1,15 @@
 const profileFields = [
-  "selectedTraits", "memories", "memoryTraitLevels", "equippedMemoryIds",
-  "baseTraitMemoryId", "baseTraitMemoryRoll", "sageScent",
-  "carinoSpecialAmmoSupports", "heroTraitSupports", "heroTraitSupportLevels",
-  "heroTraitSupportConfigs"
+  "selectedTraits",
+  "memories",
+  "memoryTraitLevels",
+  "equippedMemoryIds",
+  "baseTraitMemoryId",
+  "baseTraitMemoryRoll",
+  "sageScent",
+  "carinoSpecialAmmoSupports",
+  "heroTraitSupports",
+  "heroTraitSupportLevels",
+  "heroTraitSupportConfigs",
 ];
 // Trait-tree picks (hero.treeTraits) are keyed by hero id, so they stay put across hero switches (src/hero-trait-tree.js).
 
@@ -14,11 +21,17 @@ export function captureHeroLoadout(hero) {
 
 export function emptyHeroLoadout() {
   return {
-    selectedTraits: {}, memories: {}, memoryTraitLevels: {}, equippedMemoryIds: {},
-    baseTraitMemoryId: "", baseTraitMemoryRoll: null,
+    selectedTraits: {},
+    memories: {},
+    memoryTraitLevels: {},
+    equippedMemoryIds: {},
+    baseTraitMemoryId: "",
+    baseTraitMemoryRoll: null,
     sageScent: { elixir: "", damage: "", defense: "", functional: "" },
-    carinoSpecialAmmoSupports: ["", "", ""], heroTraitSupports: {},
-    heroTraitSupportLevels: {}, heroTraitSupportConfigs: {}
+    carinoSpecialAmmoSupports: ["", "", ""],
+    heroTraitSupports: {},
+    heroTraitSupportLevels: {},
+    heroTraitSupportConfigs: {},
   };
 }
 
@@ -26,7 +39,9 @@ export function switchHeroLoadout(hero, nextHeroId) {
   if (hero.selectedHeroId === nextHeroId) return hero;
   const loadouts = { ...(hero.heroLoadouts || {}) };
   if (hero.selectedHeroId) loadouts[hero.selectedHeroId] = captureHeroLoadout(hero);
-  const legacyTraits = Object.fromEntries(Object.entries(hero.selectedTraits || {}).filter(([key]) => key.startsWith(`${nextHeroId}:`)));
+  const legacyTraits = Object.fromEntries(
+    Object.entries(hero.selectedTraits || {}).filter(([key]) => key.startsWith(`${nextHeroId}:`)),
+  );
   const next = copy(loadouts[nextHeroId] || { ...emptyHeroLoadout(), selectedTraits: legacyTraits });
   const inventoryIds = new Set((hero.memoryInventory || []).map((memory) => memory.id));
   for (const [tier, id] of Object.entries(next.equippedMemoryIds || {})) {

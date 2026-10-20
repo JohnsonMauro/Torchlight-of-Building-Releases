@@ -24,10 +24,13 @@ const LINE_KINDS = [
   ["extraChance", /^When gaining Pure Heart, there is a [\d.]+% chance to gain \d+ additional stacks? of Pure Heart$/i],
   ["taken", /^[+-]?[\d.]+% additional damage taken when Pure Heart is active$/i],
   ["maxStacks", /^\+(\d+) Max Pure Heart Stacks$/i],
-  ["duration", /^[+-]?[\d.]+% Pure Heart Duration$/i]
+  ["duration", /^[+-]?[\d.]+% Pure Heart Duration$/i],
 ];
 
-const clean = (text) => normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim();
+const clean = (text) =>
+  normalizePercentageText(String(text ?? ""))
+    .replace(/\s+/g, " ")
+    .trim();
 const round = (value, digits = 4) => Math.round(value * 10 ** digits) / 10 ** digits;
 
 /** The Pure Heart line kind of a text ("gain", "extraChance", "taken", "maxStacks", "duration"), or null. */
@@ -38,7 +41,19 @@ export function pureHeartLineKind(text) {
 
 /** Enabled non-support setups with both the Mobility and Attack tags (Attack Mobility Skills on the skill board). */
 export function attackMobilitySkillNames(setups = []) {
-  return [...new Set((setups || []).filter((setup) => setup.enabled !== false && setup.role !== "support" && (setup.tags || []).includes("Mobility") && (setup.tags || []).includes("Attack")).map((setup) => setup.name))];
+  return [
+    ...new Set(
+      (setups || [])
+        .filter(
+          (setup) =>
+            setup.enabled !== false &&
+            setup.role !== "support" &&
+            (setup.tags || []).includes("Mobility") &&
+            (setup.tags || []).includes("Attack"),
+        )
+        .map((setup) => setup.name),
+    ),
+  ];
 }
 
 /**
@@ -51,29 +66,80 @@ export function attackMobilitySkillNames(setups = []) {
  * @returns {null|object} null when the build carries no Pure Heart line
  */
 export function resolvePureHeart({ modifierTexts = [], setups = [], mobilityUsed = true, nearTarget = true } = {}) {
-  const lines = modifierTexts.filter((line) => line.origin !== "derived").map((line) => ({ line, kind: pureHeartLineKind(line.text) })).filter((item) => item.kind);
+  const lines = modifierTexts
+    .filter((line) => line.origin !== "derived")
+    .map((line) => ({ line, kind: pureHeartLineKind(line.text) }))
+    .filter((item) => item.kind);
   if (!lines.length) return null;
-  const gainSources = lines.filter((item) => item.kind === "gain").map(({ line }) => ({ source: line.source, text: line.text }));
-  const maxSources = lines.filter((item) => item.kind === "maxStacks").map(({ line }) => ({ source: line.source, text: line.text, value: Number(clean(line.text).match(LINE_KINDS[3][1])[1]) * (line.multiplier ?? 1) }));
+  const gainSources = lines
+    .filter((item) => item.kind === "gain")
+    .map(({ line }) => ({ source: line.source, text: line.text }));
+  const maxSources = lines
+    .filter((item) => item.kind === "maxStacks")
+    .map(({ line }) => ({
+      source: line.source,
+      text: line.text,
+      value: Number(clean(line.text).match(LINE_KINDS[3][1])[1]) * (line.multiplier ?? 1),
+    }));
   const maxStacks = PURE_HEART_BASE_MAX_STACKS + maxSources.reduce((sum, item) => sum + item.value, 0);
   const skills = attackMobilitySkillNames(setups);
-  const reason = !gainSources.length ? "no Pure Heart gain line (\"Gains 1 stack of Pure Heart when using an Attack Mobility Skill\")"
-    : !skills.length ? "no Attack Mobility Skill on the skill board"
-    : mobilityUsed === false ? "Mobility Skill used recently is off (condition 'Mobility Skill used recently')"
-    : null;
+  const reason = !gainSources.length
+    ? 'no Pure Heart gain line ("Gains 1 stack of Pure Heart when using an Attack Mobility Skill")'
+    : !skills.length
+      ? "no Attack Mobility Skill on the skill board"
+      : mobilityUsed === false
+        ? "Mobility Skill used recently is off (condition 'Mobility Skill used recently')"
+        : null;
   const active = !reason;
   const stacks = active ? maxStacks : 0;
   const factor = (1 + PURE_HEART_PERCENT_PER_STACK / 100) ** stacks;
   const percent = (factor - 1) * 100;
   const damageApplies = active && nearTarget !== false;
-  const damageReason = !active ? reason : nearTarget === false ? `the Distant alternative stands ${DISTANT_STANDING_METERS} m away: the dummy is not Nearby (within ${KEYWORD_RADII_METERS.nearby} m), so Pure Heart's Attack Damage does not reach it` : null;
+  const damageReason = !active
+    ? reason
+    : nearTarget === false
+      ? `the Distant alternative stands ${DISTANT_STANDING_METERS} m away: the dummy is not Nearby (within ${KEYWORD_RADII_METERS.nearby} m), so Pure Heart's Attack Damage does not reach it`
+      : null;
   const stackText = `${stacks} stack(s) held (max ${PURE_HEART_BASE_MAX_STACKS}${maxSources.length ? ` + ${maxSources.reduce((sum, item) => sum + item.value, 0)}` : ""}; ${skills.join(", ")} used constantly: user rule 2026-10-14)`;
-  const hitLines = damageApplies ? [{ source: `Pure Heart (${stacks} stacks; ${gainSources.map((item) => item.source).filter(Boolean).join(", ") || "Azure Gunslinger"})`, text: `+${round(percent)}% additional Attack Damage`, origin: "derived", pureHeart: true }] : [];
+  const hitLines = damageApplies
+    ? [
+        {
+          source: `Pure Heart (${stacks} stacks; ${
+            gainSources
+              .map((item) => item.source)
+              .filter(Boolean)
+              .join(", ") || "Azure Gunslinger"
+          })`,
+          text: `+${round(percent)}% additional Attack Damage`,
+          origin: "derived",
+          pureHeart: true,
+        },
+      ]
+    : [];
   const text = active
     ? `Pure Heart (Azure Gunslinger; TLIDB): ${stackText}; ${damageApplies ? `+5% additional Attack Damage per stack (multiplies) → ×${round(factor, 6)} on attack hits against the Nearby dummy (not ailments: Attack is a hit-event tag)` : damageReason}; the extra-stack chance and duration change nothing at held max stacks.`
     : `Pure Heart (Azure Gunslinger): inactive, ${reason}.`;
-  const resolved = { active, damageApplies, stacks, maxStacks, factor, percent, skills, gainSources, maxSources, reason, damageReason, hitLines, text };
-  resolved.lines = lines.map(({ line, kind }) => ({ source: line.source, text: line.text, kind, ...pureHeartLineStatus(line.text, resolved) }));
+  const resolved = {
+    active,
+    damageApplies,
+    stacks,
+    maxStacks,
+    factor,
+    percent,
+    skills,
+    gainSources,
+    maxSources,
+    reason,
+    damageReason,
+    hitLines,
+    text,
+  };
+  resolved.lines = lines.map(({ line, kind }) => ({
+    source: line.source,
+    text: line.text,
+    kind,
+    ...pureHeartLineStatus(line.text, resolved),
+  }));
   return resolved;
 }
 
@@ -86,9 +152,16 @@ export function pureHeartLineStatus(text, pureHeart) {
   if (!kind) return null;
   if (!pureHeart) return { status: "Inactive", reason: "no Pure Heart gain line in the build" };
   if (!pureHeart.active) return { status: "Inactive", reason: pureHeart.reason };
-  if (kind === "taken") return { status: "No DPS effect", reason: "defence only: Pure Heart is active, so Effective HP takes it" };
+  if (kind === "taken")
+    return { status: "No DPS effect", reason: "defence only: Pure Heart is active, so Effective HP takes it" };
   if (kind === "extraChance" || kind === "duration") return { status: "No DPS effect", reason: "stacks held at max" };
   if (!pureHeart.damageApplies) return { status: "Inactive", reason: pureHeart.damageReason };
   const factor = round(pureHeart.factor, 6);
-  return { status: "In calc", reason: kind === "maxStacks" ? `Pure Heart max stacks ${pureHeart.maxStacks}: ×${factor} on attack hits` : `Pure Heart ${pureHeart.stacks} stacks held: ×${factor} additional Attack Damage on attack hits` };
+  return {
+    status: "In calc",
+    reason:
+      kind === "maxStacks"
+        ? `Pure Heart max stacks ${pureHeart.maxStacks}: ×${factor} on attack hits`
+        : `Pure Heart ${pureHeart.stacks} stacks held: ×${factor} additional Attack Damage on attack hits`,
+  };
 }

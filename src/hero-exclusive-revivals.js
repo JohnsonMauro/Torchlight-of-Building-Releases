@@ -16,7 +16,13 @@ import { normalizeRevivedAffix } from "./data/heroes/memory-revival-ss13.js";
 
 /** The app's revived-memory test (src/app.js heroMemoryIsRevived): a revival method, Wax and Wane, Rising Moon or a revived affix. */
 export function memoryIsRevived(memory) {
-  return Boolean(memory && ((memory.revivalMethod && memory.revivalMethod !== "none") || memory.waxAndWane || memory.risingMoon || memory.revivedAffix));
+  return Boolean(
+    memory &&
+    ((memory.revivalMethod && memory.revivalMethod !== "none") ||
+      memory.waxAndWane ||
+      memory.risingMoon ||
+      memory.revivedAffix),
+  );
 }
 
 // Slot order: the level in the slot key ("<heroId>:level45", "level60"), then the key; the base trait slot (never revived:
@@ -26,11 +32,15 @@ const slotOrder = (key) => Number(String(key).match(/level(\d+)/)?.[1] ?? 999);
 // Audit harness only (scripts/audit-hero-traits.mjs): its trait probe holds two or three revived memories on purpose, to light
 // every line at once, so it lets each of them count while it measures traits. The app never calls it.
 let countAllRevived = false;
-export function setAuditCountAllRevived(on) { countAllRevived = Boolean(on); }
+export function setAuditCountAllRevived(on) {
+  countAllRevived = Boolean(on);
+}
 export function countedRevivedMemoryId(hero = {}) {
   if (countAllRevived) return null;
   const inventory = hero?.memoryInventory || [];
-  const slots = Object.entries(hero?.equippedMemoryIds || {}).filter(([, id]) => id).sort(([a], [b]) => slotOrder(a) - slotOrder(b) || String(a).localeCompare(String(b)));
+  const slots = Object.entries(hero?.equippedMemoryIds || {})
+    .filter(([, id]) => id)
+    .sort(([a], [b]) => slotOrder(a) - slotOrder(b) || String(a).localeCompare(String(b)));
   const ids = [...slots.map(([, id]) => id), hero?.baseTraitMemoryId].filter(Boolean);
   return ids.find((id) => memoryIsRevived(inventory.find((memory) => memory.id === id))) ?? null;
 }
@@ -43,17 +53,28 @@ export function revivedAffixCounts(hero, memory) {
 
 // "Hero Trait Exclusive: Oracle Thea | Incarnation of the Gods" → "thea-incarnation-of-the-gods" (hero name inside the title,
 // loadout name compared without case or spacing).
-const flat = (text) => String(text || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+const flat = (text) =>
+  String(text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
 const loadoutCache = new Map();
 /** The loadout id an exclusive revival names, or null (not a hero-exclusive revival). */
 export function exclusiveRevivalLoadout(name) {
   const key = normalizeRevivedAffix(name || "");
   if (loadoutCache.has(key)) return loadoutCache.get(key);
-  const line = String(lunarPhaseRevivedAffixDetailsSs13[key] || "").split("\n").map((part) => part.trim()).find((part) => /^Hero Trait Exclusive:/i.test(part));
+  const line = String(lunarPhaseRevivedAffixDetailsSs13[key] || "")
+    .split("\n")
+    .map((part) => part.trim())
+    .find((part) => /^Hero Trait Exclusive:/i.test(part));
   let id = null;
   if (line) {
-    const [title = "", loadout = ""] = line.replace(/^Hero Trait Exclusive:\s*/i, "").split("|").map((part) => part.trim());
-    id = heroCatalogSs13.find((hero) => flat(hero.trait) === flat(loadout) && flat(title).includes(flat(hero.name)))?.id ?? null;
+    const [title = "", loadout = ""] = line
+      .replace(/^Hero Trait Exclusive:\s*/i, "")
+      .split("|")
+      .map((part) => part.trim());
+    id =
+      heroCatalogSs13.find((hero) => flat(hero.trait) === flat(loadout) && flat(title).includes(flat(hero.name)))?.id ??
+      null;
   }
   loadoutCache.set(key, id);
   return id;
@@ -64,7 +85,7 @@ export const isExclusiveRevival = (name) => exclusiveRevivalLoadout(name) !== nu
 export const MODULE_REVIVALS = Object.freeze({
   "Ceaseless Tide": "src/selena-tide.js",
   "Cat's Night Safari": "src/erika-wind-stalker.js",
-  "+1 Max Youga Count in the Universe": "src/hero-trait-tree.js"
+  "+1 Max Youga Count in the Universe": "src/hero-trait-tree.js",
 });
 
 // Lines that need a hero engine the planner does not have yet: kept out of the intake (a generic reader would drop their
@@ -83,13 +104,22 @@ const PENDING = {
   // Lightning Shadow / Vendetta's Sting modules read (src/erika-traits.js, src/hero-trait-modules.js).
   // Bing (B12)
   "Bing's Big Bang Pack": P("B12", "Bing's bomb engine", "When bombs deal damage"),
-  "Genius Idea Generator": P("B12", "Bing's Whimsy / Ingenuity Overload engine", "+2 to Whimsy Explosion", "+1 to Max Spell Burst and +60% additional Spell Damage for Spells triggered by Ingenuity Overload"),
+  "Genius Idea Generator": P(
+    "B12",
+    "Bing's Whimsy / Ingenuity Overload engine",
+    "+2 to Whimsy Explosion",
+    "+1 to Max Spell Burst and +60% additional Spell Damage for Spells triggered by Ingenuity Overload",
+  ),
   // Gemma (B3, 2026-10-19): First Flake of Strange Snow joins the intake (src/combat-states.js reads its deemed Frostbite Rating and
   // additional Frostbite Effect) and so does Sweet Pain's Erosion Magus Origin (src/origin-of-spirit-magus.js: defensive, No DPS
   // effect). Advanced Elemental Impact stays out: TLIDB gives only its base text ("+12% additional damage for 2 other types of
   // Elemental Damage if the supported skill recently dealt 1 type of Elemental Damage", level not stated) and no level table,
   // and the readable game data has no record of it, so the Lv. 40 value is unknown.
-  "Three-Chambered Heart": P("B3", "Advanced Elemental Impact's Lv. 40 values (TLIDB publishes no level table; not in the readable game data)", "The Main Skill is supported by a Lv. 40 Advanced Elemental Impact"),
+  "Three-Chambered Heart": P(
+    "B3",
+    "Advanced Elemental Impact's Lv. 40 values (TLIDB publishes no level table; not in the readable game data)",
+    "The Main Skill is supported by a Lv. 40 Advanced Elemental Impact",
+  ),
   // Thea (B7, 2026-10-19): The Place of Oracle (and its Blessing variants), Crossing the Divine Threshold and Inverted Shrine join the
   // intake; MODULE_LINES below names the lines the Thea modules read (src/thea-traits.js).
   // Youga (B4, 2026-10-19): Telepathy Expert, Fifth Cosmic Velocity, To Myself in Another Spacetime and Private Universe join the
@@ -99,11 +129,21 @@ const PENDING = {
   // Blowing Breeze join the intake; MODULE_LINES below names the lines the Moto / Iris modules read (src/moto-iris-traits.js).
   // Rosa (B11)
   "Between the Holy Land and Hell": P("B11", "Rosa's Holy Domain / Repent to the Light", "Gains Repent to the Light"),
-  "Mercury Purged": P("B11", "Rosa's Mercury Baptism engine", "When inflicting Frostbite", "When inflicting Ignite", "When inflicting Numbed"),
+  "Mercury Purged": P(
+    "B11",
+    "Rosa's Mercury Baptism engine",
+    "When inflicting Frostbite",
+    "When inflicting Ignite",
+    "When inflicting Numbed",
+  ),
   // Sage (B8, 2026-10-19): Omni-Elixir Side Effect and Basic Pharmacology Manuscript join the intake; MODULE_LINES below names the
   // lines the Scent Bottle module reads (src/sage-traits.js).
   // Selena (B13)
-  "Red Shoes of Cruelty": P("B13", "the Main Terra Skill Area's damage taken from Movement Speed", "While Main Terra Skill is active, increases the damage taken")
+  "Red Shoes of Cruelty": P(
+    "B13",
+    "the Main Terra Skill Area's damage taken from Movement Speed",
+    "While Main Terra Skill is active, increases the damage taken",
+  ),
 };
 
 // Lines of an exclusive revival that a hero module reads (hero trait audit B4): they join the intake so the module sees them in
@@ -111,7 +151,10 @@ const PENDING = {
 // start of the line.
 const MODULE_LINES = {
   "Telepathy Expert": ["When Spacetime Illusion consumes Spell Burst"],
-  "To Myself in Another Spacetime": ["When dealing damage to enemies in Twisted Spacetime", "The casting interval of Twisted Spacetime"],
+  "To Myself in Another Spacetime": [
+    "When dealing damage to enemies in Twisted Spacetime",
+    "The casting interval of Twisted Spacetime",
+  ],
   "Private Universe": ["+40% Spacetime Turbulence Duration", "Twisted Spacetime only follows you"],
   // Erika (B5): Feline Figure's crit and its Numbed (src/combat-states.js through src/erika-traits.js felineFigureState); the
   // Phantom's Vendetta casts (src/vendetta-model.js).
@@ -121,8 +164,20 @@ const MODULE_LINES = {
   // Synthetic Troops and their Growth bonus, the per-Magus Nourishment effects, Soft Storm's triggered Ultimate, Blowing Breeze.
   "Machine's Joy": ["+3% additional Overload Effect on hit"],
   "Peril of Synthetic Troops": ["Adds 9% of the player's Max Life", "Adds 6% of the player's Max Energy Shield"],
-  "Nourishing Spring Rain": ["Nourishment can be applied to Synthetic Troop Minions", "When Spirit Magi are present, +5%", "When Spirit Magi are present, -2%", "The cooldown of Modularization Skills"],
-  "Nature's Party": ["Nourishment applies additional base effects", "Frost Magus:", "Thunder Magus:", "Fire Magus:", "Rock Magus:", "Erosion Magus:"],
+  "Nourishing Spring Rain": [
+    "Nourishment can be applied to Synthetic Troop Minions",
+    "When Spirit Magi are present, +5%",
+    "When Spirit Magi are present, -2%",
+    "The cooldown of Modularization Skills",
+  ],
+  "Nature's Party": [
+    "Nourishment applies additional base effects",
+    "Frost Magus:",
+    "Thunder Magus:",
+    "Fire Magus:",
+    "Rock Magus:",
+    "Erosion Magus:",
+  ],
   "Soft Storm": ["While in Vigilant, for every 2 use(s)", "Spirit Magi cannot use the Ultimate"],
   "Blowing Breeze": ["While in Vigilant, for every 1 use(s)"],
   // Thea (B7): God's Boon's Tenacity / Agility effect and the Max Blessing Stacks lines (the Blessing model through src/thea-traits.js),
@@ -140,15 +195,28 @@ const MODULE_LINES = {
   // Carino (B9): the Main Skill's activated Noble supports (Royal Arsenal), Deflection held on the dummy (Into the Night), Heat Up
   // Effect after stopping movement (Self-Imposed Shackles; its Block and resistance lines go to the generic readers).
   "Royal Arsenal": ["For every activated Noble Support Skill"],
-  "Into the Night": ["+2 to Max Deflection", "Deflection is no longer consumed", "+20% additional Projectile Damage when Deflection is active"],
+  "Into the Night": [
+    "+2 to Max Deflection",
+    "Deflection is no longer consumed",
+    "+20% additional Projectile Damage when Deflection is active",
+  ],
   "Self-Imposed Shackles": ["+30% additional Heat Up Effect"],
   // Rehan (B10): Burst Blast and its on-hit / skill-use changes (Hero's Resourcefulness), Furious Roar's crit trigger and its Burst
   // penalty, Ancestral Hate's Life cost (Hysteria's Rage), Starfall Wasteland's Spirit lines; Ancestral Hate's Regain Interval and
   // damage-taken lines go to the generic readers.
-  "Hero's Resourcefulness": ["Burst becomes Burst Blast", "All conditions of this trait", "The Base Trait effect that generates Rage"],
+  "Hero's Resourcefulness": [
+    "Burst becomes Burst Blast",
+    "All conditions of this trait",
+    "The Base Trait effect that generates Rage",
+  ],
   "Furious Roar": ["Attacks trigger Burst once on Critical Strike", "-20% additional Burst Damage"],
   "Ancestral Hate": ["Seething Spirit consumes"],
-  "Starfall Wasteland": ["Seething Spirit now only uses", "Generates 15 Rage", "+1 to Projectile Quantity", "33% chance for Ranged Skills cast by Seething Spirit"]
+  "Starfall Wasteland": [
+    "Seething Spirit now only uses",
+    "Generates 15 Rage",
+    "+1 to Projectile Quantity",
+    "33% chance for Ranged Skills cast by Seething Spirit",
+  ],
 };
 /** Whether a hero module reads this line of an exclusive revival (its badge is the module's entry). */
 export function moduleReadExclusiveLine(name, line) {
@@ -160,13 +228,25 @@ export function moduleReadExclusiveLine(name, line) {
 // Damage" lacks the "of" the conversion readers expect (src/passive-support-lines.js, src/support-effects.js). Telepathy Expert's
 // and Fifth Cosmic Velocity's "-20% additional Spell Burst Hit Damage" is read as the Spell Burst hit line ("additional Hit Damage
 // for skills cast by Spell Burst", src/skill-hit-model.js; hero trait audit B4, provisional).
-const INTAKE_REWRITES = [[/^Converts (\d+(?:\.\d+)?)% (Physical|Fire|Cold|Lightning|Erosion) Damage to (Physical|Fire|Cold|Lightning|Erosion) Damage$/i, "Converts $1% of $2 Damage to $3 Damage"],
-  [/^([+-]\d+(?:\.\d+)?)% additional Spell Burst Hit Damage$/i, "$1% additional Hit Damage for skills cast by Spell Burst"]];
-const intakeText = (line) => INTAKE_REWRITES.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), line);
+const INTAKE_REWRITES = [
+  [
+    /^Converts (\d+(?:\.\d+)?)% (Physical|Fire|Cold|Lightning|Erosion) Damage to (Physical|Fire|Cold|Lightning|Erosion) Damage$/i,
+    "Converts $1% of $2 Damage to $3 Damage",
+  ],
+  [
+    /^([+-]\d+(?:\.\d+)?)% additional Spell Burst Hit Damage$/i,
+    "$1% additional Hit Damage for skills cast by Spell Burst",
+  ],
+];
+const intakeText = (line) =>
+  INTAKE_REWRITES.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), line);
 
 /** The effect lines of an exclusive revival (the "Hero Trait Exclusive" line and blank lines dropped). */
 export function exclusiveRevivalLines(name) {
-  return String(lunarPhaseRevivedAffixDetailsSs13[normalizeRevivedAffix(name || "")] || "").split("\n").map((part) => part.trim()).filter((part) => part && !/^Hero Trait Exclusive:/i.test(part));
+  return String(lunarPhaseRevivedAffixDetailsSs13[normalizeRevivedAffix(name || "")] || "")
+    .split("\n")
+    .map((part) => part.trim())
+    .filter((part) => part && !/^Hero Trait Exclusive:/i.test(part));
 }
 /** The pending entry ({ batch, engine }) for one line of an exclusive revival, or null when a generic reader takes it. */
 export function pendingExclusiveLine(name, line) {
@@ -187,10 +267,26 @@ export function exclusiveRevivalState(hero = {}, memory) {
   const loadout = heroName(loadoutId);
   const counted = revivedAffixCounts(hero, memory);
   const matches = hero?.selectedHeroId === loadoutId;
-  const reason = !matches ? `Hero Trait Exclusive: ${loadout ? `${loadout.name} – ${loadout.trait}` : loadoutId}; the selected loadout is ${heroName(hero?.selectedHeroId) ? `${heroName(hero.selectedHeroId).name} – ${heroName(hero.selectedHeroId).trait}` : "none"}`
-    : !counted ? "Only one revived memory counts: another equipped revived memory comes first (slot order)" : "";
-  const lines = exclusiveRevivalLines(name).map((text) => ({ text, intakeText: intakeText(text), pending: pendingExclusiveLine(name, text), moduleRead: moduleReadExclusiveLine(name, text) }));
+  const reason = !matches
+    ? `Hero Trait Exclusive: ${loadout ? `${loadout.name} – ${loadout.trait}` : loadoutId}; the selected loadout is ${heroName(hero?.selectedHeroId) ? `${heroName(hero.selectedHeroId).name} – ${heroName(hero.selectedHeroId).trait}` : "none"}`
+    : !counted
+      ? "Only one revived memory counts: another equipped revived memory comes first (slot order)"
+      : "";
+  const lines = exclusiveRevivalLines(name).map((text) => ({
+    text,
+    intakeText: intakeText(text),
+    pending: pendingExclusiveLine(name, text),
+    moduleRead: moduleReadExclusiveLine(name, text),
+  }));
   const module = MODULE_REVIVALS[name] || null;
   const applies = !reason;
-  return { name, loadoutId, module, applies, reason, lines, intake: applies && !module ? lines.filter((line) => !line.pending).map((line) => line.intakeText) : [] };
+  return {
+    name,
+    loadoutId,
+    module,
+    applies,
+    reason,
+    lines,
+    intake: applies && !module ? lines.filter((line) => !line.pending).map((line) => line.intakeText) : [],
+  };
 }

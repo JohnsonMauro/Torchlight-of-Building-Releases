@@ -19,7 +19,8 @@ function migrateTowerSequence(item) {
   // The sequence line is appended after the item's own lines (src/app.js craft / legendary save, src/game-log-import.js).
   const index = item.modifiers.lastIndexOf(old);
   if (!current || current === old || index < 0) return item;
-  const modifiers = [...item.modifiers]; modifiers[index] = current;
+  const modifiers = [...item.modifiers];
+  modifiers[index] = current;
   return { ...item, modifiers };
 }
 
@@ -29,7 +30,12 @@ function migrateLegendaryRename(item) {
   const rename = legendaryRenames.find(({ from }) => from.name === name);
   if (!rename) return item;
   const { from, to } = rename;
-  return { ...item, name: `${to.name}${priceless}`, ...(item.icon === from.icon ? { icon: to.icon } : {}), ...(item.source === from.source ? { source: to.source } : {}) };
+  return {
+    ...item,
+    name: `${to.name}${priceless}`,
+    ...(item.icon === from.icon ? { icon: to.icon } : {}),
+    ...(item.source === from.source ? { source: to.source } : {}),
+  };
 }
 
 /** One saved equipment item with the SS14 migrations applied (the same object when nothing changes). */
@@ -40,7 +46,8 @@ export function migrateChangedItem(item) {
 
 /** equipmentOverrides ({ slot: item }) and equipmentInventory ([item]) migrated (same containers when unchanged). */
 export function migrateChangedEquipment(overrides, inventory) {
-  let overridesOut = overrides, inventoryOut = inventory;
+  let overridesOut = overrides,
+    inventoryOut = inventory;
   if (overrides && typeof overrides === "object") {
     const entries = Object.entries(overrides).map(([slot, item]) => [slot, migrateChangedItem(item)]);
     if (entries.some(([slot, item]) => item !== overrides[slot])) overridesOut = Object.fromEntries(entries);

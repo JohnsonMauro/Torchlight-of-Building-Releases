@@ -16,7 +16,8 @@
 export function maxAfflictionUptime({ afflictionPerSecond = 0, removers = [] } = {}) {
   if (!(afflictionPerSecond > 0)) return { firstMaxSeconds: Infinity, steadyFraction: 0, limitingRemover: null };
   const firstMaxSeconds = 100 / afflictionPerSecond;
-  let steadyFraction = 1, limitingRemover = null;
+  let steadyFraction = 1,
+    limitingRemover = null;
   for (const remover of removers) {
     const removed = Math.max(0, Math.min(100, remover.afflictionRemovedPercent ?? 100));
     if (!(removed > 0) || !(remover.recoverySeconds >= 0)) continue;
@@ -24,7 +25,10 @@ export function maxAfflictionUptime({ afflictionPerSecond = 0, removers = [] } =
     const intervalSeconds = Math.max(remover.recoverySeconds, fillSeconds);
     const fraction = intervalSeconds > 0 ? (intervalSeconds - fillSeconds) / intervalSeconds : 0;
     // The remover that leaves the dummy at max for the least time limits the uptime.
-    if (fraction < steadyFraction) { steadyFraction = fraction; limitingRemover = { source: remover.source, fillSeconds, intervalSeconds }; }
+    if (fraction < steadyFraction) {
+      steadyFraction = fraction;
+      limitingRemover = { source: remover.source, fillSeconds, intervalSeconds };
+    }
   }
   return { firstMaxSeconds, steadyFraction, limitingRemover };
 }
@@ -33,21 +37,36 @@ export function maxAfflictionUptime({ afflictionPerSecond = 0, removers = [] } =
 export function windowMaxAfflictionFraction(uptime, seconds) {
   if (!uptime || !(uptime.steadyFraction > 0)) return 0;
   if (!seconds) return uptime.steadyFraction;
-  return Math.max(0, seconds - uptime.firstMaxSeconds) / seconds * uptime.steadyFraction;
+  return (Math.max(0, seconds - uptime.firstMaxSeconds) / seconds) * uptime.steadyFraction;
 }
 
 // Target resistance factor after penetration (theoretical-damage.js: max(0, 1 − (resistance − penetration) / 100)).
-const resistanceFactor = (resistancePercent, penetrationPercent) => Math.max(0, 1 - (resistancePercent - penetrationPercent) / 100);
+const resistanceFactor = (resistancePercent, penetrationPercent) =>
+  Math.max(0, 1 - (resistancePercent - penetrationPercent) / 100);
 
 // Expected resistance factor when the reduction holds for `fraction` of the time.
-export function averagedResistanceFactor({ resistancePercent, penetrationPercent = 0, reductionPercent = 0, fraction = 0 }) {
-  return (1 - fraction) * resistanceFactor(resistancePercent, penetrationPercent) + fraction * resistanceFactor(resistancePercent + reductionPercent, penetrationPercent);
+export function averagedResistanceFactor({
+  resistancePercent,
+  penetrationPercent = 0,
+  reductionPercent = 0,
+  fraction = 0,
+}) {
+  return (
+    (1 - fraction) * resistanceFactor(resistancePercent, penetrationPercent) +
+    fraction * resistanceFactor(resistancePercent + reductionPercent, penetrationPercent)
+  );
 }
 
 // Ignite damage scale for a window relative to the steady-state figure the Ignite ledger uses.
 export function maxAfflictionWindowScale(info, seconds) {
   if (!info || !info.reductionPercent) return 1;
-  const at = (fraction) => averagedResistanceFactor({ resistancePercent: info.resistancePercent, penetrationPercent: info.penetrationPercent, reductionPercent: info.reductionPercent, fraction });
+  const at = (fraction) =>
+    averagedResistanceFactor({
+      resistancePercent: info.resistancePercent,
+      penetrationPercent: info.penetrationPercent,
+      reductionPercent: info.reductionPercent,
+      fraction,
+    });
   const steady = at(info.steadyFraction);
   return steady > 0 ? at(windowMaxAfflictionFraction(info, seconds)) / steady : 1;
 }

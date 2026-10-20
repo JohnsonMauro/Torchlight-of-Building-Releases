@@ -31,14 +31,29 @@ let storedActiveBuildId = null;
 let baseBuildId = null;
 let baseStateJson = null;
 
-function sessionStore() { try { return globalThis.sessionStorage || null; } catch { return null; } }
+function sessionStore() {
+  try {
+    return globalThis.sessionStorage || null;
+  } catch {
+    return null;
+  }
+}
 function readTabActiveBuildId() {
   if (tabActiveBuildId) return tabActiveBuildId;
-  try { return sessionStore()?.getItem(tabActiveBuildKey) || null; } catch { return null; }
+  try {
+    return sessionStore()?.getItem(tabActiveBuildKey) || null;
+  } catch {
+    return null;
+  }
 }
 function rememberTabActiveBuildId(id) {
   tabActiveBuildId = id || null;
-  try { const session = sessionStore(); if (!session) return; if (id) session.setItem(tabActiveBuildKey, id); else session.removeItem(tabActiveBuildKey); } catch {}
+  try {
+    const session = sessionStore();
+    if (!session) return;
+    if (id) session.setItem(tabActiveBuildKey, id);
+    else session.removeItem(tabActiveBuildKey);
+  } catch {}
 }
 // Point the (shared, cached) library object at this tab's build.
 function withTabView(library) {
@@ -50,7 +65,10 @@ function withTabView(library) {
   if (library.compareBuildId === id) library.compareBuildId = null;
   return library;
 }
-function setBase(id, stateJson) { baseBuildId = id || null; baseStateJson = id ? stateJson : null; }
+function setBase(id, stateJson) {
+  baseBuildId = id || null;
+  baseStateJson = id ? stateJson : null;
+}
 // This tab's state right after it loaded its build, before any user edit
 // (stableJson; set by markPlannerStateClean). Load-time repairs in the app make
 // the in-memory state differ from the stored one; a save equal to this clean
@@ -61,7 +79,9 @@ let cleanMarkPending = false;
 // The stored version (stableJson) whose notice the user dismissed.
 let dismissedStable = null;
 
-export function plannerStorageStatus() { return storageFailure ? "unsaved" : "saved"; }
+export function plannerStorageStatus() {
+  return storageFailure ? "unsaved" : "saved";
+}
 
 // Fields that src/hero-trait-tree.js migrateTreeTraits has moved into hero.treeTraits.
 function withoutLegacyTreeFields(hero) {
@@ -93,9 +113,20 @@ export const defaultPlannerState = {
     heroTraitSupportConfigs: {},
     // Trait-tree picks per tree hero (src/hero-trait-tree.js; replaces Selena's selenaDanceTraits, 2026-10-15).
     treeTraits: {},
-    heroLoadouts: {}
+    heroLoadouts: {},
   },
-  skills: { setupOrder: null, boardSlots: {skills:[],auras:[]}, supportOrder: {}, setupEnabled: {}, skillLevels: {}, supportEnabled: {}, supportLevels: {}, specialSupportConfigs: {}, customSupports: {}, customSetups: [] },
+  skills: {
+    setupOrder: null,
+    boardSlots: { skills: [], auras: [] },
+    supportOrder: {},
+    setupEnabled: {},
+    skillLevels: {},
+    supportEnabled: {},
+    supportLevels: {},
+    specialSupportConfigs: {},
+    customSupports: {},
+    customSetups: [],
+  },
   equippedSlateIds: null,
   slates: { geometryVersion: 4, placements: null, parked: {}, inventory: [] },
   // The build's one follower (2026-10-15; src/follower-model.js): its id, rarity and one Tartarus Skill per unlocked slot (its
@@ -106,8 +137,15 @@ export const defaultPlannerState = {
   talents: {
     useCapturedRanks: true,
     selectedTrees: ["Goddess of Deception", "Psychic", "Warlord", "Lich"],
-    coreSelections: { "Goddess of Deception:12":"Affliction", "Goddess of Deception:24":"Subtle Impact", "Warlord:24":"Starfire", "Lich:24":"Off The Beaten Track" },
-    prismInventory: [], installedPrisms: {}, installedPrismNodes: {}
+    coreSelections: {
+      "Goddess of Deception:12": "Affliction",
+      "Goddess of Deception:24": "Subtle Impact",
+      "Warlord:24": "Starfire",
+      "Lich:24": "Off The Beaten Track",
+    },
+    prismInventory: [],
+    installedPrisms: {},
+    installedPrismNodes: {},
   },
   pacts: {
     activeSpirits: {},
@@ -120,11 +158,27 @@ export const defaultPlannerState = {
     volcanoEnabled: [true, true, true, true],
     reapingDurationQuantity: 5,
     spellBlockEnabled: [true],
-    attackBlockEnabled: [true, true]
+    attackBlockEnabled: [true, true],
   },
   combat: {
     conditionMode: "auto",
-    conditions: { prebuiltSelfBuffs: true, blurRecentlyEnded: false, nearbyElite: true, targetLife: true, blockedRecently: true, blur: true, tideContact: true, onTheTide: true, waveAria: true, idyll: true, fireInfiltration: true, entangledPain: true, scorch: true, affliction: true, aim: true },
+    conditions: {
+      prebuiltSelfBuffs: true,
+      blurRecentlyEnded: false,
+      nearbyElite: true,
+      targetLife: true,
+      blockedRecently: true,
+      blur: true,
+      tideContact: true,
+      onTheTide: true,
+      waveAria: true,
+      idyll: true,
+      fireInfiltration: true,
+      entangledPain: true,
+      scorch: true,
+      affliction: true,
+      aim: true,
+    },
     afflictionAverage: 50,
     afflictionPeak: 100,
     targetFireResistancePercent: 30,
@@ -133,8 +187,8 @@ export const defaultPlannerState = {
     auraAffectedAllies: 1,
     idyllStacks: 15,
     extraMaxChanneledStacks: 0,
-    extraInitialChanneledStacks: 0
-  }
+    extraInitialChanneledStacks: 0,
+  },
 };
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -144,28 +198,50 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 // item edited twice) would already be in the cached library, savePlannerState would see no difference and skip the write.
 const ownedState = (state) => normalizePlannerState(clone(state));
 const now = () => new Date().toISOString();
-const makeId = () => globalThis.crypto?.randomUUID?.() || `build-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const makeId = () =>
+  globalThis.crypto?.randomUUID?.() || `build-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 export function normalizePlannerState(value = {}) {
   validatePlannerState(value);
   const defaults = clone(defaultPlannerState);
   // Older New Build saves lack this flag; removed captured gear identifies
   // the blank template, whose talent ranks must start at zero.
-  const emptyTemplate = Array.isArray(value.skills?.setupOrder)
-    && Array.isArray(value.removedInventoryItemIds)
-    && value.removedInventoryItemIds.length >= 10;
-  const memoryInventory = Array.isArray(value.hero?.memoryInventory) ? value.hero.memoryInventory.map((memory) => { const enhancementLevel=clampMemoryEnhancement(memory.enhancementLevel,memory.rarity); return { ...memory, name:memory.type||memory.name, enhancementLevel, traitLevelBonus:traitLevelBonusForEnhancement(enhancementLevel) }; }) : [];
-  const defaultHeroSelected=!value.hero?.selectedHeroId||value.hero.selectedHeroId===defaults.hero.selectedHeroId;
-  const memoryTraitLevels = value.hero?.memoryTraitLevels && !Object.keys(value.hero.memoryTraitLevels).length
-    ? {} : { ...(defaultHeroSelected ? defaults.hero.memoryTraitLevels : {}), ...(value.hero?.memoryTraitLevels || {}) };
-  const memoryNames = value.hero?.memories && !Object.keys(value.hero.memories).length
-    ? {} : { ...(defaultHeroSelected ? defaults.hero.memories : {}), ...(value.hero?.memories || {}) };
-  for (const [tier,id] of Object.entries(value.hero?.equippedMemoryIds || {})) {
+  const emptyTemplate =
+    Array.isArray(value.skills?.setupOrder) &&
+    Array.isArray(value.removedInventoryItemIds) &&
+    value.removedInventoryItemIds.length >= 10;
+  const memoryInventory = Array.isArray(value.hero?.memoryInventory)
+    ? value.hero.memoryInventory.map((memory) => {
+        const enhancementLevel = clampMemoryEnhancement(memory.enhancementLevel, memory.rarity);
+        return {
+          ...memory,
+          name: memory.type || memory.name,
+          enhancementLevel,
+          traitLevelBonus: traitLevelBonusForEnhancement(enhancementLevel),
+        };
+      })
+    : [];
+  const defaultHeroSelected = !value.hero?.selectedHeroId || value.hero.selectedHeroId === defaults.hero.selectedHeroId;
+  const memoryTraitLevels =
+    value.hero?.memoryTraitLevels && !Object.keys(value.hero.memoryTraitLevels).length
+      ? {}
+      : { ...(defaultHeroSelected ? defaults.hero.memoryTraitLevels : {}), ...(value.hero?.memoryTraitLevels || {}) };
+  const memoryNames =
+    value.hero?.memories && !Object.keys(value.hero.memories).length
+      ? {}
+      : { ...(defaultHeroSelected ? defaults.hero.memories : {}), ...(value.hero?.memories || {}) };
+  for (const [tier, id] of Object.entries(value.hero?.equippedMemoryIds || {})) {
     const memory = memoryInventory.find((item) => item.id === id);
-    if (memory) { memoryTraitLevels[tier] = memory.traitLevelBonus; memoryNames[tier] = memory.name; }
+    if (memory) {
+      memoryTraitLevels[tier] = memory.traitLevelBonus;
+      memoryNames[tier] = memory.name;
+    }
   }
   // Game objects changed in place (TOWER Sequence ids with a new affix, Truth → I Am Truth): src/changed-item-migrations.js.
-  const changedEquipment = migrateChangedEquipment(value.equipmentOverrides && typeof value.equipmentOverrides === "object" ? value.equipmentOverrides : {}, Array.isArray(value.equipmentInventory) ? value.equipmentInventory : []);
+  const changedEquipment = migrateChangedEquipment(
+    value.equipmentOverrides && typeof value.equipmentOverrides === "object" ? value.equipmentOverrides : {},
+    Array.isArray(value.equipmentInventory) ? value.equipmentInventory : [],
+  );
   const legendaryEquipment = migrateLegendaryEquipment(changedEquipment.overrides, changedEquipment.inventory);
   return {
     ...defaults,
@@ -174,21 +250,122 @@ export function normalizePlannerState(value = {}) {
     disabledSupportNames: Array.isArray(value.disabledSupportNames) ? value.disabledSupportNames : [],
     removedInventoryItemIds: Array.isArray(value.removedInventoryItemIds) ? value.removedInventoryItemIds : [],
     equippedSlateIds: Array.isArray(value.equippedSlateIds) ? value.equippedSlateIds : null,
-    slates: { ...defaults.slates, ...(value.slates || {}), geometryVersion: Number(value.slates?.geometryVersion || 0), placements: value.slates?.placements && typeof value.slates.placements === "object" ? value.slates.placements : null, parked: value.slates?.parked && typeof value.slates.parked === "object" ? value.slates.parked : {}, inventory: Array.isArray(value.slates?.inventory) ? value.slates.inventory : [] },
+    slates: {
+      ...defaults.slates,
+      ...(value.slates || {}),
+      geometryVersion: Number(value.slates?.geometryVersion || 0),
+      placements:
+        value.slates?.placements && typeof value.slates.placements === "object" ? value.slates.placements : null,
+      parked: value.slates?.parked && typeof value.slates.parked === "object" ? value.slates.parked : {},
+      inventory: Array.isArray(value.slates?.inventory) ? value.slates.inventory : [],
+    },
     talentRanks: value.talentRanks && typeof value.talentRanks === "object" ? value.talentRanks : {},
-    talents: { ...defaults.talents, ...(value.talents || {}), useCapturedRanks:value.talents?.useCapturedRanks ?? !emptyTemplate, selectedTrees:normalizeTalentTreeSelection(value.talents?.selectedTrees,defaults.talents.selectedTrees), coreSelections:{ ...(value.talents?.coreSelections ?? defaults.talents.coreSelections) }, prismInventory:Array.isArray(value.talents?.prismInventory)?value.talents.prismInventory.map((item)=>({...item})):[], installedPrisms:{...(value.talents?.installedPrisms||{})}, installedPrismNodes:{...(value.talents?.installedPrismNodes||{})} },
+    talents: {
+      ...defaults.talents,
+      ...(value.talents || {}),
+      useCapturedRanks: value.talents?.useCapturedRanks ?? !emptyTemplate,
+      selectedTrees: normalizeTalentTreeSelection(value.talents?.selectedTrees, defaults.talents.selectedTrees),
+      coreSelections: { ...(value.talents?.coreSelections ?? defaults.talents.coreSelections) },
+      prismInventory: Array.isArray(value.talents?.prismInventory)
+        ? value.talents.prismInventory.map((item) => ({ ...item }))
+        : [],
+      installedPrisms: { ...(value.talents?.installedPrisms || {}) },
+      installedPrismNodes: { ...(value.talents?.installedPrismNodes || {}) },
+    },
     // Saved legendary lines with an unsigned positive roll get their "+" on read (src/legendary-text-migrations.js).
     equipmentOverrides: legendaryEquipment.overrides,
     equipmentInventory: legendaryEquipment.inventory,
     // Trait trees (2026-10-15): hero.treeTraits holds every tree hero's picks; Selena's earlier selenaDanceTraits (top level
     // and in her loadout) and a revamped tree hero's one-per-level picks migrate into it (src/hero-trait-tree.js
     // migrateTreeTraits) and the old field is dropped.
-    hero: { ...defaults.hero, ...withoutLegacyTreeFields(value.hero || {}), selectedHeroId: typeof value.hero?.selectedHeroId === "string" ? value.hero.selectedHeroId : defaults.hero.selectedHeroId, selectedTraits: { ...(value.hero?.selectedTraits ?? (value.hero?.selectedHeroId&&value.hero.selectedHeroId!==defaults.hero.selectedHeroId?{}:defaults.hero.selectedTraits)) }, memories: memoryNames, memoryInventory, memoryTraitLevels, sageScent: { ...defaults.hero.sageScent, ...(value.hero?.sageScent || {}) }, carinoSpecialAmmoSupports: Array.from({length:3},(_,index)=>typeof value.hero?.carinoSpecialAmmoSupports?.[index]==="string"?value.hero.carinoSpecialAmmoSupports[index]:""), heroTraitSupports: Object.fromEntries(Object.entries(value.hero?.heroTraitSupports || {}).filter(([,support])=>typeof support==="string")), heroTraitSupportLevels: Object.fromEntries(Object.entries(value.hero?.heroTraitSupportLevels || {}).map(([id,level])=>[id,Math.max(1,Math.min(40,Number(level)||20))])), heroTraitSupportConfigs: Object.fromEntries(Object.entries(value.hero?.heroTraitSupportConfigs || {}).map(([id,config])=>[id,{...config}])), treeTraits:migrateTreeTraits(value.hero || {}), heroLoadouts: Object.fromEntries(Object.entries(value.hero?.heroLoadouts || {}).map(([id,loadout])=>[id,withoutLegacyTreeFields(structuredClone(loadout))])) },
-    skills: { ...defaults.skills, ...(value.skills || {}), boardSlots: {skills:Array.isArray(value.skills?.boardSlots?.skills)?value.skills.boardSlots.skills:[],auras:Array.isArray(value.skills?.boardSlots?.auras)?value.skills.boardSlots.auras:[]}, supportOrder: { ...(value.skills?.supportOrder || {}) }, setupEnabled: { ...(value.skills?.setupEnabled || {}) }, skillLevels: { ...(value.skills?.skillLevels || {}) }, supportEnabled: { ...(value.skills?.supportEnabled || {}) }, supportLevels: { ...(value.skills?.supportLevels || {}) }, specialSupportConfigs: Object.fromEntries(Object.entries(value.skills?.specialSupportConfigs || {}).map(([key,config]) => [key, config.stars == null ? { ...config } : { ...config, stars: Math.max(1, Math.min(5, (Number(config.stars) || 0) + (config.starScaleVersion === 2 ? 0 : 1))), starScaleVersion: 2 }])), customSupports: migrateCustomSupports(value.skills?.customSupports || {}), customSetups: Array.isArray(value.skills?.customSetups) ? value.skills.customSetups : [] },
-    combat: { ...defaults.combat, ...(value.combat || {}), conditions: { ...defaults.combat.conditions, ...(value.combat?.conditions || {}) } },
+    hero: {
+      ...defaults.hero,
+      ...withoutLegacyTreeFields(value.hero || {}),
+      selectedHeroId:
+        typeof value.hero?.selectedHeroId === "string" ? value.hero.selectedHeroId : defaults.hero.selectedHeroId,
+      selectedTraits: {
+        ...(value.hero?.selectedTraits ??
+          (value.hero?.selectedHeroId && value.hero.selectedHeroId !== defaults.hero.selectedHeroId
+            ? {}
+            : defaults.hero.selectedTraits)),
+      },
+      memories: memoryNames,
+      memoryInventory,
+      memoryTraitLevels,
+      sageScent: { ...defaults.hero.sageScent, ...(value.hero?.sageScent || {}) },
+      carinoSpecialAmmoSupports: Array.from({ length: 3 }, (_, index) =>
+        typeof value.hero?.carinoSpecialAmmoSupports?.[index] === "string"
+          ? value.hero.carinoSpecialAmmoSupports[index]
+          : "",
+      ),
+      heroTraitSupports: Object.fromEntries(
+        Object.entries(value.hero?.heroTraitSupports || {}).filter(([, support]) => typeof support === "string"),
+      ),
+      heroTraitSupportLevels: Object.fromEntries(
+        Object.entries(value.hero?.heroTraitSupportLevels || {}).map(([id, level]) => [
+          id,
+          Math.max(1, Math.min(40, Number(level) || 20)),
+        ]),
+      ),
+      heroTraitSupportConfigs: Object.fromEntries(
+        Object.entries(value.hero?.heroTraitSupportConfigs || {}).map(([id, config]) => [id, { ...config }]),
+      ),
+      treeTraits: migrateTreeTraits(value.hero || {}),
+      heroLoadouts: Object.fromEntries(
+        Object.entries(value.hero?.heroLoadouts || {}).map(([id, loadout]) => [
+          id,
+          withoutLegacyTreeFields(structuredClone(loadout)),
+        ]),
+      ),
+    },
+    skills: {
+      ...defaults.skills,
+      ...(value.skills || {}),
+      boardSlots: {
+        skills: Array.isArray(value.skills?.boardSlots?.skills) ? value.skills.boardSlots.skills : [],
+        auras: Array.isArray(value.skills?.boardSlots?.auras) ? value.skills.boardSlots.auras : [],
+      },
+      supportOrder: { ...(value.skills?.supportOrder || {}) },
+      setupEnabled: { ...(value.skills?.setupEnabled || {}) },
+      skillLevels: { ...(value.skills?.skillLevels || {}) },
+      supportEnabled: { ...(value.skills?.supportEnabled || {}) },
+      supportLevels: { ...(value.skills?.supportLevels || {}) },
+      specialSupportConfigs: Object.fromEntries(
+        Object.entries(value.skills?.specialSupportConfigs || {}).map(([key, config]) => [
+          key,
+          config.stars == null
+            ? { ...config }
+            : {
+                ...config,
+                stars: Math.max(1, Math.min(5, (Number(config.stars) || 0) + (config.starScaleVersion === 2 ? 0 : 1))),
+                starScaleVersion: 2,
+              },
+        ]),
+      ),
+      customSupports: migrateCustomSupports(value.skills?.customSupports || {}),
+      customSetups: Array.isArray(value.skills?.customSetups) ? value.skills.customSetups : [],
+    },
+    combat: {
+      ...defaults.combat,
+      ...(value.combat || {}),
+      conditions: { ...defaults.combat.conditions, ...(value.combat?.conditions || {}) },
+    },
     // An unknown follower clears the slot; the rarity is one the follower comes in; skills fit its slots, each eligible once.
     followers: normalizeFollowerState(value.followers),
-    pacts: { ...defaults.pacts, ...(value.pacts || {}), activeSpirits: { ...(value.pacts?.activeSpirits || {}) }, selectedSpirits: Array.isArray(value.pacts?.selectedSpirits)?Array.from({length:3},(_,index)=>typeof value.pacts.selectedSpirits[index]==="string"?value.pacts.selectedSpirits[index]:""):defaultPactspiritSlots.filter((name)=>value.pacts?.activeSpirits?.[name]!==false), spiritLevels: { ...(value.pacts?.spiritLevels || {}) }, nativeNodeQuantities: { ...(value.pacts?.nativeNodeQuantities || {}) }, kismetSlots: { ...(value.pacts?.kismetSlots || {}) }, fateUnlocks: { ...(value.pacts?.fateUnlocks || {}) } }
+    pacts: {
+      ...defaults.pacts,
+      ...(value.pacts || {}),
+      activeSpirits: { ...(value.pacts?.activeSpirits || {}) },
+      selectedSpirits: Array.isArray(value.pacts?.selectedSpirits)
+        ? Array.from({ length: 3 }, (_, index) =>
+            typeof value.pacts.selectedSpirits[index] === "string" ? value.pacts.selectedSpirits[index] : "",
+          )
+        : defaultPactspiritSlots.filter((name) => value.pacts?.activeSpirits?.[name] !== false),
+      spiritLevels: { ...(value.pacts?.spiritLevels || {}) },
+      nativeNodeQuantities: { ...(value.pacts?.nativeNodeQuantities || {}) },
+      kismetSlots: { ...(value.pacts?.kismetSlots || {}) },
+      fateUnlocks: { ...(value.pacts?.fateUnlocks || {}) },
+    },
   };
 }
 
@@ -200,17 +377,38 @@ function normalizeBuildRecord(build, index, fallbackState) {
     createdAt: build.createdAt || now(),
     updatedAt: build.updatedAt || now(),
     state: normalizePlannerState(build.state || fallbackState),
-    revisions: (Array.isArray(build.revisions) ? build.revisions : []).slice(-10).map((revision) => ({ timestamp: revision.timestamp || now(), label: String(revision.label || "Autosave"), state: normalizePlannerState(revision.state) })),
-    shareHistory: (Array.isArray(build.shareHistory) ? build.shareHistory : []).slice(-5).map((entry) => ({ timestamp: entry.timestamp || now(), code: String(entry.code || "") })).filter((entry) => entry.code)
+    revisions: (Array.isArray(build.revisions) ? build.revisions : []).slice(-10).map((revision) => ({
+      timestamp: revision.timestamp || now(),
+      label: String(revision.label || "Autosave"),
+      state: normalizePlannerState(revision.state),
+    })),
+    shareHistory: (Array.isArray(build.shareHistory) ? build.shareHistory : [])
+      .slice(-5)
+      .map((entry) => ({ timestamp: entry.timestamp || now(), code: String(entry.code || "") }))
+      .filter((entry) => entry.code),
   };
 }
 
 export function normalizeBuildLibrary(value = {}, fallbackState = defaultPlannerState, normalizedBuilds = null) {
   const rawBuilds = Array.isArray(value.builds) ? value.builds : [];
   const builds = normalizedBuilds || rawBuilds.map((build, index) => normalizeBuildRecord(build, index, fallbackState));
-  if (!builds.length && !Array.isArray(value.builds)) builds.push({ id: makeId(), name: "Selena — Scorching Beam", notes: "Captured Selena 1 / Sing with the Tide build.", createdAt: now(), updatedAt: now(), state: normalizePlannerState(fallbackState), revisions: [], shareHistory: [] });
-  const activeBuildId = builds.some((build) => build.id === value.activeBuildId) ? value.activeBuildId : builds[0]?.id||null;
-  const compareBuildId = builds.some((build) => build.id === value.compareBuildId && build.id !== activeBuildId) ? value.compareBuildId : null;
+  if (!builds.length && !Array.isArray(value.builds))
+    builds.push({
+      id: makeId(),
+      name: "Selena — Scorching Beam",
+      notes: "Captured Selena 1 / Sing with the Tide build.",
+      createdAt: now(),
+      updatedAt: now(),
+      state: normalizePlannerState(fallbackState),
+      revisions: [],
+      shareHistory: [],
+    });
+  const activeBuildId = builds.some((build) => build.id === value.activeBuildId)
+    ? value.activeBuildId
+    : builds[0]?.id || null;
+  const compareBuildId = builds.some((build) => build.id === value.compareBuildId && build.id !== activeBuildId)
+    ? value.compareBuildId
+    : null;
   return { schemaVersion: 1, activeBuildId, compareBuildId, builds };
 }
 
@@ -230,7 +428,8 @@ let quarantinedBuilds = [];
 
 function storageKeys(storage) {
   try {
-    if (typeof storage.key === "function" && Number.isInteger(storage.length)) return Array.from({ length: storage.length }, (_, index) => storage.key(index)).filter((key) => key !== null);
+    if (typeof storage.key === "function" && Number.isInteger(storage.length))
+      return Array.from({ length: storage.length }, (_, index) => storage.key(index)).filter((key) => key !== null);
   } catch {}
   return [];
 }
@@ -239,12 +438,24 @@ function storageKeys(storage) {
 // be kept (three copies already, or the write failed).
 function quarantineRawLibrary(storage, serialized) {
   if (serialized === null || serialized === undefined) return null;
-  const existing = storageKeys(storage).filter((key) => key.startsWith(libraryQuarantinePrefix)).sort();
-  for (const key of existing) { try { if (storage.getItem(key) === serialized) return key; } catch {} }
+  const existing = storageKeys(storage)
+    .filter((key) => key.startsWith(libraryQuarantinePrefix))
+    .sort();
+  for (const key of existing) {
+    try {
+      if (storage.getItem(key) === serialized) return key;
+    } catch {}
+  }
   if (existing.length >= maxQuarantineCopies) return null;
   let key = `${libraryQuarantinePrefix}${new Date().toISOString()}`;
-  for (let number = 2; existing.includes(key); number++) key = `${libraryQuarantinePrefix}${new Date().toISOString()}-${number}`;
-  try { storage.setItem(key, serialized); return storage.getItem(key) === serialized ? key : null; } catch { return null; }
+  for (let number = 2; existing.includes(key); number++)
+    key = `${libraryQuarantinePrefix}${new Date().toISOString()}-${number}`;
+  try {
+    storage.setItem(key, serialized);
+    return storage.getItem(key) === serialized ? key : null;
+  } catch {
+    return null;
+  }
 }
 
 // What could not be loaded from storage, for the planner's notices.
@@ -252,7 +463,10 @@ export function libraryLoadIssues() {
   loadBuildLibrary();
   return {
     unreadable: libraryWriteBlock ? { ...libraryWriteBlock } : null,
-    quarantinedBuilds: quarantinedBuilds.map((build, index) => ({ id: typeof build?.id === "string" ? build.id : "", name: typeof build?.name === "string" && build.name.trim() ? build.name.trim() : `Unnamed build ${index + 1}` }))
+    quarantinedBuilds: quarantinedBuilds.map((build, index) => ({
+      id: typeof build?.id === "string" ? build.id : "",
+      name: typeof build?.name === "string" && build.name.trim() ? build.name.trim() : `Unnamed build ${index + 1}`,
+    })),
   };
 }
 
@@ -264,19 +478,30 @@ export function startNewLibrary() {
   const storage = globalThis.localStorage;
   const current = storage.getItem(libraryStorageKey);
   const keptAt = current === null ? null : quarantineRawLibrary(storage, current);
-  if (current !== null && !keptAt) throw new Error("There is no room to keep another copy of the unreadable data. Download a backup first.");
+  if (current !== null && !keptAt)
+    throw new Error("There is no room to keep another copy of the unreadable data. Download a backup first.");
   const library = unsavedLibrary;
-  libraryWriteBlock = null; unsavedLibrary = null; unsavedStorage = null; cachedLibrary = null; cachedSerializedLibrary = null; quarantinedBuilds = [];
+  libraryWriteBlock = null;
+  unsavedLibrary = null;
+  unsavedStorage = null;
+  cachedLibrary = null;
+  cachedSerializedLibrary = null;
+  quarantinedBuilds = [];
   return writeBuildLibrary(library, { lastUsed: true });
 }
 
 function blockUnreadableLibrary(storage, serialized, legacy, error) {
-  libraryWriteBlock = { quarantineKey: quarantineRawLibrary(storage, serialized), error: String(error?.message || error) };
+  libraryWriteBlock = {
+    quarantineKey: quarantineRawLibrary(storage, serialized),
+    error: String(error?.message || error),
+  };
   quarantinedBuilds = [];
   if (cachedStorage && cachedStorage !== storage) setBase(null);
   unsavedLibrary = normalizeBuildLibrary({}, legacy);
   unsavedStorage = storage;
-  cachedLibrary = null; cachedSerializedLibrary = null; cachedStorage = storage;
+  cachedLibrary = null;
+  cachedSerializedLibrary = null;
+  cachedStorage = storage;
   storageFailure = true;
   storedActiveBuildId = unsavedLibrary.activeBuildId;
   return withTabView(unsavedLibrary);
@@ -286,21 +511,42 @@ export function loadBuildLibrary() {
   const storage = globalThis.localStorage;
   if (unsavedLibrary && unsavedStorage === storage) return withTabView(unsavedLibrary);
   // A different storage object (tests, or a swapped backend) is a different library.
-  if (unsavedLibrary) { unsavedLibrary = null; unsavedStorage = null; libraryWriteBlock = null; storageFailure = false; }
+  if (unsavedLibrary) {
+    unsavedLibrary = null;
+    unsavedStorage = null;
+    libraryWriteBlock = null;
+    storageFailure = false;
+  }
   const serialized = storage.getItem(libraryStorageKey);
-  if (cachedLibrary && cachedStorage === storage && cachedSerializedLibrary === serialized) return withTabView(cachedLibrary);
+  if (cachedLibrary && cachedStorage === storage && cachedSerializedLibrary === serialized)
+    return withTabView(cachedLibrary);
   let legacy = normalizePlannerState();
-  try { legacy = normalizePlannerState(JSON.parse(storage.getItem(storageKey) || "{}")); } catch {}
+  try {
+    legacy = normalizePlannerState(JSON.parse(storage.getItem(storageKey) || "{}"));
+  } catch {}
   let parsed;
   try {
     parsed = JSON.parse(serialized || "{}");
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || (parsed.builds !== undefined && !Array.isArray(parsed.builds))) throw new TypeError("The stored build library has an unexpected shape");
-  } catch (error) { return blockUnreadableLibrary(storage, serialized, legacy, error); }
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed) ||
+      (parsed.builds !== undefined && !Array.isArray(parsed.builds))
+    )
+      throw new TypeError("The stored build library has an unexpected shape");
+  } catch (error) {
+    return blockUnreadableLibrary(storage, serialized, legacy, error);
+  }
   try {
     if (cachedStorage && cachedStorage !== storage) setBase(null);
-    const valid = [], rejected = Array.isArray(parsed.quarantinedBuilds) ? [...parsed.quarantinedBuilds] : [];
+    const valid = [],
+      rejected = Array.isArray(parsed.quarantinedBuilds) ? [...parsed.quarantinedBuilds] : [];
     (parsed.builds || []).forEach((build, index) => {
-      try { valid.push(normalizeBuildRecord(build, index, legacy)); } catch { rejected.push(build); }
+      try {
+        valid.push(normalizeBuildRecord(build, index, legacy));
+      } catch {
+        rejected.push(build);
+      }
     });
     cachedLibrary = normalizeBuildLibrary(parsed, legacy, valid);
     quarantinedBuilds = rejected;
@@ -308,8 +554,9 @@ export function loadBuildLibrary() {
     cachedSerializedLibrary = serialized;
     storedActiveBuildId = cachedLibrary.activeBuildId;
     return withTabView(cachedLibrary);
+  } catch (error) {
+    return blockUnreadableLibrary(storage, serialized, legacy, error);
   }
-  catch (error) { return blockUnreadableLibrary(storage, serialized, legacy, error); }
 }
 
 // `normalized.activeBuildId` is this tab's build. It becomes the stored
@@ -319,7 +566,8 @@ export function loadBuildLibrary() {
 function writeBuildLibrary(normalized, { lastUsed = false } = {}) {
   const tabId = normalized.activeBuildId;
   rememberTabActiveBuildId(tabId);
-  const keepStored = !lastUsed && storedActiveBuildId && normalized.builds.some((build) => build.id === storedActiveBuildId);
+  const keepStored =
+    !lastUsed && storedActiveBuildId && normalized.builds.some((build) => build.id === storedActiveBuildId);
   const stored = keepStored ? { ...normalized, activeBuildId: storedActiveBuildId } : normalized;
   if (stored.compareBuildId === stored.activeBuildId) stored.compareBuildId = null;
   if (libraryWriteBlock) {
@@ -332,15 +580,18 @@ function writeBuildLibrary(normalized, { lastUsed = false } = {}) {
   try {
     const storage = globalThis.localStorage;
     const serialized = JSON.stringify(quarantinedBuilds.length ? { ...stored, quarantinedBuilds } : stored);
-    try { storage.setItem(libraryStorageKey, serialized); }
-    catch (error) {
+    try {
+      storage.setItem(libraryStorageKey, serialized);
+    } catch (error) {
       // Older versions kept a second full copy of the active build. Reclaim it
       // only when a library is already saved, then retry the authoritative write.
       if (!storage.getItem(libraryStorageKey)) throw error;
       storage.removeItem(storageKey);
       storage.setItem(libraryStorageKey, serialized);
     }
-    try { storage.removeItem(storageKey); } catch {}
+    try {
+      storage.removeItem(storageKey);
+    } catch {}
     unsavedLibrary = null;
     unsavedStorage = null;
     storageFailure = false;
@@ -366,8 +617,10 @@ export function loadPlannerState() {
   const library = loadBuildLibrary();
   const build = library.builds.find((entry) => entry.id === library.activeBuildId);
   setBase(build?.id, build ? JSON.stringify(build.state) : null);
-  cleanStateStable = null; cleanMarkPending = true; dismissedStable = null;
-  return clone(build?.state||defaultPlannerState);
+  cleanStateStable = null;
+  cleanMarkPending = true;
+  dismissedStable = null;
+  return clone(build?.state || defaultPlannerState);
 }
 
 // The app calls this once its freshly loaded state (loadPlannerState) has
@@ -395,15 +648,27 @@ export function markPlannerStateClean(state) {
 const isPlainObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 // Key-order-insensitive comparison (rebuilt maps such as talent ranks can list
 // the same entries in a different order).
-const stableJson = (value) => JSON.stringify(value, (key, item) => isPlainObject(item) ? Object.fromEntries(Object.keys(item).sort().map((name) => [name, item[name]])) : item);
+const stableJson = (value) =>
+  JSON.stringify(value, (key, item) =>
+    isPlainObject(item)
+      ? Object.fromEntries(
+          Object.keys(item)
+            .sort()
+            .map((name) => [name, item[name]]),
+        )
+      : item,
+  );
 const same = (a, b) => stableJson(a) === stableJson(b);
 // Same build state, ignoring key order (both sides normalized states).
-const sameStateJson = (json, state) => json === JSON.stringify(state) || stableJson(JSON.parse(json)) === stableJson(state);
+const sameStateJson = (json, state) =>
+  json === JSON.stringify(state) || stableJson(JSON.parse(json)) === stableJson(state);
 // Another tab saved a different state of this tab's build since this tab last
 // loaded or saved it. Metadata (name, notes, timestamps, revisions, the shared
 // last-used id) and key order are not part of the comparison.
 function storedChangedSinceBase(build) {
-  return Boolean(build && baseBuildId === build.id && baseStateJson !== null && !sameStateJson(baseStateJson, build.state));
+  return Boolean(
+    build && baseBuildId === build.id && baseStateJson !== null && !sameStateJson(baseStateJson, build.state),
+  );
 }
 export function savePlannerState(state) {
   const library = loadBuildLibrary();
@@ -413,7 +678,8 @@ export function savePlannerState(state) {
   if (cleanStateStable !== null) {
     // No edit since this tab loaded the build: nothing to write.
     if (stableJson(next) === cleanStateStable) return library;
-    cleanStateStable = null; cleanMarkPending = false;
+    cleanStateStable = null;
+    cleanMarkPending = false;
   }
   const storedJson = JSON.stringify(build.state);
   const nextJson = JSON.stringify(next);
@@ -421,7 +687,10 @@ export function savePlannerState(state) {
   const unchanged = storedJson === nextJson || same(next, build.state);
   if (otherTab && !unchanged && sameStateJson(baseStateJson, next)) return library;
   if (!unchanged) {
-    build.revisions = [...build.revisions, { timestamp: now(), label: otherTab ? "Other tab version" : "Autosave", state: clone(build.state) }].slice(-10);
+    build.revisions = [
+      ...build.revisions,
+      { timestamp: now(), label: otherTab ? "Other tab version" : "Autosave", state: clone(build.state) },
+    ].slice(-10);
     build.state = next;
     build.updatedAt = now();
   } else if (!storageFailure) {
@@ -461,25 +730,47 @@ export function dismissOpenBuildChange() {
 //   shows now (the last-used or first build, or the empty default).
 export function reconcileExternalLibraryChange(currentState) {
   const library = loadBuildLibrary();
-  if (baseBuildId && !library.builds.some((build) => build.id === baseBuildId)) return { kind: "deleted", state: loadPlannerState() };
+  if (baseBuildId && !library.builds.some((build) => build.id === baseBuildId))
+    return { kind: "deleted", state: loadPlannerState() };
   const build = library.builds.find((entry) => entry.id === (baseBuildId || library.activeBuildId));
   if (!build) return { kind: "none" };
   const storedJson = JSON.stringify(build.state);
-  if (baseStateJson === null || !storedChangedSinceBase(build)) { setBase(build.id, storedJson); return { kind: "none" }; }
-  if (currentState && same(ownedState(currentState), build.state)) { setBase(build.id, storedJson); return { kind: "none" }; }
+  if (baseStateJson === null || !storedChangedSinceBase(build)) {
+    setBase(build.id, storedJson);
+    return { kind: "none" };
+  }
+  if (currentState && same(ownedState(currentState), build.state)) {
+    setBase(build.id, storedJson);
+    return { kind: "none" };
+  }
   if (dismissedStable !== null && dismissedStable === stableJson(build.state)) return { kind: "dismissed" };
   return { kind: "changed" };
 }
 
-export function clearPlannerState() { savePlannerState(defaultPlannerState); }
+export function clearPlannerState() {
+  savePlannerState(defaultPlannerState);
+}
 
 export function createBuild({ name = "New build", notes = "", state = defaultPlannerState, activate = true } = {}) {
   const library = loadBuildLibrary();
-  const build = { id: makeId(), name, notes, createdAt: now(), updatedAt: now(), state: ownedState(state), revisions: [], shareHistory: [] };
+  const build = {
+    id: makeId(),
+    name,
+    notes,
+    createdAt: now(),
+    updatedAt: now(),
+    state: ownedState(state),
+    revisions: [],
+    shareHistory: [],
+  };
   library.builds.push(build);
   const opened = activate || !library.activeBuildId;
-  if (opened) { library.activeBuildId = build.id; library.compareBuildId = null; }
-  saveBuildLibrary(library, { lastUsed: opened }); return clone(build);
+  if (opened) {
+    library.activeBuildId = build.id;
+    library.compareBuildId = null;
+  }
+  saveBuildLibrary(library, { lastUsed: opened });
+  return clone(build);
 }
 
 export function importBuildCode(code) {
@@ -487,7 +778,8 @@ export function importBuildCode(code) {
   const library = loadBuildLibrary();
   const baseName = "Imported build";
   const names = new Set(library.builds.map((build) => build.name));
-  let name = baseName, number = 2;
+  let name = baseName,
+    number = 2;
   while (names.has(name)) name = `${baseName} ${number++}`;
   return createBuild({ name, state });
 }
@@ -518,20 +810,25 @@ export function updateActiveBuildMetadata({ name, notes }) {
   if (!build) return null;
   if (name !== undefined && String(name).trim()) build.name = String(name).trim();
   if (notes !== undefined) build.notes = String(notes);
-  build.updatedAt = now(); saveBuildLibrary(library); return clone(build);
+  build.updatedAt = now();
+  saveBuildLibrary(library);
+  return clone(build);
 }
 
 export function deleteBuild(id) {
   const library = loadBuildLibrary();
   library.builds = library.builds.filter((build) => build.id !== id);
   const openedRemoved = library.activeBuildId === id;
-  if (openedRemoved) library.activeBuildId = library.builds[0]?.id||null;
+  if (openedRemoved) library.activeBuildId = library.builds[0]?.id || null;
   if (library.compareBuildId === id) library.compareBuildId = null;
   return saveBuildLibrary(library, { lastUsed: openedRemoved });
 }
 
 export function deleteAllBuilds() {
-  return saveBuildLibrary({schemaVersion:1,activeBuildId:null,compareBuildId:null,builds:[]}, { lastUsed: true });
+  return saveBuildLibrary(
+    { schemaVersion: 1, activeBuildId: null, compareBuildId: null, builds: [] },
+    { lastUsed: true },
+  );
 }
 
 // Restore from a backup file (recovery-core.js format, or a bare library):
@@ -551,25 +848,54 @@ export function restoreBuildsFromBackup(backup) {
   source.builds.forEach((raw, index) => {
     const name = typeof raw?.name === "string" && raw.name.trim() ? raw.name.trim() : `Build ${index + 1}`;
     let state;
-    try { if (!raw?.state || typeof raw.state !== "object") throw new TypeError("missing state"); state = normalizePlannerState(raw.state); }
-    catch { summary.skipped++; summary.skippedNames.push(name); return; }
+    try {
+      if (!raw?.state || typeof raw.state !== "object") throw new TypeError("missing state");
+      state = normalizePlannerState(raw.state);
+    } catch {
+      summary.skipped++;
+      summary.skippedNames.push(name);
+      return;
+    }
     const revisions = (Array.isArray(raw.revisions) ? raw.revisions : []).flatMap((revision) => {
-      try { return [{ timestamp: revision.timestamp || now(), label: String(revision.label || "Autosave"), state: normalizePlannerState(revision.state) }]; }
-      catch { return []; }
+      try {
+        return [
+          {
+            timestamp: revision.timestamp || now(),
+            label: String(revision.label || "Autosave"),
+            state: normalizePlannerState(revision.state),
+          },
+        ];
+      } catch {
+        return [];
+      }
     });
     let id = typeof raw.id === "string" && raw.id ? raw.id : makeId();
     let restoredName = name;
     if (ids.has(id)) {
       const existing = library.builds.find((build) => build.id === id);
-      if (existing && same(existing.state, state)) { summary.unchanged++; return; }
+      if (existing && same(existing.state, state)) {
+        summary.unchanged++;
+        return;
+      }
       id = makeId();
-      let candidate = `${name} (restored)`, number = 2;
+      let candidate = `${name} (restored)`,
+        number = 2;
       while (names.has(candidate)) candidate = `${name} (restored ${number++})`;
       restoredName = candidate;
       summary.renamed++;
     }
-    ids.add(id); names.add(restoredName);
-    library.builds.push({ id, name: restoredName, notes: String(raw.notes || ""), createdAt: raw.createdAt || now(), updatedAt: raw.updatedAt || now(), state, revisions, shareHistory: Array.isArray(raw.shareHistory) ? raw.shareHistory : [] });
+    ids.add(id);
+    names.add(restoredName);
+    library.builds.push({
+      id,
+      name: restoredName,
+      notes: String(raw.notes || ""),
+      createdAt: raw.createdAt || now(),
+      updatedAt: raw.updatedAt || now(),
+      state,
+      revisions,
+      shareHistory: Array.isArray(raw.shareHistory) ? raw.shareHistory : [],
+    });
     summary.added++;
   });
   if (summary.added) saveBuildLibrary(library);
@@ -582,10 +908,17 @@ export function restoreLatestRevision() {
   const build = library.builds.find((entry) => entry.id === library.activeBuildId);
   if (!build) return clone(defaultPlannerState);
   const revision = build.revisions.pop();
-  if (revision) { const current = clone(build.state); build.state = ownedState(revision.state); build.updatedAt = now(); build.revisions.push({ timestamp: now(), label: "Before restore", state: current }); }
+  if (revision) {
+    const current = clone(build.state);
+    build.state = ownedState(revision.state);
+    build.updatedAt = now();
+    build.revisions.push({ timestamp: now(), label: "Before restore", state: current });
+  }
   setBase(build.id, JSON.stringify(build.state));
-  cleanStateStable = null; cleanMarkPending = false;
-  saveBuildLibrary(library); return clone(build.state);
+  cleanStateStable = null;
+  cleanMarkPending = false;
+  saveBuildLibrary(library);
+  return clone(build.state);
 }
 
 export function recordShareCode(code) {
@@ -597,30 +930,55 @@ export function recordShareCode(code) {
 }
 
 export function diffPlannerStates(left, right) {
-  const a = normalizePlannerState(left), b = normalizePlannerState(right);
-  const objectDifferences = (x, y) => new Set([...Object.keys(x || {}), ...Object.keys(y || {})].filter((key) => JSON.stringify(x?.[key]) !== JSON.stringify(y?.[key]))).size;
+  const a = normalizePlannerState(left),
+    b = normalizePlannerState(right);
+  const objectDifferences = (x, y) =>
+    new Set(
+      [...Object.keys(x || {}), ...Object.keys(y || {})].filter(
+        (key) => JSON.stringify(x?.[key]) !== JSON.stringify(y?.[key]),
+      ),
+    ).size;
   return {
     hero: objectDifferences(a.hero, b.hero),
-    equipment: new Set([...a.disabledEquipmentSlots, ...b.disabledEquipmentSlots, ...Object.keys(a.equipmentOverrides), ...Object.keys(b.equipmentOverrides)]).size ? objectDifferences({ disabled: a.disabledEquipmentSlots, ...a.equipmentOverrides }, { disabled: b.disabledEquipmentSlots, ...b.equipmentOverrides }) : 0,
-    skills: objectDifferences(a.skills, b.skills) + (JSON.stringify(a.disabledSupportNames) === JSON.stringify(b.disabledSupportNames) ? 0 : 1),
+    equipment: new Set([
+      ...a.disabledEquipmentSlots,
+      ...b.disabledEquipmentSlots,
+      ...Object.keys(a.equipmentOverrides),
+      ...Object.keys(b.equipmentOverrides),
+    ]).size
+      ? objectDifferences(
+          { disabled: a.disabledEquipmentSlots, ...a.equipmentOverrides },
+          { disabled: b.disabledEquipmentSlots, ...b.equipmentOverrides },
+        )
+      : 0,
+    skills:
+      objectDifferences(a.skills, b.skills) +
+      (JSON.stringify(a.disabledSupportNames) === JSON.stringify(b.disabledSupportNames) ? 0 : 1),
     talents: objectDifferences(a.talentRanks, b.talentRanks) + objectDifferences(a.talents, b.talents),
-    slates: JSON.stringify([a.equippedSlateIds,a.slates]) === JSON.stringify([b.equippedSlateIds,b.slates]) ? 0 : 1,
+    slates: JSON.stringify([a.equippedSlateIds, a.slates]) === JSON.stringify([b.equippedSlateIds, b.slates]) ? 0 : 1,
     pacts: objectDifferences(a.pacts, b.pacts),
     followers: objectDifferences(a.followers, b.followers),
-    combat: objectDifferences(a.combat, b.combat)
+    combat: objectDifferences(a.combat, b.combat),
   };
 }
 
 export function encodePlannerState(state) {
   const bytes = new TextEncoder().encode(JSON.stringify(normalizePlannerState(state)));
   let binary = "";
-  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
 }
 
 export function decodePlannerState(code) {
-  if (typeof code !== "string" || code.length > 250000 || !/^[A-Za-z0-9_+/=-]+$/.test(code.trim())) throw new TypeError("Invalid or oversized build code");
-  const padded = code.trim().replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(code.trim().length / 4) * 4, "=");
+  if (typeof code !== "string" || code.length > 250000 || !/^[A-Za-z0-9_+/=-]+$/.test(code.trim()))
+    throw new TypeError("Invalid or oversized build code");
+  const padded = code
+    .trim()
+    .replaceAll("-", "+")
+    .replaceAll("_", "/")
+    .padEnd(Math.ceil(code.trim().length / 4) * 4, "=");
   const binary = atob(padded);
   const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
   return normalizePlannerState(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)));

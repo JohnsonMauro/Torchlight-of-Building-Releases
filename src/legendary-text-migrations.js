@@ -20,10 +20,14 @@ let unsignedPatterns = null;
 
 function spanningTemplateRests() {
   const lines = new Set(EXTRA_SPANNING_TEMPLATES);
-  const add = (text) => { if (typeof text === "string") for (const line of text.split("\n")) lines.add(line.trim()); };
+  const add = (text) => {
+    if (typeof text === "string") for (const line of text.split("\n")) lines.add(line.trim());
+  };
   for (const item of legendaryGearSs13) (item.modifiers || []).forEach(add);
   for (const modifiers of Object.values(legendaryCorrodedModifiersSs13)) (modifiers || []).forEach(add);
-  for (const legendary of Object.values(legendaryPlaceholderPoolsSs13)) for (const pool of legendary.pools || []) for (const option of pool.options || []) (option?.effect || []).forEach(add);
+  for (const legendary of Object.values(legendaryPlaceholderPoolsSs13))
+    for (const pool of legendary.pools || [])
+      for (const option of pool.options || []) (option?.effect || []).forEach(add);
   const rests = new Set();
   for (const line of lines) {
     const match = line.match(new RegExp(`^${RANGE.source}`));
@@ -36,7 +40,14 @@ function unsignedRollPatterns() {
   if (unsignedPatterns) return unsignedPatterns;
   unsignedPatterns = [...spanningTemplateRests()].map((rest) => {
     // The saved text resolves every later range to a number and joins "N %" into "N%" (resolveModifierRolls).
-    const pieces = rest.split(new RegExp(RANGE.source, "g")).filter((_, index) => index % 3 === 0).map((piece) => escapeRegExp(piece).replace(/\\?\s+%/g, "\\s*%").replace(/ /g, "\\s*"));
+    const pieces = rest
+      .split(new RegExp(RANGE.source, "g"))
+      .filter((_, index) => index % 3 === 0)
+      .map((piece) =>
+        escapeRegExp(piece)
+          .replace(/\\?\s+%/g, "\\s*%")
+          .replace(/ /g, "\\s*"),
+      );
     return new RegExp(`^(\\d+(?:\\.\\d+)?)${pieces.join("-?\\d+(?:\\.\\d+)?")}$`);
   });
   return unsignedPatterns;
@@ -68,7 +79,8 @@ export function migrateLegendaryItem(item) {
 
 /** equipmentOverrides ({ slot: item }) and equipmentInventory ([item]) with migrated items (same containers when unchanged). */
 export function migrateLegendaryEquipment(overrides, inventory) {
-  let overridesOut = overrides, inventoryOut = inventory;
+  let overridesOut = overrides,
+    inventoryOut = inventory;
   if (overrides && typeof overrides === "object") {
     const entries = Object.entries(overrides).map(([slot, item]) => [slot, migrateLegendaryItem(item)]);
     if (entries.some(([slot, item]) => item !== overrides[slot])) overridesOut = Object.fromEntries(entries);

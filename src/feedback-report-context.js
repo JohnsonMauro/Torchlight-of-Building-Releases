@@ -20,7 +20,7 @@ export function calculationReportContext(planner, selectedKey) {
       sustainedDps: finite(model.totalDps),
       fiveSecondDamage: finite(model.dummyFiveSecondDamage),
       twentySecondDps: finite(model.dummyDps),
-      recountLast5sDps: finite(recount?.last5sDps)
-    }
+      recountLast5sDps: finite(recount?.last5sDps),
+    },
   };
 }

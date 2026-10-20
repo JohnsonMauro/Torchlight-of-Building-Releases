@@ -1,7 +1,7 @@
 // TLIDB SS13 item artwork: https://tlidb.com/en/Ethereal_Prism
 export const etherealPrismIcons = {
-  "Haze": "./src/assets/tli/ui_s12_lengjing_blue00.webp",
-  "Phantasmagoria": "./src/assets/tli/ui_s12_lengjing_purple_guihuan01.webp",
+  Haze: "./src/assets/tli/ui_s12_lengjing_blue00.webp",
+  Phantasmagoria: "./src/assets/tli/ui_s12_lengjing_purple_guihuan01.webp",
   "One For All": "./src/assets/tli/ui_s12_lengjing_purple02.webp",
   "Unwavering Fortress": "./src/assets/tli/ui_s12_lengjing_purple03.webp",
   "Unstoppable Force": "./src/assets/tli/ui_s12_lengjing_purple04.webp",
@@ -10,7 +10,7 @@ export const etherealPrismIcons = {
   "Keen Intellect": "./src/assets/tli/ui_s12_lengjing_purple08.webp",
   "Towering Presence": "./src/assets/tli/ui_s12_lengjing_purple09.webp",
   "Spell Ripple": "./src/assets/tli/ui_s12_lengjing_purple10.webp",
-  "Juggernaut": "./src/assets/tli/ui_s12_lengjing_purple11.webp",
+  Juggernaut: "./src/assets/tli/ui_s12_lengjing_purple11.webp",
   "Adaptive Defense": "./src/assets/tli/ui_s12_lengjing_purple12.webp",
   "Unmatched Valor": "./src/assets/tli/ui_s12_lengjing_purple13.webp",
   "Self-Delusion": "./src/assets/tli/ui_s12_lengjing_purple14.webp",

@@ -18,9 +18,17 @@ export const MAX_RESISTANCE_CAP_ROWS = Object.freeze({ Fire: 30500, Cold: 30600,
  */
 export const DAMAGE_TAKEN_FLOOR_PERCENT = -90;
 export const DAMAGE_TAKEN_ATTRIBUTES = Object.freeze({
-  All: 5720, Physical: 5003, Fire: 5120, Cold: 5121, Lightning: 5122, Elemental: 5123, Erosion: 5408,
+  All: 5720,
+  Physical: 5003,
+  Fire: 5120,
+  Cold: 5121,
+  Lightning: 5122,
+  Elemental: 5123,
+  Erosion: 5408,
 });
-export const DAMAGE_TAKEN_LIMITED_ATTRIBUTES = Object.freeze([5003, 5120, 5121, 5122, 5123, 5720, 5813, 5814, 5815, 5816, 5817, 5818, 5819]);
+export const DAMAGE_TAKEN_LIMITED_ATTRIBUTES = Object.freeze([
+  5003, 5120, 5121, 5122, 5123, 5720, 5813, 5814, 5815, 5816, 5817, 5818, 5819,
+]);
 /** One attribute's additional-damage-taken factor with its limit applied (attributes without a limit pass through). */
 export function limitDamageTakenFactor(factor, attribute = DAMAGE_TAKEN_ATTRIBUTES.All) {
   if (!DAMAGE_TAKEN_LIMITED_ATTRIBUTES.includes(attribute)) return factor;

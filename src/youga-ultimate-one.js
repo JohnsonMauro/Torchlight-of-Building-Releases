@@ -77,52 +77,124 @@ import { recalledProjectilesPerUse } from "./skill-hit-model.js";
 
 export const YOUGA_ULTIMATE_ONE = "youga-the-ultimate-one";
 export const CLOCKWORK_CORE_NAME = "Clockwork Core";
-export const CLOCKWORK = Object.freeze({ durationSeconds: 8, critCooldownSeconds: 0.1, critIntervalSeconds: 0.2, source: "TLIDB Clockwork_Core (keyword 80070)" });
-export const STASIS_VAULT = Object.freeze({ name: "Stasis Vault", durationSeconds: 8, cooldownSeconds: 16, radiusMeters: 10, source: "TLIDB Stasis_Vault" });
-export const SELVES = Object.freeze({ name: "Selves of All Realms", durationSeconds: 7, cooldownSeconds: 16, maxCooldownSeconds: 24, source: "TLIDB Selves_of_All_Realms" });
-export const SUPREME_DESCENT = Object.freeze({ name: "Supreme Descent", cooldownSeconds: 3.3, minCooldownSeconds: 0.2, links: 4, linkMeters: 20, source: "TLIDB Supreme_Descent" });
-export const GOVERNANCE = Object.freeze({ perStackPercent: 1, durationSeconds: 4, source: "TLIDB keyword Governance (80076)" });
-export const CENTRALIZATION = Object.freeze({ perStackPercent: 1, projectileSpeedPerStackPercent: 0.5, durationSeconds: 4, source: "TLIDB keyword Centralization (80074)" });
+export const CLOCKWORK = Object.freeze({
+  durationSeconds: 8,
+  critCooldownSeconds: 0.1,
+  critIntervalSeconds: 0.2,
+  source: "TLIDB Clockwork_Core (keyword 80070)",
+});
+export const STASIS_VAULT = Object.freeze({
+  name: "Stasis Vault",
+  durationSeconds: 8,
+  cooldownSeconds: 16,
+  radiusMeters: 10,
+  source: "TLIDB Stasis_Vault",
+});
+export const SELVES = Object.freeze({
+  name: "Selves of All Realms",
+  durationSeconds: 7,
+  cooldownSeconds: 16,
+  maxCooldownSeconds: 24,
+  source: "TLIDB Selves_of_All_Realms",
+});
+export const SUPREME_DESCENT = Object.freeze({
+  name: "Supreme Descent",
+  cooldownSeconds: 3.3,
+  minCooldownSeconds: 0.2,
+  links: 4,
+  linkMeters: 20,
+  source: "TLIDB Supreme_Descent",
+});
+export const GOVERNANCE = Object.freeze({
+  perStackPercent: 1,
+  durationSeconds: 4,
+  source: "TLIDB keyword Governance (80076)",
+});
+export const CENTRALIZATION = Object.freeze({
+  perStackPercent: 1,
+  projectileSpeedPerStackPercent: 0.5,
+  durationSeconds: 4,
+  source: "TLIDB keyword Centralization (80074)",
+});
 // User-supplied (2026-10-18): a projectile Recalls once per trajectory (base Max Recall Count 1).
 export const BASE_MAX_RECALL_COUNT = 1;
 // Game data (2026-10-18): the Clockwork Core support's affix 534222016 "This skill cannot trigger Spell Burst" (skill stone 402007).
-const CORE_SPELL_BURST = Object.freeze({ spellBurstBlock: "Clockwork Core: the supported skill cannot trigger Spell Burst", spellBurstBlockSource: "game affix 534222016 on the Clockwork Core support" });
+const CORE_SPELL_BURST = Object.freeze({
+  spellBurstBlock: "Clockwork Core: the supported skill cannot trigger Spell Burst",
+  spellBurstBlockSource: "game affix 534222016 on the Clockwork Core support",
+});
 const USER_2026_10_18 = "user-supplied (2026-10-18)";
-const CORE_ONLY_2026_10_18 = "user-decided 2026-10-18 from game-code evidence: Core and Stasis Vault effects are gated on a tag only Tangle-fired casts carry";
-const PLAYER_CAST_NOTE = "the player's own casts of the skill only summon or move the Core and fire nothing (user-decided 2026-10-18 from game-code evidence)";
+const CORE_ONLY_2026_10_18 =
+  "user-decided 2026-10-18 from game-code evidence: Core and Stasis Vault effects are gated on a tag only Tangle-fired casts carry";
+const PLAYER_CAST_NOTE =
+  "the player's own casts of the skill only summon or move the Core and fire nothing (user-decided 2026-10-18 from game-code evidence)";
 const HORIZON_SECONDS = 120;
 const EPS = 1e-9;
 const round = (value) => Math.round(value * 10000) / 10000;
-const clean = (text) => normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").replace(/\+ (?=\d)/g, "+").replace(/ ,/g, ",").replace(/ \./g, ".").replace(/ 's\b/g, "'s").trim();
+const clean = (text) =>
+  normalizePercentageText(String(text ?? ""))
+    .replace(/\s+/g, " ")
+    .replace(/\+ (?=\d)/g, "+")
+    .replace(/ ,/g, ",")
+    .replace(/ \./g, ".")
+    .replace(/ 's\b/g, "'s")
+    .trim();
 const NUM = "(\\d+(?:\\.\\d+)?)";
 
 export const YOUGA_PATTERNS = Object.freeze({
-  coreShare: new RegExp(`^${NUM}% of bonuses to Cooldown Recovery Speed or Skill Effect Duration also apply to Clockwork Core's additional damage, up to ${NUM}%$`, "i"),
+  coreShare: new RegExp(
+    `^${NUM}% of bonuses to Cooldown Recovery Speed or Skill Effect Duration also apply to Clockwork Core's additional damage, up to ${NUM}%$`,
+    "i",
+  ),
   nonMain: /^Non-Main Skills cannot be tangled or trigger Spell Burst$/i,
-  coreGrant: /^Tanglable Main Active Spell Skills are supported by Clockwork Core, replacing the support skill in the second support skill slot of that skill$/i,
+  coreGrant:
+    /^Tanglable Main Active Spell Skills are supported by Clockwork Core, replacing the support skill in the second support skill slot of that skill$/i,
   moonTangle: /^\+(\d+) to Max Tangle Quantity for every \+(\d+) to Max Sentry Quantity$/i,
-  moonDamage: new RegExp(`^\\+${NUM}% additional Clockwork Core Damage for every \\+(\\d+) to Max Sentry Quantity$`, "i"),
+  moonDamage: new RegExp(
+    `^\\+${NUM}% additional Clockwork Core Damage for every \\+(\\d+) to Max Sentry Quantity$`,
+    "i",
+  ),
   recalled: new RegExp(`^\\+${NUM}% additional damage for Recalled Projectiles$`, "i"),
   huntCast: new RegExp(`^(-${NUM})% additional Cast Speed for Clockwork Core while Stasis Vault is active$`, "i"),
   huntTrack: /^Projectiles track enemies within the range of Stasis Vault when Recalled$/i,
-  huntRecall: /^\+(\d+) to Max Recall Count for every \+(\d+) Jump\(s\) the skills supported by Clockwork Core have, up to \+(\d+)$/i,
-  huntPenetration: new RegExp(`^\\+${NUM}% additional damage for Recalled Projectiles for the skill supported by Clockwork Core for every \\+(\\d+) Penetration\\(s\\) it has, up to \\+${NUM}%$`, "i"),
+  huntRecall:
+    /^\+(\d+) to Max Recall Count for every \+(\d+) Jump\(s\) the skills supported by Clockwork Core have, up to \+(\d+)$/i,
+  huntPenetration: new RegExp(
+    `^\\+${NUM}% additional damage for Recalled Projectiles for the skill supported by Clockwork Core for every \\+(\\d+) Penetration\\(s\\) it has, up to \\+${NUM}%$`,
+    "i",
+  ),
   threadsLinks: /^\+(\d+) to Max Link Quantity for Chains of Enslavement$/i,
-  threadsCooldown: /^The further the current Chains of Enslavement links are below the maximum limit, the more the Cooldown Reduction Effect of this skill is additionally increased/i,
-  threadsTransfer: /^The further the current Chains of Enslavement links are below the maximum limit, the more transferred damage is additionally increased/i,
+  threadsCooldown:
+    /^The further the current Chains of Enslavement links are below the maximum limit, the more the Cooldown Reduction Effect of this skill is additionally increased/i,
+  threadsTransfer:
+    /^The further the current Chains of Enslavement links are below the maximum limit, the more transferred damage is additionally increased/i,
   threadsRatio: /^Increases the transferred damage ratio of Chains of Enslavement to (\d+)%$/i,
-  commandGain: /^Gains (\d+) stack\(s\) of Governance upon defeating enemies linked by Chains of Enslavement or hitting Elites linked by Chains of Enslavement, up to (\d+) stack\(s\)$/i,
-  commandDominion: /^Supreme Descent also inflicts Absolute Dominion on enemies within (\d+) ?m while having at least (\d+) stack\(s\) of Governance$/i,
-  measureExtend: /^Bonuses and additional bonuses to Cooldown Recovery Speed no longer shorten the Cooldown of Selves of All Realms, but extend it instead$/i,
-  measureEffect: new RegExp(`^\\+${NUM}% effect for Selves of All Realms for every \\+${NUM}% Cooldown Recovery Speed, up to \\+${NUM}%$`, "i"),
+  commandGain:
+    /^Gains (\d+) stack\(s\) of Governance upon defeating enemies linked by Chains of Enslavement or hitting Elites linked by Chains of Enslavement, up to (\d+) stack\(s\)$/i,
+  commandDominion:
+    /^Supreme Descent also inflicts Absolute Dominion on enemies within (\d+) ?m while having at least (\d+) stack\(s\) of Governance$/i,
+  measureExtend:
+    /^Bonuses and additional bonuses to Cooldown Recovery Speed no longer shorten the Cooldown of Selves of All Realms, but extend it instead$/i,
+  measureEffect: new RegExp(
+    `^\\+${NUM}% effect for Selves of All Realms for every \\+${NUM}% Cooldown Recovery Speed, up to \\+${NUM}%$`,
+    "i",
+  ),
   measureDuration: /^Duration increases apply to the Duration of Selves of All Realms at (\d+)% effectiveness$/i,
-  liftSummon: /^While Selves of All Realms is active and for (\d+)s after its effect ends, automatically summons a Clockwork Core/i,
-  liftRestore: /^While Selves of All Realms is active and for (\d+)s after its effect ends, restores .*when defeating an enemy$/i,
-  liftDamage: new RegExp(`^While Selves of All Realms is active and for (\\d+)s after its effect ends, \\+${NUM}% additional Clockwork Core Damage$`, "i"),
-  doomDefer: /^Stasis Vault gains an additional base effect: While Stasis Vault is active, \d+% of Hit Damage taken is not settled immediately/i,
-  doomInversion: /^Stasis Vault gains an additional base effect: While Stasis Vault is active, Clockwork Core triggers Spacetime Inversion/i,
+  liftSummon:
+    /^While Selves of All Realms is active and for (\d+)s after its effect ends, automatically summons a Clockwork Core/i,
+  liftRestore:
+    /^While Selves of All Realms is active and for (\d+)s after its effect ends, restores .*when defeating an enemy$/i,
+  liftDamage: new RegExp(
+    `^While Selves of All Realms is active and for (\\d+)s after its effect ends, \\+${NUM}% additional Clockwork Core Damage$`,
+    "i",
+  ),
+  doomDefer:
+    /^Stasis Vault gains an additional base effect: While Stasis Vault is active, \d+% of Hit Damage taken is not settled immediately/i,
+  doomInversion:
+    /^Stasis Vault gains an additional base effect: While Stasis Vault is active, Clockwork Core triggers Spacetime Inversion/i,
   claimGain: /^Upon Recall, Projectiles grant (\d+) stack\(s\) of Centralization, up to (\d+) stack\(s\)$/i,
-  claimExtend: /^Upon Recall, Projectiles extend Stasis Vault Duration by ([\d.]+) s if you have at least (\d+) stack\(s\) of Centralization\. Interval: ([\d.]+) ?s$/i
+  claimExtend:
+    /^Upon Recall, Projectiles extend Stasis Vault Duration by ([\d.]+) s if you have at least (\d+) stack\(s\) of Centralization\. Interval: ([\d.]+) ?s$/i,
 });
 /** A trait line's Youga clause key, or null (exported for the badges, src/hero-trait-modules.js). */
 export function yougaClauseKey(text) {
@@ -146,12 +218,25 @@ export function readYougaLines(modifierTexts = []) {
 }
 
 const catalogSkill = (name) => tlidbSkillCatalogSs13.find((entry) => entry.name === name) || null;
-const skillTextLines = (name) => (catalogSkill(name)?.effects || []).join("\n").split(/\r?\n/).map((text) => clean(text)).filter(Boolean);
+const skillTextLines = (name) =>
+  (catalogSkill(name)?.effects || [])
+    .join("\n")
+    .split(/\r?\n/)
+    .map((text) => clean(text))
+    .filter(Boolean);
 const enabledSupports = (setup) => (setup?.supports || []).filter((support) => support && support.enabled !== false);
 const supportClauseTexts = (setup) => {
   const clauses = setup?.supportEffects?.clauses;
-  if (clauses?.length) return clauses.map((clause) => ({ source: clause.source || `Support: ${clause.support}`, text: clean(clause.text) }));
-  return enabledSupports(setup).flatMap((support) => (support.effects || []).flatMap((text) => String(text).split(/\r?\n/)).map((text) => ({ source: `Support: ${support.name}`, text: clean(text) })));
+  if (clauses?.length)
+    return clauses.map((clause) => ({
+      source: clause.source || `Support: ${clause.support}`,
+      text: clean(clause.text),
+    }));
+  return enabledSupports(setup).flatMap((support) =>
+    (support.effects || [])
+      .flatMap((text) => String(text).split(/\r?\n/))
+      .map((text) => ({ source: `Support: ${support.name}`, text: clean(text) })),
+  );
 };
 
 /** Max Sentry Quantity bonuses (plain "+N (to) Max Sentry Quantity" lines; the default Sentry count is not a bonus). */
@@ -160,7 +245,8 @@ export function maxSentryQuantityBonus(modifierTexts = []) {
   for (const line of modifierTexts) {
     if (line?.origin === "derived") continue;
     const match = clean(line.text).match(/^\+(\d+) (?:to )?Max Sentry Quantity$/i);
-    if (match) sources.push({ source: line.source, text: clean(line.text), value: Number(match[1]) * (line.multiplier ?? 1) });
+    if (match)
+      sources.push({ source: line.source, text: clean(line.text), value: Number(match[1]) * (line.multiplier ?? 1) });
   }
   return { total: sources.reduce((sum, line) => sum + line.value, 0), sources };
 }
@@ -173,9 +259,18 @@ export function yougaTangleQuantityLines(modifierTexts = []) {
   const lines = readYougaLines(modifierTexts);
   if (!lines.moonTangle) return [];
   const sentry = maxSentryQuantityBonus(modifierTexts);
-  const per = Number(lines.moonTangle.match[1]), every = Number(lines.moonTangle.match[2]) || 1;
+  const per = Number(lines.moonTangle.match[1]),
+    every = Number(lines.moonTangle.match[2]) || 1;
   const value = Math.floor(sentry.total / every + EPS) * per;
-  return value > 0 ? [{ source: `${lines.moonTangle.source}`, text: `+${value} Max Tangle Quantity (Artificial Moon: +${per} per +${every} Max Sentry Quantity × ${sentry.total})`, value }] : [];
+  return value > 0
+    ? [
+        {
+          source: `${lines.moonTangle.source}`,
+          text: `+${value} Max Tangle Quantity (Artificial Moon: +${per} per +${every} Max Sentry Quantity × ${sentry.total})`,
+          value,
+        },
+      ]
+    : [];
 }
 
 /**
@@ -185,40 +280,72 @@ export function yougaTangleQuantityLines(modifierTexts = []) {
 export function projectileMechanics(setup, modifierTexts = []) {
   const own = skillTextLines(setup?.name);
   const tags = new Set(setup?.tags || catalogSkill(setup?.name)?.tags || []);
-  const jumps = [], penetration = [];
+  const jumps = [],
+    penetration = [];
   for (const text of own) {
     let match;
-    if ((match = text.match(/^\+(\d+) Jumps? for this skill$/i))) jumps.push({ source: `${setup.name} (skill text)`, text, value: Number(match[1]) });
-    if ((match = text.match(/^\+(\d+) Penetrations? for this skill$/i))) penetration.push({ source: `${setup.name} (skill text)`, text, value: Number(match[1]) });
+    if ((match = text.match(/^\+(\d+) Jumps? for this skill$/i)))
+      jumps.push({ source: `${setup.name} (skill text)`, text, value: Number(match[1]) });
+    if ((match = text.match(/^\+(\d+) Penetrations? for this skill$/i)))
+      penetration.push({ source: `${setup.name} (skill text)`, text, value: Number(match[1]) });
   }
   for (const clause of supportClauseTexts(setup)) {
     let match;
-    if ((match = clause.text.match(/^\+(\d+) Jumps? for the supported skill$/i))) jumps.push({ ...clause, value: Number(match[1]) });
-    if ((match = clause.text.match(/^\+(\d+) (?:Horizontal )?Projectile Penetration\(s\) of the supported skill$/i)) || (match = clause.text.match(/^\+(\d+) Penetration\(s\) for the supported skill$/i))) penetration.push({ ...clause, value: Number(match[1]) });
+    if ((match = clause.text.match(/^\+(\d+) Jumps? for the supported skill$/i)))
+      jumps.push({ ...clause, value: Number(match[1]) });
+    if (
+      (match = clause.text.match(/^\+(\d+) (?:Horizontal )?Projectile Penetration\(s\) of the supported skill$/i)) ||
+      (match = clause.text.match(/^\+(\d+) Penetration\(s\) for the supported skill$/i))
+    )
+      penetration.push({ ...clause, value: Number(match[1]) });
   }
   for (const line of modifierTexts) {
     if (line?.origin === "derived" || line?.lineEffect) continue;
     const text = clean(line.text);
     let match;
-    if ((match = text.match(/^\+(\d+) Jumps?$/i))) jumps.push({ source: line.source, text, value: Number(match[1]) * (line.multiplier ?? 1) });
-    if ((match = text.match(/^\+(\d+) (?:Horizontal )?Projectile Penetration\(s\)$/i))) penetration.push({ source: line.source, text, value: Number(match[1]) * (line.multiplier ?? 1) });
+    if ((match = text.match(/^\+(\d+) Jumps?$/i)))
+      jumps.push({ source: line.source, text, value: Number(match[1]) * (line.multiplier ?? 1) });
+    if ((match = text.match(/^\+(\d+) (?:Horizontal )?Projectile Penetration\(s\)$/i)))
+      penetration.push({ source: line.source, text, value: Number(match[1]) * (line.multiplier ?? 1) });
   }
-  const noRecallText = own.find((text) => /cannot (?:Penetrate, Jump, Return, or )?Recall\b/i.test(text) && !/^(?:Small Fireballs|Secondary)/i.test(text)) || null;
-  const recallBlock = !tags.has("Projectile") ? "it is not a Projectile skill"
-    : !tags.has("Horizontal") ? "its projectiles are not Horizontal (Penetrate is a Horizontal projectile mechanic; provisional)"
-    : noRecallText ? `"${noRecallText}" (skill text)` : null;
-  return { jumps: { total: jumps.reduce((sum, line) => sum + line.value, 0), sources: jumps }, penetration: { total: penetration.reduce((sum, line) => sum + line.value, 0), sources: penetration }, recallBlock, canRecall: !recallBlock };
+  const noRecallText =
+    own.find(
+      (text) =>
+        /cannot (?:Penetrate, Jump, Return, or )?Recall\b/i.test(text) && !/^(?:Small Fireballs|Secondary)/i.test(text),
+    ) || null;
+  const recallBlock = !tags.has("Projectile")
+    ? "it is not a Projectile skill"
+    : !tags.has("Horizontal")
+      ? "its projectiles are not Horizontal (Penetrate is a Horizontal projectile mechanic; provisional)"
+      : noRecallText
+        ? `"${noRecallText}" (skill text)`
+        : null;
+  return {
+    jumps: { total: jumps.reduce((sum, line) => sum + line.value, 0), sources: jumps },
+    penetration: { total: penetration.reduce((sum, line) => sum + line.value, 0), sources: penetration },
+    recallBlock,
+    canRecall: !recallBlock,
+  };
 }
 
 /** Skill Area bonuses that reach one skill: the character's "+X% Skill Area" plus its supports' Skill Area clauses. */
 function skillAreaPercent(setup, characterSkillAreaPercent = 0) {
-  const own = supportClauseTexts(setup).map((clause) => ({ ...clause, match: clause.text.match(/^\+?(-?\d+(?:\.\d+)?)% Skill Area(?: for the supported skill)?$/i) })).filter((clause) => clause.match);
-  return { percent: (Number(characterSkillAreaPercent) || 0) + own.reduce((sum, clause) => sum + Number(clause.match[1]), 0), sources: own.map((clause) => ({ source: clause.source, text: clause.text, value: Number(clause.match[1]) })) };
+  const own = supportClauseTexts(setup)
+    .map((clause) => ({
+      ...clause,
+      match: clause.text.match(/^\+?(-?\d+(?:\.\d+)?)% Skill Area(?: for the supported skill)?$/i),
+    }))
+    .filter((clause) => clause.match);
+  return {
+    percent: (Number(characterSkillAreaPercent) || 0) + own.reduce((sum, clause) => sum + Number(clause.match[1]), 0),
+    sources: own.map((clause) => ({ source: clause.source, text: clause.text, value: Number(clause.match[1]) })),
+  };
 }
 
 // Cooldown Recovery Speed lines (plain, build-wide; the increased pool and the additional factors).
 function cooldownRecoveryLines(modifierTexts = []) {
-  const increased = [], additional = [];
+  const increased = [],
+    additional = [];
   for (const line of modifierTexts) {
     if (line?.origin === "derived" || line?.lineEffect) continue;
     const match = clean(line.text).match(/^([+-]?\d+(?:\.\d+)?)% (additional )?Cooldown Recovery Speed$/i);
@@ -226,13 +353,23 @@ function cooldownRecoveryLines(modifierTexts = []) {
     const entry = { source: line.source, text: clean(line.text), value: Number(match[1]) * (line.multiplier ?? 1) };
     (match[2] ? additional : increased).push(entry);
   }
-  return { increased, additional, increasedPercent: increased.reduce((sum, line) => sum + line.value, 0), additionalFactor: additional.reduce((factor, line) => factor * (1 + line.value / 100), 1) };
+  return {
+    increased,
+    additional,
+    increasedPercent: increased.reduce((sum, line) => sum + line.value, 0),
+    additionalFactor: additional.reduce((factor, line) => factor * (1 + line.value / 100), 1),
+  };
 }
 
 // A trait skill's own support clauses on duration / cooldown (Extended Duration, Cooldown Reduction on its row).
 function ownTimingLines(setup) {
   const effects = setup?.supportEffects || {};
-  return { duration: (effects.duration || []).filter((line) => !line.additional), durationAdditional: (effects.duration || []).filter((line) => line.additional), cooldown: (effects.cooldown || []).filter((line) => !line.additional), cooldownAdditional: (effects.cooldown || []).filter((line) => line.additional) };
+  return {
+    duration: (effects.duration || []).filter((line) => !line.additional),
+    durationAdditional: (effects.duration || []).filter((line) => line.additional),
+    cooldown: (effects.cooldown || []).filter((line) => !line.additional),
+    cooldownAdditional: (effects.cooldown || []).filter((line) => line.additional),
+  };
 }
 const sumValues = (lines) => lines.reduce((sum, line) => sum + (Number(line.value) || 0), 0);
 const productValues = (lines) => lines.reduce((factor, line) => factor * (1 + (Number(line.value) || 0) / 100), 1);
@@ -240,48 +377,130 @@ const productValues = (lines) => lines.reduce((factor, line) => factor * (1 + (N
 // Alternate Spacetime Youga (Selves of All Realms), per skill: a reader for the effects this model can settle on one dummy,
 // else the reason. `ctx`: { jumps, stats, skillArea, afflictionEffectPercent }; `effect` multiplies every value and its cap.
 const ALTERNATE = {
-  "Ice Lances": { read: (ctx, effect) => {
-    const per = 16 * effect, cap = 48 * effect, value = Math.min(cap, per * ctx.jumps.total);
-    return { lines: value > 0 ? [{ text: `+${round(value)}% additional Projectile Damage`, working: `+${round(per)}% per +1 Jump × ${ctx.jumps.total} Jump${ctx.jumps.total === 1 ? "" : "s"}, up to +${round(cap)}%` }] : [], note: "+50% Projectile Speed per Jump: No DPS effect", reason: value > 0 ? "" : "the skill has no Jump" };
-  } },
-  "Chain Lightning": { read: (ctx, effect) => {
-    const per = 15 * effect, cap = 120 * effect, value = Math.min(cap, per * ctx.jumps.total);
-    return { lines: value > 0 ? [{ text: `+${round(value)}% additional Max Damage`, working: `+${round(per)}% per +1 Jump × ${ctx.jumps.total} Jumps, up to +${round(cap)}%` }] : [], reason: value > 0 ? "" : "the skill has no Jump" };
-  } },
-  "Chromatic Shot": { read: (ctx, effect) => {
-    const s = ctx.stats || {};
-    const int = Math.min(110, Math.floor((Number(s.intelligence) || 0) / 3 + EPS)), dex = Math.min(116, Math.floor((Number(s.dexterity) || 0) / 4 + EPS)), str = Math.min(122, Math.floor((Number(s.strength) || 0) / 5 + EPS));
-    const lines = [];
-    const add = (type, value, working) => { if (value) lines.push({ text: `${value >= 0 ? "+" : ""}${round(value)}% additional ${type} Damage`, working }); };
-    // Three stacking effects (Intelligence, Dexterity, Strength), each a sum of its stacks; the three multiply (provisional).
-    add("Cold", int * effect, `Intelligence ${Math.round(s.intelligence || 0)} ÷ 3 = ${int} stacks (max 110)`); add("Lightning", -int * effect, `Intelligence: ${int} stacks`); add("Fire", -int * effect, `Intelligence: ${int} stacks`);
-    add("Lightning", dex * effect, `Dexterity ${Math.round(s.dexterity || 0)} ÷ 4 = ${dex} stacks (max 116)`); add("Cold", -dex * effect, `Dexterity: ${dex} stacks`); add("Fire", -dex * effect, `Dexterity: ${dex} stacks`);
-    add("Fire", str * effect, `Strength ${Math.round(s.strength || 0)} ÷ 5 = ${str} stacks (max 122)`); add("Cold", -str * effect, `Strength: ${str} stacks`); add("Lightning", -str * effect, `Strength: ${str} stacks`);
-    return { lines, reason: lines.length ? "" : "no main stats" };
-  } },
-  "Fire Burst": { read: (ctx, effect) => {
-    const raw = 0.4 * (Number(ctx.afflictionEffectPercent) || 0) * effect, cap = 124 * effect, value = Math.min(cap, raw);
-    return { lines: value > 0 ? [{ text: `+${round(value)}% additional damage`, working: `40% of the +${round(ctx.afflictionEffectPercent || 0)}% Affliction Effect bonus${effect !== 1 ? ` × ${round(effect)} effect` : ""}, up to +${round(cap)}%; the dummy stands at the centre of the area (best case)` }] : [], reason: value > 0 ? "" : "no Affliction Effect bonus" };
-  } },
-  "Psionic Missile": { read: (ctx, effect) => {
-    const raw = 0.8 * ctx.skillArea.percent * effect, cap = 110 * effect, value = Math.min(cap, raw);
-    return { lines: value > 0 ? [{ text: `+${round(value)}% additional Physical Damage`, working: `80% of +${round(ctx.skillArea.percent)}% Skill Area bonuses${effect !== 1 ? ` × ${round(effect)} effect` : ""}, up to +${round(cap)}%` }] : [], reason: value > 0 ? "" : "no Skill Area bonus" };
-  } },
-  "Shadow Shot": { reason: "needs the Crowd Control types on the enemy (the dummy is a Boss; whether the Vault's Slow counts is unknown)" },
-  "Split Firebolt": { reason: "the forked small fireballs need other enemies, and the Fire → Erosion conversion it adds has no reader for a trait effect" },
-  "Blizzard": { reason: "the Barrage Total Waves bonus count is not read" },
+  "Ice Lances": {
+    read: (ctx, effect) => {
+      const per = 16 * effect,
+        cap = 48 * effect,
+        value = Math.min(cap, per * ctx.jumps.total);
+      return {
+        lines:
+          value > 0
+            ? [
+                {
+                  text: `+${round(value)}% additional Projectile Damage`,
+                  working: `+${round(per)}% per +1 Jump × ${ctx.jumps.total} Jump${ctx.jumps.total === 1 ? "" : "s"}, up to +${round(cap)}%`,
+                },
+              ]
+            : [],
+        note: "+50% Projectile Speed per Jump: No DPS effect",
+        reason: value > 0 ? "" : "the skill has no Jump",
+      };
+    },
+  },
+  "Chain Lightning": {
+    read: (ctx, effect) => {
+      const per = 15 * effect,
+        cap = 120 * effect,
+        value = Math.min(cap, per * ctx.jumps.total);
+      return {
+        lines:
+          value > 0
+            ? [
+                {
+                  text: `+${round(value)}% additional Max Damage`,
+                  working: `+${round(per)}% per +1 Jump × ${ctx.jumps.total} Jumps, up to +${round(cap)}%`,
+                },
+              ]
+            : [],
+        reason: value > 0 ? "" : "the skill has no Jump",
+      };
+    },
+  },
+  "Chromatic Shot": {
+    read: (ctx, effect) => {
+      const s = ctx.stats || {};
+      const int = Math.min(110, Math.floor((Number(s.intelligence) || 0) / 3 + EPS)),
+        dex = Math.min(116, Math.floor((Number(s.dexterity) || 0) / 4 + EPS)),
+        str = Math.min(122, Math.floor((Number(s.strength) || 0) / 5 + EPS));
+      const lines = [];
+      const add = (type, value, working) => {
+        if (value) lines.push({ text: `${value >= 0 ? "+" : ""}${round(value)}% additional ${type} Damage`, working });
+      };
+      // Three stacking effects (Intelligence, Dexterity, Strength), each a sum of its stacks; the three multiply (provisional).
+      add("Cold", int * effect, `Intelligence ${Math.round(s.intelligence || 0)} ÷ 3 = ${int} stacks (max 110)`);
+      add("Lightning", -int * effect, `Intelligence: ${int} stacks`);
+      add("Fire", -int * effect, `Intelligence: ${int} stacks`);
+      add("Lightning", dex * effect, `Dexterity ${Math.round(s.dexterity || 0)} ÷ 4 = ${dex} stacks (max 116)`);
+      add("Cold", -dex * effect, `Dexterity: ${dex} stacks`);
+      add("Fire", -dex * effect, `Dexterity: ${dex} stacks`);
+      add("Fire", str * effect, `Strength ${Math.round(s.strength || 0)} ÷ 5 = ${str} stacks (max 122)`);
+      add("Cold", -str * effect, `Strength: ${str} stacks`);
+      add("Lightning", -str * effect, `Strength: ${str} stacks`);
+      return { lines, reason: lines.length ? "" : "no main stats" };
+    },
+  },
+  "Fire Burst": {
+    read: (ctx, effect) => {
+      const raw = 0.4 * (Number(ctx.afflictionEffectPercent) || 0) * effect,
+        cap = 124 * effect,
+        value = Math.min(cap, raw);
+      return {
+        lines:
+          value > 0
+            ? [
+                {
+                  text: `+${round(value)}% additional damage`,
+                  working: `40% of the +${round(ctx.afflictionEffectPercent || 0)}% Affliction Effect bonus${effect !== 1 ? ` × ${round(effect)} effect` : ""}, up to +${round(cap)}%; the dummy stands at the centre of the area (best case)`,
+                },
+              ]
+            : [],
+        reason: value > 0 ? "" : "no Affliction Effect bonus",
+      };
+    },
+  },
+  "Psionic Missile": {
+    read: (ctx, effect) => {
+      const raw = 0.8 * ctx.skillArea.percent * effect,
+        cap = 110 * effect,
+        value = Math.min(cap, raw);
+      return {
+        lines:
+          value > 0
+            ? [
+                {
+                  text: `+${round(value)}% additional Physical Damage`,
+                  working: `80% of +${round(ctx.skillArea.percent)}% Skill Area bonuses${effect !== 1 ? ` × ${round(effect)} effect` : ""}, up to +${round(cap)}%`,
+                },
+              ]
+            : [],
+        reason: value > 0 ? "" : "no Skill Area bonus",
+      };
+    },
+  },
+  "Shadow Shot": {
+    reason:
+      "needs the Crowd Control types on the enemy (the dummy is a Boss; whether the Vault's Slow counts is unknown)",
+  },
+  "Split Firebolt": {
+    reason:
+      "the forked small fireballs need other enemies, and the Fire → Erosion conversion it adds has no reader for a trait effect",
+  },
+  Blizzard: { reason: "the Barrage Total Waves bonus count is not read" },
   "Ring of Ice": { reason: "the Max Frostbite Rating bonus is not read" },
-  "Sparkle": { reason: "Projectile Speed bonuses are not read" },
+  Sparkle: { reason: "Projectile Speed bonuses are not read" },
   "Thunderbolt Overload": { reason: "the guaranteed Numbed and Numbed Effect do not reach the enemy-ailment model" },
   "Shackles of Malice": { reason: "Deterioration per additional Curse and the self-curse are not read" },
-  "Homing Frost Bolt": { status: "No DPS effect", reason: "Frostbite Effect only (the dummy is never Frozen in the planner)" },
+  "Homing Frost Bolt": {
+    status: "No DPS effect",
+    reason: "Frostbite Effect only (the dummy is never Frozen in the planner)",
+  },
   "Forking Thunder": { reason: "projectiles generated recently are not counted" },
   "Splitting Lightning Bolt": { reason: "projectiles generated recently are not counted" },
   "Moon's Dawn": { reason: "max Moonblade forks need other enemies" },
   "Hound's Fangs": { reason: "Bite Charge and Trauma stacks are not read" },
   "Blazing Meteor": { reason: "the skill's own Ignite chance is not read" },
   "Serpent Beam": { reason: "Serpent Bind counts are not read" },
-  "Lightning Beam": { reason: "thunderbolts present are not counted" }
+  "Lightning Beam": { reason: "thunderbolts present are not counted" },
 };
 
 /** Disable Tangle supports on non-Main skills ("Non-Main Skills cannot be tangled"; provisional: the support has no effect). */
@@ -312,76 +531,285 @@ export function blockNonMainTangles({ modifierTexts = [], setups = [], mainSetup
  * @param {object} p.conditions { traitSkillOnCooldown, yougaRecall, clockworkTangles }
  * @param {object[]} [p.blockedTangles] blockNonMainTangles' result
  */
-export function yougaUltimateOneState({ heroId, modifierTexts = [], setups = [], activeNames = new Set(), mainSetupKey = null, stats = {}, conditions = {}, blockedTangles = [] } = {}) {
+export function yougaUltimateOneState({
+  heroId,
+  modifierTexts = [],
+  setups = [],
+  activeNames = new Set(),
+  mainSetupKey = null,
+  stats = {},
+  conditions = {},
+  blockedTangles = [],
+} = {}) {
   if (heroId !== YOUGA_ULTIMATE_ONE) return null;
   const lines = readYougaLines(modifierTexts);
   const active = (setup) => Boolean(setup) && setup.enabled !== false && activeNames.has(setup.name);
   const main = setups.find((setup) => setup.setupKey === mainSetupKey) || null;
-  const coreSupport = main ? (main.supports || []).find((support) => support?.name === CLOCKWORK_CORE_NAME && support.enabled !== false) : null;
+  const coreSupport = main
+    ? (main.supports || []).find((support) => support?.name === CLOCKWORK_CORE_NAME && support.enabled !== false)
+    : null;
   const coreApplied = Boolean(coreSupport) && active(main);
   const traitSkill = (name) => setups.find((setup) => setup.traitGranted && setup.name === name) || null;
   const pressed = conditions.traitSkillOnCooldown !== false;
-  const vaultSetup = traitSkill(STASIS_VAULT.name), descentSetup = traitSkill(SUPREME_DESCENT.name), selvesSetup = traitSkill(SELVES.name);
+  const vaultSetup = traitSkill(STASIS_VAULT.name),
+    descentSetup = traitSkill(SUPREME_DESCENT.name),
+    selvesSetup = traitSkill(SELVES.name);
   const cdr = cooldownRecoveryLines(modifierTexts);
-  const cdrPercent = Number.isFinite(stats.cooldownRecoverySpeed) ? Number(stats.cooldownRecoverySpeed) : cdr.increasedPercent;
+  const cdrPercent = Number.isFinite(stats.cooldownRecoverySpeed)
+    ? Number(stats.cooldownRecoverySpeed)
+    : cdr.increasedPercent;
   const sedPercent = Number(stats.skillEffectDuration) || 0;
   // Base trait: share% of the CDR and SED bonuses as additional Clockwork Core damage, capped.
-  const coreShare = lines.coreShare ? (() => {
-    const share = Number(lines.coreShare.match[1]), cap = Number(lines.coreShare.match[2]);
-    const raw = share / 100 * Math.max(0, cdrPercent + sedPercent);
-    return { sharePercent: share, capPercent: cap, cooldownRecoveryPercent: round(cdrPercent), skillEffectDurationPercent: round(sedPercent), rawPercent: round(raw), valuePercent: round(Math.min(cap, raw)), capped: raw > cap, source: lines.coreShare.source };
-  })() : null;
+  const coreShare = lines.coreShare
+    ? (() => {
+        const share = Number(lines.coreShare.match[1]),
+          cap = Number(lines.coreShare.match[2]);
+        const raw = (share / 100) * Math.max(0, cdrPercent + sedPercent);
+        return {
+          sharePercent: share,
+          capPercent: cap,
+          cooldownRecoveryPercent: round(cdrPercent),
+          skillEffectDurationPercent: round(sedPercent),
+          rawPercent: round(raw),
+          valuePercent: round(Math.min(cap, raw)),
+          capped: raw > cap,
+          source: lines.coreShare.source,
+        };
+      })()
+    : null;
   const sentry = maxSentryQuantityBonus(modifierTexts);
-  const moon = lines.moonDamage ? (() => { const per = Number(lines.moonDamage.match[1]), every = Number(lines.moonDamage.match[2]) || 1; const value = Math.floor(sentry.total / every + EPS) * per; return { perPercent: per, sentryBonus: sentry.total, sentrySources: sentry.sources, valuePercent: value, source: lines.moonDamage.source }; })() : null;
+  const moon = lines.moonDamage
+    ? (() => {
+        const per = Number(lines.moonDamage.match[1]),
+          every = Number(lines.moonDamage.match[2]) || 1;
+        const value = Math.floor(sentry.total / every + EPS) * per;
+        return {
+          perPercent: per,
+          sentryBonus: sentry.total,
+          sentrySources: sentry.sources,
+          valuePercent: value,
+          source: lines.moonDamage.source,
+        };
+      })()
+    : null;
   const tangleExtra = yougaTangleQuantityLines(modifierTexts);
-  const tangleLines = modifierTexts.map((line) => ({ line, match: clean(line.text).match(/^\+(\d+) (?:to )?Max Tangle Quantity$/i) })).filter((item) => item.match && item.line.origin !== "derived").map((item) => ({ source: item.line.source, text: clean(item.line.text), value: Number(item.match[1]) * (item.line.multiplier ?? 1) }));
+  const tangleLines = modifierTexts
+    .map((line) => ({ line, match: clean(line.text).match(/^\+(\d+) (?:to )?Max Tangle Quantity$/i) }))
+    .filter((item) => item.match && item.line.origin !== "derived")
+    .map((item) => ({
+      source: item.line.source,
+      text: clean(item.line.text),
+      value: Number(item.match[1]) * (item.line.multiplier ?? 1),
+    }));
   const tangleRaw = BASE_MAX_TANGLE_QUANTITY + sumValues(tangleLines) + sumValues(tangleExtra);
   const maxTangles = Math.min(HIGHEST_MAX_TANGLE_QUANTITY, tangleRaw);
   const tangleReading = conditions.clockworkTangles !== false;
-  const mech = main ? projectileMechanics(main, modifierTexts) : { jumps: { total: 0, sources: [] }, penetration: { total: 0, sources: [] }, recallBlock: "no Main Skill", canRecall: false };
+  const mech = main
+    ? projectileMechanics(main, modifierTexts)
+    : {
+        jumps: { total: 0, sources: [] },
+        penetration: { total: 0, sources: [] },
+        recallBlock: "no Main Skill",
+        canRecall: false,
+      };
   // Recall: base count + I Will Hunt You Down's +1 per Jump (up to +2).
-  const recallBonus = lines.huntRecall ? Math.min(Number(lines.huntRecall.match[3]), Math.floor(mech.jumps.total / (Number(lines.huntRecall.match[2]) || 1) + EPS) * Number(lines.huntRecall.match[1])) : 0;
+  const recallBonus = lines.huntRecall
+    ? Math.min(
+        Number(lines.huntRecall.match[3]),
+        Math.floor(mech.jumps.total / (Number(lines.huntRecall.match[2]) || 1) + EPS) *
+          Number(lines.huntRecall.match[1]),
+      )
+    : 0;
   const maxRecall = BASE_MAX_RECALL_COUNT + recallBonus;
   const recalledLines = [];
-  if (lines.recalled) recalledLines.push({ source: lines.recalled.source, text: `${lines.recalled.text} (Recalled hits only)`, value: Number(lines.recalled.match[1]) });
-  const penetrationBonus = lines.huntPenetration ? (() => { const per = Number(lines.huntPenetration.match[1]), every = Number(lines.huntPenetration.match[2]) || 1, cap = Number(lines.huntPenetration.match[3]); const value = Math.min(cap, Math.floor(mech.penetration.total / every + EPS) * per); return { perPercent: per, capPercent: cap, penetration: mech.penetration.total, valuePercent: value, source: lines.huntPenetration.source }; })() : null;
-  if (penetrationBonus?.valuePercent > 0) recalledLines.push({ source: penetrationBonus.source, text: `+${round(penetrationBonus.valuePercent)}% additional damage for Recalled Projectiles (+${penetrationBonus.perPercent}% per +1 Penetration × ${penetrationBonus.penetration}, up to +${penetrationBonus.capPercent}%; the Vault's "always Penetrate" adds no count: provisional)`, value: penetrationBonus.valuePercent });
+  if (lines.recalled)
+    recalledLines.push({
+      source: lines.recalled.source,
+      text: `${lines.recalled.text} (Recalled hits only)`,
+      value: Number(lines.recalled.match[1]),
+    });
+  const penetrationBonus = lines.huntPenetration
+    ? (() => {
+        const per = Number(lines.huntPenetration.match[1]),
+          every = Number(lines.huntPenetration.match[2]) || 1,
+          cap = Number(lines.huntPenetration.match[3]);
+        const value = Math.min(cap, Math.floor(mech.penetration.total / every + EPS) * per);
+        return {
+          perPercent: per,
+          capPercent: cap,
+          penetration: mech.penetration.total,
+          valuePercent: value,
+          source: lines.huntPenetration.source,
+        };
+      })()
+    : null;
+  if (penetrationBonus?.valuePercent > 0)
+    recalledLines.push({
+      source: penetrationBonus.source,
+      text: `+${round(penetrationBonus.valuePercent)}% additional damage for Recalled Projectiles (+${penetrationBonus.perPercent}% per +1 Penetration × ${penetrationBonus.penetration}, up to +${penetrationBonus.capPercent}%; the Vault's "always Penetrate" adds no count: provisional)`,
+      value: penetrationBonus.valuePercent,
+    });
   const vaultCast = lines.huntCast ? Number(lines.huntCast.match[1]) : 0;
-  const governance = lines.commandGain ? { gain: Number(lines.commandGain.match[1]), maxStacks: Number(lines.commandGain.match[2]), source: lines.commandGain.source } : null;
-  const centralization = lines.claimGain ? { gain: Number(lines.claimGain.match[1]), maxStacks: Number(lines.claimGain.match[2]), source: lines.claimGain.source } : null;
-  const extension = lines.claimExtend ? { seconds: Number(lines.claimExtend.match[1]), threshold: Number(lines.claimExtend.match[2]), intervalSeconds: Number(lines.claimExtend.match[3]), source: lines.claimExtend.source } : null;
-  const measure = { extend: Boolean(lines.measureExtend), effect: lines.measureEffect ? { per: Number(lines.measureEffect.match[1]), every: Number(lines.measureEffect.match[2]), cap: Number(lines.measureEffect.match[3]), source: lines.measureEffect.source } : null, durationEffectiveness: lines.measureDuration ? Number(lines.measureDuration.match[1]) / 100 : 1 };
-  const lift = lines.liftDamage ? { afterSeconds: Number(lines.liftDamage.match[1]), percent: Number(lines.liftDamage.match[2]), source: lines.liftDamage.source } : null;
+  const governance = lines.commandGain
+    ? {
+        gain: Number(lines.commandGain.match[1]),
+        maxStacks: Number(lines.commandGain.match[2]),
+        source: lines.commandGain.source,
+      }
+    : null;
+  const centralization = lines.claimGain
+    ? {
+        gain: Number(lines.claimGain.match[1]),
+        maxStacks: Number(lines.claimGain.match[2]),
+        source: lines.claimGain.source,
+      }
+    : null;
+  const extension = lines.claimExtend
+    ? {
+        seconds: Number(lines.claimExtend.match[1]),
+        threshold: Number(lines.claimExtend.match[2]),
+        intervalSeconds: Number(lines.claimExtend.match[3]),
+        source: lines.claimExtend.source,
+      }
+    : null;
+  const measure = {
+    extend: Boolean(lines.measureExtend),
+    effect: lines.measureEffect
+      ? {
+          per: Number(lines.measureEffect.match[1]),
+          every: Number(lines.measureEffect.match[2]),
+          cap: Number(lines.measureEffect.match[3]),
+          source: lines.measureEffect.source,
+        }
+      : null,
+    durationEffectiveness: lines.measureDuration ? Number(lines.measureDuration.match[1]) / 100 : 1,
+  };
+  const lift = lines.liftDamage
+    ? {
+        afterSeconds: Number(lines.liftDamage.match[1]),
+        percent: Number(lines.liftDamage.match[2]),
+        source: lines.liftDamage.source,
+      }
+    : null;
   // Alternate Spacetime Youga (Selves) for the supported skill.
-  const selvesEffectPercent = measure.effect ? Math.min(measure.effect.cap, Math.floor(Math.max(0, cdrPercent) / measure.effect.every + EPS) * measure.effect.per) : 0;
+  const selvesEffectPercent = measure.effect
+    ? Math.min(
+        measure.effect.cap,
+        Math.floor(Math.max(0, cdrPercent) / measure.effect.every + EPS) * measure.effect.per,
+      )
+    : 0;
   const alternateRule = main ? ALTERNATE[main.name] || null : null;
-  const alternate = main && coreApplied ? (() => {
-    if (!alternateRule) return { skill: main.name, status: "Not modeled", reason: "no Alternate Spacetime Youga effect for this skill", lines: [] };
-    if (!alternateRule.read) return { skill: main.name, status: alternateRule.status || "Not modeled", reason: alternateRule.reason, lines: [] };
-    const read = alternateRule.read({ jumps: mech.jumps, stats, skillArea: skillAreaPercent(main, stats.skillArea), afflictionEffectPercent: stats.afflictionEffectPercent }, 1 + selvesEffectPercent / 100);
-    return { skill: main.name, status: read.lines.length ? "In calc" : "Inactive", reason: read.reason, note: read.note || "", lines: read.lines };
-  })() : null;
+  const alternate =
+    main && coreApplied
+      ? (() => {
+          if (!alternateRule)
+            return {
+              skill: main.name,
+              status: "Not modeled",
+              reason: "no Alternate Spacetime Youga effect for this skill",
+              lines: [],
+            };
+          if (!alternateRule.read)
+            return {
+              skill: main.name,
+              status: alternateRule.status || "Not modeled",
+              reason: alternateRule.reason,
+              lines: [],
+            };
+          const read = alternateRule.read(
+            {
+              jumps: mech.jumps,
+              stats,
+              skillArea: skillAreaPercent(main, stats.skillArea),
+              afflictionEffectPercent: stats.afflictionEffectPercent,
+            },
+            1 + selvesEffectPercent / 100,
+          );
+          return {
+            skill: main.name,
+            status: read.lines.length ? "In calc" : "Inactive",
+            reason: read.reason,
+            note: read.note || "",
+            lines: read.lines,
+          };
+        })()
+      : null;
   return {
-    active: true, heroId, lines,
-    main: main ? { setupKey: main.setupKey, name: main.name, tags: [...(main.tags || [])], active: active(main) } : null,
-    core: { applied: coreApplied, setupKey: coreApplied ? main.setupKey : null, skill: main?.name || null, reason: !main ? "no skill in Active slot 1" : !coreSupport ? `${main.name} is not Tanglable (the Spell Tangle filter), so Clockwork Core does not support it` : !active(main) ? `${main.name} is not active` : "" },
-    tangles: { reading: tangleReading, max: maxTangles, raw: tangleRaw, base: BASE_MAX_TANGLE_QUANTITY, cap: HIGHEST_MAX_TANGLE_QUANTITY, sources: [...tangleLines, ...tangleExtra] },
+    active: true,
+    heroId,
+    lines,
+    main: main
+      ? { setupKey: main.setupKey, name: main.name, tags: [...(main.tags || [])], active: active(main) }
+      : null,
+    core: {
+      applied: coreApplied,
+      setupKey: coreApplied ? main.setupKey : null,
+      skill: main?.name || null,
+      reason: !main
+        ? "no skill in Active slot 1"
+        : !coreSupport
+          ? `${main.name} is not Tanglable (the Spell Tangle filter), so Clockwork Core does not support it`
+          : !active(main)
+            ? `${main.name} is not active`
+            : "",
+    },
+    tangles: {
+      reading: tangleReading,
+      max: maxTangles,
+      raw: tangleRaw,
+      base: BASE_MAX_TANGLE_QUANTITY,
+      cap: HIGHEST_MAX_TANGLE_QUANTITY,
+      sources: [...tangleLines, ...tangleExtra],
+    },
     blockedTangles,
-    cooldownRecovery: { increasedPercent: round(cdrPercent), additionalFactor: cdr.additionalFactor, additional: cdr.additional },
+    cooldownRecovery: {
+      increasedPercent: round(cdrPercent),
+      additionalFactor: cdr.additionalFactor,
+      additional: cdr.additional,
+    },
     skillEffectDurationPercent: round(sedPercent),
-    coreShare, moon, sentry,
-    projectile: { jumps: mech.jumps, penetration: mech.penetration, canRecall: coreApplied && mech.canRecall, recallBlock: coreApplied ? mech.recallBlock : "Clockwork Core supports no skill", maxRecall, recallBonus, recalledLines, penetrationBonus, tracking: Boolean(lines.huntTrack) },
+    coreShare,
+    moon,
+    sentry,
+    projectile: {
+      jumps: mech.jumps,
+      penetration: mech.penetration,
+      canRecall: coreApplied && mech.canRecall,
+      recallBlock: coreApplied ? mech.recallBlock : "Clockwork Core supports no skill",
+      maxRecall,
+      recallBonus,
+      recalledLines,
+      penetrationBonus,
+      tracking: Boolean(lines.huntTrack),
+    },
     recallHits: conditions.yougaRecall !== false,
     vaultCastPercent: vaultCast,
-    governance, centralization, extension, measure, lift,
-    selvesEffectPercent, alternate,
+    governance,
+    centralization,
+    extension,
+    measure,
+    lift,
+    selvesEffectPercent,
+    alternate,
     traitSkills: {
       pressed,
-      vault: vaultSetup ? { setupKey: vaultSetup.setupKey, active: active(vaultSetup), timing: ownTimingLines(vaultSetup) } : null,
-      descent: descentSetup ? { setupKey: descentSetup.setupKey, active: active(descentSetup), timing: ownTimingLines(descentSetup) } : null,
-      selves: selvesSetup ? { setupKey: selvesSetup.setupKey, active: active(selvesSetup), timing: ownTimingLines(selvesSetup) } : null
+      vault: vaultSetup
+        ? { setupKey: vaultSetup.setupKey, active: active(vaultSetup), timing: ownTimingLines(vaultSetup) }
+        : null,
+      descent: descentSetup
+        ? { setupKey: descentSetup.setupKey, active: active(descentSetup), timing: ownTimingLines(descentSetup) }
+        : null,
+      selves: selvesSetup
+        ? { setupKey: selvesSetup.setupKey, active: active(selvesSetup), timing: ownTimingLines(selvesSetup) }
+        : null,
     },
-    stats: { strength: stats.strength || 0, dexterity: stats.dexterity || 0, intelligence: stats.intelligence || 0, afflictionEffectPercent: stats.afflictionEffectPercent || 0, skillArea: stats.skillArea || 0 }
+    stats: {
+      strength: stats.strength || 0,
+      dexterity: stats.dexterity || 0,
+      intelligence: stats.intelligence || 0,
+      afflictionEffectPercent: stats.afflictionEffectPercent || 0,
+      skillArea: stats.skillArea || 0,
+    },
   };
 }
 
@@ -393,19 +821,33 @@ export function yougaPreEffects(state, setupKey) {
     // it in the second pass (resolveYougaUltimateOne): the player's own casts deal no hits (user-decided 2026-10-18). The supported skill never activates Spell Burst (game affix 534222016 on the Core support).
     return { source: "Youga – The Ultimate One", ...CORE_SPELL_BURST, additional: staticCoreLines(state) };
   }
-  if (state.lines.nonMain && setupKey && setupKey !== state.main?.setupKey) return { source: "Youga – The Ultimate One", spellBurstBlock: "I Am the Ultimate One: Non-Main Skills cannot trigger Spell Burst" };
+  if (state.lines.nonMain && setupKey && setupKey !== state.main?.setupKey)
+    return {
+      source: "Youga – The Ultimate One",
+      spellBurstBlock: "I Am the Ultimate One: Non-Main Skills cannot trigger Spell Burst",
+    };
   return null;
 }
 
 function staticCoreLines(state) {
   const lines = [];
-  if (state.coreShare?.valuePercent > 0) lines.push({ source: `${state.coreShare.source} (Clockwork Core)`, text: `+${state.coreShare.valuePercent}% additional damage (Clockwork Core: ${state.coreShare.sharePercent}% of +${state.coreShare.cooldownRecoveryPercent}% Cooldown Recovery Speed + ${state.coreShare.skillEffectDurationPercent}% Skill Effect Duration = +${state.coreShare.rawPercent}%${state.coreShare.capped ? `, capped at +${state.coreShare.capPercent}%` : ` (cap +${state.coreShare.capPercent}%)`}; Core bonuses also apply to the supported skill; the increased pools: provisional)`, value: state.coreShare.valuePercent });
-  if (state.moon?.valuePercent > 0) lines.push({ source: `${state.moon.source} (Clockwork Core)`, text: `+${state.moon.valuePercent}% additional damage (Clockwork Core, Artificial Moon: +${state.moon.perPercent}% per +1 Max Sentry Quantity × ${state.moon.sentryBonus})`, value: state.moon.valuePercent });
+  if (state.coreShare?.valuePercent > 0)
+    lines.push({
+      source: `${state.coreShare.source} (Clockwork Core)`,
+      text: `+${state.coreShare.valuePercent}% additional damage (Clockwork Core: ${state.coreShare.sharePercent}% of +${state.coreShare.cooldownRecoveryPercent}% Cooldown Recovery Speed + ${state.coreShare.skillEffectDurationPercent}% Skill Effect Duration = +${state.coreShare.rawPercent}%${state.coreShare.capped ? `, capped at +${state.coreShare.capPercent}%` : ` (cap +${state.coreShare.capPercent}%)`}; Core bonuses also apply to the supported skill; the increased pools: provisional)`,
+      value: state.coreShare.valuePercent,
+    });
+  if (state.moon?.valuePercent > 0)
+    lines.push({
+      source: `${state.moon.source} (Clockwork Core)`,
+      text: `+${state.moon.valuePercent}% additional damage (Clockwork Core, Artificial Moon: +${state.moon.perPercent}% per +1 Max Sentry Quantity × ${state.moon.sentryBonus})`,
+      value: state.moon.valuePercent,
+    });
   return lines;
 }
 
 // Periodic uptime of a cast-on-cooldown buff: min(1, duration ÷ cooldown).
-const uptimeOf = (duration, cooldown) => cooldown > 0 ? Math.min(1, duration / cooldown) : 1;
+const uptimeOf = (duration, cooldown) => (cooldown > 0 ? Math.min(1, duration / cooldown) : 1);
 const periodicLevelAt = (time, duration, period) => {
   if (!(period > 0) || duration >= period - EPS) return 1;
   const phase = time - Math.floor((time + EPS) / period) * period;
@@ -421,23 +863,46 @@ const periodicLevelAt = (time, duration, period) => {
  */
 export function resolveYougaUltimateOne({ state, hits = [] } = {}) {
   if (!state?.active) return null;
-  const mainHit = state.core.applied ? hits.find((hit) => hit?.modeled && hit.setupKey === state.core.setupKey) || null : null;
-  const otherHitsPerSecond = hits.filter((hit) => hit?.modeled && hit !== mainHit).reduce((sum, hit) => sum + (hit.rate?.hitsPerSecond || 0), 0);
+  const mainHit = state.core.applied
+    ? hits.find((hit) => hit?.modeled && hit.setupKey === state.core.setupKey) || null
+    : null;
+  const otherHitsPerSecond = hits
+    .filter((hit) => hit?.modeled && hit !== mainHit)
+    .reduce((sum, hit) => sum + (hit.rate?.hitsPerSecond || 0), 0);
   const ts = state.traitSkills;
   const vaultOn = Boolean(ts.pressed && ts.vault?.active);
   const selvesOn = Boolean(ts.pressed && ts.selves?.active);
   const descentOn = Boolean(ts.pressed && ts.descent?.active);
-  const cdrFactor = (timing) => Math.max(0.0001, 1 + (state.cooldownRecovery.increasedPercent + sumValues(timing?.cooldown || [])) / 100) * state.cooldownRecovery.additionalFactor * productValues(timing?.cooldownAdditional || []);
-  const sedFactor = (timing, effectiveness = 1) => Math.max(0, 1 + effectiveness * (state.skillEffectDurationPercent + sumValues(timing?.duration || [])) / 100) * productValues(timing?.durationAdditional || []);
+  const cdrFactor = (timing) =>
+    Math.max(0.0001, 1 + (state.cooldownRecovery.increasedPercent + sumValues(timing?.cooldown || [])) / 100) *
+    state.cooldownRecovery.additionalFactor *
+    productValues(timing?.cooldownAdditional || []);
+  const sedFactor = (timing, effectiveness = 1) =>
+    Math.max(0, 1 + (effectiveness * (state.skillEffectDurationPercent + sumValues(timing?.duration || []))) / 100) *
+    productValues(timing?.durationAdditional || []);
   // The main hit's first-pass figures (no Youga rate effects): base use rate, hits per use, the recalling group's hits, crit.
   const r0 = mainHit?.rate?.usesPerSecond || 0;
   const interval0 = mainHit?.rate?.intervalSeconds || 0;
   const hitsPerUse0 = mainHit?.rate?.hitsPerUse || 0;
-  const recallKey = mainHit ? (mainHit.components.find((component) => !component.addedOnly)?.strikeKey ?? mainHit.components.find((component) => !component.addedOnly)?.key) : null;
+  const recallKey = mainHit
+    ? (mainHit.components.find((component) => !component.addedOnly)?.strikeKey ??
+      mainHit.components.find((component) => !component.addedOnly)?.key)
+    : null;
   // Projectiles of the recalling group that reach the dummy per use, each Recalled as a full hit (no Shotgun falloff:
   // src/skill-hit-model.js recalledProjectilesPerUse); before 2026-10-18 the falloff-weighted hits were counted (2.2 for a
   // 3-bolt fan at 60% instead of 3).
-  const projectileHits = mainHit && state.projectile.canRecall ? Math.max(0, ...mainHit.components.filter((component) => !component.addedOnly && !component.splitPart && (component.strikeKey ?? component.key) === recallKey).map((component) => recalledProjectilesPerUse(component))) : 0;
+  const projectileHits =
+    mainHit && state.projectile.canRecall
+      ? Math.max(
+          0,
+          ...mainHit.components
+            .filter(
+              (component) =>
+                !component.addedOnly && !component.splitPart && (component.strikeKey ?? component.key) === recallKey,
+            )
+            .map((component) => recalledProjectilesPerUse(component)),
+        )
+      : 0;
   const critChance = (mainHit?.crit?.chancePercent || 0) / 100;
   const tangles = state.core.applied ? (state.tangles.reading ? state.tangles.max : 1) : 1;
   const castFactorVault = 1 + (state.vaultCastPercent || 0) / 100;
@@ -450,18 +915,28 @@ export function resolveYougaUltimateOne({ state, hits = [] } = {}) {
   const coreBase = split ? (interval0 > 0 ? tangles / interval0 : 0) : r0;
   const rates = (vaultLevel) => {
     const rateFactorVault = vaultLevel * castFactorVault + (1 - vaultLevel);
-    const coreRate = coreBase * rateFactorVault, usesPerSecond = manualRate + coreRate;
+    const coreRate = coreBase * rateFactorVault,
+      usesPerSecond = manualRate + coreRate;
     const usesIn = manualRate + coreBase * castFactorVault;
-    const shareIn = usesPerSecond > 0 ? vaultLevel * usesIn / usesPerSecond : 0;
+    const shareIn = usesPerSecond > 0 ? (vaultLevel * usesIn) / usesPerSecond : 0;
     return { rateFactorVault, coreRate, usesPerSecond, usesIn, shareIn };
   };
   const recallsPerProjectile = vaultOn && state.projectile.canRecall ? state.projectile.maxRecall : 0;
-  const vaultBase = vaultOn ? { duration: STASIS_VAULT.durationSeconds * sedFactor(ts.vault.timing), cooldown: STASIS_VAULT.cooldownSeconds / cdrFactor(ts.vault.timing) } : null;
-  const selvesBase = selvesOn ? (() => {
-    const duration = SELVES.durationSeconds * sedFactor(ts.selves.timing, state.measure.durationEffectiveness);
-    const cooldown = state.measure.extend ? Math.min(SELVES.maxCooldownSeconds, SELVES.cooldownSeconds * cdrFactor(ts.selves.timing)) : SELVES.cooldownSeconds / cdrFactor(ts.selves.timing);
-    return { duration, cooldown };
-  })() : null;
+  const vaultBase = vaultOn
+    ? {
+        duration: STASIS_VAULT.durationSeconds * sedFactor(ts.vault.timing),
+        cooldown: STASIS_VAULT.cooldownSeconds / cdrFactor(ts.vault.timing),
+      }
+    : null;
+  const selvesBase = selvesOn
+    ? (() => {
+        const duration = SELVES.durationSeconds * sedFactor(ts.selves.timing, state.measure.durationEffectiveness);
+        const cooldown = state.measure.extend
+          ? Math.min(SELVES.maxCooldownSeconds, SELVES.cooldownSeconds * cdrFactor(ts.selves.timing))
+          : SELVES.cooldownSeconds / cdrFactor(ts.selves.timing);
+        return { duration, cooldown };
+      })()
+    : null;
   // Fixed point on the Vault uptime (the crit cooldown reduction and the Vault extension depend on the use rate it sets).
   let u = vaultOn ? uptimeOf(vaultBase.duration, vaultBase.cooldown) : 0;
   let solved = null;
@@ -473,106 +948,307 @@ export function resolveYougaUltimateOne({ state, hits = [] } = {}) {
     const critReduction = CLOCKWORK.critCooldownSeconds * Math.min(critEvents, 1 / CLOCKWORK.critIntervalSeconds);
     // Recall events per second while the Vault is up (every projectile that reaches the dummy, each of its Recalls).
     const recallRate = usesIn * projectileHits * recallsPerProjectile;
-    const central = state.centralization ? Math.min(state.centralization.maxStacks, Math.floor(state.centralization.gain * recallRate * CENTRALIZATION.durationSeconds + EPS)) : 0;
+    const central = state.centralization
+      ? Math.min(
+          state.centralization.maxStacks,
+          Math.floor(state.centralization.gain * recallRate * CENTRALIZATION.durationSeconds + EPS),
+        )
+      : 0;
     let vault = null;
     if (vaultOn) {
       const cooldown = vaultBase.cooldown / (1 + critReduction);
-      const extensionRate = state.extension && central >= state.extension.threshold ? state.extension.seconds * Math.min(recallRate, 1 / state.extension.intervalSeconds) : 0;
+      const extensionRate =
+        state.extension && central >= state.extension.threshold
+          ? state.extension.seconds * Math.min(recallRate, 1 / state.extension.intervalSeconds)
+          : 0;
       const permanent = extensionRate >= 1 - EPS;
       const duration = permanent ? Infinity : vaultBase.duration / (1 - extensionRate);
-      vault = { baseDuration: vaultBase.duration, duration, baseCooldown: vaultBase.cooldown, cooldown, extensionRate, permanent, uptime: permanent ? 1 : uptimeOf(duration, cooldown) };
+      vault = {
+        baseDuration: vaultBase.duration,
+        duration,
+        baseCooldown: vaultBase.cooldown,
+        cooldown,
+        extensionRate,
+        permanent,
+        uptime: permanent ? 1 : uptimeOf(duration, cooldown),
+      };
     }
-    solved = { u, rateFactorVault, usesOut, usesIn, shareIn, recallHitsPerUse, usesPerSecond, manualUsesPerSecond: manualRate, coreUsesPerSecond: coreRate, critEvents, critReduction, recallRate, central, vault };
+    solved = {
+      u,
+      rateFactorVault,
+      usesOut,
+      usesIn,
+      shareIn,
+      recallHitsPerUse,
+      usesPerSecond,
+      manualUsesPerSecond: manualRate,
+      coreUsesPerSecond: coreRate,
+      critEvents,
+      critReduction,
+      recallRate,
+      central,
+      vault,
+    };
     const next = vault ? vault.uptime : 0;
     if (Math.abs(next - u) < 1e-9) break;
     u = next;
   }
   const s = solved;
   const critFactor = 1 + s.critReduction;
-  const selves = selvesBase ? (() => {
-    const cooldown = selvesBase.cooldown / critFactor;
-    return { duration: selvesBase.duration, baseCooldown: selvesBase.cooldown, cooldown, uptime: uptimeOf(selvesBase.duration, cooldown), afterUptime: state.lift ? uptimeOf(selvesBase.duration + state.lift.afterSeconds, cooldown) : 0 };
-  })() : null;
-  const descent = descentOn ? { cooldown: Math.max(SUPREME_DESCENT.minCooldownSeconds, SUPREME_DESCENT.cooldownSeconds / cdrFactor(ts.descent.timing) / critFactor - 0.1) } : null;
+  const selves = selvesBase
+    ? (() => {
+        const cooldown = selvesBase.cooldown / critFactor;
+        return {
+          duration: selvesBase.duration,
+          baseCooldown: selvesBase.cooldown,
+          cooldown,
+          uptime: uptimeOf(selvesBase.duration, cooldown),
+          afterUptime: state.lift ? uptimeOf(selvesBase.duration + state.lift.afterSeconds, cooldown) : 0,
+        };
+      })()
+    : null;
+  const descent = descentOn
+    ? {
+        cooldown: Math.max(
+          SUPREME_DESCENT.minCooldownSeconds,
+          SUPREME_DESCENT.cooldownSeconds / cdrFactor(ts.descent.timing) / critFactor - 0.1,
+        ),
+      }
+    : null;
   // Centralization: held while Recalls come (the Vault), and 4 s after it ends.
-  const centralUptime = !s.vault ? 0 : s.vault.permanent ? 1 : uptimeOf(s.vault.duration + CENTRALIZATION.durationSeconds, s.vault.cooldown);
+  const centralUptime = !s.vault
+    ? 0
+    : s.vault.permanent
+      ? 1
+      : uptimeOf(s.vault.duration + CENTRALIZATION.durationSeconds, s.vault.cooldown);
   const governanceHits = (mainHit ? s.usesPerSecond * (hitsPerUse0 + s.recallHitsPerUse) : 0) + otherHitsPerSecond;
-  const governanceStacks = state.governance && descentOn ? Math.min(state.governance.maxStacks, Math.floor(state.governance.gain * governanceHits * GOVERNANCE.durationSeconds + EPS)) : 0;
+  const governanceStacks =
+    state.governance && descentOn
+      ? Math.min(
+          state.governance.maxStacks,
+          Math.floor(state.governance.gain * governanceHits * GOVERNANCE.durationSeconds + EPS),
+        )
+      : 0;
 
   // Effects on the supported skill: sustained (uptime-averaged) and per state (for the windows).
   const coreLines = (at) => {
     const lines = [...staticCoreLines(state)];
-    if (governanceStacks > 0) lines.push({ source: `${state.governance.source} (Governance)`, text: `+${governanceStacks}% additional damage (Clockwork Core: Governance ${governanceStacks} stacks × +${GOVERNANCE.perStackPercent}%; the dummy, an Elite, is linked by Chains of Enslavement while Supreme Descent is pressed on cooldown; ${state.governance.gain} stacks per hit × ${round(governanceHits)} hits/s × ${GOVERNANCE.durationSeconds} s, up to ${state.governance.maxStacks}; provisional)`, value: governanceStacks });
+    if (governanceStacks > 0)
+      lines.push({
+        source: `${state.governance.source} (Governance)`,
+        text: `+${governanceStacks}% additional damage (Clockwork Core: Governance ${governanceStacks} stacks × +${GOVERNANCE.perStackPercent}%; the dummy, an Elite, is linked by Chains of Enslavement while Supreme Descent is pressed on cooldown; ${state.governance.gain} stacks per hit × ${round(governanceHits)} hits/s × ${GOVERNANCE.durationSeconds} s, up to ${state.governance.maxStacks}; provisional)`,
+        value: governanceStacks,
+      });
     const central = s.central * at.central;
-    if (central > 0) lines.push({ source: `${state.centralization.source} (Centralization)`, text: `+${round(central)}% additional damage (Clockwork Core: Centralization ${s.central} stacks × +${CENTRALIZATION.perStackPercent}%${at.central < 1 ? ` × ${round(at.central * 100)}% uptime` : ""}; ${state.centralization.gain} stacks per Recall × ${round(s.recallRate)} Recalls/s × ${CENTRALIZATION.durationSeconds} s, up to ${state.centralization.maxStacks}; provisional)`, value: central });
+    if (central > 0)
+      lines.push({
+        source: `${state.centralization.source} (Centralization)`,
+        text: `+${round(central)}% additional damage (Clockwork Core: Centralization ${s.central} stacks × +${CENTRALIZATION.perStackPercent}%${at.central < 1 ? ` × ${round(at.central * 100)}% uptime` : ""}; ${state.centralization.gain} stacks per Recall × ${round(s.recallRate)} Recalls/s × ${CENTRALIZATION.durationSeconds} s, up to ${state.centralization.maxStacks}; provisional)`,
+        value: central,
+      });
     const lift = state.lift ? state.lift.percent * at.after : 0;
-    if (lift > 0) lines.push({ source: `${state.lift.source} (Clockwork Core)`, text: `+${round(lift)}% additional damage (Clockwork Core: +${state.lift.percent}% while Selves of All Realms is active and ${state.lift.afterSeconds} s after${at.after < 1 ? ` × ${round(at.after * 100)}% uptime` : ""})`, value: lift });
+    if (lift > 0)
+      lines.push({
+        source: `${state.lift.source} (Clockwork Core)`,
+        text: `+${round(lift)}% additional damage (Clockwork Core: +${state.lift.percent}% while Selves of All Realms is active and ${state.lift.afterSeconds} s after${at.after < 1 ? ` × ${round(at.after * 100)}% uptime` : ""})`,
+        value: lift,
+      });
     return lines;
   };
-  const alternateTexts = (selvesLevel) => !selvesLevel || !state.alternate?.lines?.length ? [] : state.alternate.lines.map((line) => {
-    const scaled = line.text.replace(/^([+-]?)(\d+(?:\.\d+)?)%/, (all, sign, value) => `${sign}${round(Number(value) * selvesLevel)}%`);
-    return { source: `Selves of All Realms: ${state.alternate.skill} (Alternate Spacetime Youga)`, text: scaled, origin: "trait", multiplier: 1, working: `${line.working}${state.selvesEffectPercent ? ` (+${state.selvesEffectPercent}% effect, I Am the Measure of All Time)` : ""}${selvesLevel < 1 ? `; × ${round(selvesLevel * 100)}% Selves uptime` : ""}` };
-  });
+  const alternateTexts = (selvesLevel) =>
+    !selvesLevel || !state.alternate?.lines?.length
+      ? []
+      : state.alternate.lines.map((line) => {
+          const scaled = line.text.replace(
+            /^([+-]?)(\d+(?:\.\d+)?)%/,
+            (all, sign, value) => `${sign}${round(Number(value) * selvesLevel)}%`,
+          );
+          return {
+            source: `Selves of All Realms: ${state.alternate.skill} (Alternate Spacetime Youga)`,
+            text: scaled,
+            origin: "trait",
+            multiplier: 1,
+            working: `${line.working}${state.selvesEffectPercent ? ` (+${state.selvesEffectPercent}% effect, I Am the Measure of All Time)` : ""}${selvesLevel < 1 ? `; × ${round(selvesLevel * 100)}% Selves uptime` : ""}`,
+          };
+        });
   const effectsAt = (at) => {
     if (!mainHit) return null;
     const { rateFactorVault, shareIn } = rates(at.vault);
     const recallHitsPerUse = state.recallHits ? shareIn * projectileHits * recallsPerProjectile : 0;
     const notes = [];
-    if (split) notes.push(`Clockwork Core: ${tangles} Tangle${tangles === 1 ? "" : "s"} attached to the Core each trigger ${state.main.name} at its casting interval (Max Tangle Quantity ${state.tangles.max}: base ${state.tangles.base}${state.tangles.sources.length ? ` + ${sumValues(state.tangles.sources)}` : ""}, cap ${state.tangles.cap}); only these Core triggers hit: ${PLAYER_CAST_NOTE} (switch "Clockwork Core: every Tangle triggers"); they never activate Spell Burst (game data: the Clockwork Core support's affix 534222016 "This skill cannot trigger Spell Burst")`);
-    if (at.vault > 0 && castFactorVault !== 1) notes.push(`I Will Hunt You Down: ${state.vaultCastPercent}% additional Cast Speed for Clockwork Core while Stasis Vault is active${at.vault < 1 ? ` (${round(at.vault * 100)}% uptime)` : ""}: ${split ? `Clockwork Core triggers × ${round(rateFactorVault)} (${USER_2026_10_18})` : `uses × ${round(rateFactorVault)} (switch off: one component)`}`);
+    if (split)
+      notes.push(
+        `Clockwork Core: ${tangles} Tangle${tangles === 1 ? "" : "s"} attached to the Core each trigger ${state.main.name} at its casting interval (Max Tangle Quantity ${state.tangles.max}: base ${state.tangles.base}${state.tangles.sources.length ? ` + ${sumValues(state.tangles.sources)}` : ""}, cap ${state.tangles.cap}); only these Core triggers hit: ${PLAYER_CAST_NOTE} (switch "Clockwork Core: every Tangle triggers"); they never activate Spell Burst (game data: the Clockwork Core support's affix 534222016 "This skill cannot trigger Spell Burst")`,
+      );
+    if (at.vault > 0 && castFactorVault !== 1)
+      notes.push(
+        `I Will Hunt You Down: ${state.vaultCastPercent}% additional Cast Speed for Clockwork Core while Stasis Vault is active${at.vault < 1 ? ` (${round(at.vault * 100)}% uptime)` : ""}: ${split ? `Clockwork Core triggers × ${round(rateFactorVault)} (${USER_2026_10_18})` : `uses × ${round(rateFactorVault)} (switch off: one component)`}`,
+      );
     return {
       source: "Youga – The Ultimate One",
       ...CORE_SPELL_BURST,
-      ...(split ? { triggerComponent: { perInterval: tangles * rateFactorVault, label: "Clockwork Core triggers", manualCasts: false, manualNote: PLAYER_CAST_NOTE } } : { rateFactor: rateFactorVault }),
+      ...(split
+        ? {
+            triggerComponent: {
+              perInterval: tangles * rateFactorVault,
+              label: "Clockwork Core triggers",
+              manualCasts: false,
+              manualNote: PLAYER_CAST_NOTE,
+            },
+          }
+        : { rateFactor: rateFactorVault }),
       rateNote: notes.join("; "),
       cooldownFactor: critFactor,
       additional: coreLines(at),
       extraModifierTexts: alternateTexts(at.selves),
       // Centralization's "+0.5% Projectile Speed per stack" (keyword 80074): no damage of its own, but Gale-type conversions
       // read it (src/skill-hit-model.js projectileSpeedState; 2026-10-18).
-      projectileSpeed: s.central * at.central > 0 ? [{ source: `${state.centralization.source} (Centralization)`, text: `+${round(s.central * at.central * CENTRALIZATION.projectileSpeedPerStackPercent)}% Projectile Speed (Centralization ${s.central} stacks × +${CENTRALIZATION.projectileSpeedPerStackPercent}%${at.central < 1 ? ` × ${round(at.central * 100)}% uptime` : ""}; provisional)`, value: s.central * at.central * CENTRALIZATION.projectileSpeedPerStackPercent }] : [],
-      recall: recallHitsPerUse > 0 ? { recallsPerProjectile, shareOfUses: shareIn, hitsFactor: shareIn * recallsPerProjectile, strikeKey: recallKey, additional: state.projectile.recalledLines, note: `Recall (Stasis Vault${at.vault < 1 ? `, ${round(at.vault * 100)}% uptime, ${round(shareIn * 100)}% of uses` : ""}): each projectile the Core fires inside the Vault that reaches the dummy goes through it, touches the vault and is Recalled ${recallsPerProjectile} time${recallsPerProjectile === 1 ? "" : "s"} (Max Recall Count ${BASE_MAX_RECALL_COUNT} base, once per trajectory, + ${state.projectile.recallBonus} from ${state.projectile.jumps.total} Jump${state.projectile.jumps.total === 1 ? "" : "s"}), each Recall one more full-damage hit on the dummy as a fresh instance (${USER_2026_10_18})${state.projectile.tracking ? " (Recalled projectiles track enemies in the Vault)" : " (best case: the return path crosses the dummy)"}${state.projectile.recalledLines.length ? `; Recalled hits also take ${state.projectile.recalledLines.map((line) => `+${round(line.value)}% (${line.source.replace(/^Hero trait: /, "")})`).join(" × ")}` : ""} (switch "Recalled projectiles hit the dummy")` } : null
+      projectileSpeed:
+        s.central * at.central > 0
+          ? [
+              {
+                source: `${state.centralization.source} (Centralization)`,
+                text: `+${round(s.central * at.central * CENTRALIZATION.projectileSpeedPerStackPercent)}% Projectile Speed (Centralization ${s.central} stacks × +${CENTRALIZATION.projectileSpeedPerStackPercent}%${at.central < 1 ? ` × ${round(at.central * 100)}% uptime` : ""}; provisional)`,
+                value: s.central * at.central * CENTRALIZATION.projectileSpeedPerStackPercent,
+              },
+            ]
+          : [],
+      recall:
+        recallHitsPerUse > 0
+          ? {
+              recallsPerProjectile,
+              shareOfUses: shareIn,
+              hitsFactor: shareIn * recallsPerProjectile,
+              strikeKey: recallKey,
+              additional: state.projectile.recalledLines,
+              note: `Recall (Stasis Vault${at.vault < 1 ? `, ${round(at.vault * 100)}% uptime, ${round(shareIn * 100)}% of uses` : ""}): each projectile the Core fires inside the Vault that reaches the dummy goes through it, touches the vault and is Recalled ${recallsPerProjectile} time${recallsPerProjectile === 1 ? "" : "s"} (Max Recall Count ${BASE_MAX_RECALL_COUNT} base, once per trajectory, + ${state.projectile.recallBonus} from ${state.projectile.jumps.total} Jump${state.projectile.jumps.total === 1 ? "" : "s"}), each Recall one more full-damage hit on the dummy as a fresh instance (${USER_2026_10_18})${state.projectile.tracking ? " (Recalled projectiles track enemies in the Vault)" : " (best case: the return path crosses the dummy)"}${state.projectile.recalledLines.length ? `; Recalled hits also take ${state.projectile.recalledLines.map((line) => `+${round(line.value)}% (${line.source.replace(/^Hero trait: /, "")})`).join(" × ")}` : ""} (switch "Recalled projectiles hit the dummy")`,
+            }
+          : null,
     };
   };
-  const sustainedAt = { vault: s.vault ? s.vault.uptime : 0, central: centralUptime, selves: selves ? selves.uptime : 0, after: selves ? selves.afterUptime : 0 };
+  const sustainedAt = {
+    vault: s.vault ? s.vault.uptime : 0,
+    central: centralUptime,
+    selves: selves ? selves.uptime : 0,
+    after: selves ? selves.afterUptime : 0,
+  };
   const sustained = effectsAt(sustainedAt);
   // Second-pass effects: the supported skill's sustained effects; a cooldown-bound skill takes the crit cooldown reduction too.
   // null: the first-pass hit stands (its yougaPreEffects are unchanged).
   const effectsFor = (hit) => {
     if (!hit) return null;
     if (mainHit && hit.setupKey === mainHit.setupKey) return sustained;
-    if (critFactor > 1 + EPS && (hit.rate?.cooldownSeconds || 0) > 0) return { ...(yougaPreEffects(state, hit.setupKey) || { source: "Youga – The Ultimate One" }), cooldownFactor: critFactor, rateNote: `Clockwork Core: -${CLOCKWORK.critCooldownSeconds} s Cooldown for all skills per ${state.main?.name} crit (${round(Math.min(s.critEvents, 5))} per second, interval ${CLOCKWORK.critIntervalSeconds} s): cooldown ÷ ${round(critFactor)} (provisional)` };
+    if (critFactor > 1 + EPS && (hit.rate?.cooldownSeconds || 0) > 0)
+      return {
+        ...(yougaPreEffects(state, hit.setupKey) || { source: "Youga – The Ultimate One" }),
+        cooldownFactor: critFactor,
+        rateNote: `Clockwork Core: -${CLOCKWORK.critCooldownSeconds} s Cooldown for all skills per ${state.main?.name} crit (${round(Math.min(s.critEvents, 5))} per second, interval ${CLOCKWORK.critIntervalSeconds} s): cooldown ÷ ${round(critFactor)} (provisional)`,
+      };
     return null;
   };
   // Window schedule (t = 0 cast, then on cooldown): the states at each edge.
   const schedules = [];
-  if (s.vault && !s.vault.permanent && s.vault.uptime < 1) schedules.push({ key: "vault", duration: s.vault.duration, period: s.vault.cooldown }, { key: "central", duration: s.vault.duration + CENTRALIZATION.durationSeconds, period: s.vault.cooldown });
-  if (selves && selves.uptime < 1) schedules.push({ key: "selves", duration: selves.duration, period: selves.cooldown });
-  if (selves && state.lift && selves.afterUptime < 1) schedules.push({ key: "after", duration: selves.duration + state.lift.afterSeconds, period: selves.cooldown });
+  if (s.vault && !s.vault.permanent && s.vault.uptime < 1)
+    schedules.push(
+      { key: "vault", duration: s.vault.duration, period: s.vault.cooldown },
+      { key: "central", duration: s.vault.duration + CENTRALIZATION.durationSeconds, period: s.vault.cooldown },
+    );
+  if (selves && selves.uptime < 1)
+    schedules.push({ key: "selves", duration: selves.duration, period: selves.cooldown });
+  if (selves && state.lift && selves.afterUptime < 1)
+    schedules.push({ key: "after", duration: selves.duration + state.lift.afterSeconds, period: selves.cooldown });
   const edges = new Set([0]);
-  for (const item of schedules) for (let start = 0; start < HORIZON_SECONDS; start += item.period) { edges.add(round(start)); if (start + item.duration < HORIZON_SECONDS) edges.add(round(start + item.duration)); }
+  for (const item of schedules)
+    for (let start = 0; start < HORIZON_SECONDS; start += item.period) {
+      edges.add(round(start));
+      if (start + item.duration < HORIZON_SECONDS) edges.add(round(start + item.duration));
+    }
   const stateAt = (time) => {
-    const at = { ...sustainedAt, vault: s.vault ? 1 : 0, central: s.vault ? 1 : 0, selves: selves ? 1 : 0, after: selves && state.lift ? 1 : 0 };
+    const at = {
+      ...sustainedAt,
+      vault: s.vault ? 1 : 0,
+      central: s.vault ? 1 : 0,
+      selves: selves ? 1 : 0,
+      after: selves && state.lift ? 1 : 0,
+    };
     for (const item of schedules) at[item.key] = periodicLevelAt(time, item.duration, item.period);
     return at;
   };
-  const windowStates = schedules.length && mainHit ? [...edges].sort((a, b) => a - b).map((time) => ({ time, at: stateAt(time) })) : [];
+  const windowStates =
+    schedules.length && mainHit ? [...edges].sort((a, b) => a - b).map((time) => ({ time, at: stateAt(time) })) : [];
 
   // Assumptions (Config / recount list) and the working.
   const assumptions = [];
   if (state.core.applied) {
-    assumptions.push({ id: "youga:clockworkCore", value: tangles, text: `Clockwork Core on ${state.main.name}: ${state.tangles.reading ? `every Tangle attached to the Core triggers the skill at its casting interval: ${tangles} Core triggers per casting interval (Max Tangle Quantity ${state.tangles.max}: base ${state.tangles.base}${state.tangles.sources.length ? ` + ${state.tangles.sources.map((line) => line.text).join(", ")}` : ""}, cap ${state.tangles.cap}), ${round(s.coreUsesPerSecond)} per second (${USER_2026_10_18}); only these Core triggers hit: ${PLAYER_CAST_NOTE}, so the player's casts add no hits (${CORE_ONLY_2026_10_18}; research/youga-recall-mechanics-2026-10-18.md R1); they never activate Spell Burst (game data: the Clockwork Core support's affix 534222016 "This skill cannot trigger Spell Burst")` : "the ordinary Tangle reading: one use per casting interval (switch off)"}. The Core is always present (recast within its ${CLOCKWORK.durationSeconds} s; best case; provisional). Core bonuses apply to the skill's hits (its own DoT and ailments are not given them; provisional).` });
-    assumptions.push({ id: "youga:critCooldown", value: round(Math.min(s.critEvents, 5)), text: `Clockwork Core: -${CLOCKWORK.critCooldownSeconds} s Cooldown for all skills on each ${state.main.name} crit, at most every ${CLOCKWORK.critIntervalSeconds} s: ${round(Math.min(s.critEvents, 5))} events/s (${round(s.critEvents)} crit hits/s) → cooldowns ÷ ${round(critFactor)} (trait skills and any cooldown-bound skill; provisional).` });
+    assumptions.push({
+      id: "youga:clockworkCore",
+      value: tangles,
+      text: `Clockwork Core on ${state.main.name}: ${state.tangles.reading ? `every Tangle attached to the Core triggers the skill at its casting interval: ${tangles} Core triggers per casting interval (Max Tangle Quantity ${state.tangles.max}: base ${state.tangles.base}${state.tangles.sources.length ? ` + ${state.tangles.sources.map((line) => line.text).join(", ")}` : ""}, cap ${state.tangles.cap}), ${round(s.coreUsesPerSecond)} per second (${USER_2026_10_18}); only these Core triggers hit: ${PLAYER_CAST_NOTE}, so the player's casts add no hits (${CORE_ONLY_2026_10_18}; research/youga-recall-mechanics-2026-10-18.md R1); they never activate Spell Burst (game data: the Clockwork Core support's affix 534222016 "This skill cannot trigger Spell Burst")` : "the ordinary Tangle reading: one use per casting interval (switch off)"}. The Core is always present (recast within its ${CLOCKWORK.durationSeconds} s; best case; provisional). Core bonuses apply to the skill's hits (its own DoT and ailments are not given them; provisional).`,
+    });
+    assumptions.push({
+      id: "youga:critCooldown",
+      value: round(Math.min(s.critEvents, 5)),
+      text: `Clockwork Core: -${CLOCKWORK.critCooldownSeconds} s Cooldown for all skills on each ${state.main.name} crit, at most every ${CLOCKWORK.critIntervalSeconds} s: ${round(Math.min(s.critEvents, 5))} events/s (${round(s.critEvents)} crit hits/s) → cooldowns ÷ ${round(critFactor)} (trait skills and any cooldown-bound skill; provisional).`,
+    });
   }
-  if (ts.vault) assumptions.push({ id: "youga:stasisVault", value: s.vault ? round(s.vault.uptime) : 0, text: !vaultOn ? `Stasis Vault: ${ts.pressed ? "not active" : "never pressed (Trait Skill switch off)"}, so no Recall and no Cast Speed penalty.` : `Stasis Vault pressed on cooldown: lasts ${round(s.vault.baseDuration)} s (8 s × Skill Effect Duration), cooldown ${round(s.vault.cooldown)} s (16 s ÷ Cooldown Recovery Speed ÷ the Core's crit reduction)${s.vault.extensionRate > 0 ? `; I Come to Claim My Due extends it ${round(s.vault.extensionRate)} s per second at ${s.central} Centralization (≥ ${state.extension.threshold})` : ""} → uptime ${round(s.vault.uptime * 100)}%${s.vault.permanent ? " (permanent: the extension outpaces the clock)" : ""}; the dummy stands inside the 10 m vault (best case)${castFactorVault !== 1 ? `; I Will Hunt You Down's ${state.vaultCastPercent}% additional Cast Speed for Clockwork Core slows ${split ? `the Core triggers while the Vault is up (${USER_2026_10_18}; the player's casts deal no hits)` : "every use while the Vault is up (switch off: one component)"}` : ""}. Provisional.` });
-  if (state.core.applied && ts.vault) assumptions.push({ id: "youga:recall", value: round(s.recallHitsPerUse), text: !state.projectile.canRecall ? `Recall: ${state.main.name} cannot Recall (${state.projectile.recallBlock}).` : `Recall: ${state.recallHits ? `${round(s.recallHitsPerUse)} extra hits per use (${round(projectileHits)} projectile hit${projectileHits === 1 ? "" : "s"} per use × ${recallsPerProjectile} Recall${recallsPerProjectile === 1 ? "" : "s"} × ${round(s.shareIn * 100)}% of uses inside the Vault; Core-triggered casts only, the player's casts fire nothing); Max Recall Count ${state.projectile.maxRecall} (base ${BASE_MAX_RECALL_COUNT}: once per trajectory, + ${state.projectile.recallBonus} from ${state.projectile.jumps.total} Jump${state.projectile.jumps.total === 1 ? "" : "s"}); each Recall is one more full-damage hit on the dummy as a fresh instance (no Shotgun falloff) (${USER_2026_10_18})` : "Recalled projectiles are not counted as hitting the dummy (switch off); Recalls still give Centralization"}. The return path crossing the dummy is a best case (provisional).` });
-  if (state.governance) assumptions.push({ id: "youga:governance", value: governanceStacks, text: descentOn ? `Governance: ${governanceStacks} of ${state.governance.maxStacks} stacks (${state.governance.gain} per hit on the linked Elite dummy × ${round(governanceHits)} hits/s × ${GOVERNANCE.durationSeconds} s): the dummy is linked by Chains of Enslavement while Supreme Descent is pressed on cooldown (link duration unpublished; provisional).` : `Governance: none (Supreme Descent ${ts.pressed ? "is not active" : "is never pressed (Trait Skill switch off)"}, so the dummy is never linked).` });
-  if (state.centralization) assumptions.push({ id: "youga:centralization", value: s.central, text: `Centralization: ${s.central} of ${state.centralization.maxStacks} stacks while Recalls come (${state.centralization.gain} per Recall × ${round(s.recallRate)} Recalls/s × ${CENTRALIZATION.durationSeconds} s), uptime ${round(centralUptime * 100)}% (provisional).` });
-  if (ts.selves) assumptions.push({ id: "youga:selves", value: selves ? round(selves.uptime) : 0, text: !selvesOn ? `Selves of All Realms: ${ts.pressed ? "not active" : "never pressed (Trait Skill switch off)"}.` : `Selves of All Realms pressed on cooldown: lasts ${round(selves.duration)} s${state.measure.durationEffectiveness !== 1 ? ` (duration increases at ${state.measure.durationEffectiveness * 100}%)` : ""}, cooldown ${round(selves.cooldown)} s${state.measure.extend ? " (Cooldown Recovery Speed extends it, capped at 24 s)" : ""} → uptime ${round(selves.uptime * 100)}%${state.alternate ? `; ${state.alternate.skill}'s Alternate Spacetime effect: ${state.alternate.status}${state.alternate.lines.length ? ` (${state.alternate.lines.map((line) => `${line.text}: ${line.working}`).join("; ")}${state.selvesEffectPercent ? `; +${state.selvesEffectPercent}% effect scales each value and cap` : ""})` : state.alternate.reason ? ` (${state.alternate.reason})` : ""}` : ""}. Provisional.` });
+  if (ts.vault)
+    assumptions.push({
+      id: "youga:stasisVault",
+      value: s.vault ? round(s.vault.uptime) : 0,
+      text: !vaultOn
+        ? `Stasis Vault: ${ts.pressed ? "not active" : "never pressed (Trait Skill switch off)"}, so no Recall and no Cast Speed penalty.`
+        : `Stasis Vault pressed on cooldown: lasts ${round(s.vault.baseDuration)} s (8 s × Skill Effect Duration), cooldown ${round(s.vault.cooldown)} s (16 s ÷ Cooldown Recovery Speed ÷ the Core's crit reduction)${s.vault.extensionRate > 0 ? `; I Come to Claim My Due extends it ${round(s.vault.extensionRate)} s per second at ${s.central} Centralization (≥ ${state.extension.threshold})` : ""} → uptime ${round(s.vault.uptime * 100)}%${s.vault.permanent ? " (permanent: the extension outpaces the clock)" : ""}; the dummy stands inside the 10 m vault (best case)${castFactorVault !== 1 ? `; I Will Hunt You Down's ${state.vaultCastPercent}% additional Cast Speed for Clockwork Core slows ${split ? `the Core triggers while the Vault is up (${USER_2026_10_18}; the player's casts deal no hits)` : "every use while the Vault is up (switch off: one component)"}` : ""}. Provisional.`,
+    });
+  if (state.core.applied && ts.vault)
+    assumptions.push({
+      id: "youga:recall",
+      value: round(s.recallHitsPerUse),
+      text: !state.projectile.canRecall
+        ? `Recall: ${state.main.name} cannot Recall (${state.projectile.recallBlock}).`
+        : `Recall: ${state.recallHits ? `${round(s.recallHitsPerUse)} extra hits per use (${round(projectileHits)} projectile hit${projectileHits === 1 ? "" : "s"} per use × ${recallsPerProjectile} Recall${recallsPerProjectile === 1 ? "" : "s"} × ${round(s.shareIn * 100)}% of uses inside the Vault; Core-triggered casts only, the player's casts fire nothing); Max Recall Count ${state.projectile.maxRecall} (base ${BASE_MAX_RECALL_COUNT}: once per trajectory, + ${state.projectile.recallBonus} from ${state.projectile.jumps.total} Jump${state.projectile.jumps.total === 1 ? "" : "s"}); each Recall is one more full-damage hit on the dummy as a fresh instance (no Shotgun falloff) (${USER_2026_10_18})` : "Recalled projectiles are not counted as hitting the dummy (switch off); Recalls still give Centralization"}. The return path crossing the dummy is a best case (provisional).`,
+    });
+  if (state.governance)
+    assumptions.push({
+      id: "youga:governance",
+      value: governanceStacks,
+      text: descentOn
+        ? `Governance: ${governanceStacks} of ${state.governance.maxStacks} stacks (${state.governance.gain} per hit on the linked Elite dummy × ${round(governanceHits)} hits/s × ${GOVERNANCE.durationSeconds} s): the dummy is linked by Chains of Enslavement while Supreme Descent is pressed on cooldown (link duration unpublished; provisional).`
+        : `Governance: none (Supreme Descent ${ts.pressed ? "is not active" : "is never pressed (Trait Skill switch off)"}, so the dummy is never linked).`,
+    });
+  if (state.centralization)
+    assumptions.push({
+      id: "youga:centralization",
+      value: s.central,
+      text: `Centralization: ${s.central} of ${state.centralization.maxStacks} stacks while Recalls come (${state.centralization.gain} per Recall × ${round(s.recallRate)} Recalls/s × ${CENTRALIZATION.durationSeconds} s), uptime ${round(centralUptime * 100)}% (provisional).`,
+    });
+  if (ts.selves)
+    assumptions.push({
+      id: "youga:selves",
+      value: selves ? round(selves.uptime) : 0,
+      text: !selvesOn
+        ? `Selves of All Realms: ${ts.pressed ? "not active" : "never pressed (Trait Skill switch off)"}.`
+        : `Selves of All Realms pressed on cooldown: lasts ${round(selves.duration)} s${state.measure.durationEffectiveness !== 1 ? ` (duration increases at ${state.measure.durationEffectiveness * 100}%)` : ""}, cooldown ${round(selves.cooldown)} s${state.measure.extend ? " (Cooldown Recovery Speed extends it, capped at 24 s)" : ""} → uptime ${round(selves.uptime * 100)}%${state.alternate ? `; ${state.alternate.skill}'s Alternate Spacetime effect: ${state.alternate.status}${state.alternate.lines.length ? ` (${state.alternate.lines.map((line) => `${line.text}: ${line.working}`).join("; ")}${state.selvesEffectPercent ? `; +${state.selvesEffectPercent}% effect scales each value and cap` : ""})` : state.alternate.reason ? ` (${state.alternate.reason})` : ""}` : ""}. Provisional.`,
+    });
   return {
-    ...state, mainHitKey: mainHit?.key || null, baseUsesPerSecond: r0, tanglesUsed: tangles, projectileHits, recallsPerProjectile,
-    solved: { ...s, critFactor }, vault: s.vault, selves, descent, governanceStacks, governanceHits, centralUptime,
-    sustainedAt, sustained, effectsFor, effectsAt, windowStates, assumptions
+    ...state,
+    mainHitKey: mainHit?.key || null,
+    baseUsesPerSecond: r0,
+    tanglesUsed: tangles,
+    projectileHits,
+    recallsPerProjectile,
+    solved: { ...s, critFactor },
+    vault: s.vault,
+    selves,
+    descent,
+    governanceStacks,
+    governanceHits,
+    centralUptime,
+    sustainedAt,
+    sustained,
+    effectsFor,
+    effectsAt,
+    windowStates,
+    assumptions,
   };
 }
 
@@ -591,38 +1267,224 @@ export function yougaLineStatus(state, key) {
   const noCore = y?.core?.reason || "Clockwork Core supports no skill";
   const ts = y?.traitSkills || {};
   const pressed = ts.pressed !== false;
-  const vault = Boolean(ts.vault?.active) && pressed, descent = Boolean(ts.descent?.active) && pressed, selves = Boolean(ts.selves?.active) && pressed;
-  const vaultWhy = !ts.vault ? "Stasis Vault is not on the board (I Hold All in My Grasp grants it)" : !ts.vault.active ? "Stasis Vault is not active" : "the Trait Skill switch is off (never pressed)";
-  const selvesWhy = !ts.selves ? "Selves of All Realms is not on the board (I Meet the Selves grants it)" : !ts.selves.active ? "Selves of All Realms is not active" : "the Trait Skill switch is off (never pressed)";
-  const descentWhy = !ts.descent ? "Supreme Descent is not on the board (I Arrive Alongside Destiny grants it)" : !ts.descent.active ? "Supreme Descent is not active" : "the Trait Skill switch is off (never pressed)";
+  const vault = Boolean(ts.vault?.active) && pressed,
+    descent = Boolean(ts.descent?.active) && pressed,
+    selves = Boolean(ts.selves?.active) && pressed;
+  const vaultWhy = !ts.vault
+    ? "Stasis Vault is not on the board (I Hold All in My Grasp grants it)"
+    : !ts.vault.active
+      ? "Stasis Vault is not active"
+      : "the Trait Skill switch is off (never pressed)";
+  const selvesWhy = !ts.selves
+    ? "Selves of All Realms is not on the board (I Meet the Selves grants it)"
+    : !ts.selves.active
+      ? "Selves of All Realms is not active"
+      : "the Trait Skill switch is off (never pressed)";
+  const descentWhy = !ts.descent
+    ? "Supreme Descent is not on the board (I Arrive Alongside Destiny grants it)"
+    : !ts.descent.active
+      ? "Supreme Descent is not active"
+      : "the Trait Skill switch is off (never pressed)";
   const r = (status, reason) => ({ status, reason });
   if (!y) return r("Inactive", "Youga – The Ultimate One is not the selected hero");
   const recall = y.projectile || {};
   switch (key) {
-    case "coreShare": return !core ? r("Inactive", noCore) : y.coreShare?.valuePercent > 0 ? r("In calc", `+${y.coreShare.valuePercent}% additional damage on ${y.main.name}'s hits: ${y.coreShare.sharePercent}% × (${y.coreShare.cooldownRecoveryPercent}% Cooldown Recovery Speed + ${y.coreShare.skillEffectDurationPercent}% Skill Effect Duration) = ${y.coreShare.rawPercent}%${y.coreShare.capped ? `, capped at ${y.coreShare.capPercent}%` : ""} (bonuses to the Core also apply to the supported skill; increased pools: provisional)`) : r("Inactive", "no Cooldown Recovery Speed or Skill Effect Duration bonus");
-    case "nonMain": return y.blockedTangles?.length ? r("In calc", `Tangle supports switched off on ${y.blockedTangles.map((item) => `${item.skill} (${item.support})`).join(", ")}; Spell Burst is blocked on every skill other than the Main Skill (provisional: the Tangle support has no effect)`) : r("In calc", "Spell Burst is blocked on every skill other than the Main Skill; no non-Main skill has a Tangle support");
-    case "coreGrant": return !core ? r("Inactive", noCore) : r("In calc", `${y.main.name}: ${y.tangles.reading ? `${y.tanglesUsed ?? y.tangles.max} Tangles on the Core, each triggering the skill at its casting interval (user-supplied 2026-10-18); only these Core triggers hit, the player's casts only summon or move the Core (user-decided 2026-10-18 from game-code evidence); no Spell Burst (game affix 534222016 on the Clockwork Core support)` : "one use per casting interval (Tangle switch off)"}; the Core's crit cooldown reduction and its shared bonuses are applied (provisional readings in the assumptions)`);
-    case "moonTangle": return !core ? r("Inactive", noCore) : y.tangles.sources.some((line) => /Artificial Moon/.test(line.text)) ? r("In calc", y.tangles.sources.find((line) => /Artificial Moon/.test(line.text)).text + (y.tangles.raw > y.tangles.cap ? ` (Max Tangle Quantity capped at ${y.tangles.cap})` : "")) : r("Inactive", "no Max Sentry Quantity bonus in the build");
-    case "moonDamage": return !core ? r("Inactive", noCore) : y.moon?.valuePercent > 0 ? r("In calc", `+${y.moon.valuePercent}% additional damage on ${y.main.name} (+${y.moon.perPercent}% × ${y.moon.sentryBonus} Max Sentry Quantity)`) : r("Inactive", "no Max Sentry Quantity bonus in the build");
-    case "recalled": return !core ? r("Inactive", noCore) : !recall.canRecall ? r("Inactive", `${y.main.name} cannot Recall (${recall.recallBlock})`) : !vault ? r("Inactive", `no Recall: ${vaultWhy}`) : !y.recallHits ? r("Inactive", "Recalled hits are switched off") : r("In calc", `on the Recalled hits of ${y.main.name} only (${resolved ? `${round(y.solved.recallHitsPerUse)} per use` : "while Stasis Vault is active"}; Core-triggered casts inside the Vault, each Recall a full-damage fresh hit: user-supplied 2026-10-18; the player's casts fire nothing: user-decided 2026-10-18)`);
-    case "huntCast": return !core ? r("Inactive", noCore) : !vault ? r("Inactive", vaultWhy) : r("In calc", y.tangles.reading ? `${y.vaultCastPercent}% additional Cast Speed on the Clockwork Core's triggers of ${y.main.name} while Stasis Vault is active${resolved && y.vault ? ` (${round(y.vault.uptime * 100)}% uptime)` : ""}; the only hit component (the player's casts deal no hits: user-decided 2026-10-18)` : `${y.vaultCastPercent}% additional Cast Speed on ${y.main.name}'s uses while Stasis Vault is active${resolved && y.vault ? ` (${round(y.vault.uptime * 100)}% uptime)` : ""} (Tangle switch off: one component)`);
-    case "huntTrack": return !core || !recall.canRecall || !vault ? r("Inactive", !core ? noCore : !recall.canRecall ? `${y.main.name} cannot Recall` : vaultWhy) : r("In calc", "each Recall homes onto the dummy inside the Vault: one more hit per Recall (provisional)");
-    case "huntRecall": return !core || !recall.canRecall ? r("Inactive", !core ? noCore : `${y.main.name} cannot Recall (${recall.recallBlock})`) : recall.recallBonus > 0 ? r(vault ? "In calc" : "Inactive", vault ? `+${recall.recallBonus} Max Recall Count from ${recall.jumps.total} Jump${recall.jumps.total === 1 ? "" : "s"} (${recall.jumps.sources.map((line) => `${line.text} (${line.source})`).join("; ")}): Max Recall Count ${recall.maxRecall} (base ${BASE_MAX_RECALL_COUNT}, once per trajectory: user-supplied 2026-10-18)` : vaultWhy) : r("Inactive", `${y.main.name} has no Jump`);
-    case "huntPenetration": return !core || !recall.canRecall ? r("Inactive", !core ? noCore : `${y.main.name} cannot Recall`) : recall.penetrationBonus?.valuePercent > 0 ? r(vault && y.recallHits ? "In calc" : "Inactive", vault && y.recallHits ? `+${recall.penetrationBonus.valuePercent}% on Recalled hits (${recall.penetration.total} Penetration: ${recall.penetration.sources.map((line) => line.text).join("; ")}; the Vault's "always Penetrate" adds no count: provisional)` : !vault ? vaultWhy : "Recalled hits are switched off") : r("Inactive", `${y.main.name} has no Penetration bonus (the Vault's "always Penetrate" is not counted: provisional)`);
-    case "threadsLinks": case "threadsTransfer": case "threadsRatio": return r("Not on dummy", "Chains of Enslavement transfer damage between linked enemies: the dummy is the only enemy");
-    case "threadsCooldown": return r("No DPS effect", "Supreme Descent's cooldown has no damage of its own (Governance is held while it is pressed on cooldown)");
-    case "commandGain": return !y.governance ? r("Inactive", "no Governance line") : !descent ? r("Inactive", descentWhy) : !core ? r("Inactive", noCore) : r("In calc", `Governance ${resolved ? y.governanceStacks : y.governance.maxStacks} stacks × +1% additional Clockwork Core damage on ${y.main.name} (hits on the linked Elite dummy; link held while Supreme Descent is pressed on cooldown; provisional)`);
-    case "commandDominion": return r("Not on dummy", "Absolute Dominion stops non-Boss enemies only; the dummy is a Boss");
-    case "measureExtend": return !selves ? r("Inactive", selvesWhy) : r("In calc", `Selves of All Realms' cooldown ${resolved && y.selves ? `${round(y.selves.cooldown)} s` : ""} = 16 s × Cooldown Recovery Speed, capped at 24 s (provisional formula)`);
-    case "measureEffect": return !selves ? r("Inactive", selvesWhy) : !y.alternate?.lines?.length ? r("Inactive", y.alternate ? `${y.alternate.skill}'s Alternate Spacetime effect is ${y.alternate.status} (${y.alternate.reason})` : noCore) : r("In calc", `+${y.selvesEffectPercent}% effect on ${y.alternate.skill}'s Alternate Spacetime values and caps (${y.cooldownRecovery.increasedPercent}% Cooldown Recovery Speed; provisional)`);
-    case "measureDuration": return !selves ? r("Inactive", selvesWhy) : r("In calc", `Skill Effect Duration counts twice for Selves of All Realms (lasts ${resolved && y.selves ? `${round(y.selves.duration)} s` : "7 s × (1 + 2 × Skill Effect Duration)"})`);
-    case "liftSummon": return r("No DPS effect", "the planner already keeps the Core present (best case)");
-    case "liftRestore": return r("Not on dummy", "needs enemies to defeat");
-    case "liftDamage": return !selves ? r("Inactive", selvesWhy) : !core ? r("Inactive", noCore) : r("In calc", `+${y.lift.percent}% additional Clockwork Core damage on ${y.main.name}${resolved && y.selves ? ` × ${round(y.selves.afterUptime * 100)}% uptime (Selves ${round(y.selves.duration)} s + ${y.lift.afterSeconds} s of every ${round(y.selves.cooldown)} s)` : ""}`);
-    case "doomDefer": case "doomInversion": return r("No DPS effect", "defensive: deferred Hit Damage taken and the Fatal Damage save (the dummy never attacks); Spacetime Inversion's Absolute Dominion stops non-Boss enemies only");
-    case "claimGain": return !core || !recall.canRecall ? r("Inactive", !core ? noCore : `${y.main.name} cannot Recall`) : !vault ? r("Inactive", vaultWhy) : r("In calc", `Centralization ${resolved ? `${y.solved.central} stacks (${round(y.centralUptime * 100)}% uptime)` : "from each Recall"} × +1% additional Clockwork Core damage on ${y.main.name} (provisional)`);
-    case "claimExtend": return !core || !recall.canRecall ? r("Inactive", !core ? noCore : `${y.main.name} cannot Recall`) : !vault ? r("Inactive", vaultWhy) : resolved && !(y.vault?.extensionRate > 0) ? r("Inactive", `Centralization ${y.solved.central} < ${y.extension.threshold}`) : r("In calc", resolved ? `+${round(y.vault.extensionRate)} s of Vault per second${y.vault.permanent ? ": the Vault never ends" : ""} (provisional)` : "extends the Vault per Recall at 20+ Centralization");
-    default: return null;
+    case "coreShare":
+      return !core
+        ? r("Inactive", noCore)
+        : y.coreShare?.valuePercent > 0
+          ? r(
+              "In calc",
+              `+${y.coreShare.valuePercent}% additional damage on ${y.main.name}'s hits: ${y.coreShare.sharePercent}% × (${y.coreShare.cooldownRecoveryPercent}% Cooldown Recovery Speed + ${y.coreShare.skillEffectDurationPercent}% Skill Effect Duration) = ${y.coreShare.rawPercent}%${y.coreShare.capped ? `, capped at ${y.coreShare.capPercent}%` : ""} (bonuses to the Core also apply to the supported skill; increased pools: provisional)`,
+            )
+          : r("Inactive", "no Cooldown Recovery Speed or Skill Effect Duration bonus");
+    case "nonMain":
+      return y.blockedTangles?.length
+        ? r(
+            "In calc",
+            `Tangle supports switched off on ${y.blockedTangles.map((item) => `${item.skill} (${item.support})`).join(", ")}; Spell Burst is blocked on every skill other than the Main Skill (provisional: the Tangle support has no effect)`,
+          )
+        : r(
+            "In calc",
+            "Spell Burst is blocked on every skill other than the Main Skill; no non-Main skill has a Tangle support",
+          );
+    case "coreGrant":
+      return !core
+        ? r("Inactive", noCore)
+        : r(
+            "In calc",
+            `${y.main.name}: ${y.tangles.reading ? `${y.tanglesUsed ?? y.tangles.max} Tangles on the Core, each triggering the skill at its casting interval (user-supplied 2026-10-18); only these Core triggers hit, the player's casts only summon or move the Core (user-decided 2026-10-18 from game-code evidence); no Spell Burst (game affix 534222016 on the Clockwork Core support)` : "one use per casting interval (Tangle switch off)"}; the Core's crit cooldown reduction and its shared bonuses are applied (provisional readings in the assumptions)`,
+          );
+    case "moonTangle":
+      return !core
+        ? r("Inactive", noCore)
+        : y.tangles.sources.some((line) => /Artificial Moon/.test(line.text))
+          ? r(
+              "In calc",
+              y.tangles.sources.find((line) => /Artificial Moon/.test(line.text)).text +
+                (y.tangles.raw > y.tangles.cap ? ` (Max Tangle Quantity capped at ${y.tangles.cap})` : ""),
+            )
+          : r("Inactive", "no Max Sentry Quantity bonus in the build");
+    case "moonDamage":
+      return !core
+        ? r("Inactive", noCore)
+        : y.moon?.valuePercent > 0
+          ? r(
+              "In calc",
+              `+${y.moon.valuePercent}% additional damage on ${y.main.name} (+${y.moon.perPercent}% × ${y.moon.sentryBonus} Max Sentry Quantity)`,
+            )
+          : r("Inactive", "no Max Sentry Quantity bonus in the build");
+    case "recalled":
+      return !core
+        ? r("Inactive", noCore)
+        : !recall.canRecall
+          ? r("Inactive", `${y.main.name} cannot Recall (${recall.recallBlock})`)
+          : !vault
+            ? r("Inactive", `no Recall: ${vaultWhy}`)
+            : !y.recallHits
+              ? r("Inactive", "Recalled hits are switched off")
+              : r(
+                  "In calc",
+                  `on the Recalled hits of ${y.main.name} only (${resolved ? `${round(y.solved.recallHitsPerUse)} per use` : "while Stasis Vault is active"}; Core-triggered casts inside the Vault, each Recall a full-damage fresh hit: user-supplied 2026-10-18; the player's casts fire nothing: user-decided 2026-10-18)`,
+                );
+    case "huntCast":
+      return !core
+        ? r("Inactive", noCore)
+        : !vault
+          ? r("Inactive", vaultWhy)
+          : r(
+              "In calc",
+              y.tangles.reading
+                ? `${y.vaultCastPercent}% additional Cast Speed on the Clockwork Core's triggers of ${y.main.name} while Stasis Vault is active${resolved && y.vault ? ` (${round(y.vault.uptime * 100)}% uptime)` : ""}; the only hit component (the player's casts deal no hits: user-decided 2026-10-18)`
+                : `${y.vaultCastPercent}% additional Cast Speed on ${y.main.name}'s uses while Stasis Vault is active${resolved && y.vault ? ` (${round(y.vault.uptime * 100)}% uptime)` : ""} (Tangle switch off: one component)`,
+            );
+    case "huntTrack":
+      return !core || !recall.canRecall || !vault
+        ? r("Inactive", !core ? noCore : !recall.canRecall ? `${y.main.name} cannot Recall` : vaultWhy)
+        : r("In calc", "each Recall homes onto the dummy inside the Vault: one more hit per Recall (provisional)");
+    case "huntRecall":
+      return !core || !recall.canRecall
+        ? r("Inactive", !core ? noCore : `${y.main.name} cannot Recall (${recall.recallBlock})`)
+        : recall.recallBonus > 0
+          ? r(
+              vault ? "In calc" : "Inactive",
+              vault
+                ? `+${recall.recallBonus} Max Recall Count from ${recall.jumps.total} Jump${recall.jumps.total === 1 ? "" : "s"} (${recall.jumps.sources.map((line) => `${line.text} (${line.source})`).join("; ")}): Max Recall Count ${recall.maxRecall} (base ${BASE_MAX_RECALL_COUNT}, once per trajectory: user-supplied 2026-10-18)`
+                : vaultWhy,
+            )
+          : r("Inactive", `${y.main.name} has no Jump`);
+    case "huntPenetration":
+      return !core || !recall.canRecall
+        ? r("Inactive", !core ? noCore : `${y.main.name} cannot Recall`)
+        : recall.penetrationBonus?.valuePercent > 0
+          ? r(
+              vault && y.recallHits ? "In calc" : "Inactive",
+              vault && y.recallHits
+                ? `+${recall.penetrationBonus.valuePercent}% on Recalled hits (${recall.penetration.total} Penetration: ${recall.penetration.sources.map((line) => line.text).join("; ")}; the Vault's "always Penetrate" adds no count: provisional)`
+                : !vault
+                  ? vaultWhy
+                  : "Recalled hits are switched off",
+            )
+          : r(
+              "Inactive",
+              `${y.main.name} has no Penetration bonus (the Vault's "always Penetrate" is not counted: provisional)`,
+            );
+    case "threadsLinks":
+    case "threadsTransfer":
+    case "threadsRatio":
+      return r(
+        "Not on dummy",
+        "Chains of Enslavement transfer damage between linked enemies: the dummy is the only enemy",
+      );
+    case "threadsCooldown":
+      return r(
+        "No DPS effect",
+        "Supreme Descent's cooldown has no damage of its own (Governance is held while it is pressed on cooldown)",
+      );
+    case "commandGain":
+      return !y.governance
+        ? r("Inactive", "no Governance line")
+        : !descent
+          ? r("Inactive", descentWhy)
+          : !core
+            ? r("Inactive", noCore)
+            : r(
+                "In calc",
+                `Governance ${resolved ? y.governanceStacks : y.governance.maxStacks} stacks × +1% additional Clockwork Core damage on ${y.main.name} (hits on the linked Elite dummy; link held while Supreme Descent is pressed on cooldown; provisional)`,
+              );
+    case "commandDominion":
+      return r("Not on dummy", "Absolute Dominion stops non-Boss enemies only; the dummy is a Boss");
+    case "measureExtend":
+      return !selves
+        ? r("Inactive", selvesWhy)
+        : r(
+            "In calc",
+            `Selves of All Realms' cooldown ${resolved && y.selves ? `${round(y.selves.cooldown)} s` : ""} = 16 s × Cooldown Recovery Speed, capped at 24 s (provisional formula)`,
+          );
+    case "measureEffect":
+      return !selves
+        ? r("Inactive", selvesWhy)
+        : !y.alternate?.lines?.length
+          ? r(
+              "Inactive",
+              y.alternate
+                ? `${y.alternate.skill}'s Alternate Spacetime effect is ${y.alternate.status} (${y.alternate.reason})`
+                : noCore,
+            )
+          : r(
+              "In calc",
+              `+${y.selvesEffectPercent}% effect on ${y.alternate.skill}'s Alternate Spacetime values and caps (${y.cooldownRecovery.increasedPercent}% Cooldown Recovery Speed; provisional)`,
+            );
+    case "measureDuration":
+      return !selves
+        ? r("Inactive", selvesWhy)
+        : r(
+            "In calc",
+            `Skill Effect Duration counts twice for Selves of All Realms (lasts ${resolved && y.selves ? `${round(y.selves.duration)} s` : "7 s × (1 + 2 × Skill Effect Duration)"})`,
+          );
+    case "liftSummon":
+      return r("No DPS effect", "the planner already keeps the Core present (best case)");
+    case "liftRestore":
+      return r("Not on dummy", "needs enemies to defeat");
+    case "liftDamage":
+      return !selves
+        ? r("Inactive", selvesWhy)
+        : !core
+          ? r("Inactive", noCore)
+          : r(
+              "In calc",
+              `+${y.lift.percent}% additional Clockwork Core damage on ${y.main.name}${resolved && y.selves ? ` × ${round(y.selves.afterUptime * 100)}% uptime (Selves ${round(y.selves.duration)} s + ${y.lift.afterSeconds} s of every ${round(y.selves.cooldown)} s)` : ""}`,
+            );
+    case "doomDefer":
+    case "doomInversion":
+      return r(
+        "No DPS effect",
+        "defensive: deferred Hit Damage taken and the Fatal Damage save (the dummy never attacks); Spacetime Inversion's Absolute Dominion stops non-Boss enemies only",
+      );
+    case "claimGain":
+      return !core || !recall.canRecall
+        ? r("Inactive", !core ? noCore : `${y.main.name} cannot Recall`)
+        : !vault
+          ? r("Inactive", vaultWhy)
+          : r(
+              "In calc",
+              `Centralization ${resolved ? `${y.solved.central} stacks (${round(y.centralUptime * 100)}% uptime)` : "from each Recall"} × +1% additional Clockwork Core damage on ${y.main.name} (provisional)`,
+            );
+    case "claimExtend":
+      return !core || !recall.canRecall
+        ? r("Inactive", !core ? noCore : `${y.main.name} cannot Recall`)
+        : !vault
+          ? r("Inactive", vaultWhy)
+          : resolved && !(y.vault?.extensionRate > 0)
+            ? r("Inactive", `Centralization ${y.solved.central} < ${y.extension.threshold}`)
+            : r(
+                "In calc",
+                resolved
+                  ? `+${round(y.vault.extensionRate)} s of Vault per second${y.vault.permanent ? ": the Vault never ends" : ""} (provisional)`
+                  : "extends the Vault per Recall at 20+ Centralization",
+              );
+    default:
+      return null;
   }
 }
 
@@ -630,5 +1492,10 @@ export function yougaLineStatus(state, key) {
 export function alternateSpacetimeStatus(skillName) {
   const rule = ALTERNATE[skillName];
   if (!rule) return { status: "Not modeled", reason: "no reader" };
-  return rule.read ? { status: "In calc", reason: "read when the skill is supported by Clockwork Core and Selves of All Realms is active" } : { status: rule.status || "Not modeled", reason: rule.reason };
+  return rule.read
+    ? {
+        status: "In calc",
+        reason: "read when the skill is supported by Clockwork Core and Selves of All Realms is active",
+      }
+    : { status: rule.status || "Not modeled", reason: rule.reason };
 }

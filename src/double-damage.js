@@ -12,27 +12,58 @@ import { normalizePercentageText } from "./percentage-text.js";
 // chance − 100%) into Quadruple Damage, so the expected factor is 2 × (1 − q) + 4 × q (provisional; the chance is the time-averaged
 // sum, so a God's Boon window's overflow is averaged first).
 const N = "(\\d+(?:\\.\\d+)?)";
-const QUADRUPLE = /^For every 1% overflown Double Damage Chance, there is a 1% chance to deal Quadruple Damage instead$/i;
+const QUADRUPLE =
+  /^For every 1% overflown Double Damage Chance, there is a 1% chance to deal Quadruple Damage instead$/i;
 const RULES = [
   { pattern: new RegExp(`^\\+${N}% chance to deal Double Damage$`, "i"), tags: [] },
   { pattern: new RegExp(`^\\+${N}% chance for Spells to deal Double Damage$`, "i"), tags: ["Spell"] },
-  { pattern: new RegExp(`^(?:Attack Skills: a \\+${N}% chance to deal Double Damage|\\+${N}% chance for Attack Skills to deal Double Damage)$`, "i"), tags: ["Attack"] },
+  {
+    pattern: new RegExp(
+      `^(?:Attack Skills: a \\+${N}% chance to deal Double Damage|\\+${N}% chance for Attack Skills to deal Double Damage)$`,
+      "i",
+    ),
+    tags: ["Attack"],
+  },
   // "while channeling": a channeled skill holds its channel on the dummy (own buffs pre-built).
   { pattern: new RegExp(`^\\+${N}% chance to deal Double Damage while channeling$`, "i"), tags: ["Channeled"] },
   // Ring-slot wording (residual batch): only from that ring slot (the gear line keeps its slot, src/modifier-texts.js).
-  { pattern: new RegExp(`^\\+${N}% chance to deal Double Damage while channeling when equipped in the (left|right) Ring slot$`, "i"), tags: ["Channeled"], ringSlot: true },
+  {
+    pattern: new RegExp(
+      `^\\+${N}% chance to deal Double Damage while channeling when equipped in the (left|right) Ring slot$`,
+      "i",
+    ),
+    tags: ["Channeled"],
+    ringSlot: true,
+  },
   // "+1% chance to deal Double Damage per 10 Strength, up to +30%": stat-sheet Strength, rounded down (provisional).
-  { pattern: new RegExp(`^\\+${N}% chance to deal Double Damage per (\\d+) (Strength|Dexterity|Intelligence), up to \\+${N}%$`, "i"), tags: [], perStat: true }
+  {
+    pattern: new RegExp(
+      `^\\+${N}% chance to deal Double Damage per (\\d+) (Strength|Dexterity|Intelligence), up to \\+${N}%$`,
+      "i",
+    ),
+    tags: [],
+    perStat: true,
+  },
 ];
 
 /** The Double Damage rule a line follows, or null. */
 export function classifyDoubleDamageLine(text) {
-  const clean = normalizePercentageText(String(text ?? "")).replace(/\s+/g, " ").trim();
+  const clean = normalizePercentageText(String(text ?? ""))
+    .replace(/\s+/g, " ")
+    .trim();
   for (const rule of RULES) {
     const match = clean.match(rule.pattern);
     if (!match) continue;
     const values = match.slice(1).filter((value) => value !== undefined);
-    if (rule.perStat) return { value: Number(values[0]), per: Number(values[1]), stat: values[2].toLowerCase(), cap: Number(values[3]), tags: rule.tags, perStat: true };
+    if (rule.perStat)
+      return {
+        value: Number(values[0]),
+        per: Number(values[1]),
+        stat: values[2].toLowerCase(),
+        cap: Number(values[3]),
+        tags: rule.tags,
+        perStat: true,
+      };
     if (rule.ringSlot) return { value: Number(values[0]), tags: rule.tags, slot: `${values[1].toLowerCase()}Ring` };
     return { value: Number(values[0]), tags: rule.tags };
   }
@@ -50,11 +81,25 @@ export function doubleDamageForSkill(modifierTexts = [], { tags = [], stats = {}
     const rule = classifyDoubleDamageLine(line.text);
     if (!rule || !rule.tags.every((tag) => tagSet.has(tag)) || (rule.slot && line.slot !== rule.slot)) continue;
     const scale = line.multiplier ?? 1;
-    const value = rule.perStat ? Math.min(rule.cap, Math.floor(Math.max(0, Number(stats[rule.stat]) || 0) / rule.per) * rule.value) * scale : rule.value * scale;
+    const value = rule.perStat
+      ? Math.min(rule.cap, Math.floor(Math.max(0, Number(stats[rule.stat]) || 0) / rule.per) * rule.value) * scale
+      : rule.value * scale;
     if (value) sources.push({ source: line.source, text: line.text, value });
   }
   const chancePercent = sources.reduce((total, line) => total + line.value, 0);
-  const quadruple = modifierTexts.some((line) => QUADRUPLE.test(normalizePercentageText(String(line?.text ?? "")).replace(/\s+/g, " ").replace(/(\d) %/g, "$1%").trim()));
+  const quadruple = modifierTexts.some((line) =>
+    QUADRUPLE.test(
+      normalizePercentageText(String(line?.text ?? ""))
+        .replace(/\s+/g, " ")
+        .replace(/(\d) %/g, "$1%")
+        .trim(),
+    ),
+  );
   const overflow = quadruple ? Math.max(0, Math.min(100, chancePercent - 100)) / 100 : 0;
-  return { chancePercent, factor: 1 + Math.max(0, Math.min(100, chancePercent)) / 100 + 2 * overflow, sources, quadrupleChancePercent: overflow * 100 };
+  return {
+    chancePercent,
+    factor: 1 + Math.max(0, Math.min(100, chancePercent)) / 100 + 2 * overflow,
+    sources,
+    quadrupleChancePercent: overflow * 100,
+  };
 }

@@ -15,14 +15,19 @@ export const LUCKY_DAMAGE_PATTERNS = Object.freeze({
   veryLuckyDamage: /^Very Lucky Damage$/i,
   luckyCrit: /^Lucky Critical Strike$/i,
   luckyVsNumbed: /^You and Minions deal Lucky Damage against Numbed enemies$/i,
-  scopedLuckyDamage: new RegExp(`^(?:(Very )?Lucky (${KINDS}) Damage|(?:Your )?(${KINDS}) Damage (?:is|becomes|gains) (Very )?Lucky)$`, "i")
+  scopedLuckyDamage: new RegExp(
+    `^(?:(Very )?Lucky (${KINDS}) Damage|(?:Your )?(${KINDS}) Damage (?:is|becomes|gains) (Very )?Lucky)$`,
+    "i",
+  ),
 });
 
 const title = (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
 
 /** The scope of a scoped Lucky line, or null. { kind: "Lightning" | "Spell" | "Attack" | "Hit" | …, rolls: 2 | 3 }. */
 export function scopedLuckyLine(text) {
-  const match = String(text ?? "").trim().match(LUCKY_DAMAGE_PATTERNS.scopedLuckyDamage);
+  const match = String(text ?? "")
+    .trim()
+    .match(LUCKY_DAMAGE_PATTERNS.scopedLuckyDamage);
   if (!match) return null;
   return { kind: title(match[2] || match[3]), rolls: match[1] || match[4] ? 3 : 2 };
 }
@@ -33,11 +38,26 @@ export function scopedLuckyLine(text) {
  */
 export function readLuckyDamage(lines = [], { numbed = false } = {}) {
   const find = (pattern) => lines.filter((line) => pattern.test(line.clean));
-  const luckyLines = find(LUCKY_DAMAGE_PATTERNS.luckyDamage), veryLucky = find(LUCKY_DAMAGE_PATTERNS.veryLuckyDamage);
-  const luckyCritLines = find(LUCKY_DAMAGE_PATTERNS.luckyCrit), luckyNumbed = find(LUCKY_DAMAGE_PATTERNS.luckyVsNumbed);
-  const scoped = lines.map((line) => { const scope = scopedLuckyLine(line.clean); return scope ? { line, ...scope } : null; }).filter(Boolean);
+  const luckyLines = find(LUCKY_DAMAGE_PATTERNS.luckyDamage),
+    veryLucky = find(LUCKY_DAMAGE_PATTERNS.veryLuckyDamage);
+  const luckyCritLines = find(LUCKY_DAMAGE_PATTERNS.luckyCrit),
+    luckyNumbed = find(LUCKY_DAMAGE_PATTERNS.luckyVsNumbed);
+  const scoped = lines
+    .map((line) => {
+      const scope = scopedLuckyLine(line.clean);
+      return scope ? { line, ...scope } : null;
+    })
+    .filter(Boolean);
   const damageRolls = veryLucky.length ? 3 : luckyLines.length || (luckyNumbed.length && numbed) ? 2 : 1;
-  return { damageRolls, critRolls: luckyCritLines.length ? 2 : 1, luckyLines, veryLucky, luckyCritLines, luckyNumbed, scoped };
+  return {
+    damageRolls,
+    critRolls: luckyCritLines.length ? 2 : 1,
+    luckyLines,
+    veryLucky,
+    luckyCritLines,
+    luckyNumbed,
+    scoped,
+  };
 }
 
 /**
@@ -49,7 +69,12 @@ export function luckyRollsFor(lucky, { damageType = null, tags = [], hit = true 
   let rolls = Math.max(1, Number(lucky?.damageRolls) || 1);
   const tagSet = new Set(tags);
   for (const scope of lucky?.scoped || []) {
-    const matches = scope.kind === "Hit" ? hit : scope.kind === "Spell" || scope.kind === "Attack" ? tagSet.has(scope.kind) : scope.kind === damageType;
+    const matches =
+      scope.kind === "Hit"
+        ? hit
+        : scope.kind === "Spell" || scope.kind === "Attack"
+          ? tagSet.has(scope.kind)
+          : scope.kind === damageType;
     if (matches) rolls = Math.max(rolls, scope.rolls);
   }
   return rolls;
@@ -57,7 +82,7 @@ export function luckyRollsFor(lucky, { damageType = null, tags = [], hit = true 
 
 /** Expected value of the best of `rolls` uniform rolls on [min, max]: min + (max − min) × rolls / (rolls + 1). */
 export function luckyRollAverage(min, max, rolls = 1) {
-  return min + (max - min) * rolls / (rolls + 1);
+  return min + ((max - min) * rolls) / (rolls + 1);
 }
 
 /** Crit chance with Lucky Critical Strike: 1 − (1 − p)^rolls. */
@@ -80,5 +105,8 @@ export function randomRollNote(label, minPercent, maxPercent, rolls = 1) {
   const factor = randomRollFactor(minPercent, maxPercent, rolls);
   const range = `${label} ${minPercent}–${maxPercent}%`;
   if (rolls <= 1) return { factor, text: `${range}: average ${(minPercent + maxPercent) / 2}% (no Lucky)` };
-  return { factor, text: `${range}: ${rolls === 3 ? "Very Lucky → best of three" : "Lucky → best of two"}, ×${Math.round(factor * 10000) / 10000}` };
+  return {
+    factor,
+    text: `${range}: ${rolls === 3 ? "Very Lucky → best of three" : "Lucky → best of two"}, ×${Math.round(factor * 10000) / 10000}`,
+  };
 }

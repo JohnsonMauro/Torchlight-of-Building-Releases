@@ -1,15 +1,15 @@
 import { normalizePercentageText } from "./percentage-text.js";
 import { pactspiritLevelsSs13 } from "./data/pacts/pactspirit-levels-ss13.js";
 
-export function pactspiritLevel(name, savedLevels, fallback=1){
-  const saved=Number(savedLevels?.[name]);
-  return Math.max(1,Math.min(6,Number.isInteger(saved)&&saved>=1?saved:fallback));
+export function pactspiritLevel(name, savedLevels, fallback = 1) {
+  const saved = Number(savedLevels?.[name]);
+  return Math.max(1, Math.min(6, Number.isInteger(saved) && saved >= 1 ? saved : fallback));
 }
 
-export function pactspiritEffectsAtLevel(name, level){
-  return (pactspiritLevelsSs13[name]?.[Math.max(1,Math.min(6,Number(level)||1))]||[])
-    .flatMap((effect)=>effect.split("\n"))
-    .map((effect)=>effect.trim())
+export function pactspiritEffectsAtLevel(name, level) {
+  return (pactspiritLevelsSs13[name]?.[Math.max(1, Math.min(6, Number(level) || 1))] || [])
+    .flatMap((effect) => effect.split("\n"))
+    .map((effect) => effect.trim())
     .filter(Boolean);
 }
 
@@ -19,7 +19,9 @@ export function orderedPactspiritNodes(tree = []) {
   const outer = tree.find((node) => node.ring === "outer");
   const destiny = tree.find((node) => node.ring === "destiny");
   return inner.length >= 6 && mid.length >= 3
-    ? [...inner.slice(0, 2), mid[0], ...inner.slice(2, 4), mid[1], ...inner.slice(4, 6), mid[2], outer, destiny].filter(Boolean)
+    ? [...inner.slice(0, 2), mid[0], ...inner.slice(2, 4), mid[1], ...inner.slice(4, 6), mid[2], outer, destiny].filter(
+        Boolean,
+      )
     : [...inner, ...mid, outer, destiny].filter(Boolean);
 }
 
@@ -50,7 +52,7 @@ export function nativePactspiritNodeEffect(node) {
     "chance to inflict damaging ailments": "damagingAilmentChancePercent",
     "additional damage taken": "additionalDamageTakenPercent",
     "xp earned": "experienceEarnedPercent",
-    "xp lost upon death": "experienceLossPercent"
+    "xp lost upon death": "experienceLossPercent",
   }[match[2].trim().toLowerCase()];
   return stat ? { stat, value: Number(match[1]) } : null;
 }

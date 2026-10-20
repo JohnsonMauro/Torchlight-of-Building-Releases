@@ -9,33 +9,53 @@ export function updateBannerView(status) {
   switch (status.state) {
     case "available":
       return status.canDownload
-        ? { text: `Version ${version} is available`, progress: null, actions: [
-          { id: "download", label: "Download and restart", primary: true },
-          { id: "notes", label: "Release notes" },
-          { id: "later", label: "Later" }
-        ] }
-        : { text: `Version ${version} is available`, progress: null, actions: [
-          { id: "release-page", label: "Open release page", primary: true },
-          { id: "later", label: "Later" }
-        ] };
+        ? {
+            text: `Version ${version} is available`,
+            progress: null,
+            actions: [
+              { id: "download", label: "Download and restart", primary: true },
+              { id: "notes", label: "Release notes" },
+              { id: "later", label: "Later" },
+            ],
+          }
+        : {
+            text: `Version ${version} is available`,
+            progress: null,
+            actions: [
+              { id: "release-page", label: "Open release page", primary: true },
+              { id: "later", label: "Later" },
+            ],
+          };
     case "downloading": {
       const percent = Math.max(0, Math.min(100, Math.floor(Number(status.percent) || 0)));
-      return { text: `Downloading version ${version}… ${percent}%`, progress: percent, actions: [{ id: "later", label: "Later" }] };
+      return {
+        text: `Downloading version ${version}… ${percent}%`,
+        progress: percent,
+        actions: [{ id: "later", label: "Later" }],
+      };
     }
     case "downloaded":
-      return { text: `Version ${version} is ready to install`, progress: null, actions: [
-        { id: "install", label: "Restart to update", primary: true },
-        { id: "later", label: "Later" }
-      ] };
+      return {
+        text: `Version ${version} is ready to install`,
+        progress: null,
+        actions: [
+          { id: "install", label: "Restart to update", primary: true },
+          { id: "later", label: "Later" },
+        ],
+      };
     case "up-to-date":
       return { text: "You're up to date", progress: null, actions: [{ id: "later", label: "Close" }] };
     case "error":
       return { text: "Couldn't check for updates", progress: null, actions: [{ id: "later", label: "Close" }] };
     case "download-error":
-      return { text: "Couldn't download the update", progress: null, actions: [
-        { id: "release-page", label: "Open release page" },
-        { id: "later", label: "Close" }
-      ] };
+      return {
+        text: "Couldn't download the update",
+        progress: null,
+        actions: [
+          { id: "release-page", label: "Open release page" },
+          { id: "later", label: "Close" },
+        ],
+      };
     default:
       return null;
   }
@@ -58,13 +78,19 @@ export function installUpdateBanner(doc = globalThis.document, bridge = globalTh
     notes: () => bridge.openReleaseNotes(),
     "release-page": () => bridge.openReleasePage(),
     install: () => bridge.install(),
-    later: () => { banner.hidden = true; return bridge.dismiss(); }
+    later: () => {
+      banner.hidden = true;
+      return bridge.dismiss();
+    },
   };
 
   function render(status) {
     const view = updateBannerView(status);
     banner.replaceChildren();
-    if (!view) { banner.hidden = true; return; }
+    if (!view) {
+      banner.hidden = true;
+      return;
+    }
     const text = doc.createElement("span");
     text.className = "update-banner-text";
     text.textContent = view.text;
@@ -92,12 +118,19 @@ export function installUpdateBanner(doc = globalThis.document, bridge = globalTh
     const button = event.target.closest?.("button[data-update-action]");
     const run = button && actions[button.dataset.updateAction];
     if (!run) return;
-    Promise.resolve().then(run).catch(() => {});
+    Promise.resolve()
+      .then(run)
+      .catch(() => {});
   });
 
   bridge.onStatus(render);
   // A status pushed before this module loaded (e.g. a manual check during start-up).
-  Promise.resolve().then(() => bridge.current?.()).then((status) => { if (status && banner.hidden) render(status); }).catch(() => {});
+  Promise.resolve()
+    .then(() => bridge.current?.())
+    .then((status) => {
+      if (status && banner.hidden) render(status);
+    })
+    .catch(() => {});
 
   const controller = { render, element: banner };
   doc.__tliUpdateBanner = controller;

@@ -16,7 +16,18 @@ const folder = mkdtempSync(join(tmpdir(), "tli-golden-"));
 
 try {
   const archive = join(folder, "ref.tar");
-  execFileSync("git", ["-C", repoRoot, "archive", "--format=tar", `--output=${archive}`, ref, "--", "src", "tests/golden", ":(exclude)src/assets"]);
+  execFileSync("git", [
+    "-C",
+    repoRoot,
+    "archive",
+    "--format=tar",
+    `--output=${archive}`,
+    ref,
+    "--",
+    "src",
+    "tests/golden",
+    ":(exclude)src/assets",
+  ]);
   execFileSync("tar", ["-xf", archive, "-C", folder]);
   writeFileSync(join(folder, "package.json"), JSON.stringify({ type: "module" }));
   const before = await import(pathToFileURL(join(folder, "tests/golden/cases.js")).href);
@@ -25,7 +36,10 @@ try {
   let changed = 0;
   for (const { id, state } of after.goldenInputs()) {
     if (onlyId && id !== onlyId) continue;
-    if (!beforeInputs.has(id)) { console.log(`+ ${id}: new case`); continue; }
+    if (!beforeInputs.has(id)) {
+      console.log(`+ ${id}: new case`);
+      continue;
+    }
     const left = canonicalValue(before.calculateGoldenCase(beforeInputs.get(id)));
     const right = canonicalValue(after.calculateGoldenCase(state));
     const paths = differingPaths(left, right);

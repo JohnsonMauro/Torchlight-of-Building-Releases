@@ -29,8 +29,7 @@ export const MINION_BASE_DAMAGE_FROZEN_LEVEL = 20;
 
 // TLIDB summon-skill Minion table, "damage" column, Lv.1-20 (index = level - 1).
 export const MINION_BASE_DAMAGE_BY_LEVEL = Object.freeze([
-  10, 12, 16, 20, 24, 28, 34, 40, 48, 58,
-  66, 74, 84, 96, 108, 124, 150, 180, 220, 300,
+  10, 12, 16, 20, 24, 28, 34, 40, 48, 58, 66, 74, 84, 96, 108, 124, 150, 180, 220, 300,
 ]);
 
 export function minionBaseDamage(level) {
@@ -38,39 +37,68 @@ export function minionBaseDamage(level) {
   return MINION_BASE_DAMAGE_BY_LEVEL[Math.min(level, MINION_BASE_DAMAGE_FROZEN_LEVEL) - 1];
 }
 
-const UNMODIFIED = "Unmodified Minion damage: no Minion Damage lines, crit, penetration, Command or Spirit Magus Stage/Growth bonuses; player damage lines never apply to Minions (manual rule 1001011821)";
+const UNMODIFIED =
+  "Unmodified Minion damage: no Minion Damage lines, crit, penetration, Command or Spirit Magus Stage/Growth bonuses; player damage lines never apply to Minions (manual rule 1001011821)";
 // In-game checks (user, 2026-10-11): God of Swords and Huge Ember Automaton Lv.20 show Base Damage 300 (Life 1500),
 // and Goblin Priest Lv.1 shows Base Damage 10 (Life 50); crit rating 500 / crit damage 150 at both levels. So the
 // modules use the shared curve at both ends; levels 2–19 follow the same TLIDB table.
-const SHARED_CURVE_ASSUMED = "Modularization Minion uses the shared Minion Base Damage curve (confirmed in game at Lv.1 = 10 and Lv.20 = 300)";
-const PERSISTENT = "Persistent damage per second (config_skill_damage row kind 2); duration, area overlap and use rate not modeled";
+const SHARED_CURVE_ASSUMED =
+  "Modularization Minion uses the shared Minion Base Damage curve (confirmed in game at Lv.1 = 10 and Lv.20 = 300)";
+const PERSISTENT =
+  "Persistent damage per second (config_skill_damage row kind 2); duration, area overlap and use rate not modeled";
 
 // Per-level percentages are the config_skill_damage typed entries (gamedata-2026-10-10), Lv.1-20 (index = level - 1).
 // Group links: the Spirit Magus and Modularization families are numbered per Minion (68x Fire Magus, 69x Frost Magus,
 // 109x Chief Machinist), which resolves the two ambiguous value links in research/skill-inventory-2026-10-11.json.
 export const BASE_DAMAGE_SKILL_COMPONENTS = Object.freeze({
   "Blazing Spin": Object.freeze({
-    minion: "Fire Magus", minionType: "Spirit Magus", summonSkill: "Summon Fire Magus", minionSkillType: "Empower",
-    gameGroup: 682, delivery: "persistent", damageType: "Fire", addedDamage: false,
+    minion: "Fire Magus",
+    minionType: "Spirit Magus",
+    summonSkill: "Summon Fire Magus",
+    minionSkillType: "Empower",
+    gameGroup: 682,
+    delivery: "persistent",
+    damageType: "Fire",
+    addedDamage: false,
     // Lv.19 is 137 and Lv.20 is 136 in the game rows; TLIDB Lv.20 shows 136%.
-    percentByLevel: Object.freeze([90, 93, 96, 98, 101, 103, 106, 109, 111, 114, 116, 119, 121, 124, 127, 129, 132, 134, 137, 136]),
+    percentByLevel: Object.freeze([
+      90, 93, 96, 98, 101, 103, 106, 109, 111, 114, 116, 119, 121, 124, 127, 129, 132, 134, 137, 136,
+    ]),
     assumptions: Object.freeze([UNMODIFIED, PERSISTENT]),
   }),
   "Frost Release": Object.freeze({
-    minion: "Frost Magus", minionType: "Spirit Magus", summonSkill: "Summon Frost Magus", minionSkillType: "Empower",
-    gameGroup: 692, delivery: "hit", damageType: "Cold", addedDamage: true,
+    minion: "Frost Magus",
+    minionType: "Spirit Magus",
+    summonSkill: "Summon Frost Magus",
+    minionSkillType: "Empower",
+    gameGroup: 692,
+    delivery: "hit",
+    damageType: "Cold",
+    addedDamage: true,
     percentByLevel: Object.freeze([48, 49, 51, 52, 53, 55, 56, 57, 59, 60, 61, 63, 64, 66, 67, 68, 70, 71, 72, 72]),
     assumptions: Object.freeze([UNMODIFIED]),
   }),
   Firebomb: Object.freeze({
-    minion: "Chief Machinist", minionType: "Synthetic Troop (Modularization)", summonSkill: "Module: Chief Machinist", minionSkillType: "Modularization",
-    gameGroup: 1091, delivery: "hit", damageType: "Fire", addedDamage: true,
+    minion: "Chief Machinist",
+    minionType: "Synthetic Troop (Modularization)",
+    summonSkill: "Module: Chief Machinist",
+    minionSkillType: "Modularization",
+    gameGroup: 1091,
+    delivery: "hit",
+    damageType: "Fire",
+    addedDamage: true,
     percentByLevel: Object.freeze(Array(20).fill(73)),
     assumptions: Object.freeze([UNMODIFIED, SHARED_CURVE_ASSUMED, "Number of bomb areas per cast not sourced"]),
   }),
   Pyromania: Object.freeze({
-    minion: "Chief Machinist", minionType: "Synthetic Troop (Modularization)", summonSkill: "Module: Chief Machinist", minionSkillType: "Modularization",
-    gameGroup: 1092, delivery: "persistent", damageType: "Fire", addedDamage: false,
+    minion: "Chief Machinist",
+    minionType: "Synthetic Troop (Modularization)",
+    summonSkill: "Module: Chief Machinist",
+    minionSkillType: "Modularization",
+    gameGroup: 1092,
+    delivery: "persistent",
+    damageType: "Fire",
+    addedDamage: false,
     percentByLevel: Object.freeze([45, 47, 48, 49, 50, 52, 53, 54, 56, 57, 58, 59, 61, 62, 63, 65, 66, 67, 68, 68]),
     assumptions: Object.freeze([UNMODIFIED, SHARED_CURVE_ASSUMED, PERSISTENT]),
   }),
@@ -97,7 +125,7 @@ export function baseDamageSkillDamage(name, level, { addedFlatDamage = 0 } = {})
     percent,
     addedFlatDamage: added,
     levelMultiplier,
-    amount: ((baseDamage + added) * percent / 100) * levelMultiplier,
+    amount: (((baseDamage + added) * percent) / 100) * levelMultiplier,
     unit: component.delivery === "persistent" ? "per second" : "per hit",
     assumptions: component.assumptions,
   };

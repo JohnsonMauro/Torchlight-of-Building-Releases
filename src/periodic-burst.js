@@ -18,16 +18,27 @@ const round = (value) => Math.round(value * 10000) / 10000;
  * @param {(setup: object) => number} p.cooldownFor the setup's base cooldown in seconds (0 = none)
  * @returns {{ lines: object[], entries: object[] }}
  */
-export function resolvePeriodicBurst({ setups = [], activeNames = new Set(), mobilitySkillUsed = true, cooldownFor = () => 0 } = {}) {
-  const lines = [], entries = [];
+export function resolvePeriodicBurst({
+  setups = [],
+  activeNames = new Set(),
+  mobilitySkillUsed = true,
+  cooldownFor = () => 0,
+} = {}) {
+  const lines = [],
+    entries = [];
   for (const setup of setups) {
     if (setup.enabled === false || !activeNames.has(setup.name) || !(setup.tags || []).includes("Mobility")) continue;
     const clauses = (setup.supportEffects?.clauses || []).filter((clause) => clause.family === "periodicBuff");
     const speed = clauses.find((clause) => clause.kind === "speed");
     if (!speed) continue;
     const durationSeconds = clauses.find((clause) => clause.kind === "duration")?.seconds ?? 0;
-    const cooldownLines = (setup.supportEffects?.cooldown || []);
-    const cooldownFactor = Math.max(1e-9, 1 + cooldownLines.filter((line) => !line.additional).reduce((sum, line) => sum + line.value, 0) / 100) * cooldownLines.filter((line) => line.additional).reduce((product, line) => product * (1 + line.value / 100), 1);
+    const cooldownLines = setup.supportEffects?.cooldown || [];
+    const cooldownFactor =
+      Math.max(
+        1e-9,
+        1 + cooldownLines.filter((line) => !line.additional).reduce((sum, line) => sum + line.value, 0) / 100,
+      ) *
+      cooldownLines.filter((line) => line.additional).reduce((product, line) => product * (1 + line.value / 100), 1);
     const baseCooldown = Math.max(0, Number(cooldownFor(setup)) || 0);
     const cooldownSeconds = baseCooldown / cooldownFactor;
     const periodSeconds = Math.max(speed.everySeconds, cooldownSeconds);
@@ -35,8 +46,26 @@ export function resolvePeriodicBurst({ setups = [], activeNames = new Set(), mob
     const value = round(speed.value * uptime);
     const active = mobilitySkillUsed && value > 0;
     const text = `${setup.name}: Periodic Burst +${speed.value}% Attack and Cast Speed for ${durationSeconds} s, a stack every max(${speed.everySeconds} s, cooldown ${round(cooldownSeconds)} s) = ${round(periodSeconds)} s → uptime ${round(uptime)} = +${value}% Attack and Cast Speed on average for every skill (${setup.name} used whenever its cooldown allows: user rule 2026-10-14; provisional)`;
-    entries.push({ setupKey: setup.setupKey, skill: setup.name, value: active ? value : 0, uptime: round(uptime), periodSeconds: round(periodSeconds), durationSeconds, active, text: active ? text : `${setup.name}: Periodic Burst inactive (${mobilitySkillUsed ? "no buff duration read" : "Mobility Skill used recently is switched off"})` });
-    if (active) lines.push({ text: `+${value}% Attack and Cast Speed`, source: `${setup.name}: Periodic Burst (+${speed.value}% × ${round(uptime)} uptime)`, origin: "derived", multiplier: 1, periodicBurst: true });
+    entries.push({
+      setupKey: setup.setupKey,
+      skill: setup.name,
+      value: active ? value : 0,
+      uptime: round(uptime),
+      periodSeconds: round(periodSeconds),
+      durationSeconds,
+      active,
+      text: active
+        ? text
+        : `${setup.name}: Periodic Burst inactive (${mobilitySkillUsed ? "no buff duration read" : "Mobility Skill used recently is switched off"})`,
+    });
+    if (active)
+      lines.push({
+        text: `+${value}% Attack and Cast Speed`,
+        source: `${setup.name}: Periodic Burst (+${speed.value}% × ${round(uptime)} uptime)`,
+        origin: "derived",
+        multiplier: 1,
+        periodicBurst: true,
+      });
   }
   return { lines, entries };
 }

@@ -3,10 +3,20 @@
 // it counts as a Boss (so an Elite) and the player stands within 10 m, so
 // "Elite within 10 m" is automatic too. Other target circumstances stay manual.
 export const automaticCombatConditionIds = Object.freeze([
-  "blockedRecently", "blur", "tideContact", "onTheTide", "waveAria", "idyll",
-  "fireInfiltration", "entangledPain", "scorch", "affliction", "aim", "nearbyElite",
+  "blockedRecently",
+  "blur",
+  "tideContact",
+  "onTheTide",
+  "waveAria",
+  "idyll",
+  "fireInfiltration",
+  "entangledPain",
+  "scorch",
+  "affliction",
+  "aim",
+  "nearbyElite",
   // User rule (2026-10-10): moving is constant, so movement-driven stacks (Kismet: Civet) are full.
-  "moving"
+  "moving",
 ]);
 
 export function requestedCombatConditions(combat = {}) {
@@ -21,6 +31,7 @@ export function requestedCombatConditions(combat = {}) {
   // Best-case assumption switches (Config tab "Best-case assumptions" list; src/planner.js bestCaseAssumptions): a stored
   // switch wins in both modes, so Hit or blocked recently (automatic above) can still be turned off. "Reset to best case"
   // clears them.
-  for (const [id, on] of Object.entries(combat.bestCaseOverrides || {})) if (typeof on === "boolean") conditions[id] = on;
+  for (const [id, on] of Object.entries(combat.bestCaseOverrides || {}))
+    if (typeof on === "boolean") conditions[id] = on;
   return conditions;
 }

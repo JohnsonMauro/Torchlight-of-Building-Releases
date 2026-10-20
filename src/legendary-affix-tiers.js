@@ -24,5 +24,9 @@ export function legendaryLowerTierTemplates(sourceId, index) {
 }
 
 // Game affix id -> tier template, for the game-log import (the id map lists the tier-1 and corroded ids only).
-const textByAffixId = new Map(Object.values(legendaryAffixTiers).flatMap((lines) => Object.values(lines).flat()).map((entry) => [String(entry.id), entry.text]));
+const textByAffixId = new Map(
+  Object.values(legendaryAffixTiers)
+    .flatMap((lines) => Object.values(lines).flat())
+    .map((entry) => [String(entry.id), entry.text]),
+);
 export const legendaryTierTextForAffixId = (id) => textByAffixId.get(String(id)) || null;
