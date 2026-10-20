@@ -505,3 +505,29 @@ test("Edit changes a memory in place and its socket follows; another type takes 
   expect((await hero.stored()).memoryInventory[1].rarity).toBe("legendary");
   await planner.expectNoErrors();
 });
+
+test("the crafter's selects open the planner's search popover, and a result is chosen", async ({ page }) => {
+  const { planner } = await openCrafter(page);
+  await choice(page, "rarities", "Magic").click();
+  const popover = page.locator("#select-search-popover");
+  await crafter(page).getByLabel("Base stat", { exact: true }).click();
+  await expect(popover.getByRole("searchbox", { name: "Search options" })).toBeFocused();
+  await popover.getByRole("button", { name: "+# Dexterity" }).click();
+  await expect(popover).toBeHidden();
+  await expect(crafter(page).getByLabel("Base stat", { exact: true })).toHaveValue("+90 Dexterity");
+  await expect(preview(page).locator(".memory-implicit")).toHaveText("+17 Dexterity");
+
+  await crafter(page).getByLabel("Revived affix", { exact: true }).click();
+  await expect(popover.getByText("Select Revived Affix")).toBeVisible();
+  await popover.getByRole("searchbox", { name: "Search revived affixes" }).fill("all stats");
+  await popover.locator(".select-search-result", { hasText: "All Stats" }).first().click();
+  await expect(crafter(page).getByLabel("Revived affix", { exact: true })).toHaveValue("All Stats");
+  await expect(preview(page).locator(".memory-revived-name")).toHaveText("-20% All Stats\n+100 to All Stats");
+
+  await crafter(page).getByLabel("Fixed 1", { exact: true }).click();
+  await popover.getByRole("searchbox", { name: "Search options" }).fill("critical strike damage");
+  await popover.getByRole("searchbox", { name: "Search options" }).press("Enter");
+  await expect(crafter(page).getByLabel("Fixed 1", { exact: true })).toHaveValue("+(38–42)% Critical Strike Damage");
+  await expect(crafter(page).getByLabel("Fixed 1 roll value", { exact: true })).toHaveValue("42");
+  await planner.expectNoErrors();
+});
