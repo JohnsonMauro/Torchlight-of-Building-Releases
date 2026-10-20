@@ -71,6 +71,20 @@ export interface ViewSources {
   };
   /** The Fate slot selector: the Pactspirit it is open for, its unlock, and every unlock. */
   fateSlotSelector: { spirit: string; selected: string; choices: { id: string; label: string }[] };
+  /** The prism inventory: the tree slot it is open for, every crafted prism, and whether that tree has one installed. */
+  prismInventory: {
+    slot: number;
+    items: {
+      id: string;
+      name: string;
+      icon: string;
+      /** "Ethereal Prism · 1x1 area · Installed in Lich" */
+      detail: string;
+      equipped: boolean;
+      installedElsewhere: boolean;
+    }[];
+    installedHere: boolean;
+  };
 }
 export type ViewSourceName = keyof ViewSources;
 

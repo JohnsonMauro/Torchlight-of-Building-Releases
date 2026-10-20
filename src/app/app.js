@@ -22,6 +22,7 @@ import { aimUptimeAfterToggle } from "./aim-controls.js";
 import { provideViewSource, viewSourceChanged } from "./bridge/view-sources.ts";
 import { pactsView, pactspiritSelectorView } from "./bridge/pacts-view-model.ts";
 import { carinoAmmoSelectorView, sageScentSelectorView } from "./bridge/hero-dialogs-view-model.ts";
+import { displayTexts } from "./bridge/display-text.ts";
 import { skillsView } from "./bridge/skills-view-model.ts";
 import { slatesView } from "./bridge/slates-view-model.ts";
 import { clampCombatNumber, combatNumberLimits } from "../engine/state/state-validation.ts";
@@ -1634,6 +1635,11 @@ providePlannerCommands({
   reselectTalentTree,
   selectTalentTree,
   openPrismInventory,
+  openPrismCrafter: () => openPrismCrafter(),
+  editCraftedPrism,
+  installCraftedPrism,
+  deleteCraftedPrism,
+  unequipPrism,
   cancelPrismPlacement,
   dropPrism,
   // Header build actions (apps/web/src/shell/SiteHeader.tsx and its dialogs).
@@ -1740,6 +1746,8 @@ provideViewSource("carinoAmmoSelector", () => ({
     plannerState.hero.selectedTraits["carino-ranger-of-glory:level75"] === "Well Prepared",
   ),
 }));
+// The prism inventory.
+provideViewSource("prismInventory", prismInventorySource);
 // The talent tree, core talent and Fate slot pickers.
 provideViewSource("talentPicker", talentPickerSource);
 provideViewSource("corePicker", corePickerSource);
@@ -2302,27 +2310,62 @@ function prismTooltipHtml(item) {
   const icon = prismIcon(item);
   return `<div class="prism-tooltip-head">${icon ? `<img src="${icon}" alt="">` : ""}<strong>${escapeHtml(prismName(item))}</strong><small>${item.type === "inverse" ? "Inverse Image" : "Ethereal Prism"}</small></div><div class="prism-tooltip-body"><p class="prism-effect-area">Effect Area: <strong>${prismArea(item)}</strong> ${coverageBadge("Planner only")}</p>${prismAffixSections(item, true)}</div><footer>Click to change · Right-click to remove</footer>`;
 }
-function renderPrismInventory() {
-  const slot = activePrismTreeSlot + 1,
-    panel = plannerState.talents.selectedTrees[activePrismTreeSlot],
-    items = plannerState.talents.prismInventory || [],
+// The prism inventory's data (apps/web/src/shell/dialogs/PrismInventoryDialog.tsx) for the tree slot it is open for.
+function prismInventorySource() {
+  const panel = plannerState.talents.selectedTrees[activePrismTreeSlot],
     installed = plannerState.talents.installedPrisms || {};
-  $("#prism-inventory-title").textContent = `Install Prism - Tree Slot ${slot}`;
-  $("#prism-inventory-list").innerHTML = items.length
-    ? `<div class="prism-inventory-items">${items
-        .map((item) => {
-          const usedAt = Object.entries(installed).find(([, id]) => id === item.id)?.[0];
-          return `<article class="prism-inventory-item"><div class="prism-inventory-summary"><span class="prism-item-icon">${prismIcon(item) ? `<img src="${prismIcon(item)}" alt="">` : "✦"}</span><span class="prism-inventory-details"><strong>${escapeHtml(prismName(item))}</strong><small>${item.type === "inverse" ? "Inverse Image" : "Ethereal Prism"} · ${prismArea(item)} area${usedAt ? ` · Installed in ${escapeHtml(usedAt)}` : ""}</small></span></div><button type="button" class="prism-action prism-action-edit" data-edit-crafted-prism="${escapeHtml(item.id)}" aria-label="Edit ${escapeHtml(prismName(item))}">Edit</button><button type="button" class="prism-action prism-action-install" data-install-crafted-prism="${escapeHtml(item.id)}" ${usedAt && usedAt !== panel ? "disabled" : ""}>${usedAt === panel ? "Equipped" : "Install"}</button><button type="button" class="prism-action prism-action-delete" data-delete-crafted-prism="${escapeHtml(item.id)}" aria-label="Delete ${escapeHtml(prismName(item))}">×</button></article>`;
-        })
-        .join(
-          "",
-        )}</div>${installed[panel] ? `<button type="button" class="prism-unequip" data-unequip-prism>Unequip current Prism</button>` : ""}`
-    : '<div class="prism-inventory-empty"><span>No prisms crafted yet</span><button type="button" data-open-prism-crafter>Craft First Prism</button></div>';
+  return displayTexts({
+    slot: activePrismTreeSlot + 1,
+    items: (plannerState.talents.prismInventory || []).map((item) => {
+      const usedAt = Object.entries(installed).find(([, id]) => id === item.id)?.[0] || "";
+      return {
+        id: item.id,
+        name: prismName(item),
+        icon: prismIcon(item) || "",
+        detail: `${item.type === "inverse" ? "Inverse Image" : "Ethereal Prism"} · ${prismArea(item)} area${usedAt ? ` · Installed in ${usedAt}` : ""}`,
+        equipped: usedAt === panel,
+        installedElsewhere: Boolean(usedAt) && usedAt !== panel,
+      };
+    }),
+    installedHere: Boolean(installed[panel]),
+  });
+}
+// Prism inventory commands (apps/web/src/shell/dialogs/PrismInventoryDialog.tsx).
+function editCraftedPrism(id) {
+  const item = plannerState.talents.prismInventory.find((entry) => entry.id === id);
+  if (item) openPrismCrafter(item);
+}
+// Deleting a prism takes it off every tree it is installed in.
+function deleteCraftedPrism(id) {
+  for (const [name, itemId] of Object.entries(plannerState.talents.installedPrisms || {}))
+    if (itemId === id) {
+      const item = plannerState.talents.prismInventory.find((entry) => entry.id === id);
+      clearInverseReflectedRanks(name, item, plannerState.talents.installedPrismNodes[name]);
+      delete plannerState.talents.installedPrisms[name];
+      delete plannerState.talents.installedPrismNodes[name];
+      if (item?.type === "inverse") reconcileTalentRanksAfterPrismChange(name);
+    }
+  plannerState.talents.prismInventory = plannerState.talents.prismInventory.filter((item) => item.id !== id);
+  persistPlannerState();
+  renderCandidateViews();
+  viewSourceChanged("prismInventory");
+}
+// Unequip current Prism: the tree the inventory is open for loses its prism.
+function unequipPrism() {
+  const name = plannerState.talents.selectedTrees[activePrismTreeSlot],
+    item = plannerState.talents.prismInventory.find((entry) => entry.id === plannerState.talents.installedPrisms[name]);
+  clearInverseReflectedRanks(name, item, plannerState.talents.installedPrismNodes[name]);
+  delete plannerState.talents.installedPrisms[name];
+  delete plannerState.talents.installedPrismNodes[name];
+  if (item?.type === "inverse") reconcileTalentRanksAfterPrismChange(name);
+  persistPlannerState();
+  renderCandidateViews();
+  viewSourceChanged("prismInventory");
 }
 function openPrismInventory() {
   activePrismTreeSlot = plannerState.talents.selectedTrees.indexOf(activeTalentPanel);
   if (activePrismTreeSlot <= 0) return;
-  renderPrismInventory();
+  viewSourceChanged("prismInventory");
   $("#prism-inventory-dialog").showModal();
 }
 function prismAffixSelect(kind, label) {
@@ -7109,23 +7152,9 @@ document.addEventListener("click", (event) => {
     renderHeroPanel();
     return;
   }
-  if (event.target.closest("[data-close-prism-inventory]")) {
-    $("#prism-inventory-dialog").close();
-    return;
-  }
-  if (event.target.closest("[data-open-prism-crafter]")) {
-    openPrismCrafter();
-    return;
-  }
   if (event.target.closest("[data-close-prism-crafter],[data-cancel-prism-crafter]")) {
     $("#prism-crafter-dialog").close();
     openPrismInventory();
-    return;
-  }
-  const editPrism = event.target.closest("[data-edit-crafted-prism]");
-  if (editPrism) {
-    const item = plannerState.talents.prismInventory.find((entry) => entry.id === editPrism.dataset.editCraftedPrism);
-    if (item) openPrismCrafter(item);
     return;
   }
   const prismType = event.target.closest("[data-prism-type]");
@@ -7140,42 +7169,6 @@ document.addEventListener("click", (event) => {
       ...(inverse ? { inverseRolls: { micro: -100, medium: -100, legendary: -100 } } : {}),
     };
     renderPrismCrafter();
-    return;
-  }
-  const installItem = event.target.closest("[data-install-crafted-prism]");
-  if (installItem) {
-    installCraftedPrism(installItem.dataset.installCraftedPrism);
-    return;
-  }
-  const deletePrism = event.target.closest("[data-delete-crafted-prism]");
-  if (deletePrism) {
-    const id = deletePrism.dataset.deleteCraftedPrism;
-    for (const [name, itemId] of Object.entries(plannerState.talents.installedPrisms || {}))
-      if (itemId === id) {
-        const item = plannerState.talents.prismInventory.find((entry) => entry.id === id);
-        clearInverseReflectedRanks(name, item, plannerState.talents.installedPrismNodes[name]);
-        delete plannerState.talents.installedPrisms[name];
-        delete plannerState.talents.installedPrismNodes[name];
-        if (item?.type === "inverse") reconcileTalentRanksAfterPrismChange(name);
-      }
-    plannerState.talents.prismInventory = plannerState.talents.prismInventory.filter((item) => item.id !== id);
-    persistPlannerState();
-    renderCandidateViews();
-    renderPrismInventory();
-    return;
-  }
-  if (event.target.closest("[data-unequip-prism]")) {
-    const name = plannerState.talents.selectedTrees[activePrismTreeSlot],
-      item = plannerState.talents.prismInventory.find(
-        (entry) => entry.id === plannerState.talents.installedPrisms[name],
-      );
-    clearInverseReflectedRanks(name, item, plannerState.talents.installedPrismNodes[name]);
-    delete plannerState.talents.installedPrisms[name];
-    delete plannerState.talents.installedPrismNodes[name];
-    if (item?.type === "inverse") reconcileTalentRanksAfterPrismChange(name);
-    persistPlannerState();
-    renderCandidateViews();
-    renderPrismInventory();
     return;
   }
   if (event.target.closest("[data-confirm-prism-craft]")) {
@@ -7194,7 +7187,7 @@ document.addEventListener("click", (event) => {
     persistPlannerState();
     $("#prism-crafter-dialog").close();
     renderCandidateViews();
-    renderPrismInventory();
+    viewSourceChanged("prismInventory");
     $("#prism-inventory-dialog").showModal();
     showToast(`${prismName(item)} ${editing ? "updated" : "crafted"}`);
     return;

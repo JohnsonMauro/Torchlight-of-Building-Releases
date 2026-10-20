@@ -103,6 +103,11 @@
  * @property {() => void} reselectTalentTree Opens the tree picker for the open tree's tab.
  * @property {(name: string) => void} selectTalentTree Tree picker: the open slot takes that tree.
  * @property {() => void} openPrismInventory Opens the prism inventory for the open tree (not the God tree).
+ * @property {() => void} openPrismCrafter Prism inventory: opens the prism crafter for a new prism.
+ * @property {(id: string) => void} editCraftedPrism Prism inventory: opens the crafter on a crafted prism.
+ * @property {(id: string) => void} installCraftedPrism Prism inventory: the next talent node clicked takes that prism.
+ * @property {(id: string) => void} deleteCraftedPrism Prism inventory: deletes a prism (taking it off its trees).
+ * @property {() => void} unequipPrism Prism inventory: takes the prism off the tree it is open for.
  * @property {() => void} cancelPrismPlacement Drops the prism waiting for its node.
  * @property {(coordinate: string | null) => void} dropPrism The end of a drag of the installed prism: on a node
  *   ("column,row"), or null away from the nodes.
