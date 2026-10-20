@@ -63,7 +63,7 @@ export function loadGameIdMap() {
 // ---------------------------------------------------------------- log scan
 
 const STAMP = /^\[(\d{4})\.(\d{2})\.(\d{2})-(\d{2})\.(\d{2})\.(\d{2}):(\d{3})\]/;
-const stampIso = (line) => { const m = STAMP.exec(line || ""); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6], +m[7])).toISOString() : null; };
+const stampIso = (line) => { const m = STAMP.exec(line || ""); if (!m) return null; const date = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6], +m[7])); return Number.isNaN(date.getTime()) ? null : date.toISOString(); };
 const CHANGE_EVENT = /ItemChange@ ProtoName=(PutOn|PutOff|UnequipSkill|EquipSkill|TalentBlockEquip|TalentBlockUnequip|TalentBlockUnEquip)\b.*\bstart\b/;
 
 /** Turns the printer's tree lines into nested objects. Every value is a string. */
@@ -136,18 +136,31 @@ const entries = (table) => Object.entries(table || {}).filter(([, value]) => !(v
  * `character`, a small number per character (from `characterGroups`, shareable the same way). Item ids become
  * `<base>_item<n>` tokens from `tokens` (a Map the caller may share across files so one item keeps one token).
  */
-export function scanGameLog(text, { accountGroups = new Map(), characterGroups = new Map(), tokens = new Map() } = {}) {
-  const lines = String(text || "").split(/\r?\n/);
+export function scanGameLog(text, { accountGroups = new Map(), characterGroups = new Map(), tokens = new Map(), partialTail = false } = {}) {
+  let source = String(text || "");
+  if (source.charCodeAt(0) === 0xFEFF) source = source.slice(1);
+  // NUL runs (a preallocated or padded live log) end the line they cut; a dump cut by one ends there.
+  if (source.includes("\0")) source = source.replace(/\0+/g, "\n");
+  const lines = source.split(/\r?\n/);
+  // A log the game may still be writing (`partialTail`): its last line can be partial, and a dump with no line after
+  // it may be cut mid-write, so both are left out (counted in `incompleteDumps`). A dump whose header is written but
+  // whose tree has not started yet, or whose header is the partial last line, counts as incomplete too.
+  const DUMP_HEADER = "----Socket RecvMessage STT----GetPlayerData----";
+  const tail = partialTail ? lines.pop() : "";
   const dumps = [], changes = [], attributeSnapshots = [];
+  let incompleteDumps = tail?.includes(DUMP_HEADER) ? 1 : 0, skippedDumps = 0;
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
-    if (line.includes("----Socket RecvMessage STT----GetPlayerData----")) {
+    if (line.includes(DUMP_HEADER)) {
       const stamp = stampIso(line);
       let start = index + 1;
       while (start < lines.length && start <= index + 4 && !/^[+|]/.test(lines[start])) start += 1;
       let end = start;
       while (end < lines.length && /^[+|]/.test(lines[end])) end += 1;
-      if (end > start) {
+      // Still being written: the tree runs to the end, or the header is there and its tree has not started yet.
+      const pending = end > start ? end >= lines.length : start >= lines.length && start <= index + 4;
+      if (partialTail && pending) incompleteDumps += 1;
+      else if (end > start) try {
         const raw = parseTree(lines.slice(start, end));
         const account = typeof raw.player?.PlayerId === "string" ? raw.player.PlayerId : null;
         // The login account (shared by its characters) becomes a small opaque number; the id itself is not kept.
@@ -158,7 +171,7 @@ export function scanGameLog(text, { accountGroups = new Map(), characterGroups =
         // Past about 30 top-level tables the printer leaves the rest out entirely, key included (no "..." marker).
         const droppedSections = Object.keys(KEPT_SECTIONS).filter((section) => !(section in raw));
         dumps.push({ stamp, account, accountGroup: user ? accountGroups.get(user) : null, wornIds, topLevelCut: "..." in raw, cutSections, droppedSections, tree: sanitizeTree(raw, tokens) });
-      }
+      } catch { skippedDumps += 1; }
       index = Math.max(index, end - 1);
       continue;
     }
@@ -179,7 +192,109 @@ export function scanGameLog(text, { accountGroups = new Map(), characterGroups =
     dump.changesAfter = changes.filter((change) => change.stamp > dump.stamp && (!later || change.stamp < later)).length;
     dump.attributeSnapshotAfter = attributeSnapshots.some((stamp) => stamp > dump.stamp && (!later || stamp < later));
   }
-  return { dumps: result, changeEvents: changes.length };
+  return { dumps: result, changeEvents: changes.length, incompleteDumps, skippedDumps };
+}
+
+// ---------------------------------------------------------------- reading a chosen file (browser) and decoding
+
+/** Above this size only the end of a chosen log is read (a JavaScript string cannot hold much more). */
+export const GAME_LOG_READ_LIMIT_BYTES = 256 * 1024 * 1024;
+
+/** "utf-16le" / "utf-16be" (BOM, or NUL bytes on one side of most byte pairs), else "utf-8". */
+export function detectGameLogEncoding(bytes) {
+  const head = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+  if (head[0] === 0xFF && head[1] === 0xFE) return "utf-16le";
+  if (head[0] === 0xFE && head[1] === 0xFF) return "utf-16be";
+  if (head[0] === 0xEF && head[1] === 0xBB && head[2] === 0xBF) return "utf-8";
+  const pairs = Math.floor(Math.min(head.length, 4096) / 2);
+  let evenZero = 0, oddZero = 0;
+  for (let i = 0; i < pairs; i += 1) { if (head[2 * i] === 0) evenZero += 1; if (head[2 * i + 1] === 0) oddZero += 1; }
+  if (pairs >= 8 && oddZero > pairs * 0.4 && evenZero < pairs * 0.05) return "utf-16le";
+  if (pairs >= 8 && evenZero > pairs * 0.4 && oddZero < pairs * 0.05) return "utf-16be";
+  return "utf-8";
+}
+
+/** Bytes to text without throwing: BOM dropped, invalid bytes replaced, NUL runs left for scanGameLog to split on. */
+export function decodeGameLogBytes(bytes, encoding = detectGameLogEncoding(bytes)) {
+  const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+  const whole = encoding.startsWith("utf-16") && view.length % 2 ? view.subarray(0, view.length - 1) : view;
+  return new TextDecoder(encoding, { fatal: false }).decode(whole);
+}
+
+// Game-log markers (Unreal Engine log): the "Log file open, <date>" first line, "[YYYY.MM.DD-HH.MM.SS:mmm][frame]"
+// stamped lines, and "<Category>: <Verbosity>:" lines from the engine (LogInit, LogTemp, LogConfig…) or the game
+// (TLShipping, TLGame, TLNetGame…). The user's own logs (2026-10-19) open with "Log file open," and unstamped
+// "LogTemp: Display:" lines; stamped lines follow. A file with none of these is not a game log.
+const LOG_OPEN = /^﻿?Log file open,/;
+const LOG_LINE = /^\[\d{4}\.\d{2}\.\d{2}-\d{2}\.\d{2}\.\d{2}:\d{3}\]/m;
+const LOG_CATEGORY_LINE = /^(?:\[[^\]\n]*\]\[\s*\d+\])?(?:Log[A-Z]\w*|TL[A-Z]\w*): (?:Display|Warning|Error|Log|Verbose|VeryVerbose|Fatal):/m;
+const MARKER_WINDOW = 1 << 20;
+/** DOMException names a browser raises when it refuses to read a chosen file (Chrome: NotReadableError once the file changed after it was picked). */
+export const GAME_LOG_READ_ERRORS = ["NotReadableError", "NotFoundError", "SecurityError", "AbortError"];
+
+/** True when the text carries Unreal Engine log markers (checked on its first megabyte) or a player-data dump. */
+export function hasGameLogMarkers(text) {
+  const source = String(text || "");
+  const head = source.length > MARKER_WINDOW ? source.slice(0, MARKER_WINDOW) : source;
+  return LOG_OPEN.test(head) || LOG_LINE.test(head) || LOG_CATEGORY_LINE.test(head) || source.includes("STT----GetPlayerData----");
+}
+
+/** "empty" (nothing, or only NUL padding / whitespace), "binary" (mostly control or undecodable characters) or "text". */
+function textKind(text) {
+  const head = String(text || "").slice(0, 65536);
+  if (!head.replace(/[\0\s﻿]+/g, "")) return "empty";
+  let odd = 0;
+  for (let i = 0; i < head.length; i += 1) {
+    const code = head.charCodeAt(i);
+    if (code === 0xFFFD || (code < 32 && code !== 9 && code !== 10 && code !== 13)) odd += 1;
+  }
+  return odd > head.length * 0.1 ? "binary" : "text";
+}
+
+const errorName = (error) => (error && typeof error.name === "string" && error.name ? error.name : "Error");
+
+/**
+ * Reads a chosen log file in this browser (nothing is uploaded or kept) and scans it. Never throws. Returns
+ * { status, scan, partial, incompleteDumps, details }. Status:
+ * - "unreadable": reading the file's bytes failed (details.errorName: the DOMException name, e.g. NotReadableError when
+ *   Chrome refuses a file changed after it was chosen, as UE_game.log is while the game runs; NotFoundError,
+ *   SecurityError, AbortError). Only the read itself gives this status; decoding and scanning problems never do.
+ * - "ok": at least one complete player-data dump (an incomplete newest one is left out and counted in incompleteDumps).
+ * - "writing": no complete dump, and one is still being written at the end of the log.
+ * - "no-login": a game log (UE log markers) with no player-data dump.
+ * - "unknown-format": no game-log markers (details.kind: "empty", "binary" or "text").
+ * A file past `maxBytes` is read from its end (`partial`). The live log's trailing partial line and a dump with nothing
+ * after it are skipped (scanGameLog `partialTail`). `details` holds counts and error names only, never file contents.
+ */
+export async function readGameLogFile(file, { maxBytes = GAME_LOG_READ_LIMIT_BYTES, ...scanOptions } = {}) {
+  const size = Number(file?.size) || 0, partial = size > maxBytes;
+  const result = (status, scan, details) => ({ status, scan, partial, incompleteDumps: scan?.incompleteDumps || 0, details: { size, partial, ...details } });
+  let head, body;
+  try {
+    head = new Uint8Array(await file.slice(0, 4096).arrayBuffer());
+    let start = partial ? size - maxBytes : 0;
+    if (detectGameLogEncoding(head).startsWith("utf-16") && start % 2) start += 1;
+    body = new Uint8Array(await file.slice(start, size).arrayBuffer());
+  } catch (error) {
+    const name = errorName(error);
+    return result("unreadable", null, { errorName: name, browserRefused: GAME_LOG_READ_ERRORS.includes(name) });
+  }
+  let text;
+  try {
+    text = decodeGameLogBytes(body, detectGameLogEncoding(head));
+    if (partial) text = text.slice(text.indexOf("\n") + 1);
+  } catch (error) {
+    return result("unknown-format", null, { gameLog: false, kind: "binary", decodeError: errorName(error), logins: 0, incompleteDumps: 0, skippedDumps: 0 });
+  }
+  body = null;
+  const markers = hasGameLogMarkers(text), kind = textKind(text);
+  let scan = null, scanError = null;
+  try { scan = scanGameLog(text, { ...scanOptions, partialTail: true }); } catch (error) { scanError = errorName(error); }
+  text = null;
+  const gameLog = markers || Boolean(scan?.dumps.length || scan?.incompleteDumps);
+  const counts = { gameLog, kind, logins: scan?.dumps.length || 0, incompleteDumps: scan?.incompleteDumps || 0, skippedDumps: scan?.skippedDumps || 0, ...(scanError ? { scanError } : {}) };
+  const status = scan?.dumps.length ? "ok" : scan?.incompleteDumps ? "writing" : gameLog ? "no-login" : "unknown-format";
+  return result(status, scan, counts);
 }
 
 /** One row per dump for the picker: hero, level, time and section completeness. No account data. */

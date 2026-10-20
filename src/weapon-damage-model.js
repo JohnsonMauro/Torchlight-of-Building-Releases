@@ -171,6 +171,12 @@ const DUAL_DAMAGE = new RegExp(`^${NUM}% (additional )?Attack Damage while Dual 
 const OFF_HAND_SHARE = new RegExp(`^Adds ${NUM}% of the damage of the Off-Hand Weapon to the final damage of the Main-Hand Weapon$`, "i");
 // Joined Force (Bladerunner 24-point core, TLIDB text): "Off-Hand Weapons do not participate in Attacks while Dual Wielding".
 const OFF_HAND_NO_ATTACK = /^Off-Hand Weapons do not participate in Attacks while Dual Wielding$/i;
+// Twinblade Onslaught (Erika – Vendetta's Sting; hero trait audit B2, 2026-10-19): "No additional Attack Speed bonus is granted
+// while Dual Wielding. Instead, +X% additional Attack Damage". Read as the Dual Wielding status's +10% additional Attack Speed
+// being dropped (its sibling line drops the status's Attack Block Chance); "+X% Attack Speed while Dual Wielding" lines from
+// other sources still apply (provisional, open question erika-twinblade-dual-wield-speed). The +X% additional Attack Damage is
+// resolved by src/line-conditions.js (key dualWielding). Not a classifyWeaponAttackLine kind, so the line resolver keeps it.
+export const NO_DUAL_WIELD_SPEED = /^No additional Attack Speed bonus is granted while Dual Wielding ?\. Instead, [+-]?\d+(?:\.\d+)?% additional Attack Damage$/i;
 
 /**
  * Classify one build-wide line for the weapon-attack model.
@@ -306,7 +312,9 @@ export function calculateWeaponAttack({ equipment, disabledSlots = [], modifierT
   const mainSpeed = mainHand?.attackSpeed != null ? mainHand.attackSpeed * (1 + mainHandSpeedPercent / 100) : null;
   const offSpeed = offHand?.attackSpeed ?? null;
   const weaponAttacksPerSecond = mode === "alternate" && mainSpeed && offSpeed ? 2 / (1 / mainSpeed + 1 / offSpeed) : mode === "off-hand" ? offSpeed : mainSpeed;
-  if (dualWielding) lines.attackSpeed.push({ source: "Dual Wielding status", text: `+${DUAL_WIELD_STATUS.additionalAttackSpeedPercent}% additional Attack Speed while Dual Wielding`, origin: "derived", value: DUAL_WIELD_STATUS.additionalAttackSpeedPercent, additional: true });
+  const noDualWieldSpeed = modifierTexts.filter((line) => NO_DUAL_WIELD_SPEED.test(clean(line.text)));
+  if (dualWielding && !noDualWieldSpeed.length) lines.attackSpeed.push({ source: "Dual Wielding status", text: `+${DUAL_WIELD_STATUS.additionalAttackSpeedPercent}% additional Attack Speed while Dual Wielding`, origin: "derived", value: DUAL_WIELD_STATUS.additionalAttackSpeedPercent, additional: true });
+  if (dualWielding && noDualWieldSpeed.length) notes.push(`Dual Wielding status: its +${DUAL_WIELD_STATUS.additionalAttackSpeedPercent}% additional Attack Speed is not granted (${noDualWieldSpeed.map((line) => line.source).join(", ")}: "No additional Attack Speed bonus is granted while Dual Wielding"; provisional reading).`);
   const increasedSpeedPercent = lines.attackSpeed.filter((line) => !line.additional).reduce((sum, line) => sum + line.value, 0);
   const additionalSpeedFactor = lines.attackSpeed.filter((line) => line.additional).reduce((factor, line) => factor * (1 + line.value / 100), 1);
   const attacksPerSecondAtOneSecond = (weaponAttacksPerSecond || 0) * Math.max(0, 1 + increasedSpeedPercent / 100) * additionalSpeedFactor;

@@ -8,6 +8,8 @@ import { multistrikeSequence } from "./skill-hit-model.js";
 import { skillTimingSs13 } from "./data/skills/skill-timing-ss13.generated.js";
 
 import { BOND } from "./minion-cores.js";
+import { KEYWORDS, RECENTLY_SECONDS as RECENT_SECONDS, TROOP_FAMILIES, vigilantBreezeMax, vigilantBreezeAt } from "./moto-iris-traits.js";
+const TROOP_FAMILY = new Set(TROOP_FAMILIES);
 
 
 // Minion damage path (2026-10-11; research/base-damage-skills-2026-10-11.md). Minions are independent of the player:
@@ -129,9 +131,22 @@ const CIRCLE_DAMAGE = /^For every (\d+(?:\.\d+)?) Growth, \+?(\d+(?:\.\d+)?)% ad
 // Source (core audit B7; game affix 931211264: attr 3401 "inflicted status effect" additional with the Empower tag 5100311, on the
 // Spirit Magi): their Empower Skill's buff (Euphoria) is stronger; read as a multiplier on every value of that buff (provisional).
 const EMPOWER_EFFECT = /^Spirit Magi \+?([+-]?\d+(?:\.\d+)?)% (additional )?Empower Skill Effect$/i;
+// TLIDB keyword Growth (hover a3edcfc8, fetched 2026-10-19): "The max Growth is 1000."
+const MAX_GROWTH = 1000;
+// The Stage bonuses of the TLIDB Growth keyword (hover a3edcfc8, fetched 2026-10-19): "At Stage 2, +30% chance for them to use
+// Enhanced Skill chance. At Stage 3, their Enhanced Skills become stronger. At Stage 4, their Empower Skills become stronger. At
+// Stage 5, they +50% additional damage, +10% additional Skill Area, and gain increased Movement Speed and Tracking Area." Stage 2's
+// +30% matches manual rule 1001012031; Stages 3 and 4 are each skill's own "When at Stage N or higher" text (src/minion-profiles.js
+// stageBonus); Stage 5's +50% additional damage is applied from the keyword. "For every 8 Growth, +1% Physique and +10% additional
+// Skill Area" changes no dummy figure.
+export const GROWTH_KEYWORD = Object.freeze({ stage2EnhancedChancePercent: 30, stage5AdditionalPercent: 50, source: "TLIDB Growth keyword" });
 
-/** Spirit Magus Growth, Stage and Enhanced-skill chance from the build's lines (manual rules 1001012024, 1001012029, 1001012031). */
-export function spiritMagusState(lines = []) {
+/**
+ * Spirit Magus Growth, Stage and Enhanced-skill chance from the build's lines (manual rules 1001012024, 1001012029, 1001012031).
+ * `extraGrowth`: Growth a hero state adds (Iris – Vigilant Breeze's moon: +6 per Breeze stack; hero trait audit B6), capped with
+ * the rest at the keyword's max Growth of 1000 (TLIDB keyword Growth, hover a3edcfc8).
+ */
+export function spiritMagusState(lines = [], { extraGrowth = 0 } = {}) {
   const initial = [], perGrowth = [], per100 = [], chance = [], unread = [], ultimateSpeed = [], circleGain = [], circleDamage = [], empowerEffect = [];
   let fixedChance = null;
   for (const line of lines) {
@@ -151,34 +166,42 @@ export function spiritMagusState(lines = []) {
       else if ((match = text.match(GROWTH_PER_100))) per100.push({ ...entry, percent: number(match[1]) * multiplier, speedPercent: number(match[2]) * multiplier });
       else if ((match = text.match(ENHANCED_CHANCE))) chance.push({ ...entry, value: number(match[1]) * multiplier });
       else if ((match = text.match(ENHANCED_FIXED))) { fixedChance = number(match[1]); unread.push({ ...entry, read: true }); }
-      else if (GROWTH_MENTION.test(text) && !/^\+?\d+(?:\.\d+)?% additional (?:Spirit Magus Skill|Minion) Damage$/i.test(text)) unread.push(entry);
+      else if (GROWTH_MENTION.test(text) && !/^[+-]?\d+(?:\.\d+)?% additional (?:Spirit Magus Skill|Minion) Damage$/i.test(text)) unread.push(entry);
     }
   }
-  const growth = 100 + sum(initial);
+  const growth = Math.min(MAX_GROWTH, 100 + sum(initial) + Math.max(0, Number(extraGrowth) || 0));
   const stage = Math.max(1, Math.min(5, Math.floor(growth / 100)));
   // Circle of Life: the player's Growth = P1% of the nearest Magus's Growth (every modeled Magus has the same Growth), read right
   // after the 1 s update (no Return-Speed decay: 80% of the nearest Magus's Growth: user-supplied 2026-10-19, Google AI Mode answer, not tested in game).
   const circleGainPercent = circleGain.length ? Math.max(...circleGain.map((line) => line.percent)) : 0;
   const playerGrowth = growth * circleGainPercent / 100;
   const circle = circleGain.length ? circleDamage.map((line) => ({ source: line.source, text: `${line.text} (player Growth ${round(playerGrowth)} = ${circleGainPercent}% of the Magus's ${growth}; Circle of Life, provisional)`, origin: line.origin, value: line.percent * Math.floor(playerGrowth / line.per + 1e-9) })).filter((line) => line.value !== 0) : [];
-  const stageChance = stage >= 2 ? 30 : 0;
+  const stageChance = stage >= 2 ? GROWTH_KEYWORD.stage2EnhancedChancePercent : 0;
   const enhancedChancePercent = fixedChance != null ? fixedChance : Math.max(0, Math.min(100, stageChance + sum(chance)));
   const additional = [
     ...perGrowth.map((line) => ({ source: line.source, text: `${line.text} (${growth} Growth)`, origin: line.origin, value: Math.min(line.cap ?? Infinity, line.percent * Math.floor(growth / line.per)) })),
     ...per100.map((line) => ({ source: line.source, text: `${line.text} (${growth} Growth)`, origin: line.origin, value: line.percent * Math.floor(growth / 100) })),
-    ...circle
+    ...circle,
+    // Stage 5 (TLIDB Growth keyword, hover a3edcfc8, cached in research/tlidb-ss14/fetch-cache; 2026-10-19, coordinator decision):
+    // "At Stage 5, they +50% additional damage, +10% additional Skill Area, and gain increased Movement Speed and Tracking Area"
+    // (sourced; the manual's 1001012034 value is a placeholder). The Skill Area, Movement Speed and Tracking Area parts change no
+    // dummy figure.
+    ...(stage >= 5 ? [{ source: "TLIDB Growth keyword", text: `+${GROWTH_KEYWORD.stage5AdditionalPercent}% additional damage (Stage 5, ${growth} Growth: TLIDB Growth keyword)`, origin: "skill", value: GROWTH_KEYWORD.stage5AdditionalPercent }] : [])
   ].filter((line) => line.value !== 0);
   // Whether the "+N initial Growth" lines change anything (core audit B7, Mighty Guard): a Stage above 1, a per-Growth line, Circle of
   // Life (the player's Growth follows the Magus's).
   const initialGrowthMatters = initial.length > 0 && (stage > 1 || perGrowth.length > 0 || per100.length > 0 || (circleGain.length > 0 && circleDamage.length > 0));
+  // The hero state's extra Growth (B6) changes something when it moves the Stage or a per-Growth line reads it.
+  const stageWithout = Math.max(1, Math.min(5, Math.floor(Math.min(MAX_GROWTH, 100 + sum(initial)) / 100)));
+  const extraGrowthMatters = extraGrowth > 0 && (stage !== stageWithout || perGrowth.length > 0 || per100.length > 0 || (circleGain.length > 0 && circleDamage.length > 0));
   const speed = per100.map((line) => ({ source: line.source, text: `${line.text} (${growth} Growth)`, origin: line.origin, value: line.speedPercent * Math.floor(growth / 100), additional: true, attack: true, cast: true })).filter((line) => line.value !== 0);
   return {
     growth, stage, enhancedChancePercent, fixedChance, stageChancePercent: stageChance,
     sources: { initial, chance, perGrowth, per100, ultimateSpeed, circleGain, circleDamage }, additional, speed, unread: unread.filter((line) => !line.read),
     empowerEffect: { lines: empowerEffect, factor: Math.max(0, 1 + sum(empowerEffect.filter((line) => !line.additional)) / 100) * product(empowerEffect.filter((line) => line.additional)) },
-    initialGrowthMatters, ultimateSpeed, circle: circleGain.length ? { gainPercent: circleGainPercent, playerGrowth, applied: circle, damageLines: circleDamage } : null,
-    growthRule: "Spirit Magi start at Stage 1 (100 Growth) and gain a Stage per 100 Growth up to Stage 5 (manual rule 1001012029); the build's \"+N initial Growth for Spirit Magi\" lines add to the 100",
-    chanceRule: fixedChance != null ? `the Enhanced-skill chance is fixed at ${fixedChance}% (hero trait text)` : `Stage ${stage}: ${stageChance}% base Enhanced-skill chance (manual rule 1001012031: +30% at Stage 2; the Stage 1 base is not published and is read as 0%) + ${sum(chance)}% from lines`
+    initialGrowthMatters, extraGrowth: Math.max(0, Number(extraGrowth) || 0), extraGrowthMatters, ultimateSpeed, circle: circleGain.length ? { gainPercent: circleGainPercent, playerGrowth, applied: circle, damageLines: circleDamage } : null,
+    growthRule: "Spirit Magi start at Stage 1 (100 Growth) and gain a Stage per 100 Growth up to Stage 5, max 1000 Growth (manual rule 1001012029; TLIDB Growth keyword); the build's \"+N initial Growth for Spirit Magi\" lines add to the 100; Stage 5: +50% additional damage (TLIDB Growth keyword)",
+    chanceRule: fixedChance != null ? `the Enhanced-skill chance is fixed at ${fixedChance}% (hero trait text)` : `Stage ${stage}: ${stageChance}% base Enhanced-skill chance (manual rule 1001012031 and the TLIDB Growth keyword: +30% at Stage 2; the Stage 1 base is not published and is read as 0%) + ${sum(chance)}% from lines`
   };
 }
 
@@ -278,8 +301,11 @@ function combineBuffs(active, skillType) {
  *   pressed whenever off cooldown from the summon cast on (best case; also forced by an auto-trigger trait), "summon" = only
  *   the summon cast counts (the trait's "casting the Active Skill is considered as casting the Trait Skill"; open whether the
  *   Magus it creates receives the stacks), "none" = never.
+ * @param {object|null} p.heroTraits Moto / Iris trait inputs for this Minion (hero trait audit B6; src/moto-iris-traits.js, built
+ *   by src/planner.js minionHeroTraits): { readTexts, layers (static Minion layers: Overload, Nourishing Spring Rain's Growth,
+ *   Unstoppable Wave …), overloadRamp, extraCount, nourish (Growing Breeze extras), troopNourish, vigilant, selfDestruct, magiCount }.
  */
-export function calculateMinion({ profile, level = 20, modifierTexts = [], traitLines = [], target = {}, timelineSeconds = 60, setups = [], windows = [5, 20], extraTaken = [], traitSkill = "cooldown", extraCritOnly = [], handledTexts = null, extraLines = [], bond = null, summonCastSpeed = null } = {}) {
+export function calculateMinion({ profile, level = 20, modifierTexts = [], traitLines = [], target = {}, timelineSeconds = 60, setups = [], windows = [5, 20], extraTaken = [], traitSkill = "cooldown", extraCritOnly = [], handledTexts = null, extraLines = [], bond = null, summonCastSpeed = null, heroTraits = null } = {}) {
   const resolved = typeof profile === "string" ? MINION_PROFILES[profile] : profile;
   if (!resolved) return null;
   const capped = Math.max(1, Math.min(MINION_BASE_DAMAGE_FROZEN_LEVEL, Math.floor(level || 20)));
@@ -295,7 +321,7 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
   const lines = { increased: [], additional: [], speed: [], critRating: [], critDamage: [], penetration: [], armourPenetration: [], added: [], unread: [], support: [], maxDamage: [], minDamage: [], multistrikeChance: [], multistrikeIncrement: [], multistrikeIncrementAdditional: [], inactive: [] };
   // Conditional lines the shared resolver reads (src/line-effects.js: an active one reaches this model as a derived plain line, an
   // inactive one keeps its reason on the badge) are not "unread" here, nor are the originals of derived copies (core audit B7).
-  const handled = new Set([...[...(handledTexts || [])].map(clean), ...modifierTexts.filter((line) => line.derivedFrom).map((line) => clean(line.derivedFrom)), ...[...(bond?.readTexts || [])].map(clean)]);
+  const handled = new Set([...[...(handledTexts || [])].map(clean), ...modifierTexts.filter((line) => line.derivedFrom).map((line) => clean(line.derivedFrom)), ...[...(bond?.readTexts || [])].map(clean), ...[...(heroTraits?.readTexts || [])].map(clean)]);
   for (const line of [...modifierTexts, ...traitLines]) {
     const parsed = classifyMinionLine(line.text);
     const entry = { source: line.source, text: clean(line.text), origin: line.origin || "gear" };
@@ -329,23 +355,59 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
   // prebuiltSelfBuffs off the cycle scales each use by the stacks held at that moment (bondRamp below).
   const bondActive = Boolean(bond?.canObtain && bond.maxStacks > 0);
   if (bondActive) for (const line of bond.layersAt(bond.maxStacks)) if (lines[line.kind]) lines[line.kind].push({ origin: "derived", ...line });
+  // Moto / Iris trait layers resolved for this Minion (hero trait audit B6): Overload, Nourishing Spring Rain's Growth bonus, ….
+  for (const line of heroTraits?.layers || []) if (lines[line.kind]) lines[line.kind].push({ origin: "derived", heroTrait: true, ...line });
 
   // Spirit Magus Growth / Stage / Enhanced chance; Growth-based additional and speed lines join the Minion layers.
-  const magus = isSpiritMagus ? spiritMagusState([...modifierTexts, ...traitLines]) : null;
-  // Nourishment (Iris – Growing Breeze): Spirit Magi only. "Nourishment can be applied to Synthetic Troop Minions" (the Memory
-  // Revival affix Nourishing Spring Rain) is not modeled: its Troop loss chance is not published.
-  const nourish = isSpiritMagus ? nourishmentState([...modifierTexts, ...traitLines]) : null;
+  const magusTexts = [...modifierTexts, ...traitLines];
+  // Iris – Vigilant Breeze (hero trait audit B6, Q-H13 recommended reading, provisional): a Merged Magus holds Breeze at its max
+  // (10 + Breeze's Whisper + Warmest Vigilance + Blowing Breeze where their sources fire), each stack +16% additional damage (keyword
+  // Breeze), and the moon's Growth per stack joins its Growth (Stage, per-Growth lines, Merging Stream).
+  const vigilant = isSpiritMagus && heroTraits?.vigilant?.held && heroTraits.vigilant.merged ? heroTraits.vigilant : null;
+  const breeze = vigilant ? vigilantBreezeMax(vigilant, { chanceAt: (extraGrowth) => spiritMagusState(magusTexts, { extraGrowth }).enhancedChancePercent }) : null;
+  const magus = isSpiritMagus ? spiritMagusState(magusTexts, { extraGrowth: breeze?.extraGrowth || 0 }) : null;
+  // Nourishment (Iris – Growing Breeze): Spirit Magi, and Synthetic Troop / Module Minions with the revived Nourishing Spring Rain
+  // (hero trait audit B6: "Nourishment can be applied to Synthetic Troop Minions"; their loss chance is the Magi's, lowered by
+  // 2% per 1% of the Magi's Enhanced-skill chance; provisional).
+  const troopNourish = heroTraits?.troopNourish && TROOP_FAMILY.has(resolved.family) ? heroTraits.troopNourish : null;
+  const nourish = isSpiritMagus || troopNourish ? nourishmentState(magusTexts) : null;
   if (magus) {
     lines.additional.push(...magus.additional.map((line) => ({ ...line, kind: "additional" })));
     lines.speed.push(...magus.speed.map((line) => ({ ...line, kind: "speed" })));
-    for (const line of magus.unread.filter((item) => !nourish?.readTexts.has(item.text))) warnings.push(`${line.source}: "${line.text}" is a Spirit Magus line the Minion model does not read (Nourishment, Full Bloom, conditional Growth).`);
+    for (const line of magus.unread.filter((item) => !nourish?.readTexts.has(item.text) && !handled.has(clean(item.text)))) warnings.push(`${line.source}: "${line.text}" is a Spirit Magus line the Minion model does not read (Nourishment, Full Bloom, conditional Growth).`);
     assumptions.push({ id: `magusStage:${resolved.key}`, value: magus.stage, text: `${resolved.minion} Stage ${magus.stage} (${magus.growth} Growth: ${magus.growthRule}).` });
     assumptions.push({ id: `magusEnhancedChance:${resolved.key}`, value: magus.enhancedChancePercent, text: `${resolved.minion} Enhanced-skill chance ${round(magus.enhancedChancePercent)}% (${magus.chanceRule}).` });
     if (magus.empowerEffect.factor !== 1) assumptions.push({ id: `magusEmpowerEffect:${resolved.key}`, value: round(magus.empowerEffect.factor), text: `${resolved.minion} Empower Skill Effect ×${round(magus.empowerEffect.factor)} (${magus.empowerEffect.lines.map((line) => line.text).join(", ")}): every value of its Empower Skill's buff is scaled (game affix 931211264; provisional reading).` });
     if (magus.circle) assumptions.push({ id: `circleOfLife:${resolved.key}`, value: round(magus.circle.playerGrowth), text: `Circle of Life: your Growth ${round(magus.circle.playerGrowth)} = ${magus.circle.gainPercent}% of the ${resolved.minion}'s ${magus.growth} Growth, read right after each 1 s update (its Return Speed equal to Command is not applied: Command is not modeled; provisional).` });
-    if (magus.stage >= 5) notes.push(`${resolved.summon}: Stage 5 grants an additional-damage bonus whose value is a placeholder in the game text (manual rule 1001012034); it is not applied.`);
   }
   const stage = magus?.stage ?? 1;
+  // Vigilant layers (B6): Breeze on the Merged Magus; Happiest Reunion's +X% additional (multiplies) per Spirit Magus in the map.
+  const heroTraitState = {};
+  if (breeze) {
+    const value = KEYWORDS.breeze.perStackPercent * breeze.max;
+    lines.additional.push({ origin: "derived", heroTrait: true, kind: "additional", value, source: `Breeze (Vigilant Breeze; ${KEYWORDS.breeze.source})`, text: `+${value}% additional damage (Breeze: ${breeze.max} stacks × ${KEYWORDS.breeze.perStackPercent}%, held at its max: Q-H13)` });
+    if (vigilant.reunion) {
+      const magi = Math.max(1, vigilant.magiCount || 1);
+      const reunion = ((1 + vigilant.reunion.perMagusPercent / 100) ** magi - 1) * 100;
+      lines.additional.push({ origin: "derived", heroTrait: true, kind: "additional", value: round(reunion), source: "Happiest Reunion (Vigilant state)", text: `+${round(reunion)}% additional damage (Happiest Reunion: +${vigilant.reunion.perMagusPercent}% (multiplies) × ${magi} Spirit Magi)` });
+    }
+    heroTraitState.vigilant = { merged: true, breeze, reunionMagi: vigilant.reunion ? Math.max(1, vigilant.magiCount || 1) : 0, growth: magus?.growth ?? null, extraGrowthMatters: Boolean(magus?.extraGrowthMatters) };
+    assumptions.push({ id: `vigilant:${resolved.key}`, value: breeze.max, text: `${resolved.minion} is Merged in the Vigilant state (held, best case: switch "Vigilant held"; Q-H13, provisional): Breeze at its max ${breeze.max} (${breeze.base} + Warmest Vigilance ${breeze.warmest} + Breeze's Whisper ${breeze.whisper} + Blowing Breeze ${breeze.blowing}; Reconjuring breaks ignored)${breeze.extraGrowth ? `, +${breeze.extraGrowth} Growth from the moon (Stage ${stage})` : ""}.` });
+  } else if (isSpiritMagus && heroTraits?.vigilant) heroTraitState.vigilant = { merged: false, reason: !heroTraits.vigilant.held ? "the Vigilant state is switched off" : "another Spirit Magus is the Merged one (best case)" };
+  // Merging Stream (B6): the build's Origins on every Spirit Magus, each × (1 + X% per 2 Growth received).
+  if (isSpiritMagus && heroTraits?.merging) {
+    const merging = heroTraits.merging;
+    const received = merging.perGrowth > 0 ? merging.percent * Math.floor((magus?.growth ?? 100) / merging.perGrowth + 1e-9) : 0;
+    const factor = 1 + received / 100;
+    const applied = [];
+    for (const origin of merging.origins || []) {
+      const source = `${origin.source}${received ? `, ×${round(factor)} received (${round(received)}% from ${magus?.growth ?? 100} Growth)` : ""}`;
+      if (origin.damage) { lines.additional.push({ origin: "derived", heroTrait: true, kind: "additional", value: round(origin.damage * factor), source, text: `+${round(origin.damage * factor)}% additional damage (Origin of ${origin.magus} on the Spirit Magi: Merging Stream)` }); applied.push(origin.magus); }
+      if (origin.speed) lines.speed.push({ origin: "derived", heroTrait: true, kind: "speed", value: round(origin.speed * factor), additional: true, attack: true, cast: true, source, text: `+${round(origin.speed * factor)}% additional Attack and Cast Speed (Origin of ${origin.magus}: Merging Stream)` });
+      if (origin.critRating) { lines.critRating.push({ origin: "derived", heroTrait: true, kind: "critRating", value: round(origin.critRating * factor), flat: true, source, text: `+${round(origin.critRating * factor)} Critical Strike Rating (Origin of ${origin.magus}: Merging Stream)` }); applied.push(origin.magus); }
+    }
+    heroTraitState.merging = { receivedPercent: round(received), growth: magus?.growth ?? 100, applied: [...new Set(applied)], origins: (merging.origins || []).map((origin) => origin.magus) };
+  }
 
   // Rally ("Synthetic Troop Minions summoned at a time +N"): each cast summons N more, Module summons included, up to the skill's
   // max quantity (user-supplied 2026-10-19, Google AI Mode answer, not tested in game). A Synthetic Troop summon's published
@@ -353,7 +415,10 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
   // Minion becomes 1 + N (provisional; open question core-rally-module-count).
   const rallyLines = resolved.family === "module" ? modifierTexts.flatMap((line) => { const match = clean(line.text).match(/^Synthetic Troop Minions summoned at a time \+?(\d+)$/i); return match ? [{ source: line.source, value: Number(match[1]) * (line.multiplier ?? 1) }] : []; }) : [];
   const rallyExtra = rallyLines.reduce((total, line) => total + line.value, 0);
-  const count = (resolved.count?.at(effectiveLevel) ?? 1) + rallyExtra;
+  // Socialite (Iris – Growing Breeze, B6): +N Max Summonable Spirit Magi for this Magus skill, within the map cap (planner).
+  const heroExtraCount = Math.max(0, Math.floor(Number(heroTraits?.extraCount) || 0));
+  const count = (resolved.count?.at(effectiveLevel) ?? 1) + rallyExtra + heroExtraCount;
+  if (heroExtraCount) { heroTraitState.extraCount = heroExtraCount; assumptions.push({ id: `magusCount:${resolved.key}`, value: count, text: `${resolved.summon}: ${count} Spirit Magi (${heroTraits.extraCountSource || "Socialite"}: +${heroExtraCount} Max Summonable Spirit Magi within the map cap; provisional).` }); }
   if (resolved.count?.assumed) assumptions.push({ id: `minionCount:${resolved.key}`, value: count, text: `${resolved.summon}: ${resolved.count.source}${rallyExtra ? `; + ${rallyExtra} from ${rallyLines.map((line) => line.source).join(", ")} ("Synthetic Troop Minions summoned at a time", Module summons included: user-supplied 2026-10-19, provisional; the Module's max quantity is not in the data)` : ""}.` });
   const perMinionAdditional = resolved.perMinionAdditionalPercent ? [{ source: `${resolved.summon}: per Minion summoned`, text: `+${resolved.perMinionAdditionalPercent}% additional damage for every ${resolved.minion} summoned (${count} summoned)`, value: resolved.perMinionAdditionalPercent * count, origin: "skill" }] : [];
   const levelLine = effectiveLevel > 20 ? [{ source: `${resolved.summon} level ${effectiveLevel}`, text: `+${round((levelFactor - 1) * 100)}% additional damage (TLIDB Skill Level: +10%/level 21–30, +8%/level 31+; applies to the skill and its Minions, rule 1001000822)`, value: (levelFactor - 1) * 100, origin: "skill" }] : [];
@@ -370,7 +435,7 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
   const baseCritRating = 500, baseCritDamage = 150;
   const critRating = (buff) => (baseCritRating + sum(lines.critRating.filter((line) => line.flat)) + (buff?.critRating || 0)) * Math.max(0, 1 + (sum(lines.critRating.filter((line) => !line.flat && !line.additional)) + (buff?.critRatingPercent || 0)) / 100) * product(lines.critRating.filter((line) => !line.flat && line.additional));
   const critChance = (buff) => Math.min(100, Math.max(0, critRating(buff)) / 100) / 100;
-  const critDamage = (buff) => Math.max(100, (baseCritDamage + sum(lines.critDamage.filter((line) => !line.additional)) + (buff?.critDamagePercent || 0)) * product(lines.critDamage.filter((line) => line.additional))) / 100;
+  const critDamage = (buff) => Math.max(100, (baseCritDamage + sum(lines.critDamage.filter((line) => !line.additional)) + (buff?.critDamagePercent || 0)) * product(lines.critDamage.filter((line) => line.additional)) * (buff?.critDamageFactor ?? 1)) / 100;
   // Enemy crit-taken debuffs on the crit share (the Marked dummy, src/mark-effect.js; 2026-10-14): Minion hits take them too.
   const critOnlyFactor = product(extraCritOnly);
   const critFactor = (buff) => 1 - critChance(buff) + critChance(buff) * critDamage(buff) * critOnlyFactor;
@@ -399,7 +464,56 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
     return { lines: own, factor: Math.max(0, 1 + sum(own.filter((line) => line.layer === "increased")) / 100) * product(own.filter((line) => line.layer !== "increased")) };
   };
 
-  const skills = resolved.skills.map((raw) => {
+  // Charge Calling (Moto – Charge Calling, hero trait audit B6; src/moto-iris-traits.js, provisional): with Charge Calling held
+  // (6 s / 6 s, pressed on cooldown) every summon cast creates 1 (+ Rally) + 1 Synthetic Troop Minions that self-destruct 1 s
+  // after (keyword: 115% of Base Damage, Physical Attack, Melee, Area), at most the skill's quantity + 1 alive, so explosions/s =
+  // min(summon casts/s × troops per cast, alive ÷ 1 s). Summon casts: Fuel War with War's trigger of the Main Summon Skill, or the
+  // summon recast at its own pace (use time; a Module's 4 s cooldown). Mechanical Parts (Unstoppable Wave) drop at the chance per
+  // explosion and are picked up; "recently" is 4 s. The explosion loop replaces the troops' own attacks where it deals more.
+  const sdInput = heroTraits?.selfDestruct?.pressed && TROOP_FAMILY.has(resolved.family) ? heroTraits.selfDestruct : null;
+  let sdPlan = null;
+  if (sdInput) {
+    const perCast = (resolved.family === "module" ? (resolved.count?.at(effectiveLevel) ?? 1) : 1) + rallyExtra + sdInput.extraPerCast;
+    const maxAlive = count + sdInput.extraPerCast;
+    const summonScaled = skillTimingSs13[resolved.summon]?.speedType === "cast-speed" || resolved.family === "synthetic-troop";
+    const summonSeconds = (resolved.summonCastSeconds ?? 1) / (summonScaled && summonCastSpeed?.factor ? summonCastSpeed.factor : 1);
+    const ownCooldown = resolved.family === "module" ? resolved.summonCooldownSeconds || 0 : skillTimingSs13[resolved.summon]?.cooldown || 0;
+    const fuel = sdInput.fuelWar && sdInput.mainSummon ? sdInput.fuelWar : null;
+    const ignoresCooldown = Boolean(fuel) && (resolved.family !== "module" || fuel.ignoresModuleCooldown);
+    const castInterval = fuel ? Math.max(fuel.intervalSeconds, ignoresCooldown ? 0 : ownCooldown) : Math.max(summonSeconds, ownCooldown);
+    const castsPerSecond = 1 / Math.max(0.01, castInterval);
+    const ownCastsPerSecond = 1 / Math.max(0.01, Math.max(summonSeconds, ownCooldown));
+    const parts = sdInput.parts?.pickup ? sdInput.parts : null;
+    let held = 0, rate = 0, life = sdInput.chargeSeconds, guerillaStacks = 0;
+    for (let pass = 0; pass < 6; pass++) {
+      life = sdInput.chargeSeconds / (1 + (parts?.guerilla ? parts.guerilla.speedPercent * guerillaStacks / 100 : 0));
+      rate = Math.min(castsPerSecond * perCast, maxAlive / life);
+      held = parts ? rate * parts.chancePercent / 100 * parts.perDrop * RECENT_SECONDS : 0;
+      guerillaStacks = parts?.guerilla ? Math.min(parts.guerilla.cap, held) : 0;
+    }
+    const partStacks = parts ? Math.min(parts.partCap, held) : 0;
+    const ownRate = Math.min(ownCastsPerSecond * perCast, maxAlive / life);
+    const troopLife = 5 * baseDamage + sdInput.peril.lifePercent / 100 * sdInput.peril.playerLife;
+    const troopShield = sdInput.peril.shieldPercent / 100 * sdInput.peril.playerShield;
+    const heroicPercent = sdInput.heroic ? sdInput.heroic.percent * Math.floor((troopLife + troopShield) / sdInput.heroic.per + 1e-9) : 0;
+    const attackSpeedLines = lines.speed.filter((line) => line.attack);
+    const share = sdInput.essentialSharePercent / 100;
+    const extraAdditional = [
+      ...sdInput.additional.map((line) => ({ source: line.source, text: line.text, value: line.value })),
+      ...(heroicPercent ? [{ source: "Heroic Sacrifice", text: `+${heroicPercent}% additional Self-Destruct damage (Synthetic Troop Life ${round(troopLife)}${troopShield ? ` + Energy Shield ${round(troopShield)}` : ""} ÷ ${sdInput.heroic.per}; Life = 5 × Base Damage${sdInput.peril.lifePercent || sdInput.peril.shieldPercent ? " + Peril of Synthetic Troops" : ""}, provisional)`, value: heroicPercent }] : []),
+      ...(parts?.guerilla && guerillaStacks ? [{ source: "Guerilla Tactics", text: `+${round(parts.guerilla.damagePercent * guerillaStacks)}% additional Self-Destruct damage (${round(guerillaStacks)} Mechanical Parts collected recently)`, value: parts.guerilla.damagePercent * guerillaStacks }] : []),
+      ...(parts && partStacks && parts.perPartPercent ? [{ source: "Unstoppable Wave", text: `+${round(parts.perPartPercent * partStacks)}% additional Minion Damage (${round(partStacks)} Mechanical Parts picked up recently)`, value: parts.perPartPercent * partStacks }] : []),
+      ...(parts && partStacks > 0 && sdInput.moonPercent ? [{ source: "Charge Calling (Artificial Moon)", text: `+${sdInput.moonPercent}% additional Minion Damage (a Mechanical Part picked up recently)`, value: sdInput.moonPercent }] : []),
+      ...(share ? attackSpeedLines.filter((line) => line.additional).map((line) => ({ source: `Essential Speed (${line.source})`, text: `+${round(share * line.value)}% additional Self-Destruct damage (${sdInput.essentialSharePercent}% of "${line.text}")`, value: share * line.value })) : [])
+    ];
+    const essentialIncreased = share ? attackSpeedLines.filter((line) => !line.additional).reduce((total, line) => total + line.value, 0) * share : 0;
+    sdPlan = { perCast, maxAlive, castsPerSecond, castInterval, ownRate, fuel: Boolean(fuel), ignoresCooldown, life, rate, partsPerSecond: parts ? rate * parts.chancePercent / 100 * parts.perDrop : 0, partStacks, guerillaStacks, heroicPercent, troopLife, troopShield, essentialIncreased, capped: castsPerSecond * perCast > maxAlive / life + 1e-9,
+      raw: { name: "Self-Destruct Protocol", role: "selfDestruct", kind: "hit", type: "Physical", baseType: "Physical", tags: [...KEYWORDS.selfDestruct.tags], noMultistrike: true,
+        percentByLevel: Array(20).fill(KEYWORDS.selfDestruct.percent), addedEffectivenessByLevel: Array(20).fill(KEYWORDS.selfDestruct.percent), timing: { useTime: life, speedType: "fixed", cooldown: 0 },
+        basis: "provisional", note: `${KEYWORDS.selfDestruct.source}; Charge Calling held (Q-H8 note: Trait Skill pressed on cooldown), ${round(rate)} explosions/s`, extraAdditional,
+        extraIncreased: essentialIncreased ? [{ source: "Essential Speed", text: `+${round(essentialIncreased)}% Self-Destruct damage (${sdInput.essentialSharePercent}% of the Minion Attack Speed bonus)`, value: essentialIncreased }] : [] } };
+  }
+  const skills = [...resolved.skills, ...(sdPlan ? [sdPlan.raw] : [])].map((raw) => {
     // A buff-only skill (an Empower Skill without a damage row) takes the Minion's dealt type for its layers.
     const entry = raw.type ? raw : { ...raw, type: resolved.skills.find((item) => item.type)?.type || "Physical" };
     const percent = entry.percentByLevel?.[capped - 1] ?? 0;
@@ -407,7 +521,7 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
     const types = entry.conversion ? [entry.baseType, entry.type] : [entry.type];
     const added = lines.added.filter((line) => line.type === entry.baseType || line.type === entry.type).map((line) => ({ ...line, effectiveness: addedEffectiveness, value: (line.min + line.max) / 2 * addedEffectiveness / 100 }));
     const addedAverage = sum(added);
-    const increased = lines.increased.filter((line) => typeApplies(line.type, types));
+    const increased = [...lines.increased.filter((line) => typeApplies(line.type, types)), ...(entry.extraIncreased || [])];
     // Stage-dependent bonuses of a Spirit Magus skill (its own "When at Stage N or higher" lines).
     const stageBonus = entry.stageBonus ? entry.stageBonus(stage) : null;
     const stageAdditional = stageBonus?.additionalPercent ? [{ source: `${entry.name}: Stage ${stage}`, text: stageBonus.text, value: stageBonus.additionalPercent, origin: "skill" }] : [];
@@ -436,15 +550,16 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
     const maxFactor = product(maxOnly), minFactor = Math.max(0, product(minOnly));
     const addedMin = added.reduce((total, line) => total + line.min * line.effectiveness / 100, 0), addedMax = added.reduce((total, line) => total + line.max * line.effectiveness / 100, 0);
     const rollAverage = maxOnly.length || minOnly.length ? ((base + addedMin) * minFactor + (base + addedMax) * maxFactor) / 2 : base + addedAverage;
-    const beforeTargetNoCrit = (buff, extraAdditionalPercent = 0) => rollAverage * increasedFactor * additionalFactor * (buff?.additionalFactor ?? 1) * (1 + extraAdditionalPercent / 100);
-    const perHit = (buff, extraAdditionalPercent = 0) => beforeTargetNoCrit(buff, extraAdditionalPercent) * critFactor(buff) * taken.factor * armourFactor * resistanceFactor;
+    // `extraFlat`: added flat damage of a per-stack effect (Nature's Party's Rock Magus, B6), at the skill's added-damage effectiveness.
+    const beforeTargetNoCrit = (buff, extraAdditionalPercent = 0, extraFlat = 0) => (rollAverage + extraFlat * addedEffectiveness / 100) * increasedFactor * additionalFactor * (buff?.additionalFactor ?? 1) * (1 + extraAdditionalPercent / 100);
+    const perHit = (buff, extraAdditionalPercent = 0, extraFlat = 0) => beforeTargetNoCrit(buff, extraAdditionalPercent, extraFlat) * critFactor(buff) * taken.factor * armourFactor * resistanceFactor;
     const timing = entry.timing;
     const speed = timing?.speedType === "attack-speed" ? attackSpeedFactor : timing?.speedType === "cast-speed" ? castSpeedFactor : 1;
     // Minion Multistrike (core audit B7): an Attack-tagged hit skill with Minion Multistrike chance repeats like the player's
     // (TLIDB glossary: one extra attack per 100% chance, +20% Attack Speed during Multistrikes; the k-th repeat deals +k × increment,
     // provisional reading of "increasing damage"). One use deals the whole sequence (×damagePerCycle) and lasts its cycle
     // (×cycleIntervals use times). Mobility, Channeled and Sentry skills cannot Multistrike; no Minion skill carries those tags.
-    const multistrike = msChance > 0 && entry.kind === "hit" && !entry.buffOnly && skillTags.has("Attack") ? multistrikeSequence({ chancePercent: msChance, incrementPercent: msIncrement, incrementAdditionalPercent: msIncrementAdditional }) : null;
+    const multistrike = msChance > 0 && entry.kind === "hit" && !entry.buffOnly && !entry.noMultistrike && skillTags.has("Attack") ? multistrikeSequence({ chancePercent: msChance, incrementPercent: msIncrement, incrementAdditionalPercent: msIncrementAdditional }) : null;
     const useTime = timing ? timing.useTime / speed * (multistrike?.cycleIntervals ?? 1) : null;
     if (!timing) warnings.push(`${resolved.minion}: ${entry.name} has no use time (no Split file linked and no TLIDB fallback), so it is left out of the cycle.`);
     if (entry.basis === "provisional") assumptions.push({ id: `minionSkill:${entry.name}`, value: "best case", text: `${entry.name}: ${entry.note}.` });
@@ -500,6 +615,26 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
   const basic = skills.find((item) => item.role === "basic" && item.effectiveUseTimeSeconds != null) || null;
   const enhanced = skills.find((item) => item.role === "enhanced" && item.effectiveUseTimeSeconds != null) || null;
   const enhancedShare = enhanced && basic ? Math.max(0, Math.min(1, (magus?.enhancedChancePercent ?? 0) / 100)) : 0;
+  // The Ultimate in the cycle (hero trait audit B6, provisional): unlocked for a Merged Magus in the Vigilant state (keyword
+  // Vigilant) and in Full Bloom (Gentle Zephyr; keyword Full Bloom: "an initial cooldown of 8s"). Whirlwind Tango removes the
+  // Merged Magus's cooldown: the Ultimate is then cast back to back only where it out-damages the Base / Enhanced slot per second
+  // of use (the player controls the Merged Magus: best case). Soft Storm: the Magus cannot use it; every N Enhanced uses trigger it
+  // (no use time) at its -X% additional Ultimate Damage.
+  const ultimate = isSpiritMagus ? skills.find((item) => item.role === "ultimate" && item.effectiveUseTimeSeconds != null && item.percent > 0) || null : null;
+  const fullBloomOn = Boolean(ultimate && nourish?.fullBloom);
+  const softStorm = ultimate && vigilant?.softStorm?.every > 0 ? vigilant.softStorm : null;
+  const ultimatePenalty = vigilant?.softStorm?.penaltyPercent ? -vigilant.softStorm.penaltyPercent : 0;
+  const slotRate = basic ? ((1 - enhancedShare) * basic.perHitNoBuff * basic.hitsPerUse + (enhanced && enhancedShare > 0 ? enhancedShare * enhanced.perHitNoBuff * enhanced.hitsPerUse : 0)) / Math.max(1e-9, (1 - enhancedShare) * basic.effectiveUseTimeSeconds + (enhanced && enhancedShare > 0 ? enhancedShare * enhanced.effectiveUseTimeSeconds : 0)) : 0;
+  const ultimateRate = ultimate ? ultimate.perHitNoBuff * ultimate.hitsPerUse / Math.max(1e-9, ultimate.effectiveUseTimeSeconds) : 0;
+  let ultimatePlan = null;
+  if (ultimate && vigilant && !vigilant.softStorm?.blocksUse) {
+    const noCooldown = Boolean(vigilant.tango?.noCooldown);
+    ultimatePlan = noCooldown && ultimateRate <= slotRate ? { mode: "unused", reason: `no cooldown (Whirlwind Tango), but ${ultimate.name} deals less per second of use (${round(ultimateRate)}) than the Base / Enhanced slot (${round(slotRate)}), so it is not cast back to back (best case)` }
+      : { mode: "vigilant", cooldownSeconds: noCooldown ? 0 : vigilant.ultimateCooldownSeconds, reason: noCooldown ? `no cooldown (Whirlwind Tango): cast back to back (${round(ultimateRate)} vs ${round(slotRate)} per second of the slot)` : `unlocked in the Vigilant state, ${vigilant.ultimateCooldownSeconds} s cooldown (the Full Bloom keyword's initial cooldown; provisional)` };
+  } else if (ultimate && vigilant?.softStorm?.blocksUse) ultimatePlan = { mode: softStorm && enhancedShare > 0 ? "triggered" : "unused", reason: softStorm && enhancedShare > 0 ? `Soft Storm: triggered once per ${softStorm.every} Enhanced uses (no use time), ${ultimatePenalty}% additional Ultimate Damage` : "Soft Storm: the Magi cannot use it, and no Enhanced use triggers it" };
+  else if (fullBloomOn) ultimatePlan = { mode: "fullBloom", cooldownSeconds: KEYWORDS.fullBloom.ultimateCooldownSeconds, reason: `cast whenever ready while Full Bloom lasts (${KEYWORDS.fullBloom.ultimateCooldownSeconds} s initial cooldown, keyword Full Bloom${heroTraits?.nourish?.ultimateCdrPercent ? `; Gentle Zephyr +${heroTraits.nourish.ultimateCdrPercent}% additional Ultimate Cooldown Recovery Speed per Nourishment stack held at the cast` : ""})` };
+  const ultimateSpecial = ultimatePlan && (ultimatePlan.mode === "vigilant" || ultimatePlan.mode === "fullBloom") ? { ...ultimate, role: "special", cooldownSeconds: ultimatePlan.cooldownSeconds, isUltimate: true } : null;
+  if (ultimateSpecial) { specials.push(ultimateSpecial); specials.sort((a, b) => b.cooldownSeconds - a.cooldownSeconds); }
   const ready = new Map(specials.map((item) => [item.name, 0]));
   const buffs = [];
   const events = [];
@@ -514,25 +649,33 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
   };
   // Nourishment on the Magus (src: the trait text above nourishmentState). Exact expected value over the stack count: a
   // probability vector over 0 … max stacks. Trait Skill casts grant their stacks (capped) when the Magus is out; every Magus
-  // skill use deals ×(1 + effect × (1 + Empower share) × stacks) with the stacks it holds at the use (stacks add: the text
-  // gives no "multiply" rule, provisional) and then loses one stack with chance min(1, Σ lose + Σ per-stack × stacks)
-  // (one summed chance, provisional). All stacks end 15 s after the last gain (one shared duration refreshed on gain,
-  // provisional). Full Bloom (Gentle Zephyr) is entered once the total gained reaches its threshold.
+  // skill use deals ×(1 + effect × stacks) with the stacks it holds at the use (stacks add: the text gives no "multiply" rule,
+  // provisional) and then loses one stack with chance min(1, Σ lose + Σ per-stack × stacks) (one summed chance, provisional).
+  // All stacks end 15 s after the last gain (one shared duration refreshed on gain, provisional). Full Bloom (Gentle Zephyr) is
+  // entered each time the total granted reaches a multiple of its threshold (B6; and at the start with own buffs built).
+  const nourishPlus = nourish ? heroTraits?.nourish || null : null;
   const traitMode = nourish?.autoTrait ? "cooldown" : traitSkill;
   const nourishCap = nourish ? Math.max(1, Math.round(nourish.maxStacks || 10)) : 0;
-  const nourishGain = nourish ? nourish.stacksPerTraitCast + nourish.extraStacksPerTraitCast : 0;
-  // "100% of your Empower Skill Effect bonus is also applied to Spirit Magi's Nourishment": the player's Empower Skill Effect
-  // lines in the catalog are conditional ("When casting a Defensive Skill …") and are not read, so the bonus is 0 here.
-  const empowerEffectPercent = 0;
-  const nourishEffect = nourish && !nourish.noLossNoBonus ? nourish.effectPercent * (1 + nourish.empowerSharePercent / 100 * empowerEffectPercent / 100) : 0;
-  const traitCooldown = nourish?.traitCooldownSeconds || 5;
+  // Run With the Wind (B6): Windrider replaces the press: 3 Nourishment (+ the moon's extra stack, provisional) per full channel of
+  // 5 × 0.33 s ÷ (1 + Cast Speed), no cooldown (keyword Windrider), channelled whenever the Trait Skill switch is on.
+  const windrider = nourish && nourishPlus?.windrider ? nourishPlus.windrider : null;
+  const nourishGain = !nourish ? 0 : windrider ? windrider.stacks + nourish.extraStacksPerTraitCast : nourish.stacksPerTraitCast + nourish.extraStacksPerTraitCast;
+  // "100% of your Empower Skill Effect bonus is also applied to Spirit Magi's Nourishment" and Grow With Them's Origin share (B6):
+  // the shared bonuses in one Nourishment Effect factor (src/moto-iris-traits.js; plain "+X% Empower Skill Effect" lines only).
+  const nourishEffectFactor = nourishPlus?.effectFactor ?? 1;
+  const nourishEffect = nourish && !nourish.noLossNoBonus ? nourish.effectPercent * nourishEffectFactor : 0;
+  const traitCooldown = windrider ? windrider.intervalSeconds : nourish?.traitCooldownSeconds || 5;
   const traitCasts = !nourish || traitMode === "none" ? [] : traitMode === "summon" ? [0] : Array.from({ length: Math.ceil(horizon / traitCooldown) }, (_, index) => index * traitCooldown);
+  // Nourishing Spring Rain on a Synthetic Troop (B6): its loss chance lowered by 2% per 1% of the Magi's Enhanced-skill chance.
+  const lossReduction = troopNourish ? Math.max(0, troopNourish.reductionPercent || 0) : 0;
   let nourishDist = nourish ? Object.assign(new Array(nourishCap + 1).fill(0), { 0: 1 }) : null;
-  let nourishNext = 0, nourishLastGain = -Infinity, nourishGained = 0;
+  let nourishNext = 0, nourishLastGain = -Infinity, nourishGained = 0, fullBloomCount = 0;
   const fullBloomEntries = [];
+  if (fullBloomOn && heroTraits?.prebuilt !== false && traitMode !== "none") fullBloomEntries.push({ at: summonCast, until: summonCast + nourish.fullBloom.durationSeconds, prebuilt: true });
+  const inFullBloom = (at) => fullBloomEntries.some((entry) => entry.at <= at + 1e-9 && at < entry.until - 1e-9);
   const nourishExpire = (at) => { if (nourishDist && at - nourishLastGain >= (nourish.durationSeconds ?? 15) - 1e-9 && nourishDist[0] < 1) nourishDist = Object.assign(new Array(nourishCap + 1).fill(0), { 0: 1 }); };
-  const nourishUse = (at) => {
-    if (!nourishDist) return { factor: 1, stacks: 0 };
+  const nourishGrants = (at) => {
+    if (!nourishDist) return;
     // Grants land when the Magus is out (a Trait cast during the summon reaches it at its first use).
     while (nourishNext < traitCasts.length && traitCasts[nourishNext] <= at + 1e-9) {
       const castAt = Math.max(traitCasts[nourishNext++], summonCast);
@@ -540,48 +683,101 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
       const next = new Array(nourishCap + 1).fill(0);
       nourishDist.forEach((p, n) => { next[Math.min(nourishCap, n + nourishGain)] += p; });
       nourishDist = next; nourishLastGain = castAt; nourishGained += nourishGain;
-      if (nourish.fullBloom && nourishGained >= nourish.fullBloom.totalStacks && !fullBloomEntries.length) fullBloomEntries.push({ at: castAt, until: castAt + nourish.fullBloom.durationSeconds });
+      if (nourish.fullBloom && Math.floor(nourishGained / nourish.fullBloom.totalStacks + 1e-9) > fullBloomCount) {
+        fullBloomCount = Math.floor(nourishGained / nourish.fullBloom.totalStacks + 1e-9);
+        if (fullBloomOn || !fullBloomEntries.length) fullBloomEntries.push({ at: castAt, until: castAt + nourish.fullBloom.durationSeconds });
+      }
     }
+  };
+  const nourishUse = (at, { ultimateCast = false } = {}) => {
+    if (!nourishDist) return { factor: 1, stacks: 0 };
+    nourishGrants(at);
     nourishExpire(at);
-    const stacks = nourishDist.reduce((total, p, n) => total + p * n, 0);
-    if (!nourish.noLossNoBonus) {
+    const dist = nourishDist.slice();
+    const stacks = dist.reduce((total, p, n) => total + p * n, 0);
+    // Gentle Zephyr: no loss on non-Ultimates (B6: the Ultimate still rolls its loss).
+    if (!nourish.noLossNoBonus || ultimateCast) {
       const next = new Array(nourishCap + 1).fill(0);
-      nourishDist.forEach((p, n) => { const lose = n > 0 ? Math.min(1, (nourish.loseChancePercent + nourish.losePerStackPercent * n) / 100) : 0; next[n] += p * (1 - lose); if (n > 0) next[n - 1] += p * lose; });
+      nourishDist.forEach((p, n) => { const lose = n > 0 ? Math.min(1, Math.max(0, nourish.loseChancePercent + nourish.losePerStackPercent * n - lossReduction) / 100) : 0; next[n] += p * (1 - lose); if (n > 0) next[n - 1] += p * lose; });
       nourishDist = next;
     }
-    return { factor: 1 + nourishEffect / 100 * stacks, stacks };
+    return { factor: 1 + nourishEffect / 100 * stacks, stacks, dist };
   };
-  const land = (skill, at, weight, extraAdditionalPercent = 0, nourishment = { factor: 1, stacks: 0 }) => {
+  // Nature's Party (revived, B6): Nourishment's per-Magus base effects per stack (Fire: crit, Rock: added Physical from Armor;
+  // Thunder: Numbed and its Lightning bonus, Erosion: Deterioration, both settled after the cycle).
+  const party = isSpiritMagus && nourish ? heroTraits?.party || null : null;
+  const partyFire = party?.fire && resolved.key === "fire-magus" ? party.fire : null;
+  const partyRock = party?.rock && resolved.key === "rock-magus" && party.rock.perStack > 0 ? party.rock : null;
+  const nourishedDamage = (skill, combined, extraAdditionalPercent, nourishment) => {
+    let total = 0;
+    nourishment.dist.forEach((p, n) => {
+      if (!(p > 0)) return;
+      const buff = partyFire && n > 0 ? { ...(combined || { additionalFactor: 1, critRating: 0, critRatingPercent: 0, critDamagePercent: 0, attackSpeedAdditionalFactor: 1, labels: [] }), critRatingPercent: (combined?.critRatingPercent || 0) - partyFire.critRatingPerStack * n, critDamageFactor: (combined?.critDamageFactor ?? 1) * (1 + partyFire.critDamagePerStack * n / 100) } : combined;
+      const flat = partyRock && n > 0 && (skill.type === "Physical" || skill.baseType === "Physical") ? partyRock.perStack * n : 0;
+      total += p * skill.perHit(buff, extraAdditionalPercent, flat) * (1 + nourishEffect / 100 * n);
+    });
+    return total;
+  };
+  // Full Bloom (keyword): 50% of the Minion Attack / Cast Speed bonuses (increased and additional) as additional Spirit Magi Attack /
+  // Spell Damage while it lasts; the Magus's skills take its speed type (attack-speed: Attack, cast-speed: Spell; provisional).
+  const fullBloomShare = (skill) => {
+    if (!fullBloomOn) return 1;
+    const which = skill.timing?.speedType === "attack-speed" ? "attack" : "cast";
+    const pool = speedSums[which] + sum(lines.speed.filter((line) => line[which] && line.additional));
+    return 1 + KEYWORDS.fullBloom.speedSharePercent / 100 * pool / 100;
+  };
+  // Ramps when own buffs are not pre-built (B6): Machine's Joy's stacks from the Minion hits so far; a Merged Magus's Breeze from 5
+  // on merging (t = 0), +1 per second and the Ultimate's gains.
+  const overloadRamp = heroTraits?.overloadRamp && !heroTraits.overloadRamp.prebuilt ? heroTraits.overloadRamp : null;
+  const breezeRamp = breeze && heroTraits?.prebuilt === false ? breeze : null;
+  let hitsLanded = 0, ultimateCasts = 0;
+  const rampRatio = (at) => {
+    let ratio = 1;
+    if (overloadRamp) ratio *= overloadRamp.ratioAt(Math.min(overloadRamp.maxStacks, hitsLanded));
+    if (breezeRamp) ratio *= (1 + KEYWORDS.breeze.perStackPercent * vigilantBreezeAt(vigilant, breezeRamp.max, at, ultimateCasts) / 100) / (1 + KEYWORDS.breeze.perStackPercent * breezeRamp.max / 100);
+    return ratio;
+  };
+  const land = (skill, at, weight, extraAdditionalPercent = 0, nourishment = { factor: 1, stacks: 0 }, landAtOverride = null) => {
     if (skill.buffOnly || !(skill.percent > 0)) return;
-    const landAt = at + useTimeOf(skill, at);
-    const nourishTag = nourishDist ? { nourishmentStacks: nourishment.stacks, nourishmentFactor: nourishment.factor } : {};
+    const landAt = landAtOverride ?? at + useTimeOf(skill, at);
+    const nourishTag = nourishDist ? { nourishmentStacks: nourishment.stacks, nourishmentFactor: nourishment.factor, nourishedShare: nourishment.dist ? 1 - (nourishment.dist[0] || 0) : 0 } : {};
+    const bloom = fullBloomOn && inFullBloom(at) ? fullBloomShare(skill) : 1;
+    const ramp = rampRatio(landAt);
     if (skill.kind === "persistent") {
       // One ground effect at a time (a recast refreshes it): ticks once per second over the assumed duration, only for
       // seconds not already covered by the previous cast. Nourishment ("damage dealt by this skill") lifts every tick.
       const ticks = Math.max(1, Math.round(skill.persistentSeconds || 1));
       const covered = persistentCoveredUntil.get(skill.name) ?? -Infinity;
-      for (let tick = 0; tick < ticks; tick++) { const atTick = landAt + tick; if (atTick < horizon && atTick >= covered - 1e-9) events.push({ time: atTick, skill: skill.name, damage: skill.perHit(null) * count * weight * nourishment.factor * bondDamageRatio(skill, atTick), weight, buffed: false, ...nourishTag }); }
+      for (let tick = 0; tick < ticks; tick++) { const atTick = landAt + tick; if (atTick < horizon && atTick >= covered - 1e-9) events.push({ time: atTick, skill: skill.name, type: skill.type, damage: skill.perHit(null) * count * weight * nourishment.factor * bondDamageRatio(skill, atTick) * bloom * ramp, weight, buffed: false, ...nourishTag }); }
       persistentCoveredUntil.set(skill.name, landAt + ticks);
       return;
     }
     const active = activeAt(landAt).filter((buff) => buff.skill !== skill.name || buff.selfApplies !== false);
     const combined = active.length ? combineBuffs(active, skill.type) : null;
     const buffed = Boolean(combined && (combined.additionalFactor !== 1 || combined.critRating || combined.critRatingPercent || combined.critDamagePercent)) || extraAdditionalPercent > 0;
-    events.push({ time: landAt, skill: skill.name, damage: skill.perHit(combined, extraAdditionalPercent) * skill.hitsPerUse * count * weight * nourishment.factor * bondDamageRatio(skill, landAt), weight, buffed, buff: buffed ? combined?.labels.join(" + ") || "next-use bonus" : null, ...nourishTag });
+    const partyPerHit = Boolean((partyFire || partyRock) && nourishment.dist);
+    events.push({ time: landAt, skill: skill.name, type: skill.type, damage: (partyPerHit ? nourishedDamage(skill, combined, extraAdditionalPercent, nourishment) * skill.hitsPerUse * count * weight : skill.perHit(combined, extraAdditionalPercent) * skill.hitsPerUse * count * weight * nourishment.factor) * bondDamageRatio(skill, landAt) * bloom * ramp, weight, buffed, buff: buffed ? combined?.labels.join(" + ") || "next-use bonus" : null, ...nourishTag });
+    hitsLanded += skill.hitsPerUse * weight * count;
   };
   while (time < horizon && guard++ < 100000) {
-    const special = specials.find((item) => ready.get(item.name) <= time + 1e-9);
+    nourishGrants(time);
+    const special = specials.find((item) => ready.get(item.name) <= time + 1e-9 && (!item.isUltimate || ultimatePlan.mode !== "fullBloom" || inFullBloom(time)));
     if (special) {
-      ready.set(special.name, time + special.cooldownSeconds);
+      const nourishment = nourishUse(time, { ultimateCast: Boolean(special.isUltimate) });
+      // Gentle Zephyr: the Ultimate's cooldown recovers faster by +X% additional per Nourishment stack held at the cast.
+      const cdr = special.isUltimate && ultimatePlan.mode === "fullBloom" ? 1 + (heroTraits?.nourish?.ultimateCdrPercent || 0) * nourishment.stacks / 100 : 1;
+      ready.set(special.name, time + special.cooldownSeconds / cdr);
       if (special.selfBuff) {
         // A recast refreshes the skill's own buff (the Empower cooldown is shorter than its 6 s duration); it does not stack.
         for (const buff of buffs) if (buff.skill === special.name && buff.until > time) buff.until = time;
         buffs.push({ ...special.selfBuff, from: time, until: time + special.selfBuff.durationSeconds, skill: special.name });
         if (special.selfBuff.nextUses) nextUses = { values: [...special.selfBuff.nextUses], until: time + special.selfBuff.durationSeconds, skill: special.name };
       }
-      land(special, time, 1, 0, nourishUse(time));
+      land(special, time, 1, special.isUltimate ? ultimatePenalty : 0, nourishment);
+      if (special.isUltimate) ultimateCasts += 1;
       special.usesInCycle += 1;
-      time += useTimeOf(special, time);
+      // A zero-cooldown special (the Merged Magus's Ultimate with Whirlwind Tango) must still advance time.
+      time += Math.max(1e-3, useTimeOf(special, time));
       continue;
     }
     if (!basic) {
@@ -597,7 +793,45 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
     const slotNourishment = nourishUse(time); // one cast, one loss roll, whichever of the two skills it is
     if (baseWeight > 0) { land(basic, time, baseWeight, bonus, slotNourishment); basic.usesInCycle += baseWeight; }
     if (enhancedShare > 0) { land(enhanced, time, enhancedShare, bonus, slotNourishment); enhanced.usesInCycle += enhancedShare; }
+    // Soft Storm (revived, B6): every N Enhanced uses trigger the Ultimate, landing with the Enhanced Skill (no use time).
+    if (ultimatePlan?.mode === "triggered" && enhancedShare > 0) {
+      const weight = enhancedShare / softStorm.every;
+      land(ultimate, time, weight, ultimatePenalty, { factor: 1, stacks: 0 }, time + useTimeOf(enhanced, time));
+      ultimateCasts += weight;
+    }
     time += baseWeight * useTimeOf(basic, time) + (enhancedShare > 0 ? enhancedShare * useTimeOf(enhanced, time) : 0);
+  }
+  // Nature's Party (B6, provisional): the Thunder Magus Numbs the dummy on its Nourished hits (one stack per hit, at most one per
+  // 0.2 s, 2 s each, up to 10: keyword Numbed), each stack +5% Lightning Damage taken on its Lightning hits (the Magus's own hits
+  // here), and +2% additional Lightning Damage per Nourishment stack against the Numbed dummy; the Erosion Magus inflicts
+  // Deterioration on its Nourished Erosion hits (60% of the Erosion damage dealt as True Damage when each 1 s stack ends; the
+  // player's Deterioration lines are not the Minion's).
+  let partySettled = null;
+  if (party && (resolved.key === "thunder-magus" && party.thunder || resolved.key === "erosion-magus" && party.erosion)) {
+    const steady = events.filter((event) => event.time >= 20 && event.time < horizon);
+    const nourishedHits = steady.reduce((total, event) => total + (event.weight ?? 1) * (event.nourishedShare || 0), 0) / Math.max(1e-9, horizon - 20);
+    if (resolved.key === "thunder-magus" && party.thunder) {
+      const stacks = Math.min(10, Math.min(nourishedHits, 1 / party.thunder.intervalSeconds) * 2);
+      for (const event of events) if (event.type === "Lightning") event.damage *= (1 + 0.05 * stacks) * (stacks > 0 ? 1 + party.thunder.percentPerStack * (event.nourishmentStacks || 0) / 100 : 1);
+      partySettled = { magus: "Thunder", numbedStacks: round(stacks), nourishedHitsPerSecond: round(nourishedHits) };
+    } else {
+      for (const event of events) if (event.type === "Erosion") event.damage *= 1 + 0.6 * (event.nourishedShare || 0);
+      partySettled = { magus: "Erosion", deteriorationShare: 0.6, nourishedHitsPerSecond: round(nourishedHits) };
+    }
+  }
+  // Charge Calling (B6): the explosion loop replaces the troops' own attacks where it deals more (best case).
+  if (sdPlan) {
+    const sd = skills.find((item) => item.role === "selfDestruct");
+    const perExplosion = sd.perHit(null);
+    const loopDps = sdPlan.rate * perExplosion;
+    const ownSteady = events.filter((event) => event.time >= 20 && event.time < horizon).reduce((total, event) => total + event.damage, 0) / (horizon - 20);
+    sdPlan.perExplosion = perExplosion; sdPlan.loopDps = loopDps; sdPlan.ownDps = ownSteady; sdPlan.chosen = loopDps > ownSteady;
+    if (sdPlan.chosen) {
+      events.length = 0;
+      const step = 1 / sdPlan.rate;
+      for (let at = summonCast + sdPlan.life; at < horizon; at += step) events.push({ time: at, skill: sd.name, type: "Physical", damage: perExplosion, weight: 1, buffed: false });
+      for (const item of skills) item.usesInCycle = 0;
+    }
   }
   events.sort((a, b) => a.time - b.time);
   const windowAverage = (seconds) => events.filter((event) => event.time < seconds).reduce((total, event) => total + event.damage, 0) / seconds;
@@ -607,7 +841,7 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
     const own = events.filter((event) => event.skill === item.name && event.time >= steadyFrom && event.time < steadyTo);
     const dps = own.reduce((total, event) => total + event.damage, 0) / (steadyTo - steadyFrom);
     const uses = own.reduce((total, event) => total + (event.weight ?? 1), 0);
-    return { ...item, perHit: undefined, steadyDps: dps, steadyUsesPerSecond: (item.kind === "persistent" ? own.length : uses) / (steadyTo - steadyFrom), buffedShare: uses ? own.filter((event) => event.buffed).reduce((total, event) => total + (event.weight ?? 1), 0) / uses : 0, inCycle: item.role === "basic" || item.role === "special" || (item.role === "enhanced" && enhancedShare > 0) };
+    return { ...item, perHit: undefined, steadyDps: dps, steadyUsesPerSecond: (item.kind === "persistent" ? own.length : uses) / (steadyTo - steadyFrom), buffedShare: uses ? own.filter((event) => event.buffed).reduce((total, event) => total + (event.weight ?? 1), 0) / uses : 0, inCycle: sdPlan?.chosen ? item.role === "selfDestruct" : item.role === "basic" || item.role === "special" || (item.role === "enhanced" && enhancedShare > 0) || (item.role === "ultimate" && ultimateCasts > 0) };
   });
   // Typed and tag-scoped Minion lines no damage skill of the cycle takes (a Cold line on a Fire Minion, an Area line on a projectile
   // Minion) and Multistrike lines with no Multistrike: listed as inactive with the reason, not as applied (core audit B7).
@@ -630,7 +864,7 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
   const cycle = {
     summonCastSeconds: summonCast, summonCastSource: resolved.summonCastSource || null, summonCastBaseSeconds: summonCastBase, summonSpeedType, summonCastFactor,
     bond: bondActive ? { maxStacks: bond.maxStacks, intervalSeconds: bond.intervalSeconds, prebuilt: bond.prebuilt, fullAt: bond.prebuilt ? summonCast : summonCast + bond.maxStacks * bond.intervalSeconds } : null,
-    rule: `${specials.length ? `${specials.map((item) => `${item.name} (${round(item.effectiveUseTimeSeconds)} s use, ${item.cooldownSeconds} s cooldown)`).join(", ")} whenever ready, otherwise ` : ""}${slotLabel}; hits land at the end of each use; the first use starts after the ${summonCast} s summon cast`,
+    rule: sdPlan?.chosen ? `Charge Calling held: ${round(sdPlan.rate)} Self-Destruct Protocol explosions/s (${sdPlan.fuel ? `Fuel War with War triggers the summon every ${round(sdPlan.castInterval)} s` : `the summon recast every ${round(sdPlan.castInterval)} s`}, ${sdPlan.perCast} troops per cast, at most ${sdPlan.maxAlive} alive for ${round(sdPlan.life)} s each${sdPlan.capped ? ": the alive cap binds" : ""}); the first explosion ${round(sdPlan.life)} s after the ${summonCast} s summon cast` : `${specials.length ? `${specials.map((item) => `${item.name} (${round(item.effectiveUseTimeSeconds)} s use, ${item.cooldownSeconds} s cooldown)`).join(", ")} whenever ready, otherwise ` : ""}${slotLabel}; hits land at the end of each use; the first use starts after the ${summonCast} s summon cast`,
     firstHitSeconds: events[0]?.time ?? null, enhancedShare
   };
   assumptions.push({ id: `minionCycle:${resolved.key}`, value: "deterministic", text: `${resolved.minion} use pattern: ${cycle.rule} (assumed AI; in range of the stationary dummy the whole time).` });
@@ -647,13 +881,17 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
       stacksPerTraitCast: nourishGain, traitCooldownSeconds: traitCooldown, effectPercent: nourish.effectPercent, effectivePercent: nourishEffect, durationSeconds: nourish.durationSeconds, maxStacks: nourishCap,
       loseChancePercent: nourish.loseChancePercent, losePerStackPercent: nourish.losePerStackPercent, noLossNoBonus: nourish.noLossNoBonus, empowerSharePercent: nourish.empowerSharePercent,
       steadyAverageStacks: uses, steadyFactor: bare ? lifted / bare : 1,
-      fullBloom: nourish.fullBloom ? { ...nourish.fullBloom, entries: fullBloomEntries } : null,
+      fullBloom: nourish.fullBloom ? { ...nourish.fullBloom, entries: fullBloomEntries } : null, windrider: windrider ? { ...windrider } : null, effectFactor: nourishEffectFactor, lossReductionPercent: lossReduction, troop: Boolean(troopNourish),
       sources: nourish.sources
     };
     const modeText = traitMode === "cooldown" ? `the Trait Skill is cast whenever off cooldown (every ${traitCooldown} s from the summon cast${nourish.autoTrait ? "; auto-triggered by the trait" : "; best case, flip with the \"Trait Skill on cooldown\" combat condition"})` : traitMode === "summon" ? "only the summon cast counts as a Trait Skill cast (open: whether the Magus it creates receives the stacks)" : "the Trait Skill is never cast (no Nourishment)";
     assumptions.push({ id: `nourishment:${resolved.key}`, value: traitMode, text: `${resolved.minion} Nourishment (Iris – Growing Breeze): ${modeText}; ${nourishGain} stacks per Trait Skill cast (cap ${nourishCap}, ${nourish.durationSeconds} s); ${nourish.noLossNoBonus ? "no loss and no damage bonus (Gentle Zephyr)" : `+${round(nourishEffect)}% additional damage per stack on each Magus skill use (stacks add, provisional); each use then loses a stack with chance ${round(nourish.loseChancePercent)}% + ${round(nourish.losePerStackPercent)}% per stack held (one summed roll, provisional)`}; steady state ${round(uses)} stacks per hit on average, damage ×${round(nourishment.steadyFactor)}.` });
   }
-  for (const item of skills.filter((entry) => entry.role === "ultimate")) notes.push(`${resolved.summon}: ${item.name} is the Ultimate (${round(item.perHitNoBuff)} per hit at this level) and needs Full Bloom, which only The Forsaken Iris – Growing Breeze grants (manual rule 1001012027); ${nourishment?.fullBloom ? (fullBloomEntries.length ? `Full Bloom starts at ${round(fullBloomEntries[0].at)} s (${nourishment.fullBloom.totalStacks} Nourishment stacks gained in total) for ${nourishment.fullBloom.durationSeconds} s, but the Ultimate's cooldown is unpublished, so it` : `this build's Full Bloom line (${nourishment.fullBloom.totalStacks} stacks gained in total) is not reached, so it`) : nourish ? "this build has no Full Bloom line (the Lv.60 trait Gentle Zephyr), so it" : "it"} is not in the cycle.`);
+  // Hero trait audit B6: Charge Calling, the Ultimate in the cycle, Windrider.
+  if (sdPlan) assumptions.push({ id: `selfDestruct:${resolved.key}`, value: sdPlan.chosen ? "explosions" : "own attacks", text: `${resolved.minion} with Charge Calling held (6 s / 6 s, the Trait Skill pressed on cooldown; provisional): ${round(sdPlan.rate)} Self-Destruct Protocol explosions/s × ${round(sdPlan.perExplosion)} = ${round(sdPlan.loopDps)} DPS vs ${round(sdPlan.ownDps)} DPS from its own attacks: ${sdPlan.chosen ? "the explosion loop is kept (best case)" : "its own attacks are kept (best case: the explosions deal less)"}${sdPlan.partStacks ? `; ${round(sdPlan.partStacks)} Mechanical Parts picked up recently (${round(sdPlan.partsPerSecond)}/s × ${RECENT_SECONDS} s)` : ""}.` });
+  if (ultimatePlan) notes.push(`${resolved.summon}: ${ultimate.name} (Ultimate, ${round(ultimate.perHitNoBuff)} per hit): ${ultimatePlan.reason}.`);
+  if (windrider) notes.push(`${resolved.summon}: Windrider (Run With the Wind) replaces the Trait Skill press: ${nourishGain} Nourishment per full channel every ${round(windrider.intervalSeconds)} s (5 × 0.33 s ÷ (1 + ${round(windrider.castSpeedPercent)}% Cast Speed); keyword Windrider; provisional).`);
+  for (const item of skills.filter((entry) => entry.role === "ultimate" && !ultimatePlan)) notes.push(`${resolved.summon}: ${item.name} is the Ultimate (${round(item.perHitNoBuff)} per hit at this level) and needs Full Bloom, which only The Forsaken Iris – Growing Breeze grants (manual rule 1001012027); ${nourishment?.fullBloom ? (fullBloomEntries.length ? `Full Bloom starts at ${round(fullBloomEntries[0].at)} s (${nourishment.fullBloom.totalStacks} Nourishment stacks gained in total) for ${nourishment.fullBloom.durationSeconds} s, but the Ultimate's cooldown is unpublished, so it` : `this build's Full Bloom line (${nourishment.fullBloom.totalStacks} stacks gained in total) is not reached, so it`) : nourish ? "this build has no Full Bloom line (the Lv.60 trait Gentle Zephyr), so it" : "it"} is not in the cycle.`);
   if (enhanced && enhancedShare === 0) notes.push(`${resolved.summon}: ${enhanced.name} (Enhanced Skill, ${round(enhanced.perHitNoBuff)} per hit) is never used at a ${round(magus?.enhancedChancePercent ?? 0)}% Enhanced-skill chance.`);
   for (const line of lines.unread) notes.push(`${resolved.minion}: "${line.text}" (${line.source}) is not applied.`);
   const traitLinesUsed = traitLines.filter((line) => classifyMinionLine(line.text)).map((line) => ({ source: line.source, text: clean(line.text) }));
@@ -672,6 +910,13 @@ export function calculateMinion({ profile, level = 20, modifierTexts = [], trait
     combat: { dps: steadyDps, perMinionDps: steadyDps / Math.max(1, count), fiveSecondAverageDps: windowAverage(windows[0] ?? 5), twentySecondAverageDps: windowAverage(windows[1] ?? 20) },
     town: { dps: 0, note: "the character panel reads 0 for summon skills (user, 2026-10-11)" },
     notes, warnings, assumptions, modeled: steadyDps > 0,
+    // Hero trait audit B6 (src/moto-iris-traits.js): what the Moto / Iris inputs did on this Minion (the module badges read it).
+    heroTraits: heroTraits ? {
+      ...heroTraitState, overload: Boolean(heroTraits.overload), ultimate: ultimatePlan ? { ...ultimatePlan, name: ultimate.name, casts: round(ultimateCasts) } : null,
+      selfDestruct: sdPlan ? { chosen: sdPlan.chosen, rate: sdPlan.rate, perExplosion: sdPlan.perExplosion, loopDps: sdPlan.loopDps, ownDps: sdPlan.ownDps, perCast: sdPlan.perCast, maxAlive: sdPlan.maxAlive, castsPerSecond: sdPlan.castsPerSecond, castInterval: sdPlan.castInterval, ownRate: sdPlan.ownRate, fuel: sdPlan.fuel, ignoresCooldown: sdPlan.ignoresCooldown, capped: sdPlan.capped, life: sdPlan.life, partStacks: sdPlan.partStacks, guerillaStacks: sdPlan.guerillaStacks, partsPerSecond: sdPlan.partsPerSecond, heroicPercent: sdPlan.heroicPercent, troopLife: sdPlan.troopLife, troopShield: sdPlan.troopShield, essentialIncreased: sdPlan.essentialIncreased, essentialAdditional: (sdPlan.raw.extraAdditional || []).filter((line) => /^Essential Speed/.test(line.source)).length } : null,
+      party: partySettled, partyFire: Boolean(partyFire), partyRock: Boolean(partyRock), fullBloom: fullBloomOn ? { entries: fullBloomEntries.length, shareActive: fullBloomShare(basic || ultimate) !== 1 } : null, windrider: Boolean(windrider),
+      nourishEffectFactor, troopNourish: Boolean(troopNourish && nourish), lossReduction, overloadRamp: Boolean(overloadRamp), breezeRamp: Boolean(breezeRamp)
+    } : null,
     sources: { base: "src/minion-base-damage.js (TLIDB Minion table; in-game module tooltips)", rows: "src/data/skills/minion-skill-damage-ss13.generated.js (config_skill_damage)", timing: "src/data/skills/skill-timing-ss13.generated.js (SkillEditor Split)" }
   };
 }

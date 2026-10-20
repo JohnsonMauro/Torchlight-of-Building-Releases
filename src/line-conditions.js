@@ -2,6 +2,7 @@ import { dummyTarget, explicitRadiusHolds, KEYWORD_RADII_METERS, DISTANT_STANDIN
 import { ailmentStateNames } from "./enemy-ailments.js";
 import { CONSUMED_COMBO_POINTS, COMBO_POINTS_PER_STARTER } from "./combo-points.js";
 import { regainsIn } from "./regain-model.js";
+import { WORLD_WITHIN_LINE, worldWithinChances } from "./world-within.js";
 
 // One condition resolver for every line source (research/talent-batch-2026-10-12.md §7.1, chunk 2): support clauses
 // (src/support-effects.js delegates here), talent nodes, cores, gear, slates, pacts and kismets (src/line-effects.js).
@@ -257,6 +258,44 @@ const LINE_RULES = [
   // Gear-pact batch chunk 3 (resource pools): "+1% additional Spell Damage for every 100 Max Mana owned, up to 70%" reads the
   // stat-sheet pool (src/character-stats.js), rounded down per step (provisional, as perStat).
   [new RegExp(`^\\+${N}% (.+?) for every (\\d+) Max (Mana|Life) owned, up to \\+?${N}%$`), (m) => ({ body: `+${m[1]}% ${m[2]}`, key: "perResource", params: { per: num(m[1]), every: num(m[3]), stat: m[4] === "Mana" ? "maxMana" : "maxLife", cap: num(m[5]) } })],
+  // ---- hero trait audit batch B2 (2026-10-19, research/hero-traits-audit-2026-10-19.md §5 B2, F7): plain trait wordings ----
+  // Cleanse Filth (game affix 470412320 [1000, 4, 80]: node "per" on attr 93 Max Mana → 57271, rounded down per step): the
+  // leading "For every N Max Mana you have" wording of the per-resource rule above.
+  // (Damage bodies only: Boundless Sanctuary's "+10% Area for Realm of Mercury" per Max Mana keeps its No DPS effect badge.)
+  [new RegExp(`^For every (\\d+) Max (Mana|Life) you have, \\+?${N}% (.+? Damage), up to \\+?${N}%$`), (m) => ({ body: `+${num(m[3])}% ${m[4]}`, key: "perResource", params: { per: num(m[3]), every: num(m[1]), stat: m[2] === "Mana" ? "maxMana" : "maxLife", cap: num(m[5]) } })],
+  // Missing Life (Hysteria: game affix 49439984 [1, 0.7] "per 11 → 57191"; Divine Spirit: 9813309 [3, 2.3] "per 11 → 57191"):
+  // the Life-lost state the "for every 1% of Life lost" lines read (missing unsealed Life; 0 on the dummy unless the Life group
+  // assumes Low Life). Steps of N% are rounded down (provisional, as the other per-N lines). "when outside the Divine Realm"
+  // (Thea – Incarnation of the Gods) is held: the Realm is cast on the dummy and you stand outside it (best case; the Divine
+  // Realm engine is batch B7; provisional, open question thea-divine-spirit-outside-realm).
+  [new RegExp(`^\\+?${N}% (.+?) for every (\\d+(?:\\.\\d+)?) ?% (?:of )?Missing Life( when outside the Divine Realm)?$`), (m) => ({ body: `${num(m[1]) >= 0 ? "+" : ""}${num(m[1])}% ${m[2]}`, key: "perLifeLost", params: { per: num(m[1]), every: num(m[3]), template: m[2], outsideDivineRealm: Boolean(m[4]) } })],
+  // Endless Frenzy (game affix 914731264 [1, 0.6, -0.1, 100]: attr 34301 Knockback distance converted to 57191 additional damage
+  // and to the deviation angle, up to 100 stacks): the build's "+X% Knockback distance" total (planner knockbackDistancePercent).
+  // The Projectile Max Deviation Angle part changes nothing on one dummy.
+  [new RegExp(`^For every \\+?(\\d+(?:\\.\\d+)?) ?% Knockback distance, \\+?${N}% (additional damage) and .+?\\. Stacks up to (\\d+) time\\(s\\)$`, "i"), (m) => ({ body: `+${num(m[2])}% ${m[3]}`, key: "perKnockbackDistance", params: { every: num(m[1]), per: num(m[2]), stacks: num(m[4]) } })],
+  // Prophecy of Truth (game affix 15579581 [3, 20]): the allocated Legendary Medium Talents on the talent panels (planner
+  // legendaryMediumTalentsAllocated), up to the cap (the text prints the cap without "%").
+  [new RegExp(`^\\+?${N}% (.+?) for each Legendary Medium Talent allocated, up to \\+?${N}%?$`), (m) => ({ body: `+${num(m[1])}% ${m[2]}`, key: "perLegendaryMediumTalent", params: { per: num(m[1]), cap: num(m[3]) } })],
+  // Radiation Field (game affixes 8377909 [10]: attr 6001 / 6002 additional with the Aura-affected tag 4015000, copied to the
+  // Minions by node 111; 14298797 [8]: node 111): the active Aura types (own Auras; the Minions stand inside them: best case).
+  [new RegExp(`^\\+?${N}% (additional )?Attack and Cast Speed when you or your Minions are affected by an Aura$`), (m) => ({ bodies: [`+${num(m[1])}% ${m[2] || ""}Attack and Cast Speed`, `+${num(m[1])}% ${m[2] || ""}Attack and Cast Speed for Minions`], key: "auraCountAtLeast", params: { count: 1 } })],
+  [new RegExp(`^\\+?${N}% additional damage for every Aura affecting you and your Minions$`), (m) => ({ bodies: [`+${num(m[1])}% additional damage`, `+${num(m[1])}% additional damage for Minions`], key: "auraCount", params: { per: num(m[1]) } })],
+  // Feline Fury (game affixes 22949920 [150] / 12176885 [20], both on the Dual Wielding buff 352): the held weapons' types.
+  [/^(.+?) when Dual Wielding the same type of weapons$/, (m) => ({ body: m[1], key: "dualWieldSameType" })],
+  [/^(.+?) when Dual Wielding different types of weapons$/, (m) => ({ body: m[1], key: "dualWieldDifferentTypes" })],
+  // Twinblade Onslaught (game affix 15625477 [30]: attr 5719 additional with the Attack tag 6001090 on the Dual Wielding state):
+  // the +X% additional Attack Damage while Dual Wielding; the Dual Wielding status's +10% additional Attack Speed is dropped by
+  // src/weapon-damage-model.js (NO_DUAL_WIELD_SPEED).
+  [new RegExp(`^No additional Attack Speed bonus is granted while Dual Wielding ?\\. Instead, \\+?${N}% additional Attack Damage$`), (m) => ({ body: `+${num(m[1])}% additional Attack Damage`, key: "dualWielding", params: { replacesDualWieldSpeed: true } })],
+  // Ice to Blaze (game affix 514114784 [-5]: node 111 on the enemy, label 3001462 Frostbitten): the dummy's Fire Resistance is
+  // fixed while it is Frostbitten (src/planner.js reads the active entry; no body of its own).
+  [new RegExp(`^The Fire Resistance of Frostbitten enemies is fixed at ${N}%$`), (m) => ({ bodies: [], key: "fixedFireResistanceFrostbitten", params: { value: num(m[1]) } })],
+  // "… for you and your Minions" (Deepfreeze: game affix 152531504 [10] writes attr 5109 twice, with and without the Minion tag
+  // 5002060): the player's copy; the Minion model reads the Minion share from the same line (src/minion-damage-model.js).
+  [/^(\+?-?\d.*? Damage) for you and your Minions$/, (m) => ({ body: m[1], key: "youAndMinions" })],
+  // World Within (src/world-within.js): each Spirit Magus's Enhanced-skill chance from its element's resistance (Rock Magus: Armor);
+  // src/planner.js gives each Magus its share (no body of its own).
+  [WORLD_WITHIN_LINE, (m) => ({ bodies: [], key: "worldWithin", params: { every: num(m[1]), armorEvery: num(m[2]), per: num(m[3]), cap: num(m[4]) } })],
   // ---- conditions the dummy or this planner cannot satisfy yet (kept so the badge can say why) ----
   // Resource consumed recently: needs each skill's cost per use and the "recently" window; neither is in the planner's data.
   [/^(.+?) for every (\d+) (Mana|Life) consumed recently(?:, up to .+)?$/, (m) => ({ body: m[1], key: "unmodeled", params: { reason: `needs ${m[3]} consumed per second (skill costs are not in the planner's data) and the length of "recently" (not sourced)` } })],
@@ -371,7 +410,14 @@ function resolveKey(condition, state) {
     case "comboPointsAtLeast": return CONSUMED_COMBO_POINTS >= params.points ? on(`the Finisher consumes ${CONSUMED_COMBO_POINTS} Combo Points ≥ ${params.points} (${COMBO_POINTS_PER_STARTER} per Starter read: provisional, run S-COMBO)`, { provisional: true }) : off(`the Finisher consumes ${CONSUMED_COMBO_POINTS} Combo Points (two Starters, ${COMBO_POINTS_PER_STARTER} each read: provisional, run S-COMBO), fewer than ${params.points}`, { provisional: true });
     case "center": return on("one dummy, hit at the center of the area (best case; provisional)", { provisional: true });
     case "enemyLifeHigh": return on("the training dummy never loses its Life share (it never dies): full value (best case; provisional)", { provisional: true });
-    case "enemyLowLife": return off("whether the training dummy counts as Low Life is not known (open question Q4): not applied", { provisional: true });
+    // Q-H9 (hero trait audit B7, recommended reading): the dummy never loses Life, except where a line deems it at Low Life: Thea –
+    // Incarnation of the Gods' Incarnation deems it for 6.5 s of every 10 s from the first hit (src/thea-traits.js), the share the
+    // "against Low Life enemies" bodies take (provisional).
+    case "enemyLowLife": {
+      const deem = state.thea?.incarnation?.deem;
+      if (deem?.share > 0) return on(`the dummy is deemed at Low Life ${deem.seconds} s of every ${deem.cooldownSeconds} s (Incarnation; Q-H9): ${Math.round(deem.share * 10000) / 100}% of the time (provisional)`, { factor: deem.share, provisional: true });
+      return off("the training dummy never loses Life (Q-H9: 0% lost; only a line that deems it at Low Life applies these)", { provisional: true });
+    }
     case "enemyState": {
       const name = ailmentStateNames[params.word] || (params.word === "Shocked" ? "Shock" : params.word);
       const present = name === "Frozen" ? ailments.has("Frozen") || ailments.has("Freeze") : ailments.has(name);
@@ -482,7 +528,7 @@ function resolveKey(condition, state) {
       return on(why, { factor: gate.uptime < 1 ? gate.uptime : null, provisional: true });
     }
     case "minionAuraCount": return state.auraCount > 0 ? on(`${state.auraCount} active Aura type${state.auraCount === 1 ? "" : "s"} affecting the Minions (they stand inside the player's Auras: best case, provisional)`, { factor: state.auraCount, provisional: true }) : off("no active Aura");
-    case "auraCount": return state.auraCount > 0 ? on(`${state.auraCount} active Aura type${state.auraCount === 1 ? "" : "s"}`, { factor: state.auraCount }) : off("no active Aura");
+    case "auraCount": return state.auraCount > 0 ? on(`${state.auraCount} active Aura type${state.auraCount === 1 ? "" : "s"}${condition.wording && /your Minions/i.test(condition.wording) ? " (own Auras; your Minions stand inside them: best case, provisional)" : ""}`, { factor: state.auraCount, provisional: Boolean(condition.wording && /your Minions/i.test(condition.wording)) }) : off("no active Aura");
     case "perStat": {
       const total = state.stats?.[params.stat] ?? 0;
       const steps = Math.floor(Math.max(0, total) / params.every);
@@ -538,7 +584,54 @@ function resolveKey(condition, state) {
     case "perLifeLost": {
       const lost = state.life === "low" ? state.lifeLostPercent ?? 0 : 0;
       const why = state.lifeLostReason || state.lifeReason;
-      return lost > 0 ? on(`${round(lost)}% Life lost (${why}; provisional)`, { factor: lost, provisional: true }) : off(`no Life lost (${why})`);
+      // "for every N% Missing Life" (hero trait audit B2): whole steps of N%, rounded down (provisional); N = 1 keeps the
+      // "for every 1% of Life lost" reading (the lost share itself).
+      const every = params.every > 1 ? params.every : 1;
+      const steps = every > 1 ? Math.floor(lost / every + 1e-9) : lost;
+      const realm = params.outsideDivineRealm ? "; outside the Divine Realm (the \"Divine Realm position\" choice; provisional)" : "";
+      // Thea – Incarnation of the Gods (hero trait audit B7): inside the Divine Realm the "when outside" lines stop.
+      if (params.outsideDivineRealm && state.thea?.incarnation?.realm?.inside) return off("you stand inside the Divine Realm (the \"Divine Realm position\" choice)");
+      if (!(lost > 0)) return off(`no Life lost (${why})`);
+      return steps > 0 ? on(`${round(lost)}% Life lost (${why}; provisional)${every > 1 ? ` ÷ ${every}% = ${steps} steps (rounded down: provisional)` : ""}${realm}`, { factor: steps, provisional: true }) : off(`${round(lost)}% Life lost: below ${every}%`);
+    }
+    // ---- hero trait audit batch B2 (2026-10-19) ----
+    case "perKnockbackDistance": {
+      const total = Math.max(0, state.knockbackDistancePercent ?? 0);
+      const stacks = Math.min(params.stacks, Math.floor(total / params.every + 1e-9));
+      const lines = (state.knockbackDistanceSources || []).map((item) => `${item.text} (${item.source})`).join(", ");
+      return stacks > 0 ? on(`${round(total)}% Knockback distance (${lines}; the build-wide "+X% Knockback distance" lines, provisional) ÷ ${params.every}% = ${stacks} stacks (up to ${params.stacks}); the Projectile Max Deviation Angle part changes nothing on one dummy`, { factor: stacks, provisional: true }) : off(`${round(total)}% Knockback distance: no "+X% Knockback distance" line in the build`);
+    }
+    case "perLegendaryMediumTalent": {
+      const count = Math.max(0, state.legendaryMediumTalentsAllocated ?? 0);
+      const steps = Math.min(count, params.cap / params.per);
+      return count > 0 ? on(`${count} Legendary Medium Talent${count === 1 ? "" : "s"} allocated on the talent panels × ${params.per}% = +${round(steps * params.per)}% (cap +${params.cap}%; slate Legendary Medium Talents are not counted: provisional)`, { factor: steps, provisional: true }) : off("no Legendary Medium Talent allocated on the talent panels");
+    }
+    case "dualWieldSameType": {
+      const weapon = state.weapon || {};
+      if (!weapon.dualWielding) return off("not dual wielding");
+      return weapon.uniqueTypes === 1 ? on(`dual wielding two ${weapon.types?.[0] || "weapons"} (the same type)`) : off(`dual wielding different types (${(weapon.types || []).join(", ")})`);
+    }
+    case "dualWieldDifferentTypes": {
+      const weapon = state.weapon || {};
+      if (!weapon.dualWielding) return off("not dual wielding");
+      return weapon.uniqueTypes > 1 ? on(`dual wielding different types (${(weapon.types || []).join(", ")})`) : off(`dual wielding two ${weapon.types?.[0] || "weapons"} (the same type)`);
+    }
+    case "fixedFireResistanceFrostbitten": return ailments.has("Frostbite") ? on(`the dummy is Frostbitten (enemy-ailment model): its Fire Resistance is fixed at ${params.value}% (no reduction or Scorch changes it; penetration still applies: provisional)`, { provisional: true }) : off("the build does not make the dummy Frostbitten");
+    case "worldWithin": {
+      const summons = (state.spiritMagusSummons || []).map((summon) => String(summon.name).replace(/^Summon /, ""));
+      if (!summons.length) return off("no Spirit Magus summon on the skill board");
+      const chances = worldWithinChances(params, state.worldWithinInputs || {});
+      const describe = (name) => `${name} +${chances[name].chance}% (${chances[name].stat === "Armor" ? `${chances[name].value} Armor ÷ ${params.armorEvery}` : `${chances[name].value}% ${chances[name].stat} Resistance`}, up to +${params.cap}%)`;
+      const parts = summons.filter((name) => chances[name]).map(describe);
+      return summons.some((name) => chances[name]?.chance > 0) ? on(`Enhanced-skill chance per Magus: ${parts.join(", ")} (effective resistance; Armor without Aura buffs: provisional)`, { provisional: true }) : off(`no resistance or Armor for the summoned Magi: ${parts.join(", ") || summons.join(", ")}`);
+    }
+    case "youAndMinions": {
+      // A typed body reaches the build only where it deals that type (or has modeled Minions, which read the line themselves).
+      const typed = String(condition.wording || "").match(/\b(Physical|Fire|Cold|Lightning|Erosion|Elemental) Damage for you and your Minions$/i)?.[1];
+      const want = !typed ? null : /^Elemental$/i.test(typed) ? ["Fire", "Cold", "Lightning"] : [typed[0].toUpperCase() + typed.slice(1).toLowerCase()];
+      const dealt = state.dealtDamageTypes || state.dealtTypes || new Set();
+      const reaches = !want || want.some((type) => dealt.has?.(type) || state.hitTypes?.has?.(type)) || state.minionsCrit;
+      return reaches ? on(`applies to you (game record: the same attribute without the Minion tag)${state.minionsCrit ? " and to your Minions (the Minion model reads the line)" : ""}`) : off(`the build deals no ${typed} Damage and has no modeled Minion`);
     }
     case "blessingActive": { const stacks = state.blessingStacks?.[params.name] || 0; return stacks > 0 ? on(`${params.name} Blessing held at ${stacks} stacks (Blessing model; own buffs pre-built)`) : off(`no ${params.name} Blessing stacks (no gain source holds on the dummy)`); }
     case "blessingAtMax": { const stacks = state.blessingStacks?.[params.name] || 0; return stacks > 0 ? on(`${params.name} Blessing held at its max (${stacks} stacks; Blessing model, own buffs pre-built)`) : off(`no ${params.name} Blessing stacks (no gain source holds)`); }
@@ -577,7 +670,7 @@ function resolveKey(condition, state) {
       if (params.count > 1) return off(`needs ${params.count} enemies Nearby: the training dummy is one enemy`, { notOnDummy: true });
       return state.nearTarget !== false ? on(`the dummy is Nearby (within ${KEYWORD_RADII_METERS.nearby} m, TLIDB; distance group: close, best case)`) : off(`${DISTANT_STANDING_METERS} m from the dummy (distance group: Distant): no enemy Nearby`);
     }
-    case "auraCountAtLeast": return (state.auraCount || 0) >= params.count ? on(`${state.auraCount} active Aura types ≥ ${params.count} (own Auras only: provisional)`, { provisional: true }) : off(`${state.auraCount || 0} active Aura types < ${params.count}`);
+    case "auraCountAtLeast": return (state.auraCount || 0) >= params.count ? on(`${state.auraCount} active Aura type${state.auraCount === 1 ? "" : "s"} ≥ ${params.count} (own Auras only${condition.wording && /your Minions/i.test(condition.wording) ? "; your Minions stand inside them: best case" : ""}: provisional)`, { provisional: true }) : off(`${state.auraCount || 0} active Aura types < ${params.count}`);
     case "auraCountExactly": return (state.auraCount || 0) === params.count ? on(`exactly ${params.count} active Aura type${params.count === 1 ? "" : "s"} (own Auras only: provisional)`, { provisional: true }) : off(`${state.auraCount || 0} active Aura types, not ${params.count}`);
     case "maxSpellBurstPerStack": {
       const stacks = Math.max(0, state.maxSpellBurst || 0);

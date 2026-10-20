@@ -3,7 +3,7 @@
 // and returns only the sanitised build dumps. The raw log text, tokens, account ids and names never leave here.
 import { open, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { listSnapshots, loadGameIdMap, scanGameLog } from "./game-log-import.js";
+import { decodeGameLogBytes, detectGameLogEncoding, listSnapshots, loadGameIdMap, scanGameLog } from "./game-log-import.js";
 
 export const DEFAULT_GAME_LOG_DIR = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Torchlight Infinite\\UE_game\\TorchLight\\Saved\\Logs";
 export const GAME_LOG_ENDPOINT = "/api/game-log/snapshots";
@@ -13,14 +13,18 @@ const LOG_NAME = /^UE_game(?:-backup-[\w.-]+)?\.log$/i;
 
 export const gameLogDir = () => process.env.TLI_GAME_LOG_DIR || DEFAULT_GAME_LOG_DIR;
 
-/** Reads at most the last `maxBytes` of a file; a cut first line is dropped. */
+/** Reads at most the last `maxBytes` of a file (UTF-8, or UTF-16 with or without a BOM); a cut first line is dropped. */
 async function readTail(file, size, maxBytes) {
-  const length = Math.min(size, maxBytes);
   const handle = await open(file, "r");
   try {
-    const buffer = Buffer.alloc(length);
-    await handle.read(buffer, 0, length, size - length);
-    const text = buffer.toString("utf8");
+    const head = Buffer.alloc(Math.min(size, 4096));
+    await handle.read(head, 0, head.length, 0);
+    const encoding = detectGameLogEncoding(head);
+    let start = size - Math.min(size, maxBytes);
+    if (encoding.startsWith("utf-16") && start % 2) start += 1;
+    const buffer = Buffer.alloc(size - start);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, start);
+    const text = decodeGameLogBytes(buffer.subarray(0, bytesRead), encoding);
     return size > maxBytes ? text.slice(text.indexOf("\n") + 1) : text;
   } finally { await handle.close(); }
 }
@@ -48,8 +52,9 @@ export async function readGameLogSnapshots({ dir = gameLogDir(), maxFiles = MAX_
   for (const { name, info } of candidates.slice(0, maxFiles)) {
     let text;
     try { text = await readTail(join(dir, name), info.size, maxBytes); } catch { continue; }
-    const scan = scanGameLog(text, { accountGroups, characterGroups, tokens });
-    text = null;
+    // The live UE_game.log may be mid-write: skip its partial last line and a dump with nothing after it.
+    let scan;
+    try { scan = scanGameLog(text, { accountGroups, characterGroups, tokens, partialTail: /^UE_game\.log$/i.test(name) }); } catch { continue; } finally { text = null; }
     if (!scan.dumps.length) continue;
     files.push({ name, modified: info.mtime.toISOString(), truncated: info.size > maxBytes, scan, snapshots: listSnapshots(scan, idMap) });
   }

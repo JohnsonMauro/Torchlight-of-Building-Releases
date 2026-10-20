@@ -44,6 +44,9 @@ export const TAILORED_REMEDY_LINE = /^\+(\d+(?:\.\d+)?)% additional Elixir Skill
 export const ELIXIR_DURATION_LINE = /^([+-]\d+(?:\.\d+)?)% (additional )?Elixir Skill (?:Effect )?Duration$/i;
 export const RESTORATION_KEPT_LINE = /^The Restoration Effect from Elixir Skills cannot be removed$/i;
 export const MIRACULOUS_GAIN_LINE = /^Triggers Miraculous Gain when casting an Elixir Skill$/i;
+// Sage – Licorice Note's Artificial Moon line (hero trait audit B8): an additional Elixir Skill Effect for the Scent Bottle Elixirs
+// only (setups with `bottle`), not for an Elixir the player placed on the skill board.
+export const BOTTLE_ADDITIONAL_EFFECT_LINE = /^([+-]\d+(?:\.\d+)?)% additional Elixir Skill Effect for the Elixir Skills from any Scent Bottle$/i;
 const DEFAULT_PROGRESS_PER_CHARGE = 15;
 const DEFAULT_DURATION_SECONDS = 3;
 const round = (value) => Math.round(value * 10000) / 10000;
@@ -75,7 +78,11 @@ export function elixirSkillProfile(name) {
   }
   const progressPerCharge = Number(effects.join("\n").match(/At (\d+(?:\.\d+)?) Charging Progress, gains 1 Charge/i)?.[1]) || DEFAULT_PROGRESS_PER_CHARGE;
   const timing = skillTimingSs13[name] || {};
-  return { name, kind, values, states, restoration: kind === "restoration" ? body : [], durationSeconds, progressPerCharge, cooldownSeconds: Number(timing.cooldown) > 0 ? Number(timing.cooldown) : 0.5, charges: Number(timing.cdTimes) || 1 };
+  // Restoration Elixirs (hero trait audit B8, Sage's Elixir of Immortality): "Restores X% Max Life / Max Mana within N s".
+  const restoration = kind === "restoration" ? body : [];
+  const restores = (pool) => Number(restoration.map((line) => line.match(new RegExp(`^Restores (\\d+(?:\\.\\d+)?)% Max ${pool} within`, "i"))?.[1]).find(Boolean)) || 0;
+  const restorationSeconds = Number(restoration.map((line) => line.match(/within (\d+(?:\.\d+)?) ?s/i)?.[1]).find(Boolean)) || 0;
+  return { name, kind, values, states, restoration, restoresLifePercent: restores("Life"), restoresManaPercent: restores("Mana"), restorationSeconds, durationSeconds, progressPerCharge, cooldownSeconds: Number(timing.cooldown) > 0 ? Number(timing.cooldown) : 0.5, charges: Number(timing.cdTimes) || 1 };
 }
 
 // The scaled text of one value line (value × factor), keeping its wording.
@@ -89,7 +96,11 @@ function scaledText(value, factor) {
 }
 
 /**
- * @param {object} p { elixirs: [{ name, setupKey }], lines: modifier lines with `clean` (non-derived) }
+ * @param {object} p { elixirs: [{ name, setupKey, bottle?, extraProgressPerSecond?, extraProgressSources? }], lines: modifier lines
+ *   with `clean` (non-derived) }. A Sage Scent Bottle Elixir (hero trait audit B8, src/sage-traits.js) carries `bottle` ("basic"):
+ *   it takes the bottle-only "+X% additional Elixir Skill Effect for the Elixir Skills from any Scent Bottle" lines on top of the
+ *   build's, and its own Charging Progress per second from the Functional Ingredient. Each setup carries its own `effectFactor`
+ *   and `activeShare` (an Effect Elixir's uptime; a Restoration Elixir's restoring time share).
  * @returns {null | { setups, progressPerSecond, progressSources, effectFactor, increasedPercent, additionalFactor, effectSources,
  *   tailored, durationSources, derived: [{ text, source, conditionText }], hasDamageEffect }}
  */
@@ -104,11 +115,16 @@ export function resolveElixirs({ elixirs = [], lines = [] } = {}) {
   const seen = new Set();
   const setups = elixirs.filter((setup) => { if (seen.has(setup.name)) return false; seen.add(setup.name); return true; }).map((setup) => {
     const profile = elixirSkillProfile(setup.name);
-    const chargesPerSecond = progressPerSecond / profile.progressPerCharge;
+    const extraProgress = Math.max(0, Number(setup.extraProgressPerSecond) || 0);
+    const ownProgress = progressPerSecond + extraProgress;
+    const chargesPerSecond = ownProgress / profile.progressPerCharge;
     const castsPerSecond = Math.min(chargesPerSecond, 1 / profile.cooldownSeconds);
     const durationSeconds = profile.durationSeconds * durationFactor;
     const uptime = profile.kind === "effect" ? Math.min(1, castsPerSecond * durationSeconds) : 0;
-    return { ...profile, setupKey: setup.setupKey, chargesPerSecond: round(chargesPerSecond), castsPerSecond: round(castsPerSecond), durationSeconds: round(durationSeconds), uptime: round(uptime) };
+    // A Restoration Elixir's restoring time ("within N s", also affected by Elixir Duration per the Tonics' text).
+    const activeShare = profile.kind === "effect" ? uptime : Math.min(1, castsPerSecond * profile.restorationSeconds * durationFactor);
+    return { ...profile, setupKey: setup.setupKey, bottle: setup.bottle || null, progressPerSecond: round(ownProgress), extraProgressPerSecond: round(extraProgress), extraProgressSources: setup.extraProgressSources || [],
+      chargesPerSecond: round(chargesPerSecond), castsPerSecond: round(castsPerSecond), durationSeconds: round(durationSeconds), uptime: round(uptime), activeShare: round(activeShare) };
   });
   const upCount = setups.filter((setup) => setup.uptime > 0).length;
   const equipped = setups.length;
@@ -124,11 +140,18 @@ export function resolveElixirs({ elixirs = [], lines = [] } = {}) {
   const additionalFactor = additional.reduce((product, item) => product * (1 + item.value / 100), 1) * tailoredFactor;
   const effectFactor = Math.max(0, 1 + increasedPercent / 100) * additionalFactor;
   const effectSources = [...increased.map((item) => ({ source: item.line.source, text: item.line.clean, value: item.value, kind: "increased" })), ...additional.map((item) => ({ source: item.line.source, text: item.line.clean, value: item.value, kind: "additional" })), ...tailored.filter((item) => item.holds).map((item) => ({ source: item.source, text: item.text, value: item.value, kind: "additional", condition: `${item.count} Elixir Skill${item.count === 1 ? "" : "s"} ${/affected/i.test(item.text) ? "up" : "equipped"} ≤ ${item.limit}` }))];
+  // Scent Bottle Elixirs (Sage): the bottle-only additional lines on top of the build's Elixir Skill Effect.
+  const bottleLines = read(BOTTLE_ADDITIONAL_EFFECT_LINE);
+  const bottleFactor = bottleLines.reduce((product, item) => product * (1 + item.value / 100), 1);
+  const bottleSources = bottleLines.map((item) => ({ source: item.line.source, text: item.line.clean, value: item.value, kind: "additional", condition: "Scent Bottle Elixirs only" }));
   const derived = [];
   for (const setup of setups) {
+    setup.effectFactor = round(effectFactor * (setup.bottle ? bottleFactor : 1));
+    setup.effectSources = setup.bottle ? [...effectSources, ...bottleSources] : effectSources;
+    const factor = setup.effectFactor;
     setup.effectLines = setup.values.map((value) => {
-      const scaled = setup.uptime > 0 ? scaledText(value, effectFactor * setup.uptime) : null;
-      if (scaled) derived.push({ text: scaled, source: `${setup.name} (Elixir Effect × ${round(effectFactor)} Elixir Skill Effect × ${setup.uptime} uptime)`, conditionText: `${setup.name}: ${value.text} × ${round(effectFactor)} Elixir Skill Effect × ${setup.uptime} uptime (${setup.castsPerSecond} casts/s × ${setup.durationSeconds} s; provisional)`, damage: value.damage, setupKey: setup.setupKey });
+      const scaled = setup.uptime > 0 ? scaledText(value, factor * setup.uptime) : null;
+      if (scaled) derived.push({ text: scaled, source: `${setup.name} (Elixir Effect × ${round(factor)} Elixir Skill Effect × ${setup.uptime} uptime)`, conditionText: `${setup.name}${setup.bottle ? " (Basic Scent Bottle)" : ""}: ${value.text} × ${round(factor)} Elixir Skill Effect × ${setup.uptime} uptime (${setup.castsPerSecond} casts/s × ${setup.durationSeconds} s; provisional)`, damage: value.damage, setupKey: setup.setupKey });
       return { text: value.text, damage: value.damage, derivedText: scaled };
     });
   }
@@ -137,17 +160,19 @@ export function resolveElixirs({ elixirs = [], lines = [] } = {}) {
     setups, progressPerSecond: round(progressPerSecond), progressSources: progress.map((item) => ({ source: item.line.source, text: item.line.clean, value: item.value })),
     effectFactor: round(effectFactor), increasedPercent: round(increasedPercent), additionalFactor: round(additionalFactor), effectSources,
     tailored, durationFactor: round(durationFactor), durationSources: durations.map((item) => ({ source: item.line.source, text: item.line.clean, value: item.value, additional: Boolean(item.match[2]) })),
-    derived, hasDamageEffect, upCount
+    derived, hasDamageEffect, upCount, bottleFactor: round(bottleFactor), bottleSources
   };
 }
 
 /** One sentence on an Elixir Skill's state, for badges and the assumptions. */
 export function elixirSetupText(setup, elixirs) {
   if (setup.kind === "restoration") return `${setup.name}: a Restoration Elixir (restores Life / Mana): no damage effect`;
-  if (!(setup.uptime > 0)) return `${setup.name}: charged by defeating enemies (${setup.progressPerCharge} Charging Progress per charge); the dummy is never defeated and the build has no "Elixir Skills gain N Charging Progress every second" line, so no Elixir Effect is up on the dummy`;
+  const where = setup.bottle ? " (Basic Scent Bottle)" : "";
+  if (!(setup.uptime > 0)) return `${setup.name}${where}: charged by defeating enemies (${setup.progressPerCharge} Charging Progress per charge); the dummy is never defeated and the build has no "Elixir Skills gain N Charging Progress every second" line${setup.bottle ? " or Functional Ingredient progress" : ""}, so no Elixir Effect is up on the dummy`;
   const values = setup.effectLines.filter((line) => line.derivedText).map((line) => `${line.text} → ${line.derivedText}`).join("; ");
   const unread = setup.states.filter((line) => line.damage);
-  return `${setup.name}: ${elixirs.progressPerSecond} Charging Progress/s ÷ ${setup.progressPerCharge} per charge = ${setup.castsPerSecond} casts/s, each lasting ${setup.durationSeconds} s: uptime ${Math.round(setup.uptime * 1000) / 10}% × Elixir Skill Effect ×${elixirs.effectFactor}${values ? ` (${values})` : ""}${unread.length ? `; not modeled: ${unread.map((line) => line.text).join("; ")}` : ""} (provisional)`;
+  const progress = setup.extraProgressPerSecond > 0 ? `${setup.progressPerSecond ?? elixirs.progressPerSecond} Charging Progress/s (${elixirs.progressPerSecond} from the build's lines + ${setup.extraProgressPerSecond} from the Functional Ingredient)` : `${setup.progressPerSecond ?? elixirs.progressPerSecond} Charging Progress/s`;
+  return `${setup.name}${where}: ${progress} ÷ ${setup.progressPerCharge} per charge = ${setup.castsPerSecond} casts/s, each lasting ${setup.durationSeconds} s: uptime ${Math.round(setup.uptime * 1000) / 10}% × Elixir Skill Effect ×${setup.effectFactor ?? elixirs.effectFactor}${values ? ` (${values})` : ""}${unread.length ? `; not modeled: ${unread.map((line) => line.text).join("; ")}` : ""} (provisional)`;
 }
 
 export const MIRACULOUS_GAIN_SHARE = 0.25;

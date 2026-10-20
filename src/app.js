@@ -12,7 +12,7 @@ import { boostedKismetAffixHtml, microFateEffectScale, parseKismetEffect, starTr
 import { parseBlockModifier } from "./block-model.js";
 import { kismetAffixCoverage, pactEffectCoverage } from "./pact-coverage.js";
 import { modeledCoreTalents } from "./core-talent-model.js";
-import { heroMemoryLineCoverage } from "./hero-memory-model.js"; import { catsNightSafariStatus } from "./erika-wind-stalker.js";
+import { heroMemoryLineCoverage, revivedAffixCoverage } from "./hero-memory-model.js"; import { catsNightSafariStatus } from "./erika-wind-stalker.js";
 import { findSupportValidation } from "./data/stats/support-validation-2026-09-08.js";
 import { calculatePlanner } from "./planner.js";
 import { automaticCombatConditionIds } from "./combat-condition-mode.js";
@@ -93,7 +93,7 @@ import { heroMemoryTierAffixesSs13 } from "./data/heroes/hero-memory-tiers-ss13.
 import { heroMemoryFixedT0AffixesSs13 } from "./data/heroes/hero-memory-fixed-t0-ss13.js";
 import { regularRevivedAffixesSs13, regularRevivedAffixNamesSs13, lunarPhaseRevivedAffixesSs13, normalizeRevivedAffix, revivedAffixForMemoryType, revivedAffixTiers, revivedAffixRollRange, equippedBaseTraitSlot, memoryFitsBaseTraitSlot } from "./data/heroes/memory-revival-ss13.js";
 import { lunarPhaseRevivedAffixDetailsSs13 } from "./data/heroes/memory-revival-details-ss13.js";
-import { baseTraitDescriptionForLevel, withoutArtificialMoonLines, baseTraitLevelForMemory, slotTraitLevel, clampMemoryEnhancement, closestMemoryTier, memoryBaseStatLabel, memoryScaledBaseStat, memoryMaxEnhancementForRarity, memoryTierNumericValue, traitLevelBonusForEnhancement, reduceBaseTraitMemoryStat } from "./hero-memory-rules.js";
+import { baseTraitDescriptionForLevel, withoutArtificialMoonLines, baseTraitLevelForMemory, slotTraitLevel, nonBaseTraitLevelExtras, artificialMoonGate, clampMemoryEnhancement, closestMemoryTier, memoryBaseStatLabel, memoryScaledBaseStat, memoryMaxEnhancementForRarity, memoryTierNumericValue, traitLevelBonusForEnhancement, reduceBaseTraitMemoryStat } from "./hero-memory-rules.js";
 import { MAX_TALENT_POINTS, TALENT_THRESHOLDS, allocateTalentToMaxWithPrerequisites, allocateTalentWithPrerequisites, canAllocateTalent, pruneInvalidTalentRanks, removeTalentWithDependents, talentEffectText, talentPointTotals } from "./talent-rules.js";
 import { godTalentTreesSs13, talentFamiliesSs13, talentOptionsForSlot } from "./talent-selection-rules.js";
 import { SLATE_BOARD_ROWS, adjacentSlateIds, autoPlaceSlates, canPlaceSlate, isCopySlate, slateOffsets, slateSize, slateTransformRules } from "./slate-board.js";
@@ -102,8 +102,8 @@ import { restoreLatestRevision } from "./planner-state.js";
 import { selectorBaseLevel } from "./skill-level-input.js";
 import { clearPlannerState, createBuild, defaultPlannerState, deleteAllBuilds, deleteBuild, duplicateActiveBuild, encodePlannerState, importBuildCode, libraryLoadIssues, loadBuildLibrary, loadPlannerState, plannerLibraryStorageKey, plannerStorageStatus, reconcileExternalLibraryChange, restoreBuildsFromBackup, savePlannerState, setActiveBuild, openBuildChangedElsewhere, dismissOpenBuildChange, markPlannerStateClean, startNewLibrary, updateActiveBuildMetadata } from "./planner-state.js";
 import { carinoSpecialAmmoOptions } from "./carino-special-ammo.js";
-import { importReportText, importSnapshot, listSnapshots, loadGameIdMap, scanGameLog } from "./game-log-import.js";
-import { gameLogAutoSnapshots, gameLogBuildName, gameLogFoundMarkup, gameLogSnapshotListMarkup, gameLogSummaryMarkup } from "./game-log-import-view.js";
+import { importReportText, importSnapshot, listSnapshots, loadGameIdMap, readGameLogFile } from "./game-log-import.js";
+import { gameLogAutoSnapshots, gameLogBuildName, gameLogFileStatusMarkup, gameLogFoundMarkup, gameLogListFailedMarkup, gameLogSnapshotListMarkup, gameLogSummaryMarkup } from "./game-log-import-view.js";
 import { heroTraitTree, heroTreeRules, heroTreeSelections, heroTreeCapacity, treeRowLevelKey, TREE_ROW_LEVELS, EXTRA_PICK_LEVEL, treeBoardLayout } from "./hero-trait-tree.js";
 import { treeExtraRowMarkup, treeExtraRowTooltipHtml, EXTRA_ROW_NOTE } from "./hero-trait-tree-markup.js";
 import { heroTraitLevelBonus } from "./character-stats.js";
@@ -823,14 +823,20 @@ $("#import-game-log-file").addEventListener("change", async (event) => {
   if(!file){ $("#import-game-log-status").textContent=""; return; }
   $("#import-game-log-found").hidden=true; $("#import-game-log-auto-privacy").hidden=true; $("#import-game-log-reason").hidden=true;
   $("#import-game-log-status").textContent="Reading the log…";
+  // Read in this browser only (readGameLogFile never throws; its status says which problem it was); nothing is
+  // uploaded or stored. A failure after a good read (id map, listing) is the planner's, not the file's.
+  const idMapPromise=loadGameIdMap(); idMapPromise.catch(()=>{});
+  const read=await readGameLogFile(file);
+  if(token!==gameLogReadToken) return;
+  if(read.status!=="ok"){ $("#import-game-log-status").innerHTML=gameLogFileStatusMarkup(read,file.name); return; }
   try {
-    const [scan,idMap]=await Promise.all([file.text().then(scanGameLog),loadGameIdMap()]);
+    const idMap=await idMapPromise, scan=read.scan;
     if(token!==gameLogReadToken) return;
     gameLogSources=new Map(scan.dumps.map((dump)=>[dump.id,{scan,dumpId:dump.id}]));
     gameLogRows=listSnapshots(scan,idMap).sort((a,b)=>(a.stamp<b.stamp?1:-1));
-    $("#import-game-log-status").textContent=gameLogRows.length?"":"No character data found. Log in to the character in the game, then pick UE_game.log again.";
+    $("#import-game-log-status").innerHTML=gameLogFileStatusMarkup(read,file.name);
     $("#import-game-log-snapshots").innerHTML=gameLogSnapshotListMarkup(gameLogRows);
-  } catch { if(token===gameLogReadToken) $("#import-game-log-status").textContent="This file could not be read as a game log."; }
+  } catch(error) { if(token===gameLogReadToken){ clearGameLogResults(); $("#import-game-log-status").innerHTML=gameLogListFailedMarkup(error,file.name); } }
 });
 $("#import-game-log-snapshots").addEventListener("click", (event) => {
   const choice=event.target.closest("[data-game-log-snapshot]"); if(!choice) return;
@@ -1226,7 +1232,7 @@ function heroTraitTooltipLevel(levelKey="base"){
   if(levelKey==="base")return Math.max(1,Math.min(5,baseTraitLevelForMemory(baseTraitReduction()===null?null:baseTraitMemory())));
   if(String(levelKey).endsWith(":extra"))return EXTRA_PICK_LEVEL; // Youga's fourth tree row: max level (src/hero-trait-tree.js)
   const tier=String(levelKey).match(/level\d+/)?.[0];
-  return slotTraitLevel(plannerState.hero,[levelKey,tier],(bonus.all||0)+(bonus.nonBase||0));
+  return slotTraitLevel(plannerState.hero,[levelKey,tier],(bonus.all||0)+(bonus.nonBase||0),nonBaseTraitLevelExtras(plannerState.hero.selectedHeroId,artificialMoonGate(plannerState.hero).active)); // Bing's sixth rank (Q-H2)
 }
 
 // Trait Path tab of a trait-tree hero (Selena – Dance of the Deep, Thea – Wisdom of The Gods, Youga – The Ultimate One;
@@ -2666,7 +2672,7 @@ function heroMemoryTooltipContent(element){
   const implicitText=memoryScaledBaseStat(memory.baseStat,memory.type,memory.enhancementLevel,memory.waxAndWane,memory.rarity);
   const implicit=reduction===null?implicitText:reduceBaseTraitMemoryStat(implicitText,reduction);
   const revival=[memory.waxAndWane?"Wax and Wane · +30% base stat":"",memory.risingMoon?"Rising Moon · fixed affix tier increased":""].filter(Boolean);
-  return {memoryHtml:`<div class="memory-tooltip-head"><img src="${heroMemoryIcon(memory.type)}" alt=""><div><strong>${escapeHtml(memory.name||memory.type)}</strong><small>${escapeHtml(memory.rarity||"normal").toUpperCase()} · HERO MEMORY</small></div></div>${memoryRevivalBadge(memory)}<div class="memory-tooltip-body"><p>Enhancement Level <b>${memory.enhancementLevel}/${memoryMaxEnhancementForRarity(memory.rarity)}</b></p><p>Trait Level <b>+${traitLevelBonusForEnhancement(memory.enhancementLevel)}</b></p>${reduction===null?"":`<p>Base Trait Slot <b>${reduction}% to base stats and random affixes</b></p>`}${section("Implicit",[implicit])}${section("Memory Revival",revival.map(effect=>({effect,status:equipped?"Applied to rolls":"Not equipped"})))}${memory.revivedAffix?`<section><h4>Revived Affix${lunarPhaseRevivedAffixesSs13.includes(normalizeRevivedAffix(memory.revivedAffix))?" · Lunar Phase":""}</h4>${memoryRevivedAffixMarkup(memory)}${memory.revivedAffix==="Ceaseless Tide"?`<p>When equipped on Sing with the Tide: +80% additional Tide Effect and ×0.8 cast speed while in Bard. Movement is not simulated.</p>`:""}${coverageBadge(!equipped?"Not equipped":memory.revivedAffix==="Ceaseless Tide"&&memoryModel.ceaselessTide?"In calc":equippedBaseTraitSlot(plannerState.hero)?.source.id===memory.id?"Enables base slot":catsNightSafariStatus(currentPlanner(),memory)?.status||"Not modeled",catsNightSafariStatus(currentPlanner(),memory)?.reason||"")}</section>`:""}${section("Fixed Affixes",fixed)}${section("Random Affixes",random)}</div><small>${element.dataset.memoryInventoryId?"Right-click to equip or unequip":"Right-click to unequip"}</small>`,rarity:memory.rarity||"normal"};
+  return {memoryHtml:`<div class="memory-tooltip-head"><img src="${heroMemoryIcon(memory.type)}" alt=""><div><strong>${escapeHtml(memory.name||memory.type)}</strong><small>${escapeHtml(memory.rarity||"normal").toUpperCase()} · HERO MEMORY</small></div></div>${memoryRevivalBadge(memory)}<div class="memory-tooltip-body"><p>Enhancement Level <b>${memory.enhancementLevel}/${memoryMaxEnhancementForRarity(memory.rarity)}</b></p><p>Trait Level <b>+${traitLevelBonusForEnhancement(memory.enhancementLevel)}</b></p>${reduction===null?"":`<p>Base Trait Slot <b>${reduction}% to base stats and random affixes</b></p>`}${section("Implicit",[implicit])}${section("Memory Revival",revival.map(effect=>({effect,status:equipped?"Applied to rolls":"Not equipped"})))}${memory.revivedAffix?`<section><h4>Revived Affix${lunarPhaseRevivedAffixesSs13.includes(normalizeRevivedAffix(memory.revivedAffix))?" · Lunar Phase":""}</h4>${memoryRevivedAffixMarkup(memory)}${memory.revivedAffix==="Ceaseless Tide"?`<p>When equipped on Sing with the Tide: +80% additional Tide Effect and ×0.8 cast speed while in Bard. Movement is not simulated.</p>`:""}${coverageBadge(!equipped?"Not equipped":memory.revivedAffix==="Ceaseless Tide"&&memoryModel.ceaselessTide?"In calc":equippedBaseTraitSlot(plannerState.hero)?.source.id===memory.id?"Enables base slot":(catsNightSafariStatus(currentPlanner(),memory)||revivedAffixCoverage(currentPlanner(),memory))?.status||"Not modeled",(catsNightSafariStatus(currentPlanner(),memory)||revivedAffixCoverage(currentPlanner(),memory))?.reason||"")}</section>`:""}${section("Fixed Affixes",fixed)}${section("Random Affixes",random)}</div><small>${element.dataset.memoryInventoryId?"Right-click to equip or unequip":"Right-click to unequip"}</small>`,rarity:memory.rarity||"normal"};
 }
 function slateTooltipContent(element){
   const id=element.dataset.slateId||element.dataset.craftedSlateInventory;

@@ -32,7 +32,9 @@ export function memoryTraitLevel(memory) {
 // Level" + `buildWide` (non-memory "+N to Hero Trait Level" / "+N to Non-Base Hero Trait Level" lines), max 5. Legacy states
 // that carry only a memory name or a stored `memoryTraitLevels` value (no crafted item) count as installed at
 // max(1, stored). `keys` are the slot keys to read, first match wins ("<heroId>:level45", then the bare "level45").
-export function slotTraitLevel(hero = {}, keys = [], buildWide = 0) {
+// `extras` (hero trait audit Q-H2, provisional; nonBaseTraitLevelExtras): the base trait's Artificial Moon
+// "+N to Non-Base Hero Trait Level" and the cap it opens (6 for Bing – Creative Genius, 5 otherwise).
+export function slotTraitLevel(hero = {}, keys = [], buildWide = 0, extras = {}) {
   const id = keys.map((key) => hero?.equippedMemoryIds?.[key]).find(Boolean);
   const memory = id ? (hero?.memoryInventory || []).find((item) => item.id === id) : null;
   let level;
@@ -43,7 +45,34 @@ export function slotTraitLevel(hero = {}, keys = [], buildWide = 0) {
     if (!id && !named && stored <= 0) return 0;
     level = Math.max(1, stored);
   }
-  return Math.max(1, Math.min(5, level + slotMemoryOwnTraitLevel(hero, ...keys) + (Number(buildWide) || 0)));
+  return Math.max(1, Math.min(extras.cap ?? 5, level + slotMemoryOwnTraitLevel(hero, ...keys) + (Number(buildWide) || 0) + (Number(extras.bonus) || 0)));
+}
+
+// Bing – Creative Genius's sixth rank (hero trait audit 2026-10-19 F2, open question Q-H2; recommended reading, provisional):
+// the game tier table holds ranks 1–6 for Creative Genius's 13 non-base traits and TLIDB prints six values. The base trait's
+// Artificial Moon line "+1 to Non-Base Hero Trait Level" (active only while the moon gate holds, artificialMoonGate) raises
+// every 45 / 60 / 75 trait by its value and opens a level cap of 6 for this loadout only; every other hero keeps the cap of 5.
+// Before 2026-10-19 the line was read (src/character-stats.js heroTraitLevelBonus) but never reached the levels: the build-wide
+// total is taken before the trait lines join, and the cap was 5. The sixth value is the trait text's sixth progression entry.
+export const SIXTH_RANK_LOADOUTS = new Set(["bing-creative-genius"]);
+// A base-trait line that ends the "Artificial Moon:" section: Sage – Licorice Note prints its Ingredient catalogue ("Damage
+// Ingredient Razor Leaf: …", "Defense Ingredient …") after the moon line in TLIDB's LV.5 text, but the Ingredients are the bottle's
+// options at every level (the LV.1–4 texts carry them with no moon section). Hero trait audit B8, finding F4.
+export const endsArtificialMoonSection = (line) => /^(?:Damage|Defense|Functional|Special) Ingredient /i.test(String(line || "").trim());
+const moonNonBaseLevelCache = new Map();
+/** The base trait's Artificial Moon "+N to Non-Base Hero Trait Level" (0 when its moon section has none). */
+export function moonNonBaseTraitLevel(heroId) {
+  if (moonNonBaseLevelCache.has(heroId)) return moonNonBaseLevelCache.get(heroId);
+  const lines = String(baseHeroTraitProgressionsSs13[heroId] || "").split("\n").map((line) => line.trim());
+  const header = lines.findIndex((line) => /^Artificial Moon:$/i.test(line));
+  const value = header < 0 ? 0 : lines.slice(header + 1).reduce((sum, line) => sum + Number(line.match(/^\+(\d+) to Non-Base Hero Trait Level$/i)?.[1] || 0), 0);
+  moonNonBaseLevelCache.set(heroId, value);
+  return value;
+}
+/** { bonus, cap } for a 45 / 60 / 75 trait of `heroId`: the moon line's bonus while the gate holds, and the level cap. */
+export function nonBaseTraitLevelExtras(heroId, moonActive) {
+  const bonus = moonActive ? moonNonBaseTraitLevel(heroId) : 0;
+  return { bonus, cap: bonus > 0 && SIXTH_RANK_LOADOUTS.has(heroId) ? 6 : 5 };
 }
 
 /** The own "+N to (Non-Base) Hero Trait Level" of the memory equipped in a 45 / 60 / 75 slot (first key that holds one). */
@@ -150,16 +179,21 @@ import { baseHeroTraitProgressionsSs13 } from "./data/heroes/base-hero-trait-pro
 // Terra build: +2 on the Lv75 memory, base trait LV.3, gate shut). The rest of the planner reads the same level
 // (baseTraitLevelForMemory). Every hero follows it. The result names what is missing when the gate is shut.
 import { equippedBaseTraitSlot, memoryFitsBaseTraitSlot, normalizeRevivedAffix } from "./data/heroes/memory-revival-ss13.js";
+import { revivedAffixCounts } from "./hero-exclusive-revivals.js";
 export const ARTIFICIAL_MOON_TRAIT_LEVEL = 5;
 export function artificialMoonGate(hero = {}) {
   const inventory = hero?.memoryInventory || [];
   const equippedIds = Object.values(hero?.equippedMemoryIds || {}).filter(Boolean);
-  const moonMemory = inventory.find((memory) => equippedIds.includes(memory.id) && /^Artificial Moon/.test(normalizeRevivedAffix(memory.revivedAffix || ""))) || null;
+  // Only one revived memory counts (Q-H11, provisional; src/hero-exclusive-revivals.js): a moon memory that is not the counted
+  // revived memory (an exclusive revival comes first in slot order) opens nothing.
+  const moonMemory = inventory.find((memory) => equippedIds.includes(memory.id) && /^Artificial Moon/.test(normalizeRevivedAffix(memory.revivedAffix || "")) && revivedAffixCounts(hero, memory)) || null;
   const slot = equippedBaseTraitSlot(hero);
   const base = inventory.find((memory) => memory.id === hero?.baseTraitMemoryId);
   const baseMemory = memoryFitsBaseTraitSlot(base, slot, equippedIds) ? base : null;
   const baseTraitLevel = baseMemory ? Math.max(0, Math.min(5, memoryTraitLevel(baseMemory) + memoryOwnHeroTraitLevel(baseMemory))) : 0;
-  const reason = !moonMemory ? "No equipped memory with the Artificial Moon revived affix"
+  const uncounted = !moonMemory && inventory.some((memory) => equippedIds.includes(memory.id) && /^Artificial Moon/.test(normalizeRevivedAffix(memory.revivedAffix || "")));
+  const reason = uncounted ? "Only one revived memory counts: another equipped revived memory comes first (slot order)"
+    : !moonMemory ? "No equipped memory with the Artificial Moon revived affix"
     : !baseMemory ? "No memory in the base trait slot (opened by the Artificial Moon memory)"
     : baseTraitLevel < ARTIFICIAL_MOON_TRAIT_LEVEL ? `Base trait level ${baseTraitLevel} < ${ARTIFICIAL_MOON_TRAIT_LEVEL}` : "";
   return { active: !reason, reason, moonMemoryId: moonMemory?.id ?? null, baseMemoryId: baseMemory?.id ?? null, baseTraitLevel };

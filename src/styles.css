@@ -3259,6 +3259,7 @@ body.unified-planner #equipment-view .inventory-item .inventory-item-icon img[sr
 .import-game-log-dialog .game-log-reason{margin-top:8px;color:#a9b5c4;font-size:.74rem}
 .import-game-log-dialog .game-log-status{margin-top:12px;color:#ffbd8b}
 .import-game-log-dialog .game-log-status:empty{display:none}
+.import-game-log-dialog .game-log-details{display:block;margin-top:4px;color:#a9b5c4;font-size:.7rem}
 .import-game-log-dialog>#import-game-log-snapshots,.import-game-log-dialog>#import-game-log-summary{display:block;margin-top:0}
 .import-game-log-dialog .game-log-step{margin:18px 0 8px;color:#f0c77e;font-size:.76rem;font-weight:700}
 .game-log-snapshots{display:grid;gap:6px;margin:0;padding:0;list-style:none}

@@ -83,6 +83,8 @@ const noDpsRules = [
   /Movement Speed/i, /Energy Shield/i, /\bDefense\b/i, /\bArmor\b/i, /\bEvasion\b/i, /Life Regeneration/i, /Life Regain|Energy Shield Regain/i,
   /^\+[\d.]+% (?:gear )?(?:Max )?Life$/i, /Max Mana$/i, /Mana Regeneration/i, /Injury Buffer/i, /Barrier of Radiance/i,
   /^Immune to /i, /are immune to/i, MINION_RULE, /Skill Area/i, /Projectile Speed/i, /Beam Length/i, /Skill Cost/i,
+  // "+X% Aura Area" (Radiation Field; hero trait audit B6, adjudicated c → d): the dummy stands inside every Aura's area.
+  /^\+[\d.]+% Aura Area$/i,
   // A movement on cast (Dark Advance's "Moves in the target direction when casting Dark Gate"; core audit B7).
   /^Moves in the target direction when casting /i,
   // No /Paralyze/ rule (2026-10-14): every "Paralyze" wording in the catalogs inflicts Paralysis (+15% damage taken, read by
@@ -532,12 +534,23 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   // while they moved the dummy figure).
   const aimTiming = normalizePercentageText(text).match(/^([+-][\d.]+)% (Skill Effect Duration|Cooldown Recovery Speed)$/i);
   if (aimTiming && aimLineMoves(Number(aimTiming[1]), /Duration/i.test(aimTiming[2]) ? "duration" : "cooldown", planner)) return "In calc";
+  // Youga – The Ultimate One (src/youga-ultimate-one.js): the Clockwork Core's share of Cooldown Recovery Speed and Skill Effect
+  // Duration, and the trait skills' durations and cooldowns, read both pools (hero trait audit B1, F6: I Meet the Selves's
+  // Skill Effect Duration moved the dummy figure while it badged Counted in stats).
+  const youga = planner?.yougaUltimateOne;
+  if (aimTiming && youga?.active && (youga.coreShare?.valuePercent > 0 || youga.traitSkills?.vault || youga.traitSkills?.selves)) return "In calc";
   // "+X% Aiming Skill Duration" (src/aim-model.js; Aim read as the Aiming Skill, provisional): In calc while Aim is active.
   if (/^[+-][\d.]+% Aiming Skill Duration\.?$/i.test(text) && planner?.activation) return planner.activation.activeNames?.has("Aim") ? "In calc" : "Inactive";
   // "+N to [Non-Base] Hero Trait Level" (src/character-stats.js heroTraitLevelBonus; on a memory, only the trait in that
   // memory's slot, user-observed 2026-10-13): raises the trait levels (max 5), so their per-level values; In calc with a hero
   // selected.
-  if (/^\+\d+ to (?:Non-Base )?Hero Trait Level$/i.test(text) && planner?.state?.hero) return planner.state.hero.selectedHeroId ? "In calc" : "Inactive";
+  // Hero trait audit B1 (2026-10-19): "+N to Non-Base Hero Trait Level" with no 45 / 60 / 75 trait picked raises nothing
+  // (Inactive; before, In calc). Bing - Creative Genius's moon line also opens the sixth rank (Q-H2).
+  if (/^\+\d+ to (?:Non-Base )?Hero Trait Level$/i.test(text) && planner?.state?.hero) {
+    const hero = planner.state.hero;
+    const picked = Object.values(hero.selectedTraits || {}).some(Boolean) || (hero.treeTraits?.[hero.selectedHeroId] || []).some(Boolean);
+    return hero.selectedHeroId && (picked || !/Non-Base/i.test(text)) ? "In calc" : "Inactive";
+  }
   // Terra Charge Recovery / Restoration Speed (src/selena-dance.js resolveTerraCharges): sets the charge interval, so the charges
   // a Main Terra cast consumes; In calc while the Main Terra Skill is active, Inactive otherwise. "+X% Terra Skill Duration"
   // lengthens The Cycle I Resist's T (src/selena-dance.js resolveCycleResist): In calc while that Reap is active. Both read
@@ -684,7 +697,9 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   // Spell Burst (src/skill-hit-model.js reads "+N Max Spell Burst" and "+X% additional Hit Damage for skills cast by Spell
   // Burst" and "±X% (additional) Spell Burst Charge Speed" (game manual 2026-10-12: full charge 2 s ÷ (1 + Σ) ÷ Π(1 +
   // additional)) from the modifier list): In calc where a modeled Spell hit Spell Bursts, Inactive otherwise (gear-pact batch G16).
-  if (/^\+\d+ Max Spell Burst$|^\+?[\d.]+% additional Hit Damage for skills cast by Spell Burst$|^[+-]?[\d.]+\s?% (?:additional )?Spell Burst Charge Speed$/i.test(text) && planner?.activation) {
+  // Hero trait audit B4: signed hit lines (Telepathy Expert's / Fifth Cosmic Velocity's -20%) and Fifth Cosmic Velocity's interval
+  // gain of Spell Burst Charge stacks.
+  if (/^\+\d+ Max Spell Burst$|^[+-]?[\d.]+% additional Hit Damage for skills cast by Spell Burst$|^[+-]?[\d.]+\s?% (?:additional )?Spell Burst Charge Speed$|^[\d.]+% chance to immediately gain \d+ stack\(s\) of Spell Burst Charge\. Interval: [\d.]+ ?s$/i.test(text) && planner?.activation) {
     return (planner.skillHits || []).some((hit) => hit.modeled && hit.rate?.spellBurst) ? "In calc" : "Inactive";
   }
   // Erika "E1 Model" talents (2026-10-14). Additional Min / Max Damage (Impermanence; src/skill-hit-model.js): In calc where a
@@ -1023,7 +1038,8 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   // auto-trigger lines keep the generic status (the Empower Skill Effect and the Ultimate are not read).
   const nourishKind = planner?.activation ? nourishmentLineKind(text) : null;
   if (nourishKind === "movement") return "No DPS effect";
-  if (["activeAsTrait", "grant", "extraGrant", "lose", "losePerStack", "effect"].includes(nourishKind)) {
+  // Gentle Zephyr's no-loss / no-bonus line is read by the same cycle (hero trait audit B1, F6).
+  if (["activeAsTrait", "grant", "extraGrant", "lose", "losePerStack", "effect", "noLossNoBonus"].includes(nourishKind)) {
     return (planner.minions || []).some((minion) => minion.modeled && minion.family === "spirit-magus") ? "In calc" : "Inactive";
   }
   // Minion / Synthetic Troop / Spirit Magus skill levels raise the summon skill of a modeled Minion of that family

@@ -486,7 +486,9 @@ export function combinedPathModel(paths, { format: rawFormat, recountTotalDps = 
     // No Reaping source in any window: no zero Reaping row.
     ...(withReaping ? [["Reaping", window.reaping?.reapingDps || 0]] : []),
     // Ill Omen (src/ill-omen.js): best-case True Damage beyond the dummy, from the DoT and Reaping above.
-    ["Ill Omen", window.illOmen?.dps || 0]
+    ["Ill Omen", window.illOmen?.dps || 0],
+    // Spacetime Turbulence (Youga – Spacetime Elapse, hero trait audit B4): the recorded share of the DoT and Reaping above.
+    ["Spacetime Turbulence", window.turbulence?.dps || 0]
   ];
   const twenty = parts(paths.twentySeconds);
   const five = parts(paths.fiveSeconds);

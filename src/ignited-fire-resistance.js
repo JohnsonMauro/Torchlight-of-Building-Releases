@@ -67,7 +67,8 @@ export function ignitedFireResistanceLines(modifierTexts = []) {
  * @param {boolean} p.ignited the build keeps the dummy Ignited (Ignite or Scorch)
  * @param {number} p.basePercent the dummy's Fire Resistance setting (30)
  * @param {number} p.reductionPercent flat reductions held while Ignited (Scorch −20, Fire's Allure −10 per stack), as a positive number
- * @param {boolean} p.fixed "Fire Resistance … is fixed at 0" (Fueling): the line has nothing to scale
+ * @param {boolean|number} p.fixed "Fire Resistance … is fixed at 0" (Fueling: true) or at a value (Ice to Blaze while Frostbitten,
+ *   hero trait audit B2): the line has nothing to scale
  * @param {string} [p.reading] defaults to the active reading
  * @returns {{ lines, multiplier, reading, applies, unmultipliedPercent, hitPercent, dotPercent, capped, maxPercent, dotFlatChange }}
  *   dotFlatChange(r): the change of the DoT resistance when one more flat 5101 write r (e.g. −8 at max Affliction) holds.
@@ -75,8 +76,9 @@ export function ignitedFireResistanceLines(modifierTexts = []) {
 export function ignitedFireResistance({ modifierTexts = [], ignited = false, basePercent = 30, reductionPercent = 0, fixed = false, reading = activeReading, maxPercent = DUMMY_MAX_FIRE_RESISTANCE_PERCENT, floorPercent = activeFloorPercent } = {}) {
   const lines = ignitedFireResistanceLines(modifierTexts);
   const multiplier = lines.reduce((factor, line) => factor * (1 + line.value / 100), 1);
-  const flat = fixed ? 0 : basePercent - reductionPercent;
-  const applies = lines.length > 0 && ignited && !fixed && reading !== "off" && multiplier !== 1;
+  const fixedValue = fixed === true ? 0 : Number.isFinite(fixed) ? fixed : null;
+  const flat = fixedValue != null ? fixedValue : basePercent - reductionPercent;
+  const applies = lines.length > 0 && ignited && fixedValue == null && reading !== "off" && multiplier !== 1;
   // The resistance (before penetration) for a flat sum x, under the reading; `dot` false = hits.
   const at = (x, dot) => {
     if (!applies || (dot && reading === "hitsOnly")) return x;

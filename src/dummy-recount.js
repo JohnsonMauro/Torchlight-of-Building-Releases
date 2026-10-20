@@ -22,9 +22,12 @@
 // estimateApplicationReapingOpening exactly; further application sources use a mean-field
 // ready mass.
 //
-// This module is pure: it imports nothing and never mutates its inputs.
+// This module is pure: it imports only the pure Spacetime Turbulence helpers (src/youga-spacetime.js) and never mutates its
+// inputs.
 
 /** Output bin width: the ~30 Hz server tick (equals REAP_TICK_SECONDS in reaping-model.js). */
+import { turbulenceSeries, twistedSpacetime } from "./youga-spacetime.js";
+
 export const RECOUNT_STEP_SECONDS = 1 / 30;
 
 const EPS = 1e-9;
@@ -529,6 +532,10 @@ export function simulateDummyTimeline(inputs, { seconds = 60, stepSeconds = RECO
     const series = bySource.illOmen = new Float64Array(bins);
     for (const key of builders) for (let b = 0; b < bins; b++) series[b] += bySource[key][b] * illOmenFactor;
   }
+  // Spacetime Turbulence (Youga – Spacetime Elapse, hero trait audit B4, Q-H6; src/youga-spacetime.js): at each move the recorded
+  // share of every DoT and Reap series since the previous move lands at once.
+  const turbulence = inputs.turbulence?.intervalSeconds > 0 ? { ...inputs.turbulence, builders: [...ailments.filter((ailment) => !ailment.silent).map((ailment) => ailment.key), ...reaping.map((source) => source.key)] } : null;
+  if (turbulence) bySource.turbulence = turbulenceSeries(bySource, turbulence, bins, stepSeconds);
   const total = new Float64Array(bins);
   for (const series of Object.values(bySource)) for (let b = 0; b < bins; b++) total[b] += series[b];
   if (!Number.isFinite(firstDamageSeconds)) {
@@ -539,7 +546,8 @@ export function simulateDummyTimeline(inputs, { seconds = 60, stepSeconds = RECO
     stepSeconds, seconds: bins * stepSeconds, total, bySource, firstDamageSeconds, options,
     // Ill Omen's factor and the series it is built from (metadata for excludeRecountSources; no figure reads it).
     ...(illOmenFactor ? { illOmen: { factor: illOmenFactor, builders: illOmenBuilders } } : {}),
-    labels: Object.fromEntries([...(hits ? [["beam", "Beam hits"]] : []), ...skillHits.map((hit) => [hit.key, hit.label || hit.key]), ...(inputs.scheduledHits || []).map((source) => [source.key, source.label || source.key]), ...ailments.filter((a) => !a.silent).map((a) => [a.key, a.name || a.key]), ...reaping.map((s) => [s.key, `Reaping: ${s.source}`]), ...(illOmenFactor ? [["illOmen", inputs.illOmen.label || "Ill Omen"]] : [])]),
+    ...(turbulence ? { turbulence } : {}),
+    labels: Object.fromEntries([...(hits ? [["beam", "Beam hits"]] : []), ...skillHits.map((hit) => [hit.key, hit.label || hit.key]), ...(inputs.scheduledHits || []).map((source) => [source.key, source.label || source.key]), ...ailments.filter((a) => !a.silent).map((a) => [a.key, a.name || a.key]), ...reaping.map((s) => [s.key, `Reaping: ${s.source}`]), ...(illOmenFactor ? [["illOmen", inputs.illOmen.label || "Ill Omen"]] : []), ...(turbulence ? [["turbulence", turbulence.label || "Spacetime Turbulence"]] : [])]),
     assumptions: [...recountOptionAssumptions(options), ...(inputs.assumptions || []), ...(jointDropped ? [{ id: "applicationReapReadiness", value: "mean-field", text: `${jointDropped}: readiness uses a mean-field ready share (joint tracking would exceed ${MAX_CHAIN_CELLS} chain cells).` }] : []), ...(jointIndex >= 0 ? [{ id: "applicationReapReadiness", value: "joint", text: `${reaping[jointIndex].source}: readiness tracked jointly with ${ailments[triggers[jointIndex]].name || ailments[triggers[jointIndex]].key}; further application Reaps use a mean-field ready share.` }] : [])]
   };
 }
@@ -585,6 +593,9 @@ export function excludeRecountSources(timeline, excluded = []) {
         if (source) for (let b = 0; b < bins; b++) rebuilt[b] += source[b] * ill.factor;
       }
       bySource[key] = rebuilt;
+    } else if (key === "turbulence" && timeline.turbulence) {
+      // Spacetime Turbulence re-deals the included builders' record (hero trait audit B4).
+      bySource[key] = turbulenceSeries(Object.fromEntries(Object.entries(timeline.bySource).filter(([name]) => !skip.has(name))), timeline.turbulence, bins, timeline.stepSeconds);
     } else bySource[key] = series;
   }
   const total = new Float64Array(bins);
@@ -773,6 +784,10 @@ export function steadyState(inputs) {
   if (inputs.illOmen?.factor > 0) {
     const builders = [...ailments.filter((ailment) => !ailment.silent).map((ailment) => ailment.key), ...(inputs.reaping || []).map((source) => source.key)];
     bySource.illOmen = builders.reduce((sum, key) => sum + (bySource[key] || 0), 0) * inputs.illOmen.factor;
+  }
+  if (inputs.turbulence?.intervalSeconds > 0) {
+    const builders = [...ailments.filter((ailment) => !ailment.silent).map((ailment) => ailment.key), ...(inputs.reaping || []).map((source) => source.key)];
+    bySource.turbulence = builders.reduce((sum, key) => sum + (bySource[key] || 0), 0) * twistedSpacetime(inputs.turbulence).sustainedShare;
   }
   const dps = Object.values(bySource).reduce((sum, value) => sum + value, 0);
   // Simulated Affliction is not reduced to a stationary figure here; the configured rating is used.

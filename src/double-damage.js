@@ -7,8 +7,12 @@ import { normalizePercentageText } from "./percentage-text.js";
 //     type's chance, a roll of 1–100 at or below it sets that type's bit, and the typed hit damage is multiplied by exactly 2.
 // So the expected hit factor is 1 + min(100, Σ chance) / 100. Hits only: the trace sits on the hit-damage event and the
 // manual says "on hit"; whether ailments inherit it is not established, so DoTs and ailments do not read it (provisional).
-// Chance above 100% does nothing without a "Quadruple Damage" line (not modeled).
+// Chance above 100% does nothing without a "Quadruple Damage" line: Thea's Farewell Prophecy ("For every 1% overflown Double
+// Damage Chance, there is a 1% chance to deal Quadruple Damage instead"; hero trait audit B7) turns the overflow q = min(100%,
+// chance − 100%) into Quadruple Damage, so the expected factor is 2 × (1 − q) + 4 × q (provisional; the chance is the time-averaged
+// sum, so a God's Boon window's overflow is averaged first).
 const N = "(\\d+(?:\\.\\d+)?)";
+const QUADRUPLE = /^For every 1% overflown Double Damage Chance, there is a 1% chance to deal Quadruple Damage instead$/i;
 const RULES = [
   { pattern: new RegExp(`^\\+${N}% chance to deal Double Damage$`, "i"), tags: [] },
   { pattern: new RegExp(`^\\+${N}% chance for Spells to deal Double Damage$`, "i"), tags: ["Spell"] },
@@ -50,5 +54,7 @@ export function doubleDamageForSkill(modifierTexts = [], { tags = [], stats = {}
     if (value) sources.push({ source: line.source, text: line.text, value });
   }
   const chancePercent = sources.reduce((total, line) => total + line.value, 0);
-  return { chancePercent, factor: 1 + Math.max(0, Math.min(100, chancePercent)) / 100, sources };
+  const quadruple = modifierTexts.some((line) => QUADRUPLE.test(normalizePercentageText(String(line?.text ?? "")).replace(/\s+/g, " ").replace(/(\d) %/g, "$1%").trim()));
+  const overflow = quadruple ? Math.max(0, Math.min(100, chancePercent - 100)) / 100 : 0;
+  return { chancePercent, factor: 1 + Math.max(0, Math.min(100, chancePercent)) / 100 + 2 * overflow, sources, quadrupleChancePercent: overflow * 100 };
 }

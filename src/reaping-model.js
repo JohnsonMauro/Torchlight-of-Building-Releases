@@ -29,9 +29,13 @@ const rawInterval = (source, recoverySeconds, totalDotDps, successfulApplication
   : source.trigger === "full Affliction" ? Math.max(recoverySeconds, 100 / afflictionPerSecond)
   : recoverySeconds + 1 / successfulApplicationsPerSecond;
 const perAilmentType = /^When Reaping, \+(\d+(?:\.\d+)?)% additional Reaping Duration for each type of Damaging Ailment the enemy has$/i;
+// "When Reaping, +X% chance to Reap 2 times" (Sage – Licorice Note's Twinspine Flower Ingredient, time-averaged by src/sage-traits.js;
+// hero trait audit B8, provisional): each trigger Reaps 1 + chance times on average, read as a factor on the seconds every Reap
+// settles (the same expected damage; chances add, capped at 100%).
+export const REAP_TWICE_LINE = /^When Reaping, \+(\d+(?:\.\d+)?)% chance to Reap 2 times$/i;
 
 export function collectReapingModifiers(modifierTexts = [], extraRecoverySources = []) {
-  const duration = [], recovery = [...extraRecoverySources], additionalRecoveryLines = [], recentReap = [], ailmentType = [];
+  const duration = [], recovery = [...extraRecoverySources], additionalRecoveryLines = [], recentReap = [], ailmentType = [], reapTwice = [];
   for (const line of modifierTexts) {
     const scale = line.multiplier ?? 1;
     let match = line.text.match(reapingDuration);
@@ -42,10 +46,12 @@ export function collectReapingModifiers(modifierTexts = [], extraRecoverySources
     if (match) { additionalRecoveryLines.push({ source: line.source, text: line.text, value: Number(match[1]) }); continue; }
     match = line.text.match(perRecentReap);
     if (match) { recentReap.push({ source: line.source, text: line.text, value: Number(match[1]), cap: Number(match[2]) }); continue; }
+    match = line.text.match(REAP_TWICE_LINE);
+    if (match) { reapTwice.push({ source: line.source, text: line.text, value: Number(match[1]) * scale }); continue; }
     match = line.text.match(perAilmentType);
     if (match) ailmentType.push({ source: line.source, text: line.text, value: Number(match[1]) });
   }
-  return { duration, recovery, additionalRecovery: additionalRecoveryLines, recentReap, ailmentType };
+  return { duration, recovery, additionalRecovery: additionalRecoveryLines, recentReap, ailmentType, reapTwice };
 }
 
 export function collectAllReapingSources(modifierTexts = []) {
@@ -80,7 +86,8 @@ export function calculateMultiSourceReaping({ modifierTexts = [], dots = [], ext
   const durationPercent = modifiers.duration.reduce((sum, line) => sum + line.value, 0);
   const recoveryPercent = modifiers.recovery.reduce((sum, line) => sum + line.value, 0);
   const additionalRecoveryFactor = modifiers.additionalRecovery.reduce((factor, line) => factor * (1 + line.value / 100), 1);
-  const additionalDurationFactor = modifiers.ailmentType.reduce((factor, line) => factor * (1 + line.value * Math.max(0, damagingAilmentTypes) / 100), 1);
+  const reapTwiceFactor = 1 + Math.min(100, modifiers.reapTwice.reduce((sum, line) => sum + line.value, 0)) / 100;
+  const additionalDurationFactor = modifiers.ailmentType.reduce((factor, line) => factor * (1 + line.value * Math.max(0, damagingAilmentTypes) / 100), 1) * reapTwiceFactor;
   const totalDotDps = dots.reduce((sum, dot) => sum + Math.max(0, dot.dps || 0), 0);
   // Reaps happen often in these builds, so "recent Reaping" stacks are taken as full.
   // A source scoped to DoTs the dummy does not carry (a Trauma-only Reap without Trauma) never triggers (chunk 3).
@@ -122,7 +129,7 @@ export function calculateMultiSourceReaping({ modifierTexts = [], dots = [], ext
   return {
     sources: modeled,
     reapingDps: modeled.reduce((sum, source) => sum + source.reapingDps, 0),
-    durationPercent, recentReapPercent, recoveryPercent, additionalRecoveryFactor, additionalDurationFactor,
+    durationPercent, recentReapPercent, recoveryPercent, additionalRecoveryFactor, additionalDurationFactor, reapTwiceFactor,
     modifiers, totalDotDps
   };
 }

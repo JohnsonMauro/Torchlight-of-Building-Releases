@@ -361,7 +361,7 @@ export function compileScorchingBeamIgniteSources({ blurEffects, blessings = { d
   // mod 1 while the enemy has state 4000900). Applied to the dummy's Fire Resistance only for the share of
   // time the dummy sits at 100 Affliction (max-affliction-resistance.js). Order follows calculateTheoreticalIgnite:
   // the reduction changes target resistance before penetration; negative resistance is allowed there.
-  const maxAfflictionReductionSources = coreTalents.fixesFireResistance ? [] : [
+  const maxAfflictionReductionSources = coreTalents.fixesFireResistance || coreTalents.fixedFireResistancePercent != null ? [] : [
     entry("Talents", talent.enemyAllResistanceAtMaxAfflictionPercent || 0, "Resistance at max Affliction"),
     entry("Divinity Slates", slate.enemyAllResistanceAtMaxAfflictionPercent || 0, "Resistance at max Affliction")
   ].filter((item) => item.value);

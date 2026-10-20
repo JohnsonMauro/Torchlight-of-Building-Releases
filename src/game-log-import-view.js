@@ -12,6 +12,55 @@ export function gameLogLocalTime(stamp) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+const BACKUP_HINT = "pick a UE_game-backup-*.log file from the same folder.";
+/** Status line for a chosen log file, by readGameLogFile's status ("" when snapshots were found). */
+export const GAME_LOG_FILE_MESSAGES = {
+  ok: "",
+  "no-login": `No character data in this log yet. Log in to a character in game, then choose UE_game.log again, or ${BACKUP_HINT}`,
+  writing: `The game is still writing the character data to this log. Wait a few seconds, then choose UE_game.log again, or ${BACKUP_HINT}`,
+  unreadable: `The browser could not read this file. If the game is running, it is still writing UE_game.log: choose it again (or close the game first), or ${BACKUP_HINT}`,
+  "unknown-format": `This file could not be read as a game log. Choose UE_game.log, or ${BACKUP_HINT}`
+};
+export const gameLogFileMessage = (status) => GAME_LOG_FILE_MESSAGES[status] ?? GAME_LOG_FILE_MESSAGES["unknown-format"];
+/** Shown above the logins when a complete login was found but the newest one is still being written. */
+export const GAME_LOG_WRITING_NOTE = "The newest login in this log is still being written and was left out. Choose UE_game.log again in a few seconds to include it.";
+/** The log was read, but the planner failed to list its logins (its id map or snapshot list threw). */
+export const GAME_LOG_LIST_FAILED = "The log was read, but the planner could not list its characters. Reload the page and choose the file again.";
+
+const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
+const KIND_LABELS = { empty: "empty file", binary: "binary data", text: "text without game log lines" };
+/**
+ * The muted "Details: …" support line for readGameLogFile's result: the browser's error name, or what the file was
+ * (game log or not, login counts). Never file contents; only the file name. "" for a plain ok.
+ */
+export function gameLogFileDetails(read, fileName = "") {
+  const details = read?.details || {};
+  let text = "";
+  if (read?.status === "unreadable") text = details.errorName || "Error";
+  else if (read?.status === "unknown-format" && !details.gameLog) text = `not a game log (${KIND_LABELS[details.kind] || "unknown content"}${details.decodeError ? `, ${details.decodeError}` : ""})`;
+  else if (read?.status !== "ok" || details.incompleteDumps) {
+    const parts = [`game log, ${plural(details.logins || 0, details.incompleteDumps ? "complete character login" : "character login")}`];
+    if (details.incompleteDumps) parts.push(`${details.incompleteDumps} still being written`);
+    if (details.skippedDumps) parts.push(`${plural(details.skippedDumps, "login")} could not be parsed`);
+    if (details.scanError) parts.push(`scan failed (${details.scanError})`);
+    text = parts.join(", ");
+  }
+  if (!text) return "";
+  if (details.partial) text += ", end of the file read";
+  return `Details: ${text}${fileName ? ` · ${fileName}` : ""}`;
+}
+const detailsMarkup = (details) => (details ? `<small class="game-log-details">${escapeHtml(details)}</small>` : "");
+/** Status markup for a chosen file: the message (or the still-writing note on ok) and its Details line; "" for a plain ok. */
+export function gameLogFileStatusMarkup(read, fileName = "") {
+  const message = read?.status === "ok" ? (read.incompleteDumps ? GAME_LOG_WRITING_NOTE : "") : gameLogFileMessage(read?.status);
+  return message ? `<span>${escapeHtml(message)}</span>${detailsMarkup(gameLogFileDetails(read, fileName))}` : "";
+}
+/** Status markup when listing the logins failed after a good read. */
+export function gameLogListFailedMarkup(error, fileName = "") {
+  const name = error && typeof error.name === "string" && error.name ? error.name : "Error";
+  return `<span>${escapeHtml(GAME_LOG_LIST_FAILED)}</span>${detailsMarkup(`Details: game log read, listing failed (${name})${fileName ? ` · ${fileName}` : ""}`)}`;
+}
+
 /** "<Hero> · game log <date time>" */
 export function gameLogBuildName(heroName, stamp) {
   return `${heroName || "Unknown hero"} · game log ${gameLogLocalTime(stamp)}`;

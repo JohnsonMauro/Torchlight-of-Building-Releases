@@ -107,6 +107,16 @@ export function collectEnemyAilments({ setups = [], activeNames = new Set(), mod
     const match = normalizePercentageText(String(line.text)).trim().match(/^The Follower inflicts (Trauma|Wilt|Ignite|Numbed|Frostbite) on the dummy$/i);
     if (match) { const name = match[1][0].toUpperCase() + match[1].slice(1).toLowerCase(); add(name, damagingAilments.includes(name), line.source, "inflicted by the follower's skill"); }
   }
+  // Gemma – Frostbitten Heart (hero trait audit B3, 2026-10-19; src/gemma-traits.js): "When dealing Cold Damage, triggers Cold
+  // Pulse at the enemy's location. Interval: 4 s" and "Inflicts Frostbite when Cold Pulse hits an enemy": an active skill that
+  // deals Cold Damage (its tag, added Cold, a conversion to Cold) keeps the dummy Frostbitten (held between pulses, as every
+  // Frostbite source here; provisional). Read last, so another Frostbite source keeps its own reason.
+  const coldPulse = modifierTexts.some((line) => /^When dealing Cold Damage, triggers Cold Pulse/i.test(normalizePercentageText(String(line.text)).trim()));
+  const pulseFrostbite = modifierTexts.some((line) => /^Inflicts Frostbite when Cold Pulse hits an enemy$/i.test(normalizePercentageText(String(line.text)).trim()));
+  if (coldPulse && pulseFrostbite) {
+    const dealer = setups.find((setup) => setup.enabled !== false && activeNames.has(setup.name) && setup.role !== "aura" && setup.role !== "support" && dealsHitDamage(setup, "Cold", modifierTexts));
+    if (dealer) add("Frostbite", false, "Hero trait: Frostbitten Heart (Cold Pulse)", `Cold Pulse: ${dealer.name} deals Cold Damage`);
+  }
   if (types.has("Frostbite")) {
     const rating = inflictedFrostbiteRating(modifierTexts);
     if (rating >= BUFF_VALUES.frostbiteFreezeAt) add("Frozen", false, types.get("Frostbite").source, `Frostbite Rating ${rating} ≥ ${BUFF_VALUES.frostbiteFreezeAt}`);

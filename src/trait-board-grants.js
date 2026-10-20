@@ -11,6 +11,10 @@
 //   A skill the filter rejects keeps its supports.
 // - Lv45 keywords: Spacetime Dictator / Conqueror / Overlord replace the skill in the second / third / fourth Active Skill slot
 //   with Stasis Vault / Supreme Descent / Selves of All Realms (Lv. 20 Trait Skills, patch notes appendix).
+// - Erika – Vendetta's Sting (hero trait audit B5, 2026-10-19, Q-H12 recommended reading, provisional): "Replace the skill in the
+//   third slot with Vendetta" puts a Lv. 20 Vendetta in Active slot 3 by the same rule; Swift Stalk's "Replace Vendetta with
+//   Endless Vendetta" makes it Endless Vendetta. The game equips one copy of a skill, so a Vendetta / Endless Vendetta the user
+//   placed in another slot is left out of the calculation like the replaced skill (provisional).
 //
 // A granted skill takes no energy itself and is not counted as a skill setup. It takes supports like other skills (2026-10-15
 // user answer): the user adds them on its row; they are stored under the granted skill's own key `trait:<skill>` (customSupports,
@@ -31,8 +35,15 @@ export const TRAIT_SKILL_LEVEL = 20;
 export const TRAIT_SLOT_GRANTS = Object.freeze({
   "Spacetime Dictator": Object.freeze({ row: 1, skill: "Stasis Vault" }),
   "Spacetime Conqueror": Object.freeze({ row: 2, skill: "Supreme Descent" }),
-  "Spacetime Overlord": Object.freeze({ row: 3, skill: "Selves of All Realms" })
+  "Spacetime Overlord": Object.freeze({ row: 3, skill: "Selves of All Realms" }),
+  "Replace the skill in the third slot with Vendetta": Object.freeze({ row: 2, skill: "Vendetta" })
 });
+// Lines that change a granted skill into another (Swift Stalk).
+export const TRAIT_SLOT_SKILL_REPLACEMENTS = Object.freeze({
+  "Replace Vendetta with Endless Vendetta": Object.freeze({ from: "Vendetta", to: "Endless Vendetta" })
+});
+// Skills the game equips once: a user copy elsewhere on the board is left out while the grant holds one of them.
+const ONE_COPY = Object.freeze({ Vendetta: ["Vendetta", "Endless Vendetta"], "Endless Vendetta": ["Vendetta", "Endless Vendetta"] });
 // icon: TLIDB has no Clockwork Core icon of its own (its keyword page, https://tlidb.com/en/Clockwork_Core, fetched 2026-10-15,
 // shows only the trait skills and Youga's traits); the socket shows the base trait that grants it, I Am the Ultimate One
 // (TLIDB UI_Nanfashi301, already local; also src/data/assets/tli-art.js supports).
@@ -58,13 +69,16 @@ export function isTanglable(skill, linkedSupports = []) {
 export function traitBoardGrantLines(modifierTexts = []) {
   const slots = [];
   let clockworkCore = null;
+  const replacements = [];
   for (const line of modifierTexts) {
     if (line?.origin !== "trait") continue;
     const text = squash(line.text);
+    if (TRAIT_SLOT_SKILL_REPLACEMENTS[text]) { replacements.push({ ...TRAIT_SLOT_SKILL_REPLACEMENTS[text], keyword: text, trait: traitName(line.source) }); continue; }
     const grant = TRAIT_SLOT_GRANTS[text];
     if (grant && !slots.some((entry) => entry.keyword === text)) slots.push({ keyword: text, row: grant.row, skill: grant.skill, trait: traitName(line.source), source: line.source });
     else if (!clockworkCore && CLOCKWORK_CORE_LINE.test(text)) clockworkCore = { trait: traitName(line.source), source: line.source };
   }
+  for (const replacement of replacements) for (const slot of slots) if (slot.skill === replacement.from) Object.assign(slot, { skill: replacement.to, replacedBy: replacement.keyword, replacedByTrait: replacement.trait });
   slots.sort((a, b) => a.row - b.row);
   return { slots, clockworkCore };
 }
@@ -136,6 +150,11 @@ export function applyTraitBoardGrants({ setups = [], boardSlots, supportOrder = 
     if (user) replacedBy.set(keyOf(user), grant);
     return grantedSkillSetup(grant, catalogSkillsByName.get(grant.skill), user, resolveGrantedSupports, profile);
   });
+  // One copy per skill (Vendetta): the user's own copy in another row is left out while the grant holds one.
+  for (const grant of grants.slots) for (const setup of setups) {
+    if (!(ONE_COPY[grant.skill] || []).includes(setup?.name) || setup.traitGranted || replacedBy.has(keyOf(setup)) || setup.enabled === false) continue;
+    replacedBy.set(keyOf(setup), { ...grant, duplicate: true });
+  }
   // Clockwork Core: the skill in Active slot 1, when the game lets it be Tangled.
   const main = rows[CLOCKWORK_CORE.row] || null;
   const catalogMain = main ? (catalogSkillsByName.get(main.name) || main) : null;
@@ -143,7 +162,7 @@ export function applyTraitBoardGrants({ setups = [], boardSlots, supportOrder = 
   let clockworkCore = grants.clockworkCore ? { ...grants.clockworkCore, skill: main?.name || null, setupKey: main ? keyOf(main) : null, tanglable, applied: false, replaces: null } : null;
   const next = setups.map((setup) => {
     const grant = replacedBy.get(keyOf(setup));
-    if (grant) return { ...setup, enabled: false, savedEnabled: setup.enabled, traitReplaced: { by: grant.skill, keyword: grant.keyword, trait: grant.trait, row: grant.row } };
+    if (grant) return { ...setup, enabled: false, savedEnabled: setup.enabled, traitReplaced: { by: grant.skill, keyword: grant.keyword, trait: grant.trait, row: grant.row, ...(grant.duplicate ? { duplicate: true } : {}) } };
     if (clockworkCore && tanglable && keyOf(setup) === clockworkCore.setupKey) {
       const updated = withClockworkCore(setup, supportOrder?.[keyOf(setup)], grants.clockworkCore, profile);
       clockworkCore = { ...clockworkCore, applied: true, replaces: updated.supports.find((support) => support.traitReplaced)?.name || null };
@@ -153,6 +172,7 @@ export function applyTraitBoardGrants({ setups = [], boardSlots, supportOrder = 
   });
   const summary = {
     granted: granted.map((setup) => ({ name: setup.name, row: setup.traitGranted.row, keyword: setup.traitGranted.keyword, trait: setup.traitGranted.trait, replaces: setup.traitGranted.replaces })),
+    duplicates: next.filter((setup) => setup.traitReplaced?.duplicate).map((setup) => ({ name: setup.name, setupKey: keyOf(setup), by: setup.traitReplaced.by })),
     replaced: granted.filter((setup) => setup.traitGranted.replaces).map((setup) => ({ name: setup.traitGranted.replaces, setupKey: setup.traitGranted.replacesKey, row: setup.traitGranted.row, by: setup.name })),
     emptyRowsFilled: emptyRowsFilledByGrants(grants, rows),
     clockworkCore

@@ -478,7 +478,8 @@ export function collectBuildMechanics({ main, setups = [], activeNames = new Set
     // Paralysis ("Increases damage taken by 15%", keyword 704; src/combat-states.js derives "+X% damage taken") reaches every
     // damage the same way (pact scripted-effects batch 2026-10-13: before, only the skill-hit engine read it; as its own
     // multiplier, provisional).
-    const match = String(line.text).match(/^\+(\d+(?:\.\d+)?)% (?:additional )?damage taken$/i);
+    // A negative one too (Gemma's Banquet of Bliss with its best-case switch off, hero trait audit B3).
+    const match = String(line.text).match(/^([+-]\d+(?:\.\d+)?)% (?:additional )?damage taken$/i);
     if (!match) continue;
     const value = number(match[1]);
     combatTaken.push({ source: line.source, text: line.text, value, category: "Additional damage taken", condition: line.lineEffect.conditionText });

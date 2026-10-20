@@ -7,10 +7,10 @@ import { parseReapingSource } from "./reaping-sources.js";
 import { normalizePercentageText } from "./percentage-text.js";
 import { auraGainedLineStatus } from "./aura-gained-effects.js";
 import { allHeroTraitsSs13 } from "./data/heroes/all-hero-traits-ss13.generated.js";
-import { baseTraitDescriptionForLevel } from "./hero-memory-rules.js";
+import { baseTraitDescriptionForLevel, endsArtificialMoonSection } from "./hero-memory-rules.js";
 import { artificialMoonGate } from "./hero-memory-rules.js";
 import { heroTraitSlotLevel } from "./character-stats.js";
-import { refineCoverage, neutralStatuses, routeStatus, coverageContext, combineStatuses, dazeStatus, heroModuleLineStatus, skillLevelLineStatus, intelligenceLineStatus, mainStatLineStatus, nameReadCoreStatus } from "./line-coverage.js";
+import { refineCoverage, engineLineStatus, neutralStatuses, routeStatus, coverageContext, combineStatuses, dazeStatus, heroModuleLineStatus, skillLevelLineStatus, intelligenceLineStatus, mainStatLineStatus, nameReadCoreStatus } from "./line-coverage.js";
 import { isNameReadCoreClause, nameReadCoreGrant } from "./granted-core-lines.js";
 import { matchTalentTextClause, talentKeyRoute } from "./talent-text-effects.js";
 import { prismMutationDownside } from "./prism-crafting.js";
@@ -251,6 +251,7 @@ function artificialMoonPatterns(heroId) {
     const header = lines.findIndex((part) => /^Artificial Moon:$/i.test(part));
     if (header < 0) continue;
     for (const moonLine of lines.slice(header + 1)) {
+      if (endsArtificialMoonSection(moonLine)) break; // Sage's Ingredient catalogue (hero trait audit B8, F4)
       const pieces = squash(moonLine).split(/\(\s*[^()]*\/[^()]*\)/);
       const escape = (part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, " ?");
       patterns.push(new RegExp(`^${pieces.map(escape).join("(?:\\([^()]*\\)|[-+]?[\\d.]+)")}$`, "i"));
@@ -298,10 +299,14 @@ const WIND_STALKER_ID = "erika-wind-stalker";
 // too, so their badges read the levelled line the same way (plain stat lines In calc through the generic readers; lines no
 // reader or module models stay Not modeled).
 const THEA_WISDOM_ID = "thea-wisdom-of-the-gods", YOUGA_ULTIMATE_ID = "youga-the-ultimate-one";
-const PASS_THROUGH = ["Not modeled", "Partly modeled", "No DPS effect", "Not on dummy"];
-const LEVELLED_BADGE_HEROES = new Map([[DANCE_OF_THE_DEEP_ID, new Set(["Not modeled", "Partly modeled"])], [WIND_STALKER_ID, new Set(PASS_THROUGH)], [THEA_WISDOM_ID, new Set(PASS_THROUGH)], [YOUGA_ULTIMATE_ID, new Set(PASS_THROUGH)]]);
-// The heroes read like Wind Stalker (every levelled line; Dance of the Deep has its own Terra rule below).
-const LEVELLED_GENERIC_HEROES = new Set([WIND_STALKER_ID, THEA_WISDOM_ID, YOUGA_ULTIMATE_ID]);
+// "Counted in stats": a module's stat line that feeds no damage reader in this build (Rehan – Split Form's Max Life; hero trait audit B10).
+const PASS_THROUGH = ["Not modeled", "Partly modeled", "No DPS effect", "Not on dummy", "Counted in stats"];
+// The heroes read like Wind Stalker (every levelled line; Dance of the Deep has its own Terra rule below). Hero trait audit
+// 2026-10-19 (research/hero-traits-audit-2026-10-19.md F1): every other hero's tooltip prints the TLIDB progressions too, which
+// no reader matches ("(+45 / +52 / … ) % additional damage taken …" read Not modeled while the levelled line moved the
+// damage), so every hero but Sing with the Tide (own rule; its traits stay out of planner.modifierTexts) reads them this way.
+const LEVELLED_GENERIC_HEROES = new Set([WIND_STALKER_ID, THEA_WISDOM_ID, YOUGA_ULTIMATE_ID, ...Object.keys(allHeroTraitsSs13).filter((id) => id !== DANCE_OF_THE_DEEP_ID && id !== "selena-sing-with-the-tide")]);
+const LEVELLED_BADGE_HEROES = new Map([[DANCE_OF_THE_DEEP_ID, new Set(["Not modeled", "Partly modeled"])], ...[...LEVELLED_GENERIC_HEROES].map((id) => [id, new Set(PASS_THROUGH)])]);
 const PROGRESSION = /\(\s*[^()]*\/[^()]*\)/g;
 function progressionPattern(line) {
   const escape = (part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, " ?");
@@ -317,6 +322,13 @@ function levelledLineState(heroId, traitName, line, planner = coverageContext())
   if (levelled) {
     const entry = (planner.lineEffects?.lines || []).find((item) => item.source === levelled.source && squash(item.text) === squash(levelled.text));
     if (entry) {
+      // A line the condition layer leaves unmodeled (its "unmodeled" scope, e.g. "for skills cast by Spell Burst") that an engine
+      // reader claims (src/line-coverage.js engineLineStatus: the skill-hit Spell Burst model) reads what the engine says, as the
+      // same line on gear does (hero trait audit B1, F6: Inspiration Overflow moved the dummy figure while it badged Not modeled).
+      if (entry.status === "Not modeled" || entry.status === "Partly modeled") {
+        const engine = engineLineStatus(levelled.text, planner);
+        if (engine === "In calc" || engine === "Inactive") return { status: engine, reason: engine === "Inactive" ? entry.conditionText || "" : "" };
+      }
       if (LEVELLED_BADGE_HEROES.get(heroId)?.has(entry.status)) return { status: entry.status, reason: entry.conditionText || "" };
       return { status: entry.active ? "In calc" : "Inactive", reason: entry.conditionText || "" };
     }
@@ -328,6 +340,39 @@ function levelledLineState(heroId, traitName, line, planner = coverageContext())
   return { status, reason: heroId === DANCE_OF_THE_DEEP_ID && status !== "Inactive" ? "" : reason };
 }
 const danceLineState = (traitName, line, planner = coverageContext()) => levelledLineState(DANCE_OF_THE_DEEP_ID, traitName, line, planner);
+
+// Trait clauses that change the dummy's damage but wait for a hero engine (hero trait audit 2026-10-19 F5, batch B1): before
+// 2026-10-19 they badged No DPS effect / Not on dummy (a word match on "Movement Speed", "Trait Skill", "summoned", ...). They
+// read Not modeled and name the engine and the audit batch (§5) that builds it. Keyed by loadout, matched on the tooltip line.
+const ENGINE = {
+  b12bomb: ["B12", "Bing's bomb engine (Bomb Throwing Speed)"],
+  b12whimsy: ["B12", "Bing's Whimsy / Ingenuity Overload engine"],
+  b11: ["B11", "Rosa's No Guard / Mercury Pts engine"]
+};
+const HERO_ENGINE_PENDING = {
+  // Carino (Ranger of Glory, Lethal Flash, Zealot of War): modeled by hero trait audit B9 (src/carino-traits.js, src/hero-trait-modules.js
+  // "ammo" / "specialAmmo" / "heatUp" / "deflection" / "ouroboros").
+  // Erika – Lightning Shadow and Vendetta's Sting: modeled by hero trait audit B5 (src/erika-traits.js, src/hero-trait-modules.js).
+  // Rehan (Anger, Seething Silhouette): modeled by hero trait audit B10 (src/rehan-traits.js, src/hero-trait-modules.js "rage" / "burst" /
+  // "spirit"); Hysteria's Rage gains (left to B10 by B2) are read there, its Missing Life line by the generic reader (B2).
+  "bing-blast-nova": [[/^Base Bomb Throwing Speed is/i, "b12bomb"], [/additional Bomb Throwing Speed( while moving)?$/i, "b12bomb"]],
+  "bing-creative-genius": [[/^Gains 2 Inspiration Machines/i, "b12whimsy"], [/^Instantly restores 80 Ingenuity Essence/i, "b12whimsy"], [/^Effect of Whimsy Signal enhanced to/i, "b12whimsy"], [/Whimsy Essence Recovery Speed$/i, "b12whimsy"], [/^When casting Ingenuity Overload ?, gains Buff Effect/i, "b12whimsy"]],
+  // Thea (Wisdom of The Gods, Incarnation of the Gods, Blasphemer): modeled by hero trait audit B7 (src/thea-traits.js,
+  // src/hero-trait-modules.js "theaWisdom" / "theaIncarnation" / "theaBlasphemer").
+  // Youga – Spacetime Elapse: modeled by hero trait audit B4 (src/hero-trait-modules.js "elapse").
+  // Moto (Order Calling, Charge Calling) and Iris (Growing Breeze, Vigilant Breeze): modeled by hero trait audit B6
+  // (src/moto-iris-traits.js; src/hero-trait-modules.js "overload" / "chargeCalling" / "irisGrowing" / "irisVigilant").
+  "rosa-high-court-chariot": [[/^For every 1 ?% Block Ratio, .*additional No Guard Effect/i, "b11"]],
+  "rosa-unsullied-blade": [[/^Mana can be consumed via methods other than Mystic Mercury/i, "b11"], [/^For every 1000 Max Mana you have, \+10 ?% Max Mercury Pts/i, "b11"]]
+  // Sage – Licorice Note: modeled by hero trait audit B8 (src/sage-traits.js, src/hero-trait-modules.js "sageScent").
+};
+/** The engine a hero trait line waits for ({ batch, engine }), or null. */
+export function heroTraitPendingEngine(heroId, line) {
+  const text = squash(line);
+  const hit = (HERO_ENGINE_PENDING[heroId] || []).find(([pattern]) => pattern.test(text));
+  return hit ? { batch: ENGINE[hit[1]][0], engine: ENGINE[hit[1]][1] } : null;
+}
+const pendingReason = (pending) => `Not modeled: needs ${pending.engine} (hero trait audit ${pending.batch})`;
 
 /** Why a base-trait "Artificial Moon:" line is Inactive (what is missing), or "" when it is not gated off. */
 // Youga – The Ultimate One's board lines (src/trait-board-grants.js): what the planner applies. The Clockwork Core line and the
@@ -342,6 +387,7 @@ export function heroTraitLineCoverageReason(heroId, traitName, line, selected) {
   if (selected && noMemoryInSlot(heroId, traitName)) return NO_MEMORY_REASON;
   if (selected && heroId === YOUGA_ULTIMATE_ONE_ID && yougaBoardLineReason(line)) return yougaBoardLineReason(line);
   if (selected && moonGatedOff(heroId, traitName, line)) return `Artificial Moon: ${artificialMoonState().reason}`;
+  if (selected && heroTraitPendingEngine(heroId, line)) return pendingReason(heroTraitPendingEngine(heroId, line));
   if (selected && heroId === DANCE_OF_THE_DEEP_ID && !/additional Terra Skill Damage$/i.test(squash(line))) {
     const state = danceLineState(traitName, line);
     if (state.status !== "In calc" && state.reason) return state.reason;
@@ -360,6 +406,7 @@ export function heroTraitLineCoverage(heroId, traitName, line, selected) {
   if (!selected) return "Not selected";
   if (noMemoryInSlot(heroId, traitName)) return "Inactive";
   if (moonGatedOff(heroId, traitName, line)) return "Inactive";
+  if (heroTraitPendingEngine(heroId, line)) return "Not modeled";
   // Other heroes (talent batch chunk 4): trait lines are build lines (origin "trait"), so the engine-line layer reads them
   // per engine (In calc, Inactive, No DPS effect, …) and the hero modules (src/hero-trait-modules.js) give their own status.
   // A line no module claims and that cannot change dummy damage (headers, trait controls: residual batch §6) is neutral.
@@ -389,6 +436,10 @@ function selenaTideLineStatus(line, planner) {
   const tide = planner?.singWithTheTide || null;
   if (/^Artificial Moon:?$/i.test(text) || /^Click the Trait Slot/i.test(text)) return "No DPS effect";
   if (/^In the Loud Song state, /i.test(text)) return tide?.ceaselessTide ? "In calc" : "Not modeled";
+  // The base trait's Loud Song form line (-20% additional Attack and Cast Speed, +80% additional Tide Effect): applied with
+  // Ceaseless Tide (src/selena-tide.js, src/planner.js loudSongSpeedLines); before 2026-10-19 it badged No DPS effect
+  // (hero trait audit B1, F6).
+  if (/^In Loud Song form, /i.test(text)) return tide?.ceaselessTide ? "In calc" : "Not modeled";
   if (/^For every 1 s in the Loud Song state/i.test(text)) return !tide ? "Not modeled" : tide.chantey.stacks > 0 ? "In calc" : "Inactive";
   if (/Skill Area is also applied to Tide Effect/i.test(text)) return !tide ? "Not modeled" : tide.undersea.selected && tide.tideUp ? "In calc" : "Inactive";
   if (/Skill Area and .*Skill Effect Duration when on the Tide$/i.test(text)) return !tide ? "Not modeled" : tide.artificialMoon.lines.length ? "In calc" : "Inactive";
@@ -444,10 +495,15 @@ export function heroTraitCoverageReason(heroId, traitName, lines, selected) {
   if (noMemoryInSlot(heroId, traitName)) return `Inactive: ${NO_MEMORY_REASON} (the trait starts at level 0 until a memory is in its slot).`;
   const gated = (lines || []).find((line) => moonGatedOff(heroId, traitName, line));
   if (gated) return `Artificial Moon lines: Inactive. ${artificialMoonState().reason}.`;
+  // Lines waiting for a hero engine (HERO_ENGINE_PENDING) name it after the Inactive list (hero trait audit B1).
+  const pending = (lines || []).filter((line) => !moonGatedOff(heroId, traitName, line) && heroTraitPendingEngine(heroId, line));
+  const pendingText = pending.length ? `${pending.map((line) => `${squash(line)} (${pendingReason(heroTraitPendingEngine(heroId, line))})`).join("; ")}.` : "";
   if (heroId === DANCE_OF_THE_DEEP_ID || LEVELLED_GENERIC_HEROES.has(heroId)) {
     const inactive = (lines || []).filter((line) => !/^Artificial Moon:?$/i.test(squash(line)) && heroTraitLineCoverage(heroId, traitName, line, true) === "Inactive");
-    return inactive.length ? `Inactive in this build: ${inactive.map((line) => { const reason = heroTraitLineCoverageReason(heroId, traitName, line, true); return reason ? `${squash(line)} (${reason})` : squash(line); }).join("; ")}.` : "";
+    const inactiveText = inactive.length ? `Inactive in this build: ${inactive.map((line) => { const reason = heroTraitLineCoverageReason(heroId, traitName, line, true); return reason ? `${squash(line)} (${reason})` : squash(line); }).join("; ")}.` : "";
+    return [inactiveText, pendingText].filter(Boolean).join(" ");
   }
+  if (pendingText) return pendingText;
   if (heroId === YOUGA_ULTIMATE_ONE_ID) return (lines || []).map(yougaBoardLineReason).filter(Boolean).join(" ");
   return "";
 }

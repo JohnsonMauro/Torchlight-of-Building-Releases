@@ -31,8 +31,9 @@ import { collectBuildMechanics } from "./build-mechanics.js";
 import { resolveSingWithTheTide } from "./selena-tide.js";
 import { auraGainedEffects, auraCastSpeedLines, auraGainedEffectLines } from "./aura-gained-effects.js";
 import { windStalkerState, resolveWindStalker, windStalkerMoonMark } from "./erika-wind-stalker.js";
-import { YOUGA_ULTIMATE_ONE, blockNonMainTangles, yougaTangleQuantityLines, yougaUltimateOneState, yougaPreEffects, resolveYougaUltimateOne, yougaPlainState } from "./youga-ultimate-one.js";
-import { resolveHeroModules } from "./hero-trait-modules.js";
+import { YOUGA_ULTIMATE_ONE, blockNonMainTangles, yougaTangleQuantityLines, yougaUltimateOneState, yougaPreEffects, resolveYougaUltimateOne, yougaPlainState, projectileMechanics } from "./youga-ultimate-one.js";
+import { resolveHeroModules, resolveIllusionState } from "./hero-trait-modules.js";
+import { settleIllusionStream } from "./youga-spacetime.js";
 import { passiveSupportLines } from "./passive-support-lines.js";
 import { GASH, GASH_GAIN_TEXT, resolveDanceOfTheDeep, danceBlocksSetup, withTerraCharges, terraChargeLine, terraChargesConsumed, terraChargesAtInterval, resolveTerraCharges, setupTerraChargeLines, resolveActivationMediumTerra, activationMediumTerraInterval, resolveCycleResist, windRhythmTerraTrigger, buildCooldownRecoveryLines } from "./selena-dance.js";
 import { calculateSupportCandidate, modeledSupportNames } from "./support-model.js";
@@ -66,7 +67,14 @@ import { atFullLife, atFullMana, LOW_LIFE_BELOW_PERCENT } from "./line-condition
 import { luckyCritChance, mirroredShadeTerraChargeLines } from "./combat-states.js";
 import { CHANCE_TO_DAMAGE } from "./ailment-model.js";
 import { calculateWeaponAttack, weaponLocalLineKind } from "./weapon-damage-model.js";
-import { calculateVendettaTriggers } from "./vendetta-model.js";
+import { calculateVendettaTriggers, hitCritChances } from "./vendetta-model.js";
+import { felineFigureState, vendettaStingState, VENDETTAS_STING } from "./erika-traits.js";
+import { motoIrisState, minionHeroTraits, mergingStreamOrigins } from "./moto-iris-traits.js";
+import { theaBlessingInputs, theaState, INSIDE_REALM_CONDITION } from "./thea-traits.js";
+import { sageState } from "./sage-traits.js";
+import { carinoState, CARINO_HEROES, RETURNING_SWITCH, SPECIAL_AMMO_LEVEL } from "./carino-traits.js";
+import { rehanState, withRehanHits, rehanPhaseLines, burstProfile, burstAdditionalLines, BURST_SETUP_KEY } from "./rehan-traits.js";
+const B6_MODULE_KEYS = new Set(["overload", "chargeCalling", "irisGrowing", "irisVigilant"]);
 import { selenaScorchingBeamObservedSnapshots as snapshots } from "./data/stats/selena-scorching-beam-observed-snapshots.js";
 import { selenaScorchingBeamCombatValidation as combat } from "./data/stats/selena-scorching-beam-combat-validation.js";
 import { compileScorchingBeamIgniteSources } from "./theoretical-sources.js";
@@ -95,8 +103,10 @@ import { grantedMainSkillSupports, grantedPreciseAuras, mainAttributeBonusRemove
 import { parseItemTrigger, itemTriggerEvent } from "./item-triggered-skills.js";
 import { doubleDamageForSkill } from "./double-damage.js";
 import { normalizePercentageText as normalizeLineText } from "./percentage-text.js";
+import { spellToAttackLines } from "./spell-to-attack.js";
+import { WORLD_WITHIN_LINE, worldWithinChances } from "./world-within.js";
 import { HIT_GAIN } from "./blessing-model.js";
-import { resolveEmpowerEffects } from "./empower-effects.js";
+import { resolveEmpowerEffects, EMPOWER_MODELED_SKILLS } from "./empower-effects.js";
 import { resolvePeriodicBurst } from "./periodic-burst.js";
 import { resolveCritNumbedBuffs } from "./crit-numbed-buff.js";
 import { resolveIllOmen, illOmenDps } from "./ill-omen.js";
@@ -168,6 +178,19 @@ const exclusiveConditionGroups = [
     }]
   },
   {
+    // Thea – Incarnation of the Gods (hero trait audit B7, src/thea-traits.js): standing inside or outside the Divine Realm (cast on
+    // the dummy) cannot both hold. Outside by default (Tenacity converts to Agility; Might Flow, Divine Realm Power's speed,
+    // Crossing the Divine Threshold, Divine Spirit); inside is compared while the Realm is active (Agility converts to Tenacity;
+    // Divine Realm Power's damage). Provisional.
+    label: "Divine Realm position",
+    defaultLabel: "Outside the Divine Realm",
+    alternatives: [{
+      label: "Inside the Divine Realm",
+      overrides: { [INSIDE_REALM_CONDITION]: true },
+      possible: (planner) => Boolean(planner.lineEffects?.state?.thea?.incarnation?.realm?.active) && planner.lineEffects.state.thea.incarnation.realm.inside === false
+    }]
+  },
+  {
     // Mana (talent batch chunk 2): "at Full Mana" vs "at Low Mana" lines. Sealed Mana sets Low Mana; otherwise Full Mana by
     // default, and Low Mana is compared when a passive line depends on it.
     label: "Mana",
@@ -199,7 +222,10 @@ function cycleResistReaps(modifierTexts, resolvedMain, activeNames) {
   return mainIsTerra && modifierTexts.some((line) => line.origin === "trait" && /previous Main Terra Skill hasn't ended, Reaps Damage Over Time/i.test(String(line.text)));
 }
 
-function buildLineConditionState({ state, requestedConditions, conditions, lowResources, aura, block, mechanics, curseLimit, modifierTexts, equipment, activeNames, setups, resolvedMain, skillHitSources, talentSlate, pact, heroMemories, earlyBlessings = null, damageSources = [], debuffHitRates = null, yougaMainKey = null, yougaBlockedTangles = [] }) {
+function buildLineConditionState({ state, requestedConditions, conditions, lowResources, aura, block, mechanics, curseLimit, modifierTexts, equipment, activeNames, setups, resolvedMain, skillHitSources, talentSlate, pact, heroMemories, earlyBlessings = null, damageSources = [], debuffHitRates = null, yougaMainKey = null, yougaBlockedTangles = [], talentPanels = [], resistances = null }) {
+  // Hero trait audit B2 (2026-10-19): the build-wide "+X% Knockback distance" lines (Endless Frenzy's per-1% count; lines scoped
+  // "for the supported skill" or to a skill are not counted: provisional).
+  const knockbackDistanceSources = modifierTexts.filter((line) => line.origin !== "derived" && !line.lineEffect).map((line) => ({ line, match: normalizeLineText(String(line.text ?? "")).replace(/\s+/g, " ").trim().match(/^([+-]?\d+(?:\.\d+)?)% Knockback distance$/i) })).filter((item) => item.match).map(({ line, match }) => ({ source: line.source, text: line.text, value: Number(match[1]) * (line.multiplier ?? 1) }));
   const weapon = calculateWeaponAttack({ equipment, disabledSlots: state.disabledEquipmentSlots, modifierTexts });
   const held = [weapon.mainHand?.type, weapon.offHand?.type].filter(Boolean);
   const beam = activeNames.has("Scorching Beam");
@@ -227,6 +253,10 @@ function buildLineConditionState({ state, requestedConditions, conditions, lowRe
     // Life sealed (aura reservations), for "for every N% Life sealed" lines (Drenched Hem; src/line-conditions.js perLifeSealed).
     lifeSealedPercent: Math.max(0, 100 - lifeRemaining),
     enemyAilments: mechanics.enemyAilments.types.map((type) => type.name), enemyAilmentTypeCount: mechanics.enemyAilments.count,
+    // Gemma (hero trait audit B3; src/hero-trait-modules.js): which source keeps the dummy Frostbitten (Blooming Frost Flower's
+    // extra pulses: another source on hit fires them every 2 s) and the build's Curse Effect (Banquet of Bliss's Scorch).
+    frostbiteSource: mechanics.enemyAilments.types.find((type) => type.name === "Frostbite")?.source || null,
+    curseEffectPercent: mechanics.curses?.effectPercent || 0,
     singleEnemy: true,
     weaponTypes: held,
     weapon: { dualWielding: weapon.dualWielding, twoHanded: weapon.twoHanded, shield: weapon.offHand?.hands === "shield", uniqueTypes: weapon.dualWielding ? new Set(held).size : 0, unarmed: Boolean(weapon.unarmed), offHandEmpty: !weapon.offHand, types: held },
@@ -243,7 +273,17 @@ function buildLineConditionState({ state, requestedConditions, conditions, lowRe
     mana: manaStructural || manaAssumed ? "low" : "full",
     manaReason: manaStructural ? `${Math.round(Math.max(0, aura.manaRemainingPercent ?? 100) * 100) / 100}% Mana left after sealing` : manaAssumed ? "Low Mana chosen by the Mana group (best case)" : manaRemaining >= 95 ? "Full Mana" : `${Math.round(manaRemaining * 100) / 100}% Mana left after sealing`,
     canCrit: beam || skillHitSources.some((source) => !source.profile.weaponScaling || weapon.crit.chancePercent > 0),
-    hasReaping: collectAllReapingSources(modifierTexts).length > 0 || cycleResistReaps(modifierTexts, resolvedMain, activeNames),
+    hasReaping: collectAllReapingSources(modifierTexts).length > 0 || cycleResistReaps(modifierTexts, resolvedMain, activeNames) || (state.hero.selectedHeroId === "youga-spacetime-elapse" && modifierTexts.some((line) => /^When dealing damage to enemies in Twisted Spacetime, Reaps /i.test(String(line.text ?? "").trim()))),
+    // Youga – Spacetime Illusion / Elapse (hero trait audit B4; src/hero-trait-modules.js): Cooldown Recovery Speed for Me and
+    // Myself (the stat sheet's increased total; plain build-wide "additional" lines summed), the character's increased Cast Speed
+    // on the stat sheet (Make it Quick before the hit pass), damage over time on the dummy (Twisted Spacetime's cast) and whether
+    // the Main Skill can Spell Burst (Telepathy Expert). The hit pass's rates arrive as `yougaSpacetime` (hitRateFacts.youga).
+    cooldownRecoverySpeedPercent: stat("cooldownRecoverySpeed"),
+    additionalCooldownRecoverySpeedPercent: modifierTexts.filter((line) => line.origin !== "derived" && !line.lineEffect).reduce((sum, line) => { const match = normalizeLineText(String(line.text ?? "")).replace(/\s+/g, " ").trim().match(/^([+-]?\d+(?:\.\d+)?)% additional Cooldown Recovery Speed$/i); return sum + (match ? Number(match[1]) * (line.multiplier ?? 1) : 0); }, 0),
+    castSpeedStatPercent: stat("castSpeed"),
+    dealsDamageOverTime: mechanics.enemyAilments.types.some((type) => ["Ignite", "Trauma", "Wilt"].includes(type.name)) || damageSources.some((source) => source.status === "modeled" && source.profile?.engine === "skill-dot" && activeNames.has(source.name)) || skillHitSources.some((source) => skillHitDotComponents(source.profile).length > 0),
+    cooldownSkillActive: skillHitSources.some((source) => (skillHitTiming(source.profile)?.cooldownSeconds || 0) > 0),
+    mainCanSpellBurst: Boolean(resolvedMain && activeNames.has(resolvedMain.name) && (resolvedMain.tags || []).includes("Spell")) && modifierTexts.some((line) => /^\+\d+ Max Spell Burst$/i.test(String(line.text ?? "").trim())),
     channeledMain: beam || Boolean(resolvedMain?.tags?.includes("Channeled") && activeNames.has(resolvedMain.name)),
     prebuiltSelfBuffs: requestedConditions.prebuiltSelfBuffs !== false,
     // Hit by an enemy recently: best case by the user's decision (2026-10-12), switched with Blocked recently.
@@ -293,8 +333,15 @@ function buildLineConditionState({ state, requestedConditions, conditions, lowRe
     // Active modeled Projectile skill hits, for "for each (Spell) Projectile generated recently" stacks (On the Sublime;
     // src/line-conditions.js projectilesGenerated, 2026-10-18).
     projectileSkills: skillHitSources.filter((source) => source.setup?.enabled !== false && activeNames.has(source.setup?.name) && (source.setup?.tags || source.profile?.tags || []).includes("Projectile")).map((source) => ({ name: source.setup.name, spell: (source.setup?.tags || source.profile?.tags || []).includes("Spell") })),
-    stats: { strength: stat("strength"), dexterity: stat("dexterity"), intelligence: stat("intelligence"), maxMana: resourcePool(statTotals, "maxMana", baseMana(characterLevelForPools)).value, maxLife: resourcePool(statTotals, "maxLife", baseLife(characterLevelForPools)).value },
+    stats: { strength: stat("strength"), dexterity: stat("dexterity"), intelligence: stat("intelligence"), maxMana: resourcePool(statTotals, "maxMana", baseMana(characterLevelForPools)).value, maxLife: resourcePool(statTotals, "maxLife", baseLife(characterLevelForPools)).value, maxEnergyShield: resourcePool(statTotals, "maxEnergyShield", 0, { defense: true }).value },
     auraCount: new Set((aura.entries || []).filter((entry) => activeNames.has(entry.name)).map((entry) => entry.name)).size,
+    // Hero trait audit B2 (2026-10-19): Endless Frenzy's Knockback distance total and Prophecy of Truth's allocated Legendary
+    // Medium Talents (talent-panel nodes of type "legendary" with points, replaced nodes left out; slate talents not counted).
+    knockbackDistancePercent: knockbackDistanceSources.reduce((sum, item) => sum + item.value, 0),
+    knockbackDistanceSources,
+    // World Within (src/world-within.js): the effective resistances and the Armor pool (stat sheet, no Aura buffs; provisional).
+    worldWithinInputs: { resistances: Object.fromEntries((resistances?.entries || []).map((entry) => [entry.element, entry.effective])), armor: resourcePool(statTotals, "armor", 0, { defense: true }).value },
+    legendaryMediumTalentsAllocated: (talentPanels || []).reduce((sum, panel) => sum + (panel.allocatedNodes || []).filter((node) => node.rank > 0 && !node.replacedBy && node.type === "legendary").length, 0),
     // Dark Gate on the board (Dark Advance's "if a Dark Gate has been cast recently"; core audit B7, src/minion-cores.js).
     darkGate: darkGateState({ setups, activeNames, modifierTexts }),
     // Modeled Sentry skills on the board (Heat Up's "if Sentry Skill has been cast recently"; core audit B7).
@@ -311,6 +358,8 @@ function buildLineConditionState({ state, requestedConditions, conditions, lowRe
     // Erika (Wind Stalker; src/erika-wind-stalker.js): the build's Stalker clauses and whether an active Attack skill can
     // Multistrike (support or passive Multistrike chance; Mobility, Channeled and Sentry skills cannot). The planner replaces it
     // with the settled state once the hits are computed (resolveWindStalker).
+    // Erika – Lightning Shadow (hero trait audit B5; src/erika-traits.js): the character's Movement Speed total (Wild Lightning).
+    movementSpeedPercent: stat("movementSpeed"),
     windStalker: windStalkerState({ heroId: state.hero.selectedHeroId, modifierTexts, hero: state.hero, moving: conditions.moving, prebuiltSelfBuffs: requestedConditions.prebuiltSelfBuffs !== false, movementSpeedPercent: stat("movementSpeed"),
       multistrikes: (() => {
         const passiveChance = passiveSupportLines(modifierTexts).multistrike.filter((line) => line.kind === "chance").reduce((sum, line) => sum + line.value, 0);
@@ -353,6 +402,24 @@ function buildLineConditionState({ state, requestedConditions, conditions, lowRe
     // Core audit B8: the active Elixir Skills (src/elixir-model.js) and Warcry Skills with their own cooldown clauses (Storm's
     // Command, src/storm-command.js).
     elixirSetups: setups.filter((setup) => setup.enabled !== false && activeNames.has(setup.name) && (setup.tags || []).includes("Elixir")).map((setup) => ({ name: setup.name, setupKey: setup.setupKey })),
+    // Sage – Licorice Note (hero trait audit B8; src/sage-traits.js): Everlasting Nectar's Max Life / Mana bonuses (increased) and the
+    // installed Empower / Curse Skills Pungent Stimulant Salt prepares.
+    sageInputs: { maxLifeIncreasedPercent: Number(statsByKey.maxLife?.increased) || 0, maxManaIncreasedPercent: Number(statsByKey.maxMana?.increased) || 0,
+      empowerSkills: setups.filter((setup) => setup.enabled !== false && activeNames.has(setup.name) && (setup.tags || []).includes("Empower")).map((setup) => setup.name),
+      empowerModeled: setups.filter((setup) => setup.enabled !== false && activeNames.has(setup.name) && (setup.tags || []).includes("Empower") && EMPOWER_MODELED_SKILLS.has(setup.name)).map((setup) => setup.name),
+      curseSkills: setups.filter((setup) => setup.enabled !== false && activeNames.has(setup.name) && (setup.tags || []).includes("Curse")).map((setup) => setup.name) },
+    // Carino (hero trait audit B9; src/carino-traits.js): the active Projectile skills with a hit model, the increased Attack / Cast /
+    // Projectile Speed (Reload Speed, Special Ammo reload chance), the supports on the skill panel (a Special Ammo support there is
+    // not consumed) and the Main Skill's enabled Noble supports (Royal Arsenal).
+    carinoInputs: { projectileSetups: skillHitSources.filter((source) => (source.setup?.tags || []).includes("Projectile")).map((source) => ({ setupKey: source.setupKey, name: source.setup?.name || source.name })),
+      attackSpeedIncreasedPercent: Number(statsByKey.attackSpeed?.increased) || 0, castSpeedIncreasedPercent: Number(statsByKey.castSpeed?.increased) || 0, projectileSpeedPercent: Number(statsByKey.projectileSpeed?.increased) || 0,
+      installedSupportNames: setups.filter((setup) => !setup.traitReplaced).flatMap((setup) => (setup.supports || []).filter((support) => !support.granted).map((support) => support.name)),
+      mainNobleSupports: resolvedMain && activeNames.has(resolvedMain.name) ? (resolvedMain.supports || []).filter((support) => support.enabled !== false && tlidbSupportCatalogSs13.find((entry) => entry.name === support.name)?.category === "noble").map((support) => support.name) : [] },
+    // Rehan (hero trait audit B10; src/rehan-traits.js): the Main Skill (the Seething Spirit casts it), the character level ("per 1
+    // levels"), Max Life / Energy Shield (Split Form, Hysteria), the Skill Area bonus (Uncontrolled Anger) and the weapon's Attack Speed
+    // bonuses before the derived lines (Rampaging's share for the badges; the Burst source reads the final weapon model).
+    rehanInputs: { main: resolvedMain && activeNames.has(resolvedMain.name) ? { setupKey: resolvedMain.setupKey, name: resolvedMain.name, tags: resolvedMain.tags || [] } : null, characterLevel: buildCharacterLevel(state),
+      maxLife: resourcePool(statTotals, "maxLife", baseLife(characterLevelForPools)).value, maxEnergyShield: resourcePool(statTotals, "maxEnergyShield", 0, { defense: true }).value, skillAreaPercent: stat("skillArea"), attackSpeed: weapon.attackSpeed || null },
     warcrySetups: setups.filter((setup) => setup.enabled !== false && activeNames.has(setup.name) && (setup.tags || []).includes("Warcry")).map((setup) => ({ name: setup.name, setupKey: setup.setupKey, cooldownClauses: (setup.supportEffects?.clauses || []).filter((clause) => clause.family === "cooldown" && Number.isFinite(clause.value)).map((clause) => ({ source: clause.source, text: clause.text, value: clause.value, additional: Boolean(clause.additional) })) })),
     minionsCrit: damageSources.some((source) => source.status === "modeled" && source.profile?.engine === "minion"),
     attackHits: skillHitSources.some((source) => source.profile.weaponScaling || (source.setup?.tags || []).includes("Attack")),
@@ -435,6 +502,12 @@ function withRecountConditionAssumptions(recount, groups, planner) {
     // Activation Medium triggers on other DoT skills (src/trigger-interval.js activationMediumDotTrigger; provisional).
     ...Object.entries(planner.dotTriggers || {}).map(([setupKey, trigger]) => ({ id: `dotTrigger:${setupKey}`, value: trigger.intervalSeconds, text: trigger.text })),
     ...(planner.cycleResist ? [{ id: "dance:cycleResist", value: planner.cycleResist.active ? planner.cycleResist.baseReapSeconds : 0, text: planner.cycleResist.active ? `${planner.cycleResist.text}; Reaping Duration applies (game affix 591569216); it settles every DoT on the dummy (user-confirmed 2026-10-13). Every Critical Strike Rating increase / decrease that reaches the Main Terra counts toward Terra Skill Duration (user-confirmed 2026-10-13).` : "The Cycle I Resist: no Reap (no active Main Terra Skill, or the previous Terra has ended at the recast)." }] : []),
+    // Sage – Licorice Note (hero trait audit B8; src/sage-traits.js): the Basic Scent Bottle, Scent of Ambition, Everlasting Nectar.
+    ...(planner.lineEffects?.state?.sage?.assumptions || []),
+    // Carino (hero trait audit B9; src/carino-traits.js): the ammo cadence, Special Ammo / Magic Shot, Heat Up, Deflection, Evil Ouroboros.
+    ...(planner.lineEffects?.state?.carino?.assumptions || []),
+    // Rehan (hero trait audit B10; src/rehan-traits.js): the Rage cycle, Burst, Tunnel Vision, the Seething Spirit, Disarmed.
+    ...(planner.lineEffects?.state?.rehan?.assumptions || []),
     // Empower Skill effects on other damage (src/empower-effects.js; frost-terra audit 2026-10-13).
     ...(planner.empowerEffects?.entries || []).map((entry) => ({ id: `empower:${entry.kind}:${entry.setupKey}`, value: entry.value, text: entry.text })),
     // Elixir Effects up on the dummy (core audit B8, src/elixir-model.js): uptime from Charging Progress per second only.
@@ -958,6 +1031,16 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   // Drenched Hem). "Main Skills cannot be supported by other Activation Mediums": the Main Skill's other Activation Medium
   // supports are switched off for this pass.
   const activationMediumTerra = resolveActivationMediumTerra({ modifierTexts, mainIsTerra: Boolean(resolvedMain && activeNames.has(resolvedMain.name) && (resolvedMain.tags || []).includes("Terra")) });
+  // Erika – Vendetta's Sting (hero trait audit B5): Leisurely Stroll's "Main Skills cannot be supported by Activation Medium"
+  // switches the Main Skill's Activation Medium supports off (the line comes only with the trait picked and its memory installed).
+  const erikaActivationMediumBlocked = [];
+  if (state.hero.selectedHeroId === VENDETTAS_STING && resolvedMain && modifierTexts.some((line) => line.origin === "trait" && /^Main Skills cannot be supported by Activation Medium$/i.test(String(line.text ?? "").replace(/\s+/g, " ").trim()))) {
+    resolvedMain.supports = (resolvedMain.supports || []).map((support) => {
+      if (support.enabled === false || !isActivationMedium(support.name)) return support;
+      erikaActivationMediumBlocked.push(support.name);
+      return { ...support, enabled: false, disabledReason: "Leisurely Stroll: Main Skills cannot be supported by Activation Medium" };
+    });
+  }
   if (activationMediumTerra.active && resolvedMain) resolvedMain.supports = (resolvedMain.supports || []).map((support) => support.enabled !== false && isActivationMedium(support.name) ? { ...support, enabled: false, disabledReason: "Silencing Severance: Main Skills cannot be supported by other Activation Mediums" } : support);
   // Youga – The Ultimate One (src/youga-ultimate-one.js): "Non-Main Skills cannot be tangled" switches the Tangle supports off on
   // every skill but the Main Skill (Active slot 1, user-stated 2026-10-15; provisional reading: the support has no effect).
@@ -979,7 +1062,16 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   const terraChargesFor = (setup) => setup?.setupKey && setup.setupKey === resolvedMain?.setupKey ? danceOfTheDeep.charges : resolveTerraCharges([...modifierTexts, ...terraLinesFor(setup)], { maxSpellBurst: buildMaxSpellBurst });
   const damageSources = collectSkillDamageSources({ setups, activeNames }).map((source) => source.status === "modeled" && danceBlocksSetup(danceOfTheDeep, setups.find((setup) => setup.setupKey === source.setupKey), resolvedMain)
     ? { ...source, status: "inactive", reason: "Dance of the Deep: Non-Main Terra Skill cannot deal damage" } : source);
-  const skillDotSources = damageSources.filter((source) => source.status === "modeled" && source.profile.engine === "skill-dot").map((source) => ({ ...source, setup: setups.find((setup) => setup.setupKey === source.setupKey) }));
+  // Bing – Blast Nova, Firepower Coverage (hero trait audit Q-H15, recommended reading, provisional; the user has not answered):
+  // "Cannot use Main Skills" is unconditional, so the Main Skill deals no damage of its own. The bombs that replace it ("Automatically
+  // throws bombs at nearby enemies") are not modeled (batch B12), so a warning names the missing source. Best-case switch
+  // `bingFirepowerNoMain` (default on: the penalty applied; off: the Main Skill keeps its damage).
+  const firepowerCoverage = state.hero.selectedHeroId === "bing-blast-nova" && modifierTexts.some((line) => line.origin === "trait" && /^Cannot use Main Skills$/i.test(String(line.text ?? "").replace(/\s+/g, " ").trim()))
+    ? { mainName: resolvedMain?.name || null, applied: requestedConditions.bingFirepowerNoMain !== false && Boolean(resolvedMain) } : null;
+  if (firepowerCoverage?.applied) for (const [index, source] of damageSources.entries()) {
+    if (source.setupKey === resolvedMain.setupKey && source.status === "modeled") damageSources[index] = { ...source, status: "inactive", reason: "Firepower Coverage: Cannot use Main Skills (Q-H15, provisional); the bombs that replace it are not modeled (hero trait audit B12)" };
+  }
+  const skillDotSources =damageSources.filter((source) => source.status === "modeled" && source.profile.engine === "skill-dot").map((source) => ({ ...source, setup: setups.find((setup) => setup.setupKey === source.setupKey) }));
   // Generic spell hits (src/skill-hit-model.js, engine "skill-hit"): computed below once crit, cast speed and the target are resolved.
   // Activation Medium: Terra's "+30% additional damage for the supported skill" on the Main Terra Skill (hits and its own DoT).
   const activationMediumTerraLines = (setupKey) => activationMediumTerra.active && setupKey && setupKey === resolvedMain?.setupKey ? [{ source: "Activation Medium: Terra (Silencing Severance)", text: `+${activationMediumTerra.additionalPercent}% additional damage for the supported skill (TLIDB Activation_Medium_Terra)`, value: activationMediumTerra.additionalPercent, category: "Additional damage" }] : [];
@@ -1077,6 +1169,19 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
     aura[`${resource}DemandPercent`] = Math.round((aura[`${resource}DemandPercent`] + activationMediumTerra.sealPercent) * 10000) / 10000;
     aura[`${resource}RemainingPercent`] = Math.round((100 - reserved) * 10000) / 10000;
   }
+  // Eeeendless Mana (Youga – Spacetime Illusion; hero trait audit B4): "Seals 25% Max Mana" joins the reserved Mana the Mana
+  // states read, as Activation Medium: Terra's seal does (a flat seal; Sealed Mana Compensation not applied: provisional).
+  {
+    const endless = state.hero.selectedHeroId === "youga-spacetime-illusion" ? modifierTexts.find((line) => line.origin === "trait" && /^Seals \d+(?:\.\d+)? ?% Max Mana\. Spacetime Illusion no longer has Cast Frequency limitations$/i.test(normalizeLineText(String(line.text ?? "")).replace(/\s+/g, " ").trim())) : null;
+    const percent = endless ? Number(normalizeLineText(String(endless.text)).match(/Seals (\d+(?:\.\d+)?)/i)[1]) : 0;
+    if (percent > 0) {
+      const reserved = Math.min(99.99, aura.manaReservedPercent + percent);
+      aura.endlessManaSeal = { resource: "mana", percent, source: endless.source };
+      aura.manaReservedPercent = Math.round(reserved * 10000) / 10000;
+      aura.manaDemandPercent = Math.round((aura.manaDemandPercent + percent) * 10000) / 10000;
+      aura.manaRemainingPercent = Math.round((100 - reserved) * 10000) / 10000;
+    }
+  }
   const lowResources = calculateLowResourceDefenses({ aura, equipment, talents: levelSources.talents, slates: levelSources.slates, memories: heroMemories });
   const resistances = calculateResistances({ equipment, talents: levelSources.talents, slates: levelSources.slates, memories: heroMemories, pact, pactState: state.pacts, talentState: state.talents, aura });
   const plannedAura = calculateAuraLedger(auraSetups, auraOptions);
@@ -1135,8 +1240,12 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   // Blessing model on this pass's early facts (any modeled hit holds on-hit gains; Reaping from the build's Reaping
   // lines). The final Blessing model below stays the one the damage ledgers read.
   const mobilityUsed = mobilitySkillNames(setups).length > 0 && requestedConditions.mobilitySkillUsed !== false;
-  const earlyBlessings = calculateBlessings({ mobilityUsed, tangleCasts: tangles.setups.length > 0, hitRecently: requestedConditions.blockedRecently !== false, canUseNonMain: setups.some(setup => setup.role !== "main" && setup.role !== "aura" && activeNames.has(setup.name)), pactState: state.pacts, talentState: state.talents, equipment, talents: levelSources.talents, slates: levelSources.slates, barrierSources, hasReaping: collectAllReapingSources(modifierTexts).length > 0 || cycleResistReaps(modifierTexts, resolvedMain, activeNames), block, moving: conditions.moving, canHit: activeNames.has("Scorching Beam") || skillHitSources.length > 0, canCrit: activeNames.has("Scorching Beam") || skillHitSources.length > 0, enemyAilments: mechanics.enemyAilments.types.map((type) => type.name), igniteOnTarget: mechanics.enemyAilments.types.some((type) => type.name === "Ignite") });
-  const lineConditionState = buildLineConditionState({ state, requestedConditions, conditions, lowResources, aura, block, mechanics, curseLimit, modifierTexts, equipment, activeNames, setups, resolvedMain, skillHitSources, talentSlate, pact, heroMemories, earlyBlessings, damageSources, debuffHitRates, yougaMainKey, yougaBlockedTangles });
+  // Thea (hero trait audit B7; src/thea-traits.js): the Divine Blessing cycle as a Blessing gain source, the revived Max Blessing
+  // Stacks lines and the max-stack rules (Predicted Justice, the Divine Realm's conversion, Blasphemer's inversion), in both
+  // Blessing passes.
+  const theaInputs = theaBlessingInputs({ heroId: state.hero.selectedHeroId, modifierTexts, requestedConditions });
+  const earlyBlessings = calculateBlessings({ extraLines: theaInputs?.lines || [], capRules: theaInputs?.capRules || null, mobilityUsed, tangleCasts: tangles.setups.length > 0, hitRecently: requestedConditions.blockedRecently !== false, canUseNonMain: setups.some(setup => setup.role !== "main" && setup.role !== "aura" && activeNames.has(setup.name)), pactState: state.pacts, talentState: state.talents, equipment, talents: levelSources.talents, slates: levelSources.slates, barrierSources, hasReaping: collectAllReapingSources(modifierTexts).length > 0 || cycleResistReaps(modifierTexts, resolvedMain, activeNames), block, moving: conditions.moving, canHit: activeNames.has("Scorching Beam") || skillHitSources.length > 0, canCrit: activeNames.has("Scorching Beam") || skillHitSources.length > 0, enemyAilments: mechanics.enemyAilments.types.map((type) => type.name), igniteOnTarget: mechanics.enemyAilments.types.some((type) => type.name === "Ignite") });
+  const lineConditionState = buildLineConditionState({ state, requestedConditions, conditions, lowResources, aura, block, mechanics, curseLimit, modifierTexts, equipment, activeNames, setups, resolvedMain, skillHitSources, talentSlate, pact, heroMemories, earlyBlessings, damageSources, debuffHitRates, yougaMainKey, yougaBlockedTangles, talentPanels: levelSources.talents, resistances });
   // A chance debuff driven by a skill's hit rate (Grudge's Paralysis): this pass measures the rates (Paralysis held meanwhile,
   // so lines gated on it read alike) and a second pass applies the uptime. Damage taken does not change any hit rate.
   // Thunder Spike: Tremble (src/crit-numbed-buff.js; 2026-10-14, provisional): Numbed Effect while its crit buff is up, at the
@@ -1167,10 +1276,61 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   // second and Open Wounds' value the Trauma stacks on the dummy; this pass measures both (held at their caps meanwhile).
   const rateDebuffCores = modifierTexts.some((line) => line.origin !== "derived" && /for enemies on Critical Strike for [\d.]+ ?s\. Stacks up to \d+ times$|additional Hit Physical Damage taken for every stack of Trauma the enemy has/i.test(String(line.text ?? "")));
   lineConditionState.critHitsPerSecond = hitRateFacts?.critHitsPerSecond ?? null;
+  // Gemma – Ice-Fire Fusion (B3): the Fire / Cold skills' casts per second the hit pass measured (Frostfire Rampage's 5 casts).
+  lineConditionState.fireColdCastsPerSecond = hitRateFacts?.fireColdCastsPerSecond ?? null;
+  const frostfireCasts = lineConditionState.heroId === "gemma-ice-fire-fusion" && modifierTexts.some((line) => line.origin === "trait" && /^Enters Frostfire Rampage after casting Fire or Cold Skills/i.test(String(line.text ?? "").trim()));
   lineConditionState.trauma = hitRateFacts?.trauma ?? null;
-  const probeDebuffHitRates = !debuffHitRates && (lineConditionState.chanceParalysis.length > 0 || critNumbedBuffs.entries.length > 0 || multistrikeTriggered || consumptionCores || rateDebuffCores);
+  // Youga – Spacetime Illusion (hero trait audit B4): the Main Skill's own cast rate, every cast per second and the character's
+  // increased Cast Speed the hit pass measured (Eeeendless Mana's rate, the moon's and I'm Out of Mana's stacks, Make it Quick).
+  lineConditionState.yougaSpacetime = hitRateFacts?.youga ?? null;
+  // Erika – Lightning Shadow / Vendetta's Sting (hero trait audit B5; src/erika-traits.js): Feline Figure's Numbed state (Charging
+  // Tail reads the Main Skill's crit chance the hit pass measured) and the Vendetta's Sting state (Incisive's uptime from the
+  // measured Vendetta cycle; held at 1 before).
+  lineConditionState.felineFigure = felineFigureState({ heroId: lineConditionState.heroId, modifierTexts, movementSpeedPercent: lineConditionState.movementSpeedPercent, otherNumbed: (lineConditionState.enemyAilments || []).includes("Numbed"), mainUsesPerSecond: lineConditionState.mainUsesPerSecond, critChancePercent: hitRateFacts?.erika?.mainCritChancePercent ?? null });
+  lineConditionState.erikaVendetta = vendettaStingState({ heroId: lineConditionState.heroId, modifierTexts, blessingStacks: lineConditionState.blessingStacks, requestedConditions, vendetta: hitRateFacts?.erika?.vendetta ?? null });
+  lineConditionState.erikaActivationMediumBlocked = erikaActivationMediumBlocked;
+  // Thea (hero trait audit B7; src/thea-traits.js): God's Boon's cadence and the Focus it consumes, the Divine Realm, the dummy deemed
+  // at Low Life, Desecration. The Focus held drops to its God's Boon cycle average for the line conditions and the Blessing model.
+  lineConditionState.thea = theaState({ heroId: lineConditionState.heroId, modifierTexts, requestedConditions, blessings: earlyBlessings,
+    facts: { anyDamage: Boolean(lineConditionState.anyHit || lineConditionState.dealsDamageOverTime || damageSources.some((source) => source.status === "modeled")), dealsErosion: Boolean(lineConditionState.dealtDamageTypes?.has("Erosion") || lineConditionState.hitTypes?.has("Erosion") || (lineConditionState.enemyAilments || []).includes("Wilt")), life: lineConditionState.life, enemyCrowdControl: (lineConditionState.enemyAilments || []).filter((name) => ["Frostbite", "Freeze", "Frozen"].includes(name)) } });
+  // Sage – Licorice Note (hero trait audit B8; src/sage-traits.js): the Basic Scent Bottle's Elixir joins the Elixir setups (its
+  // Functional Ingredient reads the crit hits and Reaps the hit pass measured), with the Elixir Skill Effect lines Scent of Ambition
+  // and Everlasting Nectar add; the Ingredients, prepared Empower / Curse and Elixir of Immortality settle in the module.
+  lineConditionState.sage = sageState({ heroId: lineConditionState.heroId, hero: state.hero, modifierTexts, boardElixirs: lineConditionState.elixirSetups || [], requestedConditions, moving: Boolean(lineConditionState.moving),
+    facts: { anyHit: Boolean(lineConditionState.anyHit), minionsCrit: Boolean(lineConditionState.minionsCrit), critHitsPerSecond: hitRateFacts ? hitRateFacts.critHitsPerSecond ?? null : null, reapsPerSecond: hitRateFacts?.sage ? hitRateFacts.sage.reapsPerSecond : null, hasReaping: collectAllReapingSources(modifierTexts).length > 0 || cycleResistReaps(modifierTexts, resolvedMain, activeNames) },
+    inputs: lineConditionState.sageInputs || {} });
+  if (lineConditionState.sage?.elixirSetups?.length) { lineConditionState.elixirSetups = [...lineConditionState.sage.elixirSetups, ...(lineConditionState.elixirSetups || [])]; lineConditionState.elixirSkill = true; }
+  const sageRates = Boolean(lineConditionState.sage?.needsRates);
+  // Carino (hero trait audit B9; src/carino-traits.js): the ammo cadence (Q-H8), Special Ammo and Magic Shot, Heat Up, Deflection, Evil
+  // Ouroboros. The use-rate factor and the Heat Up cycle read the Projectile casts per second the hit pass measured (before it, the
+  // rate factor is 1 and Heat Up is held at max), so a Carino build with ammo runs the measuring pass.
+  lineConditionState.carino = carinoState({ heroId: lineConditionState.heroId, hero: state.hero, modifierTexts, requestedConditions, moving: lineConditionState.moving !== false, facts: hitRateFacts?.carino ?? null,
+    inputs: { ...(lineConditionState.carinoInputs || {}), hasReaping: Boolean(lineConditionState.hasReaping), hitRecently: Boolean(lineConditionState.hitRecently) } });
+  const carinoRates = Boolean(lineConditionState.carino?.needsRates);
+  // Rehan (hero trait audit B10; src/rehan-traits.js): the Rage cycle (Q-H1), Burst, Tunnel Vision (Q-H15), the Seething Spirit and
+  // Disarmed. The cycle reads the uses per second the hit pass measured (before it, Berserk is held), so a Rehan build runs the
+  // measuring pass.
+  lineConditionState.rehan = rehanState({ heroId: lineConditionState.heroId, modifierTexts, requestedConditions, facts: hitRateFacts?.rehan ?? null, inputs: lineConditionState.rehanInputs || {} });
+  const rehanRates = Boolean(lineConditionState.rehan?.needsRates);
+  // Bing – Blast Nova's Firepower Coverage (Q-H15): the badge and the switch read it (src/hero-trait-modules.js "firepower").
+  lineConditionState.firepowerCoverage = firepowerCoverage;
+  const theaFocus = lineConditionState.thea?.wisdom?.cycle ? lineConditionState.thea.wisdom.cycle.averageFocus : null;
+  if (theaFocus !== null && lineConditionState.blessingStacks) lineConditionState.blessingStacks.Focus = Math.min(lineConditionState.blessingStacks.Focus ?? 0, theaFocus);
+  const erikaRates = Boolean(lineConditionState.felineFigure?.tail || lineConditionState.erikaVendetta?.granted);
+  const yougaIllusionRates = lineConditionState.heroId === "youga-spacetime-illusion" && modifierTexts.some((line) => line.origin === "trait" && /^The Spacetime Illusion uses your Main Skill once every/i.test(String(line.text ?? "").trim()));
+  const probeDebuffHitRates = !debuffHitRates && (lineConditionState.chanceParalysis.length > 0 || critNumbedBuffs.entries.length > 0 || multistrikeTriggered || consumptionCores || rateDebuffCores || frostfireCasts || yougaIllusionRates || erikaRates || sageRates || carinoRates || rehanRates);
   if (probeDebuffHitRates) skipVariation = true;
+  // Moto / Iris (hero trait audit B6; src/moto-iris-traits.js): the loadout's trait state, before the line effects (its module
+  // entries and best-case switches) and the Minions (their trait inputs); the badges settle after the Minion pass.
+  lineConditionState.motoIris = motoIrisState({ heroId: lineConditionState.heroId, modifierTexts, requestedConditions, command: commandState(modifierTexts, { full: requestedConditions.fullCommand !== false }),
+    stats: { maxLife: lineConditionState.stats?.maxLife, maxEnergyShield: lineConditionState.stats?.maxEnergyShield, armor: lineConditionState.worldWithinInputs?.armor }, castSpeedPercent: lineConditionState.castSpeedStatPercent,
+    minions: damageSources.filter((source) => source.status === "modeled" && source.profile?.engine === "minion").map((source) => ({ key: source.profile.minionKey, family: source.profile.family, minion: source.profile.minion })),
+    traitSupports: state.hero?.heroTraitSupports || {} });
   const lineEffects = resolveLineEffects(modifierTexts, lineConditionState);
+  // Prophecy of Punishment (Thea – Wisdom of The Gods; src/thea-traits.js): Lucky Damage for the share of time Focus equals Agility,
+  // as the fractional roll count with the same expected roll (provisional); a Lucky line of the build keeps its own count.
+  const theaLuckyRolls = lineConditionState.thea?.wisdom?.punishment?.share > 0 ? lineConditionState.thea.wisdom.punishment.luckyRolls : 1;
+  if (theaLuckyRolls > 1 && lineEffects.combat?.lucky) lineEffects.combat.lucky.damageRolls = Math.max(lineEffects.combat.lucky.damageRolls || 1, theaLuckyRolls);
   lineEffects.lines.push(...dormantEntanglementLineEntries(tangles, modifierTexts), ...tangleLineEntries(tangles, modifierTexts));
   lineEffects.state = lineConditionState;
   // Aura-added Cast Speed (src/aura-gained-effects.js; Pantheon's Elegy on Precise: Swiftness): the active Aura's added effect,
@@ -1191,6 +1351,17 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   for (const source of skillDotSources) auraAilmentDamageTypes.add(source.profile.damageType);
   for (const source of skillHitSources) for (const type of source.profile.dealtTypes || []) auraAilmentDamageTypes.add(type);
   modifierTexts.push(...auraDamageModifierTexts(aura.entries, auraAilmentDamageTypes));
+  // "Bonus and additional bonus to Spell Damage … also apply to Attack Damage" (Rosa – Unsullied Blade; hero trait audit B2,
+  // src/spell-to-attack.js): the Spell damage lines, resolved conditional bodies and Aura lines included, copied to Attack.
+  const spellToAttack = spellToAttackLines(modifierTexts);
+  if (spellToAttack.copies.length) modifierTexts.push(...spellToAttack.copies);
+  for (const line of spellToAttack.sources) {
+    const attackSkill = lineConditionState.activeTags?.has?.("Attack");
+    const active = Boolean(attackSkill && spellToAttack.copies.length);
+    lineEffects.lines.push({ source: line.source, origin: line.origin, text: normalizeLineText(String(line.text ?? "")).replace(/\s+/g, " ").trim(), condition: "spellToAttack", params: {}, group: null, active,
+      conditionText: !attackSkill ? "no active Attack skill" : !spellToAttack.copies.length ? "no Spell Damage line in the build" : `${spellToAttack.copies.length} Spell Damage line${spellToAttack.copies.length === 1 ? "" : "s"} also reach Attack skills (${spellToAttack.copies.map((copy) => copy.text).join(", ")}; provisional)`,
+      provisional: true, factor: null, bodies: spellToAttack.copies.map((copy) => ({ body: copy.derivedFrom, derivedText: copy.text, readers: ["hit"] })), status: active ? "In calc" : "Inactive" });
+  }
   // Curse skills whose Lv.20 text is "Cursed enemies +X% additional <Type> Damage taken" (e.g. Corruption:
   // Erosion) become a typed damage-taken line scaled by Curse Effect; Scorch and Entangled Pain keep their
   // dedicated models. The level-20 value is used (no level table is published for these curses).
@@ -1276,7 +1447,13 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   const { enemyOnTideDamageTakenPercent, waveAriaPercent, idyllPerStackPercent, murmursTideEffectPercent, seaFoamNocturne, tideEffectFactor } = singWithTheTide;
   if (singWithTheTide.artificialMoon.lines.length) modifierTexts.push(...singWithTheTide.artificialMoon.lines);
   const coreTalents = calculateCoreTalents(coreNames, { remainingEnergy: allocation.remaining, blur: false });
-  const damageCombat = { ...state.combat, targetFireResistancePercent: coreTalents.fixesFireResistance ? 0 : state.combat.targetFireResistancePercent, idyllStacks: conditions.idyll ? state.combat.idyllStacks : 0 };
+  // "The Fire Resistance of Frostbitten enemies is fixed at X%" (Ice to Blaze; hero trait audit B2, src/line-conditions.js key
+  // fixedFireResistanceFrostbitten): while the dummy is Frostbitten its Fire Resistance is X, as Fueling fixes it at 0 (no Scorch,
+  // Fire's Allure or max-Affliction reduction changes it; penetration still applies). Fueling wins; several lines: the lowest.
+  const frostbittenFixedFire = (lineEffects.lines || []).filter((entry) => entry.condition === "fixedFireResistanceFrostbitten" && entry.active).map((entry) => entry.params.value);
+  if (!coreTalents.fixesFireResistance && frostbittenFixedFire.length) coreTalents.fixedFireResistancePercent = Math.min(...frostbittenFixedFire);
+  const fixedFireResistance = coreTalents.fixesFireResistance ? 0 : coreTalents.fixedFireResistancePercent ?? null;
+  const damageCombat = { ...state.combat, targetFireResistancePercent: fixedFireResistance ?? state.combat.targetFireResistancePercent, idyllStacks: conditions.idyll ? state.combat.idyllStacks : 0 };
   // Talent nodes (captured or text, src/talent-text-effects.js) and slate copies of Warlord [5,2] inflict Fire Infiltration.
   if (!talent.setup.panels.some((panel) => panel.allocatedNodes.some((node) => node.rank > 0 && node.effects?.inflictsFireInfiltrationAgainstIgnited)) && !(talentSlate.candidateSlate?.inflictsFireInfiltrationAgainstIgnited > 0)) conditions.fireInfiltration = false;
   // Aim charges and uptime are derived from the build (aim-model.js); an explicit
@@ -1312,13 +1489,13 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   const firesAllure = calculateFiresAllure({ active: coreTalents.firesAllure, limit: igniteLimit,
     canApply: canIgnite,
     nearby: conditions.firesAllureNearby !== false, stacks: state.combat.firesAllureScorchStacks,
-    baseResistance: state.combat.targetFireResistancePercent, fixedResistance: coreTalents.fixesFireResistance });
+    baseResistance: state.combat.targetFireResistancePercent, fixedResistance: fixedFireResistance ?? false });
   damageCombat.targetFireResistancePercent = firesAllure.effectiveResistancePercent;
   // Sun's Embrace "Additionally increases Ignited enemies' Fire Resistance by X%" (src/ignited-fire-resistance.js): while the
   // build keeps the dummy Ignited (Ignite, or Scorch, which carries the Ignited state), the flat Fire Resistance sum above
   // (the dummy's 30% less Scorch and Fire's Allure) is multiplied, before the cap and before penetration (sourced order).
   const ignitedResistance = ignitedFireResistance({ modifierTexts, ignited: canIgnite || mechanics.enemyAilments.types.some((type) => type.name === "Ignite"),
-    basePercent: state.combat.targetFireResistancePercent, reductionPercent: firesAllure.resistanceReductionPercent, fixed: coreTalents.fixesFireResistance });
+    basePercent: state.combat.targetFireResistancePercent, reductionPercent: firesAllure.resistanceReductionPercent, fixed: fixedFireResistance ?? false });
   damageCombat.targetFireResistancePercent = ignitedResistance.dotPercent;
   damageCombat.ignitedFireResistance = ignitedResistance;
   const hasReaping = Boolean(theoretical.combat.reaping?.sources.some(source => source.minimum.triggersPerSecond > 0))
@@ -1360,7 +1537,7 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   // Miraculous Gain (Miraculous Touch; src/elixir-model.js miraculousGainState, user-supplied 2026-10-19): the Blessings maxed for a
   // share of the time and 10 Main Skill triggers per gain, averaged over the Elixir casts.
   const miraculousGain = miraculousGainState(lineEffects.combat?.elixir || null, modifierTexts);
-  const blessings = calculateBlessings({ mobilityUsed, tangleCasts: tangles.setups.length > 0, fillShare: miraculousGain?.blessingShare || 0, fillSource: miraculousGain ? "Miraculous Gain (Miraculous Touch)" : null, extraLines: [...lineEffects.blessing, ...prismCoreBlessingLines], stackOverrides: lineConditionState.consumption?.agilityHeld ? { Agility: lineConditionState.consumption.agilityHeld } : {}, stackUsers: new Set((lineEffects.lines || []).filter((line) => line.active && /^blessing/.test(line.condition || "")).map((line) => line.params?.name).filter(Boolean)), stackUserTexts: modifierTexts.map((line) => String(line.text)), hitRecently: requestedConditions.blockedRecently !== false, canUseNonMain: setups.some(setup => setup.role !== "main" && setup.role !== "aura" && activeNames.has(setup.name)), pactState: state.pacts, talentState: state.talents, equipment, talents: levelSources.talents, slates: levelSources.slates, barrierSources, hasReaping, block, moving: conditions.moving, canHit: blessingCanHit, canCrit: blessingCanCrit, enemyAilments: mechanics.enemyAilments.types.map((type) => type.name), igniteOnTarget: canIgnite, spellHitActive: activeNames.has("Scorching Beam") });
+  const blessings = calculateBlessings({ mobilityUsed, tangleCasts: tangles.setups.length > 0, fillShare: miraculousGain?.blessingShare || 0, fillSource: miraculousGain ? "Miraculous Gain (Miraculous Touch)" : null, extraLines: [...lineEffects.blessing, ...prismCoreBlessingLines, ...(theaInputs?.lines || [])], capRules: theaInputs?.capRules || null, stackOverrides: { ...(lineConditionState.consumption?.agilityHeld ? { Agility: lineConditionState.consumption.agilityHeld } : {}), ...(theaFocus !== null ? { Focus: { stacks: theaFocus, reason: "God's Boon consumes every Focus stack (Thea – Wisdom of The Gods: its cycle average, Q-H3)" } } : {}) }, stackUsers: new Set((lineEffects.lines || []).filter((line) => line.active && /^blessing/.test(line.condition || "")).map((line) => line.params?.name).filter(Boolean)), stackUserTexts: modifierTexts.map((line) => String(line.text)), hitRecently: requestedConditions.blockedRecently !== false, canUseNonMain: setups.some(setup => setup.role !== "main" && setup.role !== "aura" && activeNames.has(setup.name)), pactState: state.pacts, talentState: state.talents, equipment, talents: levelSources.talents, slates: levelSources.slates, barrierSources, hasReaping, block, moving: conditions.moving, canHit: blessingCanHit, canCrit: blessingCanCrit, enemyAilments: mechanics.enemyAilments.types.map((type) => type.name), igniteOnTarget: canIgnite, spellHitActive: activeNames.has("Scorching Beam") });
   // Focus Blessing stacks from the blessing model: Overload's "for each stack of Focus Blessing" lines (B1) on every
   // setup, and the main skill's pending per-stack lines on the beam hit ledger and the Ignite ledger.
   const focusBlessingStacks = blessings.entries.find((entry) => entry.name === "Focus")?.stacks ?? 0;
@@ -1525,13 +1702,39 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
     itemTriggerNotes.push([key, `Triggered skill: ${trigger.name} Lv.${trigger.level} every ${trigger.intervalSeconds} s (${event.reason}; provisional)`]);
   });
   for (const [key, note] of itemTriggerNotes) mechanics.recognized.set(key, note);
-  const allHitSources = [...skillHitSources, ...itemTriggerSources];
+  // Rehan (hero trait audit B10; src/rehan-traits.js; provisional readings, src/open-questions.js):
+  // - Anger's Burst: a triggered hit source (game row 90000; Burst Blast 90003) at its trigger rate in Berserk × the Berserk uptime,
+  //   with its own additional damage lines, its level (+10% per tag-matching Skill Level line) and the Berserk-phase Rage lines in
+  //   place of the time-averaged ones (it fires only while Berserk); Tunnel Vision's penalty does not reach it.
+  // - Ritual of Offering's Disarm: the player's Attack Skills pause for that share of Berserk (a use-rate factor) and read the Rage
+  //   lines of their attacking time; not in the measuring pass (it measures the undisarmed rates).
+  const rehanSources = [];
+  const rehanFinal = lineConditionState.rehan && !probeDebuffHitRates ? lineConditionState.rehan : null;
+  const rehanWeaponFor = (texts) => calculateWeaponAttack({ equipment, disabledSlots: state.disabledEquipmentSlots, modifierTexts: [...texts, ...loudSongSpeedLines, ...(blessings.castSpeedPercent > 0 ? [{ text: `+${Math.round(blessings.castSpeedPercent * 10000) / 10000}% Attack and Cast Speed`, source: "Agility Blessing (blessing model)", origin: "derived", multiplier: 1 }] : [])] });
+  if (lineConditionState.rehan?.burst) {
+    const rehan = lineConditionState.rehan = withRehanHits(lineConditionState.rehan, { attackSpeed: weaponAttack.attackSpeed });
+    const burstBase = burstProfile({ blast: rehan.burst.blast });
+    const burstLevels = skillLevelBonus({ name: burstBase.name, role: "support", tags: burstBase.tags }, levelSources);
+    const burstSetup = { name: burstBase.name, role: "item-trigger", tags: burstBase.tags, baseLevel: 1, addedLevels: burstLevels.total, effectiveLevel: 1, levelBonusSources: burstLevels.contributions, supports: [], setupKey: BURST_SETUP_KEY, instanceId: BURST_SETUP_KEY, enabled: true, rehanBurst: true };
+    rehanSources.push({ setup: burstSetup, setupKey: BURST_SETUP_KEY, profile: { ...burstBase, useModel: { ...burstBase.useModel, usesPerSecond: rehan.cadence.usesPerSecond, firstUseSeconds: rehan.cadence.inBerserk > 0 ? 1 / rehan.cadence.inBerserk : null, note: `triggered by Anger while Berserk: ${r4(rehan.cadence.inBerserk)}/s in Berserk × ${r4(rehan.rage.uptime * 100)}% uptime = ${r4(rehan.cadence.usesPerSecond)}/s (hero trait audit B10, provisional)` } },
+      rehanAdditional: burstAdditionalLines(rehan, { levels: burstLevels.total }), lineSwap: { drop: (line) => Boolean(line.rehanPhase || line.rehanNonBurst), add: rehanPhaseLines(rehan, "berserk") } });
+  }
+  const rehanPlayer = rehanFinal && rehanFinal.rage.disarmShare > 0 ? { factor: Math.max(1e-9, 1 - rehanFinal.rage.uptime * rehanFinal.rage.disarmShare), add: rehanPhaseLines(rehanFinal, "player") } : null;
+  const allHitSources = [...skillHitSources.map((source) => rehanPlayer && (source.setup?.tags || []).includes("Attack") ? { ...source, lineSwap: { drop: (line) => Boolean(line.rehanPhase), add: rehanPlayer.add }, rehanRateFactor: rehanPlayer.factor } : source), ...itemTriggerSources, ...rehanSources];
   // Pure Heart (Azure Gunslinger; src/pure-heart.js): held at max stacks with an Attack Mobility Skill on the board (mobilitySkillUsed
   // switch); ×1.05 per stack additional Attack Damage on the hits against the Nearby dummy (not ailments).
   const pureHeart = resolvePureHeart({ modifierTexts, setups, mobilityUsed: requestedConditions.mobilitySkillUsed !== false, nearTarget: conditions.nearTarget !== false });
+  // Carino's ammo cycle (hero trait audit B9, Q-H8; src/carino-traits.js): Projectile casts × the share of time they are available.
+  const carinoAmmo = lineConditionState.carino;
+  const carinoRateEffects = (setup) => carinoAmmo?.rate?.measured && Math.abs((carinoAmmo.rate.factor ?? 1) - 1) > 1e-12 && (setup?.tags || []).includes("Projectile")
+    ? { rateFactor: carinoAmmo.rate.factor, rateNote: `Carino ammo (Q-H8, provisional): ${carinoAmmo.rate.mode === "heatCycle" ? `the Heat Up cycle (${carinoAmmo.ammo.magazine} ammo casts, ${carinoAmmo.heat?.phaseSeconds} s of Blank Firing, a ${carinoAmmo.ammo.reloadSeconds} s reload)` : `magazine ${carinoAmmo.ammo.magazine}, reload ${carinoAmmo.ammo.reloadSeconds} s, Projectile Skills unavailable while reloading`} at ${Math.round(carinoAmmo.rate.castsPerSecond * 1000) / 1000} Projectile casts/s: available ${Math.round(carinoAmmo.rate.factor * 10000) / 100}% of the time` } : null;
   // `extra` adds inputs a second pass settles (Erika's Multistrike states, src/erika-wind-stalker.js).
   const computeSkillHit = (source, extra = {}) => {
     const setup = source.setup;
+    // Rehan (hero trait audit B10): a source's own Rage-phase lines (Burst and the Seething Spirit: Berserk; a disarmed player: the
+    // attacking time) in place of the time-averaged ones, with the weapon model they give.
+    const sourceTexts = source.lineSwap ? [...modifierTexts.filter((line) => !source.lineSwap.drop(line)), ...source.lineSwap.add] : modifierTexts;
+    const sourceWeapon = source.lineSwap && source.profile.weaponScaling ? rehanWeaponFor(sourceTexts) : weaponAttack;
     // Channel skills (src/skill-hit-profiles.js useModel "channel") keep the channel-only speed line.
     const noChannelTalent = source.profile.channeled ? talentSlate : { ...talentSlate, candidateTalent: { ...(talentSlate.candidateTalent || {}), channeledAttackAndCastSpeedPercent: 0 }, candidateSlate: { ...(talentSlate.candidateSlate || {}), channeledAttackAndCastSpeedPercent: 0 } };
     const speed = scorchingBeamCastRate({ lineSpeed: lineEffects.castSpeed, blessings, ceaselessTide: heroMemories.ceaselessTide, main: setup, talentSlate: noChannelTalent, equipment: memoryEquipment, pact, aimCastSpeedPercent: aim.averageCastSpeedPercent });
@@ -1547,12 +1750,12 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
     // generic hit (src/selena-tide.js hitLines); Scorching Beam keeps its own hit ledger (src/scorching-beam-hit.js).
     const hitOnlyLines = [...blessingHitLines, ...singWithTheTide.hitLines, ...(pureHeart?.hitLines || [])];
     // A buff for the character's "other skills" (Ice Bond's Euphoria, src/empower-effects.js) skips the skill that grants it.
-    const ownLines = modifierTexts.some((line) => line.exceptSetupKey === setup.setupKey) ? modifierTexts.filter((line) => line.exceptSetupKey !== setup.setupKey) : modifierTexts;
-    const common = { setup, profile: source.profile, modifierTexts: hitOnlyLines.length ? [...ownLines, ...hitOnlyLines] : ownLines, castSpeed, movedRecently: requestedConditions.movedRecently !== false, multistrikeEventsPerSecond: hitRateFacts?.multistrikeEventsPerSecond ?? null,luckyDamageRolls: lineEffects.combat?.lucky?.damageRolls || 1, deterioration: lineEffects.combat?.deterioration || null, auraEntries: aura.entries.filter((entry) => activeNames.has(entry.name)), aim, intelligenceAdditionalPercent: intelligenceLine?.percent || 0, mainStatPoints: mechanics.intelligence?.removed ? null : lineEffects.state?.stats || null, intelligenceSource: intelligenceLine?.source || null, target: { resistancePercent: { Fire: damageCombat.targetFireResistancePercent, Cold: damageCombat.targetColdResistancePercent ?? 30, Lightning: damageCombat.targetLightningResistancePercent ?? 30, Erosion: damageCombat.targetErosionResistancePercent ?? 30 }, ...(juggernaut ? { armourPercent: juggernaut.armourPercent, nonPhysicalArmourPercent: juggernaut.nonPhysicalArmourPercent } : {}) }, targetCursed,
+    const ownLines = sourceTexts.some((line) => line.exceptSetupKey === setup.setupKey) ? sourceTexts.filter((line) => line.exceptSetupKey !== setup.setupKey) : sourceTexts;
+    const common = { setup, profile: source.profile, modifierTexts: hitOnlyLines.length ? [...ownLines, ...hitOnlyLines] : ownLines, castSpeed, takenConversion: lineEffects.hero?.takenConversion || null, movedRecently: requestedConditions.movedRecently !== false, multistrikeEventsPerSecond: hitRateFacts?.multistrikeEventsPerSecond ?? null,luckyDamageRolls: lineEffects.combat?.lucky?.damageRolls || 1, deterioration: lineEffects.combat?.deterioration || null, auraEntries: aura.entries.filter((entry) => activeNames.has(entry.name)), aim, intelligenceAdditionalPercent: intelligenceLine?.percent || 0, mainStatPoints: mechanics.intelligence?.removed ? null : lineEffects.state?.stats || null, intelligenceSource: intelligenceLine?.source || null, target: { resistancePercent: { Fire: damageCombat.targetFireResistancePercent, Cold: damageCombat.targetColdResistancePercent ?? 30, Lightning: damageCombat.targetLightningResistancePercent ?? 30, Erosion: damageCombat.targetErosionResistancePercent ?? 30 }, ...(juggernaut ? { armourPercent: juggernaut.armourPercent, nonPhysicalArmourPercent: juggernaut.nonPhysicalArmourPercent } : {}) }, targetCursed,
       // Curses on the dummy (skill curses within the limit + gear-triggered curses) and the enemy-ailment model's types, for
       // components gated on a Cursed target (Shackles of Malice) and triggers gated on an ailment (Ice Focus: Frostbite).
       targetCurseCount: curseLimit.active.length + mechanics.curses.active.length, enemyAilments: mechanics.enemyAilments };
-    const critFor = (castsPerSecond, strikeCritChancePercent = null) => scorchingBeamCritical({ main: setup, talentSlate, equipment: memoryEquipment, pact, modifierTexts, fireResistanceTotalPercent: resistances.entries.find((entry) => entry.element === "Fire")?.total || 0, castsPerSecond, targetHasAilment: false, strikeCritChancePercent });
+    const critFor = (castsPerSecond, strikeCritChancePercent = null) => scorchingBeamCritical({ main: setup, talentSlate, equipment: memoryEquipment, pact, modifierTexts: sourceTexts, fireResistanceTotalPercent: resistances.entries.find((entry) => entry.element === "Fire")?.total || 0, castsPerSecond, targetHasAilment: false, strikeCritChancePercent });
     // Scorch (curse-model.js): cursed enemies take additional Fire damage; Entangled Pain is damage over time only.
     common.extraTaken = [...(conditions.scorch ? [{ source: "Scorch curse", text: `+${curses.scorchDamagePercent}% additional Fire Damage taken (Scorch on the dummy)`, value: curses.scorchDamagePercent, types: ["Fire"] }] : []), ...singWithTheTide.takenLines];
     // Distance (exclusive group "Distance"): a projectile fan lands ceil(n / 2) standing close, one at range (src/shotgun-effect.js).
@@ -1563,6 +1766,18 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
     // Core audit B8: an ordinary Tangle Skill with 2+ activated Tangles uses × activated (src/tangle-model.js tangleHitEffects).
     const yougaPre = yougaPreEffects(lineConditionState.yougaUltimateOne, setup.setupKey), tangleCadence = tangleHitEffects(tangles, setup.setupKey);
     common.heroEffects = yougaPre && tangleCadence ? { ...yougaPre, ...tangleCadence } : yougaPre || tangleCadence;
+    // Carino (hero trait audit B9; src/carino-traits.js): the ammo cycle's use-rate factor on Projectile skills (Q-H8), once the
+    // measuring pass has the cast rate; Evil Ouroboros's returning hits and a Special Ammo cast's bonus lines arrive through `extra`.
+    const carinoFactor = carinoRateEffects(setup);
+    if (carinoFactor) common.heroEffects = common.heroEffects ? { ...common.heroEffects, rateFactor: (common.heroEffects.rateFactor || 1) * carinoFactor.rateFactor, rateNote: [common.heroEffects.rateNote, carinoFactor.rateNote].filter(Boolean).join("; ") } : carinoFactor;
+    if (extra.carinoRecall || extra.carinoAdditional?.length) {
+      common.heroEffects = { ...(common.heroEffects || {}), ...(extra.carinoRecall ? { recall: extra.carinoRecall } : {}), ...(extra.carinoAdditional?.length ? { additional: [...(common.heroEffects?.additional || []), ...extra.carinoAdditional] } : {}) };
+    }
+    const { carinoRecall: _carinoRecall, carinoAdditional: _carinoAdditional, ...plainExtra } = extra;
+    extra = plainExtra;
+    // Rehan (hero trait audit B10): Burst's own additional damage lines; Disarmed's use-rate factor on the player's Attack Skills.
+    if (source.rehanAdditional?.length) common.heroEffects = { ...(common.heroEffects || {}), additional: [...(common.heroEffects?.additional || []), ...source.rehanAdditional] };
+    if (Number.isFinite(source.rehanRateFactor) && source.rehanRateFactor !== 1) common.heroEffects = { ...(common.heroEffects || {}), rateFactor: (common.heroEffects?.rateFactor || 1) * source.rehanRateFactor, rateNote: [common.heroEffects?.rateNote, `Rehan – Disarmed (Ritual of Offering): the player's Attack Skills pause for ${r4((1 - source.rehanRateFactor) * 100)}% of the time (provisional)`].filter(Boolean).join("; ") };
     // Lines for triggered skills (Hair-trigger, src/combat-states.js; core audit batch B3): applied by the hit model to triggered uses.
     common.triggeredSkillAdditional = lineEffects.combat?.buffs?.triggeredSkillAdditional || [];
     // Tangle casts are triggered (Hair-trigger; user-supplied 2026-10-19, Google AI Mode answer, not tested in game).
@@ -1571,12 +1786,12 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
     common.extraTriggeredUses = miraculousGain?.mainSkillUsesPerSecond > 0 && setup.setupKey === resolvedMain?.setupKey ? { usesPerSecond: miraculousGain.mainSkillUsesPerSecond, label: "Miraculous Gain triggers", note: miraculousGain.text } : null;
     Object.assign(common, extra);
     if (source.profile.weaponScaling) {
-      common.weapon = weaponAttack; common.attackSpeed = weaponAttack.attackSpeed;
+      common.weapon = sourceWeapon; common.attackSpeed = sourceWeapon.attackSpeed;
       // Spell-only crit damage ("+X% Spell Critical Strike Damage" talents/slates) does not reach attacks.
-      // Alternate dual wielding (user-confirmed 2026-10-14): each hand's chance by the same rule (weaponAttack.crit.hands).
+      // Alternate dual wielding (user-confirmed 2026-10-14): each hand's chance by the same rule (sourceWeapon.crit.hands).
       const attackChance = (spell, weaponCrit) => luckyCritChance(spell.lineCrit?.sentryRating ? Math.min(100, weaponCrit.rating * (1 + (weaponCrit.increasedRatingPercent + spell.lineCrit.sentryRating) / 100) / Math.max(1e-9, 1 + weaponCrit.increasedRatingPercent / 100) / 100) : weaponCrit.chancePercent, lineEffects.combat?.lucky?.critRolls || 1);
       // "per recent non-Critical Strike" stacks (2026-10-15) count the attack's own non-crit hits (its weapon crit chance).
-      const attackCrit = (castsPerSecond) => { const spellFirst = critFor(castsPerSecond); const spell = spellFirst.conditionalSources.some((item) => item.nonCrit) ? critFor(castsPerSecond, attackChance(spellFirst, weaponAttack.crit)) : spellFirst; const spellOnly = spell.spellOnlyCriticalDamagePercent || 0; return { ...spell, criticalDamagePercent: spellOnly ? Math.max(100, spell.criticalDamagePercent - spellOnly) : spell.criticalDamagePercent, combatCriticalDamagePercent: spellOnly ? spell.combatCriticalDamagePercent - spellOnly : spell.combatCriticalDamagePercent, criticalChancePercent: attackChance(spell, weaponAttack.crit), hands: weaponAttack.crit.hands ? weaponAttack.crit.hands.map((hand) => ({ ...hand, criticalChancePercent: attackChance(spell, hand) })) : null, rating: weaponAttack.crit.rating, attackCrit: weaponAttack.crit }; };
+      const attackCrit = (castsPerSecond) => { const spellFirst = critFor(castsPerSecond); const spell = spellFirst.conditionalSources.some((item) => item.nonCrit) ? critFor(castsPerSecond, attackChance(spellFirst, sourceWeapon.crit)) : spellFirst; const spellOnly = spell.spellOnlyCriticalDamagePercent || 0; return { ...spell, criticalDamagePercent: spellOnly ? Math.max(100, spell.criticalDamagePercent - spellOnly) : spell.criticalDamagePercent, combatCriticalDamagePercent: spellOnly ? spell.combatCriticalDamagePercent - spellOnly : spell.combatCriticalDamagePercent, criticalChancePercent: attackChance(spell, sourceWeapon.crit), hands: sourceWeapon.crit.hands ? sourceWeapon.crit.hands.map((hand) => ({ ...hand, criticalChancePercent: attackChance(spell, hand) })) : null, rating: sourceWeapon.crit.rating, attackCrit: sourceWeapon.crit }; };
       const first = calculateSkillHit({ ...common, crit: attackCrit(0) });
       return calculateSkillHit({ ...common, crit: attackCrit(first.rate.hitsPerSecond) });
     }
@@ -1616,6 +1831,109 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
     const settled = resolveHeroModules(modifierTexts.filter((line) => line.origin === "trait"), lineConditionState).entries.filter((entry) => /^youga/.test(entry.module || ""));
     lineEffects.lines = [...lineEffects.lines.filter((entry) => !/^youga/.test(entry.module || "")), ...settled];
   }
+  // Carino (hero trait audit B9; src/carino-traits.js; provisional readings, src/open-questions.js):
+  // - Evil Ouroboros: a Horizontal Projectile skill with at least 1 Penetration passes through the dummy, reaches its max range and
+  //   returns, hitting it once more (the hit model's returning-hit component, as Youga's Recall; best-case switch carinoReturningHits).
+  // - Special Ammo: a share of the Projectile casts consume one (or, under Magic Shot, several) Special Ammo and gain the slot
+  //   supports' hit effects with the "if a Special Ammo is consumed" lines: each support set is a variant hit (the support at Lv. 20
+  //   added to the setup), and the hit's per-use damage is the cast-weighted mix. Their ailment / DoT effects are not modeled.
+  const carinoFinal = lineConditionState.carino && !probeDebuffHitRates ? lineConditionState.carino : null;
+  if (carinoFinal) {
+    const projectileIndexes = skillHits.map((hit, index) => hit.modeled && (allHitSources[index].setup?.tags || []).includes("Projectile") ? index : -1).filter((index) => index >= 0);
+    const returning = carinoFinal.returning;
+    const recallFor = new Map();
+    if (returning) {
+      returning.setups = [];
+      for (const index of projectileIndexes) {
+        const hit = skillHits[index], source = allHitSources[index];
+        const mechanics = projectileMechanics(source.setup, modifierTexts);
+        const strike = hit.components.find((component) => !component.addedOnly);
+        const strikeKey = strike ? strike.strikeKey ?? strike.key : null;
+        const reason = !returning.on ? "the returning-projectiles switch is off" : mechanics.recallBlock ? `cannot return: ${mechanics.recallBlock}` : !(mechanics.penetration.total >= 1) ? "its projectiles stop at the dummy (no Penetration), so they never reach their max range" : !strikeKey ? "no projectile hit group" : "";
+        returning.setups.push({ setupKey: hit.setupKey, name: hit.name, active: !reason, penetration: mechanics.penetration.total, reason: reason || `${mechanics.penetration.total} Penetration: each projectile passes through the dummy, returns over ${returning.percent}% of its range and hits it again as a full hit` });
+        if (reason) continue;
+        const recall = { recallsPerProjectile: 1, shareOfUses: 1, hitsFactor: 1, strikeKey, additional: [], note: `Evil Ouroboros (hero trait audit B9, provisional): each projectile passes through the dummy (${mechanics.penetration.total} Penetration), returns over ${returning.percent}% of its range and hits it once more as a full hit (best case: the dummy on the return path)` };
+        recallFor.set(index, recall);
+        skillHits[index] = computeSkillHit(source, { carinoRecall: recall });
+      }
+    }
+    const special = carinoFinal.special;
+    if (special?.variants?.length) {
+      const catalogSkill = (name) => catalogSkillsByName.get(name);
+      for (const index of projectileIndexes) {
+        const base = skillHits[index], source = allHitSources[index];
+        if (!(base.combat?.perUse > 0)) continue;
+        let perUse = 0, perUseBefore = 0, weightSum = 0;
+        const parts = [], skipped = new Set();
+        for (const variant of special.variants) {
+          const grants = variant.names.filter((name) => {
+            const rejected = installedSupportRejected(catalogSupportsByName.get(name), catalogSkill(source.setup.name), source.setup.supports || []);
+            if (rejected) skipped.add(name);
+            return !rejected;
+          }).map((name) => ({ name, level: SPECIAL_AMMO_LEVEL, source: "Carino: Special Ammo", text: `Special Ammo: ${name} (Lv. ${SPECIAL_AMMO_LEVEL})`, active: true }));
+          const variantSetup = grants.length ? { ...source.setup, supports: [...(source.setup.supports || []), ...resolveSetupSupports(source.setup, source.setup.setupKey, [], grants).supports.map((support) => ({ ...support, specialAmmo: true }))] } : source.setup;
+          if (grants.length) variantSetup.supportEffects = resolveSupportEffects(variantSetup, { ...supportEffectsContext(variantSetup, focusBlessingStacks), conditions: supportConditions });
+          const hit = computeSkillHit({ ...source, setup: variantSetup }, { carinoAdditional: variant.additional, ...(recallFor.has(index) ? { carinoRecall: recallFor.get(index) } : {}) });
+          perUse += variant.weight * (hit.combat?.perUse || 0);
+          perUseBefore += variant.weight * (hit.combat?.perUseBeforeTarget || 0);
+          weightSum += variant.weight;
+          parts.push({ names: variant.names, applied: grants.map((grant) => grant.name), weight: variant.weight, perUse: hit.combat?.perUse || 0 });
+        }
+        perUse += (1 - weightSum) * base.combat.perUse;
+        perUseBefore += (1 - weightSum) * (base.combat.perUseBeforeTarget || 0);
+        const factor = perUse / base.combat.perUse;
+        const factorBefore = base.combat.perUseBeforeTarget > 0 ? perUseBefore / base.combat.perUseBeforeTarget : factor;
+        base.combat = { ...base.combat, perUse, perUseBeforeTarget: perUseBefore, dps: base.combat.dps * factor, dpsBeforeTarget: (base.combat.dpsBeforeTarget || 0) * factorBefore, fiveSecondAverageDps: base.combat.fiveSecondAverageDps * factor, twentySecondAverageDps: base.combat.twentySecondAverageDps * factor };
+        base.carinoSpecialAmmo = { factor, share: weightSum, parts, skipped: [...skipped] };
+        base.notes = [...(base.notes || []), `${base.name}: Special Ammo (hero trait audit B9, provisional): ${Math.round(weightSum * 10000) / 100}% of the casts consume Special Ammo (${parts.map((part) => `${part.names.join(" + ")} ${Math.round(part.weight * 10000) / 100}%`).join(", ")}) and gain the supports' hit effects at Lv. ${SPECIAL_AMMO_LEVEL} with the "if a Special Ammo is consumed" lines: per-use damage ×${Math.round(factor * 10000) / 10000}${skipped.size ? `; ${[...skipped].join(", ")} cannot support ${base.name} (not applied)` : ""}; their ailment / DoT effects are not modeled.`];
+      }
+    }
+    // The badges read the settled returning state (src/hero-trait-modules.js "ouroboros").
+    if (returning) {
+      const settled = resolveHeroModules(modifierTexts.filter((line) => line.origin === "trait" && !line.lineEffect), lineConditionState).entries.filter((entry) => entry.module === "ouroboros");
+      lineEffects.lines = [...lineEffects.lines.filter((entry) => entry.module !== "ouroboros"), ...settled];
+    }
+  }
+  // Rehan (hero trait audit B10; src/rehan-traits.js; provisional): the Seething Spirit casts the Main Skill at the player's own use rate
+  // for it (× Fury's Onslaught's -30%) while Berserk (Ritual of Offering: always; Fury's Onslaught: while the Main Skill is used within
+  // every 2 s), each a full use with the Berserk lines, Ritual's +X% and Fury's offset (Starfall Wasteland: +1 Projectile Quantity and
+  // Penetration, its returning projectiles); its uses join the Main Skill's hit (its ailments are not counted). Then the badges read
+  // the settled Burst / Spirit state.
+  if (lineConditionState.rehan) {
+    const rehan = lineConditionState.rehan, spirit = rehan.spirit;
+    let spiritHit = null, spiritReturning = null;
+    const mainIndex = spirit ? skillHits.findIndex((hit) => hit.setupKey === spirit.mainSetupKey) : -1;
+    if (rehanFinal && spirit?.active && mainIndex >= 0) {
+      const source = { ...allHitSources[mainIndex], lineSwap: { drop: (line) => Boolean(line.rehanPhase), add: rehanPhaseLines(rehan, "berserk") }, rehanRateFactor: null };
+      const effects = { additional: spirit.additional, extraModifierTexts: spirit.extraLines };
+      let hit = computeSkillHit(source, { heroEffects: effects });
+      if (spirit.returning) {
+        const projectiles = projectileMechanics(source.setup, [...modifierTexts, ...spirit.extraLines]);
+        const strike = (hit.components || []).find((component) => !component.addedOnly);
+        const strikeKey = strike ? strike.strikeKey ?? strike.key : null;
+        const reason = !spirit.returning.on ? "switched off" : projectiles.recallBlock ? `cannot return: ${projectiles.recallBlock}` : !(source.setup?.tags || []).includes("Horizontal") ? "not a Horizontal Projectile skill" : !(projectiles.penetration.total >= 1) ? "its projectiles stop at the dummy (no Penetration)" : !strikeKey ? "no projectile hit group" : "";
+        spiritReturning = { active: !reason, reason, penetration: projectiles.penetration.total };
+        if (!reason) hit = computeSkillHit(source, { heroEffects: { ...effects, recall: { recallsPerProjectile: spirit.returning.percent / 100, shareOfUses: 1, hitsFactor: spirit.returning.percent / 100, strikeKey, additional: [], note: `Starfall Wasteland (hero trait audit B10, provisional): ${spirit.returning.percent}% of the Spirit's projectiles pass through the dummy (${projectiles.penetration.total} Penetration), return and hit it again` } } });
+      }
+      const usesPerSecond = (hit.rate?.usesPerSecond || 0) * spirit.speedFactor * spirit.presence * rehan.rage.uptime;
+      const perUse = hit.combat?.perUse || 0, perUseBefore = hit.combat?.perUseBeforeTarget || 0;
+      spiritHit = { modeled: Boolean(hit.modeled) && usesPerSecond > 0, inactiveReason: hit.inactiveReason || null, usesPerSecond, perUse, dps: usesPerSecond * perUse };
+      const player = skillHits[mainIndex];
+      if (spiritHit.modeled) {
+        const playerUses = player.rate?.usesPerSecond || 0, totalUses = playerUses + usesPerSecond, dps = (player.combat?.dps || 0) + spiritHit.dps;
+        player.rehanSpirit = { ...spiritHit, playerUsesPerSecond: playerUses, hitsPerUse: hit.rate?.hitsPerUse || 0 };
+        player.rate = { ...player.rate, usesPerSecond: totalUses, hitsPerSecond: (player.rate?.hitsPerSecond || 0) + usesPerSecond * (hit.rate?.hitsPerUse || 0) };
+        player.combat = { ...player.combat, perUse: totalUses > 0 ? dps / totalUses : player.combat.perUse, dps, dpsBeforeTarget: (player.combat?.dpsBeforeTarget || 0) + usesPerSecond * perUseBefore, fiveSecondAverageDps: (player.combat?.fiveSecondAverageDps || 0) + spiritHit.dps, twentySecondAverageDps: (player.combat?.twentySecondAverageDps || 0) + spiritHit.dps };
+        player.modeled = true;
+        player.notes = [...(player.notes || []), `Seething Spirit (hero trait audit B10, provisional): +${r4(usesPerSecond)} casts/s of ${player.name} (your use rate × ${spirit.speedFactor} × ${r4(spirit.presence * 100)}% presence × ${r4(rehan.rage.uptime * 100)}% Berserk uptime), ${r4(perUse)} per cast with the Berserk lines${spirit.additional.length ? ` and ${spirit.additional.map((line) => `${line.value}%`).join(", ")} additional` : ""} = ${r4(spiritHit.dps)} DPS; its ailments are not counted.`];
+      }
+    }
+    const burstHit = skillHits.find((hit) => hit.setupKey === BURST_SETUP_KEY) || null;
+    lineConditionState.rehan = withRehanHits(rehan, { burstHit: burstHit ? { modeled: Boolean(burstHit.modeled), inactiveReason: burstHit.inactiveReason || null, usesPerSecond: burstHit.rate?.usesPerSecond || 0, dps: burstHit.combat?.dps || 0 } : null, spiritHit, spiritReturning });
+    const rehanModules = new Set(["rage", "burst", "spirit"]);
+    const settled = resolveHeroModules(modifierTexts.filter((line) => (line.origin === "trait" || line.origin === "memory") && !line.lineEffect), lineConditionState).entries.filter((entry) => rehanModules.has(entry.module));
+    lineEffects.lines = [...lineEffects.lines.filter((entry) => !rehanModules.has(entry.module)), ...settled];
+  }
   // Elemental Impact (2026-10-15 patch update): its condition (Fire, Cold and Lightning dealt) follows the hit model's final parts
   // (own types, conversions, added flat damage), so the badge, the skill's own DoT and its ailments read what the hits dealt.
   for (const hit of skillHits.filter((item) => item.modeled)) {
@@ -1634,16 +1952,27 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   }
   // Scorching Beam's hits apply and take the Mark like the generic hits (2026-10-14); Minion hits take it once settled.
   const mark = settleMark(markState, [...skillHits, ...(nativeHitCycle ? [{ modeled: true, name: "Scorching Beam", crit: { chancePercent: beamCritical.criticalChancePercent } }] : [])]);
-  const illusion = lineEffects.hero?.illusion;
+  let illusion = lineEffects.hero?.illusion;
   const illusionHit = illusion ? skillHits.find((hit) => hit.modeled && hit.setupKey === resolvedMain?.setupKey) : null;
+  // Hero trait audit B4 (src/youga-spacetime.js): the Illusion state settled with this pass's Main Skill cast rate and the
+  // character's increased Cast Speed (Eeeendless Mana's rate, Make it Quick); the moon's and I'm Out of Mana's stacks keep the
+  // measuring pass's rates (they are lines the hits already read).
+  let yougaIllusionFacts = null;
   if (illusionHit) {
-    const playerRate = illusion.playerCasts ? illusionHit.rate.usesPerSecond : 0;
-    const totalRate = playerRate + illusion.usesPerSecond;
-    const perUse = (illusionHit.combat.perUse * playerRate + illusionHit.combat.perUse * illusion.damageFactor * illusion.usesPerSecond) / totalRate;
-    illusionHit.illusion = { ...illusion, playerUsesPerSecond: playerRate, perUseBefore: illusionHit.combat.perUse };
+    const ownCastsPerSecond = Math.max(0, (illusionHit.rate.usesPerSecond || 0) - (illusionHit.rate.spellBurst?.extraUsesPerSecond || 0));
+    const mainSetup = setups.find((setup) => setup.setupKey === illusionHit.setupKey);
+    const characterSpeed = mainSetup ? scorchingBeamCastRate({ lineSpeed: lineEffects.castSpeed, blessings, ceaselessTide: heroMemories.ceaselessTide, main: { ...mainSetup, supports: [] }, talentSlate, equipment: memoryEquipment, pact, aimCastSpeedPercent: aim.averageCastSpeedPercent }) : null;
+    yougaIllusionFacts = { playerCastsPerSecond: ownCastsPerSecond, castSpeedIncreasedPercent: characterSpeed?.increasedPercent ?? null, castsPerSecond: hitRateFacts?.youga?.castsPerSecond ?? null };
+    illusion = resolveIllusionState(modifierTexts.filter((line) => (line.origin === "trait" || line.origin === "memory") && !line.lineEffect), { ...lineConditionState, yougaSpacetime: yougaIllusionFacts }) || illusion;
+    const stream = settleIllusionStream({ hit: illusionHit, illusion, telepathy: illusion.telepathy });
+    const totalRate = stream.totalRate;
+    illusionHit.illusion = { ...illusion, playerUsesPerSecond: stream.playerUsesPerSecond, ownCastsPerSecond, illusionUsesPerSecond: stream.illusionUsesPerSecond, perUseBefore: illusionHit.combat.perUse, spellBurst: stream.spellBurst };
     illusionHit.rate = { ...illusionHit.rate, usesPerSecond: totalRate, hitsPerSecond: totalRate * (illusionHit.rate.hitsPerUse || 0) };
-    illusionHit.combat = { ...illusionHit.combat, perUse, dps: perUse * totalRate, fiveSecondAverageDps: perUse * totalRate, twentySecondAverageDps: perUse * totalRate };
-    illusionHit.notes = [...(illusionHit.notes || []), `Spacetime Illusion: +${Math.round(illusion.usesPerSecond * 1000) / 1000} Main Skill uses/s (provisional; windows use the steady rate)`];
+    illusionHit.combat = { ...illusionHit.combat, perUse: stream.perUse, dps: stream.dps, fiveSecondAverageDps: stream.dps, twentySecondAverageDps: stream.dps };
+    illusionHit.notes = [...(illusionHit.notes || []), `Spacetime Illusion: +${Math.round(illusion.usesPerSecond * 1000) / 1000} Main Skill uses/s (provisional; windows use the steady rate)${stream.note ? `; ${stream.note}` : ""}`];
+    // The badges read the settled Illusion state (src/hero-trait-modules.js).
+    const settled = resolveHeroModules(modifierTexts.filter((line) => (line.origin === "trait" || line.origin === "memory") && !line.lineEffect), { ...lineConditionState, yougaSpacetime: { ...yougaIllusionFacts, castsPerSecond: yougaIllusionFacts.castsPerSecond } }).entries.filter((entry) => entry.module === "illusion");
+    lineEffects.lines = [...lineEffects.lines.filter((entry) => entry.module !== "illusion"), ...settled];
   }
   const modeledSkillHits = skillHits.filter((hit) => hit.modeled);
   // Crimson Gash's Gash (official patch notes: "+12% additional Terra Skill Damage (multiplies), −40% Terra Charge Recovery Speed,
@@ -1674,7 +2003,11 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   // the Minions (not its base attack speed or base crit rating).
   const mainHandItem = (equipment?.candidateItems || []).find((item) => item.slot === "mainHand" && !(state.disabledEquipmentSlots || []).includes(item.slot)) || null;
   const isomorphicArms = isomorphicArmsState(modifierTexts, { weaponAttack, itemTexts: mainHandItem ? effectiveGearModifierTexts(mainHandItem) : [], classify: classifyMinionLine, localKind: weaponLocalLineKind });
-  const minions = groupMinionSources(damageSources).map(({ profile, sources }) => {
+  // Moto / Iris (hero trait audit B6; src/moto-iris-traits.js): each Minion's trait inputs (Overload, Charge Calling, Nourishment's
+  // extras, the Vigilant state, Merging Stream's Origins), the Spirit Magi first (Nourishing Spring Rain's troops read them).
+  const motoIris = lineConditionState.motoIris || null;
+  const mergingOrigins = motoIris?.vigilant?.merging && !motoIris.vigilant.merging.noOriginLine ? mergingStreamOrigins({ summons: lineConditionState.spiritMagusSummons || [], modifierTexts }) : null;
+  const computeMinion = ({ profile, sources }, heroInput = {}) => {
     const minionSetups = sources.map((source) => setups.find((setup) => setup.setupKey === source.setupKey)).filter(Boolean);
     // Main stats of the summoning skill (manual keyword text: "+0.5% additional Skill Damage and Minion Damage" per point;
     // "This includes … the damage of Minions summoned by the skill"; several main stats add). Stat-sheet totals (provisional:
@@ -1682,7 +2015,15 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
     const summonStats = [...new Set(minionSetups.flatMap((setup) => (setup.tags || []).filter((tag) => ["Strength", "Dexterity", "Intelligence"].includes(tag))))];
     const summonStatPercent = mechanics.intelligence?.removed ? 0 : summonStats.reduce((sum, stat) => sum + 0.5 * (Number(lineEffects.state?.stats?.[stat.toLowerCase()]) || 0), 0);
     const mainStatLine = summonStatPercent ? [{ text: `+${Math.round(summonStatPercent * 10000) / 10000}% additional Minion Damage`, source: `Main stats of the summoning skill (${summonStats.join(" + ")}; 0.5% per point)`, origin: "derived", multiplier: 1 }] : [];
-    return calculateMinion({ profile, level: Math.max(1, ...minionSetups.map((setup) => setup.effectiveLevel ?? 20)), modifierTexts: [...modifierTexts.filter((line) => line.origin !== "trait"), ...mainStatLine], traitLines, target: minionTarget, timelineSeconds: 60, setups: minionSetups,
+    // Trait lines reach the Minions as `traitLines` (raw); a trait's resolved conditional Minion body (Radiation Field's "for
+    // every Aura affecting you and your Minions"; hero trait audit B2) is a derived line the raw text does not carry, so it joins.
+    // World Within (Iris; hero trait audit B2, src/world-within.js): this Magus's Enhanced-skill chance from its element's resistance
+    // (Rock Magus: Armor) joins its trait lines; the raw line is read here, so it leaves the Minion model's unread list.
+    const worldWithin = (lineEffects.lines || []).find((entry) => entry.condition === "worldWithin");
+    const worldChance = worldWithin?.active ? worldWithinChances(worldWithin.params, lineConditionState.worldWithinInputs)[profile.minion] : null;
+    const profileTraitLines = worldWithin ? [...traitLines.filter((line) => !WORLD_WITHIN_LINE.test(normalizeLineText(String(line.text ?? "")).replace(/\s+/g, " ").trim())),
+      ...(worldChance?.chance > 0 ? [{ text: `+${worldChance.chance}% chance for Spirit Magi to use an Enhanced Skill`, source: `${worldWithin.source} (World Within: ${worldChance.stat === "Armor" ? `${worldChance.value} Armor` : `${worldChance.value}% ${worldChance.stat} Resistance`})`, origin: "trait", multiplier: 1 }] : [])] : traitLines;
+    return calculateMinion({ profile, level: Math.max(1, ...minionSetups.map((setup) => setup.effectiveLevel ?? 20)), modifierTexts: [...modifierTexts.filter((line) => line.origin !== "trait" || (line.lineEffect?.conditional && classifyMinionLine(line.text))), ...mainStatLine], traitLines: profileTraitLines, target: minionTarget, timelineSeconds: 60, setups: minionSetups,
       // Iris Nourishment: the Trait Skill is pressed whenever off cooldown (best case, default on); the combat condition
       // "traitSkillOnCooldown" set to false never presses it (user run A, 2026-10-12).
       traitSkill: requestedConditions.traitSkillOnCooldown === false ? "none" : "cooldown",
@@ -1693,10 +2034,46 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
       extraLines: [...(commanderGambit?.lines || []), ...(COMMAND_FAMILIES.includes(profile.family) ? minionCommand?.lines || [] : []), ...(isomorphicArms?.lines || [])], bond: minionBond, summonCastSpeed: minionSummonCast,
       // The resolved Scorch curse on the dummy (as for skill hits); derived debuff lines arrive through modifierTexts.
       // Selena: the enemy-on-Tide entry is a target attribute (5720), so Minion hits take it too (src/selena-tide.js takenLines).
-      extraTaken: [...(conditions.scorch ? [{ source: "Scorch curse", text: `+${curses.scorchDamagePercent}% additional Fire Damage taken (Scorch on the dummy)`, value: curses.scorchDamagePercent, types: ["Fire"] }] : []), ...singWithTheTide.takenLines] });
-  }).filter(Boolean);
+      extraTaken: [...(conditions.scorch ? [{ source: "Scorch curse", text: `+${curses.scorchDamagePercent}% additional Fire Damage taken (Scorch on the dummy)`, value: curses.scorchDamagePercent, types: ["Fire"] }] : []), ...singWithTheTide.takenLines],
+      heroTraits: minionHeroTraits(motoIris, { family: profile.family, setupKeys: minionSetups.map((setup) => setup.setupKey), mainSetupKey: resolvedMain?.setupKey ?? null, merging: mergingOrigins, ...heroInput }) });
+  };
+  const minionGroups = groupMinionSources(damageSources);
+  const magusGroups = minionGroups.filter((group) => group.profile.family === "spirit-magus");
+  const results = new Map();
+  // Vigilant Breeze (Q-H13): without Happiest Reunion one Magus is Merged: the one whose merging gains the most (best case).
+  const vigilantHeld = Boolean(motoIris?.vigilant?.held);
+  if (vigilantHeld && magusGroups.length > 1 && !motoIris.vigilant.allMerged) {
+    const apart = magusGroups.map((group) => computeMinion(group, { merged: false, magiCount: magusGroups.length }));
+    const together = magusGroups.map((group) => computeMinion(group, { merged: true, magiCount: magusGroups.length }));
+    const gains = magusGroups.map((_, index) => (together[index]?.combat?.dps || 0) - (apart[index]?.combat?.dps || 0));
+    const best = gains.indexOf(Math.max(...gains));
+    magusGroups.forEach((group, index) => results.set(group, index === best ? together[index] : apart[index]));
+  } else for (const group of magusGroups) results.set(group, computeMinion(group, { merged: vigilantHeld, magiCount: magusGroups.length }));
+  // Socialite (B6, provisional): +N Max Summonable Spirit Magi per Magus skill, within the map cap (one per Magus skill + the "Max
+  // Spirit Magi In Map" lines): the extra Magi go to the Magi with the highest DPS per Magus.
+  const socialite = motoIris?.growing;
+  if (socialite?.summonable > 0 && socialite.mapCap > 0 && magusGroups.length) {
+    let slots = Math.min(magusGroups.length * socialite.summonable, socialite.mapCap);
+    const ranked = magusGroups.filter((group) => results.get(group)?.modeled).sort((a, b) => (results.get(b).combat.perMinionDps || 0) - (results.get(a).combat.perMinionDps || 0));
+    for (const group of ranked) {
+      if (slots <= 0) break;
+      const extra = Math.min(socialite.summonable, slots);
+      slots -= extra;
+      results.set(group, computeMinion(group, { merged: vigilantHeld, magiCount: magusGroups.length, extraCount: extra }));
+    }
+  }
+  const magiResults = magusGroups.map((group) => results.get(group)).filter((minion) => minion?.modeled && minion.magus);
+  const magiFacts = magiResults.length ? { present: true, maxGrowth: Math.max(...magiResults.map((minion) => minion.magus.growth || 0)), maxEnhancedChance: Math.max(...magiResults.map((minion) => minion.magus.enhancedChancePercent || 0)) } : null;
+  for (const group of minionGroups) if (!results.has(group)) results.set(group, computeMinion(group, { magi: magiFacts }));
+  const minions = minionGroups.map((group) => results.get(group)).filter(Boolean);
   // Empower (Alchemist core; src/minion-cores.js): one Spirit Magus in the map, the strongest kept (best case).
   const spiritMagiLimit = applySpiritMagiLimit(minions, modifierTexts);
+  // Moto / Iris (B6): the Minions' results settle the module badges (src/moto-iris-traits.js b6LineStatus).
+  if (motoIris) {
+    motoIris.minions = minions.map((minion) => ({ key: minion.minionKey, name: minion.name, family: minion.family, modeled: minion.modeled, dps: minion.combat?.dps || 0, count: minion.count, heroTraits: minion.heroTraits, magus: minion.magus }));
+    const settled = resolveHeroModules(modifierTexts.filter((line) => (line.origin === "trait" || line.origin === "memory") && !line.lineEffect), lineConditionState).entries.filter((entry) => B6_MODULE_KEYS.has(entry.module));
+    lineEffects.lines = [...lineEffects.lines.filter((entry) => !B6_MODULE_KEYS.has(entry.module)), ...settled];
+  }
   const modeledMinions = minions.filter((minion) => minion.modeled);
   const mainMinion = modeledMinions.find((minion) => minion.setupKeys.includes(resolvedMain?.setupKey)) || null;
   // Per-skill ailment application (src/ailment-applications.js): Scorching Beam at its cast rate and every modeled
@@ -1868,7 +2245,7 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   // answer, not tested in game); otherwise nothing takes it.
   for (const entry of (lineEffects.lines || []).filter((line) => line.condition === "hairTrigger" && line.active)) {
     const tangleKeys = new Set((tangles.setups || []).map((item) => item.setupKey));
-    const triggeredNames = [...modeledSkillHits.filter((hit) => hit.rate?.trigger || String(hit.setupKey || "").startsWith("item-trigger:") || tangleKeys.has(hit.setupKey)).map((hit) => hit.name || hit.setupKey), ...skillDotSources.filter((source) => windRhythmFor(source) || tangleKeys.has(source.setupKey)).map((source) => source.name)];
+    const triggeredNames = [...modeledSkillHits.filter((hit) => hit.rate?.trigger || String(hit.setupKey || "").startsWith("item-trigger:") || hit.setupKey === BURST_SETUP_KEY || tangleKeys.has(hit.setupKey)).map((hit) => hit.name || hit.setupKey), ...skillDotSources.filter((source) => windRhythmFor(source) || tangleKeys.has(source.setupKey)).map((source) => source.name)];
     if (triggeredNames.length) entry.conditionText = `${entry.conditionText}; triggered: ${[...new Set(triggeredNames)].join(", ")}`;
     else { entry.active = false; entry.status = "Inactive"; entry.conditionText = `${entry.conditionText}; no triggered skill in the build (an Activation Medium, a gear / pact trigger, Wind Rhythm or a Tangle Skill; Spell Burst casts are not triggered)`; }
   }
@@ -1907,6 +2284,10 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   const mainTerraRate = mainTerraDot?.applicationsPerSecond || mainTerraHit?.rate?.usesPerSecond || 0;
   const cycleResist = resolveCycleResist({ modifierTexts, mainIsTerra: Boolean(mainTerraDot || mainTerraHit), castIntervalSeconds: mainTerraRate > 0 ? 1 / mainTerraRate : 0, baseTerraSeconds: mainTerraHit?.profile?.useModel?.durationSeconds || 6, mainTags: resolvedMain?.tags || [], mainSupportClauses: resolvedMain?.supportEffects?.clauses || [] });
   if (cycleResist?.reap) builtInReaps.push(cycleResist.reap);
+  // Youga – Spacetime Elapse (hero trait audit B4; src/hero-trait-modules.js resolveSpacetimeState): To Myself in Another
+  // Spacetime's Reap of every DoT, once per its interval while the dummy is in Twisted Spacetime (always, with DoT on it).
+  const spacetime = lineEffects.hero?.spacetime || null;
+  if (spacetime?.toMyselfReap) builtInReaps.push(spacetime.toMyselfReap);
   // Support Reaps (chunk 4): Double Thrusts: Cutthroat "Reaps X s of Damage Over Time when the supported skill hits. Only Reaps
   // <Ailment> Damage dealt by the supported skill": one Reap per hit of that skill, of its share of the ailment (provisional).
   for (const hit of modeledSkillHits) {
@@ -1936,7 +2317,7 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   const scheduleHit = mainHit || (mainDot ? null : modeledSkillHits[0] || null);
   // Vendetta / Endless Vendetta (src/vendetta-model.js): triggers of the Main Skill's modeled hit, reported as the net gain over
   // plain attacking (the Main Skill's own rate is already counted above).
-  const triggerSkills = calculateVendettaTriggers({ sources: damageSources.filter((source) => source.status === "modeled" && source.profile.engine === "trigger-main"), setups, resolvedMain, skillHits: modeledSkillHits, weaponAttack, modifierTexts });
+  const triggerSkills = calculateVendettaTriggers({ sources: damageSources.filter((source) => source.status === "modeled" && source.profile.engine === "trigger-main"), setups, resolvedMain, skillHits: modeledSkillHits, weaponAttack, modifierTexts, erika: lineConditionState.erikaVendetta, hasHasten: Boolean(lineEffects.combat?.buffs?.hasHasten) });
   const modeledTriggers = triggerSkills.filter((trigger) => trigger.modeled);
   // A Minion main skill (e.g. a Module's Overstrike): the player casts nothing on the dummy, so the schedule runs at the
   // Minion's basic-skill rate and starts at its first hit; the Minion's own hits arrive as scheduled events.
@@ -2023,8 +2404,12 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
       // Ill Omen True Damage from the damage that builds stacks (DoT and Reaping; hits do not).
       const stackBuildingDps = dots.reduce((sum, dot) => sum + dot.dps, 0) + reaping.reapingDps;
       const illOmenWindowDps = illOmenDps(illOmen, stackBuildingDps);
-      const totalDps = beamDps + hits.reduce((sum, hit) => sum + hit.dps, 0) + dots.reduce((sum, dot) => sum + dot.dps, 0) + reaping.reapingDps + illOmenWindowDps;
-      return { seconds, beamDps, hits, dots, reaping, illOmen: illOmen ? { dps: illOmenWindowDps, basisDps: stackBuildingDps, factor: illOmen.main.factor } : null, totalDps, totalDamage: seconds ? totalDps * seconds : null };
+      // Spacetime Turbulence (Youga – Spacetime Elapse, hero trait audit B4, Q-H6; src/youga-spacetime.js): each move re-deals the
+      // recorded share of the DoT and Reaping damage; a window releases the moves inside it (the recount times them exactly).
+      const turbulenceFactor = spacetime?.turbulence ? spacetime.spacetime.windowFactor(seconds) : 0;
+      const turbulence = turbulenceFactor > 0 ? { dps: stackBuildingDps * turbulenceFactor, basisDps: stackBuildingDps, factor: turbulenceFactor, intervalSeconds: spacetime.intervalSeconds, sustainedShare: spacetime.sustainedShare } : null;
+      const totalDps = beamDps + hits.reduce((sum, hit) => sum + hit.dps, 0) + dots.reduce((sum, dot) => sum + dot.dps, 0) + reaping.reapingDps + illOmenWindowDps + (turbulence?.dps || 0);
+      return { seconds, beamDps, hits, dots, reaping, illOmen: illOmen ? { dps: illOmenWindowDps, basisDps: stackBuildingDps, factor: illOmen.main.factor } : null, turbulence, totalDps, totalDamage: seconds ? totalDps * seconds : null };
     };
     return { sustained: window(0), fiveSeconds: window(5), twentySeconds: window(20), channel: mechanics.channel, prebuiltSelfBuffs };
   })();
@@ -2072,6 +2457,10 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
     });
     if (!inputs) return null;
     if (illOmen?.main.factor > 0) inputs.illOmen = { factor: illOmen.main.factor, label: "Ill Omen" };
+    if (spacetime?.turbulence && damagePaths) {
+      inputs.turbulence = { label: "Spacetime Turbulence", intervalSeconds: spacetime.intervalSeconds, recordPercent: spacetime.recordPercent, bonusPercent: spacetime.bonusPercent, speedUpPercent: spacetime.speedUp?.perSecondPercent || 0, speedUpMaxStacks: spacetime.speedUp?.maxStacks || 0 };
+      inputs.assumptions.push({ id: "spacetimeTurbulence", value: Math.round(spacetime.sustainedShare * 10000) / 10000, text: `Spacetime Turbulence (Youga – Spacetime Elapse; Q-H6, provisional): Twisted Spacetime is recast every ${spacetime.intervalSeconds} s while DoT ticks and never ends; each move re-deals ${Math.round(spacetime.sustainedShare * 10000) / 100}% (steady) of the DoT and Reaping damage dealt since the last move to the dummy, the only enemy within, at once.` });
+    }
     if (afflictionRating && conditions.affliction) inputs.assumptions.push({ id: "afflictionRating", value: Math.round(afflictionRating.rating * 1000) / 1000, text: `Dummy Affliction (automatic): ${afflictionRating.text} Windows build it from 0 on a clean dummy.` });
     for (const item of pact.levelAssumptions || []) inputs.assumptions.push({ id: `pactLevel:${item.spirit}`, value: item.level, text: item.text });
     // Provisional line readings of talent batch chunk 1 (Q13): per-level lines and "additional damage for Weapons".
@@ -2088,6 +2477,12 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
   if (main.effectiveLevel < 1 || Object.keys(state.skills.skillLevels).map((key) => state.skills.customSetups.find((setup) => setup.instanceId === key)?.name || key).some((name) => name !== "Scorching Beam" && !auraScalingSs13[name]) || Object.keys(state.skills.supportLevels).some((key) => !modeledSupportNames.some((name) => key === `Scorching Beam:${name}`))) warnings.push("Some level changes are saved but lack full damage progression data. Scorching Beam levels 1–40, the documented supports, and all Aura-tag skill levels are modeled.");
   if (!["selena-sing-with-the-tide", "iris-growing-breeze"].includes(state.hero.selectedHeroId)) warnings.push("Scorching Beam hit packets can be calculated for this hero, but hero-specific damage traits are not modeled yet.");
   if (Object.values(state.skills.customSupports).some((entries) => entries.length)) warnings.push("Custom support effects are audit text; only their Energy allocation is modeled.");
+  // Bing – Blast Nova's Firepower Coverage (Q-H15, provisional): the penalty applies before the bombs that replace the Main Skill exist.
+  // Rehan – Tunnel Vision (Q-H15, provisional): the penalty applies to every skill but Burst; a build whose Burst deals nothing reads
+  // only the penalty.
+  const rehanWarning = lineConditionState.rehan;
+  if (rehanWarning?.tunnel?.on && !rehanWarning.burstHit?.modeled) warnings.push(`Tunnel Vision (Rehan – Anger): "-${rehanWarning.tunnel.percent}% additional damage for non-Burst skills" is applied (Q-H15, provisional), and Burst, the damage source it favours, deals no damage here (${rehanWarning.burstHit?.inactiveReason || "no Attack Skill hits the dummy while Berserk, or no weapon damage"}), so this build's dummy figures leave out its main damage source. Switch it off under the best-case assumptions to compare.`);
+  if (firepowerCoverage?.applied) warnings.push(`Firepower Coverage (Bing – Blast Nova): "Cannot use Main Skills" is applied (Q-H15, provisional), so ${firepowerCoverage.mainName || "the Main Skill"} deals no damage of its own; the bombs that replace it are not modeled (hero trait audit B12), so this build's dummy figures leave out its main damage source. Switch it off under the best-case assumptions to compare.`);
   if (state.skills.customSetups.some((setup) => (setup.role !== "aura" || !auraScalingSs13[setup.name]) && !damageSources.some((source) => source.name === setup.name && source.status === "modeled"))) warnings.push("Some catalog skill setups are saved and allocated Energy, but their damage formulas are not modeled yet.");
   for (const source of damageSources.filter((item) => item.status === "not modeled")) warnings.push(`${source.name}: its own damage is not modeled (${source.reason}).`);
   for (const dot of skillDots) for (const note of dot.notes || []) warnings.push(note);
@@ -2140,6 +2535,66 @@ function calculatePlannerOnce(input, conditionOverrides = {}, { skipVariation = 
       const trauma = ailments?.trauma;
       if (trauma?.modeled) facts.trauma = { steadyActiveStacks: trauma.combat?.steadyActiveStacks ?? 0, stackRate: (trauma.combat?.successesPerSecond || 0) * (trauma.stacksPerApplication || 1), durationSeconds: trauma.durationSeconds, stackLimit: trauma.stackLimit };
     }
+    // Gemma – Ice-Fire Fusion (B3): casts per second of the active Fire / Cold skills (modeled skill hits' uses, the beam's casts,
+    // modeled skill DoTs' applications), for Frostfire Rampage's "after casting Fire or Cold Skills 5 time(s)".
+    if (frostfireCasts) {
+      const fireCold = (setupKey) => (setups.find((setup) => setup.setupKey === setupKey)?.tags || []).some((tag) => tag === "Fire" || tag === "Cold");
+      const hitKeys = new Set();
+      let casts = activeNames.has("Scorching Beam") ? beamCastRate.castsPerSecond || 0 : 0;
+      for (const hit of skillHits.filter((item) => item.modeled && fireCold(item.setupKey))) { hitKeys.add(hit.setupKey); casts += hit.rate?.usesPerSecond || 0; }
+      for (const dot of (skillDots || []).filter((item) => item.modeled && !hitKeys.has(item.setupKey) && fireCold(item.setupKey))) casts += dot.applicationsPerSecond || 0;
+      facts.fireColdCastsPerSecond = casts;
+    }
+    // Youga – Spacetime Illusion (hero trait audit B4): the Main Skill's own cast rate, every cast per second (your skills' uses
+    // with the Illusion's and Spell Burst's, the beam's casts, modeled skill DoTs' applications) and the increased Cast Speed.
+    // Erika (hero trait audit B5): the Main Skill's crit chance (Charging Tail, Feline Fury) and the Vendetta cycle (Incisive).
+    if (erikaRates) {
+      const mainHit = skillHits.find((hit) => hit.modeled && hit.setupKey === resolvedMain?.setupKey) || null;
+      const crit = mainHit ? hitCritChances(mainHit) : null;
+      const vendetta = triggerSkills.find((trigger) => trigger.setupKey && /^trait:/.test(trigger.setupKey)) || triggerSkills[0] || null;
+      facts.erika = {
+        mainCritChancePercent: crit ? crit.effective : 0,
+        vendetta: vendetta ? (vendetta.modeled ? { modeled: true, cycleSeconds: vendetta.rate.cycleSeconds, sequenceSeconds: vendetta.rate.sequenceSeconds, repeatTimes: vendetta.rate.repeatTimes, critEffectivePercent: crit?.effective ?? 0, critRawPercent: crit?.raw ?? 0 } : { modeled: false, reason: vendetta.inactiveReason || null }) : null
+      };
+    }
+    if (yougaIllusionRates && yougaIllusionFacts) {
+      const hitKeys = new Set();
+      let casts = activeNames.has("Scorching Beam") ? beamCastRate.castsPerSecond || 0 : 0;
+      for (const hit of skillHits.filter((item) => item.modeled)) { hitKeys.add(hit.setupKey); casts += hit.rate?.usesPerSecond || 0; }
+      for (const dot of (skillDots || []).filter((item) => item.modeled && !hitKeys.has(item.setupKey))) casts += dot.applicationsPerSecond || 0;
+      facts.youga = { ...yougaIllusionFacts, castsPerSecond: casts };
+    }
+    // Sage (hero trait audit B8): the Reaps per second Sword Lily Leaf reads (Husk reads facts.critHitsPerSecond).
+    if (sageRates) {
+      const reapSources = damagePaths?.sustained?.reaping?.sources || theoretical.combat.reaping?.sources || [];
+      facts.sage = { reapsPerSecond: reapSources.reduce((sum, source) => sum + (source.reapsPerSecond || 0), 0) };
+    }
+    // Carino (hero trait audit B9): every modeled Projectile skill's uses per second (one ammo per cast, Q-H8), measured without the
+    // ammo factor (this pass applies none).
+    // Rehan (hero trait audit B10): the uses per second the Rage cycle reads (Melee Attack casts and channel stacks, every skill use
+    // and hitting use, Ranged and Attack uses with their crits, the Main Skill's uses), Burst's crit chance and the Attack Speed bonus
+    // they were measured at (the Rage share of it is corrected per phase).
+    if (rehanRates) {
+      const beamCasts = activeNames.has("Scorching Beam") ? beamCastRate.castsPerSecond || 0 : 0;
+      const rehan = { meleeCasts: 0, channelStacks: 0, skillUses: beamCasts, rangedUses: 0, attackUses: 0, attackCritUses: 0, hitUses: beamCasts, mainUses: 0 };
+      for (const hit of skillHits.filter((item) => item.modeled && item.setupKey !== BURST_SETUP_KEY)) {
+        const tags = new Set(setups.find((setup) => setup.setupKey === hit.setupKey)?.tags || hit.profile?.tags || []);
+        const uses = hit.rate?.usesPerSecond || 0, kind = hit.profile?.useModel?.kind;
+        rehan.skillUses += uses; rehan.hitUses += uses;
+        if (tags.has("Melee") && tags.has("Attack")) {
+          if (kind === "channel") rehan.channelStacks += uses;
+          else { rehan.meleeCasts += uses; if (kind === "channel-release") rehan.channelStacks += uses * (hit.channel?.maxStacks || 0); }
+        }
+        if (tags.has("Ranged")) rehan.rangedUses += uses;
+        if (tags.has("Attack")) { rehan.attackUses += uses; rehan.attackCritUses += uses * Math.max(0, Math.min(100, hit.crit?.chancePercent || 0)) / 100; }
+        if (hit.setupKey === resolvedMain?.setupKey) rehan.mainUses += uses;
+      }
+      for (const dot of (skillDots || []).filter((item) => item.modeled && !skillHits.some((hit) => hit.modeled && hit.setupKey === item.setupKey))) rehan.skillUses += dot.applicationsPerSecond || 0;
+      const burstHit = skillHits.find((hit) => hit.setupKey === BURST_SETUP_KEY);
+      facts.rehan = { ...rehan, burstCritChance: burstHit ? Math.max(0, Math.min(100, burstHit.crit?.chancePercent || 0)) / 100 : 0, attackIncreasedPercent: weaponAttack.attackSpeed?.increasedPercent || 0,
+        rageAttackSpeedPercent: (lineConditionState.rehan?.averageBodies || []).find((item) => item.key === "attackSpeedPerRage")?.value || 0 };
+    }
+    if (carinoRates) facts.carino = { projectileUsesPerSecond: skillHits.filter((hit) => hit.modeled && (setups.find((setup) => setup.setupKey === hit.setupKey)?.tags || []).includes("Projectile")).reduce((sum, hit) => sum + (hit.rate?.usesPerSecond || 0), 0) };
     // Consumption cores (src/consumption-procs.js): the Main Skill's cast rate and the event rates their stack gains read.
     if (consumptionCores) {
       const modeledHits = skillHits.filter((hit) => hit.modeled);

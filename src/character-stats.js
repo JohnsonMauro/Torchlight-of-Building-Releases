@@ -3,7 +3,7 @@ import { gameDamageLayer } from "./affix-bucket.js";
 import { auraSpeedStatLines } from "./aura-gained-effects.js";
 import { heroById } from "./data/heroes/hero-catalog-ss13.js";
 import { allHeroTraitsSs13 } from "./data/heroes/all-hero-traits-ss13.generated.js";
-import { baseTraitDescriptionForLevel, artificialMoonGate, slotTraitLevel } from "./hero-memory-rules.js";
+import { baseTraitDescriptionForLevel, artificialMoonGate, slotTraitLevel, nonBaseTraitLevelExtras, endsArtificialMoonSection } from "./hero-memory-rules.js";
 import { heroTraitTree, heroTreeSelections, treeRowSlotKeys, TREE_ROW_LEVELS, EXTRA_PICK_LEVEL } from "./hero-trait-tree.js";
 import { legendaryBaseDefenseLines } from "./legendary-base-lines.js";
 import { heroTraitKeywordPlainLines } from "./inline-keywords.js";
@@ -273,7 +273,9 @@ export function heroTraitSlotLevel(state = {}, traitName, levelBonus = { all: 0,
     row = TREE_ROW_LEVELS[index];
   }
   const keys = hero.id === "selena-sing-with-the-tide" ? [`level${row}`] : [`${hero.id}:level${row}`, `level${row}`];
-  return { row, keys, level: slotTraitLevel(state.hero, keys, (levelBonus.all || 0) + (levelBonus.nonBase || 0)) };
+  // Bing – Creative Genius's sixth rank (Q-H2, provisional; src/hero-memory-rules.js nonBaseTraitLevelExtras).
+  const extras = nonBaseTraitLevelExtras(hero.id, artificialMoonGate(state.hero).active);
+  return { row, keys, level: slotTraitLevel(state.hero, keys, (levelBonus.all || 0) + (levelBonus.nonBase || 0), extras) };
 }
 
 export function heroTraitStatLines(state = {}, baseTraitLevel = 1, levelBonus = { all: 0, nonBase: 0 }, options = {}) {
@@ -287,7 +289,10 @@ export function heroTraitStatLines(state = {}, baseTraitLevel = 1, levelBonus = 
   const tree = heroTraitTree(hero.id);
   // 45 / 60 / 75 traits (user-stated rule 2026-10-13; src/hero-memory-rules.js slotTraitLevel): 0 (inactive, no lines) with
   // no memory in the slot, else the memory's 1 / 2 / 3 + its own "+N" + the build-wide non-memory lines, max 5.
-  const tierLevel = (key, levelKey) => slotTraitLevel(state.hero, [key, levelKey], (levelBonus.all || 0) + (levelBonus.nonBase || 0));
+  // Bing – Creative Genius: the base trait's Artificial Moon "+1 to Non-Base Hero Trait Level" raises these traits and opens a
+  // sixth rank (Q-H2, provisional; src/hero-memory-rules.js nonBaseTraitLevelExtras).
+  const levelExtras = nonBaseTraitLevelExtras(hero.id, moonActive);
+  const tierLevel = (key, levelKey) => slotTraitLevel(state.hero, [key, levelKey], (levelBonus.all || 0) + (levelBonus.nonBase || 0), levelExtras);
   if (base) picks.push({ trait: base, level: Math.max(1, Math.min(5, Number(baseTraitLevel) || 1)) }); // base-slot memory only (user-confirmed 2026-10-13)
   // One-per-level picks. Tree heroes pick on the tree (below); a tree hero's selectedTraits stay read as before (a game-log
   // import wrote Selena's path there before 2026-10-15; the planner UI never does). A revamped hero's earlier picks whose
@@ -319,9 +324,13 @@ export function heroTraitStatLines(state = {}, baseTraitLevel = 1, levelBonus = 
       const values = list.split("/").map((value) => value.trim());
       return values[Math.min(values.length - 1, level - 1)];
     });
-    let moon = false;
+    // The moon section ends at a line that starts another section (Sage's "Damage Ingredient …" catalogue, hero trait audit B8 F4:
+    // the ingredient options are not moon effects); with the gate shut its lines are skipped and the next section is kept.
+    let moon = false, skipMoon = false;
     for (const line of text.split("\n").map((part) => part.trim()).filter(Boolean)) {
-      if (/^Artificial Moon:$/i.test(line)) { if (trait === base && moonActive) { moon = true; continue; } break; }
+      if (/^Artificial Moon:$/i.test(line)) { if (trait === base && moonActive) { moon = true; continue; } if (trait !== base) break; skipMoon = true; continue; }
+      if ((moon || skipMoon) && endsArtificialMoonSection(line)) { moon = false; skipMoon = false; }
+      if (skipMoon) continue;
       lines.push({ text: line, source: `Hero trait: ${trait.name} (Lv ${level}${moon ? ", Artificial Moon" : ""})`, origin: "trait", multiplier: 1, ...(moon ? { artificialMoon: true } : {}) });
       // A keyword line with stat lines of its own (Youga's "Spacetime Conqueror": -15% Movement Speed; src/inline-keywords.js
       // heroTraitKeywords) adds them as trait lines, so the generic readers apply them.

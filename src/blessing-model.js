@@ -4,6 +4,7 @@ import { prismAreaBounds, prismNodeAffixes } from "./prism-crafting.js";
 import { normalizePercentageText } from "./percentage-text.js";
 import { ailmentStateNames } from "./enemy-ailments.js";
 import { withoutSlateCoreName } from "./granted-core-lines.js";
+import { applyTheaCapRules } from "./thea-traits.js";
 
 export const blessingNames = ["Tenacity", "Focus", "Agility"];
 
@@ -125,7 +126,7 @@ const statusKeys = (text) => {
   return [...new Set([clean, clean.replace(/^\[[^\]]+\]\s*/, ""), colon > 0 ? clean.slice(colon + 2) : clean])];
 };
 
-export function calculateBlessings({ mobilityUsed = false, tangleCasts = false, pactState = {}, equipment, talents = [], slates = [], talentState = {}, barrierSources = [], hasReaping = false, canUseNonMain = false, block, canHit = false, canCrit = false, moving = false, enemyAilments = [], igniteOnTarget = false, spellHitActive = true, extraLines = [], hitRecently = true, stackUsers = new Set(), stackUserTexts = [], stackOverrides = {} , fillShare = 0, fillSource = null} = {}) {
+export function calculateBlessings({ mobilityUsed = false, tangleCasts = false, pactState = {}, equipment, talents = [], slates = [], talentState = {}, barrierSources = [], hasReaping = false, canUseNonMain = false, block, canHit = false, canCrit = false, moving = false, enemyAilments = [], igniteOnTarget = false, spellHitActive = true, extraLines = [], hitRecently = true, stackUsers = new Set(), stackUserTexts = [], stackOverrides = {} , fillShare = 0, fillSource = null, capRules = null} = {}) {
   const result = Object.fromEntries(blessingNames.map(name => [name, { name, baseMax: 4, maxStacks: 4, stacks: 0, capSources: [], gainSources: [], effectSources: [], unsupported: [] }]));
   const replacements = [], eachMaxSources = [], perStackLines = [];
   const context = { canUseNonMain, barrierSources, hasReaping, block, canCrit, canHit, moving, enemyAilments, igniteOnTarget, hitRecently, mobilityUsed, tangleCasts };
@@ -189,6 +190,11 @@ export function calculateBlessings({ mobilityUsed = false, tangleCasts = false, 
   // Conditional Blessing lines the shared resolver made active (src/line-effects.js; e.g. Deceiver's Might "+1 to Max
   // Focus Blessing Stacks if you have landed a Critical Strike or Reaped in the last 8s").
   for (const line of extraLines) add(line.text, line.source);
+  // Thea's max-stack rules (hero trait audit B7, src/thea-traits.js; provisional): Predicted Justice's shared bonus, the Divine Realm's
+  // Agility / Tenacity transfer, Blasphemer's inversion into Max Desecration Stacks. The Divine Realm's conversion moves the converted
+  // Blessing's stacks (and its gains) to the other one below.
+  const theaRules = capRules ? applyTheaCapRules(result, capRules) : null;
+  const convert = capRules?.convert || null;
   // Divine Grace replaces every Blessing's base effect. "Max stacks of each Blessing: 4" is a hard cap
   // (user-confirmed in game, 2026-10-10): "+N Max <Blessing> Stacks" lines do not raise it while Divine
   // Grace is present, so those lines are kept in capSources but marked as overridden.
@@ -203,7 +209,9 @@ export function calculateBlessings({ mobilityUsed = false, tangleCasts = false, 
     }
     blessing.maxStacks = Math.max(0, Math.floor(blessing.maxStacks));
     const cannotGain = blessing.unsupported.some(source => new RegExp(`(?:Unable to|Cannot) gain ${blessing.name} Blessing`, "i").test(source.text));
-    blessing.stacks = !cannotGain && blessing.gainSources.some(source => source.available) ? blessing.maxStacks : 0;
+    const convertedGain = convert && blessing.name === convert.to && result[convert.from].gainSources.some(source => source.available);
+    blessing.stacks = convert && blessing.name === convert.from ? 0 : !cannotGain && (blessing.gainSources.some(source => source.available) || convertedGain) ? blessing.maxStacks : 0;
+    if (convert && blessing.name === convert.from) blessing.convertedTo = convert.to;
     // Miraculous Gain (Miraculous Touch; src/elixir-model.js miraculousGainState, user-supplied 2026-10-19): the Blessings sit at max
     // for `fillShare` of the time; the time-averaged stacks fill the gap to max by that share.
     if (fillShare > 0 && !cannotGain && blessing.stacks < blessing.maxStacks) { blessing.miraculousGain = { share: fillShare, from: blessing.stacks, source: fillSource }; blessing.stacks += (blessing.maxStacks - blessing.stacks) * fillShare; }
@@ -270,7 +278,7 @@ export function calculateBlessings({ mobilityUsed = false, tangleCasts = false, 
   for (const line of eachMaxSources) mark(line.text, replacement && anyStacks && Object.values(result).some((blessing) => blessing.capSources.length || blessing.baseMax !== 4) ? "In calc" : replacement && anyStacks ? "No DPS effect" : "Inactive");
   const tenacity = result.Tenacity;
   return {
-    entries: Object.values(result), damageSources, increasedSources, lineStatus,
+    entries: Object.values(result), damageSources, increasedSources, lineStatus, thea: theaRules,
     divineGrace: replacement ? { source: replacement.source, additionalDamagePerStack: replacement.additionalDamagePerStack, damageTakenPerStack: replacement.damageTakenPerStack, maxStacks: eachMax ?? null } : null,
     movementStacks: Object.values(result).some(blessing => blessing.stacks && blessing.gainSources.some(source => source.movement && source.available)),
     castSpeedPercent: result.Agility.attackAndCastSpeedPercent,

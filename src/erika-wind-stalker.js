@@ -43,6 +43,7 @@
 // to the horizon, and 100% uptime in the sustained figure. Interest has no duration of its own while the dummy is hit.
 
 import { multistrikeSequence, multistrikeStatesDamage } from "./skill-hit-model.js";
+import { revivedAffixCounts } from "./hero-exclusive-revivals.js";
 
 export const WIND_STALKER = "erika-wind-stalker";
 export const STALKER = Object.freeze({ perStackAdditionalPercent: 13, initialMaxStacks: 3, durationSeconds: 4, source: "TLIDB keyword Stalker (hyperlink 644)" });
@@ -106,7 +107,8 @@ export function readWindStalkerLines(modifierTexts = []) {
 export function catsNightSafariMemory(hero = {}) {
   if (hero?.selectedHeroId !== WIND_STALKER) return null;
   const ids = new Set(Object.values(hero?.equippedMemoryIds || {}).filter(Boolean));
-  return (hero?.memoryInventory || []).find((memory) => ids.has(memory.id) && String(memory.revivedAffix || "").trim() === HUNTING_INSTINCT.revivedAffix) || null;
+  // Only the counted revived memory reads (Q-H11, provisional; src/hero-exclusive-revivals.js).
+  return (hero?.memoryInventory || []).find((memory) => ids.has(memory.id) && String(memory.revivedAffix || "").trim() === HUNTING_INSTINCT.revivedAffix && revivedAffixCounts(hero, memory)) || null;
 }
 
 /**

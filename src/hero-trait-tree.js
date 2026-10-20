@@ -14,6 +14,7 @@
 // memory, and its trait is at level 5 (the maximum).
 import { allHeroTraitsSs13 } from "./data/heroes/all-hero-traits-ss13.generated.js";
 import { normalizeRevivedAffix } from "./data/heroes/memory-revival-ss13.js";
+import { revivedAffixCounts } from "./hero-exclusive-revivals.js";
 
 export const TREE_ROW_LEVELS = [45, 60, 75];
 export const TREE_ROW_NAMES = ["Memory of Origin", "Memory of Discipline", "Memory of Progress"];
@@ -129,7 +130,8 @@ export const treeHeroIds = () => Object.keys(allHeroTraitsSs13).filter(heroHasTr
 export function extraPickMemory(hero = {}, heroId = hero?.selectedHeroId) {
   if (!heroTraitTree(heroId)?.extraPick) return null;
   const ids = Object.entries(hero?.equippedMemoryIds || {}).filter(([key, id]) => id && (!key.includes(":") || key.startsWith(`${heroId}:`))).map(([, id]) => id);
-  return (hero?.memoryInventory || []).find((memory) => ids.includes(memory.id) && normalizeRevivedAffix(memory.revivedAffix || "") === EXTRA_PICK_AFFIX) || null;
+  // Only the counted revived memory reads (Q-H11, provisional; src/hero-exclusive-revivals.js).
+  return (hero?.memoryInventory || []).find((memory) => ids.includes(memory.id) && normalizeRevivedAffix(memory.revivedAffix || "") === EXTRA_PICK_AFFIX && revivedAffixCounts(hero, memory)) || null;
 }
 /** Rows the hero can fill now: 3, or 4 for Youga – The Ultimate One with the extra-pick memory equipped. */
 export function heroTreeCapacity(hero = {}, heroId = hero?.selectedHeroId) {

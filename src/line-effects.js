@@ -9,9 +9,10 @@ import { classifyMinionLine } from "./minion-damage-model.js";
 import { splitCondition, resolveLineCondition } from "./line-conditions.js";
 import { matchTalentTextClause } from "./talent-text-effects.js";
 import { resolveCombatStates, readByCombatStates, deteriorationFrom } from "./combat-states.js";
-import { resolveHeroModules, heroModuleFor } from "./hero-trait-modules.js";
+import { resolveHeroModules, heroModuleFor, heroModuleRevivedLine } from "./hero-trait-modules.js";
 import { resolveOrigins, readsOriginLine } from "./origin-of-spirit-magus.js";
 import { resolveFollowerEffects } from "./follower-model.js";
+import { classifyCritOnlyLine } from "./crit-only-lines.js";
 
 // Conditional and per-stat passive lines from every source (research/talent-batch-2026-10-12.md §7.2, chunk 2):
 // talent nodes, cores, gear, slates, prisms, pacts, kismets and hero memories (planner.modifierTexts). Each line with
@@ -65,6 +66,8 @@ export function bodyReaders(body) {
   if (classifyWeaponAttackLine(body)) readers.push("weapon");
   if (classifyMinionLine(body)) readers.push("minion");
   if (classifyDoubleDamageLine(body)) readers.push("doubleDamage");
+  // Crit-only additional damage (src/crit-only-lines.js; Feline Fury's dual-wield body, hero trait audit B2).
+  if (classifyCritOnlyLine(body)) readers.push("critOnly");
   if (classifyPassiveSupportLine(body)) readers.push("passiveSupport");
   const blessing = parseBlessingModifier(body);
   if (blessing && blessing.kind === "cap") readers.push("blessing");
@@ -108,7 +111,8 @@ export function resolveLineEffects(modifierTexts = [], state = null) {
   // Buffs, debuffs and ailment effects first: their states (Fervor, Aggression, Hasten) are conditions of other lines.
   const combat = resolveCombatStates(modifierTexts, state || {});
   combat.deterioration = deteriorationFrom(modifierTexts, state || {}, combat.entries);
-  if (state) { state.buffs = combat.buffs; state.regain = combat.regain; }
+  // The crowd control types on the dummy (Thea – Blasphemer's Mountain of Sins reads them; hero trait audit B7).
+  if (state) { state.buffs = combat.buffs; state.regain = combat.regain; state.enemyCrowdControl = combat.crowdControl || []; }
   lines.push(...combat.entries);
   derived.push(...combat.derived);
   // Hero trait modules (talent batch chunk 4): ammo, Spacetime Illusion, Purgatory, Crimson Tide; Not modeled with a reason
@@ -131,7 +135,8 @@ export function resolveLineEffects(modifierTexts = [], state = null) {
   for (const line of modifierTexts) {
     if (line.origin === "derived" || line.lineEffect) continue;
     const text = normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim();
-    if (!text || handledElsewhere(text) || (line.origin === "trait" && heroModuleFor(state?.heroId, text))) continue;
+    // Youga's hero-exclusive revived lines the Spacetime modules read (hero trait audit B4) are theirs too.
+    if (!text || handledElsewhere(text) || (line.origin === "trait" && heroModuleFor(state?.heroId, text)) || (line.origin === "memory" && heroModuleRevivedLine(state?.heroId, text))) continue;
     const split = splitCondition(text);
     if (!split) continue;
     const resolved = resolveLineCondition(split.condition, state);
@@ -162,8 +167,9 @@ export function resolveLineEffects(modifierTexts = [], state = null) {
     }
   }
   // Speed lines of the combat states join the cast-rate ledger like any derived line, and so do the follower's (a support
-  // affix's "+X% Attack and Cast Speed", src/follower-model.js AFFIX_BUFFS, 2026-10-19).
-  for (const line of [...combat.derived, ...follower.derived]) {
+  // affix's "+X% Attack and Cast Speed", src/follower-model.js AFFIX_BUFFS, 2026-10-19) and the hero modules' (Thea's Might Flow,
+  // Agile Godhood, Divine Realm Power, Tarnished Sage; hero trait audit B7).
+  for (const line of [...combat.derived, ...follower.derived, ...hero.derived]) {
     const speed = line.text.match(SPEED);
     if (speed && /Cast Speed/i.test(speed[3])) { const value = Number(speed[1]); if (speed[2]) castSpeed.additionalPercents.push(value); else castSpeed.increasedPercent += value; castSpeed.sources.push({ source: line.source, text: line.text, value, additional: Boolean(speed[2]) }); }
   }
@@ -172,16 +178,20 @@ export function resolveLineEffects(modifierTexts = [], state = null) {
   derived.push(...enhancement.derived);
   // Origin of Spirit Magus (residual batch A2-origin): the summoner's lines from the active Magus summons and Origin grants.
   const origin = resolveOrigins({ summons: state?.spiritMagusSummons || [], modifierTexts });
-  derived.push(...origin.derived);
-  for (const line of origin.derived) {
+  // Merging Stream (Iris – Vigilant Breeze, hero trait audit B6): "Iris is not affected by Origin of Spirit Magus Effects, and all
+  // basic Origin of Spirit Magus Effects will be applied to all Spirit Magi": no summoner line; src/minion-damage-model.js applies
+  // them to the Magi (src/moto-iris-traits.js mergingStreamOrigins).
+  const originToMagi = Boolean(state?.motoIris?.vigilant?.merging && !state.motoIris.vigilant.merging.noOriginLine);
+  if (!originToMagi) derived.push(...origin.derived);
+  for (const line of originToMagi ? [] : origin.derived) {
     const speed = line.text.match(SPEED);
     if (speed && /Cast Speed/i.test(speed[3])) { const value = Number(speed[1]); if (speed[2]) castSpeed.additionalPercents.push(value); else castSpeed.increasedPercent += value; castSpeed.sources.push({ source: line.source, text: line.text, value, additional: Boolean(speed[2]) }); }
   }
   for (const line of modifierTexts.filter((item) => readsOriginLine(item.text))) {
     const text = normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim();
     // Thunder / Fire reach the player's own hits only (the Magus is a Minion: manual rule 1001011821).
-    const damage = origin.origins.some((item) => item.damage) && Boolean(state?.anyHit);
-    lines.push({ source: line.source, origin: line.origin, text, condition: "origin", params: {}, group: null, active: damage, conditionText: origin.origins.length ? `Origins: ${origin.origins.map((item) => `${item.magus} Lv.${item.level}${item.damage ? "" : " (defensive)"}`).join(", ")}` : "no Spirit Magus Origin in the build", provisional: true, factor: null, bodies: [], status: damage ? "In calc" : origin.origins.length ? "No DPS effect" : "Inactive" });
+    const damage = origin.origins.some((item) => item.damage) && Boolean(originToMagi ? state?.motoIris?.hasMagus : state?.anyHit);
+    lines.push({ source: line.source, origin: line.origin, text, condition: "origin", params: {}, group: null, active: damage, conditionText: `${originToMagi ? "Merging Stream: on the Spirit Magi instead of Iris. " : ""}${origin.origins.length ? `Origins: ${origin.origins.map((item) => `${item.magus} Lv.${item.level}${item.damage ? "" : " (defensive)"}`).join(", ")}` : "no Spirit Magus Origin in the build"}`, provisional: true, factor: null, bodies: [], status: damage ? "In calc" : origin.origins.length ? "No DPS effect" : "Inactive" });
   }
   const groups = new Set(lines.filter((entry) => entry.group).map((entry) => entry.group));
   return { lines, derived, castSpeed, blessing, groups, combat, hero, follower };

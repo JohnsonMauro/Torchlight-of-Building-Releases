@@ -7,6 +7,7 @@ import { AFFLICTION_DAMAGE_PER_POINT } from "./game-attribute-defaults.js";
 import { classifyHitLine, splitHitLineText } from "./skill-hit-lines.js";
 import { LUCKY_DAMAGE_PATTERNS, readLuckyDamage, luckyRollAverage, luckyCritChance } from "./lucky-damage.js";
 import { STORM_COMMAND_LINE, resolveStormCommand } from "./storm-command.js";
+import { sageOwnedLine } from "./sage-traits.js";
 import { ELIXIR_PROGRESS_LINE, ELIXIR_EFFECT_LINE, ELIXIR_ADDITIONAL_EFFECT_LINE, TAILORED_REMEDY_LINE, ELIXIR_DURATION_LINE, RESTORATION_KEPT_LINE, MIRACULOUS_GAIN_LINE, resolveElixirs, elixirSetupText, miraculousGainState } from "./elixir-model.js";
 
 // Buffs, enemy debuffs and the damage side of non-damaging ailments (research/talent-batch-2026-10-12.md §10 chunk 3).
@@ -158,7 +159,10 @@ const PATTERNS = {
   // Paralysis on the dummy.
   critVsParalyzed: /^\+(\d+(?:\.\d+)?)% additional Critical Strike Damage against Paralyzed enemies$/i,
   weaken: /Weaken/i,
-  maxFrostbite: /^\+(\d+) (?:to )?Max Frostbite Rating$/i,
+  // Frostbitten Heart's Artificial Moon line "+10 Max Frostbite Rating and +50% additional Cold Pulse Skill Area" (game affix
+  // 2125501 [10, 50]: field 2007015 Max Frostbite Rating, attr 6201 Skill Area on the Cold Pulse tag 6100040; hero trait audit
+  // B2): the rating part; the Skill Area part changes nothing on one dummy.
+  maxFrostbite: /^\+(\d+) (?:to )?Max Frostbite Rating(?: and [+-]\d+(?:\.\d+)? ?% additional [\w ]+ Skill Area)?$/i,
   // Ice Puppet's Ice Cage (pactspirit outer node, game affix 404859; the affix carries no client-side effect rows).
   icePrison: /^Focus energy to create an ice prison Near yourself and the Pact Holder, which debuffs Frostbitten enemies inside every second and makes them take \+(\d+(?:\.\d+)?)% additional Cold Damage, up to (\d+) stacks, for (\d+(?:\.\d+)?) ?s\.?$/i,
   // Pact scripted-effects batch (2026-10-13): pact-spirit outer effects and kismets with their own clock (src/timed-effects.js).
@@ -202,6 +206,15 @@ const PATTERNS = {
   flashFlood: /^(?:Halves Spell Burst Upper Limit|\+\d+(?:\.\d+)?% additional Attack and Cast Speed for every Spell Burst triggered recently, up to \d+%)$/i,
   // Negative values too (2026-10-17: the follower's Icy Blade "-5% Frostbite Effect … for each Sweep Slash").
   frostbiteEffect: /^([+-]\d+(?:\.\d+)?)% Frostbite Effect$/i,
+  // Gemma (hero trait audit B3, 2026-10-19). Deepfreeze: "Frostbite Rating can exceed its upper limit, up to N" (game affix
+  // 12710333 [200, 5]: buff 81232) raises the 120 cap to N. First Flake of Strange Snow (revived, Frostbitten Heart only):
+  // "-50% additional Frostbite Effect" multiplies the effect, and "Each type of Crowd Control Effect, Ailment, and Curse
+  // afflicting an enemy is deemed to have 50 additional Frostbite Rating, up to 350" (provisional readings: the deemed rating
+  // adds on top of the inflicted one, the 350 caps the deemed part, it counts for Freeze, a type that is both an Ailment and a
+  // Crowd Control Effect counts once).
+  frostbiteCapRaise: /^Frostbite Rating can exceed its upper limit, up to (\d+)$/i,
+  frostbiteEffectAdditional: /^([+-]\d+(?:\.\d+)?)% additional Frostbite Effect$/i,
+  deemedFrostbite: /^Each type of Crowd Control Effect, Ailment, and Curse afflicting an enemy is deemed to have (\d+) additional Frostbite Rating, up to (\d+)$/i,
   numbedEffect: /^\+(\d+(?:\.\d+)?)% Numbed Effect$/i,
   numbedExtra: /^Inflicts (\d+) additional stack\(s\) of Numbed$/i,
   numbedThreshold: /thresholds for inflicting Numbed$/i,
@@ -220,10 +233,15 @@ export function readByCombatStates(text) {
   return Object.values(PATTERNS).some((pattern) => pattern.test(text));
 }
 
-/** The Frostbite Rating the build inflicts (10 base + "+N to Max Frostbite Rating", capped at 120; provisional reading). */
+/** The Frostbite Rating the build inflicts (10 base + "+N to Max Frostbite Rating", capped at 120, or at a "can exceed its
+ * upper limit, up to N" line's N; provisional reading). */
 export function inflictedFrostbiteRating(modifierTexts = []) {
-  const extra = sum(modifierTexts.map((line) => { const match = normalizePercentageText(String(line.text)).trim().match(PATTERNS.maxFrostbite); return match && !/Minion/i.test(line.text) ? num(match[1]) * (line.multiplier ?? 1) : 0; }));
-  return Math.min(BUFF_VALUES.frostbiteMaxRating, BUFF_VALUES.frostbiteBaseRating + extra);
+  return Math.min(frostbiteRatingCap(modifierTexts), uncappedFrostbiteRating(modifierTexts));
+}
+const uncappedFrostbiteRating = (modifierTexts) => BUFF_VALUES.frostbiteBaseRating + sum(modifierTexts.map((line) => { const match = normalizePercentageText(String(line.text)).trim().match(PATTERNS.maxFrostbite); return match && !/Minion/i.test(line.text) ? num(match[1]) * (line.multiplier ?? 1) : 0; }));
+/** The Frostbite Rating cap: 120, or the highest "Frostbite Rating can exceed its upper limit, up to N" (Deepfreeze; B3). */
+export function frostbiteRatingCap(modifierTexts = []) {
+  return Math.max(BUFF_VALUES.frostbiteMaxRating, ...modifierTexts.map((line) => { const match = normalizePercentageText(String(line.text)).trim().match(PATTERNS.frostbiteCapRaise); return match ? num(match[1]) : 0; }));
 }
 
 /**
@@ -233,7 +251,9 @@ export function inflictedFrostbiteRating(modifierTexts = []) {
  */
 export function resolveCombatStates(modifierTexts = [], state = {}) {
   const lines = modifierTexts.filter((line) => line.origin !== "derived" && !line.lineEffect).map((line) => ({ ...line, clean: normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim() }));
-  const find = (pattern) => lines.filter((line) => pattern.test(line.clean));
+  // Sage's trait and revived lines are read and badged by its module (src/sage-traits.js, hero trait audit B8); the Elixir engine
+  // still reads them below (Scent of Ambition's duration, the bottle-only moon line, Omni-Elixir Side Effect's -50%).
+  const find = (pattern) => lines.filter((line) => pattern.test(line.clean) && !sageOwnedLine(state.heroId, line));
   const values = (pattern, index = 1) => find(pattern).map((line) => num(line.clean.match(pattern)[index]) * (line.multiplier ?? 1));
   const entries = [], derived = [];
   // Timed and stacking effects (src/timed-effects.js): { id, label, source, target, toggle, enabled, active, reason, parts, … }.
@@ -418,12 +438,14 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
     if (value > 0) derive(`+${value}% additional damage`, line.source, `${fortitudeStacks} Fortitude stacks`);
   }
 
-  // ---- Elixir Skills (core audit B8, src/elixir-model.js; the Sage hero's Scent Bottle Elixirs are not modeled) ----
+  // ---- Elixir Skills (core audit B8, src/elixir-model.js; Sage's Basic Scent Bottle Elixir joins from src/sage-traits.js) ----
   // Uptime on the dummy comes only from "Elixir Skills gain N Charging Progress every second" (the dummy is never defeated); each
   // value line of an up Elixir Effect becomes a time-averaged derived line × Elixir Skill Effect (Tailored Remedy included).
   const elixirSetups = Array.isArray(state.elixirSetups) ? state.elixirSetups : [];
   const hasElixir = elixirSetups.length > 0 || Boolean(state.elixirSkill);
-  const elixirs = hasElixir ? resolveElixirs({ elixirs: elixirSetups, lines }) : null;
+  // Sage (hero trait audit B8): the Scent Bottle setup is in state.elixirSetups; Scent of Ambition's and Everlasting Nectar's Elixir
+  // Skill Effect lines (time-averaged, src/sage-traits.js) join the engine's lines.
+  const elixirs = hasElixir ? resolveElixirs({ elixirs: elixirSetups, lines: [...lines, ...(state.sage?.elixirExtraLines || [])] }) : null;
   for (const item of elixirs?.derived || []) derive(item.text, item.source, item.conditionText, true);
   const elixirBodies = (elixirs?.derived || []).map((item) => item.text);
   const elixirUp = (elixirs?.setups || []).some((setup) => setup.uptime > 0);
@@ -550,6 +572,34 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
   debuffs.frostbiteRating = frostbitten ? inflictedFrostbiteRating(modifierTexts) : 0;
   // user-confirmed 2026-10-18: Frozen at 100 or higher (TLIDB says "more than 100").
   debuffs.frozen = frostbitten && debuffs.frostbiteRating >= BUFF_VALUES.frostbiteFreezeAt;
+  // First Flake of Strange Snow (B3): deemed Frostbite Rating per type of Crowd Control Effect, Ailment and Curse on the dummy.
+  // Types: the dummy's ailments (Frostbite and Freeze one type each), Paralysis, and each curse (the curse skills, or one "Curse"
+  // when only a granted curse holds); a Freeze the deemed rating reaches adds its own type (one step).
+  let deemedFrostbite = null;
+  {
+    const deemedLines = find(PATTERNS.deemedFrostbite);
+    if (deemedLines.length && frostbitten) {
+      const [, per, cap] = deemedLines[0].clean.match(PATTERNS.deemedFrostbite).map(Number);
+      const names = new Set((state.enemyAilments || []).map((name) => name === "Frozen" ? "Freeze" : name));
+      if (debuffs.paralysis) names.add("Paralysis");
+      for (const name of state.curseSkillNames || []) names.add(`Curse: ${name}`);
+      if (state.cursed && !(state.curseSkillNames || []).length) names.add("Curse");
+      const deemed = (count) => Math.min(cap, per * count);
+      let bonus = deemed(names.size);
+      if (!names.has("Freeze") && debuffs.frostbiteRating + bonus >= BUFF_VALUES.frostbiteFreezeAt) { names.add("Freeze"); bonus = deemed(names.size); }
+      debuffs.frostbiteRating = round(debuffs.frostbiteRating + bonus);
+      if (debuffs.frostbiteRating >= BUFF_VALUES.frostbiteFreezeAt && !debuffs.frozen) {
+        debuffs.frozen = true;
+        if (Array.isArray(state.enemyAilments) && !state.enemyAilments.includes("Frozen")) state.enemyAilments.push("Frozen");
+      }
+      deemedFrostbite = { per, cap, types: [...names], bonus };
+    }
+    for (const line of deemedLines) entry(line, Boolean(deemedFrostbite), deemedFrostbite ? `${deemedFrostbite.types.length} type${deemedFrostbite.types.length === 1 ? "" : "s"} on the dummy (${deemedFrostbite.types.join(", ")}): +${deemedFrostbite.bonus} deemed Frostbite Rating (${deemedFrostbite.per} each, up to ${deemedFrostbite.cap}), ${debuffs.frostbiteRating} in all${debuffs.frozen ? ", Frozen" : ""} (provisional: on top of the inflicted rating, counts for Freeze)` : "the dummy is not Frostbitten", { provisional: true });
+  }
+  for (const line of find(PATTERNS.frostbiteCapRaise)) {
+    const raw = uncappedFrostbiteRating(modifierTexts), moves = frostbitten && raw > BUFF_VALUES.frostbiteMaxRating;
+    entry(line, moves, !frostbitten ? "the build inflicts no Frostbite" : moves ? `Frostbite Rating ${Math.min(raw, frostbiteRatingCap(modifierTexts))} past the 120 cap (up to ${frostbiteRatingCap(modifierTexts)})` : `the inflicted Frostbite Rating (${raw}) stays under the 120 cap, so the raised cap changes nothing`);
+  }
   for (const line of find(PATTERNS.coldInfiltrationFrozen)) { if (debuffs.frozen) debuffs.infiltration.add("Cold"); entry(line, debuffs.frozen, debuffs.frozen ? "the dummy is Frozen" : "the dummy is not Frozen (Frostbite Rating < 100)"); }
   for (const line of find(PATTERNS.infiltrationCursedBy)) {
     const [, type, curse] = line.clean.match(PATTERNS.infiltrationCursedBy);
@@ -647,9 +697,12 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
   // Frostbite, not a per-skill one), and Minions' Frostbite lines are not read (the maxFrostbite reader skips them). With a
   // single unit nothing is overwritten, so the rule changes no figure.
   const frostbiteEffect = sum(values(PATTERNS.frostbiteEffect));
+  // "+X% additional Frostbite Effect" (First Flake of Strange Snow's −50%; B3): its own multiplier on (1 + Frostbite Effect).
+  const frostbiteEffectAdditional = values(PATTERNS.frostbiteEffectAdditional).reduce((product, value) => product * Math.max(0, 1 + value / 100), 1);
+  for (const line of find(PATTERNS.frostbiteEffectAdditional)) entry(line, frostbitten, frostbitten ? "multiplies Frostbite's Cold Damage taken: rating × (1 + Frostbite Effect) × (1 + this) (provisional)" : "the build inflicts no Frostbite", { provisional: true });
   // Cold Damage taken = rating × (1 + Frostbite Effect) % (user-confirmed 2026-10-13; the creator's calc v0.3 multiplies the two instead).
   if (frostbitten) {
-    const taken = round(debuffs.frostbiteRating * BUFF_VALUES.frostbiteTakenPerRating * (1 + frostbiteEffect / 100));
+    const taken = round(debuffs.frostbiteRating * BUFF_VALUES.frostbiteTakenPerRating * (1 + frostbiteEffect / 100) * frostbiteEffectAdditional);
     derive(`+${taken}% additional Cold Damage taken`, "Frostbite (keyword 735: +1% additional Cold Damage taken per Frostbite Rating)", `Frostbite Rating ${debuffs.frostbiteRating} on the dummy${frostbiteEffect ? `, +${frostbiteEffect}% Frostbite Effect applied to it (user-confirmed 2026-10-13)` : ""}`, frostbiteEffect > 0);
   }
   for (const line of find(PATTERNS.maxFrostbite)) entry(line, frostbitten, frostbitten ? `Frostbite Rating ${debuffs.frostbiteRating} (10 base + Max Frostbite Rating, max 120; provisional reading of the inflicted amount)` : "the build inflicts no Frostbite", { provisional: true });
@@ -774,7 +827,7 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
 
   // Kismet: Ice Soul (game affix 494613472: Frostbite on enemies within 6 m): src/enemy-ailments.js adds Frostbite to the dummy;
   // its Cold Damage taken is the Frostbite line above. Not a best-case assumption (it always holds within 6 m).
-  for (const line of find(PATTERNS.iceSoul)) entry(line, frostbitten, frostbitten ? `the dummy is Frostbitten (Nearby enemies, within 6 m: game affix 494613472; holds close and at the Distant 6 m alternative): Frostbite Rating ${debuffs.frostbiteRating}, a crowd control type and an Ailment on the dummy` : "a build-wide Cannot inflict Frostbite line blocks it", { enemyDebuff: true, bodies: frostbitten ? [`+${round(debuffs.frostbiteRating * (1 + frostbiteEffect / 100))}% additional Cold Damage taken`] : [] });
+  for (const line of find(PATTERNS.iceSoul)) entry(line, frostbitten, frostbitten ? `the dummy is Frostbitten (Nearby enemies, within 6 m: game affix 494613472; holds close and at the Distant 6 m alternative): Frostbite Rating ${debuffs.frostbiteRating}, a crowd control type and an Ailment on the dummy` : "a build-wide Cannot inflict Frostbite line blocks it", { enemyDebuff: true, bodies: frostbitten ? [`+${round(debuffs.frostbiteRating * (1 + frostbiteEffect / 100) * frostbiteEffectAdditional)}% additional Cold Damage taken`] : [] });
 
   // Grudge's Paralysis on its own clock (not held by an on-hit source, not merged into Witch Antelope's part above).
   const chanceParalysis = { sources: chanceParalysisSources, value: round(BUFF_VALUES.paralysis * (1 + paralysisEffect / 100)), uptime: 0, factor: 1, held: debuffs.paralysis > 0, mergedInto: paralysisMergedInto };
@@ -801,6 +854,9 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
   if (debuffs.paralysis) holdCc("Paralysis", { kind: "full" });
   if (find(PATTERNS.holyMaiden).length && state.anyHit) for (const type of ["Weaken", "Slow", "Taunt", "Blinding"]) holdCc(type, { kind: "full" });
   if (find(PATTERNS.paralysisDealDamage).length && dealsDamage) holdCc("Weaken", { kind: "full" });
+  // Sacrificial Pawn (Thea – Blasphemer's Disgraced Minister on the Desecrated dummy, alone; TLIDB keyword: "considered a Crowd
+  // Control Effect"; hero trait audit B7, src/thea-traits.js).
+  if (state.thea?.blasphemer?.pawn) holdCc("Sacrificial Pawn", { kind: "full" });
   for (const line of find(PATTERNS.channelWeaken)) {
     const radius = num(line.clean.match(PATTERNS.channelWeaken)[2]);
     const active = Boolean(state.channeledMain) && explicitRadiusHolds(radius, state.nearTarget);
@@ -1018,22 +1074,31 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
   for (const line of find(PATTERNS.flashFlood)) entry(line, false, maxSpellBurst >= 1 && state.mainIsSpell ? "Spell Bursts per 4 s and the halved Spell Burst limit are not modeled" : "no Spell Burst", { status: maxSpellBurst >= 1 && state.mainIsSpell ? "Not modeled" : "Inactive" });
 
   // ---- Numbed ----
-  const numbed = (state.enemyAilments || []).includes("Numbed");
+  // Erika – Lightning Shadow (hero trait audit B5, Q-H10 provisional; src/erika-traits.js felineFigureState): Feline Figure's
+  // Numbed on the dummy (its average stacks, at most 10; another Numbed source keeps the dummy at 10) and the "additional Numbed
+  // Effect" lines as one multiplier (the trait lines, Wild Lightning, Charging Equation, Charging Tail on Feline Figure's share).
+  const felineFigure = state.felineFigure?.active ? state.felineFigure : null;
+  const otherNumbed = (state.enemyAilments || []).includes("Numbed");
+  const numbed = otherNumbed || Boolean(felineFigure);
+  const numbedAdditional = felineFigure ? felineFigure.additionalFactor : state.felineFigure?.otherNumbed ? state.felineFigure.additionalFactor : 1;
   const numbedBase = find(PATTERNS.numbedBase).map((line) => num(line.clean.match(PATTERNS.numbedBase)[1]))[0] ?? BUFF_VALUES.numbedPerStack;
   // + a supported skill's time-averaged crit buff on the Numbed it inflicts (Thunder Spike: Tremble; src/crit-numbed-buff.js,
   // state.numbedEffectBuffs from src/planner.js; 2026-10-14, provisional): the dummy keeps the stronger Numbed.
   const numbedEffect = sum(values(PATTERNS.numbedEffect)) + (state.numbedEffectBuffs || []).reduce((total, buff) => total + (Number(buff.value) || 0), 0);
-  debuffs.numbedStacks = numbed ? BUFF_VALUES.numbedMaxStacks : 0;
+  debuffs.numbedStacks = otherNumbed ? BUFF_VALUES.numbedMaxStacks : felineFigure ? felineFigure.totalStacks : 0;
   // A changed base effect (Conductive: "+11% additional Lightning Damage taken") replaces the +5% per stack and stacks the same,
   // max 10 (user-confirmed 2026-10-12). It acts only on enemies the build Numbs, never on the player.
   const numbedChanged = find(PATTERNS.numbedBase).length > 0;
   // Audit of held debuffs (2026-10-13): the dummy starts clean, so the windows build Numbed at one stack per main-skill use (a
   // Numbing hit inflicts 1 stack; provisional: the "+N additional stacks" and the per-damage thresholds are not counted).
-  if (numbed && Number(state.mainUsesPerSecond) > 0) timedEffects.push({ id: "numbed", label: "Numbed", source: "Numbed (keyword 762)", target: "enemy", toggle: false, enabled: true, active: true, parts: [{ type: "Lightning", reach: "all", percent: round(numbedBase * (1 + numbedEffect / 100)), schedule: { kind: "ramp", maxStacks: debuffs.numbedStacks, intervalSeconds: 1 / Number(state.mainUsesPerSecond), startStacks: 1 } }] });
-  if (numbed) derive(`+${round(numbedBase * debuffs.numbedStacks * (1 + numbedEffect / 100))}% additional Lightning Damage taken`, `Numbed (keyword 762: +${numbedBase}% additional Lightning Damage taken per stack${numbedChanged ? ", changed base effect" : ""}, max 10)`, `${debuffs.numbedStacks} Numbed stacks on the dummy (best case, as the support resolver reads it: provisional)`, true);
+  const numbedPerStackRaw = numbedBase * (1 + numbedEffect / 100) * numbedAdditional, numbedPerStack = round(numbedPerStackRaw);
+  if (otherNumbed && Number(state.mainUsesPerSecond) > 0) timedEffects.push({ id: "numbed", label: "Numbed", source: "Numbed (keyword 762)", target: "enemy", toggle: false, enabled: true, active: true, parts: [{ type: "Lightning", reach: "all", percent: numbedPerStack, schedule: { kind: "ramp", maxStacks: debuffs.numbedStacks, intervalSeconds: 1 / Number(state.mainUsesPerSecond), startStacks: 1 } }] });
+  // Feline Figure alone: its own stack schedule from t = 0 (Electrify owned when engaging; the dummy starts clean).
+  else if (felineFigure && debuffs.numbedStacks > 0) timedEffects.push({ id: "numbed", label: "Numbed (Feline Figure)", source: "Lightning Shadow: Feline Figure", target: "enemy", toggle: false, enabled: true, active: true, parts: [{ type: "Lightning", reach: "all", percent: numbedPerStack, schedule: { kind: "steps", points: felineFigure.schedule.points, sustained: debuffs.numbedStacks } }] });
+  if (numbed && debuffs.numbedStacks > 0) derive(`+${round(numbedPerStackRaw * debuffs.numbedStacks)}% additional Lightning Damage taken`, `Numbed (keyword 762: +${numbedBase}% additional Lightning Damage taken per stack${numbedChanged ? ", changed base effect" : ""}, max 10${numbedAdditional !== 1 ? `; ×${numbedAdditional} additional Numbed Effect` : ""})`, otherNumbed ? `${debuffs.numbedStacks} Numbed stacks on the dummy (best case, as the support resolver reads it: provisional)` : `${debuffs.numbedStacks} average Numbed stacks from Feline Figure (Q-H10: provisional)`, true);
   for (const line of find(PATTERNS.numbedEffect)) entry(line, numbed, numbed ? "scales Numbed's Lightning Damage taken" : "the build inflicts no Numbed");
   for (const line of find(PATTERNS.numbedBase)) entry(line, numbed, numbed ? "replaces Numbed's +5% per stack, max 10 stacks (user-confirmed 2026-10-12)" : "the build inflicts no Numbed");
-  for (const line of [...find(PATTERNS.numbedExtra), ...find(PATTERNS.numbedThreshold)]) entry(line, false, numbed ? "Numbed is already at its 10-stack cap in the best-case reading (provisional)" : "the build inflicts no Numbed", { status: numbed ? "No DPS effect" : "Inactive", provisional: true });
+  for (const line of [...find(PATTERNS.numbedExtra), ...find(PATTERNS.numbedThreshold)]) entry(line, false, otherNumbed ? "Numbed is already at its 10-stack cap in the best-case reading (provisional)" : "the build inflicts no Numbed", { status: otherNumbed ? "No DPS effect" : "Inactive", provisional: true });
 
   // ---- Lucky ----
   const { luckyLines, veryLucky, luckyCritLines, luckyNumbed, damageRolls, critRolls, scoped: scopedLucky } = readLuckyDamage(lines, { numbed });
@@ -1099,12 +1164,12 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
     if (PATTERNS.frail.test(text)) return pick(/^Frail/);
     if (PATTERNS.lightningInfiltrationCrit.test(text) || PATTERNS.coldInfiltrationFrozen.test(text) || PATTERNS.coldInfiltrationFrostbitten.test(text) || PATTERNS.penetrating.test(text)) return pick(/Infiltration/);
     if ([PATTERNS.paralysisAttacks, PATTERNS.paralysisCursed, PATTERNS.paralysisEffect].some((re) => re.test(text))) return pick(/^Paralysis/);
-    if (PATTERNS.maxFrostbite.test(text) || PATTERNS.frostbiteEffect.test(text)) return pick(/^Frostbite/);
+    if (PATTERNS.maxFrostbite.test(text) || PATTERNS.frostbiteEffect.test(text) || PATTERNS.frostbiteEffectAdditional.test(text) || PATTERNS.frostbiteCapRaise.test(text) || PATTERNS.deemedFrostbite.test(text)) return pick(/^Frostbite/);
     if (PATTERNS.numbedEffect.test(text) || PATTERNS.numbedBase.test(text)) return pick(/^Numbed/);
     return [];
   };
   for (const item of entries) if (!item.bodies.length && item.active) { const effects = effectsOf(item); if (effects.length) item.bodies = effects.map((text) => ({ body: text, derivedText: text, readers: ["state"] })); }
-  return { centralize, regain, warcry: stormCommand, elixir: elixirs, entries, derived, buffs: { fervorRating, fervorAttackAilment, triggeredSkillAdditional, hasAttackAggression, hasSpellAggression, hasHasten, fortitudeStacks }, debuffs: { ...debuffs, infiltration: [...debuffs.infiltration] }, lucky, enemyDebuffCores: { selfDelusion, juggernaut, openWounds, escalatingAffliction }, iceCage, timedEffects, chanceParalysis };
+  return { crowdControl: [...ccSchedules.keys()], centralize, regain, warcry: stormCommand, elixir: elixirs, entries, derived, buffs: { fervorRating, fervorAttackAilment, triggeredSkillAdditional, hasAttackAggression, hasSpellAggression, hasHasten, fortitudeStacks }, debuffs: { ...debuffs, infiltration: [...debuffs.infiltration] }, lucky, enemyDebuffCores: { selfDelusion, juggernaut, openWounds, escalatingAffliction }, iceCage, timedEffects, chanceParalysis };
 }
 
 // Lucky roll helpers live in src/lucky-damage.js; re-exported for the existing importers.

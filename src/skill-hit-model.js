@@ -60,6 +60,8 @@ export const SWEEPING_FURY_LINE = /^On hit, Main Ranged Horizontal Projectile Sk
 export const PROJECTILE_QUANTITY_LIMIT_LINE = /^Projectile Quantity Upper limit: (\d+)$/i;
 export const SPELL_RIPPLE_LINE = /^Main Spell Skills on hit have a (\d+(?:\.\d+)?)% chance to spawn a Pulse, dealing True Damage equal to (\d+(?:\.\d+)?)% of Hit Damage\. Interval: (\d+(?:\.\d+)?)\s?s$/i;
 export const SPELL_BURST_CHARGE_PATTERN =/^([+-]?\d+(?:\.\d+)?)\s?% (additional )?Spell Burst Charge Speed$/i;
+// Fifth Cosmic Velocity (hero trait audit B4): Spell Burst Charge stacks gained on an interval.
+export const SPELL_BURST_INTERVAL_GAIN = /^(\d+(?:\.\d+)?)% chance to immediately gain (\d+) stack\(s\) of Spell Burst Charge\. Interval: (\d+(?:\.\d+)?) ?s$/i;
 export function spellBurstChargeTime(lines = []) {
   const sources = [];
   let increasedPercent = 0, additionalFactor = 1;
@@ -339,7 +341,7 @@ export function recalledProjectilesPerUse(component) {
  *   — each step's states are cumulative; each step becomes one additional-damage line (its factor over the previous step)
  * @param {object[]} p.extraCritOnly enemy crit-taken debuffs on the crit share ({ source, text, value }; Mark, src/mark-effect.js)
  */
-export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, setup, profile, modifierTexts = [], castSpeed = { factor: 1, sources: [] }, attackSpeed = null, weapon = null, crit = {}, auraEntries = [], aim = null, intelligenceAdditionalPercent = 0, intelligenceSource = null, mainStatPoints = null, target = {}, targetCursed = false, targetCurseCount = 0, enemyAilments = null, extraTaken = [], windows = [5, 20], nearTarget = true, multistrikeEffects = null, extraCritOnly = [], movedRecently = true, multistrikeEventsPerSecond = null, heroEffects = null, triggeredSkillAdditional = [], tangleSkill = false, extraTriggeredUses = null } = {}) {
+export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, setup, profile, modifierTexts = [], castSpeed = { factor: 1, sources: [] }, attackSpeed = null, weapon = null, crit = {}, auraEntries = [], aim = null, intelligenceAdditionalPercent = 0, intelligenceSource = null, mainStatPoints = null, target = {}, targetCursed = false, targetCurseCount = 0, enemyAilments = null, extraTaken = [], windows = [5, 20], nearTarget = true, multistrikeEffects = null, extraCritOnly = [], movedRecently = true, multistrikeEventsPerSecond = null, heroEffects = null, triggeredSkillAdditional = [], tangleSkill = false, extraTriggeredUses = null, takenConversion = null } = {}) {
   // Hero effects on one skill (src/youga-ultimate-one.js: Clockwork Core's Tangle cadence, its shared bonuses, Recall hits,
   // the crit cooldown reduction, the Spell Burst rules, the Alternate Spacetime lines): skill-local plain lines join the
   // modifier lines read below.
@@ -606,10 +608,12 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
   // again (manual), so they add no activations.
   const maxSpellBurst = modifierTexts.reduce((total, line) => { const match = String(line.text).match(/^\+(\d+) Max Spell Burst$/i); return total + (match ? Number(match[1]) * (line.multiplier ?? 1) : 0); }, 0);
   const spellBurstStacks = Math.floor(maxSpellBurst);
+  // A rate-model skill whose own text lets it activate Spell Burst (Rehan – Hero's Resourcefulness: "Burst becomes Burst Blast and
+  // can activate Spell Burst"; hero trait audit B10, src/rehan-traits.js burstProfile) is not blocked by its rate model.
   const spellBurstBlock = !skillTags.has("Spell") ? "it is not a Spell Skill"
     : timing?.cooldownSeconds > 0 ? "it has a cooldown" : triggered ? "it is a Triggered Skill (cast by an Activation Medium)"
     : channel ? "it is a Channel Skill" : sentry_ ? "it is a Sentry Skill" : skillTags.has("Summon") ? "it is a Summon Skill"
-    : rateModel ? "its uses come from a rate model, not casts (user-confirmed for Corrosion Focus)" : profile.cycle ? "it is a Combo skill (user-confirmed: Combo skills cannot Spell Burst)" : heroEffects?.spellBurstBlock || null;
+    : rateModel && !profile.spellBurstAllowed ? "its uses come from a rate model, not casts (user-confirmed for Corrosion Focus)" : profile.cycle ? "it is a Combo skill (user-confirmed: Combo skills cannot Spell Burst)" : heroEffects?.spellBurstBlock || null;
   // A hero's trigger component on top of (or, with `manualCasts: false`, instead of) the skill's own (manual) uses: `heroEffects.triggerComponent.perInterval` uses per
   // casting interval (Clockwork Core: Max Tangle Quantity Tangle triggers, × I Will Hunt You Down's Core Cast Speed while the
   // Vault is up; user-supplied answers 2026-10-18). Those uses are Triggered casts: they never activate Spell Burst.
@@ -638,6 +642,17 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
   const spellBurstCharge = spellBurstChargeTime([...modifierTexts, ...castToChargeLines, ...supports.effects.spellBurst.filter((line) => line.kind === "chargeIncreased" || line.kind === "chargeAdditional")
     .map((line) => ({ source: line.source, text: `${line.value}% ${line.kind === "chargeAdditional" ? "additional " : ""}Spell Burst Charge Speed` }))]);
   spellBurstCharge.castSpeedShare = castToChargeLines.map((line) => ({ source: line.source, text: line.note }));
+  // Fifth Cosmic Velocity (Youga – Spacetime Illusion revival; hero trait audit B4, provisional): "100% chance to immediately gain 2
+  // stack(s) of Spell Burst Charge. Interval: 0.03s": stacks gained on that interval fill Max Spell Burst in interval × ⌈N ÷ gain⌉
+  // (÷ chance), whichever of that and the charge time is shorter.
+  for (const line of modifierTexts) {
+    const match = normalizePercentageText(String(line.text ?? "")).replace(/\s+/g, " ").trim().match(SPELL_BURST_INTERVAL_GAIN);
+    if (!match || spellBurstStacks < 1) continue;
+    const chance = Math.min(1, Number(match[1]) / 100), gain = Number(match[2]), interval = Number(match[3]);
+    if (!(chance > 0 && gain > 0 && interval > 0)) continue;
+    const fill = interval / chance * Math.ceil(spellBurstStacks / gain);
+    if (fill < spellBurstCharge.seconds) Object.assign(spellBurstCharge, { seconds: fill, intervalGain: { source: line.source, text: line.text, seconds: fill } });
+  }
   const canSpellBurst = !spellBurstBlock && spellBurstStacks >= 1 && intervalSeconds > 0 && Number.isFinite(spellBurstCharge.seconds);
   if (spellBurstStacks >= 1 && skillTags.has("Spell") && spellBurstBlock) notes.push(`${profile.name}: cannot activate Spell Burst: ${spellBurstBlock}${/provisional/.test(spellBurstBlock) ? "" : spellBurstBlock === heroEffects?.spellBurstBlock ? ` (${heroEffects.spellBurstBlockSource || "trait text"})` : " (game manual)"}.`);
   const spellBurst = canSpellBurst ? (() => {
@@ -645,7 +660,9 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
     const extraUsesPerSecond = spellBurstStacks * activationsPerSecond;
     const burstCastsPerSecond = (1 + spellBurstStacks) * activationsPerSecond;
     const bonusLines = [...supports.effects.spellBurst.filter((line) => line.kind === "hitAdditional").map((line) => ({ source: line.source, text: line.text, value: line.value })),
-      ...modifierTexts.map((line) => { const match = String(line.text).match(/^\+?(\d+(?:\.\d+)?)% additional Hit Damage for skills cast by Spell Burst$/i); return match ? { source: line.source, text: line.text, value: Number(match[1]) * (line.multiplier ?? 1) } : null; }).filter(Boolean)];
+      // Signed since hero trait audit B4: Telepathy Expert's / Fifth Cosmic Velocity's "-20% additional Spell Burst Hit Damage" arrives
+      // in this wording (src/hero-exclusive-revivals.js INTAKE_REWRITES; provisional).
+      ...modifierTexts.map((line) => { const match = String(line.text).match(/^([+-]?\d+(?:\.\d+)?)% additional Hit Damage for skills cast by Spell Burst$/i); return match ? { source: line.source, text: line.text, value: Number(match[1]) * (line.multiplier ?? 1) } : null; }).filter(Boolean)];
     const bonusFactor = product(bonusLines);
     // A hero's separate trigger component (Clockwork Core's Tangle triggers) adds uses that never burst: the share is of all uses.
     const share = burstCastsPerSecond / (1 / intervalSeconds + extraUsesPerSecond + heroTriggerUsesPerSecond);
@@ -1186,8 +1203,20 @@ export function calculateSkillHit({ luckyDamageRolls = 1, deterioration = null, 
     const townPerHit = handRolls ? townCritWeighted * increasedFactor * townAdditionalFactor * (attackProfile ? armourFactor * resistanceFactor : 1) : rollAverage * increasedFactor * townAdditionalFactor * townCritFactor * (attackProfile ? armourFactor * resistanceFactor : 1);
     const townPerHitNoCrit = (handRolls ? handRolls.reduce((total, hand) => total + hand.share * hand.average, 0) : rollAverage) * increasedFactor * townAdditionalFactor * (attackProfile ? armourFactor * resistanceFactor : 1);
     const perHitBeforeTarget = handRolls ? critWeighted * increasedFactor * additionalFactor : rollAverage * increasedFactor * additionalFactor * critFactor;
-    const perHit = perHitBeforeTarget * takenFactor * armourFactor * resistanceFactor;
-    return { key: component.componentKey, strikeKey: component.strikeKey ?? component.componentKey, label: component.label, ...(component.recalled ? { recalled: true } : {}), ...(component.parabolicSplit ? { parabolicSplit: true } : {}), type: component.type, originalType: component.originalType, converted: component.converted, addedOnly: Boolean(component.addedOnly), splitPart: Boolean(component.splitPart), hitsPerUse: component.hitsPerUse, hitsDetail: component.hitsDetail, shotgun: component.shotgun || null, basis: component.basis, note: component.note, effectiveness: component.effectiveness, base: { min: component.min, max: component.max }, added: component.added, addedSources: component.addedSources, roll, increased, additional, combatAdditional, taken, maxOnly, minOnly, penetration, armourPenetration, armourPercent: armour.before, armourPenetrationPercent: armour.penetrationPercent, armourAfterPenetrationPercent: armour.after, increasedFactor, additionalFactor, townAdditionalFactor, takenFactor, penetrationPercent, resistancePercent, resistanceFactor, armourFactor, maxFactor, minFactor, handRolls, mainHandOnly: mainHandOnlyLines, townPerHit, townPerHitNoCrit, perHitBeforeTarget, perHit, perUse: perHit * component.hitsPerUse, townPerUse: townPerHit * component.hitsPerUse };
+    // Taken-side conversion (Gemma – Dress Licker, hero trait audit B3; src/hero-trait-modules.js): a share of this component's
+    // damage is taken as another type, after the player's own bonuses: that share takes the new type's resistance, penetration,
+    // armour and typed Damage taken lines (provisional).
+    const converted = takenConversion && takenConversion.share > 0 && component.type === takenConversion.from ? (() => {
+      const to = takenConversion.to;
+      const toTaken = takenLines.filter((line) => scopeApplies(line.scope, { damageTypes: [to], skillTags: scopeTags }));
+      const toTakenFactor = Math.max(0, 1 + sum(toTaken.filter((line) => line.layer === "increased")) / 100) * product(toTaken.filter((line) => line.layer === "additional"));
+      const toResistanceFactor = Math.max(0, 1 - (resistanceOf(to) - sum(penetrationLines.filter((line) => line.damageTypes.has(to)))) / 100);
+      const toArmourFactor = armourMitigationPercent({ physical: to === "Physical", armourPercent, nonPhysicalArmourPercent, penetrationPercent: sum(armourPenetration) }).factor;
+      return { share: takenConversion.share, to, source: takenConversion.source, takenFactor: toTakenFactor, resistanceFactor: toResistanceFactor, armourFactor: toArmourFactor, factor: toTakenFactor * toArmourFactor * toResistanceFactor };
+    })() : null;
+    const targetFactor = converted ? (1 - converted.share) * takenFactor * armourFactor * resistanceFactor + converted.share * converted.factor : takenFactor * armourFactor * resistanceFactor;
+    const perHit = perHitBeforeTarget * targetFactor;
+    return { key: component.componentKey, strikeKey: component.strikeKey ?? component.componentKey, label: component.label, ...(component.recalled ? { recalled: true } : {}), ...(component.parabolicSplit ? { parabolicSplit: true } : {}), type: component.type, originalType: component.originalType, converted: component.converted, addedOnly: Boolean(component.addedOnly), splitPart: Boolean(component.splitPart), hitsPerUse: component.hitsPerUse, hitsDetail: component.hitsDetail, shotgun: component.shotgun || null, basis: component.basis, note: component.note, effectiveness: component.effectiveness, base: { min: component.min, max: component.max }, added: component.added, addedSources: component.addedSources, roll, increased, additional, combatAdditional, taken, maxOnly, minOnly, penetration, armourPenetration, armourPercent: armour.before, armourPenetrationPercent: armour.penetrationPercent, armourAfterPenetrationPercent: armour.after, ...(converted ? { takenConversion: converted } : {}), increasedFactor, additionalFactor, townAdditionalFactor, takenFactor, penetrationPercent, resistancePercent, resistanceFactor, armourFactor, maxFactor, minFactor, handRolls, mainHandOnly: mainHandOnlyLines, townPerHit, townPerHitNoCrit, perHitBeforeTarget, perHit, perUse: perHit * component.hitsPerUse, townPerUse: townPerHit * component.hitsPerUse };
   });
 
   if (typeRestriction) {

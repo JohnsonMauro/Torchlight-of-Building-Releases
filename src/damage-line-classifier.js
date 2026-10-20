@@ -35,7 +35,9 @@ export const ELEMENTAL_TYPES = Object.freeze(["Fire", "Cold", "Lightning"]);
 const DAMAGE_TYPES = new Set(["Fire", "Cold", "Lightning", "Erosion", "Physical"]);
 // "Sentry" (2026-10-12): Sentries inherit the player's stats (manual rule 1001011723), so "+X% Sentry Damage" is a tag-scoped
 // player line (game attr 5719) that reaches skills carrying the Sentry tag; it is not a Minion line.
-const SKILL_TAGS = new Set(["Spell", "Attack", "Melee", "Projectile", "Ranged", "Area", "Channeled", "Beam", "Main Skill", "Sentry"]);
+// "Horizontal" (hero trait audit B2, 2026-10-19: Impending Doom's "Ranged Attack Horizontal Projectile Damage", game affix 11937141
+// with the tags 6001111 Horizontal Projectile / 6001090 Attack / 6001130 Ranged) reaches skills carrying the Horizontal tag.
+const SKILL_TAGS = new Set(["Spell", "Attack", "Melee", "Projectile", "Ranged", "Horizontal", "Area", "Channeled", "Beam", "Main Skill", "Sentry"]);
 const AILMENT_TAGS = { Ignite: ["ignite"], Trauma: ["trauma"], Wilt: ["wilt"], Ailment: ["ignite", "trauma", "wilt"], "Damaging Ailment": ["ignite", "trauma", "wilt"], "Elemental Ailment": ["ignite"] };
 
 // Tokens of the scope phrase, longest first ("Channeled Skill", "Elemental Ailment", "Main Skill").
@@ -45,7 +47,7 @@ const AILMENT_TAGS = { Ignite: ["ignite"], Trauma: ["trauma"], Wilt: ["wilt"], A
 // ("Elemental and Erosion Damage").
 // "Focus Skill" / "Combo Skill" (residual batch A-2): the summed Focus / Combo Damage Enhancement line (src/line-effects.js).
 const SKILL_TOKENS = ["Active Skill", "Fire Skill", "Cold Skill", "Lightning Skill", "Erosion Skill", "Physical Skill", "Spell Skill", "Attack Skill", "Melee Skill", "Terra Skill", "Projectile Skill", "Area Skill", "Focus Skill", "Combo Skill"];
-const TOKENS = [...SKILL_TOKENS, "and", "Elemental Ailment", "Damaging Ailment", "Channeled Skill", "Main Skill", "Fire", "Cold", "Lightning", "Erosion", "Physical", "Elemental", "Spell", "Attack", "Melee", "Projectile", "Ranged", "Area", "Channeled", "Beam", "Sentry", "Minion", "Ignite", "Trauma", "Wilt", "Ailment", "Hit"];
+const TOKENS = [...SKILL_TOKENS, "and", "Elemental Ailment", "Damaging Ailment", "Channeled Skill", "Main Skill", "Fire", "Cold", "Lightning", "Erosion", "Physical", "Elemental", "Spell", "Attack", "Melee", "Projectile", "Ranged", "Horizontal", "Area", "Channeled", "Beam", "Sentry", "Minion", "Ignite", "Trauma", "Wilt", "Ailment", "Hit"];
 
 function parseScope(phrase) {
   const scope = { damageTypes: null, skillTags: null, ailments: null, minion: false, flow: "any" };
