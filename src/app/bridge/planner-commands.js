@@ -110,7 +110,12 @@
  * @property {(from: number, to: number | null) => void} moveTraitPick The end of a drag of a tree hero's pick: onto
  *   another row (0–3), or null off the rows.
  * @property {(kind: string) => void} openScentSlot Opens Sage's scent selector for the elixir or an ingredient.
+ * @property {(name: string) => void} selectSageScent Scent selector: fills the slot it was opened for.
+ * @property {() => void} clearSageScent Scent selector: empties that slot.
  * @property {(index: number) => void} openCarinoAmmo Opens the Special Ammo selector for slot 0–2.
+ * @property {(name: string) => void} selectCarinoAmmo Special Ammo selector: fills the slot it was opened for (a support
+ *   the slot can take).
+ * @property {() => void} clearCarinoAmmo Special Ammo selector: empties that slot.
  * @property {(index: number) => void} removeCarinoAmmo Empties a Special Ammo slot.
  * @property {(heroId: string) => void} openHeroTraitSupport Opens the support selector for a hero's trait support slot.
  * @property {(heroId: string) => void} removeHeroTraitSupport Empties a hero's trait support slot.

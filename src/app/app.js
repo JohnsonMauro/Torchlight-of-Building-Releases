@@ -21,6 +21,7 @@ import { curseSlotSummary } from "../engine/skills/curse-limit.js";
 import { aimUptimeAfterToggle } from "./aim-controls.js";
 import { provideViewSource, viewSourceChanged } from "./bridge/view-sources.ts";
 import { pactsView, pactspiritSelectorView } from "./bridge/pacts-view-model.ts";
+import { carinoAmmoSelectorView, sageScentSelectorView } from "./bridge/hero-dialogs-view-model.ts";
 import { skillsView } from "./bridge/skills-view-model.ts";
 import { slatesView } from "./bridge/slates-view-model.ts";
 import { clampCombatNumber, combatNumberLimits } from "../engine/state/state-validation.ts";
@@ -456,9 +457,9 @@ let activeHeroDetailTab = "traits";
 let pactspiritSelectorSession = 0; // the Pactspirit selector's openings (apps/web/src/shell/dialogs/PactspiritSelectorDialog.tsx)
 let followerSelectorSession = 0; // the follower selector's openings (apps/web/src/shell/dialogs/FollowerSelectorDialog.tsx)
 let sageScentSelectorKind = "elixir";
-let sageScentQuery = "";
+let sageScentSelectorSession = 0; // its openings (apps/web/src/shell/dialogs/SageScentSelectorDialog.tsx)
 let activeCarinoAmmoSlot = 0;
-let carinoAmmoQuery = "";
+let carinoAmmoSelectorSession = 0; // its openings (apps/web/src/shell/dialogs/CarinoAmmoSelectorDialog.tsx)
 let activeHeroTraitSupportId = "";
 let activeHeroMemoryTier = "";
 let memoryDraft = null;
@@ -1645,7 +1646,14 @@ providePlannerCommands({
   toggleTraitPathNode,
   moveTraitPick,
   openScentSlot,
+  selectSageScent: (name) => setSageScent(name, `${escapeHtml(name)} selected`),
+  clearSageScent: () => setSageScent("", "Scent slot cleared"),
   openCarinoAmmo,
+  selectCarinoAmmo: (name) => {
+    if (carinoProjectileSupportOptions().some((entry) => entry.name === name))
+      setCarinoAmmo(name, `${escapeHtml(name)} installed`);
+  },
+  clearCarinoAmmo: () => setCarinoAmmo("", "Support slot cleared"),
   removeCarinoAmmo,
   openHeroTraitSupport,
   removeHeroTraitSupport,
@@ -1710,6 +1718,20 @@ provideViewSource("pactspiritSelector", () => ({ session: pactspiritSelectorSess
 provideViewSource("followerSelector", () => ({
   session: followerSelectorSession,
   cards: followerPickerView(plannerState),
+}));
+// The HERO tab's scent and Special Ammo selectors (src/app/bridge/hero-dialogs-view-model.ts).
+provideViewSource("sageScentSelector", () => ({
+  session: sageScentSelectorSession,
+  ...sageScentSelectorView(sageScentSelectorKind),
+}));
+provideViewSource("carinoAmmoSelector", () => ({
+  session: carinoAmmoSelectorSession,
+  ...carinoAmmoSelectorView(
+    activeCarinoAmmoSlot,
+    carinoProjectileSupportOptions(),
+    plannerState.hero.carinoSpecialAmmoSupports || [],
+    plannerState.hero.selectedTraits["carino-ranger-of-glory:level75"] === "Well Prepared",
+  ),
 }));
 // The hero selector's data (apps/web/src/shell/dialogs/HeroSelectorDialog.tsx).
 provideViewSource("heroSelector", () => ({
@@ -2452,25 +2474,6 @@ function renderCoreTalentPicker(threshold) {
     .join("");
 }
 
-function renderSageScentSelector() {
-  const query = sageScentQuery.trim().toLowerCase(),
-    isElixir = sageScentSelectorKind === "elixir";
-  const options = (isElixir ? sageElixirsSs13 : sageScentIngredientsSs13[sageScentSelectorKind]).filter((entry) =>
-    entry.name.toLowerCase().includes(query),
-  );
-  $("#sage-scent-title").textContent = isElixir
-    ? "Select Elixir Skill"
-    : `Select ${titleCase(sageScentSelectorKind)} Ingredient`;
-  $("#sage-scent-search").placeholder = isElixir ? "Search skills..." : "Search ingredients...";
-  $("#sage-scent-options").innerHTML =
-    options
-      .map(
-        (entry) =>
-          `<button type="button" class="sage-scent-option" data-select-sage-scent="${escapeHtml(entry.name)}"><img src="${entry.icon}" alt=""><span><strong>${escapeHtml(entry.name)}</strong>${isElixir ? `<small>${entry.tags.map((tag) => `<i>${escapeHtml(tag)}</i>`).join("")}</small>` : `<small>${escapeHtml(entry.description)}</small>`}</span></button>`,
-      )
-      .join("") || '<p class="hero-selector-empty">No matching choices.</p>';
-}
-
 const carinoProjectileSupportOptions = () => {
   const installed = currentEditedSetups()
     .flatMap((setup) => setup.supports || [])
@@ -2479,55 +2482,10 @@ const carinoProjectileSupportOptions = () => {
   return carinoSpecialAmmoOptions(tlidbSupportCatalogSs13, tlidbSkillCatalogSs13, installed, wellPrepared);
 };
 
-function renderCarinoAmmoSelector() {
-  if (activeHeroTraitSupportId) {
-    renderHeroTraitSupportSelector();
-    return;
-  }
-  const installed = plannerState.hero.carinoSpecialAmmoSupports || [];
-  const query = carinoAmmoQuery.toLowerCase();
-  const options = carinoProjectileSupportOptions().filter(
-    (entry) => !query || `${entry.name} ${entry.exclusiveFor} ${entry.category}`.toLowerCase().includes(query),
-  );
-  $("#carino-ammo-title").textContent = `Select Special Ammo Support · Slot ${activeCarinoAmmoSlot + 1}`;
-  $("#carino-ammo-selector .carino-ammo-help").textContent =
-    plannerState.hero.selectedTraits["carino-ranger-of-glory:level75"] === "Well Prepared"
-      ? "Choose a compatible Projectile support that is not installed on the skill panel."
-      : "Choose a compatible regular Projectile support. Well Prepared unlocks Magnificent and Noble supports.";
-  $("#carino-ammo-options").innerHTML =
-    options
-      .map(
-        (entry) =>
-          `<button type="button" class="sage-scent-option carino-ammo-option ${installed.includes(entry.name) ? "installed" : ""}" data-select-carino-ammo="${escapeHtml(entry.name)}" ${installed.includes(entry.name) ? "disabled" : ""}>${artwork(entry.icon, entry.name, "support-art")}<span><strong>${escapeHtml(entry.name.replace(/ \((Magnificent|Noble)\)$/, ""))}</strong><small><i>${escapeHtml(titleCase(entry.category))}</i><i>${escapeHtml(entry.exclusiveFor || "Projectile compatible")}</i></small><small>${escapeHtml((entry.effects || []).join(" "))}</small></span></button>`,
-      )
-      .join("") || '<p class="hero-selector-empty">No matching Projectile supports.</p>';
-}
-
 function heroTraitSupportOptions() {
   return tlidbSupportCatalogSs13.filter(
     (support) => !support.passiveOnly && ["regular", "magnificent", "noble", "activation"].includes(support.category),
   );
-}
-
-function renderHeroTraitSupportSelector() {
-  const config = heroTraitSupportConfig[activeHeroTraitSupportId];
-  const selected = plannerState.hero.heroTraitSupports?.[activeHeroTraitSupportId] || "";
-  const query = carinoAmmoQuery.toLowerCase();
-  const options = heroTraitSupportOptions().filter(
-    (entry) => !query || `${entry.name} ${entry.exclusiveFor || ""} ${entry.category}`.toLowerCase().includes(query),
-  );
-  document.querySelector("#carino-ammo-selector .eyebrow").textContent = config.hero;
-  $("#carino-ammo-title").textContent = `Select ${config.skill} Support`;
-  $("#carino-ammo-search").placeholder = "Search supports...";
-  $("#carino-ammo-selector .carino-ammo-help").textContent =
-    `Choose a Support Skill or Activation Medium Support Skill for ${config.skill}.`;
-  $("#carino-ammo-options").innerHTML =
-    options
-      .map(
-        (entry) =>
-          `<button type="button" class="sage-scent-option carino-ammo-option ${selected === entry.name ? "installed" : ""}" data-select-hero-trait-support="${escapeHtml(entry.name)}">${artwork(entry.icon, entry.name, "support-art")}<span><strong>${escapeHtml(entry.name.replace(/ \((Magnificent|Noble)\)$/, ""))}</strong><small><i>${escapeHtml(titleCase(entry.category))}</i>${entry.exclusiveFor ? `<i>${escapeHtml(entry.exclusiveFor)}</i>` : ""}</small><small>${escapeHtml((entry.effects || []).join(" "))}</small></span></button>`,
-      )
-      .join("") || '<p class="hero-selector-empty">No matching supports.</p>';
 }
 
 // Trait level the tooltip shows, the rule src/engine/character-stats.js heroTraitStatLines and the planner apply (user-stated rule
@@ -2649,24 +2607,34 @@ function moveTraitPick(from, to) {
 }
 function openScentSlot(kind) {
   sageScentSelectorKind = kind;
-  sageScentQuery = "";
-  $("#sage-scent-search").value = "";
-  renderSageScentSelector();
+  sageScentSelectorSession++;
+  viewSourceChanged("sageScentSelector");
   $("#sage-scent-selector").showModal();
   $("#sage-scent-search").focus();
+}
+// Sage's scent selector commands: a pick fills the slot it was opened for, Clear Slot empties it.
+function setSageScent(name, toast) {
+  plannerState.hero.sageScent[sageScentSelectorKind] = name;
+  persistPlannerState();
+  $("#sage-scent-selector").close();
+  renderHeroTraitTree();
+  showToast(toast);
 }
 function openCarinoAmmo(index) {
   activeHeroTraitSupportId = "";
   activeCarinoAmmoSlot = index;
-  carinoAmmoQuery = "";
-  $("#carino-ammo-search").value = "";
-  document.querySelector("#carino-ammo-selector .eyebrow").textContent = "Ranger of Glory";
-  $("#carino-ammo-search").placeholder = "Search projectile supports...";
-  $("#carino-ammo-selector .carino-ammo-help").textContent =
-    "Choose a support that can support a Projectile skill and is not installed on the skill panel.";
-  renderCarinoAmmoSelector();
+  carinoAmmoSelectorSession++;
+  viewSourceChanged("carinoAmmoSelector");
   $("#carino-ammo-selector").showModal();
   $("#carino-ammo-search").focus();
+}
+// Special Ammo selector commands: a pick (one the slot can take) fills the slot it was opened for, Clear Slot empties it.
+function setCarinoAmmo(name, toast) {
+  plannerState.hero.carinoSpecialAmmoSupports[activeCarinoAmmoSlot] = name;
+  persistPlannerState();
+  $("#carino-ammo-selector").close();
+  renderHeroTraitTree();
+  showToast(toast);
 }
 function removeCarinoAmmo(index) {
   const name = plannerState.hero.carinoSpecialAmmoSupports?.[index];
@@ -7099,64 +7067,6 @@ document.addEventListener("click", (event) => {
     activeKismetSlot = null;
     return;
   }
-  if (event.target.closest("[data-close-sage-scent]")) {
-    $("#sage-scent-selector").close();
-    return;
-  }
-  if (event.target.closest("[data-clear-sage-scent]")) {
-    plannerState.hero.sageScent[sageScentSelectorKind] = "";
-    persistPlannerState();
-    $("#sage-scent-selector").close();
-    renderHeroTraitTree();
-    showToast("Scent slot cleared");
-    return;
-  }
-  const scentChoice = event.target.closest("[data-select-sage-scent]");
-  if (scentChoice) {
-    plannerState.hero.sageScent[sageScentSelectorKind] = scentChoice.dataset.selectSageScent;
-    persistPlannerState();
-    $("#sage-scent-selector").close();
-    renderHeroTraitTree();
-    showToast(`${escapeHtml(scentChoice.dataset.selectSageScent)} selected`);
-    return;
-  }
-  if (event.target.closest("[data-close-carino-ammo]")) {
-    $("#carino-ammo-selector").close();
-    return;
-  }
-  if (event.target.closest("[data-clear-carino-ammo]")) {
-    if (activeHeroTraitSupportId) {
-      plannerState.hero.heroTraitSupports[activeHeroTraitSupportId] = "";
-    } else {
-      plannerState.hero.carinoSpecialAmmoSupports[activeCarinoAmmoSlot] = "";
-    }
-    persistPlannerState();
-    $("#carino-ammo-selector").close();
-    renderHeroTraitTree();
-    showToast("Support slot cleared");
-    return;
-  }
-  const carinoAmmoChoice = event.target.closest("[data-select-carino-ammo]");
-  if (carinoAmmoChoice) {
-    const name = carinoAmmoChoice.dataset.selectCarinoAmmo;
-    if (!carinoProjectileSupportOptions().some((entry) => entry.name === name)) return;
-    plannerState.hero.carinoSpecialAmmoSupports[activeCarinoAmmoSlot] = name;
-    persistPlannerState();
-    $("#carino-ammo-selector").close();
-    renderHeroTraitTree();
-    showToast(`${escapeHtml(name)} installed`);
-    return;
-  }
-  const heroTraitSupportChoice = event.target.closest("[data-select-hero-trait-support]");
-  if (heroTraitSupportChoice) {
-    plannerState.hero.heroTraitSupports[activeHeroTraitSupportId] =
-      heroTraitSupportChoice.dataset.selectHeroTraitSupport;
-    persistPlannerState();
-    $("#carino-ammo-selector").close();
-    renderHeroTraitTree();
-    showToast(`${escapeHtml(heroTraitSupportChoice.dataset.selectHeroTraitSupport)} installed`);
-    return;
-  }
   const heroPanelTab = event.target.closest("[data-hero-panel-tab]");
   if (heroPanelTab) {
     writeHeroPanelTab(activeBuildViewId(), heroPanelTab.dataset.heroPanelTab);
@@ -8684,20 +8594,6 @@ $("#kismet-roll-controls").addEventListener("change", (event) => {
 });
 $("#kismet-crafter").addEventListener("close", () => {
   activeKismetSlot = null;
-});
-$("#sage-scent-search").addEventListener("input", (event) => {
-  sageScentQuery = event.target.value;
-  renderSageScentSelector();
-});
-$("#sage-scent-selector").addEventListener("click", (event) => {
-  if (event.target === event.currentTarget) event.currentTarget.close();
-});
-$("#carino-ammo-selector").addEventListener("click", (event) => {
-  if (event.target === event.currentTarget) event.currentTarget.close();
-});
-$("#carino-ammo-search").addEventListener("input", (event) => {
-  carinoAmmoQuery = event.target.value.trim();
-  renderCarinoAmmoSelector();
 });
 $("#skill-selector-detail").addEventListener("input", (event) => {
   if (event.target.matches("[data-special-roll],[data-special-roll-number]")) {

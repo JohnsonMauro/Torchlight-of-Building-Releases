@@ -10,6 +10,7 @@ import type { SlatesView } from "./slates-view-model.ts";
 import type { EquipmentView } from "./equipment-view-model.ts";
 import type { TalentsView } from "./talents-view-model.ts";
 import type { HeroTraitsView } from "./hero-traits-view-model.ts";
+import type { CarinoAmmoSelectorView, SageScentSelectorView } from "./hero-dialogs-view-model.ts";
 import type { StatsView } from "./stats-view-model.ts";
 
 /** The Config tab: the calculated build and the combat settings it was calculated with. */
@@ -51,6 +52,10 @@ export interface ViewSources {
   followerSelector: DialogSession & { cards: FollowerPickerCard[] };
   /** The Pactspirit selector: its opening and every Pactspirit (src/app/bridge/pacts-view-model.ts). */
   pactspiritSelector: DialogSession & PactspiritSelectorView;
+  /** Sage's scent selector: its opening and the slot's choices (src/app/bridge/hero-dialogs-view-model.ts). */
+  sageScentSelector: DialogSession & SageScentSelectorView;
+  /** Carino's Special Ammo selector: its opening, the slot and its supports. */
+  carinoAmmoSelector: DialogSession & CarinoAmmoSelectorView;
 }
 export type ViewSourceName = keyof ViewSources;
 
