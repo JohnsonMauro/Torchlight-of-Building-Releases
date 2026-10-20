@@ -1,5 +1,5 @@
-// The planner's small picker dialogs, opened from the Build page: the hero selector (Change Hero) and the follower
-// selector (Change Follower). Each lists its
+// The planner's small picker dialogs, opened from the Build page: the hero selector (Change Hero), the follower
+// selector (Change Follower) and the Pactspirit selector (a pact slot). Each lists its
 // choices, marks the current one, filters by the search box, and closes from its × button, from a click outside it and
 // from Escape, opening again with the search cleared. Written against the legacy dialogs before they move to React, so
 // both must pass it unchanged.
@@ -10,6 +10,8 @@ import { PlannerPage } from "./pages/planner-page.js";
 import { HeroPage } from "./pages/hero-page.js";
 import { FollowerPage } from "./pages/follower-page.js";
 import { followerPickerOptions } from "../../src/app/follower-panel.js";
+import { PactsPage } from "./pages/pacts-page.js";
+import { pactspiritCatalogSs13 } from "../../src/data/pacts/pactspirit-catalog-ss13.js";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
@@ -129,5 +131,64 @@ test("the follower selector shows a follower's tooltip, closes from × and outsi
   await page.mouse.click(5, 5);
   await expect(dialog).toBeHidden();
   expect((await follower.stored()).followerId).toBe("scion-of-light");
+  await planner.expectNoErrors();
+});
+
+async function openPactspiritSelector(page) {
+  const planner = new PlannerPage(page);
+  await planner.open(youga);
+  const pacts = new PactsPage(page);
+  await pacts.open();
+  await pacts.slotButton("Dreamweaver").click();
+  await expect(pacts.pactspiritSelector()).toBeVisible();
+  return { planner, pacts, dialog: pacts.pactspiritSelector() };
+}
+const pactCategories = [...new Set(pactspiritCatalogSs13.map((entry) => entry.category))];
+const pactMatches = (search, category = "All") =>
+  pactspiritCatalogSs13.filter(
+    (entry) =>
+      (category === "All" || entry.category === category) &&
+      `${entry.name} ${entry.description}`.toLowerCase().includes(search),
+  );
+
+test("the Pactspirit selector groups every Pactspirit by category and filters by search and category", async ({
+  page,
+}) => {
+  const { planner, dialog } = await openPactspiritSelector(page);
+  const search = dialog.getByRole("searchbox", { name: "Search pactspirits" });
+  const category = dialog.getByRole("combobox", { name: "Pactspirit category" });
+  await expect(search).toBeFocused();
+  await expect(category).toHaveValue("All");
+  await expect(category.locator("option")).toHaveText(["All", ...pactCategories]);
+  await expect(dialog.locator(".pactspirit-choice")).toHaveCount(pactspiritCatalogSs13.length);
+  const firstGroup = pactspiritCatalogSs13[0].category;
+  await expect(dialog.locator(".pactspirit-selector-group h3").first()).toHaveText(
+    `${firstGroup} (${pactMatches("", firstGroup).length})`,
+  );
+  await expect(dialog.getByRole("button", { name: /^Dreamweaver\b/ })).toContainText("Dreamweaver");
+  await search.fill("  FIRE ");
+  await expect(dialog.locator(".pactspirit-choice")).toHaveCount(pactMatches("fire").length);
+  await category.selectOption("Fire");
+  await expect(dialog.locator(".pactspirit-choice")).toHaveCount(pactMatches("fire", "Fire").length);
+  await expect(dialog.locator(".pactspirit-selector-group h3")).toHaveCount(1);
+  await search.fill("zzz");
+  await expect(dialog.locator(".pactspirit-no-results")).toHaveText("No Pactspirits match your search.");
+  await planner.expectNoErrors();
+});
+
+test("the Pactspirit selector closes from × and Escape, and opens with its filters cleared", async ({ page }) => {
+  const { planner, pacts, dialog } = await openPactspiritSelector(page);
+  const search = dialog.getByRole("searchbox", { name: "Search pactspirits" });
+  const category = dialog.getByRole("combobox", { name: "Pactspirit category" });
+  await search.fill("fire");
+  await category.selectOption("Spell");
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await pacts.slotButton("Dreamweaver").click();
+  await expect(search).toHaveValue("");
+  await expect(category).toHaveValue("All");
+  await expect(dialog.locator(".pactspirit-choice")).toHaveCount(pactspiritCatalogSs13.length);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
   await planner.expectNoErrors();
 });
