@@ -523,7 +523,7 @@ export function calculateEquipmentCandidate(baselineItems, overrides, snapshot, 
 
 export function aggregateTalentEffects(talentSetup, ranks = {}) {
   const totals = {};
-  const add = (key, value) => { if (typeof value === "number") { totals[key] = round((totals[key] || 0) + value, 4); if (key === "additionalDamageTakenPercent") defenseSources.push({ type: "all", value }); } };
+  const add = (key, value) => { if (typeof value === "number") totals[key] = round((totals[key] || 0) + value, 4); };
   for (const panel of talentSetup.panels) {
     for (const node of panel.allocatedNodes) {
       const key = `${panel.name}:${node.coordinate}`;
