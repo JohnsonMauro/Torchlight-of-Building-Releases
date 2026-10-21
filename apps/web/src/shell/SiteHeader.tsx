@@ -1,92 +1,12 @@
 import type { ReactNode } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { openDialog } from "../ui/dialog-registry";
+import { StrokeIcon } from "../ui/StrokeIcon";
 
-// The page header: the brand, the workspace views and the open build's actions. The view tabs keep the "view-tab"
-// class and data-view (src/app/planner/workspace.js marks the active one); `site-header` is the find bar's anchor
-// (src/app/planner/find-bar.js). Narrow screens wrap the actions onto their own row and show their icons only.
-
-interface ViewTabProps {
-  view: string;
-  label: string;
-  icon: ReactNode;
-}
-
-const viewTabs: ViewTabProps[] = [
-  {
-    view: "talents",
-    label: "Build",
-    icon: (
-      <>
-        <path d="m13 3 8 8-3 3-8-8z" />
-        <path d="m11 8-7 7a2 2 0 0 0 3 3l7-7" />
-      </>
-    ),
-  },
-  {
-    view: "character",
-    label: "Stats",
-    icon: (
-      <>
-        <path d="M3 20h18M5 17v3m5-7v7m5-5v5m5-10v10" />
-        <path d="m4 11 5-4 5 3 6-6m-4 0h4v4" />
-      </>
-    ),
-  },
-  {
-    view: "configuration",
-    label: "Config",
-    icon: (
-      <>
-        <path
-          d="M10 2h4l.6 2.3 1.8.8 2.1-1.2 2.8 2.8-1.2 2.1.8 1.8L23 11v4l-2.3.6-.8 1.8 1.2 2.1-2.8 2.8-2.1-1.2-1.8.8L14 24h-4l-.6-2.3-1.8-.8-2.1 1.2-2.8-2.8 1.2-2.1-.8-1.8L1 15v-4l2.3-.6.8-1.8-1.2-2.1 2.8-2.8 2.1 1.2 1.8-.8z"
-          transform="translate(0 -1) scale(.92) translate(1 1)"
-        />
-        <circle cx="12" cy="12" r="3" />
-      </>
-    ),
-  },
-  {
-    view: "builds",
-    label: "Notes",
-    icon: (
-      <>
-        <path d="M5 3h12v13M8 7h6M8 10h4M5 3v18h11" />
-        <path d="m12 17 7-7 2 2-7 7-3 1z" />
-      </>
-    ),
-  },
-];
-
-function Icon({ children }: { children: ReactNode }) {
-  return (
-    <svg
-      className="size-4 shrink-0 fill-none stroke-current stroke-[1.8] [stroke-linecap:round] [stroke-linejoin:round]"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      {children}
-    </svg>
-  );
-}
-
-function ViewTab({ view, label, icon }: ViewTabProps) {
-  return (
-    <button
-      className={`view-tab group relative flex h-9 cursor-pointer items-center gap-2 rounded-md border-0 bg-transparent px-3 text-sm font-semibold text-muted transition-colors hover:bg-raised hover:text-text focus-visible:outline-2 focus-visible:outline-frost [&.active]:bg-raised [&.active]:text-ember ${view === "talents" ? "active" : ""}`}
-      type="button"
-      data-view={view}
-      title={label}
-    >
-      <Icon>{icon}</Icon>
-      <span>{label}</span>
-      <span
-        aria-hidden="true"
-        className="absolute inset-x-3 -bottom-[9px] h-0.5 rounded-full bg-ember opacity-0 group-[.active]:opacity-100"
-      />
-    </button>
-  );
-}
+// The page header: the planner's name and the open build's actions, over a gold hairline. `site-header` is the find
+// bar's anchor (src/app/planner/find-bar.js); the workspace views sit in the rail beside the page (ViewRail), which
+// starts under the header, so the header keeps a fixed height: 66px, or 108px on phones, where the actions (icons only
+// below lg) wrap under the name.
 
 interface ActionProps {
   id?: string;
@@ -102,37 +22,38 @@ function Action({ id, label, title, icon, danger, onClick, view }: ActionProps) 
   return (
     <button
       id={id}
-      className={`flex h-9 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-frost ${
+      className={`flex h-[38px] items-center justify-center gap-1.5 px-[11px] text-[0.68rem] font-[650] uppercase ${
         danger
-          ? "border-ember/50 text-ember hover:bg-ember/15"
-          : "border-line bg-surface text-text hover:border-muted hover:bg-raised"
+          ? "cursor-pointer rounded-[3px] border border-[#c46b39] bg-[linear-gradient(180deg,#633025_0%,#43231f_50%,#251a1c_100%)] text-[#ffbd8b] shadow-[inset_0_1px_rgb(255_198_150/0.2),0_0_12px_rgb(197_78_37/0.14)] hover:border-[#e7a05d] hover:text-[#ffe0c4] focus-visible:border-[#e7a05d] focus-visible:outline-none"
+          : "btn-bronze"
       }`}
       type="button"
       title={title}
       data-view={view}
       onClick={onClick}
     >
-      <Icon>{icon}</Icon>
-      <span className="max-sm:sr-only">{label}</span>
+      <StrokeIcon className="size-4">{icon}</StrokeIcon>
+      <span className="max-lg:sr-only">{label}</span>
     </button>
   );
 }
 
 export function SiteHeader() {
   return (
-    <header className="site-header sticky top-0 z-20 flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-line bg-ink/95 px-4 py-2.5 shadow-[0_8px_30px_rgb(0_0_0/0.4)] backdrop-blur md:px-6">
-      <a className="flex items-baseline gap-3 no-underline" href="./" aria-label="Torchlight of Building home">
-        <span className="font-display text-xl font-semibold tracking-wide text-text">
-          Torchlight <span className="text-ember">of</span> Building
+    <header className="site-header sticky top-0 z-20 flex h-[66px] flex-wrap content-center items-center gap-x-3 gap-y-1.5 bg-[linear-gradient(180deg,rgb(20_24_31/0.98),rgb(10_14_20/0.96))] pr-[18px] pl-[22px] shadow-[0_8px_30px_rgb(0_0_0/0.42),inset_0_-1px_rgb(240_132_53/0.09)] max-sm:h-[108px] max-sm:px-3">
+      <a
+        className="flex shrink-0 items-baseline gap-3 no-underline max-sm:h-13 max-sm:items-center"
+        href="./"
+        aria-label="Torchlight of Building home"
+      >
+        <span className="text-gilded font-display text-xl font-black tracking-[0.06em] uppercase max-sm:text-lg">
+          Torchlight of Building
         </span>
-        <span className="text-[0.7rem] font-semibold tracking-[0.22em] text-muted uppercase">SS14 · Tartarus</span>
+        <span className="text-[0.7rem] font-semibold tracking-[0.22em] text-[#c9b58d] uppercase max-md:hidden">
+          SS14 · Tartarus
+        </span>
       </a>
-      <nav className="flex gap-1 max-lg:order-last max-lg:w-full max-lg:overflow-x-auto" aria-label="Builder sections">
-        {viewTabs.map((tab) => (
-          <ViewTab key={tab.view} {...tab} />
-        ))}
-      </nav>
-      <div className="header-actions ml-auto flex flex-wrap gap-1.5">
+      <div className="header-actions ml-auto flex gap-1.5 max-sm:mr-auto max-sm:ml-0">
         <Action
           label="Builds"
           view="builds"
@@ -179,6 +100,10 @@ export function SiteHeader() {
           icon={<path d="M4 11a8 8 0 1 1 2.3 6M4 4v7h7" />}
         />
       </div>
+      <span
+        aria-hidden="true"
+        className="absolute inset-x-0 -bottom-px h-px bg-[linear-gradient(90deg,#f9ca65_0%,#e8ad4f_38%,#9a6d37_75%,#59452f_100%)]"
+      />
     </header>
   );
 }

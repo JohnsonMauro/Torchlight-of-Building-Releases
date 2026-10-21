@@ -1,5 +1,6 @@
 import { SiteHeader } from "./SiteHeader";
 import { LoadoutStrip } from "./LoadoutStrip";
+import { ViewRail } from "./ViewRail";
 import { BuildsView } from "./views/BuildsView";
 import { CharacterView } from "./views/CharacterView";
 import { SkillsView } from "./views/SkillsView";
@@ -42,8 +43,10 @@ export function AppShell() {
   return (
     <>
       <SiteHeader />
+      <ViewRail />
       <LoadoutStrip />
-      <main className="mx-auto w-full max-w-[1720px] px-3 pt-4 pb-16 md:px-5">
+      {/* The Build view (body.unified-planner) lays its sections on a two-column grid; the other views show one, padded. */}
+      <main className="mr-5 ml-16 pt-4 in-[.unified-planner]:grid in-[.unified-planner]:grid-cols-2 in-[.unified-planner]:items-start in-[.unified-planner]:gap-3 max-[900px]:in-[.unified-planner]:grid-cols-1 max-[760px]:mr-3 max-[760px]:ml-19 max-[760px]:pt-5.5 in-[body:not(.unified-planner)]:px-8.5 in-[body:not(.unified-planner)]:pt-8.5 in-[body:not(.unified-planner)]:pb-17.5 max-[760px]:in-[body:not(.unified-planner)]:mr-0 max-[760px]:in-[body:not(.unified-planner)]:ml-16 max-[760px]:in-[body:not(.unified-planner)]:px-3.5 max-[760px]:in-[body:not(.unified-planner)]:pt-5.5 max-[760px]:in-[body:not(.unified-planner)]:pb-22.5">
         <BuildsView />
         <CharacterView />
         <SkillsView />

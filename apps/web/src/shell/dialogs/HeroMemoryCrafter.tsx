@@ -13,9 +13,30 @@ import type {
 } from "@legacy/app/bridge/hero-memory-view.ts";
 import { CommitNumberInput } from "../../ui/CommitNumberInput";
 import { LiveNumberInput } from "../../ui/LiveNumberInput";
+import { rarityArt } from "../../features/hero/hero-classes";
+import {
+  affixRow,
+  choiceRow,
+  crafterForm,
+  memoryAccent,
+  previewCard,
+  rarityButton,
+  rollControls,
+  switchInput,
+  switchRow,
+  tierBadge,
+  tierButton,
+  typeButton,
+} from "./hero-memory-classes";
+import { numberField, rangeField } from "./selector-classes";
 
 const commands = plannerCommands;
-const tierBadgeClass = (badge: string) => `affix-tier-badge tier-${badge.toLowerCase().replace("+", "plus")}`;
+const craftAction =
+  "btn-bronze min-h-10 flex-1 text-[0.72rem] font-extrabold tracking-[0.08em] uppercase off:cursor-not-allowed off:opacity-50";
+const tierBadgeClass = (badge: string) => {
+  const key = badge.toLowerCase().replace("+", "plus");
+  return `affix-tier-badge tier-${key} ${tierBadge(key)}`;
+};
 
 function RollControls({
   roll,
@@ -27,9 +48,10 @@ function RollControls({
   onValue: (value: number) => void;
 }) {
   return (
-    <div className="memory-roll-controls">
+    <div className={`memory-roll-controls ${rollControls}`}>
       <input
         type="range"
+        className={rangeField}
         min={roll.min}
         max={roll.max}
         value={roll.value}
@@ -37,6 +59,7 @@ function RollControls({
         onChange={(event) => onValue(Number(event.target.value))}
       />
       <LiveNumberInput
+        className={numberField}
         min={roll.min}
         max={roll.max}
         step={1}
@@ -59,9 +82,10 @@ function TierValueControls({
   // The typed number shows the chosen tier's again once applied, as the planner's re-render did.
   const [commits, setCommits] = useState(0);
   return (
-    <div className="memory-roll-controls">
+    <div className={`memory-roll-controls ${rollControls}`}>
       <input
         type="range"
+        className={rangeField}
         min={0}
         max={tierValue.count - 1}
         step={1}
@@ -70,6 +94,7 @@ function TierValueControls({
         onChange={(event) => commands().setMemoryTierPosition(line.group, line.index, Number(event.target.value))}
       />
       <CommitNumberInput
+        className={numberField}
         key={`${tierValue.value}:${commits}`}
         min={tierValue.min}
         max={tierValue.max}
@@ -103,12 +128,12 @@ function AffixLine({ line, onTier }: { line: MemoryAffixLineView; onTier: (focus
         ))}
       </select>
       {line.tiers.length ? (
-        <span className="memory-tier-row">
+        <span className="memory-tier-row flex gap-0.75">
           {line.tiers.map((tier) => (
             <button
               key={tier.tier}
               type="button"
-              className={tier.active ? "active" : ""}
+              className={`${tier.active ? "active" : ""} ${tierButton}`}
               onClick={() => {
                 // The tier's roll value (or, without a roll, the tier's number) takes the focus, as in the planner.
                 onTier([`${line.label} roll value`, `${line.label} tier value`]);
@@ -135,22 +160,37 @@ function AffixLine({ line, onTier }: { line: MemoryAffixLineView; onTier: (focus
 
 function RevivedEffect({ effect }: { effect: MemoryRevivedEffectView }) {
   return (
-    <div className={`memory-revived-effect ${effect.special ? "special" : ""}`}>
+    <div
+      className={`memory-revived-effect ${effect.special ? "special" : ""} flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 whitespace-pre-line`}
+    >
       {effect.tierBadge ? <i className={tierBadgeClass(effect.tierBadge)}>{effect.tierBadge}</i> : null}
-      <span className="memory-revived-name">{effect.effect}</span>
+      <span
+        className={`memory-revived-name ${effect.special ? "font-bold text-[#75d8f6] underline underline-offset-2" : ""}`}
+      >
+        {effect.effect}
+      </span>
       {effect.details ? (
         <>
-          <small className="memory-revived-hint">Hold Alt for details</small>
-          <div className="memory-revived-detail">
-            <ul>
+          <small className="memory-revived-hint text-[0.64rem] whitespace-nowrap text-[#a8bac7]">
+            Hold Alt for details
+          </small>
+          <div className="memory-revived-detail mt-1.25 hidden basis-full border-l-2 border-[#75d8f6] bg-[#12232b] px-2 py-1.75 font-[Arial,sans-serif] text-[0.72rem] leading-[1.45] whitespace-normal text-[#d8eaf0] [.revival-alt-held_&]:block">
+            <ul className="grid gap-1.25">
               {effect.details.effects.map((line, index) => (
-                <li key={index}>{line}</li>
+                <li
+                  key={index}
+                  className="relative pl-2.5 before:absolute before:top-[0.48em] before:left-0 before:size-1 before:rounded-full before:bg-[#75d8f6] before:content-['']"
+                >
+                  {line}
+                </li>
               ))}
             </ul>
             {effect.details.exclusive !== null ? (
-              <div className="memory-revived-exclusive">
-                <small>Hero trait exclusive</small>
-                <span>{effect.details.exclusive}</span>
+              <div className="memory-revived-exclusive mt-2.25 grid gap-0.5 border-t border-[#365463] pt-1.75 text-[#bcd4df]">
+                <small className="text-[0.6rem] font-bold tracking-[0.04em] text-[#75d8f6] uppercase">
+                  Hero trait exclusive
+                </small>
+                <span className="text-[0.67rem] leading-[1.35]">{effect.details.exclusive}</span>
               </div>
             ) : null}
           </div>
@@ -166,7 +206,7 @@ function AffixRows({ heading, rows }: { heading: string; rows: MemoryPreviewView
     <>
       <h4>{heading}</h4>
       {rows.map((row) => (
-        <div key={row.index} className="memory-affix-row">
+        <div key={row.index} className={`memory-affix-row ${affixRow}`}>
           {row.tier !== null ? <i className={tierBadgeClass(`T${row.tier}`)}>{`T${row.tier}`}</i> : null}
           <span>{row.text}</span>
         </div>
@@ -178,28 +218,32 @@ function AffixRows({ heading, rows }: { heading: string; rows: MemoryPreviewView
 function Preview({ preview }: { preview: MemoryPreviewView }) {
   return (
     <>
-      <header>
-        <img src={preview.icon} alt="" />
+      <header className="flex items-center gap-2.5 border-b border-(--memory-accent) pb-2">
+        <img src={preview.icon} alt="" className="size-8.75 object-contain" />
         <div>
-          <strong>{preview.type}</strong>
-          <small>{`${preview.rarity} · HERO MEMORY`}</small>
+          <strong className="block text-(--memory-accent)">{preview.type}</strong>
+          <small className="mt-0.75 block text-[#d7b99f] uppercase">{`${preview.rarity} · HERO MEMORY`}</small>
         </div>
       </header>
       {preview.revived ? (
-        <span className="memory-revival-badge">
-          <span aria-hidden="true">☾</span>
+        <span className="memory-revival-badge mt-2.25 mb-0.5 inline-flex w-max items-center gap-1 rounded-[3px] border border-[#7dc5ff] bg-[linear-gradient(90deg,#2568c4,#52abff)] px-2 py-0.5 font-[Arial,sans-serif] text-[0.67rem] font-bold tracking-[0.02em] text-white shadow-[0_1px_5px_#1e6bb666]">
+          <span className="text-[0.85rem] leading-[0.75]" aria-hidden="true">
+            ☾
+          </span>
           {" Revived"}
         </span>
       ) : null}
-      <p>
+      <p className="mt-1.5">
         <span>{preview.enhancement}</span>
         <br />
         <span data-memory-trait-preview="">
-          Trait Level <b className="memory-trait-bonus">{`+${preview.traitBonus}`}</b>
+          Trait Level <b className="memory-trait-bonus font-bold text-[#70d88a]">{`+${preview.traitBonus}`}</b>
         </span>
       </p>
       <h4>Implicit</h4>
-      <div className={`memory-implicit ${preview.waxAndWane ? "wax-applied" : ""}`}>{preview.implicit}</div>
+      <div className={`memory-implicit ${preview.waxAndWane ? "wax-applied font-bold text-[#72df92]" : ""}`}>
+        {preview.implicit}
+      </div>
       {preview.waxAndWane ? (
         <>
           <h4>Memory Revival</h4>
@@ -238,29 +282,29 @@ export function HeroMemoryCrafter({ view }: { view: MemoryCrafterView }) {
   };
   const count = (lines: MemoryAffixLineView[]) => lines.filter((line) => line.value).length;
   return (
-    <div className="hero-memory-craft">
-      <section className="hero-memory-form" ref={form}>
+    <div className="hero-memory-craft grid h-[min(690px,75vh)] grid-cols-[minmax(0,1.7fr)_minmax(240px,1fr)] gap-5.5 px-5.5 py-4 max-[700px]:h-[min(700px,78vh)] max-[700px]:grid-cols-1 max-[700px]:overflow-auto">
+      <section className={`hero-memory-form ${crafterForm}`} ref={form}>
         <label>Memory Type</label>
-        <div className="hero-memory-choice-row memory-types">
+        <div className={`hero-memory-choice-row memory-types ${choiceRow}`}>
           {view.types.map((type) => (
             <button
               key={type.type}
               type="button"
-              className={type.active ? "active" : ""}
+              className={`${type.active ? "active" : ""} ${typeButton}`}
               onClick={() => commands().setMemoryType(type.type)}
             >
-              <img src={type.icon} alt="" />
+              <img src={type.icon} alt="" className="h-6.5 w-6 object-contain" />
               {type.type}
             </button>
           ))}
         </div>
         <label>Crafting Rarity *</label>
-        <div className="hero-memory-choice-row rarities">
+        <div className={`hero-memory-choice-row rarities ${choiceRow}`}>
           {view.rarities.map((rarity) => (
             <button
               key={rarity.value}
               type="button"
-              className={`memory-rarity-${rarity.value} ${rarity.active ? "active" : ""}`}
+              className={`memory-rarity-${rarity.value} ${rarity.active ? "active" : ""} ${rarityButton} ${memoryAccent(rarity.value)}`}
               onClick={() => commands().setMemoryRarity(rarity.value)}
             >
               {rarity.label}
@@ -283,10 +327,11 @@ export function HeroMemoryCrafter({ view }: { view: MemoryCrafterView }) {
           </select>
         </label>
         <label>
-          Enhancement Level <strong>{`Lv.${view.enhancement.level}`}</strong>
-          <span className="memory-roll-controls memory-enhancement-controls">
+          Enhancement Level <strong className="text-[#eaf0f6]">{`Lv.${view.enhancement.level}`}</strong>
+          <span className={`memory-roll-controls memory-enhancement-controls ${rollControls}`}>
             <input
               type="range"
+              className={rangeField}
               min={1}
               max={view.enhancement.max}
               value={view.enhancement.level}
@@ -294,6 +339,7 @@ export function HeroMemoryCrafter({ view }: { view: MemoryCrafterView }) {
               onChange={(event) => commands().setMemoryField("enhancementLevel", Number(event.target.value))}
             />
             <LiveNumberInput
+              className={numberField}
               min={1}
               max={view.enhancement.max}
               step={1}
@@ -304,18 +350,20 @@ export function HeroMemoryCrafter({ view }: { view: MemoryCrafterView }) {
           </span>
         </label>
         <h3>Memory Revival</h3>
-        <label className="memory-wax">
+        <label className={`memory-wax ${switchRow}`}>
           <span>Wax and Wane (+30% base stat)</span>
           <input
             type="checkbox"
+            className={switchInput}
             checked={view.waxAndWane}
             onChange={(event) => commands().setMemoryField("waxAndWane", event.target.checked)}
           />
         </label>
-        <label className="memory-wax">
+        <label className={`memory-wax ${switchRow}`}>
           <span>Rising Moon (T0 fixed affixes)</span>
           <input
             type="checkbox"
+            className={switchInput}
             checked={view.risingMoon}
             onChange={(event) => commands().setMemoryField("risingMoon", event.target.checked)}
           />
@@ -347,13 +395,13 @@ export function HeroMemoryCrafter({ view }: { view: MemoryCrafterView }) {
           </select>
         </label>
         {view.revived.tiers ? (
-          <div className="memory-revived-controls">
-            <span className="memory-tier-row">
+          <div className="memory-revived-controls grid gap-2">
+            <span className="memory-tier-row flex gap-0.75">
               {view.revived.tiers.map((tier) => (
                 <button
                   key={tier.tier}
                   type="button"
-                  className={tier.active ? "active" : ""}
+                  className={`${tier.active ? "active" : ""} ${tierButton}`}
                   onClick={() => {
                     onTier(["Revived affix roll value"]);
                     commands().setRevivedTier(tier.tier);
@@ -364,9 +412,10 @@ export function HeroMemoryCrafter({ view }: { view: MemoryCrafterView }) {
               ))}
             </span>
             {view.revived.roll ? (
-              <div className="memory-roll-controls">
+              <div className={`memory-roll-controls ${rollControls}`}>
                 <input
                   type="range"
+                  className={rangeField}
                   min={view.revived.roll.min}
                   max={view.revived.roll.max}
                   value={view.revived.roll.value}
@@ -374,6 +423,7 @@ export function HeroMemoryCrafter({ view }: { view: MemoryCrafterView }) {
                   onChange={(event) => commands().setMemoryField("revivedRoll", Number(event.target.value))}
                 />
                 <LiveNumberInput
+                  className={numberField}
                   min={view.revived.roll.min}
                   max={view.revived.roll.max}
                   step={1}
@@ -394,22 +444,26 @@ export function HeroMemoryCrafter({ view }: { view: MemoryCrafterView }) {
           <AffixLine key={line.index} line={line} onTier={onTier} />
         ))}
       </section>
-      <aside>
+      <aside className="flex min-h-0 flex-col text-[0.75rem] text-[#aeb9c5]">
         <span>Preview</span>
-        <div className={`hero-memory-preview memory-rarity-${view.previewRarity}`}>
+        <div
+          className={`hero-memory-preview memory-rarity-${view.previewRarity} ${previewCard} ${rarityArt(view.previewRarity) || "border-[#5b4838] bg-[#271b16]"} ${memoryAccent(view.previewRarity)}`}
+        >
           {view.preview ? (
             <Preview preview={view.preview} />
           ) : (
-            <p className="hero-memory-preview-empty">Select a base stat to preview memory</p>
+            <p className="hero-memory-preview-empty grid min-h-37.5 place-items-center text-center text-[#a3acb7]">
+              Select a base stat to preview memory
+            </p>
           )}
         </div>
-        <div className="hero-memory-craft-actions">
-          <button type="button" className="button button-secondary" onClick={() => commands().cancelMemoryCraft()}>
+        <div className="hero-memory-craft-actions mt-auto flex gap-2.5 pt-3">
+          <button type="button" className={craftAction} onClick={() => commands().cancelMemoryCraft()}>
             Cancel
           </button>
           <button
             type="button"
-            className="button"
+            className={craftAction}
             disabled={!view.canSave}
             onClick={() => commands().saveMemoryCraft()}
           >

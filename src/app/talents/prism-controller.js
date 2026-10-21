@@ -18,6 +18,7 @@ import { escapeHtml } from "../html.js";
 import { $, showToast } from "../planner/page.js";
 import { persistPlannerState, plannerState, renderCandidateViews, talentRanks } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
+import { prismClasses } from "../tooltips/tooltip-kind-classes.js";
 import { prismIcon, prismName } from "./prism-icons.js";
 import {
   clearInverseReflectedRanks,
@@ -93,7 +94,7 @@ function prismAffixSections(item, showCoverage = false) {
   return prismAffixSectionsView(item)
     .map(
       (section) =>
-        `<section class="prism-affix-section ${section.className}"><h4>${section.heading}</h4>${section.lines
+        `<section class="prism-affix-section ${section.className} ${prismClasses.section} ${prismClasses.sectionEdge[section.className] || ""}"><h4>${section.heading}</h4>${section.lines
           .map((line) =>
             "value" in line
               ? `<p>${escapeHtml(line.label)}: <strong class="${line.sign}">${line.value}</strong> ${badge(line.kind)}</p>`
@@ -105,7 +106,7 @@ function prismAffixSections(item, showCoverage = false) {
 }
 export function prismTooltipHtml(item) {
   const icon = prismIcon(item);
-  return `<div class="prism-tooltip-head">${icon ? `<img src="${icon}" alt="">` : ""}<strong>${escapeHtml(prismName(item))}</strong><small>${item.type === "inverse" ? "Inverse Image" : "Ethereal Prism"}</small></div><div class="prism-tooltip-body"><p class="prism-effect-area">Effect Area: <strong>${prismArea(item)}</strong> ${coverageBadge("Planner only")}</p>${prismAffixSections(item, true)}</div><footer>Click to change · Right-click to remove</footer>`;
+  return `<div class="prism-tooltip-head ${prismClasses.head}">${icon ? `<img class="${prismClasses.icon}" src="${icon}" alt="">` : ""}<strong class="${prismClasses.title}">${escapeHtml(prismName(item))}</strong><small class="${prismClasses.kicker}">${item.type === "inverse" ? "Inverse Image" : "Ethereal Prism"}</small></div><div class="prism-tooltip-body ${prismClasses.body}"><p class="prism-effect-area ${prismClasses.area}">Effect Area: <strong>${prismArea(item)}</strong> ${coverageBadge("Planner only")}</p>${prismAffixSections(item, true)}</div><footer class="${prismClasses.footer}">Click to change · Right-click to remove</footer>`;
 }
 // The prism inventory's data (apps/web/src/shell/dialogs/PrismInventoryDialog.tsx) for the tree slot it is open for.
 function prismInventorySource() {

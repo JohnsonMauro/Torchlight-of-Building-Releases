@@ -12,8 +12,25 @@ import type {
   StarsView,
 } from "@legacy/app/bridge/skill-selector-view.ts";
 import { Artwork } from "../../ui/Artwork";
+import {
+  CONFIG_BLOCK,
+  CONFIG_HEADING,
+  CONFIG_PANEL,
+  LEVEL_CONTROL,
+  RANGE,
+  STAR_BUTTON,
+  SUPPORT_ART,
+  TIER_BUTTON,
+} from "./skill-selector-classes";
 
-const tierButtonsClass = (count: number) => `special-tier-buttons ${count === 4 ? "four-tiers" : ""}`;
+const tierButtonsClass = (count: number) =>
+  `special-tier-buttons grid gap-1.5 ${count === 4 ? "grid-cols-4" : "grid-cols-3"}`;
+const tierButtonClass = (active: boolean) => `${TIER_BUTTON}${active ? " active" : ""}`;
+// A tier button's second line (its roll range or note).
+const TIER_NOTE = "mt-0.5 block text-[0.62rem]";
+// A roll's label row: what it rolls, and its value.
+const ROLL_LABEL = "flex items-center justify-between gap-4";
+const ROLL_LABEL_TEXT = "max-w-3/4 text-[0.82rem]/[1.35] text-[#dbe2eb]";
 const signed = (value: number) => `${value >= 0 ? "+" : ""}${value}`;
 // The planner refreshes a range's fill on input/change events and on added range nodes (src/app/planner/range-fill.js updateRangeFill); a
 // tier change here keeps the same input and only moves its min, max and value, so the fill is set from them.
@@ -32,9 +49,10 @@ function RollInputs({
   output: string;
 }) {
   return (
-    <div className="special-roll-control">
+    <div className="special-roll-control grid grid-cols-[1fr_64px_46px] items-center gap-2">
       <input
         type="range"
+        className={RANGE}
         min={roll.min}
         max={roll.max}
         step={roll.step}
@@ -44,30 +62,31 @@ function RollInputs({
       />
       <input
         type="number"
+        className="h-8 rounded-[5px] border border-[#506078] bg-[#0d141e] text-center text-white"
         min={roll.min}
         max={roll.max}
         step={roll.step}
         value={roll.value}
         onChange={(event) => onChange(event.target.value)}
       />
-      <output>{output}</output>
+      <output className="text-right text-[#ff9a32]">{output}</output>
     </div>
   );
 }
 
 function Stars({ stars }: { stars: StarsView }) {
   return (
-    <div className="special-stars">
-      <span>
+    <div className="special-stars grid gap-2 border-t border-[#343e4c] pt-3">
+      <span className={CONFIG_HEADING}>
         <strong>Star level</strong>
-        <small>{`+${stars.bonus}% additional damage`}</small>
+        <small className="text-[0.72rem] text-[#ff8b2b]">{`+${stars.bonus}% additional damage`}</small>
       </span>
-      <div>
+      <div className="grid grid-cols-5 gap-1.25">
         {[1, 2, 3, 4, 5].map((count) => (
           <button
             key={count}
             type="button"
-            className={count === stars.value ? "active" : ""}
+            className={`${STAR_BUTTON}${count === stars.value ? " active" : ""}`}
             aria-label={`${count} stars`}
             onClick={() => plannerCommands().setSupportStars(count)}
           >
@@ -83,9 +102,9 @@ function Progression({ view }: { view: ProgressionView }) {
   const commands = plannerCommands;
   if (view.medium)
     return (
-      <section className="special-support-config activation-affix-config">
-        <div className="special-affix-block">
-          <div className="special-support-heading">
+      <section className={`special-support-config activation-affix-config ${CONFIG_PANEL}`}>
+        <div className={`special-affix-block ${CONFIG_BLOCK}`}>
+          <div className={`special-support-heading ${CONFIG_HEADING}`}>
             <strong>Set all affixes</strong>
             <span>{`Tier ${view.tier}`}</span>
           </div>
@@ -94,7 +113,7 @@ function Progression({ view }: { view: ProgressionView }) {
               <button
                 key={tier.tier}
                 type="button"
-                className={tier.active ? "active" : ""}
+                className={tierButtonClass(tier.active)}
                 onClick={() => commands().setProgressionTier(tier.tier)}
               >
                 {`T${tier.tier}`}
@@ -103,14 +122,14 @@ function Progression({ view }: { view: ProgressionView }) {
           </div>
         </div>
         {view.lines.map((line) => (
-          <div key={line.index} className="special-affix-block">
-            <div className="special-support-heading">
+          <div key={line.index} className={`special-affix-block ${CONFIG_BLOCK}`}>
+            <div className={`special-support-heading ${CONFIG_HEADING}`}>
               <strong>{`Affix ${line.number}`}</strong>
               <span>{line.tierText}</span>
             </div>
-            <p>{line.text}</p>
+            <p className="text-[0.95rem]">{line.text}</p>
             {line.choice ? (
-              <label className="activation-roll-kind activation-affix-choice">
+              <label className="grid grid-cols-[auto_1fr] items-center gap-3 text-[0.72rem] text-[#aeb8c5]">
                 <span>Affix stat</span>
                 <select
                   value={line.index}
@@ -129,11 +148,11 @@ function Progression({ view }: { view: ProgressionView }) {
                 <button
                   key={String(button.tier)}
                   type="button"
-                  className={button.active ? "active" : ""}
+                  className={tierButtonClass(button.active)}
                   onClick={() => commands().setAffixLineTier(line.index, button.tier)}
                 >
                   {button.label}
-                  <small>{button.small}</small>
+                  <small className={TIER_NOTE}>{button.small}</small>
                 </button>
               ))}
             </div>
@@ -150,9 +169,9 @@ function Progression({ view }: { view: ProgressionView }) {
       </section>
     );
   return (
-    <section className="special-support-config">
-      <div className="special-affix-block">
-        <div className="special-support-heading">
+    <section className={`special-support-config ${CONFIG_PANEL}`}>
+      <div className={`special-affix-block ${CONFIG_BLOCK}`}>
+        <div className={`special-support-heading ${CONFIG_HEADING}`}>
           <strong>{view.heading}</strong>
           <span>{`Tier ${view.tier}`}</span>
         </div>
@@ -161,15 +180,15 @@ function Progression({ view }: { view: ProgressionView }) {
             <button
               key={tier.tier}
               type="button"
-              className={tier.active ? "active" : ""}
+              className={tierButtonClass(tier.active)}
               onClick={() => commands().setProgressionTier(tier.tier)}
             >
               {`T${tier.tier}`}
-              <small>{tier.small}</small>
+              <small className={TIER_NOTE}>{tier.small}</small>
             </button>
           ))}
         </div>
-        <p>
+        <p className="text-[0.82rem]/[1.35] text-[#dbe2eb]">
           {view.text.map((line, index) => (
             <Fragment key={index}>
               {index ? <br /> : null}
@@ -202,9 +221,9 @@ function RollRow({
 }) {
   return (
     <>
-      <label className="special-roll-label">
-        <span>{roll.label}</span>
-        <strong>{output}</strong>
+      <label className={`special-roll-label ${ROLL_LABEL}`}>
+        <span className={ROLL_LABEL_TEXT}>{roll.label}</span>
+        <strong className="text-[#ff8b2b]">{output}</strong>
       </label>
       <RollInputs roll={roll} output={output} onChange={onChange} />
     </>
@@ -214,9 +233,9 @@ function RollRow({
 function Special({ view }: { view: SpecialView }) {
   const value = `${signed(view.roll.value)}%`;
   return (
-    <section className="special-support-config">
-      <div className="special-affix-block">
-        <div className="special-support-heading">
+    <section className={`special-support-config ${CONFIG_PANEL}`}>
+      <div className={`special-affix-block ${CONFIG_BLOCK}`}>
+        <div className={`special-support-heading ${CONFIG_HEADING}`}>
           <strong>Main affix</strong>
           <span>{`Tier ${view.tier}`}</span>
         </div>
@@ -225,17 +244,17 @@ function Special({ view }: { view: SpecialView }) {
             <button
               key={tier.tier}
               type="button"
-              className={tier.active ? "active" : ""}
+              className={tierButtonClass(tier.active)}
               onClick={() => plannerCommands().setSpecialTier(tier.tier)}
             >
               {`T${tier.tier}`}
-              <small>{tier.small}</small>
+              <small className={TIER_NOTE}>{tier.small}</small>
             </button>
           ))}
         </div>
-        <label className="special-roll-label">
-          <span>{view.effect}</span>
-          <strong>{value}</strong>
+        <label className={`special-roll-label ${ROLL_LABEL}`}>
+          <span className={ROLL_LABEL_TEXT}>{view.effect}</span>
+          <strong className="text-[#ff8b2b]">{value}</strong>
         </label>
         <RollInputs roll={view.roll} output={value} onChange={(next) => plannerCommands().setSpecialRoll(next)} />
       </div>
@@ -254,14 +273,19 @@ export function SkillSelectorDetail({ view, levelText, onLevelText }: DetailProp
   const commit = () => plannerCommands().setSelectorLevel(levelText);
   return (
     <>
-      <div className="selector-level">
-        <strong>Skill Level:</strong>
-        <div>
-          <button type="button" onClick={() => plannerCommands().stepSelectorLevel(-1)}>
+      <div className="selector-level mb-4 flex items-center justify-between">
+        <strong className="text-[0.78rem] tracking-[0.06em] text-gold uppercase">Skill Level:</strong>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className={`${LEVEL_CONTROL} cursor-pointer hover:border-[#e7b35d] hover:text-[#fff1bd]`}
+            onClick={() => plannerCommands().stepSelectorLevel(-1)}
+          >
             −
           </button>
           <input
             type="number"
+            className={LEVEL_CONTROL}
             min={1}
             max={40}
             value={levelText}
@@ -271,7 +295,11 @@ export function SkillSelectorDetail({ view, levelText, onLevelText }: DetailProp
               if (event.key === "Enter") commit();
             }}
           />
-          <button type="button" onClick={() => plannerCommands().stepSelectorLevel(1)}>
+          <button
+            type="button"
+            className={`${LEVEL_CONTROL} cursor-pointer hover:border-[#e7b35d] hover:text-[#fff1bd]`}
+            onClick={() => plannerCommands().stepSelectorLevel(1)}
+          >
             +
           </button>
         </div>
@@ -280,7 +308,7 @@ export function SkillSelectorDetail({ view, levelText, onLevelText }: DetailProp
       {view.special ? <Special view={view.special} /> : null}
       <article className={`selector-preview ${view.previewClass}`}>
         <div className="selector-preview-head">
-          <Artwork src={view.icon} alt={view.name} className="support-art" />
+          <Artwork src={view.icon} alt={view.name} className={SUPPORT_ART} />
           <h3>{view.name}</h3>
           <small>{`Lv. ${view.level}`}</small>
           <div className="selector-tags">

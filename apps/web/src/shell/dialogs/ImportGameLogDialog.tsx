@@ -1,11 +1,33 @@
 // "Import from game" (the header's button): the game log the planner's local reader found, or the file picker; the
 // logins of the log, and the chosen one's summary; Import as new build. The planner opens it (looking the log up) and
 // announces the "gameLogImport" source; reading a file, choosing a login and importing are planner commands, and
-// closing it drops everything. The CSS styles the Import button by data-import-game-log-build, so it stays.
+// closing it drops everything.
 import { useEffect, useRef } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { GameLogFromView, GameLogSummaryView } from "@legacy/app/bridge/game-log-import-view.ts";
+import {
+  fieldControlClass,
+  fieldHelpClass,
+  fieldLabelClass,
+  plainDialogActionsClass,
+  plainDialogButtonClass,
+  plainDialogClass,
+  plainDialogTextClass,
+  plainDialogTitleClass,
+} from "../../ui/dialog-classes";
 import { useViewSource } from "../../ui/use-view-source";
+
+// A warning (older login, missing sections, changed build) and a step's heading.
+const CHANGED = "block text-[0.72rem] text-[#ffbd8b]";
+const STEP = "mt-4.5 mb-2 text-[0.76rem] font-bold text-[#f0c77e]";
+const NOTE = `mt-2.5 ${fieldHelpClass}`;
+const CODE = "text-[0.8rem] text-[#f0c77e] wrap-anywhere";
+// The counts table: right-aligned numbers, the section names on the left, gold column heads.
+const COUNTS =
+  "w-full border-collapse text-[0.78rem] [&_td]:border-b [&_td]:border-[#303b49] [&_td]:px-2 [&_td]:py-1.25 [&_td]:text-right [&_th]:border-b [&_th]:border-[#303b49] [&_th]:px-2 [&_th]:py-1.25 [&_th]:text-right [&_tbody_th]:text-left [&_tbody_th]:font-semibold [&_tbody_th]:text-[#e9dfd0] [&_thead_th]:text-[0.7rem] [&_thead_th]:font-bold [&_thead_th]:text-[#f0c77e] [&_thead_th:first-child]:text-left";
+// A login to choose; the chosen one (.active) gold-edged.
+const LOGIN =
+  "grid w-full cursor-pointer gap-0.75 rounded-[3px] border border-[#3a4352] bg-[#111922] px-2.75 py-2.25 text-left text-[0.78rem] text-[#e9dfd0] hover:brightness-117 focus-visible:outline-2 focus-visible:outline-gold on:border-gold on:bg-[linear-gradient(180deg,#2d2619,#151a20)]";
 
 function FromCell({ from }: { from: GameLogFromView }) {
   if (!from) return <td />;
@@ -13,7 +35,7 @@ function FromCell({ from }: { from: GameLogFromView }) {
     <td>
       {from.text}
       {from.stale ? (
-        <small className="game-log-changed" title={from.stale}>
+        <small className={CHANGED} title={from.stale}>
           from an older login; may be outdated
         </small>
       ) : null}
@@ -25,10 +47,12 @@ function Summary({ summary, selectedId }: { summary: GameLogSummaryView; selecte
   return (
     <>
       {summary.gaps ? (
-        <p className="game-log-changed">{`Some sections weren't in the game log: ${summary.gaps}. Log out and back in, then import again.`}</p>
+        <p className={`mt-2.5 ${CHANGED}`}>
+          {`Some sections weren't in the game log: ${summary.gaps}. Log out and back in, then import again.`}
+        </p>
       ) : null}
-      <p className="game-log-step">{`Snapshot from ${summary.stamp}`}</p>
-      <table className="game-log-counts">
+      <p className={STEP}>{`Snapshot from ${summary.stamp}`}</p>
+      <table className={COUNTS}>
         <thead>
           <tr>
             <th scope="col">Section</th>
@@ -49,32 +73,32 @@ function Summary({ summary, selectedId }: { summary: GameLogSummaryView; selecte
         </tbody>
       </table>
       {summary.changed ? (
-        <p className="game-log-changed">
+        <p className={`mt-2.5 ${CHANGED}`}>
           The build changed after this login. The game writes the build only at login, so log in again to import the
           current build.
         </p>
       ) : null}
       {summary.skipped.length ? (
         // Closed again for every login, as the planner's markup was.
-        <details key={selectedId ?? ""} className="game-log-skipped">
-          <summary>{`Not imported (${summary.skipped.length})`}</summary>
-          <ul>
+        <details key={selectedId ?? ""} className="game-log-skipped mt-3 text-[0.76rem]">
+          <summary className="cursor-pointer font-bold text-[#f0c77e]">{`Not imported (${summary.skipped.length})`}</summary>
+          <ul className="mt-2 max-h-55 overflow-auto pr-1">
             {summary.skipped.map((entry, index) => (
-              <li key={index}>
-                <b>{entry.section}</b>
+              <li key={index} className="border-b border-[#26303c] py-1.5 leading-[1.4] wrap-anywhere">
+                <b className="mr-1.5 text-[#f0c77e]">{entry.section}</b>
                 {` ${entry.item}`}
-                {entry.reason ? <small>{entry.reason}</small> : null}
+                {entry.reason ? <small className="block text-[#a9b5c4]">{entry.reason}</small> : null}
               </li>
             ))}
           </ul>
         </details>
       ) : null}
       {summary.notices.map((text, index) => (
-        <p key={index} className="game-log-provisional">
+        <p key={index} className={NOTE}>
           {text}
         </p>
       ))}
-      {summary.provisional ? <p className="game-log-provisional">{`Provisional: ${summary.provisional}`}</p> : null}
+      {summary.provisional ? <p className={NOTE}>{`Provisional: ${summary.provisional}`}</p> : null}
     </>
   );
 }
@@ -96,28 +120,30 @@ export function ImportGameLogDialog() {
     <dialog
       id="import-game-log-dialog"
       ref={dialog}
-      className="reset-build-confirm import-build-dialog import-game-log-dialog"
+      className={`${plainDialogClass} w-125`}
       aria-labelledby="import-game-log-title"
       onClose={() => plannerCommands().closeGameLogImport()}
     >
-      <h2 id="import-game-log-title">Import from game</h2>
-      <p id="import-game-log-found" className="game-log-found" hidden={!view?.found}>
+      <h2 id="import-game-log-title" className={plainDialogTitleClass}>
+        Import from game
+      </h2>
+      <p id="import-game-log-found" className={`game-log-found ${plainDialogTextClass}`} hidden={!view?.found}>
         {view?.found ? (
           <>
             {"Found "}
-            <strong>{view.found.name}</strong>
+            <strong className="text-[#ffe0a0]">{view.found.name}</strong>
             {` (updated ${view.found.updated})`}
           </>
         ) : null}
       </p>
-      <p id="import-game-log-auto-privacy" className="game-log-privacy" hidden={!view?.found}>
+      <p id="import-game-log-auto-privacy" className={`mt-2 ${fieldHelpClass}`} hidden={!view?.found}>
         Read from the game's log folder on this computer by the planner. Only build data is kept; nothing is uploaded or
         stored.
       </p>
-      <p className="game-log-choose" hidden={!view?.chooseOther}>
+      <p className="mt-1.5" hidden={!view?.chooseOther}>
         <button
           type="button"
-          className="game-log-link"
+          className="cursor-pointer text-[0.74rem] text-[#f0c77e] underline hover:text-gold-pale"
           onClick={() => {
             focusPicker.current = true;
             plannerCommands().showGameLogPicker();
@@ -126,16 +152,18 @@ export function ImportGameLogDialog() {
           Choose a different file…
         </button>
       </p>
-      <p className="game-log-picker" hidden={!picker}>
+      <p className={plainDialogTextClass} hidden={!picker}>
         {"Pick "}
-        <code>UE_game.log</code>
+        <code className={CODE}>UE_game.log</code>
         {" from "}
-        <code>{"<Torchlight Infinite>\\UE_game\\TorchLight\\Saved\\Logs"}</code>
+        <code className={CODE}>{"<Torchlight Infinite>\\UE_game\\TorchLight\\Saved\\Logs"}</code>
         {" (with Steam, by default "}
-        <code>C:\Program Files (x86)\Steam\steamapps\common\Torchlight Infinite\UE_game\TorchLight\Saved\Logs</code>).
-        The game writes your build to it each time you log in to a character.
+        <code className={CODE}>
+          C:\Program Files (x86)\Steam\steamapps\common\Torchlight Infinite\UE_game\TorchLight\Saved\Logs
+        </code>
+        ). The game writes your build to it each time you log in to a character.
       </p>
-      <label className="game-log-picker" hidden={!picker}>
+      <label className={`mt-4.5 grid gap-2 ${fieldLabelClass}`} hidden={!picker}>
         Game log
         <input
           // A new opening starts with no file chosen.
@@ -144,43 +172,51 @@ export function ImportGameLogDialog() {
           ref={fileInput}
           type="file"
           accept=".log"
+          className={`${fieldControlClass} font-normal file:mr-2.5 file:btn-bronze file:px-2.5 file:py-1 file:text-xs`}
           onChange={(event) => plannerCommands().chooseGameLogFile(event.target.files?.[0] ?? null)}
         />
       </label>
-      <p className="game-log-picker game-log-privacy" hidden={!picker}>
+      <p className={`mt-2 ${fieldHelpClass}`} hidden={!picker}>
         The log is read in this browser only. It is not uploaded or stored.
       </p>
-      <p id="import-game-log-reason" className="game-log-reason" hidden={!view?.reason}>
+      <p id="import-game-log-reason" className={`game-log-reason mt-2 ${fieldHelpClass}`} hidden={!view?.reason}>
         {view?.reason}
       </p>
-      <p id="import-game-log-status" className="game-log-status" role="status" aria-live="polite">
+      <p
+        id="import-game-log-status"
+        className={`text-[#ffbd8b] ${status ? "mt-3" : ""}`}
+        role="status"
+        aria-live="polite"
+      >
         {!status ? null : "text" in status ? (
           status.text
         ) : (
           <>
             <span>{status.message}</span>
-            {status.details ? <small className="game-log-details">{status.details}</small> : null}
+            {status.details ? (
+              <small className="game-log-details mt-1 block text-[0.7rem] text-[#a9b5c4]">{status.details}</small>
+            ) : null}
           </>
         )}
       </p>
       <div id="import-game-log-snapshots">
         {view?.logins.length ? (
           <>
-            <p className="game-log-step">Characters found in this log</p>
-            <ul className="game-log-snapshots">
+            <p className={STEP}>Characters found in this log</p>
+            <ul className="game-log-snapshots grid gap-1.5">
               {view.logins.map((login) => {
                 const selected = login.id === view.selectedId;
                 return (
                   <li key={login.id}>
                     <button
                       type="button"
-                      className={selected ? "active" : ""}
+                      className={`${selected ? "active" : ""} ${LOGIN}`}
                       aria-pressed={selected}
                       onClick={() => plannerCommands().selectGameLogSnapshot(login.id)}
                     >
-                      <strong>{login.title}</strong>
-                      <span>{login.when}</span>
-                      {login.changed ? <small className="game-log-changed">{login.changed}</small> : null}
+                      <strong className="text-[0.8rem] text-[#ffe0a0]">{login.title}</strong>
+                      <span className="text-[#aeb8c5]">{login.when}</span>
+                      {login.changed ? <small className={CHANGED}>{login.changed}</small> : null}
                     </button>
                   </li>
                 );
@@ -192,13 +228,14 @@ export function ImportGameLogDialog() {
       <div id="import-game-log-summary">
         {view?.summary ? <Summary summary={view.summary} selectedId={view.selectedId} /> : null}
       </div>
-      <div>
-        <button type="button" onClick={() => dialog.current?.close()}>
+      <div className={plainDialogActionsClass}>
+        <button type="button" className={plainDialogButtonClass} onClick={() => dialog.current?.close()}>
           Cancel
         </button>
         <button
           type="button"
           data-import-game-log-build=""
+          className={plainDialogButtonClass}
           disabled={!view?.summary}
           onClick={() => plannerCommands().importGameLogBuild()}
         >

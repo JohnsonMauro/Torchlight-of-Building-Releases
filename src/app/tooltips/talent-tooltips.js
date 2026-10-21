@@ -25,6 +25,7 @@ import { prismTooltipHtml } from "../talents/prism-controller.js";
 import { prismIcon, prismName } from "../talents/prism-icons.js";
 import { effectLabel, formatEffect, nodeTitle } from "../talents/talent-labels.js";
 import { currentTalentPanel, talentDisplayNodes } from "../talents/talent-trees.js";
+import { talentClasses as tc } from "./tooltip-kind-classes.js";
 
 // A core talent slot of the open tree, or the prism that replaces its core.
 export function coreTalentTooltipContent(element) {
@@ -79,7 +80,7 @@ export function coreTalentTooltipContent(element) {
               : refineCoverage("Not independently modeled", lines.join("\n"));
   return {
     talentType: isPrism ? "prism-core" : "core",
-    basicTalentHtml: `<div class="basic-talent-head"><span class="basic-talent-icon">${icon ? `<img src="${escapeHtml(icon)}" alt="">` : "✦"}</span><div><small>${escapeHtml(label)}</small><strong>${escapeHtml(title)}</strong></div><b>${escapeHtml(badge)}</b></div><div class="basic-talent-body core-talent-body">${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}${coverageBadge(coreStatus, isPrism ? prismAffixCoverageReason(installed, "base") : "")}${core?.name === "Subtle Impact" ? `<p>Damage over time only · Requires a Blur grant in the build and Blur enabled in Configuration. Conditional uptime is assumed.</p>` : core?.name === "Fueling" ? `<p>Nearby target assumed · Fire Resistance fixed at 0%.</p>` : core?.name === "True Flame" ? `<p>Fire hits only · Requires a modeled Ignite source and uses configured average Affliction.</p>` : ""}</div><footer>${escapeHtml(footer)}</footer>`,
+    basicTalentHtml: `<div class="basic-talent-head ${tc.head}"><span class="basic-talent-icon ${tc.icon}">${icon ? `<img src="${escapeHtml(icon)}" alt="">` : "✦"}</span><div><small class="${tc.kicker}">${escapeHtml(label)}</small><strong class="${tc.title}">${escapeHtml(title)}</strong></div><b class="${tc.badge}">${escapeHtml(badge)}</b></div><div class="basic-talent-body core-talent-body ${tc.coreBody}">${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}${coverageBadge(coreStatus, isPrism ? prismAffixCoverageReason(installed, "base") : "")}${core?.name === "Subtle Impact" ? `<p>Damage over time only · Requires a Blur grant in the build and Blur enabled in Configuration. Conditional uptime is assumed.</p>` : core?.name === "Fueling" ? `<p>Nearby target assumed · Fire Resistance fixed at 0%.</p>` : core?.name === "True Flame" ? `<p>Fire hits only · Requires a modeled Ignite source and uses configured average Affliction.</p>` : ""}</div><footer class="${tc.footer}">${escapeHtml(footer)}</footer>`,
   };
 }
 
@@ -104,7 +105,7 @@ export function talentNodeTooltipContent(element) {
   const effectRows = Object.entries(effects)
     .map(
       ([key, value]) =>
-        `<div class="basic-talent-effect"><span>${escapeHtml(effectLabel(key))}</span><strong>${escapeHtml(formatEffect(key, typeof value === "number" ? value * (node.effectsPerRank ? rank : 1) * inverseMultiplier : value))}</strong>${coverageBadge(talentEffectCoverage(key, value, rank))}</div>`,
+        `<div class="basic-talent-effect ${tc.effect}"><span class="${tc.effectLabel}">${escapeHtml(effectLabel(key))}</span><strong class="${tc.effectValue}">${escapeHtml(formatEffect(key, typeof value === "number" ? value * (node.effectsPerRank ? rank : 1) * inverseMultiplier : value))}</strong>${coverageBadge(talentEffectCoverage(key, value, rank))}</div>`,
     )
     .join("");
   let prismEffects = "";
@@ -115,7 +116,7 @@ export function talentNodeTooltipContent(element) {
         type === "legendary" ? "legendary" : type === "medium" ? "medium" : "micro",
       );
       prismEffects = node.reflectedFrom
-        ? `<section class="basic-talent-prism"><h4>Inverse Image <span>Reflected from ${escapeHtml(node.reflectedFrom)}</span></h4><div class="talent-prism-affix ${rank > 0 ? "active" : "inactive"}"><b>Fixed affix</b><p>${escapeHtml(titleCase(type))} Talent Effect Range: ${roll > 0 ? "+" : ""}${roll}%</p><small>${rank > 0 ? "Active on this reflected talent" : "Allocate this reflected talent to activate"}</small></div></section>`
+        ? `<section class="basic-talent-prism ${tc.prism}"><h4 class="${tc.prismHeading}">Inverse Image <span class="${tc.prismHeadingNote}">Reflected from ${escapeHtml(node.reflectedFrom)}</span></h4><div class="talent-prism-affix ${tc.affix} ${rank > 0 ? `active ${tc.affixOn}` : `inactive ${tc.affixOff}`}"><b class="${tc.affixTier}">Fixed affix</b><p class="${tc.affixText}">${escapeHtml(titleCase(type))} Talent Effect Range: ${roll > 0 ? "+" : ""}${roll}%</p><small class="${tc.affixReason}">${rank > 0 ? "Active on this reflected talent" : "Allocate this reflected talent to activate"}</small></div></section>`
         : "";
     } else {
       const bounds = prismAreaBounds(installed, prismCoordinate);
@@ -130,10 +131,10 @@ export function talentNodeTooltipContent(element) {
           (talentRanks.get(`${panel.name}:${candidate.coordinate}`) || 0) > 0,
       ).length;
       const affixes = prismNodeAffixes(installed, node.type, rank, activeLegendaryCount);
-      prismEffects = `<section class="basic-talent-prism"><h4>Prism effects <span>${escapeHtml(prismName(installed))}</span></h4>${affixes.length ? affixes.map((affix) => `<div class="talent-prism-affix ${affix.active ? "active" : "inactive"}"><b>${affix.tier} affix</b><p>${escapeHtml(affix.effect)} ${coverageBadge(affix.active ? prismAffixCoverage(installed, affix.tier === "Rare" ? "rareAffix" : "legendaryAffix") : "Inactive")}</p><small>${escapeHtml(affix.reason)}</small></div>`).join("") : '<p class="talent-prism-none">No node-specific affix applies to this talent.</p>'}</section>`;
+      prismEffects = `<section class="basic-talent-prism ${tc.prism}"><h4 class="${tc.prismHeading}">Prism effects <span class="${tc.prismHeadingNote}">${escapeHtml(prismName(installed))}</span></h4>${affixes.length ? affixes.map((affix) => `<div class="talent-prism-affix ${tc.affix} ${affix.active ? `active ${tc.affixOn}` : `inactive ${tc.affixOff}`}"><b class="${tc.affixTier}">${affix.tier} affix</b><p class="${tc.affixText}">${escapeHtml(affix.effect)} ${coverageBadge(affix.active ? prismAffixCoverage(installed, affix.tier === "Rare" ? "rareAffix" : "legendaryAffix") : "Inactive")}</p><small class="${tc.affixReason}">${escapeHtml(affix.reason)}</small></div>`).join("") : `<p class="talent-prism-none ${tc.prismNone}">No node-specific affix applies to this talent.</p>`}</section>`;
     }
   }
   return {
-    basicTalentHtml: `<div class="basic-talent-head"><span class="basic-talent-icon">${icon ? `<img src="${escapeHtml(icon)}" alt="">` : "✦"}</span><div><small>${escapeHtml(type === "legendary" ? "Legendary Medium Talent" : `${titleCase(type)} Talent`)}</small><strong>${escapeHtml(title)}</strong></div><b>${rank}/${max}</b></div><div class="basic-talent-body">${effectRows || `<p>${escapeHtml(node.description ? talentEffectText(node.description, rank, inverseMultiplier) : "Profession-tree node")}</p>${coverageBadge(talentLineCoverage(node.description || "", rank > 0))}`}</div>${prismEffects}<footer>${rank > 0 ? "Allocated" : element.classList.contains("locked") ? "Locked · prerequisites not met" : "Click to allocate"}</footer>`,
+    basicTalentHtml: `<div class="basic-talent-head ${tc.head}"><span class="basic-talent-icon ${tc.icon}">${icon ? `<img src="${escapeHtml(icon)}" alt="">` : "✦"}</span><div><small class="${tc.kicker}">${escapeHtml(type === "legendary" ? "Legendary Medium Talent" : `${titleCase(type)} Talent`)}</small><strong class="${tc.title}">${escapeHtml(title)}</strong></div><b class="${tc.badge}">${rank}/${max}</b></div><div class="basic-talent-body ${tc.body}">${effectRows || `<p>${escapeHtml(node.description ? talentEffectText(node.description, rank, inverseMultiplier) : "Profession-tree node")}</p>${coverageBadge(talentLineCoverage(node.description || "", rank > 0))}`}</div>${prismEffects}<footer class="${tc.footer}">${rank > 0 ? "Allocated" : element.classList.contains("locked") ? "Locked · prerequisites not met" : "Click to allocate"}</footer>`,
   };
 }

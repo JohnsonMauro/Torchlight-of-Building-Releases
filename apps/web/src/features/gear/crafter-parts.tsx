@@ -12,6 +12,33 @@ import type {
   SelectChoice,
 } from "@legacy/app/bridge/equipment-crafter-view.ts";
 import { LiveNumberInput } from "../../ui/LiveNumberInput";
+import {
+  CONTROL,
+  MOD_BOX,
+  MOD_BOX_CORRODED,
+  MOD_CHOICE,
+  MOD_HEAD,
+  MOD_TAG,
+  MOD_TAG_CORRODED,
+  RANGE,
+  RANGE_NEGATIVE,
+  RARITY_ART,
+  RARITY_VARS,
+  ROLL_NUMBER,
+  ROLL_ROW,
+  ROLL_VALUE,
+  TIER_BADGE,
+} from "./crafter-classes";
+
+// A keyword roll shows its keyword; holding Alt (body.revival-alt-held, src/app/tooltips/tooltip-host.js) shows its effect.
+const KEYWORD_NAME = "keyword-roll-name font-bold text-[#75d8f6] underline underline-offset-2";
+const KEYWORD_EFFECT = "keyword-roll-effect hidden [.revival-alt-held_&]:inline";
+// The item card: its rarity's art and colours (RARITY_VARS / RARITY_ART), a framed box per modifier section.
+const PREVIEW = `block rounded-[3px] border border-(--item-frame) p-5 text-center text-text shadow-[inset_0_0_0_3px_rgb(22_20_27/0.45)] ${RARITY_VARS} ${RARITY_ART}`;
+const MOD_SECTION =
+  "rounded-[5px] border border-[rgb(151_112_75/0.48)] bg-[rgb(18_13_10/0.38)] p-2.5 [.rarity-common:not(.item-level-100)_&]:border-[rgb(61_69_77/0.45)] [.rarity-common:not(.item-level-100)_&]:bg-white/20";
+const MOD_LINE =
+  "my-1.25 flex items-start gap-1.5 text-[0.95rem] whitespace-pre-line [&.corrosion-affix]:text-[#d9a3ff]";
 
 export function ModifierText({ text }: { text: ModifierTextView }) {
   if (text.kind === "plain") return <>{text.text}</>;
@@ -19,16 +46,16 @@ export function ModifierText({ text }: { text: ModifierTextView }) {
     return (
       <span className="keyword-roll">
         {text.inline.before}
-        <span className="keyword-roll-name">{text.keyword}</span>
+        <span className={KEYWORD_NAME}>{text.keyword}</span>
         {text.inline.after}
-        <span className="keyword-roll-effect">{text.effect}</span>
+        <span className={KEYWORD_EFFECT}>{text.effect}</span>
       </span>
     );
   return (
     <>
       <span className="keyword-roll">
-        <span className="keyword-roll-name">{text.keyword}</span>
-        <span className="keyword-roll-effect">{text.effect}</span>
+        <span className={KEYWORD_NAME}>{text.keyword}</span>
+        <span className={KEYWORD_EFFECT}>{text.effect}</span>
       </span>
       {text.rest}
     </>
@@ -37,23 +64,25 @@ export function ModifierText({ text }: { text: ModifierTextView }) {
 
 export function ItemPreview({ preview }: { preview: ItemPreviewView }) {
   return (
-    <article className={preview.className}>
-      <img src={preview.icon} alt="" />
-      <p>{preview.rarity}</p>
-      <h3>{preview.name}</h3>
-      <small>{preview.detail}</small>
-      <div className="item-mod-sections">
+    <article className={`${PREVIEW} ${preview.className}`}>
+      <img src={preview.icon} alt="" className="mx-auto h-36 w-28 object-contain" />
+      <p className="mt-1 text-[0.62rem] tracking-[0.12em] text-(--item-name) uppercase">{preview.rarity}</p>
+      <h3 className="mt-3 font-display text-[0.95rem] font-black text-(--item-name)">{preview.name}</h3>
+      <small className="mt-3 block text-[0.85rem] opacity-80">{preview.detail}</small>
+      <div className="mt-4 grid gap-2.25 text-left">
         {preview.sections.length ? (
           preview.sections.map((section, index) => (
-            <section key={index} className="item-mod-section">
-              <h4>
+            <section key={index} className={MOD_SECTION}>
+              <h4 className="mb-1.75 flex justify-between gap-2 text-[0.58rem] font-bold tracking-widest uppercase opacity-75">
                 {section.label}
-                {section.detail ? <small>{section.detail}</small> : null}
+                {section.detail ? <small className="tracking-normal normal-case">{section.detail}</small> : null}
               </h4>
               <ul>
                 {section.entries.map((entry, position) => (
-                  <li key={position} className={entry.className}>
-                    {entry.badge ? <i className={entry.badge.className}>{entry.badge.text}</i> : null}
+                  <li key={position} className={`${MOD_LINE} ${entry.className}`}>
+                    {entry.badge ? (
+                      <i className={`${TIER_BADGE} ${entry.badge.className}`}>{entry.badge.text}</i>
+                    ) : null}
                     <span>
                       <ModifierText text={entry.text} />
                     </span>
@@ -63,11 +92,16 @@ export function ItemPreview({ preview }: { preview: ItemPreviewView }) {
             </section>
           ))
         ) : (
-          <p>Configure affixes to preview this item.</p>
+          <p className="text-[0.82rem] opacity-80">Configure affixes to preview this item.</p>
         )}
       </div>
       {preview.source ? (
-        <a href={preview.source} target="_blank" rel="noreferrer">
+        <a
+          href={preview.source}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-block text-[#9aa8ff] underline"
+        >
           Open TLIDB source
         </a>
       ) : null}
@@ -114,10 +148,10 @@ export function RollInputs({
   } as CSSProperties;
   return (
     <>
-      <span className={`affix-roll-inputs${roll.negative ? " negative-roll" : ""}`}>
+      <span className={ROLL_ROW}>
         <input
           type="range"
-          className={roll.negative ? "negative-roll-range" : ""}
+          className={roll.negative ? RANGE_NEGATIVE : RANGE}
           min={roll.min}
           max={roll.max}
           step={roll.step}
@@ -127,7 +161,7 @@ export function RollInputs({
           onChange={(event) => onValue(Number(event.target.value))}
         />
         <LiveNumberInput
-          className="affix-roll-number"
+          className={`affix-roll-number ${ROLL_NUMBER}`}
           min={roll.min}
           max={roll.max}
           step={roll.step}
@@ -138,7 +172,7 @@ export function RollInputs({
           onCommit={(text) => onValue(Number(text), true)}
         />
       </span>
-      <em>{roll.value}</em>
+      <em className={ROLL_VALUE}>{roll.value}</em>
     </>
   );
 }
@@ -173,25 +207,27 @@ export function LegendaryModControl({
   onChange: (change: LegendaryLineChange) => void;
 }) {
   return (
-    <div className={`legendary-mod-control ${line.corroded ? "corrosion-affix" : ""}`}>
-      <span>
+    <div className={`legendary-mod-control ${line.corroded ? `corrosion-affix ${MOD_BOX_CORRODED}` : MOD_BOX}`}>
+      <span className={MOD_HEAD}>
         <button
           type="button"
+          className={`${line.corroded ? MOD_TAG_CORRODED : MOD_TAG} cursor-pointer off:cursor-default off:opacity-70`}
           {...{ [names.toggle]: line.index }}
           disabled={!line.canCorrode}
           onClick={() => onChange({ kind: "corrosion" })}
         >
           {line.corroded ? "Corroded" : "Normal"}
         </button>
-        <span {...{ [names.text]: line.index }}>
+        <span className="pt-0.5" {...{ [names.text]: line.index }}>
           <ModifierText text={line.text} />
         </span>
         {saved ? <input type="hidden" {...{ [saved.name]: line.index }} value={saved.value} /> : null}
       </span>
       {line.ring ? (
-        <label className="legendary-ring-choice">
+        <label className={MOD_CHOICE}>
           Ring effect
           <select
+            className={CONTROL}
             {...{ [names.ring]: "" }}
             value={line.ring}
             onChange={(event) => onChange({ kind: "ring", value: event.target.value === "right" ? "right" : "left" })}
@@ -202,9 +238,10 @@ export function LegendaryModControl({
         </label>
       ) : null}
       {line.placeholder ? (
-        <label className="legendary-ring-choice">
+        <label className={MOD_CHOICE}>
           Random roll
           <select
+            className={CONTROL}
             {...{ [names.placeholder]: line.index }}
             value={line.placeholder.value}
             onChange={(event) => onChange({ kind: "placeholder", value: event.target.value })}
@@ -214,9 +251,10 @@ export function LegendaryModControl({
         </label>
       ) : null}
       {line.tier ? (
-        <label className="legendary-ring-choice">
+        <label className={MOD_CHOICE}>
           Tier
           <select
+            className={CONTROL}
             {...{ [names.tier]: line.index }}
             value={line.tier.value}
             onChange={(event) => onChange({ kind: "tier", value: Number(event.target.value) })}
@@ -226,7 +264,7 @@ export function LegendaryModControl({
         </label>
       ) : null}
       {line.rolls.map((roll) => (
-        <label key={roll.rangeIndex}>
+        <label key={roll.rangeIndex} className="grid gap-1">
           <RollInputs
             roll={roll}
             attributes={{ [names.roll]: line.index, "data-range-index": roll.rangeIndex }}

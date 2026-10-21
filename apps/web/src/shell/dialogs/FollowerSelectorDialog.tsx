@@ -7,6 +7,20 @@ import { useRef } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { useSessionState } from "../../ui/use-session-state";
 import { useViewSource } from "../../ui/use-view-source";
+import { rarityArt, rarityText } from "../../features/hero/hero-classes";
+import {
+  emptyNote,
+  portraitCaption,
+  portraitCard,
+  portraitDialog,
+  portraitFallback,
+  portraitGrid,
+  portraitImage,
+  portraitName,
+  searchGlyph,
+  searchInput,
+  searchLabel,
+} from "./selector-classes";
 
 export function FollowerSelectorDialog() {
   const view = useViewSource("followerSelector");
@@ -18,55 +32,71 @@ export function FollowerSelectorDialog() {
     <dialog
       id="follower-selector"
       ref={dialog}
-      className="hero-selector-dialog follower-selector-dialog"
+      className={`hero-selector-dialog follower-selector-dialog ${portraitDialog}`}
       aria-labelledby="follower-selector-title"
       onClick={(event) => {
         if (event.target === event.currentTarget) event.currentTarget.close();
       }}
     >
-      <header>
-        <h2 id="follower-selector-title">Select Follower</h2>
-        <button type="button" aria-label="Close follower selector" onClick={() => dialog.current?.close()}>
+      <header className="dialog-head">
+        <h2 id="follower-selector-title" className="dialog-title">
+          Select Follower
+        </h2>
+        <button
+          type="button"
+          className="dialog-close"
+          aria-label="Close follower selector"
+          onClick={() => dialog.current?.close()}
+        >
           ×
         </button>
       </header>
-      <label className="hero-search">
-        <span aria-hidden="true">⌕</span>
+      <label className={`hero-search ${searchLabel}`}>
+        <span className={searchGlyph} aria-hidden="true">
+          ⌕
+        </span>
         <input
           id="follower-selector-search"
           type="search"
           placeholder="Search followers..."
           autoComplete="off"
           aria-label="Search followers"
+          className={searchInput}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
       </label>
-      <div id="follower-selector-grid" className="hero-selector-grid follower-selector-grid">
+      <div id="follower-selector-grid" className={`hero-selector-grid follower-selector-grid ${portraitGrid}`}>
         {!view ? null : cards.length ? (
           cards.map((card) => (
             <button
               key={`${card.followerId}:${card.rarityId}`}
               type="button"
-              className={`hero-selector-card follower-selector-card${card.tintClass} ${card.selected ? "selected" : ""}`}
+              className={`hero-selector-card follower-selector-card${card.tintClass} ${card.selected ? "selected" : ""} ${portraitCard(card.selected)}`}
               data-follower-tooltip={card.followerId}
               data-follower-tooltip-rarity={card.rarityId}
               aria-pressed={card.selected}
               onClick={() => plannerCommands().selectFollower(card.followerId, card.rarityId)}
             >
               {card.portrait ? (
-                <img src={card.portrait} alt="" />
+                <img
+                  src={card.portrait}
+                  alt=""
+                  className={`${portraitImage} ${rarityArt(card.rarityId) || "border-[#806037]"}`}
+                />
               ) : (
-                <span className="hero-card-fallback" aria-hidden="true">
+                <span className={`hero-card-fallback ${portraitFallback}`} aria-hidden="true">
                   {card.initials}
                 </span>
               )}
-              <strong>{card.name}</strong>
-              <small className={card.rarityClass}>{card.slotsText}</small>
+              <strong className={portraitName}>{card.name}</strong>
+              <small className={`${card.rarityClass} ${portraitCaption} ${rarityText(card.rarityId)}`}>
+                {card.slotsText}
+              </small>
             </button>
           ))
         ) : (
-          <p className="hero-selector-empty">No followers match that search.</p>
+          <p className={`hero-selector-empty ${emptyNote}`}>No followers match that search.</p>
         )}
       </div>
     </dialog>

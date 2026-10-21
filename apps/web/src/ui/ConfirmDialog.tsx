@@ -1,5 +1,13 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { setAutofocusAttribute } from "../shell/autofocus";
+import {
+  dangerDialogButtonClass,
+  plainDialogActionsClass,
+  plainDialogButtonClass,
+  plainDialogClass,
+  plainDialogTextClass,
+  plainDialogTitleClass,
+} from "./dialog-classes";
 
 interface ConfirmDialogProps {
   id: string;
@@ -12,11 +20,14 @@ interface ConfirmDialogProps {
   confirmLabel: string;
   onCancel: () => void;
   onConfirm: () => void;
-  /** Extra attributes for the confirm button (the planner's stylesheet styles some by their data-* name). */
+  /** Extra attributes for the confirm button (a data-* hook). */
   confirmProps?: Record<string, string>;
 }
 
-/** A modal yes/no question. The cancel button takes the focus when it opens; Escape counts as cancel. */
+/**
+ * A modal yes/no question whose yes is destructive (drawn in ember red). The cancel button takes the focus when it
+ * opens; Escape counts as cancel.
+ */
 export function ConfirmDialog({
   id,
   titleId,
@@ -41,20 +52,24 @@ export function ConfirmDialog({
     <dialog
       ref={dialog}
       id={id}
-      className="reset-build-confirm"
+      className={`${plainDialogClass} w-107.5`}
       aria-labelledby={titleId}
       aria-describedby={messageId}
       onClose={() => {
         if (open) onCancel();
       }}
     >
-      <h2 id={titleId}>{title}</h2>
-      <p id={messageId}>{message}</p>
-      <div>
-        <button type="button" ref={setAutofocusAttribute} onClick={onCancel}>
+      <h2 id={titleId} className={plainDialogTitleClass}>
+        {title}
+      </h2>
+      <p id={messageId} className={plainDialogTextClass}>
+        {message}
+      </p>
+      <div className={plainDialogActionsClass}>
+        <button type="button" ref={setAutofocusAttribute} className={plainDialogButtonClass} onClick={onCancel}>
           {cancelLabel}
         </button>
-        <button type="button" {...confirmProps} onClick={onConfirm}>
+        <button type="button" className={dangerDialogButtonClass} {...confirmProps} onClick={onConfirm}>
           {confirmLabel}
         </button>
       </div>

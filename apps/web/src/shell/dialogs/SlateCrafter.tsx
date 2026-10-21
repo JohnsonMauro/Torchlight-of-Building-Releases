@@ -13,6 +13,32 @@ import type {
   SlateSlotView,
   SlateTab,
 } from "@legacy/app/slates/slate-craft.ts";
+import {
+  familyTint,
+  MAX_DIVINITY_BADGE,
+  PREVIEW_CAPTION,
+  READONLY,
+  SLATE_AFFIX_FIELD,
+  SLATE_AFFIX_HEADING,
+  SLATE_AFFIX_ITEM,
+  SLATE_AFFIX_LIMITED,
+  SLATE_AFFIX_LIST,
+  SLATE_AFFIX_PREVIEW,
+  SLATE_AFFIX_ROW,
+  SLATE_AFFIX_TREE,
+  SLATE_ASIDE,
+  SLATE_BUTTON,
+  SLATE_CARD,
+  SLATE_CARD_ART,
+  SLATE_CARD_RARITY,
+  SLATE_CARD_TITLE,
+  SLATE_CHIP,
+  SLATE_FIELDSET,
+  SLATE_LAYOUT,
+  SLATE_LEGEND,
+  SLATE_SECTION,
+  SLATE_TRANSFORM,
+} from "./talent-slate-styles";
 
 const change = (craftChange: SlateCraftChange) => plannerCommands().changeSlateCrafter(craftChange);
 const TABS: [SlateTab, string][] = [
@@ -29,6 +55,22 @@ const dataAttributes = (data: Record<string, string> | null) =>
   );
 const turned = (transform: string | null) => (transform ? ({ transform } as CSSProperties) : undefined);
 
+const TAB =
+  "cursor-pointer rounded-[3px] border border-[#8d6937] bg-[linear-gradient(180deg,#3e3326,#1b2026)] px-3.25 py-2.25 text-[0.7rem] font-extrabold whitespace-nowrap text-[#e6c991] hover:border-[#e7b35d] hover:bg-[linear-gradient(180deg,#604525,#222329)] hover:text-[#fff1bd] focus-visible:border-[#e7b35d] focus-visible:outline-none on:border-[#e7b35d] on:bg-[linear-gradient(180deg,#604525,#222329)] on:text-[#fff1bd]";
+const SHAPE_PREVIEW =
+  "slate-shape-preview ml-3.5 grid size-18 flex-none place-items-center overflow-hidden rounded-lg border border-[#29313d] bg-[#0d1219] [&>img]:size-14.5 [&>img]:object-contain [&>img]:transition-transform";
+const SHAPE_CHOICE = `${SLATE_CHIP} grid size-17 flex-none place-items-center overflow-hidden p-1 [&>img]:size-14.5 [&>img]:object-contain`;
+/** A slate preview card's colours: a god's (its family tint), a Nether King's, or a legendary's. */
+const CARD_GOD = "border-[#66583b] border-b-[#25cdec] text-[#29bde9] [&>strong]:text-(--talent-emblem)";
+const CARD_NETHER = "border-[#6e4b2d] border-b-[#f66f18] text-[#f48127]";
+const CARD_LEGENDARY = "border-[#67482e] border-b-[#ff7818] text-[#ff8b32]";
+const LIMITED_NOTE = "block text-[0.62rem] text-[#ffd69a]";
+const CORE_AFFIX =
+  "-ml-1.75 rounded-r border-l-3 border-[#ffbd50] bg-[linear-gradient(90deg,rgb(255_175_52/0.16),rgb(255_175_52/0.035))] px-2 py-1.75";
+const CORE_BADGE =
+  "core-slate-badge mb-1.25 inline-block rounded-[3px] border border-[#ad7734] bg-[#3b2818] px-1.5 py-0.5 font-sans text-[0.59rem] leading-[1.2] font-bold tracking-[0.07em] text-[#ffce7a] uppercase";
+const EYEBROW = "text-gilded w-fit text-[0.7rem] font-extrabold tracking-[0.12em] uppercase";
+
 function AffixSelect({ slot, legendary }: { slot: SlateSlotView; legendary: boolean }) {
   return (
     <select
@@ -37,6 +79,7 @@ function AffixSelect({ slot, legendary }: { slot: SlateSlotView; legendary: bool
       }}
       {...(legendary ? { "data-legendary-affix": slot.index } : {})}
       aria-label={slot.ariaLabel ?? undefined}
+      className={SLATE_AFFIX_FIELD}
       value={slot.value}
       onChange={(event) => change({ kind: "slot", index: slot.index, value: event.target.value })}
     >
@@ -50,10 +93,10 @@ function AffixSelect({ slot, legendary }: { slot: SlateSlotView; legendary: bool
 }
 function Actions({ editing }: { editing: boolean }) {
   return (
-    <div className="slate-inventory-actions">
+    <div className="slate-inventory-actions mt-auto grid shrink-0 grid-cols-[1fr_1.45fr] gap-2.5 pt-3">
       <button
         type="button"
-        className="button button-secondary"
+        className={`${SLATE_BUTTON} min-h-11`}
         data-back-slate-inventory=""
         onClick={() => plannerCommands().backToSlateInventory()}
       >
@@ -61,7 +104,7 @@ function Actions({ editing }: { editing: boolean }) {
       </button>
       <button
         type="button"
-        className="button"
+        className={`${SLATE_BUTTON} min-h-11 text-[0.76rem]`}
         data-add-crafted-slate=""
         onClick={() => plannerCommands().addCraftedSlate()}
       >
@@ -72,10 +115,11 @@ function Actions({ editing }: { editing: boolean }) {
 }
 function TransformButtons({ rotate, flip }: { rotate: boolean; flip: boolean }) {
   return (
-    <div className="slate-transform-options">
+    <div className="slate-transform-options grid gap-1">
       {rotate ? (
         <button
           type="button"
+          className={SLATE_TRANSFORM}
           data-craft-transform="rotate"
           onClick={() => change({ kind: "transform", operation: "rotate" })}
         >
@@ -86,6 +130,7 @@ function TransformButtons({ rotate, flip }: { rotate: boolean; flip: boolean }) 
         <>
           <button
             type="button"
+            className={SLATE_TRANSFORM}
             data-craft-transform="flip-h"
             onClick={() => change({ kind: "transform", operation: "flip-h" })}
           >
@@ -93,6 +138,7 @@ function TransformButtons({ rotate, flip }: { rotate: boolean; flip: boolean }) 
           </button>
           <button
             type="button"
+            className={SLATE_TRANSFORM}
             data-craft-transform="flip-v"
             onClick={() => change({ kind: "transform", operation: "flip-v" })}
           >
@@ -107,7 +153,7 @@ function ShapePreview({ preview }: { preview: SlateCraftFormView["preview"] }) {
   const orientation = preview.orientation;
   return (
     <span
-      className="slate-shape-preview"
+      className={SHAPE_PREVIEW}
       {...(orientation
         ? {
             "data-rotation": String(orientation.rotation),
@@ -131,47 +177,48 @@ function CraftForm({ form, editing }: { form: SlateCraftFormView; editing: boole
   const limitedNote = (item: SlateAffixItemView) =>
     item.limited ? (
       <>
-        <strong className="max-divinity-badge" title="Only one copy of this effect is active across equipped slates">
+        <strong className={MAX_DIVINITY_BADGE} title="Only one copy of this effect is active across equipped slates">
           MAX ACTIVE DIVINITY: 1
         </strong>
-        <small>Duplicates on other slates do not stack.</small>
+        <small className={LIMITED_NOTE}>Duplicates on other slates do not stack.</small>
       </>
     ) : null;
   return (
-    <div className="slate-craft-layout">
-      <section>
-        <label className="slate-field">
+    <div className={`slate-craft-layout ${SLATE_LAYOUT}`}>
+      <section className={SLATE_SECTION}>
+        <label className="slate-field block text-[0.78rem] text-[#aeb7c5]">
           Name
           <input
             type="text"
+            className={`${SLATE_AFFIX_FIELD} mt-2`}
             data-slate-craft-name=""
             placeholder="Custom name (optional)"
             value={form.name}
             onChange={(event) => change({ kind: "name", value: event.target.value })}
           />
         </label>
-        <fieldset className="slate-craft-gods">
-          <legend>{form.nether ? "Nether King Type" : "God"}</legend>
+        <fieldset className={`slate-craft-gods flex flex-wrap gap-2 ${SLATE_FIELDSET}`}>
+          <legend className={SLATE_LEGEND}>{form.nether ? "Nether King Type" : "God"}</legend>
           {form.choices.map((choice) => (
             <button
               key={choice.value}
               type="button"
               {...(form.nether ? { "data-nether-slate-type": choice.value } : { "data-slate-god": choice.value })}
-              className={choice.active ? "active" : ""}
+              className={`${choice.active ? "active" : ""} ${SLATE_CHIP} px-3.25 py-2.25 text-[0.95rem]`}
               onClick={() => change({ kind: form.nether ? "netherType" : "god", value: choice.value })}
             >
               {choice.value}
             </button>
           ))}
         </fieldset>
-        <fieldset>
-          <legend>Shape &amp; Orientation</legend>
-          <div className="slate-shape-options native-slate-assets">
+        <fieldset className={SLATE_FIELDSET}>
+          <legend className={SLATE_LEGEND}>Shape &amp; Orientation</legend>
+          <div className="slate-shape-options native-slate-assets flex items-center gap-2.25 max-[760px]:flex-wrap">
             {form.shapes.map((shape) => (
               <button
                 key={shape.code}
                 type="button"
-                className={shape.active ? "active" : ""}
+                className={`${shape.active ? "active" : ""} ${SHAPE_CHOICE}`}
                 data-craft-shape={shape.code}
                 onClick={() => change({ kind: "shape", value: shape.code })}
               >
@@ -182,7 +229,7 @@ function CraftForm({ form, editing }: { form: SlateCraftFormView; editing: boole
             <TransformButtons rotate flip />
           </div>
           {form.nether ? (
-            <small>
+            <small className="mt-1.5 block text-[0.78rem] text-[#aeb7c5]">
               Block grows with filled Brand Talent Nodes
               <br />
               (0–1 → 1 block, 2 → 2, 3 → Authority)
@@ -190,20 +237,22 @@ function CraftForm({ form, editing }: { form: SlateCraftFormView; editing: boole
           ) : null}
         </fieldset>
         {form.authority ? (
-          <fieldset>
-            <legend>Authority Effect</legend>
-            <input className="slate-readonly" value={form.authority} readOnly />
-            <small>This slate has a fixed Authority effect</small>
-            <p className="slate-authority-copy">
+          <fieldset className={SLATE_FIELDSET}>
+            <legend className={SLATE_LEGEND}>Authority Effect</legend>
+            <input className={`slate-readonly ${READONLY} outline-none`} value={form.authority} readOnly />
+            <small className="my-1.5 block text-[0.78rem] text-[#aeb7c5]">
+              This slate has a fixed Authority effect
+            </small>
+            <p className={`slate-authority-copy ${READONLY} text-[#e7eaf0]`}>
               Divinity Slates on links between Divinities have 70% increased affix effect.
             </p>
           </fieldset>
         ) : null}
         {form.groups.map((group) => (
-          <fieldset key={group.title}>
-            <legend>{group.legend}</legend>
+          <fieldset key={group.title} className={SLATE_FIELDSET}>
+            <legend className={SLATE_LEGEND}>{group.legend}</legend>
             {group.slots.map((slot) => (
-              <label key={slot.index} className="slate-affix-row">
+              <label key={slot.index} className={SLATE_AFFIX_ROW}>
                 <span>{slot.label}</span>
                 <AffixSelect slot={slot} legendary={false} />
               </label>
@@ -211,22 +260,33 @@ function CraftForm({ form, editing }: { form: SlateCraftFormView; editing: boole
           </fieldset>
         ))}
       </section>
-      <aside>
-        <span>Preview</span>
-        <div className={form.card.className}>
-          <img src={form.card.art.src} alt={form.card.art.alt} style={turned(form.card.art.transform)} />
-          <strong>{form.card.title}</strong>
-          <small>{form.card.rarity}</small>
-          <div className="slate-craft-affix-preview" aria-live="polite">
+      <aside className={SLATE_ASIDE}>
+        <span className={`${PREVIEW_CAPTION} text-base`}>Preview</span>
+        <div
+          className={`${form.card.className} ${SLATE_CARD} grid-cols-[38px_1fr] ${form.nether ? CARD_NETHER : CARD_GOD}`}
+          style={familyTint(form.card.className)}
+        >
+          <img
+            src={form.card.art.src}
+            alt={form.card.art.alt}
+            className={SLATE_CARD_ART}
+            style={turned(form.card.art.transform)}
+          />
+          <strong className={SLATE_CARD_TITLE}>{form.card.title}</strong>
+          <small className={SLATE_CARD_RARITY}>{form.card.rarity}</small>
+          <div className={`${SLATE_AFFIX_PREVIEW} text-[#e6eaf0]`} aria-live="polite">
             {form.sections.length ? (
               form.sections.map((section) => (
                 <section key={section.title}>
-                  <h3>{section.title}</h3>
-                  <ul>
+                  <h3 className={SLATE_AFFIX_HEADING}>{section.title}</h3>
+                  <ul className={SLATE_AFFIX_LIST}>
                     {section.items.map((item, index) => (
-                      <li key={index} className={item.limited ? "max-one-divinity" : ""}>
-                        <small>{item.tree}</small>
-                        <span>{item.effect}</span>
+                      <li
+                        key={index}
+                        className={`${item.limited ? `max-one-divinity ${SLATE_AFFIX_LIMITED}` : ""} ${SLATE_AFFIX_ITEM}`}
+                      >
+                        <small className={SLATE_AFFIX_TREE}>{item.tree}</small>
+                        <span className="block">{item.effect}</span>
                         {limitedNote(item)}
                       </li>
                     ))}
@@ -239,9 +299,9 @@ function CraftForm({ form, editing }: { form: SlateCraftFormView; editing: boole
           </div>
           {form.authority ? (
             <>
-              <hr />
-              <em>AUTHORITY</em>
-              <b>{form.authority}</b>
+              <hr className="col-span-full mt-2.5 border-[#35404d]" />
+              <em className="col-span-full mt-2.5 text-[0.65rem] text-[#a98d7c] not-italic">AUTHORITY</em>
+              <b className="col-span-full text-[0.76rem] text-[#eee]">{form.authority}</b>
             </>
           ) : null}
         </div>
@@ -259,18 +319,22 @@ function LegendaryForm({ form, editing }: { form: SlateLegendaryFormView; editin
       ? {}
       : { "data-legendary-copy-preview": "" };
   return (
-    <div className="slate-craft-layout slate-legendary-detail">
-      <section>
-        <p className="eyebrow">Legendary Template</p>
-        <div className="slate-legendary-selection">
-          <img src={form.icon} alt="" />
-          <div>
-            <strong>{form.name}</strong>
-            <small>Selected Legendary</small>
+    <div className={`slate-craft-layout slate-legendary-detail ${SLATE_LAYOUT}`}>
+      <section className={SLATE_SECTION}>
+        <p className={`${EYEBROW} mb-2`}>Legendary Template</p>
+        <div className="slate-legendary-selection flex min-h-19 items-center gap-3.5 rounded-lg border border-[#29313d] bg-[#1b2231] px-3.5 py-2.5">
+          <img
+            src={form.icon}
+            alt=""
+            className="size-16 flex-none rounded-[7px] border border-[#a67736] bg-[#151a22] object-contain p-1.25"
+          />
+          <div className="min-w-0 flex-1">
+            <strong className="text-gilded block w-fit text-[1.05rem]">{form.name}</strong>
+            <small className="mt-1.25 block text-[0.7rem] text-[#9ca8b8]">Selected Legendary</small>
           </div>
           <button
             type="button"
-            className="button button-secondary"
+            className={SLATE_BUTTON}
             data-change-slate-template=""
             onClick={() => change({ kind: "changeTemplate" })}
           >
@@ -278,12 +342,12 @@ function LegendaryForm({ form, editing }: { form: SlateLegendaryFormView; editin
           </button>
           <button type="button" className="active" data-slate-template={form.name} hidden />
         </div>
-        <fieldset>
-          <legend>Shape &amp; Orientation</legend>
-          <div className="slate-shape-options">
+        <fieldset className={SLATE_FIELDSET}>
+          <legend className={SLATE_LEGEND}>Shape &amp; Orientation</legend>
+          <div className="slate-shape-options flex items-center gap-2.25">
             <button
               type="button"
-              className="active"
+              className={`active ${SHAPE_CHOICE}`}
               data-craft-shape={form.shape.code}
               onClick={() => change({ kind: "shape", value: form.shape.code })}
             >
@@ -293,22 +357,28 @@ function LegendaryForm({ form, editing }: { form: SlateLegendaryFormView; editin
             {form.transforms ? (
               <TransformButtons rotate={form.transforms.rotate} flip={form.transforms.flip} />
             ) : (
-              <small className="slate-transform-note">Orientation is fixed</small>
+              <small className="slate-transform-note self-center text-[0.72rem] text-[#a7b1bc]">
+                Orientation is fixed
+              </small>
             )}
           </div>
         </fieldset>
-        <fieldset>
-          <legend>{form.legend}</legend>
+        <fieldset className={SLATE_FIELDSET}>
+          <legend className={SLATE_LEGEND}>{form.legend}</legend>
           {form.notice ? (
-            <p className="notice" data-pedigree-slot-notice="">
+            <p
+              className="notice mb-2.5 rounded border-l-3 border-[#e8ad4f] bg-[#2a2116] px-3 py-2 text-[0.78rem] text-[#f1dcb2]"
+              data-pedigree-slot-notice=""
+            >
               {form.notice}
             </p>
           ) : null}
           {form.copy ? (
-            <label className="slate-affix-row">
+            <label className={SLATE_AFFIX_ROW}>
               <span>Slot 1</span>
               {form.copy.kind === "select" ? (
                 <select
+                  className={SLATE_AFFIX_FIELD}
                   {...(sparks ? { "data-sparks-copy-rule": "" } : { "data-legendary-copy-rule": "" })}
                   aria-label={form.copy.ariaLabel}
                   value={form.copy.value}
@@ -321,12 +391,12 @@ function LegendaryForm({ form, editing }: { form: SlateLegendaryFormView; editin
                   ))}
                 </select>
               ) : (
-                <span className="slate-readonly">{form.copy.text}</span>
+                <span className={`slate-readonly ${READONLY} text-[0.8rem] leading-[1.4]`}>{form.copy.text}</span>
               )}
             </label>
           ) : (
             form.slots.map((slot) => (
-              <label key={slot.index} className="slate-affix-row">
+              <label key={slot.index} className={SLATE_AFFIX_ROW}>
                 <span>{slot.label}</span>
                 <AffixSelect slot={slot} legendary />
               </label>
@@ -334,51 +404,54 @@ function LegendaryForm({ form, editing }: { form: SlateLegendaryFormView; editin
           )}
         </fieldset>
       </section>
-      <aside>
-        <span>Preview</span>
-        <div className="slate-craft-card">
-          <img src={form.icon} alt="" style={turned(form.preview.transform)} />
-          <strong>{form.name}</strong>
-          <small>DIVINITY SLATE · LEGENDARY</small>
-          <div className="slate-craft-affix-preview">
+      <aside className={SLATE_ASIDE}>
+        <span className={`${PREVIEW_CAPTION} text-base`}>Preview</span>
+        <div className={`slate-craft-card ${SLATE_CARD} grid-cols-[38px_1fr] ${CARD_LEGENDARY}`}>
+          <img src={form.icon} alt="" className={SLATE_CARD_ART} style={turned(form.preview.transform)} />
+          <strong className={SLATE_CARD_TITLE}>{form.name}</strong>
+          <small className={SLATE_CARD_RARITY}>DIVINITY SLATE · LEGENDARY</small>
+          <div className={`${SLATE_AFFIX_PREVIEW} text-[#e9dfd4]`}>
             {form.copyPreview ? (
               <section>
-                <h3>Fixed Affix</h3>
+                <h3 className={SLATE_AFFIX_HEADING}>Fixed Affix</h3>
                 {form.copyPreview.direction ? (
-                  <div className="sparks-preview-direction">
+                  <div className="sparks-preview-direction my-2 flex items-center gap-2.25">
                     <span
-                      className="sparks-preview-arrow"
+                      className="sparks-preview-arrow grid size-8 flex-none place-items-center rounded-full border border-[#f1a537] bg-[radial-gradient(circle_at_35%_30%,#8b5520,#3b2512)] font-sans text-[1.35rem] leading-none font-bold text-[#ffe6a1] shadow-[0_0_11px_#df89294d]"
                       {...(sparks ? { "data-sparks-preview-arrow": "" } : { "data-legendary-copy-arrow": "" })}
                       aria-hidden="true"
                     >
                       {form.copyPreview.direction.arrow}
                     </span>
                     <strong
+                      className="font-sans text-[0.76rem] leading-[1.2] font-bold text-[#ffd18a]"
                       {...(sparks ? { "data-sparks-preview-direction": "" } : { "data-legendary-copy-label": "" })}
                     >
                       {form.copyPreview.direction.label}
                     </strong>
                   </div>
                 ) : null}
-                <ul>
-                  <li>
-                    <span {...ruleAttribute}>{form.copyPreview.rule}</span>
+                <ul className={SLATE_AFFIX_LIST}>
+                  <li className={SLATE_AFFIX_ITEM}>
+                    <span className="block" {...ruleAttribute}>
+                      {form.copyPreview.rule}
+                    </span>
                   </li>
                 </ul>
               </section>
             ) : form.talents ? (
               <section>
-                <h3>Talent Affixes</h3>
-                <ul>
+                <h3 className={SLATE_AFFIX_HEADING}>Talent Affixes</h3>
+                <ul className={SLATE_AFFIX_LIST}>
                   {form.talents.map((item, index) => (
                     <li
                       key={index}
-                      className={`${item.core ? "core-slate-affix" : ""} ${item.limited ? "max-one-divinity" : ""}`}
+                      className={`${item.core ? `core-slate-affix ${CORE_AFFIX}` : ""} ${item.limited ? `max-one-divinity ${SLATE_AFFIX_LIMITED}` : ""} ${SLATE_AFFIX_ITEM}`}
                     >
-                      {item.core ? <strong className="core-slate-badge">Core Talent</strong> : null}
-                      <small>{item.tree}</small>
-                      <span>{item.effect}</span>
-                      {item.limited ? <strong className="max-divinity-badge">MAX ACTIVE: 1</strong> : null}
+                      {item.core ? <strong className={CORE_BADGE}>Core Talent</strong> : null}
+                      <small className={SLATE_AFFIX_TREE}>{item.tree}</small>
+                      <span className={`block ${item.core ? "text-[#fff0d0]" : ""}`}>{item.effect}</span>
+                      {item.limited ? <strong className={MAX_DIVINITY_BADGE}>MAX ACTIVE: 1</strong> : null}
                     </li>
                   ))}
                 </ul>
@@ -402,7 +475,7 @@ export function SlateCrafterHeader({ crafter }: { crafter: SlateCrafterView }) {
         <button
           key={tab}
           type="button"
-          className={crafter.tab === tab ? "active" : ""}
+          className={`${crafter.tab === tab ? "active" : ""} ${TAB}`}
           data-slate-inventory-tab={tab}
           onClick={() => change({ kind: "tab", tab })}
         >
@@ -411,7 +484,7 @@ export function SlateCrafterHeader({ crafter }: { crafter: SlateCrafterView }) {
       ))}
       <button
         type="button"
-        className="picker-close"
+        className="picker-close dialog-close ml-auto"
         data-close-slate-inventory=""
         aria-label="Close slate inventory"
         onClick={(event) => event.currentTarget.closest("dialog")?.close()}
@@ -425,26 +498,29 @@ export function SlateCrafterBody({ crafter }: { crafter: SlateCrafterView }) {
   const { body, editing } = crafter;
   if (body.kind === "templates")
     return (
-      <div className="slate-template-layout">
-        <section>
-          <p>Legendary Template</p>
-          <div className="slate-template-grid">
+      <div className={`slate-template-layout ${SLATE_LAYOUT}`}>
+        <section className={SLATE_SECTION}>
+          <p className="mb-3 text-[0.78rem] text-[#aeb7c5]">Legendary Template</p>
+          <div className="slate-template-grid grid grid-cols-[repeat(6,96px)] gap-2.25 max-[760px]:grid-cols-3">
             {body.templates.map((template) => (
               <button
                 key={template.name}
                 type="button"
+                className="grid min-h-22 cursor-pointer grid-rows-[58px_auto] place-items-center rounded-[7px] border border-transparent bg-[#1b2231] p-1.75 text-[#bcc4d0] hover:border-[#e7b35d] focus-visible:border-[#e7b35d] focus-visible:outline-none"
                 data-slate-template={template.name}
                 onClick={() => change({ kind: "template", value: template.name })}
               >
-                <img src={template.icon} alt="" />
-                <span>{template.name}</span>
+                <img src={template.icon} alt="" className="max-h-13 max-w-13 object-contain" />
+                <span className="text-center text-[0.64rem]">{template.name}</span>
               </button>
             ))}
           </div>
         </section>
-        <aside>
-          <span>Preview</span>
-          <div className="slate-empty-preview">Select options to preview slate</div>
+        <aside className={SLATE_ASIDE}>
+          <span className={`${PREVIEW_CAPTION} text-base`}>Preview</span>
+          <div className="slate-empty-preview mt-2.5 grid h-50 place-items-center rounded-lg border border-dashed border-[#252e39] text-[#8d97a3] italic">
+            Select options to preview slate
+          </div>
           <Actions editing={editing} />
         </aside>
       </div>

@@ -10,6 +10,7 @@ import {
   markBooting,
   shouldShowRecovery,
 } from "@legacy/app/storage/recovery-core.js";
+import { NOTICE_STRIP_CLASS } from "@legacy/app/notice-classes.js";
 import { AppShell } from "./shell/AppShell";
 
 interface RecoveryOptions {
@@ -86,6 +87,6 @@ boot().catch((error: unknown) => {
   console.error(error);
   document.body.insertAdjacentHTML(
     "afterbegin",
-    '<p class="notice">The planner could not start. Add <code>?recover</code> to the address to open the Recovery screen.</p>',
+    `<p class="m-4 ${NOTICE_STRIP_CLASS}">The planner could not start. Add <code>?recover</code> to the address to open the Recovery screen.</p>`,
   );
 });

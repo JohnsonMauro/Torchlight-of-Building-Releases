@@ -5,6 +5,28 @@ import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { FollowerCardView, FollowerSlotView } from "@legacy/app/hero/follower-panel.js";
 import { Artwork } from "../../ui/Artwork";
 import { useViewSource } from "../../ui/use-view-source";
+import {
+  bronzeChip,
+  changeButton,
+  choiceArt,
+  chooseButton,
+  followerIdentityClass,
+  identityTitle,
+  pendingClass,
+  portraitClass,
+  portraitFallback,
+  portraitImage,
+  rarityText,
+  showcaseClass,
+  tierDivider,
+  tierLevelClass,
+  tierRow,
+} from "../hero/hero-classes";
+
+// The rarity line under the follower's name.
+const rarityLine = "block text-[0.72rem] font-bold tracking-[0.04em]";
+/** The rarity id in the view's " follower-tint-<id>" or "follower-rarity follower-rarity-<id>" class. */
+const rarityIn = (classes: string, prefix: string) => new RegExp(`\\b${prefix}-(\\S+)`).exec(classes)?.[1] ?? null;
 
 export function FollowerPanel() {
   const view = useViewSource("follower");
@@ -13,24 +35,28 @@ export function FollowerPanel() {
   if (!view.card)
     return (
       <>
-        <div className="hero-showcase follower-showcase">
-          <div className="hero-portrait follower-portrait">
-            <span className="hero-avatar-fallback" aria-hidden="true">
+        <div className={showcaseClass}>
+          <div className={`${portraitClass} follower-portrait`}>
+            <span className={portraitFallback} aria-hidden="true">
               +
             </span>
           </div>
-          <div className="hero-identity follower-identity">
-            <strong>No follower selected</strong>
-            <small className="follower-rarity">Choose a follower</small>
-            <button type="button" className="change-hero-button" onClick={() => commands.openFollowerSelector()}>
+          <div className={followerIdentityClass}>
+            <strong className={identityTitle}>No follower selected</strong>
+            <small className={`follower-rarity mb-2.25 text-muted ${rarityLine}`}>Choose a follower</small>
+            <button
+              type="button"
+              className={`change-hero-button ${changeButton}`}
+              onClick={() => commands.openFollowerSelector()}
+            >
               Change Follower
             </button>
           </div>
         </div>
-        <div className="hero-traits-pending follower-pending">
+        <div className={pendingClass}>
           <strong>Select a follower</strong>
           <span>Choose a follower to equip its Tartarus Skills.</span>
-          <button type="button" className="button" onClick={() => commands.openFollowerSelector()}>
+          <button type="button" className={chooseButton} onClick={() => commands.openFollowerSelector()}>
             Choose Follower
           </button>
         </div>
@@ -39,7 +65,7 @@ export function FollowerPanel() {
   return (
     <>
       <FollowerCard card={view.card} />
-      <div className="hero-trait-tree follower-skill-slots" aria-label={view.slotsLabel}>
+      <div className="@container grid gap-2 border-t border-[#343b48] p-2.5" aria-label={view.slotsLabel}>
         {view.slots.map((slot) => (
           <SkillSlot key={slot.index} slot={slot} />
         ))}
@@ -50,25 +76,38 @@ export function FollowerPanel() {
 
 function FollowerCard({ card }: { card: FollowerCardView }) {
   return (
-    <div className="hero-showcase follower-showcase">
-      <div className={`hero-portrait follower-portrait${card.tintClass}`} data-follower-tooltip={card.id}>
+    <div className={showcaseClass}>
+      <div className={`${portraitClass} follower-portrait${card.tintClass}`} data-follower-tooltip={card.id}>
         {card.portrait ? (
-          <img src={card.portrait} alt={card.displayName} />
+          <img
+            className={portraitImage(rarityIn(card.tintClass, "follower-tint"))}
+            src={card.portrait}
+            alt={card.displayName}
+          />
         ) : (
-          <span className="hero-avatar-fallback" aria-hidden="true">
+          <span className={portraitFallback} aria-hidden="true">
             {card.initials}
           </span>
         )}
       </div>
-      <div className="hero-identity follower-identity" data-follower-tooltip={card.id}>
-        <strong id="selected-follower-name">{card.displayName}</strong>
-        <div className="follower-rarity-line">
-          <small className={card.rarityClass} id="selected-follower-rarity">
+      <div className={followerIdentityClass} data-follower-tooltip={card.id}>
+        <strong id="selected-follower-name" className={identityTitle}>
+          {card.displayName}
+        </strong>
+        <div className="follower-rarity-line relative z-3 mb-2.25 flex flex-wrap items-center gap-x-2 gap-y-1.25">
+          <small
+            className={`${card.rarityClass} ${rarityLine} ${rarityText(rarityIn(card.rarityClass, "follower-rarity"))}`}
+            id="selected-follower-rarity"
+          >
             {card.rarityText}
           </small>
           <SpecialEffect card={card} />
         </div>
-        <button type="button" className="change-hero-button" onClick={() => plannerCommands().openFollowerSelector()}>
+        <button
+          type="button"
+          className={`change-hero-button ${changeButton}`}
+          onClick={() => plannerCommands().openFollowerSelector()}
+        >
           Change Follower
         </button>
       </div>
@@ -98,13 +137,13 @@ function SpecialEffect({ card }: { card: FollowerCardView }) {
     );
   return (
     <span
-      className="follower-special-effect"
+      className={`follower-special-effect ${bronzeChip} max-w-full cursor-default gap-1 px-1.75 py-0.5 text-[0.66rem] leading-tight font-bold whitespace-nowrap normal-case`}
       data-follower-tooltip={card.id}
       tabIndex={0}
       aria-label={`Special effect: ${first}`}
     >
       <svg
-        className="follower-special-effect-icon"
+        className="follower-special-effect-icon size-2.5 flex-none"
         viewBox="0 0 12 12"
         width="12"
         height="12"
@@ -125,19 +164,22 @@ function SpecialEffect({ card }: { card: FollowerCardView }) {
   );
 }
 
+// A skill slot's small caps line (its kind).
+const skillCaption = "text-[0.55rem] font-extrabold tracking-[0.12em] text-[#8291a1] uppercase";
+
 function SkillSlot({ slot }: { slot: FollowerSlotView }) {
   const commands = plannerCommands();
   const level = (
-    <span className="tier-level">
+    <span className={tierLevelClass}>
       <small>SLOT</small>
       <strong>{slot.index + 1}</strong>
     </span>
   );
   return (
-    <div className="follower-skill-slot-wrap">
+    <div className="relative min-w-0">
       <button
         type="button"
-        className={`hero-tier follower-skill-slot ${slot.skillName ? "filled" : "empty"}`}
+        className={`follower-skill-slot ${slot.skillName ? "filled" : "empty"} ${tierRow} w-full cursor-pointer text-left text-inherit hover:border-[#e7b35d] hover:shadow-[0_0_0_1px_rgb(249_202_101/0.17)] focus-visible:border-[#e7b35d] focus-visible:shadow-[0_0_0_1px_rgb(249_202_101/0.17)] focus-visible:outline-0`}
         data-follower-skill-tooltip={slot.skillName ?? undefined}
         aria-label={slot.label}
         onClick={() => commands.openFollowerSkillSelector(slot.index)}
@@ -148,18 +190,29 @@ function SkillSlot({ slot }: { slot: FollowerSlotView }) {
         }}
       >
         {level}
-        <span className="follower-skill-art">
+        <span className="grid place-items-center">
           {slot.skillName ? (
-            <Artwork src={slot.icon} alt={slot.skillName} className="hero-choice-art follower-skill-icon" />
+            <Artwork src={slot.icon} alt={slot.skillName} className={choiceArt(false)} />
           ) : (
-            <b aria-hidden="true">+</b>
+            <b
+              className="grid size-[46px] place-items-center rounded-full border-2 border-dashed border-[#64717e] text-[1.15rem] text-[#8b98a5] @min-[391px]:size-[52px]"
+              aria-hidden="true"
+            >
+              +
+            </b>
           )}
         </span>
-        <span className="tier-divider" />
-        <span className="follower-skill-info">
-          <small>{slot.kind}</small>
-          <strong>{slot.title}</strong>
-          {slot.summary ? <small className="follower-skill-summary">{slot.summary}</small> : null}
+        <span className={tierDivider} />
+        <span className="grid min-w-0 justify-items-start gap-0.75">
+          <small className={skillCaption}>{slot.kind}</small>
+          <strong
+            className={`wrap-anywhere ${slot.skillName ? "font-serif text-[0.8rem] leading-[1.2] text-[#f6f8fa]" : "text-[0.7rem] leading-[1.2] text-[#9aa7b4]"}`}
+          >
+            {slot.title}
+          </strong>
+          {slot.summary ? (
+            <small className="text-[0.55rem] font-semibold wrap-anywhere text-[#8291a1]">{slot.summary}</small>
+          ) : null}
         </span>
       </button>
     </div>

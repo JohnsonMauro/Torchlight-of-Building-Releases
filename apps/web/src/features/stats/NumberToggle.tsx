@@ -37,7 +37,7 @@ export function NumberToggle({ id, text, className, unitClass }: NumberTogglePro
   const hint = open ? FULL_HINT : SHORT_HINT;
   return (
     <strong
-      className={className ? `${className} number-toggle` : "number-toggle"}
+      className={className ? `${className} number-toggle cursor-pointer` : "number-toggle cursor-pointer"}
       role="button"
       tabIndex={0}
       aria-expanded={open}

@@ -1,6 +1,14 @@
 // "Reset this build?" (the header's Reset Build): Keep Build, focused, closes it; Reset Build empties the open build
-// (the resetBuild command). The CSS styles the confirm button by data-confirm-reset-build, so it stays.
+// (the resetBuild command).
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import {
+  dangerDialogButtonClass,
+  plainDialogActionsClass,
+  plainDialogButtonClass,
+  plainDialogClass,
+  plainDialogTextClass,
+  plainDialogTitleClass,
+} from "../../ui/dialog-classes";
 import { closeDialog, registerDialog } from "../../ui/dialog-registry";
 import { setAutofocusAttribute } from "../autofocus";
 
@@ -11,22 +19,30 @@ export function ResetBuildConfirmDialog() {
     <dialog
       id={ID}
       ref={registerDialog}
-      className="reset-build-confirm"
+      className={`${plainDialogClass} w-107.5`}
       aria-labelledby="reset-build-confirm-title"
       aria-describedby="reset-build-confirm-message"
     >
-      <h2 id="reset-build-confirm-title">Reset this build?</h2>
-      <p id="reset-build-confirm-message">
+      <h2 id="reset-build-confirm-title" className={plainDialogTitleClass}>
+        Reset this build?
+      </h2>
+      <p id="reset-build-confirm-message" className={plainDialogTextClass}>
         This will clear the current build’s hero, skills, talents, gear, and other selections. Other saved builds will
         remain available.
       </p>
-      <div>
-        <button type="button" ref={setAutofocusAttribute} onClick={() => closeDialog(ID)}>
+      <div className={plainDialogActionsClass}>
+        <button
+          type="button"
+          ref={setAutofocusAttribute}
+          className={plainDialogButtonClass}
+          onClick={() => closeDialog(ID)}
+        >
           Keep Build
         </button>
         <button
           type="button"
           data-confirm-reset-build=""
+          className={dangerDialogButtonClass}
           onClick={() => {
             closeDialog(ID);
             plannerCommands().resetBuild();

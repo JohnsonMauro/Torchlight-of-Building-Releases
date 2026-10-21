@@ -2,6 +2,7 @@ import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { StatsPanel } from "@legacy/app/bridge/stats-view-model.ts";
 import { DamagePath } from "../../features/stats/DamagePath";
 import { StatSheet } from "../../features/stats/StatSheet";
+import { STATS_BUTTON } from "../../features/stats/stat-sheet-classes";
 import { useViewSource } from "../../ui/use-view-source";
 
 const PANELS: { id: StatsPanel; label: string }[] = [
@@ -10,13 +11,16 @@ const PANELS: { id: StatsPanel; label: string }[] = [
 ];
 
 // The Stats view: the build status, the Stat sheet / Damage path switch and the two panels, from the planner's "stats"
-// source (src/app/bridge/stats-view-model.ts).
+// source (src/app/bridge/stats-view-model.ts). The page heading is not shown (the legacy hid it too); its status
+// elements stay for the tests and the planner. On a wide but short window the switch moves up into the panel's
+// controls row (a negative margin; the row leaves room for it), and on a wide one the stat sheet's two banners sit side
+// by side.
 export function CharacterView() {
   const view = useViewSource("stats");
   const panel = view?.panel ?? "sheet";
   return (
-    <section id="character-view" className="app-view" hidden>
-      <div className="talent-page-heading">
+    <section id="character-view" className="app-view leading-[normal]" hidden>
+      <div className="talent-page-heading hidden">
         <div>
           <p className="eyebrow">Candidate build</p>
           <h1>Stats</h1>
@@ -32,7 +36,12 @@ export function CharacterView() {
           <small id="character-status-detail">{view?.status.detail}</small>
         </div>
       </div>
-      <div id="stats-panel-options" className="stats-panel-options" role="tablist" aria-label="Stats layout">
+      <div
+        id="stats-panel-options"
+        className="mb-4 flex gap-2 compact:relative compact:z-1 compact:-mb-8 compact:w-max"
+        role="tablist"
+        aria-label="Stats layout"
+      >
         {PANELS.map((item) => (
           <button
             key={item.id}
@@ -40,14 +49,18 @@ export function CharacterView() {
             role="tab"
             data-stats-panel={item.id}
             aria-selected={item.id === panel}
-            className={item.id === panel ? "active" : undefined}
+            className={`${STATS_BUTTON} on:border-[#eaa667] on:bg-[#30251d] on:text-[#ffd0a3]${item.id === panel ? " active" : ""}`}
             onClick={() => plannerCommands().setStatsPanel(item.id)}
           >
             {item.label}
           </button>
         ))}
       </div>
-      <div id="stat-sheet" hidden={view?.panel !== "sheet"}>
+      <div
+        id="stat-sheet"
+        className="min-[1101px]:grid min-[1101px]:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] min-[1101px]:gap-[0.6rem]"
+        hidden={view?.panel !== "sheet"}
+      >
         {view ? <StatSheet sheet={view.sheet} /> : null}
       </div>
       <div id="damage-path" hidden={view?.panel !== "damage-path"}>

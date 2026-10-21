@@ -27,9 +27,26 @@ import {
 } from "@legacy/app/feedback/feedback-dialog-model.js";
 import { compactBuildCode } from "@legacy/engine/state/build-code-compact.js";
 import { normalizePercentageText } from "@legacy/engine/text/percentage-text.js";
+import {
+  fieldControlClass,
+  fieldHelpClass,
+  fieldLabelClass,
+  plainDialogButtonClass,
+  plainDialogClass,
+  plainDialogTitleClass,
+} from "../../ui/dialog-classes";
 import { useViewSource } from "../../ui/use-view-source";
 
 const NOTE = "GitHub opens with everything filled in. Click Create to post it publicly (free GitHub account needed).";
+// A field: its label, help, control and error stacked; a required field left empty gets an ember edge.
+const FIELD = "grid min-w-0 gap-1.5";
+const CONTROL = `${fieldControlClass} aria-invalid:border-[#c46b39]`;
+// The dropdown: the framed box with an ember chevron on the right instead of the native arrow.
+const SELECT = `${CONTROL} cursor-pointer appearance-none pr-7.5 bg-[url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2010%206'%3E%3Cpath%20d='M1%201l4%204%204-4'%20fill='none'%20stroke='%23f09a42'%20stroke-width='1.6'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E")] bg-size-[10px_6px] bg-position-[right_10px_center] bg-no-repeat`;
+// The read-only build code (calculation reports), in small monospace.
+const CODE_BOX =
+  "min-h-14.5 min-w-0 flex-1 rounded-[3px] border border-[#465363] bg-[#111922] px-2.5 py-2.25 font-mono text-[0.72rem] break-all text-[#a9b5c4] focus:border-[#e78136] focus:outline-none";
+const ERROR = "text-[0.74rem] text-[#ffbd8b]";
 const fieldDomId = (id: string) => `feedback-field-${id}`;
 // The legacy dialog printed every text through escapeHtml, which also closes "N %" gaps.
 const text = (value: unknown) => normalizePercentageText(String(value ?? ""));
@@ -54,7 +71,7 @@ type FeedbackContext = Record<string, unknown> & { buildCode?: string };
 
 function Star({ required }: { required: boolean }) {
   return required ? (
-    <span className="feedback-required" aria-hidden="true">
+    <span className="text-[#ff6b5b]" aria-hidden="true">
       *
     </span>
   ) : null;
@@ -234,7 +251,7 @@ function FeedbackForm({
     if (field.type === "dropdown")
       return (
         <select
-          className="planner-select"
+          className={SELECT}
           {...common}
           data-native-select=""
           onChange={(event) => validate(field.id, edit(field.id, event.target.value))}
@@ -249,16 +266,25 @@ function FeedbackForm({
     if (field.type === "textarea")
       return (
         <textarea
+          className={`${CONTROL} min-h-16`}
           {...common}
           rows={Math.min(6, Math.max(3, String(initial.values[field.id] ?? "").split("\n").length))}
           onChange={(event) => edit(field.id, event.target.value)}
           onBlur={leave}
         />
       );
-    return <input type="text" {...common} onChange={(event) => edit(field.id, event.target.value)} onBlur={leave} />;
+    return (
+      <input
+        type="text"
+        className={CONTROL}
+        {...common}
+        onChange={(event) => edit(field.id, event.target.value)}
+        onBlur={leave}
+      />
+    );
   };
   const errorLine = (id: string) => (
-    <p className="feedback-error" id={`${fieldDomId(id)}-error`} hidden={!errors[id]}>
+    <p className={ERROR} id={`${fieldDomId(id)}-error`} hidden={!errors[id]}>
       This field is required.
     </p>
   );
@@ -266,15 +292,17 @@ function FeedbackForm({
   const titleId = fieldDomId(TITLE_FIELD);
   return (
     <>
-      <header>
-        <h2 id="feedback-dialog-title">{text(dialogHeading(formKey, context))}</h2>
-        <button type="button" className="feedback-close" data-feedback-close="" aria-label="Close" onClick={close}>
+      <header className="flex items-start justify-between gap-3">
+        <h2 id="feedback-dialog-title" className={plainDialogTitleClass}>
+          {text(dialogHeading(formKey, context))}
+        </h2>
+        <button type="button" className="dialog-close" data-feedback-close="" aria-label="Close" onClick={close}>
           ×
         </button>
       </header>
-      <section className="feedback-body">
-        <div className="feedback-field" data-feedback-field={TITLE_FIELD}>
-          <label htmlFor={titleId}>
+      <section className="feedback-body -mr-1.5 mt-2 grid min-h-0 gap-3.5 overflow-y-auto py-1 pr-1.5">
+        <div className={FIELD} data-feedback-field={TITLE_FIELD}>
+          <label htmlFor={titleId} className={fieldLabelClass}>
             {"Title "}
             <Star required />
           </label>
@@ -283,6 +311,7 @@ function FeedbackForm({
             id={titleId}
             name={TITLE_FIELD}
             data-feedback-input={TITLE_FIELD}
+            className={CONTROL}
             required
             aria-required="true"
             aria-describedby={`${titleId}-error`}
@@ -302,24 +331,37 @@ function FeedbackForm({
               label = text(field.label);
             if (field.id === BUILD_CODE_FIELD)
               return formKey === "calculation" ? (
-                <div key={field.id} className="feedback-field" data-feedback-field={field.id}>
-                  <label htmlFor={id}>
+                <div key={field.id} className={FIELD} data-feedback-field={field.id}>
+                  <label htmlFor={id} className={fieldLabelClass}>
                     {field.required ? `${label} ` : label}
                     <Star required={field.required} />
                   </label>
-                  <div className="feedback-code-row">
-                    <textarea id={id} rows={3} readOnly data-feedback-build-code="" value={text(buildCode)} />
-                    <button type="button" data-feedback-copy-code="" onClick={copyCode}>
+                  <div className="flex items-start gap-2 max-[480px]:flex-col max-[480px]:items-stretch">
+                    <textarea
+                      id={id}
+                      rows={3}
+                      readOnly
+                      data-feedback-build-code=""
+                      className={CODE_BOX}
+                      value={text(buildCode)}
+                    />
+                    <button
+                      type="button"
+                      data-feedback-copy-code=""
+                      className={plainDialogButtonClass}
+                      onClick={copyCode}
+                    >
                       {copyLabel}
                     </button>
                   </div>
                 </div>
               ) : (
-                <div key={field.id} className="feedback-field" data-feedback-field={field.id}>
-                  <label className="feedback-check">
+                <div key={field.id} className={FIELD} data-feedback-field={field.id}>
+                  <label className="flex cursor-pointer items-center gap-2 text-[0.8rem] text-[#e9dfd0] has-off:cursor-default has-off:opacity-45">
                     <input
                       type="checkbox"
                       data-feedback-include-code=""
+                      className="size-4 cursor-pointer accent-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
                       checked={includeCode}
                       disabled={!buildCode}
                       onChange={(event) => {
@@ -333,13 +375,13 @@ function FeedbackForm({
                 </div>
               );
             return (
-              <div key={field.id} className="feedback-field" data-feedback-field={field.id}>
-                <label htmlFor={id}>
+              <div key={field.id} className={FIELD} data-feedback-field={field.id}>
+                <label htmlFor={id} className={fieldLabelClass}>
                   {field.required ? `${label} ` : label}
                   <Star required={field.required} />
                 </label>
                 {field.description ? (
-                  <p className="feedback-help" id={`${id}-help`}>
+                  <p className={fieldHelpClass} id={`${id}-help`}>
                     {text(field.description)}
                   </p>
                 ) : null}
@@ -349,27 +391,29 @@ function FeedbackForm({
             );
           })}
         {auto.length ? (
-          <div className="feedback-auto">
-            <p>Included automatically</p>
-            <dl>
+          <div className="rounded-[3px] border border-[#3a4352] bg-[#111922] px-2.75 py-2.25 text-[0.72rem] text-[#a9b5c4]">
+            <p className="mb-1.25 font-bold">Included automatically</p>
+            <dl className="grid gap-0.75">
               {auto.map((field) => (
-                <div key={field.id}>
+                <div key={field.id} className="flex flex-wrap gap-1.5">
                   <dt>{text(field.label)}</dt>
-                  <dd data-feedback-auto={field.id}>{text(initial.values[field.id] || "—")}</dd>
+                  <dd data-feedback-auto={field.id} className="text-[#e9dfd0] wrap-anywhere">
+                    {text(initial.values[field.id] || "—")}
+                  </dd>
                 </div>
               ))}
             </dl>
           </div>
         ) : null}
       </section>
-      <p className="feedback-note">{NOTE}</p>
-      <div className="feedback-actions">
-        <button type="button" data-feedback-cancel="" onClick={close}>
+      <p className={`mt-3.5 ${fieldHelpClass}`}>{NOTE}</p>
+      <div className="mt-3.5 flex flex-wrap justify-end gap-2.25">
+        <button type="button" data-feedback-cancel="" className={plainDialogButtonClass} onClick={close}>
           Cancel
         </button>
         <button
           type="button"
-          className="feedback-send"
+          className={plainDialogButtonClass}
           data-feedback-send=""
           disabled={missing.length > 0}
           onClick={send}
@@ -411,7 +455,7 @@ export function FeedbackDialog() {
     <dialog
       id="feedback-dialog"
       ref={dialog}
-      className="reset-build-confirm import-build-dialog feedback-dialog"
+      className={`${plainDialogClass} w-150 flex-col overflow-hidden open:flex`}
       aria-labelledby="feedback-dialog-title"
       onKeyDown={trapFocus}
     >

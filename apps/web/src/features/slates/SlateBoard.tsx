@@ -1,8 +1,8 @@
 // The Divinity Slates board (Build page, shown in place of the talent tree by the talent column's Slates button): the
 // statue grid, the equipped slates on it, the slates parked beside it, and the selected slate's tools. The data is the
 // planner's "slates" source (src/app/bridge/slates-view-model.ts); every edit is a planner command, and the inventory,
-// crafter and affix editor dialogs stay legacy. The legacy hover tooltip reads data-slate-id; the CSS lays the grid out
-// by data-slate-cell. Keyboard: with a slate selected, A / D rotate and W / S flip it (src/app/slates/slate-shortcuts.js).
+// crafter and affix editor dialogs stay legacy. The legacy hover tooltip reads data-slate-id. The pieces' drawing (tiles,
+// art, states) is in slate-classes.ts. Every size counts in --cell (set on the stage). Keyboard: with a slate selected, A / D rotate and W / S flip it (src/app/slates/slate-shortcuts.js).
 import {
   useEffect,
   useLayoutEffect,
@@ -20,7 +20,18 @@ import {
   type SlateToolsView,
   type SlatesView,
 } from "@legacy/app/bridge/slates-view-model.ts";
+import { HelpButton } from "../../ui/HelpButton";
 import { useViewSource } from "../../ui/use-view-source";
+import {
+  CELL_ART,
+  LABEL_COUNT,
+  LABEL_NAME,
+  LABEL_NUMBER,
+  judgmentEdge,
+  pieceArt,
+  pieceClasses,
+  tileClasses,
+} from "./slate-classes";
 import { dragDrop, pendingDrop, type Rect } from "./slate-drop";
 import { useSlateDrag, type SlateDragView } from "./use-slate-drag";
 
@@ -32,13 +43,11 @@ export function SlateBoard() {
   if (!view) return null;
   return (
     <>
-      <div className="slate-board-toolbar slate-board-toolbar-actions">
-        <button type="button" className="qol-help" data-qol-help="slates" aria-label="Slates controls">
-          ?
-        </button>
+      <div className="slate-board-toolbar flex items-center justify-end gap-2.25">
+        <HelpButton topic="slates" label="Slates" />
         <button
           type="button"
-          className="button button-secondary"
+          className="min-h-8.5 cursor-pointer rounded-[3px] border border-[#465363] bg-[linear-gradient(180deg,#1a2330,#10161e)] px-3 py-1.75 text-[0.68rem] font-bold tracking-[0.06em] text-[#dce3e9] uppercase shadow-[inset_0_1px_rgb(255_255_255/0.035)] clip-chamfer-7 hover:border-[#bd6a32] hover:text-[#ffab61] hover:brightness-108"
           onClick={() => plannerCommands().openSlateInventory()}
         >
           Inventory
@@ -200,13 +209,21 @@ function SlateStage({ view }: { view: SlatesView }) {
   });
 
   return (
-    <div className="slate-stage" ref={stageRef}>
-      <div className={`divinity-board${view.editMode ? " editing" : ""}`} ref={boardRef}>
+    <div
+      className="slate-stage relative grid h-full min-h-0 min-w-[calc(var(--cell)*14)] place-items-center [--cell:72px] max-[520px]:[--cell:min(15vw,64px)]"
+      ref={stageRef}
+    >
+      {/* Centred across the stage, at the height that centres it in the panel (--slate-grid-top, set above). */}
+      <div
+        className={`${view.editMode ? "editing " : ""}divinity-board absolute top-(--slate-grid-top,109px) left-1/2 grid size-[calc(var(--cell)*6)] -translate-x-1/2 grid-cols-[repeat(6,var(--cell))] grid-rows-[repeat(6,var(--cell))] bg-[radial-gradient(circle_at_center,rgb(52_68_89/0.3),transparent_60%)]`}
+        ref={boardRef}
+      >
         {view.cells.map((cell) => (
           <button
             key={`${cell.column},${cell.row}`}
             type="button"
-            className="slate-cell"
+            className="slate-cell pointer-events-none border border-[#3d4652] bg-[#171e29] shadow-[inset_0_0_0_2px_#111720] editmode:pointer-events-auto editmode:cursor-crosshair hover:bg-[#263749] hover:shadow-[inset_0_0_0_2px_#55d6dd]"
+            style={{ gridColumn: cell.column, gridRow: cell.row }}
             data-slate-cell={`${cell.column},${cell.row}`}
             aria-label={`Board cell ${cell.column}, ${cell.row}`}
             onClick={() => commands.placeSlateAtCell(cell.column, cell.row)}
@@ -256,7 +273,9 @@ function SlatePiece({ piece, drag, onClick, onContextMenu, onPointerDown }: Slat
     "--slate-flip-y": pose.flipY,
     ...(drag?.moved ? { transform: `translate(${drag.dx}px, ${drag.dy}px)` } : {}),
   } as CSSProperties;
-  const classes = [
+  const look = { piece, parked, dragged: Boolean(drag?.moved) };
+  // State classes the planner and the tests read; the drawing comes from slate-classes.ts.
+  const states = [
     "slate-piece",
     parked && "parked-slate",
     piece.overlay && "overlay-slate",
@@ -269,10 +288,12 @@ function SlatePiece({ piece, drag, onClick, onContextMenu, onPointerDown }: Slat
   ]
     .filter(Boolean)
     .join(" ");
+  const tile = tileClasses(look);
+  const labelled = !piece.icon && !piece.cellIcon;
   return (
     <button
       type="button"
-      className={classes}
+      className={pieceClasses(look, states)}
       style={style}
       data-slate-id={piece.id}
       aria-label={piece.label}
@@ -280,43 +301,55 @@ function SlatePiece({ piece, drag, onClick, onContextMenu, onPointerDown }: Slat
       onContextMenu={onContextMenu}
       onPointerDown={onPointerDown}
     >
-      {tiles.map((tile, index) => {
-        const sides = piece.judgmentAffected
-          ? Object.fromEntries(
-              (["top", "right", "bottom", "left"] as const).flatMap((side) => [
-                [`--judgment-${side}-inset`, tile.outline[side] ? "6px" : "0px"],
-                [`--judgment-${side}-border`, tile.outline[side] ? "2px" : "0px"],
-              ]),
-            )
-          : {};
-        return (
-          <i key={index} style={{ "--piece-column": tile.column, "--piece-row": tile.row, ...sides } as CSSProperties}>
-            {piece.cellIcon ? <img className="slate-cell-art" src={piece.cellIcon} alt="" /> : null}
-          </i>
-        );
-      })}
-      {piece.icon ? <img className="slate-piece-art" src={piece.icon} alt="" /> : null}
-      {parked ? null : <span>{piece.number}</span>}
-      <strong>{piece.name}</strong>
-      {piece.adjacentCount !== null ? <em>{`${piece.adjacentCount} adjacent`}</em> : null}
+      {tiles.map((cell, index) => (
+        <i
+          key={index}
+          className={piece.judgmentAffected ? `${tile} ${judgmentEdge(cell.outline)}` : tile}
+          style={{ "--piece-column": cell.column, "--piece-row": cell.row } as CSSProperties}
+        >
+          {piece.cellIcon ? <img className={CELL_ART} src={piece.cellIcon} alt="" /> : null}
+        </i>
+      ))}
+      {piece.icon ? <img className={pieceArt(piece)} src={piece.icon} alt="" /> : null}
+      {parked ? null : <span className={labelled ? LABEL_NUMBER : "hidden"}>{piece.number}</span>}
+      <strong className={labelled ? LABEL_NAME : "hidden"}>{piece.name}</strong>
+      {piece.adjacentCount !== null ? (
+        <em className={labelled ? LABEL_COUNT : "hidden"}>{`${piece.adjacentCount} adjacent`}</em>
+      ) : null}
     </button>
   );
 }
 
+// The selected slate's tool buttons: bronze, and Remove in rust at the far end.
+const TOOL =
+  "grid size-7.75 cursor-pointer place-items-center rounded-[2px] border p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9ca65]";
+const TOOL_PLAIN =
+  "border-[#806341] bg-[linear-gradient(#393226,#192027)] text-[#f0c77e] hover:border-[#f9ca65] hover:bg-[linear-gradient(#51412a,#292a24)] hover:text-[#ffe4a8]";
+const TOOL_DANGER =
+  "border-[#a36742] bg-[linear-gradient(#492920,#241a18)] text-[#edb797] hover:border-[#e7a072] hover:bg-[linear-gradient(#633025,#352019)] hover:text-[#ffcfad]";
+
 function SlateTools({ tools }: { tools: SlateToolsView }) {
   const commands = plannerCommands();
-  const tool = (title: string, symbol: string, action: () => void, className?: string) => (
-    <button type="button" className={className} title={title} aria-label={title} onClick={action}>
+  const tool = (title: string, symbol: string, action: () => void, danger = false) => (
+    <button
+      type="button"
+      className={`${TOOL} ${danger ? `ml-auto ${TOOL_DANGER}` : TOOL_PLAIN}`}
+      title={title}
+      aria-label={title}
+      onClick={action}
+    >
       {symbol}
     </button>
   );
   return (
     <div
-      className="slate-quick-tools"
+      className="slate-quick-tools absolute top-[clamp(8px,var(--tool-y),calc(100%-82px))] left-[clamp(8px,var(--tool-x),calc(100%-265px))] z-30 min-w-[230px] rounded-[3px] border border-[#806341] border-t-[#cba257] bg-[linear-gradient(135deg,#343329,#141c24_75%)] p-2.5 text-[#f0c77e] shadow-[0_10px_28px_#0009,inset_0_1px_#f9ca651a]"
       style={{ "--tool-x": `${tools.x}px`, "--tool-y": `${tools.y}px` } as CSSProperties}
     >
-      <strong>{tools.name}</strong>
-      <div>
+      <strong className="mb-2 block border-b border-[#80634166] pb-1.75 font-serif text-[0.76rem]/[1.3] font-bold text-[#f9ca65]">
+        {tools.name}
+      </strong>
+      <div className="flex gap-1.25">
         {tool("Move", "✥", () => commands.startSlateMove(tools.id))}
         {tools.rules.rotate ? (
           <>
@@ -331,7 +364,7 @@ function SlateTools({ tools }: { tools: SlateToolsView }) {
           </>
         ) : null}
         {tool("Edit affixes", "✎", () => commands.editSlate(tools.id))}
-        {tool("Remove", "×", () => commands.removeSlate(tools.id), "danger")}
+        {tool("Remove", "×", () => commands.removeSlate(tools.id), true)}
       </div>
     </div>
   );

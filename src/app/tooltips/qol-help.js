@@ -127,8 +127,10 @@ export function qolHelpButton(key) {
   return `<button type="button" class="qol-help" data-qol-help="${escapeHtml(key)}" aria-label="${escapeHtml(section.title)} controls">?</button>`;
 }
 
+const KEY =
+  "rounded-[3px] border border-[#45525d] bg-[#1d2632] px-1.5 py-px font-[Inter,Arial,sans-serif] text-[0.6rem] font-bold tracking-[0.04em] whitespace-nowrap text-[#f2c27d] uppercase";
 const listHtml = (items) =>
-  `<ul class="qol-help-list">${items.map((item) => `<li><kbd>${escapeHtml(item.action)}</kbd><span>${escapeHtml(item.text)}</span></li>`).join("")}</ul>`;
+  `<ul class="qol-help-list mt-1.5 grid gap-[5px]">${items.map((item) => `<li class="grid grid-cols-[auto_1fr] items-start gap-2"><kbd class="${KEY}">${escapeHtml(item.action)}</kbd><span class="text-[0.72rem]/[1.4] text-[#dce3ea]">${escapeHtml(item.text)}</span></li>`).join("")}</ul>`;
 
 /**
  * Tooltip body for a section: only that section's controls. Talents (talent panel header) and
@@ -137,5 +139,5 @@ const listHtml = (items) =>
 export function qolHelpTooltipHtml(key) {
   const section = SECTION_HELP[key];
   if (!section) return "";
-  return `<strong>Controls · ${escapeHtml(section.title)}</strong>${listHtml(section.items)}${section.note ? `<small class="qol-help-note">${escapeHtml(section.note)}</small>` : ""}<small class="qol-help-footer">${escapeHtml(FOOTER)}</small>`;
+  return `<strong class="block font-serif text-[0.92rem] font-bold text-[#ff9b3d]">Controls · ${escapeHtml(section.title)}</strong>${listHtml(section.items)}${section.note ? `<small class="qol-help-note mt-2 block text-[0.64rem]/[1.4] text-[#a9b5c2]">${escapeHtml(section.note)}</small>` : ""}<small class="qol-help-footer mt-2.5 block border-t border-[#343c47] pt-2 text-[0.64rem]/[1.4] text-[#7e8995]">${escapeHtml(FOOTER)}</small>`;
 }

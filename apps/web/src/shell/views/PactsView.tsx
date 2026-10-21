@@ -1,30 +1,23 @@
 import { KismetSummary, PactSlots, PactspiritCount } from "../../features/pacts/PactsSection";
+import { sectionCardClass } from "../../ui/section-card";
+import { SectionHeading } from "../../ui/SectionHeading";
 
 export function PactsView() {
   return (
-    <section id="pacts-view" className="app-view" hidden>
-      <div className="talent-page-heading">
-        <div>
-          <p className="eyebrow">Build setup</p>
-          <h1>
-            Pactspirits
-            <button type="button" className="qol-help" data-qol-help="pacts" aria-label="Pactspirits controls">
-              ?
-            </button>
-          </h1>
-          <p className="muted">Choose the spirits in each pact slot.</p>
-        </div>
-        <div className="talent-total">
-          <span>Pactspirits</span>
-          <strong id="pactspirit-count">
-            <PactspiritCount />
-          </strong>
-        </div>
-      </div>
-      <div id="pactspirits" className="pactspirit-grid">
+    <section id="pacts-view" className={`${sectionCardClass} order-3 col-span-full`} hidden>
+      <SectionHeading
+        title="Pactspirits"
+        help="pacts"
+        total={{ label: "Pactspirits", id: "pactspirit-count", value: <PactspiritCount /> }}
+      />
+      <div id="pactspirits" className="pactspirit-grid m-3.5 grid grid-cols-1 gap-3 leading-[normal]">
         <PactSlots />
       </div>
-      <div id="pact-kismet-summary" className="pact-kismet-summary" aria-live="polite">
+      <div
+        id="pact-kismet-summary"
+        className="pact-kismet-summary mx-3 mb-3 grid grid-cols-2 gap-3 leading-[normal] max-[901px]:grid-cols-1"
+        aria-live="polite"
+      >
         <KismetSummary />
       </div>
     </section>

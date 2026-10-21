@@ -1,8 +1,0 @@
-/*
- * The React mount point takes no box: the planner's styles were written for the shell's elements as children of
- * <body>, and an extra box changes how the panels' backdrop-filter layers composite (measured: up to 10/255 per
- * channel against the static page; identical with display: contents).
- */
-#root {
-  display: contents;
-}

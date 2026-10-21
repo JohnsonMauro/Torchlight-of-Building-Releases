@@ -2,6 +2,7 @@
 // heroTraitKeywords) in the keyword style, and a definitions block that holding Alt reveals (body.revival-alt-held, the same
 // key as the revived-memory and core-slate details).
 import { escapeHtml } from "../html.js";
+import { traitClasses } from "../tooltips/tooltip-kind-classes.js";
 import { heroTraitKeyword, heroTraitKeywordSegments, heroTraitKeywordsIn } from "../../engine/text/inline-keywords.js";
 
 /** A stretch of trait text as HTML, with the hero's keywords in the keyword style. */
@@ -9,7 +10,7 @@ export function traitKeywordTextHtml(heroId, text) {
   return heroTraitKeywordSegments(heroId, text)
     .map((segment) =>
       segment.keyword
-        ? `<span class="keyword-roll-name trait-keyword" data-trait-keyword="${escapeHtml(segment.keyword)}">${escapeHtml(segment.text)}</span>`
+        ? `<span class="keyword-roll-name trait-keyword ${traitClasses.keyword}" data-trait-keyword="${escapeHtml(segment.keyword)}">${escapeHtml(segment.text)}</span>`
         : escapeHtml(segment.text),
     )
     .join("");
@@ -36,8 +37,8 @@ export function traitKeywordDetailsHtml(heroId, lines = []) {
   const definitions = names
     .map((name) => {
       const entry = heroTraitKeyword(heroId, name);
-      return `<div class="trait-keyword-definition" data-trait-keyword-definition="${escapeHtml(name)}"><span class="keyword-roll-name">${escapeHtml(name)}</span><em>${escapeHtml(entry.kind || "Keyword")}</em>${entry.effect.map((line) => `<span class="trait-keyword-line">${escapeHtml(line)}</span>`).join("")}</div>`;
+      return `<div class="trait-keyword-definition" data-trait-keyword-definition="${escapeHtml(name)}"><span class="keyword-roll-name ${traitClasses.definitionName}">${escapeHtml(name)}</span><em class="${traitClasses.definitionKind}">${escapeHtml(entry.kind || "Keyword")}</em>${entry.effect.map((line) => `<span class="trait-keyword-line ${traitClasses.definitionLine}">${escapeHtml(line)}</span>`).join("")}</div>`;
     })
     .join("");
-  return `<small class="trait-keyword-hint">Hold Alt for details</small><div class="trait-keyword-details">${definitions}</div>`;
+  return `<small class="trait-keyword-hint ${traitClasses.hint}">Hold Alt for details</small><div class="trait-keyword-details ${traitClasses.details}">${definitions}</div>`;
 }

@@ -13,6 +13,7 @@ import { currentPlanner, equippedSlateIds, parkedSlates, slatePlacements, slates
 import { legendaryTalentSlotTypes, slateCraftedAffixGroups, slateGodFamilyClass } from "../slates/slate-catalog.js";
 import { coloredSlateAffix } from "../slates/slate-shapes.js";
 import { slateAffixes } from "../slates/slates-controller.js";
+import { slateClasses as sc } from "./tooltip-kind-classes.js";
 
 export function slateTooltipContent(element) {
   const id = element.dataset.slateId || element.dataset.craftedSlateInventory;
@@ -42,7 +43,7 @@ export function slateTooltipContent(element) {
       .filter(Boolean)
       .map((affix) => {
         const core = affix.match(/^(.+?): (Lv\.[12] Core Talent): (.+?)(?:\s+[—–]\s+|$)/);
-        return `<li class="${core ? "core-slate-affix" : ""} ${limited.has(affix) ? "max-one-divinity" : ""}">${core ? `<strong class="core-slate-badge">Core Talent</strong><span class="core-slate-summary">${coloredSlateAffix(`${core[1]}: ${core[3]}`)}</span><small class="core-slate-hint">Hold Alt for details</small><span class="core-slate-detail">${coloredSlateAffix(displayed(affix))}</span>` : `<span>${coloredSlateAffix(displayed(affix))}</span>`}<div class="slate-affix-badges">${limited.has(affix) ? '<strong class="max-divinity-badge" title="Only one copy of this effect is active across equipped slates">Max active: 1</strong>' : ""}${coverageBadge(/^Copies?\b/i.test(affix) ? (equippedSlateIds.has(slate.id) && !!slatePlacements[slate.id] ? "In calc" : "Not equipped") : slateLineCoverage(displayed(affix), equippedSlateIds.has(slate.id) && !!slatePlacements[slate.id]))}</div></li>`;
+        return `<li class="${sc.affix} ${core ? `core-slate-affix ${sc.coreAffix}` : ""} ${limited.has(affix) ? `max-one-divinity ${core ? "" : sc.limitedAffix}` : ""}">${core ? `<strong class="core-slate-badge ${sc.coreBadge}">Core Talent</strong><span class="core-slate-summary ${sc.coreSummary}">${coloredSlateAffix(`${core[1]}: ${core[3]}`)}</span><small class="core-slate-hint ${sc.coreHint}">Hold Alt for details</small><span class="core-slate-detail ${sc.coreDetail}">${coloredSlateAffix(displayed(affix))}</span>` : `<span class="block">${coloredSlateAffix(displayed(affix))}</span>`}<div class="slate-affix-badges ${sc.badges}">${limited.has(affix) ? `<strong class="max-divinity-badge ${sc.limitBadge}" title="Only one copy of this effect is active across equipped slates">Max active: 1</strong>` : ""}${coverageBadge(/^Copies?\b/i.test(affix) ? (equippedSlateIds.has(slate.id) && !!slatePlacements[slate.id] ? "In calc" : "Not equipped") : slateLineCoverage(displayed(affix), equippedSlateIds.has(slate.id) && !!slatePlacements[slate.id]))}</div></li>`;
       })
       .join("");
   const template = slate.template || slate.name;
@@ -69,7 +70,9 @@ export function slateTooltipContent(element) {
   const affixSections = groups
     .map(([title, entries]) => {
       const rows = renderAffixRows(entries);
-      return rows ? `<section><h3>${title}</h3><ul>${rows}</ul></section>` : "";
+      return rows
+        ? `<section class="${sc.section}"><h3 class="${sc.heading}">${title}</h3><ul class="${sc.list}">${rows}</ul></section>`
+        : "";
     })
     .join("");
   const copySlate = isCopySlate(slate);
@@ -79,9 +82,9 @@ export function slateTooltipContent(element) {
       ? currentPlanner().resolvedSlates.find((item) => item.id === slate.id)?.copiedAffixSources || []
       : [];
   const copiedSection = copySlate
-    ? `<section class="slate-copied-affixes"><h3>Copied affixes</h3>${copied.length ? `<ul>${copied.map(({ source, affix }) => `<li><div class="copied-affix-meta"><small>${escapeHtml(source)}</small><strong class="copied-affix-badge">Copied</strong></div><span>${coloredSlateAffix(affix)}</span>${coverageBadge(slateLineCoverage(affix, placed))}</li>`).join("")}</ul>` : `<p>${placed ? "No eligible adjacent affixes to copy." : "Place on the grid to see copied affixes."}</p>`}</section>`
+    ? `<section class="slate-copied-affixes ${sc.copied}"><h3 class="${sc.copiedHeading}">Copied affixes</h3>${copied.length ? `<ul class="${sc.copiedList}">${copied.map(({ source, affix }) => `<li class="${sc.copiedAffix}"><div class="copied-affix-meta ${sc.copiedMeta}"><small>${escapeHtml(source)}</small><strong class="copied-affix-badge ${sc.copiedBadge}">Copied</strong></div><span>${coloredSlateAffix(affix)}</span>${coverageBadge(slateLineCoverage(affix, placed))}</li>`).join("")}</ul>` : `<p>${placed ? "No eligible adjacent affixes to copy." : "Place on the grid to see copied affixes."}</p>`}</section>`
     : "";
   return {
-    slateHtml: `<div class="slate-tooltip-head ${slateGodFamilyClass(slate.god)}">${icon ? `<img src="${escapeHtml(icon)}" alt="" style="transform:scale(${flipX},${flipY}) rotate(${rotation}deg)">` : ""}<div><strong>${escapeHtml(slate.name)}</strong><small>DIVINITY SLATE · ${escapeHtml(slate.rarity || "magic").toUpperCase()}</small></div></div>${affected ? '<div class="slate-judgment-badge">Judgment · Affix effect +70%</div>' : ""}<div class="slate-craft-affix-preview">${affixSections || `<p>${copySlate ? "Copy effect" : "No affixes selected."}</p>`}${copiedSection}</div>`,
+    slateHtml: `<div class="slate-tooltip-head ${sc.head} ${slateGodFamilyClass(slate.god)}">${icon ? `<img src="${escapeHtml(icon)}" alt="" style="transform:scale(${flipX},${flipY}) rotate(${rotation}deg)">` : ""}<div><strong class="${sc.title}">${escapeHtml(slate.name)}</strong><small class="${sc.kicker}">DIVINITY SLATE · ${escapeHtml(slate.rarity || "magic").toUpperCase()}</small></div></div>${affected ? `<div class="slate-judgment-badge ${sc.judgment}">Judgment · Affix effect +70%</div>` : ""}<div class="slate-craft-affix-preview ${sc.preview}">${affixSections || `<p>${copySlate ? "Copy effect" : "No affixes selected."}</p>`}${copiedSection}</div>`,
   };
 }

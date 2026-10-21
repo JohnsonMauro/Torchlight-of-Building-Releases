@@ -3,6 +3,14 @@ import { expandBuildCode } from "../../engine/state/build-code-compact.js";
 import { encodePlannerState } from "../../engine/state/planner-state.ts";
 import { isRenameKey, resolveBuildRename } from "./build-tab-rename.js";
 import { escapeHtml } from "../html.js";
+import {
+  NOTICE_ACTIONS_CLASS,
+  NOTICE_BUTTON_CLASS,
+  NOTICE_CLASS,
+  NOTICE_SECONDARY_BUTTON_CLASS,
+  STICKY_TOAST_BUTTON_CLASS,
+  STICKY_TOAST_CLASS,
+} from "../notice-classes.js";
 import { $, hideOtherTabNotice, showToast, updateStorageStatus } from "../planner/page.js";
 import {
   applyPlannerState,
@@ -228,19 +236,18 @@ export function renderLibraryNotice() {
   } catch {
     return;
   }
-  const backupButton =
-    '<button class="button button-secondary" type="button" data-backup-builds>Download backup</button>';
+  const backupButton = `<button class="${NOTICE_SECONDARY_BUTTON_CLASS}" type="button" data-backup-builds>Download backup</button>`;
   let html = "";
   if (issues.unreadable)
-    html = `<span>Your saved builds couldn't be read. They are kept unchanged in this browser, and nothing is saved until you choose.</span><span class="library-notice-actions">${backupButton}<button class="button" type="button" data-start-new-library>Start a new library (your unreadable data stays backed up)</button></span>`;
+    html = `<span>Your saved builds couldn't be read. They are kept unchanged in this browser, and nothing is saved until you choose.</span><span class="${NOTICE_ACTIONS_CLASS}">${backupButton}<button class="${NOTICE_BUTTON_CLASS}" type="button" data-start-new-library>Start a new library (your unreadable data stays backed up)</button></span>`;
   else if (issues.quarantinedBuilds.length) {
     const count = issues.quarantinedBuilds.length;
-    html = `<span>${count} build${count === 1 ? "" : "s"} couldn't be loaded and ${count === 1 ? "is" : "are"} kept unchanged: ${issues.quarantinedBuilds.map((entry) => escapeHtml(entry.name)).join(", ")}.</span><span class="library-notice-actions">${backupButton}</span>`;
+    html = `<span>${count} build${count === 1 ? "" : "s"} couldn't be loaded and ${count === 1 ? "is" : "are"} kept unchanged: ${issues.quarantinedBuilds.map((entry) => escapeHtml(entry.name)).join(", ")}.</span><span class="${NOTICE_ACTIONS_CLASS}">${backupButton}</span>`;
   }
   if (html)
     document
       .querySelector("main")
-      ?.insertAdjacentHTML("afterbegin", `<div class="notice library-notice" role="status">${html}</div>`);
+      ?.insertAdjacentHTML("afterbegin", `<div class="library-notice ${NOTICE_CLASS}" role="status">${html}</div>`);
 }
 // Another tab changed the shared build library. Policy (build-library.ts,
 // reconcileExternalLibraryChange): this tab keeps its own build and its own
@@ -263,7 +270,7 @@ function showOtherTabNotice() {
   if (document.getElementById("other-tab-notice")) return;
   document.body.insertAdjacentHTML(
     "beforeend",
-    '<div id="other-tab-notice" class="toast toast-action visible" role="status" aria-live="polite"><span>This build was changed in another tab · </span><button type="button" data-reload-other-tab>Reload it</button><button type="button" class="toast-dismiss" data-dismiss-other-tab aria-label="Dismiss">×</button></div>',
+    `<div id="other-tab-notice" class="${STICKY_TOAST_CLASS}" role="status" aria-live="polite"><span>This build was changed in another tab · </span><button type="button" class="${STICKY_TOAST_BUTTON_CLASS}" data-reload-other-tab>Reload it</button><button type="button" class="ml-1.5 cursor-pointer text-[1.15em]/none" data-dismiss-other-tab aria-label="Dismiss">×</button></div>`,
   );
   const notice = document.getElementById("other-tab-notice");
   notice.querySelector("[data-reload-other-tab]").addEventListener("click", () => {

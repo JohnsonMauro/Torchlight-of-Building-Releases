@@ -79,13 +79,25 @@ export function isFindShortcut(event) {
   );
 }
 
+// The bar: a raised slate box with a gold top edge, fixed at the right under the header (its top is set on opening).
+const BAR_CLASS =
+  "find-bar fixed top-18.5 right-4 z-150 flex items-center gap-1.5 rounded-md border border-t-2 border-line border-t-gold bg-raised px-2 py-1.5 text-sm/[normal] text-text shadow-[0_8px_24px_rgb(0_0_0/0.5)]";
+const INPUT_CLASS =
+  "find-bar-input h-7 w-55 rounded-[5px] border border-[#465363] bg-[linear-gradient(180deg,#151f2b,#0b1219)] px-2 text-[0.82rem] text-text focus:border-[#e78136] focus:outline-none max-[480px]:w-36";
+const COUNT_CLASS = "find-bar-count min-w-11.5 text-center text-[0.74rem] whitespace-nowrap text-muted";
+const BUTTON_CLASS =
+  "find-bar-button inline-grid size-6.5 cursor-pointer place-items-center rounded-[5px] border border-[#465363] bg-[#0c1219] leading-none font-bold text-muted hover:border-gold hover:text-gold focus-visible:border-gold focus-visible:text-gold focus-visible:outline-none";
+// A match: an ember wash; the current one solid gold.
+const HIT_CLASS =
+  "find-hit rounded-[2px] bg-[rgb(240_154_66/0.35)] text-inherit [&.current]:bg-gold [&.current]:text-[#10141b]";
+
 function barMarkup() {
   return (
-    `<input type="text" class="find-bar-input" aria-label="Find on page" placeholder="Find" spellcheck="false" autocomplete="off">` +
-    `<span class="find-bar-count" aria-live="polite"></span>` +
-    `<button type="button" class="find-bar-button" data-find-step="-1" aria-label="Previous match" title="Previous match (Shift+Enter)">&#8593;</button>` +
-    `<button type="button" class="find-bar-button" data-find-step="1" aria-label="Next match" title="Next match (Enter)">&#8595;</button>` +
-    `<button type="button" class="find-bar-button find-bar-close" data-find-close aria-label="Close find bar" title="Close (Esc)">&times;</button>`
+    `<input type="text" class="${INPUT_CLASS}" aria-label="Find on page" placeholder="Find" spellcheck="false" autocomplete="off">` +
+    `<span class="${COUNT_CLASS}" aria-live="polite"></span>` +
+    `<button type="button" class="${BUTTON_CLASS} text-[0.85rem]" data-find-step="-1" aria-label="Previous match" title="Previous match (Shift+Enter)">&#8593;</button>` +
+    `<button type="button" class="${BUTTON_CLASS} text-[0.85rem]" data-find-step="1" aria-label="Next match" title="Next match (Enter)">&#8595;</button>` +
+    `<button type="button" class="${BUTTON_CLASS} find-bar-close text-[1.05rem]" data-find-close aria-label="Close find bar" title="Close (Esc)">&times;</button>`
   );
 }
 
@@ -96,7 +108,7 @@ export function installFindBar(doc = globalThis.document) {
   const win = doc.defaultView || globalThis;
 
   const bar = doc.createElement("div");
-  bar.className = "find-bar";
+  bar.className = BAR_CLASS;
   bar.setAttribute("role", "search");
   bar.hidden = true;
   bar.innerHTML = barMarkup();
@@ -189,7 +201,7 @@ export function installFindBar(doc = globalThis.document) {
       range.setStart(node, start);
       range.setEnd(node, end);
       const mark = doc.createElement("mark");
-      mark.className = "find-hit";
+      mark.className = HIT_CLASS;
       range.surroundContents(mark);
       created.push(mark);
     }

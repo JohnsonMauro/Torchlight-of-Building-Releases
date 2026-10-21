@@ -9,6 +9,7 @@ import { escapeHtml } from "../html.js";
 import { coverageBadge, heroTraitCoverage, heroTraitCoverageReason } from "../planner/calculation-coverage.js";
 import { currentPlanner, plannerState } from "../planner/session.js";
 import { heroTraitTooltipLevel } from "./hero-tooltips.js";
+import { traitClasses as trc } from "./tooltip-kind-classes.js";
 
 // A follower skill (src/app/hero/follower-panel.js).
 export function followerSkillTooltipContent(element) {
@@ -57,7 +58,7 @@ export function heroTraitTooltipContent(element) {
       html += traitKeywordTextHtml(hero.id, line.slice(offset, match.index));
       const values = match[1].split("/"),
         activeIndex = Math.min(values.length - 1, traitLevel - 1);
-      html += `<span class="trait-progression">(${values.map((value, index) => `<${index === activeIndex ? "b" : "span"} class="${index === activeIndex ? "trait-current-value" : "trait-other-value"}">${escapeHtml(value.trim())}</${index === activeIndex ? "b" : "span"}>`).join('<span class="trait-separator">/</span>')})${escapeHtml(match[2])}</span>`;
+      html += `<span class="trait-progression ${trc.progression}">(${values.map((value, index) => `<${index === activeIndex ? "b" : "span"} class="${index === activeIndex ? `trait-current-value ${trc.current}` : `trait-other-value ${trc.other}`}">${escapeHtml(value.trim())}</${index === activeIndex ? "b" : "span"}>`).join(`<span class="trait-separator ${trc.separator}">/</span>`)})${escapeHtml(match[2])}</span>`;
       offset = match.index + match[0].length;
     }
     return html + traitKeywordTextHtml(hero.id, line.slice(offset));
@@ -68,6 +69,6 @@ export function heroTraitTooltipContent(element) {
   const visibleLines = withoutArtificialMoonLines(hero.id, descriptionLines);
   const selected = element.getAttribute("aria-pressed") === "true";
   return {
-    traitHtml: `<div class="hero-trait-tooltip-head"><strong>${escapeHtml(trait.name)}</strong>${coverageBadge(heroTraitCoverage(hero.id, trait.name, visibleLines, selected), heroTraitCoverageReason(hero.id, trait.name, descriptionLines, selected))}<em>Level ${traitLevel}</em></div><small class="hero-trait-unlock">Unlocks at hero level ${trait.level}</small><div class="hero-trait-effects">${visibleLines.map((line) => `<p>${emphasize(line)}</p>`).join("")}${String(levelKey).endsWith(":extra") ? `<p>${escapeHtml(EXTRA_ROW_NOTE)}</p>` : ""}${trait.name === "Sing with the Tide" ? `<p>Damage effects use the current base trait level. Bard state is assumed; bubbles, movement, Tide duration and state switching are excluded from this tag.</p>` : trait.name === "Murmurs of the Distant Tide" ? `<p>Additional Tide Effect scales the Tide damage bonuses in the stat sheet and damage path. Bard state is assumed; reduced Tide duration is ignored.</p>` : trait.name === "Idyll of the Tide" ? `<p>Stat sheet and damage path use the Idyll stack count set in Combat, defaulting to 15. Stack buildup and loss are not simulated.</p>` : trait.name === "Wave Aria" ? `<p>Damage component is included in calculations. Tide placement and duration are outside this badge’s scope.</p>` : ""}</div>${traitKeywordDetailsHtml(hero.id, visibleLines)}<small class="hero-trait-source">TLIDB · CURRENT TRAIT LEVEL ${traitLevel}</small>`,
+    traitHtml: `<div class="hero-trait-tooltip-head ${trc.head}"><strong class="${trc.title}">${escapeHtml(trait.name)}</strong>${coverageBadge(heroTraitCoverage(hero.id, trait.name, visibleLines, selected), heroTraitCoverageReason(hero.id, trait.name, descriptionLines, selected))}<em class="${trc.level}">Level ${traitLevel}</em></div><small class="hero-trait-unlock ${trc.unlock}">Unlocks at hero level ${trait.level}</small><div class="hero-trait-effects ${trc.effects}">${visibleLines.map((line) => `<p>${emphasize(line)}</p>`).join("")}${String(levelKey).endsWith(":extra") ? `<p>${escapeHtml(EXTRA_ROW_NOTE)}</p>` : ""}${trait.name === "Sing with the Tide" ? `<p>Damage effects use the current base trait level. Bard state is assumed; bubbles, movement, Tide duration and state switching are excluded from this tag.</p>` : trait.name === "Murmurs of the Distant Tide" ? `<p>Additional Tide Effect scales the Tide damage bonuses in the stat sheet and damage path. Bard state is assumed; reduced Tide duration is ignored.</p>` : trait.name === "Idyll of the Tide" ? `<p>Stat sheet and damage path use the Idyll stack count set in Combat, defaulting to 15. Stack buildup and loss are not simulated.</p>` : trait.name === "Wave Aria" ? `<p>Damage component is included in calculations. Tide placement and duration are outside this badge’s scope.</p>` : ""}</div>${traitKeywordDetailsHtml(hero.id, visibleLines)}<small class="hero-trait-source ${trc.source}">TLIDB · CURRENT TRAIT LEVEL ${traitLevel}</small>`,
   };
 }

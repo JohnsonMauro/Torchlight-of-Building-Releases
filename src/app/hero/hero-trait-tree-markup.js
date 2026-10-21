@@ -6,11 +6,12 @@
 // from; the trait's own tooltip carries the same note.
 import { escapeHtml } from "../html.js";
 import { EXTRA_PICK_AFFIX, EXTRA_PICK_LEVEL } from "../../engine/heroes/hero-trait-tree.js";
+import { traitClasses } from "../tooltips/tooltip-kind-classes.js";
 
 export const EXTRA_ROW_CHIP = "+1 Youga Count";
 export const EXTRA_ROW_NOTE = `This fourth trait row comes from the "${EXTRA_PICK_AFFIX}" memory affix. Its trait is at max level (${EXTRA_PICK_LEVEL}) and needs the three memory rows filled first.`;
 
 /** Planner tooltip content (hero-trait style) for the fourth row. */
 export function treeExtraRowTooltipHtml() {
-  return `<div class="hero-trait-tooltip-head"><strong>${escapeHtml(EXTRA_ROW_CHIP)}</strong><em>Level ${EXTRA_PICK_LEVEL} · Max</em></div><div class="hero-trait-effects"><p>${escapeHtml(EXTRA_ROW_NOTE)}</p></div>`;
+  return `<div class="hero-trait-tooltip-head ${traitClasses.head}"><strong class="${traitClasses.title}">${escapeHtml(EXTRA_ROW_CHIP)}</strong><em class="${traitClasses.level}">Level ${EXTRA_PICK_LEVEL} · Max</em></div><div class="hero-trait-effects ${traitClasses.effects}"><p>${escapeHtml(EXTRA_ROW_NOTE)}</p></div>`;
 }

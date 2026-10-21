@@ -30,7 +30,7 @@ export interface EhpTypeView {
   ailment: { name: string; text: string } | null;
 }
 export interface EhpCheckView {
-  /** "immune", "conditional", "reduced", "worse", "none" (the row's ehp-check-<status> class). */
+  /** "immune", "conditional", "reduced", "worse", "none" (sets the row's mark and status color). */
   status: string;
   mark: string;
   label: string;

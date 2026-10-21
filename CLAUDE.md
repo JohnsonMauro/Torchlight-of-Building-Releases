@@ -31,7 +31,7 @@ Every change: lint, typecheck, format:check and `pnpm test` green; e2e green bef
 | `src/app/` | the planner page: state, commands, view models | see below |
 | `src/app/bridge/` | view models and the two channels to React (`view-sources.ts`, `planner-commands.js`) | pure view models |
 | `apps/web/src/` | React: `shell/` (page, header, dialogs), `features/<section>/`, `ui/` | renders view sources, calls commands |
-| `src/styles.css` | the legacy stylesheet (23k lines) | only shrinks; new styling goes with its component |
+| `apps/web/src/styles/app.css` | the only stylesheet: Tailwind 4, tokens, shared utilities and variants | no `.css` beside components |
 | `tests/unit`, `tests/golden`, `tests/e2e` | unit, engine golden master, Playwright (page objects in `tests/e2e/pages`) | |
 
 `tests/unit/import-graph.test.js` locks the import graph: no cycles anywhere in `src/`, and the folder rules above.
@@ -64,25 +64,37 @@ re-reads its source.
 
 ## Refactor direction (2026-10-20)
 
-Refactor by exclusion: delete legacy code and CSS in large blocks and write the replacement for this architecture. The
-safety net is e2e + the engine golden master + typecheck. New layout styling: Tailwind 4 utilities plus a `.css` next
-to the component for real drawing (backgrounds and frames that replace layout PNGs). Layout images (backgrounds,
-frames, wordmarks) may go once nothing uses them; every content image (items, heroes, skills, pacts, slates) stays,
-also unreferenced ones (`tests/unit/asset-references.test.js` guards the references).
+Refactor by exclusion: delete legacy code in large blocks and write the replacement for this architecture. The safety
+net is e2e + the engine golden master + typecheck. The legacy stylesheet is gone (2026-10-21); every screen, dialog and
+tooltip is Tailwind 4. The look follows the old one loosely ("similar is enough"). Layout images (backgrounds, frames,
+wordmarks) go once nothing uses them; every content image (items, heroes, skills, pacts, slates) stays, also
+unreferenced ones (`tests/unit/asset-references.test.js` guards the references).
 
-## Styling (Tailwind 4 beside the legacy sheet)
+## Styling (Tailwind 4 only)
 
-- `apps/web/src/styles/app.css` is the page's stylesheet: layers `theme, base, legacy, components, utilities`;
-  `src/styles.css` is imported into `legacy`, so utilities win over it. Tokens (`bg-surface`, `text-ember`,
-  `font-display`…) are its `@theme`. Preflight is off while legacy rules still style most of the page.
-- A legacy `!important` beats any utility (important declarations reverse the layer order): delete that legacy
-  declaration instead of fighting it.
-- No Preflight means buttons keep the browser's border and background: a new button sets them (`border-0
-  bg-transparent`, or its own border).
+- `apps/web/src/styles/app.css` is the only stylesheet: layers `theme, base, components, utilities`, Preflight on.
+  It holds the tokens (`@theme static`: `bg-surface`, `text-ember`, `font-display`…), the page frame (`base`), shared
+  utilities (`clip-chamfer-<n>`, `text-gilded`, `btn-bronze`, `btn-gold`, `bg-section`, `bg-heading`, `rule-gold`,
+  `bg-panel`, `dialog-panel`, `dialog-head`, `dialog-title`, `dialog-close`, `field-search`) and custom variants. No
+  `.css` file beside a component: utilities in the markup; long or repeated class lists in a `.ts` module beside the
+  component (`*-classes.ts`; a `.tsx` exports only components).
+- Tailwind scans `apps/web` (Vite's root) plus the `@source` folders in app.css (`src/app`, `src/game-log`): markup
+  built as HTML strings there takes utilities too. A utility written right before `${` in a template literal is not
+  generated: keep a space, or use a constant.
+- **Never spell a state word inside a utility.** The e2e tests read states off class lists (`/\bactive\b/`,
+  `/\bselected\b/`, `/\bdisabled\b/`…), so `[&.active]:x`, `aria-selected:x`, `disabled:x` or `active:x` would match
+  whatever the state. Use the neutral variants in app.css: `on:` (`.active`), `group-on:`, `chosen:`
+  (`[aria-selected=true]`), `group-chosen:`, `off:` (`:disabled`), `pressed:` (`:active`), `editmode:` (inside
+  `.editing`), `compact:` (a wide, short window); or pick the classes in code from the state.
+- Preflight sets `line-height: 1.5`; the screens were measured against `normal`, so their roots carry
+  `leading-[normal]`. `text-<size>` also sets a line height (`text-sm/[normal]` keeps `normal`).
+- `url()` paths in app.css (and in `bg-[url(...)]` utilities, emitted into app.css) are relative to app.css; never
+  `/src/...` (the desktop build opens `file://`).
 - Tailwind writes a utility for every source word that is a utility name (`hidden`, `grid`, `fixed`…). Never give
-  legacy markup such a class name; it would get the utility.
-- A screen moving to the new layout drops its legacy rules (every selector that names the component's classes goes)
-  and keeps the class names JS or tests still look up (`site-header`, `view-tab`, `loadout-tab`, `loadout-status`).
+  markup such a class name as a hook; it would get the utility.
+- Class names that JS or tests look up stay as hooks even when nothing styles them (`site-header`, `view-tab`,
+  `loadout-tab`, `loadout-status`, `talent-node`, `pact-slot`…): grep `src/app`, `tests`, `apps/web/src` before removing
+  one.
 
 ## Porting upstream
 

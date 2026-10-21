@@ -37,6 +37,7 @@ import {
 import { escapeHtml } from "../html.js";
 import { titleCase } from "../planner/page.js";
 import { currentPlanner, plannerState } from "../planner/session.js";
+import { memoryClasses as mc, scentClasses as scc } from "./tooltip-kind-classes.js";
 
 // Trait level the tooltip shows, the rule src/engine/character-stats.js heroTraitStatLines and the planner apply (user-stated rule
 // 2026-10-13; src/engine/heroes/hero-memory-rules.js): a memory gives 1 (any), 2 (enhancement 30+), 3 (Ultimate 50), plus its own "+N to
@@ -77,7 +78,7 @@ function savedMemoryAffix(memory, group, index) {
   );
 }
 function memoryAffixRowContent(effect, tier) {
-  return `${Number.isInteger(tier) ? affixTierBadge(`T${tier}`) : ""}<span>${escapeHtml(effect)}</span>`;
+  return `${Number.isInteger(tier) ? affixTierBadge(`T${tier}`) : ""}<span class="${mc.affixText}">${escapeHtml(effect)}</span>`;
 }
 export function heroMemoryTooltipContent(element) {
   const id =
@@ -95,7 +96,7 @@ export function heroMemoryTooltipContent(element) {
   const status = (text) => heroMemoryLineCoverage(memoryModel, id, text, equipped);
   const section = (label, entries) =>
     entries.length
-      ? `<section${label === "Implicit" ? ` class="memory-implicit ${memory.waxAndWane ? "wax-applied" : ""}"` : ""}><h4>${label}</h4>${entries.map((entry) => (typeof entry === "string" ? `<p>${escapeHtml(entry)} ${coverageBadge(status(entry))}</p>` : `<div class="memory-affix-row">${memoryAffixRowContent(entry.effect, entry.tier)} ${coverageBadge(entry.status || status(entry.effect))}</div>`)).join("")}</section>`
+      ? `<section class="${label === "Implicit" ? `memory-implicit ${memory.waxAndWane ? "wax-applied" : ""}` : ""} ${mc.section}"><h4 class="${mc.heading}">${label}</h4>${entries.map((entry) => (typeof entry === "string" ? `<p class="${label === "Implicit" && memory.waxAndWane ? mc.lineWax : mc.line}">${escapeHtml(entry)} ${coverageBadge(status(entry))}</p>` : `<div class="memory-affix-row ${mc.affix}">${memoryAffixRowContent(entry.effect, entry.tier)} ${coverageBadge(entry.status || status(entry.effect))}</div>`)).join("")}</section>`
       : "";
   const fixed = (memory.fixedAffixes || [])
     .map((_, index) => ({ effect: savedMemoryAffix(memory, "fixedAffixes", index), tier: memory.fixedTiers?.[index] }))
@@ -123,10 +124,10 @@ export function heroMemoryTooltipContent(element) {
     memory.risingMoon ? "Rising Moon · fixed affix tier increased" : "",
   ].filter(Boolean);
   return {
-    memoryHtml: `<div class="memory-tooltip-head"><img src="${heroMemoryIcon(memory.type)}" alt=""><div><strong>${escapeHtml(memory.name || memory.type)}</strong><small>${escapeHtml(memory.rarity || "normal").toUpperCase()} · HERO MEMORY</small></div></div>${memoryRevivalBadge(memory)}<div class="memory-tooltip-body"><p>Enhancement Level <b>${memory.enhancementLevel}/${memoryMaxEnhancementForRarity(memory.rarity)}</b></p><p>Trait Level <b>+${traitLevelBonusForEnhancement(memory.enhancementLevel)}</b></p>${reduction === null ? "" : `<p>Base Trait Slot <b>${reduction}% to base stats and random affixes</b></p>`}${section("Implicit", [implicit])}${section(
+    memoryHtml: `<div class="memory-tooltip-head ${mc.head}"><img src="${heroMemoryIcon(memory.type)}" alt=""><div><strong class="${mc.title}">${escapeHtml(memory.name || memory.type)}</strong><small class="${mc.kicker}">${escapeHtml(memory.rarity || "normal").toUpperCase()} · HERO MEMORY</small></div></div>${memoryRevivalBadge(memory)}<div class="memory-tooltip-body ${mc.body}"><p class="${mc.stat}">Enhancement Level <b>${memory.enhancementLevel}/${memoryMaxEnhancementForRarity(memory.rarity)}</b></p><p class="${mc.statValue}">Trait Level <b>+${traitLevelBonusForEnhancement(memory.enhancementLevel)}</b></p>${reduction === null ? "" : `<p class="${mc.stat}">Base Trait Slot <b>${reduction}% to base stats and random affixes</b></p>`}${section("Implicit", [implicit])}${section(
       "Memory Revival",
       revival.map((effect) => ({ effect, status: equipped ? "Applied to rolls" : "Not equipped" })),
-    )}${memory.revivedAffix ? `<section><h4>Revived Affix${lunarPhaseRevivedAffixesSs13.includes(normalizeRevivedAffix(memory.revivedAffix)) ? " · Lunar Phase" : ""}</h4>${memoryRevivedAffixMarkup(memory)}${memory.revivedAffix === "Ceaseless Tide" ? `<p>When equipped on Sing with the Tide: +80% additional Tide Effect and ×0.8 cast speed while in Bard. Movement is not simulated.</p>` : ""}${coverageBadge(!equipped ? "Not equipped" : memory.revivedAffix === "Ceaseless Tide" && memoryModel.ceaselessTide ? "In calc" : equippedBaseTraitSlot(plannerState.hero)?.source.id === memory.id ? "Enables base slot" : (catsNightSafariStatus(currentPlanner(), memory) || revivedAffixCoverage(currentPlanner(), memory))?.status || "Not modeled", (catsNightSafariStatus(currentPlanner(), memory) || revivedAffixCoverage(currentPlanner(), memory))?.reason || "")}</section>` : ""}${section("Fixed Affixes", fixed)}${section("Random Affixes", random)}</div><small>${element.dataset.memoryInventoryId ? "Right-click to equip or unequip" : "Right-click to unequip"}</small>`,
+    )}${memory.revivedAffix ? `<section class="${mc.section}"><h4 class="${mc.heading}">Revived Affix${lunarPhaseRevivedAffixesSs13.includes(normalizeRevivedAffix(memory.revivedAffix)) ? " · Lunar Phase" : ""}</h4>${memoryRevivedAffixMarkup(memory)}${memory.revivedAffix === "Ceaseless Tide" ? `<p class="${mc.line}">When equipped on Sing with the Tide: +80% additional Tide Effect and ×0.8 cast speed while in Bard. Movement is not simulated.</p>` : ""}${coverageBadge(!equipped ? "Not equipped" : memory.revivedAffix === "Ceaseless Tide" && memoryModel.ceaselessTide ? "In calc" : equippedBaseTraitSlot(plannerState.hero)?.source.id === memory.id ? "Enables base slot" : (catsNightSafariStatus(currentPlanner(), memory) || revivedAffixCoverage(currentPlanner(), memory))?.status || "Not modeled", (catsNightSafariStatus(currentPlanner(), memory) || revivedAffixCoverage(currentPlanner(), memory))?.reason || "")}</section>` : ""}${section("Fixed Affixes", fixed)}${section("Random Affixes", random)}</div><small class="${mc.footer}">${element.dataset.memoryInventoryId ? "Right-click to equip or unequip" : "Right-click to unequip"}</small>`,
     rarity: memory.rarity || "normal",
   };
 }
@@ -145,6 +146,6 @@ export function sageScentTooltipContent(element) {
     .map((line) => line.trim())
     .filter(Boolean);
   return {
-    scentHtml: `<div class="sage-tooltip-head"><img src="${escapeHtml(entry.icon)}" alt=""><div><small>${escapeHtml(label)}</small><strong>${escapeHtml(entry.name)}</strong></div></div>${tags.length ? `<div class="sage-tooltip-tags">${tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}<div class="sage-tooltip-effects">${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div><small class="sage-tooltip-hint">Click to change</small>`,
+    scentHtml: `<div class="sage-tooltip-head ${scc.head}"><img src="${escapeHtml(entry.icon)}" alt=""><div><small class="${scc.kicker}">${escapeHtml(label)}</small><strong class="${scc.title}">${escapeHtml(entry.name)}</strong></div></div>${tags.length ? `<div class="sage-tooltip-tags ${scc.tags}">${tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}<div class="sage-tooltip-effects ${scc.effects}">${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div><small class="sage-tooltip-hint ${scc.hint}">Click to change</small>`,
   };
 }

@@ -36,6 +36,7 @@ import {
   tartarusAffixSlotPool,
   tartarusAffixSlots,
 } from "../../engine/followers/follower-affixes.js";
+import { traitClasses } from "../tooltips/tooltip-kind-classes.js";
 
 // The Hero panel's FOLLOWER tab (2026-10-15; design: the orchestrator's brief). The panel header is a HERO | FOLLOWER tab strip
 // in the Hero Trait / Trait Path tab style; the FOLLOWER tab shows a card mirroring the hero card (portrait, name, a rarity line
@@ -561,7 +562,7 @@ export function followerSkillTooltipHtml(skillName, { state, planner = null } = 
         .join(""),
     )
     .join("");
-  return `<div class="hero-trait-tooltip-head"><strong>${escapeHtml(tartarusSkillTierName(skill, tier))}</strong>${coverageBadge(coverage.status, coverage.reason)}<em>${escapeHtml(KIND_LABEL[skill.kind] || "Tartarus Skill")}</em></div><small class="hero-trait-unlock">${escapeHtml([skill.tags.join(", "), `Followers: ${skill.species.join(", ")}`].filter(Boolean).join(" · "))}</small><div class="hero-trait-effects">${skill.lines.map((text) => `<p>${escapeHtml(text)}</p>`).join("")}${keywords.map((keyword) => `<p class="follower-keyword"><b>${escapeHtml(keyword.name)}:</b> ${escapeHtml(keyword.text.join(" "))}</p>`).join("")}${affixMarkup ? `<p><b>Support affixes</b></p>${affixMarkup}` : ""}</div><small class="hero-trait-source">${escapeHtml([timing, tier ? `Tier ${tier}: ${supportText}` : ""].filter(Boolean).join(" · "))}</small>`;
+  return `<div class="hero-trait-tooltip-head ${traitClasses.head}"><strong class="${traitClasses.title}">${escapeHtml(tartarusSkillTierName(skill, tier))}</strong>${coverageBadge(coverage.status, coverage.reason)}<em class="${traitClasses.level}">${escapeHtml(KIND_LABEL[skill.kind] || "Tartarus Skill")}</em></div><small class="hero-trait-unlock ${traitClasses.unlock}">${escapeHtml([skill.tags.join(", "), `Followers: ${skill.species.join(", ")}`].filter(Boolean).join(" · "))}</small><div class="hero-trait-effects ${traitClasses.effects}">${skill.lines.map((text) => `<p>${escapeHtml(text)}</p>`).join("")}${keywords.map((keyword) => `<p class="follower-keyword"><b>${escapeHtml(keyword.name)}:</b> ${escapeHtml(keyword.text.join(" "))}</p>`).join("")}${affixMarkup ? `<p><b>Support affixes</b></p>${affixMarkup}` : ""}</div><small class="hero-trait-source ${traitClasses.source}">${escapeHtml([timing, tier ? `Tier ${tier}: ${supportText}` : ""].filter(Boolean).join(" · "))}</small>`;
 }
 
 /** Tooltip (hero-trait layout) of the follower card: rarity, slots, flavor and a named follower's trait. */
@@ -586,7 +587,7 @@ export function followerTooltipHtml(followerId, { state, planner = null, rarityI
   const badge = lines.length ? coverageBadge(combineStatuses(lines.map((line) => line.coverage.status))) : "";
   // A ULT letter's special effect (one per letter; game modifier specialEffect.modifierId) with its coverage badges.
   const effect = followerSpecialEffects(follower)[0] || null;
-  return `<div class="hero-trait-tooltip-head"><strong>${escapeHtml(follower.displayName)}</strong>${badge}<em>${escapeHtml(rarity?.name || "")}</em></div><div class="hero-trait-effects">${effect ? `<p><b>Special effect: ${escapeHtml(effect.name)}</b></p>${lines.map((line) => lineMarkup(line.text, line.coverage)).join("")}` : ""}<p class="follower-flavor">${escapeHtml(follower.flavor)}</p></div>`;
+  return `<div class="hero-trait-tooltip-head ${traitClasses.head}"><strong class="${traitClasses.title}">${escapeHtml(follower.displayName)}</strong>${badge}<em class="${traitClasses.level}">${escapeHtml(rarity?.name || "")}</em></div><div class="hero-trait-effects ${traitClasses.effects}">${effect ? `<p><b>Special effect: ${escapeHtml(effect.name)}</b></p>${lines.map((line) => lineMarkup(line.text, line.coverage)).join("")}` : ""}<p class="follower-flavor">${escapeHtml(follower.flavor)}</p></div>`;
 }
 
 // Tier → rarity background for a Tartarus Skill (2026-10-15 user request; letter rarities 2026-10-19): the item quality of the

@@ -5,9 +5,44 @@ import { useMemo, type KeyboardEvent, type MouseEvent, type PointerEvent } from 
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { ExtraSlotView, PactNodeView, PactSlotView, PactsView } from "@legacy/app/bridge/pacts-view-model.ts";
 import { useViewSource } from "../../ui/use-view-source";
+import {
+  FILLED_PORTRAIT,
+  LEVEL_LABEL,
+  LEVEL_SELECT,
+  extraClasses,
+  nodeClasses,
+  nodeImage,
+  nodeStatus,
+  slotSurface,
+  type DragState,
+} from "./pact-classes";
 import { useKismetDrag, type DropSlot } from "./use-kismet-drag";
 
 const LEVELS = [1, 2, 3, 4, 5, 6];
+
+// A pact slot's grid: portrait and name, LEVEL, the tree, the count; up to 1100 px the tree takes a row of its own,
+// up to 560 px the count too (the +1 px keeps the legacy max-width breakpoints inclusive). The surface (border,
+// rarity gradient) and the nodes' drawing are in pact-classes.ts.
+const SLOT_LAYOUT =
+  "relative grid min-h-23 grid-cols-[minmax(260px,310px)_84px_minmax(0,1fr)_80px] items-center gap-x-4.5 gap-y-4 py-3 pr-11.5 pl-3.5 " +
+  "max-[1101px]:grid-cols-[minmax(0,1fr)_84px_80px] max-[1101px]:gap-y-2 max-[701px]:items-start " +
+  "max-[561px]:grid-cols-[minmax(0,1fr)_84px] max-[561px]:gap-x-2.5";
+const EMPTY_PORTRAIT =
+  "border-2 border-dashed border-[#8391a4] bg-[rgb(12_18_27/0.6)] text-[1.6rem] leading-none text-[#c4d4e5] " +
+  "group-hover:border-[#ffa95b] group-hover:bg-[rgb(230_118_45/0.08)] group-hover:text-[#ffa95b] " +
+  "group-focus-visible:border-[#ffa95b] group-focus-visible:bg-[rgb(230_118_45/0.08)] group-focus-visible:text-[#ffa95b]";
+const TREE_LAYOUT =
+  "relative flex w-full min-w-0 items-center justify-start gap-4.5 overflow-x-auto px-1 py-1.75 [scrollbar-width:none] " +
+  "[&::-webkit-scrollbar]:hidden max-[1101px]:col-span-full max-[1101px]:row-start-2";
+const COUNT_LAYOUT =
+  "block flex-none justify-self-end text-[0.75rem] font-bold whitespace-nowrap text-[#d3e1ee] " +
+  "max-[1101px]:col-start-3 max-[1101px]:row-start-1 " +
+  "max-[561px]:col-span-full max-[561px]:row-start-3 max-[561px]:justify-self-start";
+const REMOVE_BUTTON =
+  "absolute top-[11px] right-3 grid size-[25px] cursor-pointer place-items-center rounded-md border border-[#8d4c4e] " +
+  "bg-[#342225] font-[Arial,sans-serif] text-[1.15rem] leading-none text-[#f4b3b1] transition-colors duration-150 " +
+  "hover:border-[#f27d77] hover:bg-[#a53537] hover:text-white focus-visible:border-[#f27d77] " +
+  "focus-visible:bg-[#a53537] focus-visible:text-white focus-visible:outline-none";
 
 /** "2/3": filled pact slots. */
 export function PactspiritCount() {
@@ -19,12 +54,12 @@ export function KismetSummary() {
   const view = useViewSource("pacts");
   if (!view) return null;
   const group = (kind: string, count: number, max: number) => (
-    <section className="pact-kismet-group">
-      <h3>
+    <section className="pact-kismet-group flex min-h-11.5 items-center rounded-lg border border-[#293342] bg-[#151b23] px-3.5 py-2.5">
+      <h3 className="text-[0.83rem] font-bold whitespace-nowrap text-[#c8d1dc]">
         {`${kind} Kismets `}
-        <strong>
+        <strong className="font-black text-gold">
           {count}
-          <span>{` / ${max}`}</span>
+          <span className="text-[#8c99a8]">{` / ${max}`}</span>
         </strong>
       </h3>
     </section>
@@ -60,8 +95,7 @@ function PactSlotList({ view }: { view: PactsView }) {
     onDrop: (source, target, copy) => commands.moveKismet(source.key, target, source.kind, copy),
     onInvalidDrop: () => commands.showToast("Invalid drop · Kismet returned to its slot"),
   });
-  const dragClasses = (key: string) =>
-    `${drag.source === key ? " kismet-drag-source" : ""}${drag.target === key ? " kismet-drop-target" : ""}`;
+  const dragState = (key: string): DragState => ({ source: drag.source === key, target: drag.target === key });
 
   const nodeClick = (slot: PactSlotView, node: PactNodeView) => {
     if (view.slotMode) {
@@ -99,13 +133,10 @@ function PactSlotList({ view }: { view: PactsView }) {
   return (
     <>
       {view.slots.map((slot) => (
-        <article
-          key={slot.index}
-          className={`pact-slot${slot.spirit ? ` rarity-${slot.spirit.rarity.toLowerCase()}` : ""}`}
-        >
+        <article key={slot.index} className={`pact-slot ${slotSurface(slot.spirit?.rarity)} ${SLOT_LAYOUT}`}>
           <button
             type="button"
-            className="pact-slot-select"
+            className="pact-slot-select group flex w-full min-w-0 cursor-pointer items-center gap-3 text-left text-[#e9edf3]"
             data-pactspirit-name={slot.spirit ? slot.name : undefined}
             onClick={() => commands.openPactspiritSelector(slot.index)}
             onContextMenu={(event) => {
@@ -114,23 +145,34 @@ function PactSlotList({ view }: { view: PactsView }) {
               commands.removePactspirit(slot.index);
             }}
           >
-            <span className={`pact-slot-portrait ${slot.spirit ? "filled" : "empty"}`}>
-              {slot.spirit ? <img src={slot.spirit.icon} alt="" /> : <span aria-hidden="true">+</span>}
+            <span
+              className={`grid size-16 flex-none place-items-center overflow-hidden rounded-lg ${slot.spirit ? FILLED_PORTRAIT : EMPTY_PORTRAIT}`}
+            >
+              {slot.spirit ? (
+                <img className="w-full" src={slot.spirit.icon} alt="" />
+              ) : (
+                <span aria-hidden="true">+</span>
+              )}
             </span>
             {slot.spirit ? (
-              <span>
-                <strong>{slot.name}</strong>
-                <small>{`${slot.spirit.category} · ${slot.spirit.rarity}`}</small>
+              <span className="min-w-0">
+                <strong className="block max-w-42.5 truncate text-[0.9rem] text-(--pact-accent)">{slot.name}</strong>
+                <small className="block max-w-42.5 truncate text-[0.7rem] text-[#aeb8c6]">
+                  {`${slot.spirit.category} · ${slot.spirit.rarity}`}
+                </small>
               </span>
             ) : (
-              <span className="pact-slot-empty">{`Select Pactspirit ${slot.index + 1}`}</span>
+              <span className="pact-slot-empty text-gilded min-w-0 text-[0.72rem] font-extrabold tracking-[0.12em] uppercase">
+                {`Select Pactspirit ${slot.index + 1}`}
+              </span>
             )}
           </button>
           {slot.spirit ? (
             <>
-              <label>
+              <label className={LEVEL_LABEL}>
                 Level
                 <select
+                  className={LEVEL_SELECT}
                   value={slot.level}
                   onChange={(event) => commands.setPactspiritLevel(slot.name, Number(event.currentTarget.value))}
                 >
@@ -143,7 +185,7 @@ function PactSlotList({ view }: { view: PactsView }) {
               </label>
               {slot.nodes.length ? (
                 <>
-                  <div className="pact-tree" aria-label={`${slot.name} Pactspirit tree`}>
+                  <div className={`pact-tree ${TREE_LAYOUT}`} aria-label={`${slot.name} Pactspirit tree`}>
                     {slot.nodes.map((node) => {
                       const kind = node.kismetKind;
                       return (
@@ -152,7 +194,7 @@ function PactSlotList({ view }: { view: PactsView }) {
                           node={node}
                           slotName={slot.name}
                           slotMode={view.slotMode}
-                          extraClasses={dragClasses(node.key)}
+                          drag={dragState(node.key)}
                           onActivate={() => {
                             if (!drag.swallowClick()) nodeClick(slot, node);
                           }}
@@ -169,7 +211,7 @@ function PactSlotList({ view }: { view: PactsView }) {
                       <ExtraSlot
                         key={extra.key}
                         extra={extra}
-                        extraClasses={dragClasses(extra.key)}
+                        drag={dragState(extra.key)}
                         onActivate={() => {
                           if (!drag.swallowClick()) extraClick(extra);
                         }}
@@ -182,12 +224,12 @@ function PactSlotList({ view }: { view: PactsView }) {
                       />
                     ))}
                   </div>
-                  <small className="pact-node-count">{`${slot.allocatedCount} allocated`}</small>
+                  <small className={`pact-node-count ${COUNT_LAYOUT}`}>{`${slot.allocatedCount} allocated`}</small>
                 </>
               ) : null}
               <button
                 type="button"
-                className="pact-slot-remove"
+                className={`pact-slot-remove ${REMOVE_BUTTON}`}
                 aria-label={`Remove ${slot.name}`}
                 title="Remove Pactspirit"
                 onClick={() => commands.removePactspirit(slot.index)}
@@ -207,7 +249,7 @@ function PactSlotList({ view }: { view: PactsView }) {
 }
 
 interface NodeProps {
-  extraClasses: string;
+  drag: DragState;
   onActivate: () => void;
   onContextMenu: (event: MouseEvent) => void;
   onPointerDown?: (event: PointerEvent<HTMLElement>) => void;
@@ -217,20 +259,16 @@ function PactNode({
   node,
   slotName,
   slotMode,
-  extraClasses,
+  drag,
   onActivate,
   onContextMenu,
   onPointerDown,
 }: NodeProps & { node: PactNodeView; slotName: string; slotMode: boolean }) {
   const switchable = slotMode && node.allocatable;
   const acts = switchable || node.fate || node.kismetKind !== null;
-  const className =
-    `pact-tree-node pact-tree-${node.ring}${node.allocated ? " allocated" : ""}` +
-    `${switchable && !node.allocated ? " unallocated" : ""}${node.hasKismet ? " has-kismet" : ""}` +
-    `${node.kismetKind || node.fate ? " craftable" : ""}${node.fateUnlocked ? " fate-unlocked" : ""}${extraClasses}`;
   return (
     <span
-      className={className}
+      className={nodeClasses(node, switchable, drag)}
       tabIndex={0}
       role={switchable ? "button" : undefined}
       aria-pressed={switchable ? node.allocated : undefined}
@@ -251,9 +289,9 @@ function PactNode({
       onContextMenu={onContextMenu}
       onPointerDown={onPointerDown}
     >
-      <img src={node.icon} alt="" />
+      <img className={nodeImage(switchable && !node.allocated)} src={node.icon} alt="" />
       {switchable ? (
-        <i className="pact-node-status" aria-hidden="true">
+        <i className={nodeStatus(node.allocated)} aria-hidden="true">
           {node.allocated ? "✓" : "+"}
         </i>
       ) : null}
@@ -261,17 +299,11 @@ function PactNode({
   );
 }
 
-function ExtraSlot({
-  extra,
-  extraClasses,
-  onActivate,
-  onContextMenu,
-  onPointerDown,
-}: NodeProps & { extra: ExtraSlotView }) {
+function ExtraSlot({ extra, drag, onActivate, onContextMenu, onPointerDown }: NodeProps & { extra: ExtraSlotView }) {
   const ring = extra.kind === "micro" ? "inner" : "mid";
   return (
     <span
-      className={`pact-tree-node pact-tree-${ring} pact-tree-extra${extra.hasKismet ? " has-kismet" : ""} craftable${extraClasses}`}
+      className={extraClasses(extra, drag)}
       tabIndex={0}
       data-pact-node-tooltip=""
       data-kismet-node={extra.key}
@@ -289,7 +321,11 @@ function ExtraSlot({
       onContextMenu={onContextMenu}
       onPointerDown={onPointerDown}
     >
-      {extra.hasKismet ? <img src={extra.icon} alt="" /> : <span aria-hidden="true">+</span>}
+      {extra.hasKismet ? (
+        <img className="size-full object-contain" src={extra.icon} alt="" />
+      ) : (
+        <span aria-hidden="true">+</span>
+      )}
     </span>
   );
 }

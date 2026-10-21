@@ -2,8 +2,7 @@
 // title with the count of choices, the search over names, tags and effects with its clear button, the list (the
 // follower picker's in Tartarus / Origin groups), the highlighted choice's detail (SkillSelectorDetail) and Clear slot /
 // Confirm / Cancel, from the planner's "skillSelector" source (src/app/bridge/skill-selector-view.ts); every edit is a
-// planner command. The skills tests find the list by #skill-selector-results; the CSS styles the footer buttons by
-// data-clear-skill-slot and data-confirm-skill-selector, so they stay.
+// planner command. The skills tests find the list by #skill-selector-results. Below 700px only the list shows.
 import { useRef, type ReactNode } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { Artwork } from "../../ui/Artwork";
@@ -11,6 +10,11 @@ import { useSessionState } from "../../ui/use-session-state";
 import { useViewSource } from "../../ui/use-view-source";
 import { setAutofocusAttribute } from "../autofocus";
 import { SkillSelectorDetail } from "./SkillSelectorDetail";
+import { DETAIL, RESULT, RESULT_SELECTED, RESULT_TINT, SUPPORT_ART } from "./skill-selector-classes";
+
+const FOOTER_BUTTON = "px-3.5 py-2 text-[0.72rem] font-extrabold tracking-[0.06em] uppercase";
+// Clear slot: a reddish bronze.
+const CLEAR_BUTTON = `${FOOTER_BUTTON} cursor-pointer rounded-[3px] border border-[#906044] bg-[linear-gradient(180deg,#493126,#251d1b)] text-[#f1c2a5] hover:border-[#c58b69] hover:bg-[linear-gradient(180deg,#684232,#30211d)] hover:text-[#ffe0c5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold`;
 
 export function SkillSelectorDialog() {
   const view = useViewSource("skillSelector");
@@ -30,18 +34,26 @@ export function SkillSelectorDialog() {
   const any = groups.some((group) => group.results.length);
   const close = () => dialog.current?.close();
   return (
-    <dialog id="skill-selector" ref={dialog} className="skill-selector-dialog" aria-labelledby="skill-selector-title">
-      <header>
-        <h2 id="skill-selector-title">{view?.title ?? "Select Active Skill"}</h2>
-        <button type="button" aria-label="Close selector" onClick={close}>
+    <dialog
+      id="skill-selector"
+      ref={dialog}
+      className="dialog-panel h-162.5 w-230 grid-rows-[auto_minmax(0,1fr)_auto] leading-[normal] open:grid"
+      aria-labelledby="skill-selector-title"
+    >
+      <header className="dialog-head">
+        <h2 id="skill-selector-title" className="dialog-title">
+          {view?.title ?? "Select Active Skill"}
+        </h2>
+        <button type="button" className="dialog-close" aria-label="Close selector" onClick={close}>
           ×
         </button>
       </header>
-      <div className="skill-selector-body">
-        <section className="skill-selector-list">
-          <label>
+      <div className="grid min-h-0 grid-cols-[1fr_1.05fr] max-[700px]:grid-cols-1">
+        <section className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border-r border-[#66553c] p-4 max-[700px]:border-r-0">
+          <label className="field-search">
             <span aria-hidden="true">⌕</span>
             <input
+              className="flex-1"
               id="skill-selector-search"
               ref={(element) => {
                 search.current = element;
@@ -54,6 +66,7 @@ export function SkillSelectorDialog() {
             />
             <button
               type="button"
+              className="cursor-pointer px-1 text-muted hover:text-gold-pale"
               aria-label="Clear search"
               onClick={() => {
                 setQuery("");
@@ -63,7 +76,7 @@ export function SkillSelectorDialog() {
               ×
             </button>
           </label>
-          <div id="skill-selector-results">
+          <div id="skill-selector-results" className="mt-3 grid min-h-0 content-start gap-2 overflow-auto pr-1.5">
             {!view ? null : any ? (
               groups.map((group, groupIndex) =>
                 group.results.length ? (
@@ -72,15 +85,17 @@ export function SkillSelectorDialog() {
                       <button
                         key={item.index}
                         type="button"
-                        className={`selector-result${item.tintClass} ${item.index === view.selected ? "selected" : ""}`}
+                        className={`${item.index === view.selected ? `${RESULT_SELECTED} selected` : RESULT}${item.tintClass} ${RESULT_TINT}`}
                         onClick={() => plannerCommands().chooseSkillSelectorEntry(item.index)}
                       >
-                        <Artwork src={item.icon} alt={item.name} className="support-art" />
-                        <span>
-                          <strong>{item.name}</strong>
-                          <small>
+                        <Artwork src={item.icon} alt={item.name} className={SUPPORT_ART} />
+                        <span className="min-w-0">
+                          <strong className="block text-base">{item.name}</strong>
+                          <small className="mt-1.25 flex flex-wrap gap-1 text-[0.65rem] text-[#a9b2bf]">
                             {item.tags.map((tag, index) => (
-                              <em key={index}>{tag}</em>
+                              <em key={index} className="rounded-[2px] bg-[#242d38] px-1.25 py-0.5 not-italic">
+                                {tag}
+                              </em>
                             ))}
                           </small>
                         </span>
@@ -90,7 +105,7 @@ export function SkillSelectorDialog() {
                 ) : null,
               )
             ) : (
-              <p className="muted">No matching entries.</p>
+              <p className="text-muted">No matching entries.</p>
             )}
           </div>
         </section>
@@ -99,11 +114,11 @@ export function SkillSelectorDialog() {
           <section
             key="follower"
             id="skill-selector-detail"
-            className="skill-selector-detail"
+            className={DETAIL}
             dangerouslySetInnerHTML={{ __html: detail.html }}
           />
         ) : (
-          <section key="entry" id="skill-selector-detail" className="skill-selector-detail">
+          <section key="entry" id="skill-selector-detail" className={DETAIL}>
             {detail?.kind === "entry" ? (
               <SkillSelectorDetail view={detail} levelText={typedLevel} onLevelText={setLevelText} />
             ) : (
@@ -112,26 +127,20 @@ export function SkillSelectorDialog() {
           </section>
         )}
       </div>
-      <footer>
-        <button
-          className="button button-secondary"
-          type="button"
-          data-clear-skill-slot=""
-          onClick={() => plannerCommands().clearSkillSelectorSlot()}
-        >
+      <footer className="grid grid-cols-[auto_1fr_auto_auto] gap-2.5 border-t border-[#806037] bg-[linear-gradient(180deg,#1d242b,#171d25)] px-4 py-3">
+        <button className={CLEAR_BUTTON} type="button" onClick={() => plannerCommands().clearSkillSelectorSlot()}>
           Clear slot
         </button>
         <span />
         <button
-          className="button"
+          className={`btn-gold ${FOOTER_BUTTON} off:cursor-default off:opacity-45`}
           type="button"
-          data-confirm-skill-selector=""
           disabled={view?.confirm.disabled ?? true}
           onClick={() => plannerCommands().confirmSkillSelector(typedLevel)}
         >
           {view?.confirm.label ?? "Confirm"}
         </button>
-        <button className="button button-secondary" type="button" onClick={close}>
+        <button className={`btn-bronze ${FOOTER_BUTTON}`} type="button" onClick={close}>
           Cancel
         </button>
       </footer>
@@ -142,7 +151,11 @@ export function SkillSelectorDialog() {
 function Group({ heading, children }: { heading: string | null; children: ReactNode }) {
   return (
     <>
-      {heading ? <h4 className="follower-selector-group">{heading}</h4> : null}
+      {heading ? (
+        <h4 className="follower-selector-group mt-1.5 text-[0.6rem] font-extrabold tracking-[0.12em] text-[#8291a1] uppercase">
+          {heading}
+        </h4>
+      ) : null}
       {children}
     </>
   );

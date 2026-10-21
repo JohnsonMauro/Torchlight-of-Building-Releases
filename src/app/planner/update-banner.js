@@ -2,6 +2,15 @@
 // electron/updater.cjs). In a plain browser there is no bridge and nothing is installed (apps/web/src/boot.tsx only imports this
 // file when the bridge exists). Status text is set with textContent; nothing from the network is parsed as HTML.
 
+// The banner: a raised slate bar with a gold top edge, centred at the top; its buttons small and dark, the primary one
+// gold-lettered.
+const BANNER_CLASS =
+  "update-banner fixed top-2.5 left-1/2 z-160 flex max-w-[calc(100vw-32px)] -translate-x-1/2 flex-wrap items-center gap-2 rounded-md border border-t-2 border-line border-t-gold bg-raised py-1.75 pr-2 pl-3.5 text-[0.82rem] text-text shadow-[0_8px_24px_rgb(0_0_0/0.5)]";
+const BUTTON_CLASS =
+  "update-banner-button h-7 cursor-pointer rounded-[5px] border bg-[#0c1219] px-2.5 text-[0.78rem]/none font-bold hover:border-gold hover:text-gold focus-visible:border-gold focus-visible:text-gold focus-visible:outline-none";
+const PLAIN_BUTTON_CLASS = `${BUTTON_CLASS} border-[#465363] text-muted`;
+const PRIMARY_BUTTON_CLASS = `${BUTTON_CLASS} primary border-gold text-gold`;
+
 /** What the banner shows for one status: { text, actions: [{ id, label, primary }], progress } or null (hidden). */
 export function updateBannerView(status) {
   if (!status || typeof status !== "object") return null;
@@ -67,7 +76,7 @@ export function installUpdateBanner(doc = globalThis.document, bridge = globalTh
   if (doc.__tliUpdateBanner) return doc.__tliUpdateBanner;
 
   const banner = doc.createElement("div");
-  banner.className = "update-banner";
+  banner.className = BANNER_CLASS;
   banner.setAttribute("role", "status");
   banner.setAttribute("aria-live", "polite");
   banner.hidden = true;
@@ -92,12 +101,13 @@ export function installUpdateBanner(doc = globalThis.document, bridge = globalTh
       return;
     }
     const text = doc.createElement("span");
-    text.className = "update-banner-text";
+    text.className = "update-banner-text mr-1 font-semibold";
     text.textContent = view.text;
     banner.appendChild(text);
     if (view.progress != null) {
       const bar = doc.createElement("progress");
-      bar.className = "update-banner-progress";
+      bar.className =
+        "update-banner-progress h-1.5 w-35 appearance-none overflow-hidden rounded-full bg-line [&::-moz-progress-bar]:bg-gold [&::-webkit-progress-bar]:bg-line [&::-webkit-progress-value]:bg-gold";
       bar.max = 100;
       bar.value = view.progress;
       bar.setAttribute("aria-label", "Download progress");
@@ -106,7 +116,7 @@ export function installUpdateBanner(doc = globalThis.document, bridge = globalTh
     for (const action of view.actions) {
       const button = doc.createElement("button");
       button.type = "button";
-      button.className = action.primary ? "update-banner-button primary" : "update-banner-button";
+      button.className = action.primary ? PRIMARY_BUTTON_CLASS : PLAIN_BUTTON_CLASS;
       button.dataset.updateAction = action.id;
       button.textContent = action.label;
       banner.appendChild(button);

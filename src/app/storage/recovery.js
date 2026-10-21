@@ -1,6 +1,7 @@
 // Recovery screen. Standalone: depends only on recovery-core.js (raw storage
-// access), never on the planner or the calculator, so it works when those fail
-// to load or freeze.
+// access) and the notices' class lists, never on the planner or the calculator,
+// so it works when those fail to load or freeze.
+import { NOTICE_BUTTON_CLASS, NOTICE_SECONDARY_BUTTON_CLASS, NOTICE_STRIP_CLASS } from "../notice-classes.js";
 import {
   clearBootFlag,
   clearBootMarker,
@@ -22,6 +23,13 @@ const escapeText = (value) =>
     /[&<>"']/g,
     (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character],
   );
+
+// The body shows only the recovery screen; the screen is a chamfered panel with an ember eyebrow and a large title.
+const BODY_CLASS = "[&>:not(.recovery-screen)]:hidden!";
+const PANEL_CLASS =
+  "relative border border-[#3a4655] bg-panel p-5.5 leading-[normal] clip-chamfer-9 before:absolute before:top-0 before:left-0 before:h-px before:w-13.5 before:bg-[#bdcee0] before:opacity-65 max-[520px]:p-4";
+const EYEBROW_CLASS = "mb-1.75 text-[0.72rem] font-extrabold tracking-[0.12em] text-[#f08b3c] uppercase";
+const TITLE_CLASS = "mb-3 font-serif text-5xl/[1.1] font-bold tracking-[-0.03em] max-[520px]:text-4xl";
 
 const intro = {
   unfinished: "The planner didn't finish loading last time. Your builds are safe.",
@@ -53,24 +61,24 @@ export function renderRecoveryScreen({ reason = "unfinished", error = null } = {
       : "",
   ].filter(Boolean);
   document.querySelector(".recovery-screen")?.remove();
-  document.body.classList.add("recovery-mode");
+  document.body.classList.add(BODY_CLASS);
   document.body.insertAdjacentHTML(
     "afterbegin",
-    `<main class="recovery-screen">
-  <section class="panel recovery-panel" aria-labelledby="recovery-title">
-    <p class="eyebrow">Recovery</p>
-    <h1 id="recovery-title">Planner recovery</h1>
-    <p>${escapeText(intro[reason] || intro.unfinished)}</p>
-    ${error ? `<p class="notice recovery-error"><strong>Error:</strong> ${escapeText(error?.message || error)}</p>` : ""}
-    <p class="muted">${escapeText(buildLine)}</p>
-    ${keptAside.length ? `<p class="muted">Also kept unchanged and included in the download: ${escapeText(keptAside.join(" and "))}.</p>` : ""}
-    <div class="recovery-actions">
-      <button class="button" type="button" data-recovery="download">Download all builds</button>
-      <button class="button button-secondary" type="button" data-recovery="reset-view">Reset view settings (keeps builds)</button>
-      <button class="button button-secondary" type="button" data-recovery="safe-mode">Open safe mode</button>
-      <button class="button button-secondary" type="button" data-recovery="start">Start normally</button>
+    `<main class="recovery-screen mx-auto my-12 block max-w-170 px-4">
+  <section class="${PANEL_CLASS}" aria-labelledby="recovery-title">
+    <p class="${EYEBROW_CLASS}">Recovery</p>
+    <h1 id="recovery-title" class="${TITLE_CLASS}">Planner recovery</h1>
+    <p class="mb-3">${escapeText(intro[reason] || intro.unfinished)}</p>
+    ${error ? `<p class="mb-3 wrap-anywhere ${NOTICE_STRIP_CLASS}"><strong>Error:</strong> ${escapeText(error?.message || error)}</p>` : ""}
+    <p class="mb-3 text-muted">${escapeText(buildLine)}</p>
+    ${keptAside.length ? `<p class="mb-3 text-muted">Also kept unchanged and included in the download: ${escapeText(keptAside.join(" and "))}.</p>` : ""}
+    <div class="mt-4.5 mb-3 flex flex-wrap gap-2.5">
+      <button class="${NOTICE_BUTTON_CLASS}" type="button" data-recovery="download">Download all builds</button>
+      <button class="${NOTICE_SECONDARY_BUTTON_CLASS}" type="button" data-recovery="reset-view">Reset view settings (keeps builds)</button>
+      <button class="${NOTICE_SECONDARY_BUTTON_CLASS}" type="button" data-recovery="safe-mode">Open safe mode</button>
+      <button class="${NOTICE_SECONDARY_BUTTON_CLASS}" type="button" data-recovery="start">Start normally</button>
     </div>
-    <p class="muted recovery-status" role="status" aria-live="polite"></p>
+    <p class="recovery-status text-muted" role="status" aria-live="polite"></p>
   </section>
 </main>`,
   );

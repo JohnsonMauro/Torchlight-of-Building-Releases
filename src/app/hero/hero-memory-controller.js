@@ -30,6 +30,7 @@ import { heroMemoryIcon, heroMemoryIsRevived, memoryTypesByTier } from "./hero-m
 import { escapeHtml } from "../html.js";
 import { $, showToast } from "../planner/page.js";
 import { persistPlannerState, plannerState } from "../planner/session.js";
+import { memoryClasses } from "../tooltips/tooltip-kind-classes.js";
 import { hidePlannerTooltip } from "../tooltips/tooltip-host.js";
 import { renderHeroTraitTree } from "./hero-controller.js";
 
@@ -130,7 +131,7 @@ function clearInvalidBaseTraitMemory() {
 }
 export function memoryRevivalBadge(memory) {
   return heroMemoryIsRevived(memory)
-    ? '<span class="memory-revival-badge"><span aria-hidden="true">☾</span> Revived</span>'
+    ? `<span class="memory-revival-badge ${memoryClasses.revivalBadge}"><span aria-hidden="true">☾</span> Revived</span>`
     : "";
 }
 // A revived affix as the crafter's preview and the memory tooltip show it: its tier, effect, and a Lunar Phase affix's
@@ -173,9 +174,9 @@ function memoryRevivedEffectView(memory) {
 export function memoryRevivedAffixMarkup(memory) {
   const view = memoryRevivedEffectView(memory);
   const details = view.details
-    ? `<small class="memory-revived-hint">Hold Alt for details</small><div class="memory-revived-detail"><ul>${view.details.effects.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>${view.details.exclusive !== null ? `<div class="memory-revived-exclusive"><small>Hero trait exclusive</small><span>${escapeHtml(view.details.exclusive)}</span></div>` : ""}</div>`
+    ? `<small class="memory-revived-hint ${memoryClasses.revivedHint}">Hold Alt for details</small><div class="memory-revived-detail ${memoryClasses.revivedDetail}"><ul class="${memoryClasses.revivedList}">${view.details.effects.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>${view.details.exclusive !== null ? `<div class="memory-revived-exclusive ${memoryClasses.revivedExclusive}"><small>Hero trait exclusive</small><span>${escapeHtml(view.details.exclusive)}</span></div>` : ""}</div>`
     : "";
-  return `<div class="memory-revived-effect ${view.special ? "special" : ""}">${view.tierBadge ? affixTierBadge(view.tierBadge) : ""}<span class="memory-revived-name">${escapeHtml(view.effect)}</span>${details}</div>`;
+  return `<div class="memory-revived-effect ${memoryClasses.revived} ${view.special ? `special ${memoryClasses.revivedSpecial}` : ""}">${view.tierBadge ? affixTierBadge(view.tierBadge) : ""}<span class="memory-revived-name ${memoryClasses.revivedName}">${escapeHtml(view.effect)}</span>${details}</div>`;
 }
 function otherEquippedRevivedMemory(memory) {
   const equippedIds = [

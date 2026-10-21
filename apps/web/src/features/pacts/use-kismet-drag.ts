@@ -3,6 +3,7 @@
 // The click (and, after a copy, the context menu) that follows the drop is swallowed, so it does not also act on the slot.
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { KismetKind } from "@legacy/app/bridge/pacts-view-model.ts";
+import { KISMET_DRAG_GHOST, KISMET_DRAG_GHOST_COPY, KISMET_DRAG_GHOST_IMAGE } from "./pact-classes";
 
 export interface DragSource {
   key: string;
@@ -104,8 +105,15 @@ export function useKismetDrag(handlers: KismetDragHandlers) {
         if (!current.moved && distance >= START_DISTANCE) {
           current.moved = true;
           const ghost = document.createElement("div");
-          ghost.className = "kismet-drag-ghost";
-          ghost.innerHTML = `<img src="${current.icon}" alt=""><b>+</b>`;
+          ghost.className = KISMET_DRAG_GHOST;
+          const image = document.createElement("img");
+          image.className = KISMET_DRAG_GHOST_IMAGE;
+          image.src = current.icon;
+          image.alt = "";
+          const copyMark = document.createElement("b");
+          copyMark.className = KISMET_DRAG_GHOST_COPY;
+          copyMark.textContent = "+";
+          ghost.append(image, copyMark);
           ghost.style.width = `${current.element.offsetWidth}px`;
           ghost.style.height = `${current.element.offsetHeight}px`;
           document.body.append(ghost);

@@ -6,7 +6,29 @@ import type { CraftChange } from "@legacy/app/gear/equipment-craft.ts";
 import type { EquipmentCrafterBody, LegendaryConfigView } from "@legacy/app/bridge/equipment-crafter-view.ts";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { CSSProperties } from "react";
+import {
+  CONTROL,
+  CRAFT_ASIDE,
+  CRAFT_ASIDE_LABEL,
+  CRAFT_FORM,
+  CRAFT_HEADING,
+  CRAFT_LAYOUT,
+  FIELD,
+  MOD_BOX_CORRODED,
+  MOD_TAG_CORRODED,
+  RANGE,
+  SELECTED_CARD,
+  SELECTED_CHANGE,
+  SELECTED_ICON,
+} from "./crafter-classes";
 import { Choices, ItemPreview, LegendaryModControl, Options, type LegendaryLineChange } from "./crafter-parts";
+
+// The list column: the search, the results (they scroll), the count.
+const LIST_COLUMN =
+  "grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-3 border-r border-[#36404d] p-4 max-[800px]:shrink-0 max-[800px]:border-r-0";
+// A legendary in the list: its art, name and slot · level.
+const CHOICE =
+  "legendary-choice grid min-h-17.5 cursor-pointer grid-cols-[54px_minmax(0,1fr)] items-center gap-2.5 border border-[#263548] bg-[#172136] p-2 text-left text-white hover:border-[#f69335] hover:bg-[#202b3a] focus-visible:border-[#f69335] focus-visible:outline-none";
 
 const change = (craftChange: CraftChange) => plannerCommands().changeEquipmentCraft(craftChange);
 const LINE_NAMES = {
@@ -41,11 +63,12 @@ function craftLineChange(index: number, lineChange: LegendaryLineChange): CraftC
 
 export function LegendaryList({ list }: { list: Extract<EquipmentCrafterBody, { kind: "legendaryList" }> }) {
   return (
-    <div className="legendary-craft-layout">
-      <section>
-        <label className="gear-search">
+    <div className={CRAFT_LAYOUT}>
+      <section className={LIST_COLUMN}>
+        <label className="field-search">
           ⌕
           <input
+            className="flex-1"
             type="search"
             data-legendary-search=""
             value={list.search}
@@ -53,27 +76,27 @@ export function LegendaryList({ list }: { list: Extract<EquipmentCrafterBody, { 
             onChange={(event) => change({ kind: "search", value: event.target.value })}
           />
         </label>
-        <div className="legendary-results">
+        <div className="grid min-h-0 grid-cols-2 content-start gap-2 overflow-auto max-[800px]:grid-cols-1">
           {/* An id can repeat in the catalog (Unholy Prayer), so the list is keyed by position. */}
           {list.results.map((entry, index) => (
             <button
               key={index}
               type="button"
-              className="legendary-choice"
+              className={CHOICE}
               data-legendary-id={entry.id}
               onClick={() => change({ kind: "legendary", id: entry.id })}
             >
-              <img src={entry.icon} alt="" />
-              <span>
-                <strong>{entry.name}</strong>
-                <small>{entry.detail}</small>
+              <img src={entry.icon} alt="" className="h-14.5 w-13 object-contain" />
+              <span className="min-w-0">
+                <strong className="block">{entry.name}</strong>
+                <small className="mt-1 block text-[0.8rem] text-[#91a2b4]">{entry.detail}</small>
               </span>
             </button>
           ))}
         </div>
-        <small>{list.count}</small>
+        <small className="text-[0.82rem] text-[#c9d1da]">{list.count}</small>
       </section>
-      <aside>
+      <aside className={CRAFT_ASIDE}>
         <p>Select a legendary item to configure it.</p>
       </aside>
     </div>
@@ -82,21 +105,27 @@ export function LegendaryList({ list }: { list: Extract<EquipmentCrafterBody, { 
 
 export function LegendaryConfig({ config }: { config: LegendaryConfigView }) {
   return (
-    <div className="legendary-config-layout">
-      <section>
-        <div className="gear-edit-selected">
-          <img src={config.icon} alt="" />
-          <span>
-            <strong>{config.name}</strong>
-            <small>{config.slot}</small>
+    <div className={CRAFT_LAYOUT}>
+      <section className={CRAFT_FORM}>
+        <div className={SELECTED_CARD}>
+          <img src={config.icon} alt="" className={SELECTED_ICON} />
+          <span className="min-w-0">
+            <strong className="block text-[1.05rem] text-[#ff9a3f]">{config.name}</strong>
+            <small className="block text-[0.82rem] text-[#c9d1da]">{config.slot}</small>
           </span>
-          <button type="button" data-change-legendary="" onClick={() => change({ kind: "changeLegendary" })}>
+          <button
+            type="button"
+            className={SELECTED_CHANGE}
+            data-change-legendary=""
+            onClick={() => change({ kind: "changeLegendary" })}
+          >
             Change
           </button>
         </div>
-        <label>
+        <label className={FIELD}>
           Base
           <select
+            className={CONTROL}
             data-legendary-base=""
             value={config.base}
             onChange={(event) => change({ kind: "legendaryBase", value: event.target.value })}
@@ -109,9 +138,10 @@ export function LegendaryConfig({ config }: { config: LegendaryConfigView }) {
           </select>
         </label>
         {config.beltBlend ? (
-          <label>
+          <label className={FIELD}>
             Belt Blend
             <select
+              className={CONTROL}
               data-legendary-belt-blend=""
               value={config.beltBlend.value}
               onChange={(event) => change({ kind: "legendaryBeltBlend", value: event.target.value })}
@@ -122,9 +152,10 @@ export function LegendaryConfig({ config }: { config: LegendaryConfigView }) {
           </label>
         ) : null}
         {config.energy !== null ? (
-          <label>
+          <label className={FIELD}>
             Equipment Energy
             <input
+              className={CONTROL}
               data-legendary-energy=""
               type="number"
               min="0"
@@ -134,9 +165,10 @@ export function LegendaryConfig({ config }: { config: LegendaryConfigView }) {
           </label>
         ) : null}
         {config.sequence ? (
-          <label>
+          <label className={FIELD}>
             TOWER Sequence
             <select
+              className={CONTROL}
               data-legendary-tower-sequence=""
               value={config.sequence.value}
               onChange={(event) => change({ kind: "legendarySequence", value: event.target.value })}
@@ -146,9 +178,10 @@ export function LegendaryConfig({ config }: { config: LegendaryConfigView }) {
             </select>
           </label>
         ) : null}
-        <label>
+        <label className={FIELD}>
           Corrosion Implicit
           <select
+            className={CONTROL}
             data-legendary-corrosion=""
             value={config.corrosion}
             onChange={(event) => change({ kind: "legendaryCorrosion", value: Number(event.target.value) })}
@@ -158,15 +191,18 @@ export function LegendaryConfig({ config }: { config: LegendaryConfigView }) {
           </select>
         </label>
         {config.corroded ? (
-          <div className="fixed-mod corrosion-affix">
-            <b>Corroded</b>
-            <span data-corrosion-text="">{config.corroded.text}</span>
+          <div className={`fixed-mod corrosion-affix ${MOD_BOX_CORRODED}`}>
+            <span className="flex items-start gap-2.5">
+              <b className={MOD_TAG_CORRODED}>Corroded</b>
+              <span data-corrosion-text="">{config.corroded.text}</span>
+            </span>
             {config.corroded.roll !== null ? (
               <input
                 type="range"
                 min="0"
                 max="100"
                 value={config.corroded.roll}
+                className={RANGE}
                 data-corrosion-roll=""
                 style={{ "--range-fill": `${config.corroded.roll}%` } as CSSProperties}
                 onChange={(event) => change({ kind: "corrosionRoll", value: Number(event.target.value) })}
@@ -174,8 +210,8 @@ export function LegendaryConfig({ config }: { config: LegendaryConfigView }) {
             ) : null}
           </div>
         ) : null}
-        <h3>Legendary Mods</h3>
-        <div className="gear-mod-editor">
+        <h3 className={CRAFT_HEADING}>Legendary Mods</h3>
+        <div className="grid gap-2.5">
           {config.lines.map((line) => (
             <LegendaryModControl
               key={line.index}
@@ -186,8 +222,8 @@ export function LegendaryConfig({ config }: { config: LegendaryConfigView }) {
           ))}
         </div>
       </section>
-      <aside id="legendary-config-preview">
-        <small>Preview</small>
+      <aside id="legendary-config-preview" className={CRAFT_ASIDE}>
+        <small className={CRAFT_ASIDE_LABEL}>Preview</small>
         <ItemPreview preview={config.preview} />
       </aside>
     </div>

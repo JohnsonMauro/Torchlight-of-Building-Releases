@@ -20,6 +20,7 @@ import { escapeHtml } from "./html.js";
 import { pactCommands, pactViewSources } from "./pacts/pacts-controller.js";
 import { $, activeBuildViewId, showToast, updateStorageStatus } from "./planner/page.js";
 import { installRangeFills, scheduleRangeFillRefresh } from "./planner/range-fill.js";
+import { NOTICE_BUTTON_CLASS, NOTICE_CLASS } from "./notice-classes.js";
 import { installSearchableSelectEvents } from "./planner/searchable-select.js";
 import {
   applyPlannerState,
@@ -169,7 +170,7 @@ renderLibraryNotice();
 if (calculationsPaused)
   $("#builds-view").insertAdjacentHTML(
     "afterbegin",
-    '<div class="notice safe-mode-banner" role="status"><strong>Safe mode: calculations paused</strong><button class="button" type="button" data-resume-calculations>Resume calculations</button></div>',
+    `<div class="${NOTICE_CLASS}" role="status"><strong>Safe mode: calculations paused</strong><button class="${NOTICE_BUTTON_CLASS}" type="button" data-resume-calculations>Resume calculations</button></div>`,
   );
 renderCandidateViews();
 scheduleRangeFillRefresh();

@@ -13,6 +13,12 @@ import { canPlaceSlate } from "../../engine/talents/slate-board.js";
 import { setCoverageContext } from "../../engine/text/line-coverage.js";
 import { upgradeExistingCorrodedItems } from "../gear/stored-items.js";
 import { escapeHtml } from "../html.js";
+import {
+  NOTICE_ACTIONS_CLASS,
+  NOTICE_BUTTON_CLASS,
+  NOTICE_CLASS,
+  NOTICE_SECONDARY_BUTTON_CLASS,
+} from "../notice-classes.js";
 import { createPlannerCache } from "./planner-cache.js";
 import { craftedSlateForBoard } from "../slates/slate-shapes.js";
 import {
@@ -293,7 +299,7 @@ function showCalculationFailure(error) {
     .querySelector("main")
     ?.insertAdjacentHTML(
       "afterbegin",
-      `<div class="notice safe-mode-banner calculation-failure" role="alert"><span>This build couldn't be calculated: ${message}</span><span class="library-notice-actions"><button class="button" type="button" data-calculation-undo>Undo last change</button><button class="button button-secondary" type="button" data-calculation-safe-mode>Open safe mode</button></span></div>`,
+      `<div class="calculation-failure ${NOTICE_CLASS}" role="alert"><span>This build couldn't be calculated: ${message}</span><span class="${NOTICE_ACTIONS_CLASS}"><button class="${NOTICE_BUTTON_CLASS}" type="button" data-calculation-undo>Undo last change</button><button class="${NOTICE_SECONDARY_BUTTON_CLASS}" type="button" data-calculation-safe-mode>Open safe mode</button></span></div>`,
     );
   const notice = document.querySelector(".calculation-failure");
   notice?.querySelector("[data-calculation-undo]")?.addEventListener("click", () => {
