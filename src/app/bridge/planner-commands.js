@@ -27,8 +27,12 @@
  * @property {(id: string) => void} editCraftedSlate Slate Inventory: opens the crafter on a slate.
  * @property {(id: string) => void} removeCraftedSlate Slate Inventory: takes a slate off the grid.
  * @property {(id: string) => void} deleteCraftedSlate Slate Inventory: deletes a slate.
- * @property {() => void} writeSlateCrafter Slate crafter: the planner writes the crafter into the header and body React
- *   gave it (data-legacy-editor).
+ * @property {(change: import("../slates/slate-craft.ts").SlateCraftChange) => void} changeSlateCrafter Slate crafter: a
+ *   control's change (a tab, god, Nether King type or template draws the form anew).
+ * @property {(select: HTMLSelectElement, index: number) => void} registerSlateAffixSelect Slate crafter: an affix select,
+ *   so the planner's searchable list shows its choices and a pick sets its slot.
+ * @property {() => void} addCraftedSlate Slate crafter: Add to Inventory, or Save Changes on the edited slate.
+ * @property {() => void} backToSlateInventory Slate crafter: Back to Inventory or Cancel.
  * @property {(name: string) => void} selectKismetChoice Kismet crafter: chooses a Kismet (at its best values).
  * @property {(index: number, value: number) => void} setKismetRoll Kismet crafter: a value as typed or slid (kept only
  *   while in range).

@@ -1,31 +1,27 @@
 // The Slate Inventory (the slate board's Inventory button): the crafted slates with their state, affix count and god,
-// Duplicate, Edit, Remove from grid and Delete, a right-click to place one on the grid, and Craft Slate. The crafter
-// stays the planner's markup: in its mode React renders the header and body empty and marked data-legacy-editor (new
-// elements, whose children React never touches) and asks the planner to write the crafter into them. A slate keeps
-// data-crafted-slate-inventory for the planner's tooltip, and Craft Slate data-open-slate-crafter for the CSS.
-import { useLayoutEffect, type CSSProperties } from "react";
+// Duplicate, Edit, Remove from grid and Delete, a right-click to place one on the grid, and Craft Slate, which shows
+// the crafter (SlateCrafter.tsx) in the dialog's header and body. A slate keeps data-crafted-slate-inventory for the
+// planner's tooltip, and Craft Slate data-open-slate-crafter for the CSS.
+import type { CSSProperties } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { useViewSource } from "../../ui/use-view-source";
+import { SlateCrafterBody, SlateCrafterHeader } from "./SlateCrafter";
 
 const commands = plannerCommands;
 
 export function SlateInventoryDialog() {
   const view = useViewSource("slateInventory");
-  const crafter = view?.mode === "crafter";
-  useLayoutEffect(() => {
-    if (crafter) commands().writeSlateCrafter();
-  }, [crafter]);
+  const crafter = view?.mode === "crafter" ? view.crafter : null;
   return (
     <dialog id="slate-inventory" className="slate-inventory" aria-labelledby="slate-inventory-title">
       {crafter ? (
         <>
-          <div
-            key="crafter-header"
-            id="slate-inventory-header"
-            className="slate-inventory-tabs"
-            data-legacy-editor=""
-          />
-          <div key="crafter-body" id="slate-crafter-body" data-legacy-editor="" />
+          <div key="crafter-header" id="slate-inventory-header" className="slate-inventory-tabs">
+            <SlateCrafterHeader crafter={crafter} />
+          </div>
+          <div key="crafter-body" id="slate-crafter-body">
+            <SlateCrafterBody crafter={crafter} />
+          </div>
         </>
       ) : (
         <>

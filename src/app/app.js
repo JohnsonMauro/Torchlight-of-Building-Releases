@@ -93,7 +93,6 @@ import { selenaScorchingBeamTalentSetupSs13 } from "../data/talents/selena-scorc
 import { professionTreeLayoutsSs13 } from "../data/talents/profession-tree-layouts-ss13.js";
 import { allProfessionTalentCatalogueSs13 } from "../data/talents/all-profession-trees-ss13.generated.js";
 import { divinitySlateAffixesSs13, divinitySlateTreeFamiliesSs13 } from "../data/divinity-slate-affixes-ss13.js";
-import { netherKingFixedAffixesSs13 } from "../data/nether-king-slate-affixes-ss13.js";
 import { assignSkillBoardSlot, moveSkillBoardSlot, skillBoardRows } from "../engine/skills/skill-board-slots.js";
 import { heroCanPlaceMagusInActiveSlot, isSpiritMagusSkill } from "../engine/skills/magus-active-slot.js";
 import {
@@ -108,9 +107,24 @@ import {
   isActiveJudgment,
   judgmentAffixTargetPercent,
 } from "../engine/talents/slate-judgment.js";
-import { netherKingUltimateAffixesSs13 } from "../data/nether-king-ultimate-affixes-ss13.js";
-import { pedigreeCoreAffixesSs13 } from "../data/pedigree-core-affixes-ss13.js";
-import { PEDIGREE_OF_GODS, pedigreeSlotTypes, normalizePedigreeAffixes } from "../engine/talents/pedigree-slots.js";
+import {
+  godSlateCaptureByKey,
+  godSlateShapeCapture,
+  legendaryTalentSlotTypes,
+  slateCraftedAffixGroups,
+  slateGameCaptureByName,
+  slateGodFamilyClass,
+  slateGodKey,
+  slateShapeCodes,
+} from "./slates/slate-catalog.js";
+import {
+  changeSlateCraft as changeSlateCraftDraft,
+  craftedSlate,
+  drawnSlateCraft,
+  slateCraftFromSlate,
+  slateCrafterView,
+  slateSlotChoices,
+} from "./slates/slate-craft.ts";
 import { selenaScorchingBeamGearSs13 } from "../data/gear/selena-scorching-beam-ss13.js";
 import { equipmentSlots, craftItemTypes } from "../data/gear/crafting-catalog-ss13.js";
 import { rareBaseItemsSs13 } from "../data/gear/rare-base-items-ss13.generated.js";
@@ -448,11 +462,14 @@ let parkedSlates = {};
 let slateToolsPosition = null;
 let slatePendingDrop = null;
 let talentSlateMode = false;
-let activeSlateCrafterTab = "craft";
-let selectedSlateGod = "Goddess of Deception";
-let selectedNetherSlateType = "Judgment";
-let selectedLegendarySlateName = "";
-let editingCraftedSlateId = null;
+// The slate crafter's draft (src/app/slates/slate-craft.ts); its god and Nether King type stay for the next slate.
+let slateCraft = drawnSlateCraft({
+  tab: "craft",
+  god: "Goddess of Deception",
+  netherType: "Judgment",
+  template: "",
+  editingId: null,
+});
 let selectorKind = "skill";
 let skillSelectorSession = 0; // the skill selector's openings (apps/web/src/shell/dialogs/SkillSelectorDialog.tsx)
 let heroSelectorSession = 0; // the hero selector's openings (apps/web/src/shell/dialogs/HeroSelectorDialog.tsx)
@@ -495,56 +512,10 @@ const allTalentPanelsSs13 = Object.values(allProfessionTalentCatalogueSs13).map(
 const equippedSlateIds = new Set(
   plannerState.equippedSlateIds || selenaScorchingBeamSlatesSs13.slates.map((slate) => slate.id),
 );
-const slateGodKey = (name) =>
-  ({
-    "Goddess of Deception": "deception",
-    "Goddess of Hunting": "hunting",
-    "Goddess of Knowledge": "knowledge",
-    "God of Machines": "machines",
-    "God of Might": "might",
-    "God of War": "war",
-  })[name] || "deception";
-const slateGameCaptureByName = {
-  "Fallen Starlight": "./src/assets/tli/slates/game-captures/fallen-starlight.webp",
-  "A Corner of Divinity": "./src/assets/tli/slates/game-captures/corner-of-divinity.webp",
-  "Pedigree of Gods": "./src/assets/tli/slates/game-captures/pedigree-of-gods.webp",
-  "Sparks of Moth Fire": "./src/assets/tli/slates/game-captures/sparks-of-moth-fire.webp",
-  "When Sparks Set the Prairie Ablaze": "./src/assets/tli/slates/game-captures/prairie-ablaze.webp",
-  "Space Rift": "./src/assets/tli/slates/game-captures/space-rift.svg",
-  "Residence of Stars": "./src/assets/tli/slates/game-captures/residence-of-stars.svg",
-  "Nether King's Divinity: Judgment": "./src/assets/tli/slates/game-captures/nether-king-judgment.png",
-  "Nether King's Divinity: Contamination": "./src/assets/tli/slates/game-captures/nether-kings-contamination.svg",
-  "Nether King's Divinity: Offspring": "./src/assets/tli/slates/game-captures/nether-king-offspring.svg",
-};
-const sparksOfMothFireCopyRules = [
-  "Copies the last Talent on the adjacent slate above to this slate. Unable to copy the Core Talent.",
-  "Copies the last Talent on the adjacent slate on the left to this slate. Unable to copy the Core Talent.",
-  "Copies the last Talent on the adjacent slate below this slate. Unable to copy the Core Talents.",
-  "Copies the last Talent on the adjacent slate on the right to this slate. Unable to copy the Core Talent.",
-];
-const sparksOfMothFireDirections = ["↑ Above", "← Left", "↓ Below", "→ Right"];
-const residenceOfStarsCopyRule =
-  "Copies the Medium Talents on the adjacent slate to this slate. Unable to copy Legendary Medium Talents.";
-const prairieAblazeCopyRule = "Copies the last Talent on all adjacent slates. Unable to copy Core Talents.";
-const spaceRiftCopyRules = [
-  "Copies the Medium Talents, Legendary Medium Talents, and Ultimate Nether King Talents on the adjacent slate on the left to this slate",
-  "Copies the Medium Talents, Legendary Medium Talents, and Ultimate Nether King Talents on the adjacent slate on the right to this slate",
-];
-const allGodSlateTalentTypes = ["Micro Talent", "Medium Talent", "Legendary Medium Talent"];
-const legendaryTalentSlotTypes = {
-  "Fallen Starlight": Array.from({ length: 4 }, () => allGodSlateTalentTypes),
-  "A Corner of Divinity": Array.from({ length: 2 }, () => allGodSlateTalentTypes),
-  [PEDIGREE_OF_GODS]: pedigreeSlotTypes,
-};
-const allDivinitySlateAffixes = Object.entries(divinitySlateAffixesSs13).flatMap(([god, affixes]) =>
-  affixes.map((affix) => ({ ...affix, god })),
-);
 const slateAffixFamilyClass = (tree) => {
   const god = Object.entries(divinitySlateTreeFamiliesSs13).find(([, trees]) => trees.includes(tree))?.[0];
   return god ? `talent-family-${god.toLowerCase().replaceAll(" ", "-")}` : "";
 };
-const slateGodFamilyClass = (god) =>
-  divinitySlateTreeFamiliesSs13[god] ? `talent-family-${god.toLowerCase().replaceAll(" ", "-")}` : "";
 const coloredSlateAffix = (affix) => {
   const colon = affix.indexOf(": ");
   if (colon < 0) return escapeHtml(affix);
@@ -554,24 +525,6 @@ const coloredSlateAffix = (affix) => {
     ? `<b class="slate-affix-tree ${family}">${escapeHtml(tree)}</b>${escapeHtml(affix.slice(colon))}`
     : escapeHtml(affix);
 };
-const netherKingFixedPool = netherKingFixedAffixesSs13.map((affix) => ({
-  ...affix,
-  tree: "Nether King",
-  god: "Nether King",
-}));
-const netherKingBrandPool = [
-  ...allDivinitySlateAffixes,
-  ...netherKingFixedPool,
-  ...netherKingUltimateAffixesSs13.map((affix) => ({ ...affix, tree: "Nether King", god: "Nether King" })),
-];
-const godSlateCaptureByKey = {
-  hunting: "goddess-of-hunting",
-  knowledge: "goddess-of-knowledge",
-  machines: "god-of-machines",
-  might: "god-of-might",
-  war: "god-of-war",
-};
-const godSlateShapeCapture = (god, shape) => `./src/assets/tli/slates/game-captures/${god}-${shape}.png`;
 const godSlateCapturedShapes = {
   deception: [
     null,
@@ -917,27 +870,9 @@ const artwork = (src, alt, className = "game-art") =>
 let searchableSelectTarget = null,
   searchableSelectMatches = [];
 const fullTextTitle = (text) => (text ? ` title="${escapeHtml(text)}"` : "");
+// A slate affix select's choices (too many for options of their own) and what a pick does, by select element; the
+// slate crafter (apps/web/src/shell/dialogs/SlateCrafter.tsx) registers each of its selects.
 const slateAffixSelectPools = new WeakMap();
-function slateAffixChoice(affix, fallbackGod, legendary = false) {
-  const { tree, name, effect, god, talentName, maxDivinityEffect } = affix;
-  const details = `${name}: ${legendary && talentName ? `${talentName} — ` : ""}${effect}`;
-  return {
-    value: `${tree}: ${details}`,
-    textContent: `${tree} · ${name} — ${legendary && talentName ? `${talentName}: ` : ""}${effect}`,
-    dataset: {
-      affixTree: tree,
-      affixDetails: details,
-      affixFamily: (god || fallbackGod).toLowerCase().replaceAll(" ", "-"),
-      maxDivinityEffect: maxDivinityEffect === 1 ? "1" : "",
-    },
-  };
-}
-function setSlateAffixPool(select, items, fallbackGod, legendary = false) {
-  slateAffixSelectPools.set(
-    select,
-    items.map((item) => slateAffixChoice(item, fallbackGod, legendary)),
-  );
-}
 function closeSearchableSelect() {
   $("#select-search-popover")?.remove();
   searchableSelectTarget = null;
@@ -947,7 +882,7 @@ function searchableOptions(select, query = "") {
   const needle = query.trim().toLowerCase();
   const pool = slateAffixSelectPools.get(select);
   if (pool) {
-    const choices = pool
+    const choices = pool.choices
       .map((option, index) => ({
         option: { ...option, selected: select.value === option.value },
         index: index + 1,
@@ -1029,14 +964,13 @@ function openSearchableSelect(select, initialQuery = "") {
 }
 function chooseSearchableOption(index) {
   if (!searchableSelectTarget) return;
-  const choice = slateAffixSelectPools.get(searchableSelectTarget)?.[Number(index) - 1];
-  if (choice) {
-    searchableSelectTarget.querySelector("[data-selected-affix]")?.remove();
-    const option = new Option(choice.textContent, choice.value, true, true);
-    option.dataset.selectedAffix = "";
-    Object.assign(option.dataset, choice.dataset);
-    searchableSelectTarget.add(option);
-  } else searchableSelectTarget.selectedIndex = Number(index);
+  const pool = slateAffixSelectPools.get(searchableSelectTarget);
+  if (pool) {
+    pool.choose(pool.choices[Number(index) - 1] || null);
+    closeSearchableSelect();
+    return;
+  }
+  searchableSelectTarget.selectedIndex = Number(index);
   searchableSelectTarget.dispatchEvent(new Event("input", { bubbles: true }));
   searchableSelectTarget.dispatchEvent(new Event("change", { bubbles: true }));
   closeSearchableSelect();
@@ -1639,7 +1573,10 @@ providePlannerCommands({
   duplicateCraftedSlate,
   editCraftedSlate,
   removeCraftedSlate,
-  writeSlateCrafter,
+  changeSlateCrafter,
+  registerSlateAffixSelect,
+  addCraftedSlate,
+  backToSlateInventory,
   openSlateInventory: () => {
     renderSlateInventory();
     $("#slate-inventory").showModal();
@@ -3817,9 +3754,13 @@ function placeCraftedSlate(id) {
   } else showToast("No space is available beside the grid for that slate");
 }
 function startSlateCraft() {
-  editingCraftedSlateId = null;
-  selectedLegendarySlateName = "";
-  activeSlateCrafterTab = "craft";
+  slateCraft = drawnSlateCraft({
+    ...slateCraft,
+    tab: "craft",
+    template: "",
+    editingId: null,
+    drawing: slateCraft.drawing + 1,
+  });
   renderSlateCrafter();
 }
 function deleteCraftedSlate(id) {
@@ -4695,26 +4636,6 @@ function removeSelectedPactspirit(index) {
 }
 
 const slateAffixes = (slate) => plannerState.slates?.affixOverrides?.[slate.id] || slate.fixed || [];
-const netherKingFixedChoices = new Set(
-  netherKingFixedPool.map((affix) => slateAffixChoice(affix, "Nether King").value),
-);
-function slateCraftedAffixGroups(slate) {
-  const saved = slate.affixGroups;
-  if (slate.god !== "Nether King")
-    return saved || { fixed: (slate.affixes || []).slice(0, 2), random: (slate.affixes || []).slice(2) };
-  if (saved) {
-    const fixed = (saved.fixed || []).filter((affix) => !affix || netherKingFixedChoices.has(affix));
-    const brand = [
-      ...(saved.fixed || []).filter((affix) => affix && !netherKingFixedChoices.has(affix)),
-      ...(saved.brand || saved.random || []),
-    ];
-    return { fixed, brand };
-  }
-  const affixes = slate.affixes || [];
-  let fixedCount = 0;
-  while (fixedCount < 2 && netherKingFixedChoices.has(affixes[fixedCount])) fixedCount += 1;
-  return { fixed: affixes.slice(0, fixedCount), brand: affixes.slice(fixedCount) };
-}
 
 // The Fate slot selector (apps/web/src/shell/dialogs/FateSlotSelectorDialog.tsx) is open for this Pactspirit.
 let fateSlotSpirit = "";
@@ -4885,7 +4806,6 @@ function saveKismetSlot(clear = false) {
   hidePlannerTooltip();
   refreshPactCandidate();
 }
-const slateAsset = (name) => `./src/assets/tli/slates/${name}`;
 // The cells of a crafted slate's shape (x, y), drawn as a god-colored shape when the slate has no art.
 const slateShapeCells = (shape) =>
   ({
@@ -4905,24 +4825,9 @@ const slateShapeCells = (shape) =>
     ],
     single: [[0, 0]],
   })[shape] || [[0, 0]];
-const slateShapeArt = (shape, god = selectedSlateGod) =>
-  `<span class="god-slate-shape ${slateGodKey(god)}">${slateShapeCells(shape)
-    .map(([x, y]) => `<i style="--x:${x};--y:${y}"></i>`)
-    .join("")}</span>`;
-const godSlateAssets = {
-  deception: ["AI"],
-  hunting: ["Agi"],
-  knowledge: ["Int"],
-  machines: ["SI"],
-  might: ["Str"],
-  war: ["SA"],
-};
-const slateShapeCodes = ["Z1", "L1", "O1", "T1"];
 // The Slate Inventory dialog (apps/web/src/shell/dialogs/SlateInventoryDialog.tsx) shows the "slateInventory" source: the
-// crafted slates, or, in the crafter's mode, the crafter, which the planner still writes into the header and body React
-// gives it (data-legacy-editor) once React shows them.
-let slateInventoryMode = "inventory",
-  pendingSlateEditorFill = null;
+// crafted slates, or, in the crafter's mode, the crafter (src/app/slates/slate-craft.ts slateCrafterView).
+let slateInventoryMode = "inventory";
 function renderSlateInventory() {
   slateInventoryMode = "inventory";
   viewSourceChanged("slateInventory");
@@ -4930,6 +4835,7 @@ function renderSlateInventory() {
 function slateInventorySource() {
   return {
     mode: slateInventoryMode,
+    crafter: slateInventoryMode === "crafter" ? slateCrafterView(slateCraft) : null,
     items: (plannerState.slates?.inventory || []).map((slate) => {
       const icon = craftedSlateIcon(slate),
         affixes = slate.affixes.filter(Boolean).length;
@@ -4946,317 +4852,27 @@ function slateInventorySource() {
 function renderSlateCrafter() {
   slateInventoryMode = "crafter";
   viewSourceChanged("slateInventory");
-  writeSlateCrafter();
 }
-// Writes the crafter when React shows its header and body, then fills a slate opened for editing into it.
-function writeSlateCrafter() {
-  const body = $("#slate-crafter-body");
-  if (slateInventoryMode !== "crafter" || !body?.hasAttribute("data-legacy-editor")) return;
-  drawSlateCrafter(body);
-  const slate = pendingSlateEditorFill;
-  pendingSlateEditorFill = null;
-  if (slate) fillCraftedSlateEditor(slate);
+// ---- Slate crafter commands (apps/web/src/shell/dialogs/SlateCrafter.tsx).
+function changeSlateCrafter(change) {
+  slateCraft = changeSlateCraftDraft(slateCraft, change);
+  viewSourceChanged("slateInventory");
 }
-function drawSlateCrafter(body) {
-  const affixPool = divinitySlateAffixesSs13[selectedSlateGod] || [],
-    affixRows = (heading, start, count) =>
-      `<fieldset><legend>${heading} (0/${count})</legend>${Array.from({ length: count }, (_, index) => `<label class="slate-affix-row"><span>Slot ${start + index}</span><select><option value="">Select affix…</option></select></label>`).join("")}</fieldset>`;
-  $("#slate-inventory-header").innerHTML =
-    `<button type="button" class="${activeSlateCrafterTab === "craft" ? "active" : ""}" data-slate-inventory-tab="craft">Craft Slate</button><button type="button" class="${activeSlateCrafterTab === "legendary" ? "active" : ""}" data-slate-inventory-tab="legendary">Craft Legendary Slate</button><button type="button" class="${activeSlateCrafterTab === "judgment" ? "active" : ""}" data-slate-inventory-tab="judgment">Nether King</button><button type="button" class="picker-close" data-close-slate-inventory aria-label="Close slate inventory">×</button>`;
-  const actions = `<div class="slate-inventory-actions"><button type="button" class="button button-secondary" data-back-slate-inventory>${editingCraftedSlateId ? "Cancel" : "Back to Inventory"}</button><button type="button" class="button" data-add-crafted-slate>${editingCraftedSlateId ? "Save Changes" : "Add to Inventory"}</button></div>`;
-  if (activeSlateCrafterTab === "legendary") {
-    const templates = [
-      ["game-captures/sparks-of-moth-fire.webp", "Sparks of Moth Fire"],
-      ["game-captures/fallen-starlight.webp", "Fallen Starlight"],
-      ["game-captures/corner-of-divinity.webp", "A Corner of Divinity"],
-      ["game-captures/space-rift.svg", "Space Rift"],
-      ["game-captures/pedigree-of-gods.webp", "Pedigree of Gods"],
-      ["game-captures/residence-of-stars.svg", "Residence of Stars"],
-      ["game-captures/prairie-ablaze.webp", "When Sparks Set the Prairie Ablaze"],
-    ];
-    if (selectedLegendarySlateName === "Sparks of Moth Fire") {
-      const icon = slateGameCaptureByName[selectedLegendarySlateName];
-      body.innerHTML = `<div class="slate-craft-layout slate-legendary-detail"><section><p class="eyebrow">Legendary Template</p><div class="slate-legendary-selection"><img src="${icon}" alt=""><div><strong>Sparks of Moth Fire</strong><small>Selected Legendary</small></div><button type="button" class="button button-secondary" data-change-slate-template>Change</button><button type="button" class="active" data-slate-template="Sparks of Moth Fire" hidden></button></div><fieldset><legend>Shape &amp; Orientation</legend><div class="slate-shape-options"><button type="button" class="active" data-craft-shape="single"><img src="${icon}" alt="Sparks of Moth Fire shape"></button><span class="slate-shape-preview"><img src="${icon}" alt=""></span><div class="slate-transform-options"><button type="button" data-craft-transform="rotate">↻ Rotate</button><button type="button" data-craft-transform="flip-h">↔ Flip H</button><button type="button" data-craft-transform="flip-v">↕ Flip V</button></div></div></fieldset><fieldset><legend>Fixed Affix</legend><label class="slate-affix-row"><span>Slot 1</span><select data-sparks-copy-rule aria-label="Sparks of Moth Fire copy direction">${sparksOfMothFireCopyRules.map((rule, index) => `<option value="${escapeHtml(rule)}">${sparksOfMothFireDirections[index]} · ${escapeHtml(rule)}</option>`).join("")}</select></label></fieldset></section><aside><span>Preview</span><div class="slate-craft-card"><img src="${icon}" alt=""><strong>Sparks of Moth Fire</strong><small>DIVINITY SLATE · LEGENDARY</small><div class="slate-craft-affix-preview"><section><h3>Fixed Affix</h3><div class="sparks-preview-direction"><span class="sparks-preview-arrow" data-sparks-preview-arrow aria-hidden="true">↑</span><strong data-sparks-preview-direction>From above</strong></div><ul><li><span data-sparks-preview-rule>${escapeHtml(sparksOfMothFireCopyRules[0])}</span></li></ul></section></div></div>${actions}</aside></div>`;
-      return;
-    }
-    if (selectedLegendarySlateName === "Residence of Stars") {
-      const icon = slateGameCaptureByName[selectedLegendarySlateName];
-      body.innerHTML = `<div class="slate-craft-layout slate-legendary-detail"><section><p class="eyebrow">Legendary Template</p><div class="slate-legendary-selection"><img src="${icon}" alt=""><div><strong>Residence of Stars</strong><small>Selected Legendary</small></div><button type="button" class="button button-secondary" data-change-slate-template>Change</button><button type="button" class="active" data-slate-template="Residence of Stars" hidden></button></div><fieldset><legend>Shape &amp; Orientation</legend><div class="slate-shape-options"><button type="button" class="active" data-craft-shape="residence"><img src="${icon}" alt="Residence of Stars shape"></button><span class="slate-shape-preview"><img src="${icon}" alt=""></span><small class="slate-transform-note">Orientation is fixed</small></div></fieldset><fieldset><legend>Fixed Affix</legend><label class="slate-affix-row"><span>Slot 1</span><span class="slate-readonly">${escapeHtml(residenceOfStarsCopyRule)}</span></label></fieldset></section><aside><span>Preview</span><div class="slate-craft-card"><img src="${icon}" alt=""><strong>Residence of Stars</strong><small>DIVINITY SLATE · LEGENDARY</small><div class="slate-craft-affix-preview"><section><h3>Fixed Affix</h3><ul><li><span>${escapeHtml(residenceOfStarsCopyRule)}</span></li></ul></section></div></div>${actions}</aside></div>`;
-      return;
-    }
-    if (
-      [
-        "When Sparks Set the Prairie Ablaze",
-        "Space Rift",
-        "Fallen Starlight",
-        "A Corner of Divinity",
-        "Pedigree of Gods",
-      ].includes(selectedLegendarySlateName)
-    ) {
-      const name = selectedLegendarySlateName,
-        icon = slateGameCaptureByName[name],
-        slotTypes = legendaryTalentSlotTypes[name] || [];
-      const copyRules =
-        name === "Space Rift"
-          ? spaceRiftCopyRules
-          : name === "When Sparks Set the Prairie Ablaze"
-            ? [prairieAblazeCopyRule]
-            : [];
-      const optionPool =
-        name === "Pedigree of Gods"
-          ? [...allDivinitySlateAffixes, ...pedigreeCoreAffixesSs13]
-          : allDivinitySlateAffixes;
-      const affixControls = slotTypes
-        .map(
-          (types, index) =>
-            `<label class="slate-affix-row"><span>Slot ${index + 1}</span><select data-legendary-affix="${index}" aria-label="${escapeHtml(name)} affix ${index + 1}"><option value="">Select ${escapeHtml(types.join(" or "))}…</option></select></label>`,
-        )
-        .join("");
-      const fixedControl =
-        copyRules.length > 1
-          ? `<select data-legendary-copy-rule aria-label="Space Rift copy direction">${copyRules.map((rule, index) => `<option value="${escapeHtml(rule)}">${index ? "→ Right" : "← Left"} · ${escapeHtml(rule)}</option>`).join("")}</select>`
-          : `<span class="slate-readonly">${escapeHtml(copyRules[0] || "")}</span>`;
-      const previewAffix = copyRules.length
-        ? `<div class="slate-craft-affix-preview"><section><h3>Fixed Affix</h3>${copyRules.length > 1 ? '<div class="sparks-preview-direction"><span class="sparks-preview-arrow" data-legendary-copy-arrow aria-hidden="true">←</span><strong data-legendary-copy-label>From left</strong></div>' : ""}<ul><li><span data-legendary-copy-preview>${escapeHtml(copyRules[0])}</span></li></ul></section></div>`
-        : `<div class="slate-craft-affix-preview"><p>Choose affixes to preview their effects.</p></div>`;
-      body.innerHTML = `<div class="slate-craft-layout slate-legendary-detail"><section><p class="eyebrow">Legendary Template</p><div class="slate-legendary-selection"><img src="${icon}" alt=""><div><strong>${escapeHtml(name)}</strong><small>Selected Legendary</small></div><button type="button" class="button button-secondary" data-change-slate-template>Change</button><button type="button" class="active" data-slate-template="${escapeHtml(name)}" hidden></button></div><fieldset><legend>Shape &amp; Orientation</legend><div class="slate-shape-options"><button type="button" class="active" data-craft-shape="legendary"><img src="${icon}" alt="${escapeHtml(name)} shape"></button><span class="slate-shape-preview"><img src="${icon}" alt=""></span><div class="slate-transform-options">${slateTransformRules(name).rotate ? `<button type="button" data-craft-transform="rotate">↻ Rotate</button>` : ""}${slateTransformRules(name).flip ? `<button type="button" data-craft-transform="flip-h">↔ Flip H</button><button type="button" data-craft-transform="flip-v">↕ Flip V</button>` : ""}</div></div></fieldset><fieldset><legend>${copyRules.length ? "Fixed Affix" : `Talent Affixes (0/${slotTypes.length})`}</legend>${copyRules.length ? `<label class="slate-affix-row"><span>Slot 1</span>${fixedControl}</label>` : affixControls}</fieldset></section><aside><span>Preview</span><div class="slate-craft-card"><img src="${icon}" alt=""><strong>${escapeHtml(name)}</strong><small>DIVINITY SLATE · LEGENDARY</small>${previewAffix}</div>${actions}</aside></div>`;
-      [...body.querySelectorAll("[data-legendary-affix]")].forEach((select, index) =>
-        setSlateAffixPool(
-          select,
-          optionPool.filter((affix) => slotTypes[index].includes(affix.name)),
-          selectedSlateGod,
-          true,
-        ),
-      );
-      return;
-    }
-    body.innerHTML = `<div class="slate-template-layout"><section><p>Legendary Template</p><div class="slate-template-grid">${templates.map(([icon, name]) => `<button type="button" data-slate-template="${escapeHtml(name)}"><img src="${slateAsset(icon)}" alt=""><span>${escapeHtml(name)}</span></button>`).join("")}</div></section><aside><span>Preview</span><div class="slate-empty-preview">Select options to preview slate</div>${actions}</aside></div>`;
-    return;
-  }
-  const nether = activeSlateCrafterTab === "judgment";
-  const netherNames = ["Judgment", "Contamination", "Offspring"];
-  const netherName = `Nether King's Divinity: ${selectedNetherSlateType}`;
-  const netherIcon = slateGameCaptureByName[netherName];
-  const gods = [
-    "Goddess of Deception",
-    "Goddess of Hunting",
-    "Goddess of Knowledge",
-    "God of Machines",
-    "God of Might",
-    "God of War",
-  ];
-  const godKey = slateGodKey(selectedSlateGod),
-    suffix = godSlateAssets[godKey]?.[0],
-    nativeSlateFiles = suffix ? slateShapeCodes.map((shape) => `UI_TalantNG_${shape}_0_Icon_${suffix}_112.webp`) : [],
-    native = Boolean(suffix),
-    nativeArt = (file) =>
-      `<img src="${
-        file.includes("_Z1_") && godSlateCaptureByKey[godKey]
-          ? slateAsset(`game-captures/${godSlateCaptureByKey[godKey]}.svg`)
-          : godKey === "deception" && file.includes("_Z1_")
-            ? slateAsset("game-captures/goddess-of-deception-divinity.webp")
-            : godSlateShapeCapture(
-                godKey,
-                slateShapeCodes.find((shape) => file.includes(`_${shape}_`)),
-              )
-      }" alt="${selectedSlateGod} slate">`;
-  body.innerHTML = `<div class="slate-craft-layout"><section><label class="slate-field">Name<input type="text" data-slate-craft-name placeholder="Custom name (optional)"></label>${nether ? `<fieldset class="slate-craft-gods"><legend>Nether King Type</legend>${netherNames.map((type) => `<button type="button" data-nether-slate-type="${type}" class="${type === selectedNetherSlateType ? "active" : ""}">${type}</button>`).join("")}</fieldset>` : `<fieldset class="slate-craft-gods"><legend>God</legend>${gods.map((god) => `<button type="button" data-slate-god="${god}" class="${god === selectedSlateGod ? "active" : ""}">${god}</button>`).join("")}</fieldset>`}<fieldset><legend>Shape &amp; Orientation</legend><div class="slate-shape-options ${native ? "native-slate-assets" : ""}">${nether ? `<button type="button" class="active" data-craft-shape="authority"><img src="${netherIcon}" alt=""></button>` : native ? nativeSlateFiles.map((file, index) => `<button type="button" class="${index ? "" : "active"}" data-craft-shape="${godKey}-${index}">${nativeArt(file)}</button>`).join("") : ["corner", "line", "tee", "single"].map((shape, index) => `<button type="button" class="${index ? "" : "active"}" data-craft-shape="${shape}">${slateShapeArt(shape)}</button>`).join("")}<span class="slate-shape-preview">${nether ? `<img src="${netherIcon}" alt="">` : native ? nativeArt(nativeSlateFiles[0]) : slateShapeArt("corner")}</span><div class="slate-transform-options"><button type="button" data-craft-transform="rotate">↻ Rotate</button><button type="button" data-craft-transform="flip-h">↔ Flip H</button><button type="button" data-craft-transform="flip-v">↕ Flip V</button></div></div>${nether ? `<small>Block grows with filled Brand Talent Nodes<br>(0–1 → 1 block, 2 → 2, 3 → Authority)</small>` : ""}</fieldset>${nether ? `<fieldset><legend>Authority Effect</legend><input class="slate-readonly" value="${netherName}" readonly><small>This slate has a fixed Authority effect</small><p class="slate-authority-copy">Divinity Slates on links between Divinities have 70% increased affix effect.</p></fieldset>` : ""}${affixRows("Fixed Affixes", 1, 2, nether ? netherKingFixedPool : affixPool)}${affixRows(nether ? "Brand Talent Nodes" : "Random Affixes", 3, 3, nether ? netherKingBrandPool : affixPool)}</section><aside><span>Preview</span><div class="slate-craft-card ${nether ? "nether" : slateGodFamilyClass(selectedSlateGod)}">${nether ? `<img src="${netherIcon}" alt="">` : native ? nativeArt(nativeSlateFiles[0]) : `${slateShapeArt("corner")} `}<strong>${nether ? netherName : selectedSlateGod}</strong><small>${nether ? "NETHER KING'S DIVINITY · LEGENDARY" : "DIVINITY SLATE · MAGIC"}</small>${nether ? `<hr><em>AUTHORITY</em><b>${netherName}</b>` : ""}</div>${actions}</aside></div>`;
-  [...body.querySelectorAll(".slate-affix-row select")].forEach((select, index) =>
-    setSlateAffixPool(
-      select,
-      nether ? (index < 2 ? netherKingFixedPool : netherKingBrandPool) : affixPool,
-      selectedSlateGod,
-    ),
-  );
-  body
-    .querySelector(".slate-craft-card small")
-    ?.insertAdjacentHTML("afterend", '<div class="slate-craft-affix-preview" aria-live="polite"></div>');
-  updateSlateCraftPreview();
-}
-function updateSlateCraftPreview() {
-  const body = $("#slate-crafter-body"),
-    card = body?.querySelector(".slate-craft-card"),
-    preview = card?.querySelector(".slate-craft-affix-preview");
-  if (!preview) return;
-  if (activeSlateCrafterTab === "legendary") {
-    const art = body.querySelector(".slate-shape-preview img"),
-      cardArt = card.querySelector(":scope > img");
-    if (art && cardArt) cardArt.style.transform = art.style.transform;
-    const rule = body.querySelector("[data-sparks-copy-rule]"),
-      rulePreview = card.querySelector("[data-sparks-preview-rule]");
-    if (rule && rulePreview) {
-      rulePreview.textContent = rule.value;
-      const direction = sparksOfMothFireDirections[Math.max(0, sparksOfMothFireCopyRules.indexOf(rule.value))];
-      const arrow = card.querySelector("[data-sparks-preview-arrow]"),
-        label = card.querySelector("[data-sparks-preview-direction]");
-      if (arrow) arrow.textContent = direction[0];
-      if (label) label.textContent = `From ${direction.slice(2).toLowerCase()}`;
-    }
-    const legendaryRule = body.querySelector("[data-legendary-copy-rule]"),
-      legendaryRulePreview = card.querySelector("[data-legendary-copy-preview]");
-    if (legendaryRule && legendaryRulePreview) {
-      legendaryRulePreview.textContent = legendaryRule.value;
-      const fromRight = legendaryRule.selectedIndex === 1;
-      card.querySelector("[data-legendary-copy-arrow]").textContent = fromRight ? "→" : "←";
-      card.querySelector("[data-legendary-copy-label]").textContent = fromRight ? "From right" : "From left";
-    }
-    const talentSelects = [...body.querySelectorAll("[data-legendary-affix]")];
-    if (talentSelects.length) {
-      const chosen = talentSelects.filter((select) => select.value);
-      body.querySelector(".slate-legendary-detail fieldset:last-of-type legend").textContent =
-        `Talent Affixes (${chosen.length}/${talentSelects.length})`;
-      preview.innerHTML = chosen.length
-        ? `<section><h3>Talent Affixes</h3><ul>${chosen
-            .map((select) => {
-              const option = select.selectedOptions[0],
-                details = option.dataset.affixDetails || select.value,
-                colon = details.indexOf(": "),
-                type = colon < 0 ? "" : details.slice(0, colon),
-                effect = colon < 0 ? details : details.slice(colon + 2),
-                limited = option.dataset.maxDivinityEffect === "1",
-                core = /\bLv\.[12] Core Talent\b/.test(type);
-              return `<li class="${core ? "core-slate-affix" : ""} ${limited ? "max-one-divinity" : ""}">${core ? '<strong class="core-slate-badge">Core Talent</strong>' : ""}<small>${escapeHtml([option.dataset.affixTree, type].filter(Boolean).join(" · "))}</small><span>${escapeHtml(effect)}</span>${limited ? '<strong class="max-divinity-badge">MAX ACTIVE: 1</strong>' : ""}</li>`;
-            })
-            .join("")}</ul></section>`
-        : "<p>Choose affixes to preview their effects.</p>";
-    }
-    return;
-  }
-  const name = body.querySelector("[data-slate-craft-name]")?.value.trim();
-  card.querySelector("strong").textContent =
-    name ||
-    (activeSlateCrafterTab === "judgment" ? `Nether King's Divinity: ${selectedNetherSlateType}` : selectedSlateGod);
-  const art = body.querySelector(".slate-shape-preview img"),
-    cardArt = card.querySelector(":scope > img");
-  if (art && cardArt) {
-    cardArt.src = art.src;
-    cardArt.style.transform = art.style.transform;
-  }
-  const selects = [...body.querySelectorAll(".slate-affix-row select")];
-  const groups = [
-    ["Fixed Affixes", selects.slice(0, 2)],
-    [activeSlateCrafterTab === "judgment" ? "Brand Talent Nodes" : "Random Affixes", selects.slice(2)],
-  ];
-  body.querySelectorAll(".slate-craft-layout fieldset").forEach((fieldset) => {
-    const legend = fieldset.querySelector(":scope > legend");
-    if (!legend) return;
-    const group = groups.find(([title]) => legend.textContent.startsWith(title));
-    if (group)
-      legend.textContent = `${group[0]} (${group[1].filter((select) => select.value).length}/${group[1].length})`;
+// An affix select of the crafter: its choices in the searchable list, and a pick (null: the placeholder).
+function registerSlateAffixSelect(select, index) {
+  slateAffixSelectPools.set(select, {
+    choices: slateSlotChoices(slateCraft, index),
+    choose: (choice) =>
+      changeSlateCrafter(choice ? { kind: "slot", index, choice } : { kind: "slot", index, value: "" }),
   });
-  preview.innerHTML =
-    groups
-      .map(([title, slots]) => {
-        const chosen = slots
-          .filter((select) => select.value)
-          .map((select) => {
-            const option = select.selectedOptions[0],
-              details = option.dataset.affixDetails || option.textContent,
-              colon = details.indexOf(": "),
-              type = colon < 0 ? "" : details.slice(0, colon),
-              effect = colon < 0 ? details : details.slice(colon + 2),
-              tree = option.dataset.affixTree || "",
-              limited = option.dataset.maxDivinityEffect === "1";
-            return `<li class="${limited ? "max-one-divinity" : ""}"><small>${escapeHtml([tree, type].filter(Boolean).join(" · "))}</small><span>${escapeHtml(effect)}</span>${limited ? '<strong class="max-divinity-badge" title="Only one copy of this effect is active across equipped slates">MAX ACTIVE DIVINITY: 1</strong><small>Duplicates on other slates do not stack.</small>' : ""}</li>`;
-          });
-        return chosen.length ? `<section><h3>${title}</h3><ul>${chosen.join("")}</ul></section>` : "";
-      })
-      .join("") || "<p>Choose affixes to preview their effects.</p>";
 }
-document.addEventListener("change", (event) => {
-  if (event.target.matches("#slate-crafter-body .slate-affix-row select")) updateSlateCraftPreview();
-});
-document.addEventListener("input", (event) => {
-  if (event.target.matches("#slate-crafter-body [data-slate-craft-name]")) updateSlateCraftPreview();
-});
 function openCraftedSlateEditor(slate) {
-  editingCraftedSlateId = slate.id;
-  selectedNetherSlateType = slate.name.split("Nether King's Divinity: ")[1] || "Judgment";
-  selectedSlateGod = slate.god === "Nether King" ? "Goddess of Deception" : slate.god;
-  activeSlateCrafterTab =
-    slate.god === "Nether King" ? "judgment" : slate.rarity === "legendary" ? "legendary" : "craft";
-  selectedLegendarySlateName = activeSlateCrafterTab === "legendary" ? slate.template || slate.name : "";
-  pendingSlateEditorFill = slate;
+  slateCraft = { ...slateCraftFromSlate(slate), drawing: slateCraft.drawing + 1 };
   renderSlateCrafter();
 }
-// The crafter's form filled from the slate being edited (after the crafter is written).
-function fillCraftedSlateEditor(slate) {
-  if (activeSlateCrafterTab === "legendary") {
-    const preview = $(".slate-shape-preview");
-    const copyRule = $("[data-sparks-copy-rule]");
-    if (copyRule) {
-      const savedRule = slate.copyRule || slate.affixes?.[0];
-      if (sparksOfMothFireCopyRules.includes(savedRule)) copyRule.value = savedRule;
-    }
-    const legendaryRule = $("[data-legendary-copy-rule]");
-    if (legendaryRule && spaceRiftCopyRules.includes(slate.copyRule)) legendaryRule.value = slate.copyRule;
-    // Pedigree slots hold rolled talent nodes; a saved value outside the slot's pool is cleared here only (storage changes on Save).
-    const pedigree =
-      selectedLegendarySlateName === PEDIGREE_OF_GODS ? normalizePedigreeAffixes(slate.affixes || []) : null;
-    if (pedigree?.cleared.length)
-      document
-        .querySelector("[data-legendary-affix]")
-        ?.closest("fieldset")
-        ?.querySelector("legend")
-        ?.insertAdjacentHTML(
-          "afterend",
-          `<p class="notice" data-pedigree-slot-notice>Pedigree of Gods slots hold rolled talent nodes only. The saved value in slot ${pedigree.cleared.map((item) => item.slot).join(", ")} is not a valid node and was cleared; choose the node shown on your slate.</p>`,
-        );
-    [...document.querySelectorAll("[data-legendary-affix]")].forEach((select, index) => {
-      const affix = (pedigree ? pedigree.affixes : slate.affixes)?.[index] || "";
-      if (affix && ![...select.options].some((option) => option.value === affix)) select.add(new Option(affix, affix));
-      select.value = affix;
-    });
-    if (preview?.firstElementChild) {
-      preview.dataset.rotation = String(slate.rotation || 0);
-      preview.dataset.flipX = String(slate.flipX || 1);
-      preview.dataset.flipY = String(slate.flipY || 1);
-      preview.firstElementChild.style.transform = `rotate(${slate.rotation || 0}deg) scale(${slate.flipX || 1}, ${slate.flipY || 1})`;
-    }
-    const template = [...document.querySelectorAll("[data-slate-template]")].find(
-      (button) => button.dataset.slateTemplate === slate.name,
-    );
-    if (template && !preview) {
-      template.classList.add("active");
-      const card = $(".slate-empty-preview"),
-        image = template.querySelector("img");
-      card.className = "slate-craft-card";
-      card.innerHTML = `${image?.outerHTML || ""}<strong>${escapeHtml(slate.name)}</strong><small>DIVINITY SLATE · LEGENDARY</small>`;
-    }
-    updateSlateCraftPreview();
-    return;
-  }
-  const name = $("[data-slate-craft-name]");
-  if (name) name.value = slate.name;
-  const shape = [...document.querySelectorAll("[data-craft-shape]")].find(
-    (button) => button.dataset.craftShape === slate.shape,
-  );
-  if (shape) {
-    document
-      .querySelectorAll("[data-craft-shape]")
-      .forEach((button) => button.classList.toggle("active", button === shape));
-    const art = shape.querySelector("img,.god-slate-shape"),
-      preview = $(".slate-shape-preview");
-    if (art && preview) {
-      preview.innerHTML = art.outerHTML;
-      preview.dataset.rotation = String(slate.rotation);
-      preview.dataset.flipX = String(slate.flipX);
-      preview.dataset.flipY = String(slate.flipY);
-      preview.firstElementChild.style.transform = `rotate(${slate.rotation}deg) scale(${slate.flipX}, ${slate.flipY})`;
-    }
-  }
-  [...document.querySelectorAll("#slate-crafter-body .slate-affix-row select")].forEach((select, index) => {
-    const savedGroups = slateCraftedAffixGroups(slate);
-    const savedSlots = [
-      ...savedGroups.fixed,
-      ...Array(Math.max(0, 2 - savedGroups.fixed.length)).fill(""),
-      ...(savedGroups.random || savedGroups.brand || []),
-    ];
-    const affix = savedSlots?.[index] || "";
-    if (affix && ![...select.options].some((option) => option.value === affix)) select.add(new Option(affix, affix));
-    select.value = affix;
-  });
-  updateSlateCraftPreview();
+function backToSlateInventory() {
+  slateCraft = { ...slateCraft, editingId: null };
+  renderSlateInventory();
 }
 // The slate editor (apps/web/src/shell/dialogs/SlateEditorDialog.tsx) shows the "slateEditor" source; each drawing
 // (opening, a rotation) starts its affix fields over from the slate, as the planner's markup did.
@@ -7162,195 +6778,58 @@ document.addEventListener("click", (event) => {
       showToast(error?.message || "A new library could not be started");
     }
   }
-  if (event.target.closest("[data-close-slate-inventory]")) $("#slate-inventory").close();
-  if (event.target.closest("[data-back-slate-inventory]")) {
-    editingCraftedSlateId = null;
-    renderSlateInventory();
-  }
-  const inventoryTab = event.target.closest("[data-slate-inventory-tab]");
-  if (inventoryTab) {
-    activeSlateCrafterTab = inventoryTab.dataset.slateInventoryTab;
-    if (activeSlateCrafterTab === "legendary" && !editingCraftedSlateId) selectedLegendarySlateName = "";
-    renderSlateCrafter();
-  }
-  if (event.target.closest("[data-change-slate-template]")) {
-    selectedLegendarySlateName = "";
-    renderSlateCrafter();
-  }
-  const slateTemplate = event.target.closest("[data-slate-template]");
-  if (slateTemplate) {
-    selectedLegendarySlateName = slateTemplate.dataset.slateTemplate;
-    if (
-      [
-        "Sparks of Moth Fire",
-        "Residence of Stars",
-        "When Sparks Set the Prairie Ablaze",
-        "Space Rift",
-        "Fallen Starlight",
-        "A Corner of Divinity",
-        "Pedigree of Gods",
-      ].includes(selectedLegendarySlateName)
-    )
-      renderSlateCrafter();
-    else {
-      document
-        .querySelectorAll("[data-slate-template]")
-        .forEach((button) => button.classList.toggle("active", button === slateTemplate));
-      const preview = $(".slate-empty-preview");
-      if (preview) {
-        const image = slateTemplate.querySelector("img");
-        preview.className = "slate-craft-card";
-        preview.innerHTML = `${image?.outerHTML || ""}<strong>${escapeHtml(selectedLegendarySlateName)}</strong><small>DIVINITY SLATE · LEGENDARY</small>`;
-      }
-    }
-  }
-  const slateGodButton = event.target.closest("[data-slate-god]");
-  if (slateGodButton) {
-    selectedSlateGod = slateGodButton.dataset.slateGod;
-    renderSlateCrafter();
-  }
-  const netherTypeButton = event.target.closest("[data-nether-slate-type]");
-  if (netherTypeButton) {
-    selectedNetherSlateType = netherTypeButton.dataset.netherSlateType;
-    renderSlateCrafter();
-  }
-  const craftShape = event.target.closest("[data-craft-shape]");
-  if (craftShape) {
-    document
-      .querySelectorAll("[data-craft-shape]")
-      .forEach((button) => button.classList.toggle("active", button === craftShape));
-    const art = craftShape.querySelector("img,.god-slate-shape"),
-      preview = document.querySelector(".slate-shape-preview");
-    if (art && preview) {
-      preview.innerHTML = art.outerHTML;
-      preview.dataset.rotation = "0";
-      preview.dataset.flipX = "1";
-      preview.dataset.flipY = "1";
-      updateSlateCraftPreview();
-    }
-  }
-  const craftTransform = event.target.closest("[data-craft-transform]");
-  if (craftTransform) {
-    const rules = slateTransformRules(activeSlateCrafterTab === "legendary" ? selectedLegendarySlateName : ""),
-      operation = craftTransform.dataset.craftTransform;
-    if ((operation === "rotate" && !rules.rotate) || (operation !== "rotate" && !rules.flip)) return;
-    const preview = document.querySelector(".slate-shape-preview"),
-      art = preview?.querySelector("img,.god-slate-shape");
-    if (preview && art) {
-      let rotation = Number.parseInt(preview.dataset.rotation || "0", 10),
-        flipX = Number.parseInt(preview.dataset.flipX || "1", 10),
-        flipY = Number.parseInt(preview.dataset.flipY || "1", 10);
-      if (operation === "rotate") rotation = (rotation + 90) % 360;
-      if (operation === "flip-h") flipX *= -1;
-      if (operation === "flip-v") flipY *= -1;
-      preview.dataset.rotation = String(rotation);
-      preview.dataset.flipX = String(flipX);
-      preview.dataset.flipY = String(flipY);
-      art.style.transform = `rotate(${rotation}deg) scale(${flipX}, ${flipY})`;
-      updateSlateCraftPreview();
-    }
-  }
-  if (event.target.closest("[data-add-crafted-slate]")) {
-    const activeShape = $("[data-craft-shape].active"),
-      preview = $(".slate-shape-preview"),
-      template = $("[data-slate-template].active"),
-      nameInput = $("[data-slate-craft-name]");
-    const fallbackName =
-      activeSlateCrafterTab === "judgment"
-        ? `Nether King's Divinity: ${selectedNetherSlateType}`
-        : template?.dataset.slateTemplate || selectedSlateGod;
-    const originalSlate = (plannerState.slates.inventory || []).find((slate) => slate.id === editingCraftedSlateId);
-    const previewImage = preview?.querySelector("img") || template?.querySelector("img") || $(".slate-craft-card img");
-    const legendaryCopyRule =
-      activeSlateCrafterTab !== "legendary"
-        ? ""
-        : fallbackName === "Sparks of Moth Fire"
-          ? $("[data-sparks-copy-rule]")?.value || sparksOfMothFireCopyRules[0]
-          : fallbackName === "Residence of Stars"
-            ? residenceOfStarsCopyRule
-            : fallbackName === "When Sparks Set the Prairie Ablaze"
-              ? prairieAblazeCopyRule
-              : fallbackName === "Space Rift"
-                ? $("[data-legendary-copy-rule]")?.value || spaceRiftCopyRules[0]
-                : "";
-    const legendaryAffixSelects = [...document.querySelectorAll("[data-legendary-affix]")];
-    const standardAffixSelects = [...document.querySelectorAll("#slate-crafter-body .slate-affix-row select")];
-    const affixGroups =
-      activeSlateCrafterTab === "legendary"
-        ? null
-        : {
-            fixed: standardAffixSelects.slice(0, 2).map((select) => select.value),
-            [activeSlateCrafterTab === "judgment" ? "brand" : "random"]: standardAffixSelects
-              .slice(2)
-              .map((select) => select.value),
-          };
-    const affixes = legendaryCopyRule
-      ? [legendaryCopyRule]
-      : legendaryAffixSelects.length
-        ? legendaryAffixSelects.map((select) => select.value)
-        : standardAffixSelects.map((select) => select.value).filter(Boolean);
-    const crafted = {
-      id: globalThis.crypto?.randomUUID?.() || `slate-${Date.now()}`,
-      name:
-        nameInput?.value.trim() ||
-        (activeSlateCrafterTab === "legendary" && originalSlate?.template === fallbackName
-          ? originalSlate.name
-          : fallbackName),
-      ...(activeSlateCrafterTab === "legendary" ? { template: fallbackName } : {}),
-      god: activeSlateCrafterTab === "judgment" ? "Nether King" : selectedSlateGod,
-      shape: activeShape?.dataset.craftShape || "single",
-      rotation: Number(preview?.dataset.rotation || 0),
-      flipX: Number(preview?.dataset.flipX || 1),
-      flipY: Number(preview?.dataset.flipY || 1),
-      affixes,
-      ...(affixGroups ? { affixGroups } : {}),
-      ...(legendaryCopyRule ? { copyRule: legendaryCopyRule } : {}),
-      rarity: activeSlateCrafterTab === "craft" ? "magic" : "legendary",
-      icon: previewImage?.getAttribute("src") || "",
-    };
-    plannerState.slates.inventory ||= [];
-    const editedIndex = editingCraftedSlateId
-      ? plannerState.slates.inventory.findIndex((slate) => slate.id === editingCraftedSlateId)
-      : -1;
-    let removedFromGrid = false;
-    if (editedIndex >= 0) {
-      crafted.id = editingCraftedSlateId;
-      plannerState.slates.inventory[editedIndex] = crafted;
-      if (equippedSlateIds.has(crafted.id)) {
-        const boardSlate = craftedSlateForBoard(crafted),
-          current = slatePlacements[crafted.id];
-        if (current && !canPlaceSlate(boardSlate, current, slatePlacements, slatesForBoard())) {
-          let placement = null;
-          for (let row = 1; row <= 6 && !placement; row += 1)
-            for (let column = 1; column <= 6 && !placement; column += 1) {
-              const candidate = { ...current, row, column };
-              if (canPlaceSlate(boardSlate, candidate, slatePlacements, slatesForBoard())) placement = candidate;
-            }
-          if (placement) slatePlacements = { ...slatePlacements, [crafted.id]: placement };
-          else {
-            equippedSlateIds.delete(crafted.id);
-            const placements = { ...slatePlacements };
-            delete placements[crafted.id];
-            slatePlacements = placements;
-            parkSlateBesideGrid(boardSlate, crafted.rotation || 0, crafted.flipX || 1, crafted.flipY || 1);
-            removedFromGrid = true;
+});
+
+// Add to Inventory, or Save Changes on the slate being edited (an equipped slate whose new shape no longer fits moves to
+// a free spot, or beside the grid).
+function addCraftedSlate() {
+  const originalSlate = (plannerState.slates.inventory || []).find((slate) => slate.id === slateCraft.editingId);
+  const crafted = {
+    id: globalThis.crypto?.randomUUID?.() || `slate-${Date.now()}`,
+    ...craftedSlate(slateCraft, originalSlate),
+  };
+  plannerState.slates.inventory ||= [];
+  const editedIndex = slateCraft.editingId
+    ? plannerState.slates.inventory.findIndex((slate) => slate.id === slateCraft.editingId)
+    : -1;
+  let removedFromGrid = false;
+  if (editedIndex >= 0) {
+    crafted.id = slateCraft.editingId;
+    plannerState.slates.inventory[editedIndex] = crafted;
+    if (equippedSlateIds.has(crafted.id)) {
+      const boardSlate = craftedSlateForBoard(crafted),
+        current = slatePlacements[crafted.id];
+      if (current && !canPlaceSlate(boardSlate, current, slatePlacements, slatesForBoard())) {
+        let placement = null;
+        for (let row = 1; row <= 6 && !placement; row += 1)
+          for (let column = 1; column <= 6 && !placement; column += 1) {
+            const candidate = { ...current, row, column };
+            if (canPlaceSlate(boardSlate, candidate, slatePlacements, slatesForBoard())) placement = candidate;
           }
+        if (placement) slatePlacements = { ...slatePlacements, [crafted.id]: placement };
+        else {
+          equippedSlateIds.delete(crafted.id);
+          const placements = { ...slatePlacements };
+          delete placements[crafted.id];
+          slatePlacements = placements;
+          parkSlateBesideGrid(boardSlate, crafted.rotation || 0, crafted.flipX || 1, crafted.flipY || 1);
+          removedFromGrid = true;
         }
       }
-    } else plannerState.slates.inventory.push(crafted);
-    editingCraftedSlateId = null;
-    persistPlannerState();
-    renderSlateInventory();
-    if (removedFromGrid) renderCandidateViews();
-    showToast(
-      removedFromGrid
-        ? `${crafted.name} moved beside the grid; its new shape does not fit`
-        : editedIndex >= 0
-          ? `${crafted.name} updated`
-          : `${crafted.name} added to Slate Inventory`,
-    );
-  }
-});
+    }
+  } else plannerState.slates.inventory.push(crafted);
+  slateCraft = { ...slateCraft, editingId: null };
+  persistPlannerState();
+  renderSlateInventory();
+  if (removedFromGrid) renderCandidateViews();
+  showToast(
+    removedFromGrid
+      ? `${crafted.name} moved beside the grid; its new shape does not fit`
+      : editedIndex >= 0
+        ? `${crafted.name} updated`
+        : `${crafted.name} added to Slate Inventory`,
+  );
+}
 
 // Skill selector commands (apps/web/src/shell/dialogs/SkillSelectorDialog.tsx and SkillSelectorDetail.tsx).
 // Confirm: `levelText` is the level field as typed (the generic modes).

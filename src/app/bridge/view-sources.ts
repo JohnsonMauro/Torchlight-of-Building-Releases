@@ -18,6 +18,7 @@ import type { HeroMemoryView } from "./hero-memory-view.ts";
 import type { PrismCrafterView } from "./prism-crafter-view.ts";
 import type { EquipmentCrafterView } from "./equipment-crafter-view.ts";
 import type { InventoryItemEditorView } from "./inventory-item-editor-view.ts";
+import type { SlateCrafterView } from "../slates/slate-craft.ts";
 
 /** The Config tab: the calculated build and the combat settings it was calculated with. */
 export interface ConfigurationSource {
@@ -107,6 +108,8 @@ export interface ViewSources {
    */
   slateInventory: {
     mode: "inventory" | "crafter";
+    /** The slate crafter, in its mode (src/app/slates/slate-craft.ts). */
+    crafter: SlateCrafterView | null;
     items: {
       id: string;
       name: string;
