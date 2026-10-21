@@ -5,7 +5,22 @@
 /** A tab of the hero panel (Hero Trait | Trait Path): the shared `tab`, the accent rule when .active. */
 export const detailTab = "tab px-3 py-2 text-xs font-bold tracking-wider uppercase";
 
-/** The showcase: the portrait frame over the identity card. */
+/** The hero at the head of the character column: the portrait (the Change Hero control) beside the name and trait. */
+export const heroHeader = "flex items-center gap-3 p-3";
+export const heroPortrait =
+  "group/portrait relative size-16 shrink-0 overflow-hidden rounded-md border border-line-strong bg-sunken";
+/** The initials (or +) in the portrait without a picture. */
+export const heroInitials = "grid size-full place-items-center font-display text-xl font-bold text-accent";
+/** The button laid over the portrait: it darkens on hover or keyboard focus. */
+export const heroChange =
+  "absolute inset-0 cursor-pointer border-0 bg-transparent transition-colors hover:bg-overlay focus-visible:bg-overlay focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent";
+/** Its swap badge, in the corner: always shown (no hover on touch), larger while hovered. */
+export const heroChangeBadge =
+  "absolute right-0.5 bottom-0.5 grid size-5 place-items-center rounded-full border border-line-strong bg-surface text-accent transition-transform group-hover/portrait:scale-125";
+/** The hero's main trait beside the portrait. */
+export const heroTrait = "block truncate font-display text-lg leading-tight font-bold text-accent";
+
+/** The follower's showcase: the portrait frame over the identity card. */
 export const showcaseClass = "relative";
 /** The portrait frame. */
 export const portraitClass =
@@ -18,8 +33,6 @@ export const portraitImage = (rarity?: string | null): string =>
 export const portraitFallback = `${portraitBox} grid place-items-center border border-line bg-raised font-display text-4xl font-bold text-accent`;
 const identityBox =
   "relative mx-3.5 mb-3.5 rounded-b-md border border-line bg-raised px-3 pt-3.5 pb-3.5 before:mb-1.5 before:block before:text-xs before:font-bold before:tracking-wider before:text-accent";
-/** The card under the portrait, its caption reading MAIN HERO TRAIT. */
-export const identityClass = `${identityBox} before:content-['MAIN_HERO_TRAIT']`;
 /** The follower's card under the portrait, its caption reading FOLLOWER. */
 export const followerIdentityClass = `${identityBox} before:content-['FOLLOWER']`;
 /** The hero's name: small caps over the title. */

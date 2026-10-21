@@ -4,7 +4,7 @@ import { renderEquipment } from "../gear/gear-controller.js";
 import { renderPacts } from "../pacts/pacts-controller.js";
 import { renderSkills } from "../skills/skill-board.js";
 import { renderSlates } from "../slates/slates-controller.js";
-import { renderCharacter } from "../stats/stats-controller.js";
+import { renderCharacter, renderDamageSummary } from "../stats/stats-controller.js";
 import { loadBuildLibrary } from "../storage/build-library.ts";
 import { renderTalents } from "../talents/talent-trees.js";
 import { updateStorageStatus } from "./page.js";
@@ -40,6 +40,7 @@ export function activateWorkspaceView(viewName, { scroll = true, remember = true
 }
 // A render pass's redraw: the open focused view, or the planner sections.
 export function renderWorkspaceViews() {
+  renderDamageSummary();
   if (FOCUSED_VIEWS.has(ui.activeWorkspaceView)) {
     if (ui.activeWorkspaceView === "character") renderCharacter();
     if (ui.activeWorkspaceView === "configuration") renderConfiguration();

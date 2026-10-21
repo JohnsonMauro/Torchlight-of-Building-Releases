@@ -1,6 +1,7 @@
 // The Stats view: its prepared stat sheet and damage path, open questions and the calculation report.
 import { calculatePlanner } from "../../engine/planner.js";
 import { APP_VERSION } from "../app-version.js";
+import { EMPTY_DAMAGE_SUMMARY, damageSummaryView } from "../bridge/damage-summary-view-model.ts";
 import { prepareDamagePath } from "../bridge/damage-path-view-model.ts";
 import { prepareStatSheet, statsView } from "../bridge/stats-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
@@ -8,7 +9,13 @@ import { currentBuildCode, openFeedback } from "../feedback/feedback-controller.
 import { platformName } from "../feedback/feedback-links.js";
 import { calculationReportContext } from "../feedback/feedback-report-context.js";
 import { format, showToast } from "../planner/page.js";
-import { capturePlannerState, currentPlanner, persistPlannerState, plannerState } from "../planner/session.js";
+import {
+  calculationsPaused,
+  capturePlannerState,
+  currentPlanner,
+  persistPlannerState,
+  plannerState,
+} from "../planner/session.js";
 import { DAMAGE_PATH_KEY, saveWorkspaceLocation, ui } from "../planner/ui-state.js";
 import { recountExcludedSources, setRecountSourceExcluded } from "./dummy-recount-panel.js";
 import { OPEN_QUESTIONS, openQuestionsFor, openQuestionsText } from "./open-questions.js";
@@ -29,10 +36,12 @@ export const statsCommands = {
   toggleRecountSource: (key) => {
     setRecountSourceExcluded(key);
     viewSourceChanged("stats");
+    renderDamageSummary();
   },
   showAllRecountSources: () => {
     setRecountSourceExcluded(null);
     viewSourceChanged("stats");
+    renderDamageSummary();
   },
   selectDamagePath: (key) => {
     ui.selectedDamagePath = DAMAGE_PATH_KEY.test(key) ? key : "hit";
@@ -45,7 +54,15 @@ export const statsCommands = {
 export const statsViewSources = {
   // The Stats view's data (src/app/bridge/stats-view-model.ts).
   stats: statsSource,
+  // The character column's damage summary (src/app/bridge/damage-summary-view-model.ts).
+  damageSummary: () =>
+    calculationsPaused ? EMPTY_DAMAGE_SUMMARY : damageSummaryView(currentPlanner(), recountExcludedSources()),
 };
+
+// The damage summary sits beside every build tab: every render pass re-reads it (the build is already calculated).
+export function renderDamageSummary() {
+  viewSourceChanged("damageSummary");
+}
 
 // The Stats view is React (apps/web/src/features/stats): it re-reads its source.
 export function renderCharacter() {

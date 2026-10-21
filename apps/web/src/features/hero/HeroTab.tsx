@@ -1,5 +1,5 @@
 // The hero: its showcase (portrait, name, main trait, Change Hero) heads the character column beside the build's tabs,
-// and the Hero Trait tab holds the Hero Trait / Trait Path (or Scent Bottle) tabs and the open one: the trait tiers with
+// and the Hero Trait tab has the Hero Trait / Trait Path (or Scent Bottle) tabs and the open one: the trait tiers with
 // their memory sockets and the base trait's support slots, a tree hero's Trait Path board, or Sage's Scent Bottle. A
 // tree hero's picks are dragged between rows. The hero is picked when a build is created, and changed from the showcase
 // or from the build's details (Builds view). The data is the planner's "heroTraits" source
@@ -21,32 +21,32 @@ import type {
   TraitView,
 } from "@legacy/app/bridge/hero-traits-view-model.ts";
 import { Artwork } from "../../ui/Artwork";
+import { StrokeIcon } from "../../ui/StrokeIcon";
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";
 import { KISMET_DRAG_GHOST, KISMET_DRAG_GHOST_IMAGE } from "../pacts/pact-classes";
 import {
-  changeButton,
   choiceArt,
   choiceButton,
   choicesClass,
   chooseButton,
+  detailTab,
   dropBlocked,
   dropEligible,
   dropTarget,
-  detailTab,
-  identityClass,
+  heroChange,
+  heroChangeBadge,
+  heroHeader,
+  heroInitials,
+  heroPortrait,
+  heroTrait,
   identityName,
-  identityTitle,
   memoryArt,
   memoryEmpty,
   memoryOnlyRow,
   memorySocket,
   pathNodeArt,
   pendingClass,
-  portraitClass,
-  portraitFallback,
-  portraitImage,
-  showcaseClass,
   supportArt,
   supportSlot,
   supportSlots,
@@ -60,34 +60,44 @@ const rightClick = (event: MouseEvent, act: () => boolean) => {
   if (act()) event.preventDefault();
 };
 
+/**
+ * The hero at the head of the character column: the portrait, which is the Change Hero control (a button laid over the
+ * picture, so the picture stays an image to assistive tech), beside the hero's name and main trait.
+ */
 export function HeroShowcase() {
   const view = useViewSource("heroTraits");
   const hero = view?.hero;
   return (
-    <div className={showcaseClass}>
-      <div className={portraitClass} id="selected-hero-portrait">
+    <div className={heroHeader}>
+      <div className={heroPortrait} id="selected-hero-portrait">
         {!view ? null : hero?.image ? (
-          <img className={portraitImage()} src={hero.image} alt={hero.name} />
+          <img className="size-full object-cover" src={hero.image} alt={hero.name} />
         ) : (
-          <span className={portraitFallback} aria-hidden="true">
+          <span className={heroInitials} aria-hidden="true">
             {hero ? hero.name.slice(0, 2).toUpperCase() : "+"}
           </span>
         )}
+        <button
+          type="button"
+          className={`change-hero-button ${heroChange}`}
+          aria-label="Change Hero"
+          title="Change Hero"
+          onClick={() => plannerCommands().openHeroSelector()}
+        >
+          <span className={heroChangeBadge}>
+            <StrokeIcon className="size-3">
+              <path d="M4 8h13l-3-3M20 16H7l3 3" />
+            </StrokeIcon>
+          </span>
+        </button>
       </div>
-      <div className={identityClass}>
+      <div className="min-w-0">
         <span id="selected-hero-name" className={identityName}>
           {view ? (hero?.name ?? "No hero selected") : "Selena"}
         </span>
-        <strong id="selected-hero-trait" className={identityTitle}>
+        <strong id="selected-hero-trait" className={heroTrait}>
           {view ? (hero?.trait ?? "Choose a hero trait") : "Sing with the Tide"}
         </strong>
-        <button
-          type="button"
-          className={`change-hero-button ${changeButton}`}
-          onClick={() => plannerCommands().openHeroSelector()}
-        >
-          Change Hero
-        </button>
       </div>
     </div>
   );

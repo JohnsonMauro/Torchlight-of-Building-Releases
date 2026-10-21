@@ -13,6 +13,7 @@ import type { TalentsView } from "./talents-view-model.ts";
 import type { HeroTraitsView } from "./hero-traits-view-model.ts";
 import type { CarinoAmmoSelectorView, SageScentSelectorView } from "./hero-dialogs-view-model.ts";
 import type { StatsView } from "./stats-view-model.ts";
+import type { DamageSummaryView } from "./damage-summary-view-model.ts";
 import type { SkillSelectorView } from "./skill-selector-view.ts";
 import type { GameLogImportView } from "./game-log-import-view.ts";
 import type { HeroMemoryView } from "./hero-memory-view.ts";
@@ -54,6 +55,8 @@ export interface ViewSources {
   talents: TalentsView;
   /** The HERO tab of the hero panel (src/app/bridge/hero-traits-view-model.ts). */
   heroTraits: HeroTraitsView;
+  /** The character column's damage summary (src/app/bridge/damage-summary-view-model.ts). */
+  damageSummary: DamageSummaryView;
   /** The Stats view (src/app/bridge/stats-view-model.ts). */
   stats: StatsView;
   /** The hero selector: its opening (counted, so its search starts over) and the open build's hero. */

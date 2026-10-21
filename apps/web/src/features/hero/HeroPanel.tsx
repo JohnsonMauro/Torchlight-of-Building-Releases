@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { HelpButton } from "../../ui/HelpButton";
 import { FollowerPanel } from "../follower/FollowerPanel";
+import { DamageSummary } from "../stats/DamageSummary";
 import { HeroDetailTabs, HeroShowcase, HeroTraitTree } from "./HeroTab";
 
 // The character column and the Hero Trait and Follower tabs' panels: a panel under its heading bar, with its help
@@ -11,30 +12,33 @@ function CharacterPanel({
   className,
   children,
 }: {
-  title: string;
+  title?: string;
   help?: "hero" | "follower";
   className?: string;
   children: ReactNode;
 }) {
   return (
     <aside className={`panel relative overflow-hidden leading-[normal] ${className ?? ""}`}>
-      <div className="panel-head min-h-11 px-4 text-xs font-bold tracking-wider uppercase">
-        <h2>{title}</h2>
-        {help ? <HelpButton topic={help} label={title} /> : null}
-      </div>
+      {title ? (
+        <div className="panel-head min-h-11 px-4 text-xs font-bold tracking-wider uppercase">
+          <h2>{title}</h2>
+          {help ? <HelpButton topic={help} label={title} /> : null}
+        </div>
+      ) : null}
       {children}
     </aside>
   );
 }
 
 /**
- * The character column beside every build tab: the hero's portrait, name and main trait, with Change Hero. The
- * character's figures for the calculation join it later.
+ * The character column beside every build tab: the hero's portrait, name and main trait, with Change Hero, and the
+ * build's damage summary. More of the character's figures join it later.
  */
 export function CharacterColumn({ className }: { className?: string }) {
   return (
-    <CharacterPanel title="Character" className={className}>
+    <CharacterPanel className={className}>
       <HeroShowcase />
+      <DamageSummary />
     </CharacterPanel>
   );
 }
