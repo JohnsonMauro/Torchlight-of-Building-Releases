@@ -67,17 +67,20 @@ export class SkillsPage {
 
   /** Skills is a section of the Build page (talents, skills, equipment and pacts on one page). */
   async open() {
-    await this.page.locator('button.view-tab[data-view="talents"]').click();
+    await this.page.locator('button.view-tab[data-view="skills"]').click();
     await expect(this.view()).toBeVisible();
     await this.view().scrollIntoViewIfNeeded();
   }
   /** Drags with the mouse from one element to another, in steps (the planner starts a drag after 5 px). */
   async drag(from, to, { copy = false } = {}) {
+    await from.scrollIntoViewIfNeeded();
     const start = await from.boundingBox();
-    const end = await to.boundingBox();
     await this.page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
     await this.page.mouse.down();
     await this.page.mouse.move(start.x + start.width / 2 + 20, start.y + start.height / 2, { steps: 4 });
+    // The target may sit below the window: scroll to it mid-drag, as a user would.
+    await to.scrollIntoViewIfNeeded();
+    const end = await to.boundingBox();
     await this.page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 8 });
     if (copy) {
       await this.page.mouse.down({ button: "right" });

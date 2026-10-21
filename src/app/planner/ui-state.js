@@ -4,7 +4,7 @@
 // the slate board shown in the tree's place, the Stats view's panel, damage path and stat sheet skill, the Gear
 // section's selected slot, and the hero trait whose support the skill selector edits.
 export const ui = {
-  activeWorkspaceView: "talents",
+  activeWorkspaceView: "hero",
   activeTalentPanel: "Goddess of Deception",
   activeTalentSlot: 0,
   talentSlateMode: false,

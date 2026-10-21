@@ -1,4 +1,4 @@
-// What the skill selector shows (src/app/skills/skill-selector-source.js skillSelectorSource; apps/web/src/shell/dialogs/SkillSelectorDialog.tsx
+// What the skill selector shows (src/app/skills/skill-selector-source.js skillSelectorSource; apps/web/src/features/skills/SkillSelectorDialog.tsx
 // and SkillSelectorDetail.tsx). Types only.
 import type { TextSegment } from "./display-text.ts";
 

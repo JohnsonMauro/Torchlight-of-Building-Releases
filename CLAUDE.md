@@ -30,7 +30,10 @@ Every change: lint, typecheck, format:check and `pnpm test` green; e2e green bef
 | `src/game-log/` | game log reader and import | never imports `src/app` |
 | `src/app/` | the planner page: state, commands, view models | see below |
 | `src/app/bridge/` | view models and the two channels to React (`view-sources.ts`, `planner-commands.js`) | pure view models |
-| `apps/web/src/` | React: `shell/` (page, header, dialogs), `features/<section>/`, `ui/` | renders view sources, calls commands |
+| `apps/web/src/shell/` | the app frame: `AppShell`, header, view rail, build strip (the build's tabs), footer, tooltip, toast | |
+| `apps/web/src/pages/<page>/` | a page's composition: `build/` (one view per build tab: hero, follower, skills, equipment, pacts, talents), `stats/`, `configuration/`, `builds/` | composes features; little markup |
+| `apps/web/src/features/<feature>/` | a feature's components, its dialogs and its `*-classes.ts` | renders view sources, calls commands |
+| `apps/web/src/ui/` | shared React pieces, class constants several features use, the theme switch (`theme.ts`) | |
 | `apps/web/src/styles/app.css` | the only stylesheet: Tailwind 4, tokens, shared utilities and variants | no `.css` beside components |
 | `tests/unit`, `tests/golden`, `tests/e2e` | unit, engine golden master, Playwright (page objects in `tests/e2e/pages`) | |
 
@@ -73,11 +76,17 @@ unreferenced ones (`tests/unit/asset-references.test.js` guards the references).
 ## Styling (Tailwind 4 only)
 
 - `apps/web/src/styles/app.css` is the only stylesheet: layers `theme, base, components, utilities`, Preflight on.
-  It holds the tokens (`@theme static`: `bg-surface`, `text-ember`, `font-display`…), the page frame (`base`), shared
-  utilities (`clip-chamfer-<n>`, `text-gilded`, `btn-bronze`, `btn-gold`, `bg-section`, `bg-heading`, `rule-gold`,
-  `bg-panel`, `dialog-panel`, `dialog-head`, `dialog-title`, `dialog-close`, `field-search`) and custom variants. No
+  It holds the design system: semantic colour tokens with a dark and a light value (`bg`, `surface`, `raised`,
+  `sunken`, `line`, `line-strong`, `text`, `muted`, `dim`, `accent`, `accent-strong`, `on-accent`, `info`, `ok`,
+  `warn`, `danger`, `violet`, `rarity-*`, `dmg-*`, `overlay`, `shadow`; the default Tailwind palette is off), the
+  page frame (`base`), shared utilities (`panel`, `panel-head`, `btn`, `btn-primary`, `btn-danger`, `tab`, `field`,
+  `field-search`, `chip`, `dialog-panel`, `dialog-head`, `dialog-title`, `dialog-close`) and custom variants. No
   `.css` file beside a component: utilities in the markup; long or repeated class lists in a `.ts` module beside the
   component (`*-classes.ts`; a `.tsx` exports only components).
+- Themes: `<html data-theme="dark|light">`, set before the first render by `apps/web/src/ui/theme.ts` (stored choice,
+  else the system's) and switched from the header. A component never writes a colour of its own: tokens and opacity
+  modifiers (`bg-accent/15`) only, so a theme changes in app.css alone. No decoration (gradients, glows, inset
+  highlights, chamfers); type, spacing and radius from Tailwind's scales.
 - Tailwind scans `apps/web` (Vite's root) plus the `@source` folders in app.css (`src/app`, `src/game-log`): markup
   built as HTML strings there takes utilities too. A utility written right before `${` in a template literal is not
   generated: keep a space, or use a constant.

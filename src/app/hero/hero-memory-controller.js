@@ -41,7 +41,7 @@ let editingMemoryId = null;
 let heroMemoryMode = "inventory";
 export const heroMemoryCommands = {
   openMemorySocket,
-  // Hero memory dialog (apps/web/src/shell/dialogs/HeroMemorySelectorDialog.tsx).
+  // Hero memory dialog (apps/web/src/features/hero/HeroMemorySelectorDialog.tsx).
   toggleCraftedMemory,
   toggleBaseMemory,
   clearBaseMemory,
@@ -245,7 +245,7 @@ function openHeroMemorySlot(memory, preferBase = false) {
   if (regularOpen) return tier;
   return baseOpen ? "base" : null;
 }
-// The hero memory dialog (apps/web/src/shell/dialogs/HeroMemorySelectorDialog.tsx) shows the "heroMemory" source: the
+// The hero memory dialog (apps/web/src/features/hero/HeroMemorySelectorDialog.tsx) shows the "heroMemory" source: the
 // inventory, or the crafter while a draft is open.
 function renderHeroMemoryInventory() {
   heroMemoryMode = "inventory";
@@ -586,7 +586,7 @@ function updateMemoryDraftField(field, value) {
   if (field === "enhancementLevel")
     memoryDraft.traitLevelBonus = traitLevelBonusForEnhancement(memoryDraft.enhancementLevel);
 }
-// ---- Hero memory dialog commands (apps/web/src/shell/dialogs/HeroMemorySelectorDialog.tsx and HeroMemoryCrafter.tsx).
+// ---- Hero memory dialog commands (apps/web/src/features/hero/HeroMemorySelectorDialog.tsx and HeroMemoryCrafter.tsx).
 const findMemory = (id) => plannerState.hero.memoryInventory?.find((item) => item.id === id);
 // Equip / Unequip of a memory in the inventory.
 function toggleCraftedMemory(id) {

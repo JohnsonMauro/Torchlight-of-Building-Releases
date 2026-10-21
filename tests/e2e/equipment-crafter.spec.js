@@ -16,7 +16,7 @@ test.use({ viewport: { width: 1440, height: 1000 } });
 async function openCrafter(page, mode) {
   const planner = new PlannerPage(page);
   await planner.open(youga);
-  await planner.showView("talents");
+  await planner.showView("equipment");
   const gear = new GearPage(page);
   await gear.button(mode).click();
   await expect(gear.crafter()).toBeVisible();
@@ -342,7 +342,7 @@ test("legendary: the search, a legendary's base, corrosion, mod tiers and rolls,
 test("Edit on a crafted rare fills the form from the item; Save Changes updates it in place", async ({ page }) => {
   const planner = new PlannerPage(page);
   await planner.open(youga);
-  await planner.showView("talents");
+  await planner.showView("equipment");
   const gear = new GearPage(page);
   await gear.cardTool("Arcanist Girdle", "Edit item").click();
   await expect(gear.crafter()).toBeVisible();
@@ -367,7 +367,7 @@ test("Edit fills every field from the item: level, base, Belt Blend, each affix'
 }) => {
   const planner = new PlannerPage(page);
   await planner.open(youga);
-  await planner.showView("talents");
+  await planner.showView("equipment");
   const gear = new GearPage(page);
   const before = (await gear.stored()).inventory.find((entry) => entry.id === "gear-game-log-belt");
   await gear.cardTool("Arcanist Girdle", "Edit item").click();

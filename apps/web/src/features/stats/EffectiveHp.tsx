@@ -26,23 +26,24 @@ import {
   PANEL_NOTE,
   PANEL_NOTE_VALUE,
   PANEL_TAB,
+  PANEL_WELL,
   ROW,
   ROW_LABEL,
   ROW_VALUE,
 } from "./stat-sheet-classes";
 
-// The checklist's mark and status color by status: green immune, amber partial, red unprotected.
+// The checklist's mark and status color by status: ok immune, warn partial, danger unprotected.
 const CHECK_TONE: Record<string, string> = {
-  immune: "text-[#7fc9a5]",
-  conditional: "text-[#d9c27a]",
-  reduced: "text-[#d9c27a]",
-  worse: "text-[#c97c70]",
-  none: "text-[#c97c70]",
+  immune: "text-ok",
+  conditional: "text-warn",
+  reduced: "text-warn",
+  worse: "text-danger",
+  none: "text-danger",
 };
 // The damage type table's narrow-banner tightening.
-const TYPE_CELL = `${CELL} whitespace-nowrap @max-[500px]:px-1 @max-[500px]:py-[0.26rem]`;
+const TYPE_CELL = `${CELL} whitespace-nowrap @max-[500px]:px-1 @max-[500px]:py-1`;
 const MITIGATION = "@max-[500px]:hidden";
-const TYPE_HEAD = `${HEAD_CELL} @max-[500px]:px-1 @max-[500px]:text-[0.52rem] @max-[500px]:tracking-normal`;
+const TYPE_HEAD = `${HEAD_CELL} @max-[500px]:px-1 @max-[500px]:tracking-normal`;
 
 function Figure({ figure, hero = false }: { figure: EhpFigureView; hero?: boolean }) {
   return (
@@ -124,7 +125,7 @@ export function EffectiveHp({ view }: { view: EffectiveHpView }) {
                 ))}
               </div>
             </div>
-            <table className="ehp-types w-full border-collapse border-t border-white/8 text-[0.74rem] @max-[500px]:text-[0.64rem]">
+            <table className="ehp-types w-full border-collapse border-t border-line text-xs">
               <thead>
                 <tr>
                   <th scope="col" className={`${TYPE_HEAD} text-left whitespace-nowrap`}>
@@ -144,7 +145,7 @@ export function EffectiveHp({ view }: { view: EffectiveHpView }) {
                   </th>
                   <th
                     scope="col"
-                    className={`${TYPE_HEAD} border-l border-l-white/7 text-right`}
+                    className={`${TYPE_HEAD} border-l border-l-line text-right`}
                     title="Damage over time: Life + Energy Shield ÷ resistance and non-hit damage taken; the ailment of that type below"
                   >
                     vs DoT
@@ -156,27 +157,27 @@ export function EffectiveHp({ view }: { view: EffectiveHpView }) {
                   <tr key={item.type}>
                     <th
                       scope="row"
-                      className={`${TYPE_CELL} w-[1%] text-left text-[0.7rem] font-semibold tracking-[0.08em] text-[#dbe6ee] uppercase @max-[500px]:text-[0.64rem] @max-[500px]:tracking-[0.03em]`}
+                      className={`${TYPE_CELL} w-[1%] text-left font-semibold tracking-widest text-text uppercase @max-[500px]:tracking-wide`}
                     >
                       {item.type}
                     </th>
-                    <td className={`${TYPE_CELL} text-right ${MITIGATION} text-[#a9bac8]`} title={item.mitigationTitle}>
+                    <td className={`${TYPE_CELL} text-right ${MITIGATION} text-muted`} title={item.mitigationTitle}>
                       {item.mitigation}
                     </td>
-                    <td className={`${TYPE_CELL} text-right font-semibold text-[#f3e3cf]`}>{item.guaranteed}</td>
-                    <td className={`${TYPE_CELL} text-right font-semibold text-[#f3e3cf]`} title={item.attackTitle}>
+                    <td className={`${TYPE_CELL} text-right font-semibold text-text`}>{item.guaranteed}</td>
+                    <td className={`${TYPE_CELL} text-right font-semibold text-text`} title={item.attackTitle}>
                       {item.expectedAttack}
                     </td>
-                    <td className={`${TYPE_CELL} text-right font-semibold text-[#f3e3cf]`} title={item.spellTitle}>
+                    <td className={`${TYPE_CELL} text-right font-semibold text-text`} title={item.spellTitle}>
                       {item.expectedSpell}
                     </td>
                     <td
-                      className={`${TYPE_CELL} text-right border-l border-l-white/7 font-semibold text-[#f3e3cf]`}
+                      className={`${TYPE_CELL} border-l border-l-line text-right font-semibold text-text`}
                       title={item.dotTitle}
                     >
                       {item.dot}
                       {item.ailment ? (
-                        <small className="mt-[0.1rem] block text-[0.62rem] font-normal whitespace-normal text-[#91a2ae]">{`${item.ailment.name} ${item.ailment.text}`}</small>
+                        <small className="mt-0.5 block text-xs font-normal whitespace-normal text-dim">{`${item.ailment.name} ${item.ailment.text}`}</small>
                       ) : null}
                     </td>
                   </tr>
@@ -185,19 +186,19 @@ export function EffectiveHp({ view }: { view: EffectiveHpView }) {
             </table>
           </div>
           <aside
-            className="grid content-start gap-[0.45rem] border-l border-white/8 bg-[#15202b] px-3.5 pt-[0.7rem] pb-[0.8rem] @max-[700px]:gap-[0.3rem] @max-[700px]:border-t @max-[700px]:border-l-0 @max-[700px]:py-2 compact:gap-[0.3rem] compact:py-2"
+            className={`grid content-start gap-2 border-l border-line ${PANEL_WELL} px-3.5 py-3 @max-[700px]:gap-1 @max-[700px]:border-t @max-[700px]:border-l-0 @max-[700px]:py-2 compact:gap-1 compact:py-2`}
             aria-label="Ailment and crowd control immunity"
           >
             <span className={CAPTION}>Ailments and crowd control</span>
-            <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-4 gap-y-[0.1rem]">
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-4 gap-y-0.5">
               {view.checklist.map((item) => (
                 <li
                   key={item.label}
-                  className="grid grid-cols-[auto_6rem_minmax(0,1fr)] items-center gap-x-2 border-b border-white/6 py-[0.2rem] text-[0.72rem] text-[#bfcbd5] last:border-b-0 @max-[700px]:py-[0.1rem] compact:py-[0.1rem]"
+                  className="grid grid-cols-[auto_6rem_minmax(0,1fr)] items-center gap-x-2 border-b border-line py-1 text-xs text-muted last:border-b-0 @max-[700px]:py-0.5 compact:py-0.5"
                   title={item.title || undefined}
                 >
                   <i
-                    className={`inline-grid size-[1.05rem] place-items-center rounded-[3px] border text-[0.66rem] leading-none font-bold not-italic ${CHECK_TONE[item.status] ?? ""} ${item.status === "none" ? "opacity-55" : ""}`}
+                    className={`inline-grid size-4 place-items-center rounded-sm border border-current text-[10px] leading-none font-bold not-italic ${CHECK_TONE[item.status] ?? ""} ${item.status === "none" ? "opacity-55" : ""}`}
                     aria-hidden="true"
                   >
                     {item.mark}
@@ -207,14 +208,12 @@ export function EffectiveHp({ view }: { view: EffectiveHpView }) {
                     {item.likely ? (
                       <>
                         {" "}
-                        <em className="ml-1 text-[0.6rem] tracking-[0.04em] text-[#d9c27a] uppercase not-italic">
-                          likely
-                        </em>
+                        <em className="ml-1 text-[10px] tracking-wide text-warn uppercase not-italic">likely</em>
                       </>
                     ) : null}
                   </span>
                   <span
-                    className={`justify-self-start text-xs/[1.45] font-bold tracking-[0.06em] whitespace-nowrap uppercase ${CHECK_TONE[item.status] ?? ""}`}
+                    className={`justify-self-start text-xs font-bold tracking-wider whitespace-nowrap uppercase ${CHECK_TONE[item.status] ?? ""}`}
                   >
                     {item.statusText}
                   </span>
@@ -225,15 +224,15 @@ export function EffectiveHp({ view }: { view: EffectiveHpView }) {
         </div>
       </section>
       <footer className={FOOT}>
-        <div className="flex flex-wrap gap-x-2 gap-y-[0.35rem] compact:gap-x-1.5 compact:gap-y-1">
+        <div className="flex flex-wrap gap-x-2 gap-y-1.5 compact:gap-x-1.5 compact:gap-y-1">
           {view.layers.map((layer) => (
             <span
               key={layer.label}
-              className="ehp-layer inline-flex items-baseline gap-[0.35rem] rounded-[3px] border border-white/8 bg-[#1a2531] px-2 py-[0.2rem]"
+              className="ehp-layer inline-flex items-baseline gap-1.5 rounded-sm border border-line bg-raised px-2 py-0.5"
               title={layer.title}
             >
-              <span className="text-[0.62rem] font-bold tracking-[0.06em] text-[#a9bac8] uppercase">{layer.label}</span>
-              <strong className="text-[0.74rem] text-[#d9e4ec] tabular-nums">{layer.value}</strong>
+              <span className="text-[10px] font-bold tracking-wider text-muted uppercase">{layer.label}</span>
+              <strong className="text-xs text-text tabular-nums">{layer.value}</strong>
             </span>
           ))}
         </div>

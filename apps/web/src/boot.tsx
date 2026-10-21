@@ -12,6 +12,7 @@ import {
 } from "@legacy/app/storage/recovery-core.js";
 import { NOTICE_STRIP_CLASS } from "@legacy/app/notice-classes.js";
 import { AppShell } from "./shell/AppShell";
+import { applyTheme } from "./ui/theme";
 
 interface RecoveryOptions {
   reason: string;
@@ -48,6 +49,7 @@ function renderShell(): void {
 }
 
 async function boot(): Promise<void> {
+  applyTheme();
   const store = session();
   const shared = local();
   const decision = shouldShowRecovery({ session: store, local: shared, search: location.search });

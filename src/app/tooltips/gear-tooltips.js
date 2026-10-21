@@ -20,22 +20,21 @@ import { titleCase } from "../planner/page.js";
 import { currentEquipmentImpact, currentPlanner, disabledEquipmentSlots } from "../planner/session.js";
 
 // The parts' classes. The frame (apps/web/src/shell/planner-tooltip-classes.ts) gives the rarity's colours as
-// --tip-accent / --tip-edge, and --tip-name / --tip-line turn pink for six-affix and Priceless items.
+// --tip-accent / --tip-edge, and --tip-name turns pink for six-affix and Priceless items.
 const HEAD =
-  "gear-tooltip-head grid grid-cols-[32px_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1.5 border-b border-(--tip-line) bg-black/30 px-3 pt-[11px] pb-2.5";
-const ICON = "row-start-1 size-8 rounded-[3px] border border-(--tip-name) bg-black/40 object-contain p-0.5";
-const NAME =
-  "min-w-0 font-[Arial,sans-serif] text-[0.91rem]/[1.25] font-bold text-(--tip-name) [text-shadow:0_2px_6px_#000a]";
-const CHIP = "border border-[#684c31] px-1.5 py-1 text-[0.6rem]/none text-[#c7b8a9] uppercase not-italic";
-const BODY = "gear-tooltip-body bg-black/40 p-4";
-const STAT = "mr-[5px] mb-2.5 inline-block border border-[#634b37] px-[7px] py-1 text-[0.65rem]/none text-[#d1c3b6]";
-const SECTION = "rounded-[5px] border border-white/15 bg-black/30 p-2.5";
-const SECTION_TITLE = "mt-0.5 mb-2 text-[0.62rem] font-bold tracking-[0.08em] text-[#b39a82] uppercase";
-const MOD = "grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-[9px] text-[0.73rem]/[1.4] text-[#f2ece7]";
-const KIND = "mt-px grid size-[15px] place-items-center rounded-[3px] border text-[0.55rem] not-italic";
+  "gear-tooltip-head grid grid-cols-[32px_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1.5 border-b border-(--tip-edge) px-3 pt-3 pb-2.5";
+const ICON = "row-start-1 size-8 rounded-sm border border-(--tip-edge) bg-sunken object-contain p-0.5";
+const NAME = "min-w-0 font-display text-sm/tight font-bold text-(--tip-name)";
+const CHIP = "rounded-sm border px-1.5 py-1 text-[10px]/none uppercase not-italic";
+const BODY = "gear-tooltip-body p-4";
+const STAT = "mr-1 mb-2.5 inline-block rounded-sm border border-line px-2 py-1 text-xs/none";
+const SECTION = "rounded-md border border-line bg-sunken/60 p-2.5";
+const SECTION_TITLE = "mt-0.5 mb-2 text-[10px] font-bold tracking-widest text-muted uppercase";
+const MOD = "grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 text-xs/snug text-text";
+const KIND = "mt-px grid size-4 place-items-center rounded-sm border text-[10px] not-italic";
 const STATUS =
-  "mt-px justify-self-end rounded-[3px] border px-[5px] py-px text-[0.52rem]/[1.2] font-bold whitespace-nowrap [&.calculated]:border-[#426b42] [&.calculated]:bg-[#15351c] [&.calculated]:text-[#70d67b] [&.neutral]:border-[#4f5a66] [&.neutral]:bg-[#20262d] [&.neutral]:text-[#aab6c3] [&.pending]:border-[#705c3c] [&.pending]:bg-[#342712] [&.pending]:text-[#d6aa63]";
-const FOOT = "block border-t border-white/15 px-4 py-2.5 text-[0.62rem] text-[#a8988a]";
+  "mt-px justify-self-end rounded-sm border px-1 py-px text-[10px]/tight font-bold whitespace-nowrap [&.calculated]:border-ok/50 [&.calculated]:bg-ok/10 [&.calculated]:text-ok [&.neutral]:border-line [&.neutral]:bg-raised [&.neutral]:text-muted [&.pending]:border-warn/50 [&.pending]:bg-warn/10 [&.pending]:text-warn";
+const FOOT = "block border-t border-line px-4 py-2.5 text-xs text-dim";
 
 export function gearTooltipContent(element) {
   const inventoryId = element.dataset.equipInventory;
@@ -88,6 +87,6 @@ export function gearTooltipContent(element) {
     sixAffix: hasSixCraftAffixes(item),
     priceless: isPricelessItem(item),
     itemLevel100: Boolean(itemLevel100Class(item)),
-    html: `<div class="${HEAD}"><img class="${ICON}" src="${gearIcon(item)}" alt=""><strong class="${NAME}">${escapeHtml(item.name)}</strong><div class="col-start-2 flex flex-wrap gap-[5px]"><span class="${CHIP}">${escapeHtml(item.base || titleCase(item.slot))}</span><em class="${rarity.toLowerCase()} ${CHIP} border-(--tip-edge) text-(--tip-accent)">${rarity}</em></div></div><div class="${BODY}">${curseLimitNoteHtml(sections.flatMap((section) => section.entries).find((row) => row.curseReason)?.curseReason)}<span class="gear-level ${STAT}">Require Lv ${item.level || 1}</span>${item.energy && equipmentEnergyAllowed(item.slot) ? `<span class="gear-energy ${STAT} text-[#5fd6ee]">${item.energy} Equipment Energy</span>` : ""}<div class="tooltip-mod-sections mt-2.5 grid gap-[9px]">${sections.map((section) => `<section class="${SECTION}"><h4 class="${SECTION_TITLE}">${escapeHtml(section.label)}${section.detail ? `<small class="ml-1.5 font-normal tracking-normal normal-case">${escapeHtml(section.detail)}</small>` : ""}</h4>${section.entries.length ? `<ul class="grid gap-[7px]">${section.entries.map((row) => `<li class="${row.legendary ? "legendary-affix " : ""}${row.tone === "corrosion" ? "corrosion-affix " : ""}${MOD}">${row.badge ? affixTierBadge(row.badge) : `<i class="${KIND} ${row.tone === "corrosion" ? "border-[#9a58b7] text-[#e69aff]" : "border-[#796c60] text-[#ddd1c6]"}">${row.kind}</i>`}<span class="min-w-0 whitespace-pre-line">${modifierTextMarkup(row.text, (line) => gearLineCoverage(item, line, active, currentPlanner().block, currentPlanner().lowResources, currentPlanner().blurEffects))}</span><b class="${row.status === "In calc" ? "calculated" : neutralStatuses.has(row.status) ? "neutral" : "pending"} ${STATUS}"${row.curseReason ? ` title="${escapeHtml(`${row.status}: ${row.curseReason}`)}"` : ""}>${row.status}</b></li>`).join("")}</ul>` : ""}</section>`).join("") || "<p>No modifiers configured</p>"}</div></div><small class="${FOOT}">${inventoryId ? "Click to manage · Right-click to equip" : "Click to inspect · Right-click to unequip"}</small>`,
+    html: `<div class="${HEAD}"><img class="${ICON}" src="${gearIcon(item)}" alt=""><strong class="${NAME}">${escapeHtml(item.name)}</strong><div class="col-start-2 flex flex-wrap gap-1"><span class="${CHIP} border-line text-muted">${escapeHtml(item.base || titleCase(item.slot))}</span><em class="${rarity.toLowerCase()} ${CHIP} border-(--tip-edge) text-(--tip-accent)">${rarity}</em></div></div><div class="${BODY}">${curseLimitNoteHtml(sections.flatMap((section) => section.entries).find((row) => row.curseReason)?.curseReason)}<span class="gear-level ${STAT} text-muted">Require Lv ${item.level || 1}</span>${item.energy && equipmentEnergyAllowed(item.slot) ? `<span class="gear-energy ${STAT} text-info">${item.energy} Equipment Energy</span>` : ""}<div class="tooltip-mod-sections mt-2.5 grid gap-2">${sections.map((section) => `<section class="${SECTION}"><h4 class="${SECTION_TITLE}">${escapeHtml(section.label)}${section.detail ? `<small class="ml-1.5 font-normal tracking-normal normal-case">${escapeHtml(section.detail)}</small>` : ""}</h4>${section.entries.length ? `<ul class="grid gap-2">${section.entries.map((row) => `<li class="${row.legendary ? "legendary-affix " : ""}${row.tone === "corrosion" ? "corrosion-affix " : ""}${MOD}">${row.badge ? affixTierBadge(row.badge) : `<i class="${KIND} ${row.tone === "corrosion" ? "border-grade-rare text-grade-rare" : "border-line-strong text-muted"}">${row.kind}</i>`}<span class="min-w-0 whitespace-pre-line">${modifierTextMarkup(row.text, (line) => gearLineCoverage(item, line, active, currentPlanner().block, currentPlanner().lowResources, currentPlanner().blurEffects))}</span><b class="${row.status === "In calc" ? "calculated" : neutralStatuses.has(row.status) ? "neutral" : "pending"} ${STATUS}"${row.curseReason ? ` title="${escapeHtml(`${row.status}: ${row.curseReason}`)}"` : ""}>${row.status}</b></li>`).join("")}</ul>` : ""}</section>`).join("") || "<p>No modifiers configured</p>"}</div></div><small class="${FOOT}">${inventoryId ? "Click to manage · Right-click to equip" : "Click to inspect · Right-click to unequip"}</small>`,
   };
 }

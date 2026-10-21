@@ -1,4 +1,4 @@
-// What the equipment crafter shows (apps/web/src/shell/dialogs/EquipmentCrafterDialog.tsx), read from its draft
+// What the equipment crafter shows (apps/web/src/features/gear/EquipmentCrafterDialog.tsx), read from its draft
 // (src/app/gear/equipment-craft.ts): the Vorax limb picker, the legendary list, a legendary's configuration, or the rare
 // and Vorax form, each with its preview. Pure; the planner (src/app/gear/gear-controller.js) publishes it as the "equipmentCrafter"
 // source and passes in how an item's preview looks, which depends on the open build. Texts are as the legacy markup

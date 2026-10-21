@@ -61,6 +61,7 @@ export class SlatesPage {
   }
 
   async open() {
+    await this.page.locator('button.view-tab[data-view="talents"]').click();
     await this.slatesButton().click();
     await expect(this.board()).toBeVisible();
   }

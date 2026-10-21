@@ -15,9 +15,8 @@ const TABS: { tab: SkillBoardTab; label: string }[] = [
   { tab: "auras", label: "Auras" },
 ];
 
-// The two raised panels inside the section card: chamfered, slate-edged, with the short light hairline at the top left.
-const PANEL =
-  "relative m-3 border border-[#3a4655] leading-[normal] clip-chamfer-9 before:absolute before:top-0 before:left-0 before:h-px before:w-13.5 before:bg-[#bdcee0] before:opacity-65 before:content-['']";
+// The two panels inside the section card.
+const PANEL = "panel m-3 leading-[normal]";
 
 export function SkillSetupCount() {
   const view = useViewSource("skills");
@@ -32,28 +31,26 @@ export function EnergyPanel() {
     : undefined;
   return (
     <section
-      className={`energy-panel group ${PANEL} bg-panel px-4.25 py-3.75 ${energy && energy.used > energy.available ? "overused" : ""}`}
+      className={`energy-panel group ${PANEL} px-4 py-4 ${energy && energy.used > energy.available ? "overused" : ""}`}
     >
-      <div className="mb-2.5 flex items-center justify-between border-b border-[rgb(209_117_55/0.19)] pb-2.5">
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line pb-2.5">
         <div>
-          <p className="text-gilded mb-1.75 text-[0.72rem] font-extrabold tracking-[0.12em] uppercase">
-            Activation budget
-          </p>
-          <h2 className="font-serif text-[1.15rem] font-semibold tracking-[0.015em]">Energy allocator</h2>
+          <p className="mb-1.5 text-xs font-bold tracking-wider text-accent uppercase">Activation budget</p>
+          <h2 className="font-display text-lg font-semibold">Energy allocator</h2>
         </div>
-        <div className="flex items-baseline gap-[0.55rem]">
-          <strong id="energy-total" className="text-[1.8rem] text-[#65e2ff] group-[.overused]:text-[#ff6673]">
+        <div className="flex items-baseline gap-2">
+          <strong id="energy-total" className="text-2xl text-info group-[.overused]:text-danger">
             {energy ? `${energy.used}/${energy.available}` : "—"}
           </strong>
-          <span className="text-[0.8rem] text-muted">used / available</span>
+          <span className="text-sm text-muted">used / available</span>
         </div>
       </div>
       <div
         id="energy-meter"
-        className="mt-2 h-2.25 overflow-hidden rounded-[9px] bg-[#17263d] group-[.overused]:bg-[#3b1e2a]"
+        className="mt-2 h-2 overflow-hidden rounded-full bg-sunken group-[.overused]:bg-danger/15"
         style={style}
       >
-        <i className="block h-full w-(--energy-ratio) bg-[linear-gradient(90deg,#4dbde8,#9d72ff)] transition-[width] duration-200 group-[.overused]:bg-[linear-gradient(90deg,#ff8269,#e33349)]" />
+        <i className="block h-full w-(--energy-ratio) bg-info transition-[width] duration-200 group-[.overused]:bg-danger" />
       </div>
     </section>
   );
@@ -63,15 +60,13 @@ export function SkillBoard() {
   const view = useViewSource("skills");
   const tab = view?.tab ?? "skills";
   return (
-    <section
-      className={`${PANEL} bg-[#10161e] p-5.5 shadow-[inset_0_1px_rgb(255_255_255/0.024),0_12px_28px_rgb(0_0_0/0.18)] max-[520px]:p-4 min-[1101px]:flex min-[1101px]:min-h-180 min-[1101px]:flex-col`}
-    >
-      <div className="compendium-tabs mb-[0.8rem] flex gap-4 border-b border-line">
+    <section className={`${PANEL} p-5 max-[520px]:p-4 min-[1101px]:flex min-[1101px]:min-h-180 min-[1101px]:flex-col`}>
+      <div className="compendium-tabs mb-3 flex gap-4 border-b border-line">
         {TABS.map((entry) => (
           <button
             key={entry.tab}
             type="button"
-            className={`cursor-pointer border-0 border-b-2 border-transparent bg-transparent px-4 py-[0.8rem] text-[0.72rem] font-extrabold tracking-[0.17em] text-[#d5b77e] uppercase on:text-gilded on:border-b-[#e8ad4f] ${entry.tab === tab ? "active" : ""}`}
+            className={`tab px-4 py-3 text-xs font-bold tracking-wider uppercase ${entry.tab === tab ? "active" : ""}`}
             aria-pressed={entry.tab === tab}
             onClick={() => plannerCommands().setSkillBoardTab(entry.tab)}
           >
@@ -79,7 +74,7 @@ export function SkillBoard() {
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-[64px_76px_repeat(5,minmax(0,1fr))_58px] items-center px-3 pb-[0.55rem] text-center text-[0.72rem] text-[#8fb0cc] max-[720px]:hidden">
+      <div className="grid grid-cols-[64px_76px_repeat(5,minmax(0,1fr))_58px] items-center px-3 pb-2 text-center text-xs text-muted max-[720px]:hidden">
         <span />
         <span />
         <span>0</span>
@@ -87,15 +82,15 @@ export function SkillBoard() {
         <span>15</span>
         <span>50</span>
         <span>100</span>
-        <strong className="text-gilded font-medium">Energy</strong>
+        <strong className="font-medium text-accent">Energy</strong>
       </div>
-      <div id="skill-groups" className="grid gap-2 rounded-lg bg-[#080e15] p-2">
+      <div id="skill-groups" className="grid gap-2 rounded-md bg-sunken p-2">
         {view ? <BoardRows view={view} /> : null}
       </div>
       <ReservationSummary view={view} />
-      <footer className="mt-3 flex items-center justify-end rounded-[7px] border border-[#202b39] px-3 py-2.5 min-[1101px]:mt-auto">
+      <footer className="mt-3 flex items-center justify-end rounded-md border border-line px-3 py-2.5 min-[1101px]:mt-auto">
         <button
-          className="btn-bronze min-h-10.5 w-32.5 px-3.5 py-2.25 text-[0.68rem] font-bold uppercase"
+          className="btn h-10 w-32 px-3 text-xs font-bold tracking-wide uppercase"
           type="button"
           data-reset-skills=""
           onClick={() => plannerCommands().resetSkills()}
@@ -124,38 +119,34 @@ const supportKey = (row: number, slot: number) => `${row}:${slot}`;
 // state (drop target, dragging, trait-granted, curse limit, empty) is chosen here in JS: the e2e tests read the hook
 // classes (skill-drop-target, skill-dragging, support-drag-source, support-drop-target), so no utility may spell them.
 const ROW =
-  "group grid min-h-22 grid-cols-[64px_76px_minmax(0,1fr)_58px] items-center rounded-lg border bg-[#0c1118] px-3 py-2 max-[720px]:grid-cols-[54px_minmax(0,1fr)_42px] max-[720px]:gap-y-2 max-[720px]:p-1.75";
-// A row's frame: cyan while a dragged skill is over it; a red outline when its curse cannot apply.
+  "group grid min-h-22 grid-cols-[64px_76px_minmax(0,1fr)_58px] items-center rounded-md border px-3 py-2 max-[720px]:grid-cols-[54px_minmax(0,1fr)_42px] max-[720px]:gap-y-2 max-[720px]:p-2";
+// A row's frame: tinted with info while a dragged skill is over it; a danger outline when its curse cannot apply.
 function rowFrame(dropTarget: boolean, curseLimit: boolean) {
-  const outline = curseLimit ? " outline-3 outline-offset-1 outline-[#e33349]" : "";
-  if (dropTarget) return `border-[#70c9ff] shadow-[inset_0_0_0_1px_#70c9ff,0_0_18px_#48a9ef55]${outline}`;
-  if (curseLimit)
-    return `border-[#2d3642] shadow-[0_0_0_1px_rgb(0_0_0/0.6),0_0_12px_2px_rgb(227_51_73/0.75)]${outline}`;
-  return "border-[#2d3642]";
+  const outline = curseLimit ? " outline-2 outline-offset-1 outline-danger" : "";
+  return `${dropTarget ? "border-info bg-info/10" : "border-line bg-surface"}${outline}`;
 }
 const PRIMARY_SOCKET =
-  "relative grid size-16 place-items-center overflow-hidden rounded-full border bg-[#0b121a] p-0 text-[#9aacbf] max-[720px]:size-13";
-// The active skill's round socket: dashed when empty, grabbed to reorder (lifted while dragged), cyan when a trait grants
-// the skill, ringed red when its curse cannot apply.
+  "relative grid size-16 place-items-center overflow-hidden rounded-full border p-0 text-muted max-[720px]:size-13";
+// The active skill's round socket: dashed when empty, grabbed to reorder (lifted while dragged), info-tinted when a trait
+// grants the skill, ringed in danger when its curse cannot apply.
 function primarySocketState(state: { filled: boolean; granted: boolean; dragging: boolean; curseLimit: boolean }) {
-  if (state.granted) return "cursor-default border-[#75d8f6] shadow-[0_0_0_2px_#75d8f633,0_0_12px_#4bbce555]";
+  if (state.granted) return "cursor-default border-info bg-info/10";
   const look = state.filled ? "cursor-grab touch-none" : "cursor-pointer opacity-80";
-  const frame = "border-dashed border-[#364354]";
-  if (state.dragging)
-    return `${frame} pointer-events-none z-30 cursor-grabbing opacity-85 shadow-[0_12px_24px_#0009,0_0_16px_#70c9ff88]`;
-  return `${frame} ${look}${state.curseLimit ? " shadow-[0_0_0_2px_#e33349]" : ""}`;
+  const frame = "border-dashed border-line-strong bg-sunken";
+  if (state.dragging) return `${frame} pointer-events-none z-30 cursor-grabbing opacity-85 shadow-lg shadow-shadow`;
+  return `${frame} ${look}${state.curseLimit ? " ring-2 ring-danger" : ""}`;
 }
-// The hairline that links a row's five support sockets.
+// The line that links a row's five support sockets.
 const SUPPORT_LINE =
-  "before:absolute before:inset-x-[10%] before:top-1/2 before:z-0 before:h-0.75 before:-translate-y-1/2 before:rounded-full before:bg-[#243247] before:shadow-[0_0_0_1px_rgb(7_12_18/0.35)] before:content-['']";
+  "before:absolute before:inset-x-[10%] before:top-1/2 before:z-0 before:h-0.5 before:-translate-y-1/2 before:bg-line before:content-['']";
 // The art inside a frame: the image covers it, the frame's ◆ shows only when there is no image.
 const FRAMED_IMAGE =
   "[&>img]:absolute [&>img]:inset-0 [&>img]:z-1 [&>img]:size-full [&>img]:max-w-none [&>img]:object-cover [&>img+span]:invisible [&>span]:relative [&>span]:z-0";
-const SKILL_ART = `skill-glyph relative grid size-14.5 place-items-center overflow-hidden rounded-full border border-[#695039] bg-[linear-gradient(145deg,#241c16,#10151c)] text-ember shadow-[inset_0_0_12px_rgb(255_141_53/0.08)] max-[720px]:size-11.5 [&>img]:rounded-full ${FRAMED_IMAGE}`;
+const SKILL_ART = `skill-glyph relative grid size-14.5 place-items-center overflow-hidden rounded-full border border-line-strong bg-raised text-accent-strong max-[720px]:size-11.5 [&>img]:rounded-full ${FRAMED_IMAGE}`;
 const SUPPORT_SOCKET =
-  "relative z-1 grid aspect-square w-[min(42px,100%)] place-items-center justify-self-center rounded-full border-2 bg-[#101822] p-0 text-[#91a2b5] max-[720px]:w-[min(34px,100%)]";
-// A support socket: a "+" when empty (ember on hover), dimmed while its support is dragged, cyan as a drop target or when
-// a trait grants the support.
+  "relative z-1 grid aspect-square w-[min(42px,100%)] place-items-center justify-self-center rounded-full border-2 p-0 text-muted max-[720px]:w-[min(34px,100%)]";
+// A support socket: a "+" when empty (accent-strong on hover), dimmed while its support is dragged, info-tinted as a drop
+// target or when a trait grants the support.
 function supportSocketState(state: {
   filled: boolean;
   enabled: boolean;
@@ -164,15 +155,15 @@ function supportSocketState(state: {
   dropTarget: boolean;
 }) {
   const dimmed = state.dragSource ? " opacity-35" : "";
-  if (state.dropTarget) return `cursor-grab border-[#77d6f4] shadow-[0_0_0_3px_#77d6f466,0_0_18px_#4bbce599]${dimmed}`;
-  if (state.granted) return "cursor-default border-[#75d8f6] shadow-[0_0_0_2px_#75d8f633,0_0_10px_#4bbce555]";
-  if (state.filled) return `cursor-grab touch-none border-[#495564]${dimmed}`;
-  if (!state.enabled) return "border-[#495564]";
-  return "cursor-pointer border-[#495564] text-[1.15rem] text-[#9fb2c5] hover:border-[#ff862c] hover:bg-[#1d2022] hover:text-[#ff9b4d] hover:shadow-[0_0_12px_rgb(255_119_23/0.2)]";
+  if (state.dropTarget) return `cursor-grab border-info bg-info/15${dimmed}`;
+  if (state.granted) return "cursor-default border-info bg-info/10";
+  if (state.filled) return `cursor-grab touch-none border-line-strong bg-sunken${dimmed}`;
+  if (!state.enabled) return "border-line bg-sunken";
+  return "cursor-pointer border-line-strong bg-sunken text-lg hover:border-accent-strong hover:text-accent-strong";
 }
 // The support that follows the pointer while dragged (a clone of the socket appended to <body>); "+" when copying.
 const SUPPORT_GHOST =
-  "support-drag-ghost pointer-events-none fixed z-10020 grid size-11.5 -translate-1/2 place-items-center rounded-full border-2 border-[#ffb455] bg-[#17202a] shadow-[0_9px_22px_#000a] [&.copying]:after:absolute [&.copying]:after:-right-2 [&.copying]:after:-bottom-2 [&.copying]:after:grid [&.copying]:after:size-5.25 [&.copying]:after:place-items-center [&.copying]:after:rounded-full [&.copying]:after:border [&.copying]:after:border-[#9deec8] [&.copying]:after:bg-[#8ce7b9] [&.copying]:after:font-black [&.copying]:after:text-[#132a1d] [&.copying]:after:content-['+']";
+  "support-drag-ghost pointer-events-none fixed z-10020 grid size-11.5 -translate-1/2 place-items-center rounded-full border-2 border-accent bg-raised shadow-lg shadow-shadow [&.copying]:after:absolute [&.copying]:after:-right-2 [&.copying]:after:-bottom-2 [&.copying]:after:grid [&.copying]:after:size-5 [&.copying]:after:place-items-center [&.copying]:after:rounded-full [&.copying]:after:bg-ok [&.copying]:after:font-bold [&.copying]:after:text-bg [&.copying]:after:content-['+']";
 const SUPPORT_ART = `lane-support-art relative block size-full overflow-hidden rounded-full max-[1100px]:size-7.25 [.support-drag-ghost_&]:size-9.5 [&>img]:scale-[1.14] ${FRAMED_IMAGE}`;
 
 function BoardRows({ view }: { view: SkillsView }) {
@@ -303,7 +294,7 @@ function BoardRows({ view }: { view: SkillsView }) {
             );
           })}
         </div>
-        <strong className="skill-row-energy text-center text-[#b9c8d7] max-[720px]:col-start-3 max-[720px]:row-start-1">
+        <strong className="skill-row-energy text-center text-text max-[720px]:col-start-3 max-[720px]:row-start-1">
           {skill ? skill.energy : "−"}
         </strong>
       </article>
@@ -311,9 +302,9 @@ function BoardRows({ view }: { view: SkillsView }) {
   });
 }
 
-const ROW_NAME = "pl-3.5 text-[0.78rem] text-[#a9bfd5] max-[720px]:min-w-0 max-[720px]:wrap-anywhere";
+const ROW_NAME = "pl-3.5 text-xs text-text max-[720px]:min-w-0 max-[720px]:wrap-anywhere";
 const BADGE =
-  "mb-1 inline-block rounded-[3px] border border-[#e33349] bg-[#e33349] px-1.25 py-0.75 text-[0.52rem] leading-none font-extrabold tracking-[0.04em] whitespace-nowrap text-white not-italic shadow-[0_1px_4px_rgb(0_0_0/0.65)]";
+  "mb-1 inline-block rounded-sm border border-danger/60 bg-danger/15 px-1 py-0.5 text-[10px] leading-none font-bold tracking-wide whitespace-nowrap text-danger not-italic";
 
 function RowName({ row }: { row: SkillRowView }) {
   const skill = row.skill;
@@ -338,13 +329,13 @@ function RowName({ row }: { row: SkillRowView }) {
         </em>
       ) : null}
       <strong className="block">{skill.name}</strong>
-      <small className="mt-1 block text-[0.65rem] text-muted group-[.trait-granted-row]:text-[#75d8f6]">
+      <small className="mt-1 block text-xs text-muted group-[.trait-granted-row]:text-info">
         {`Lv.${skill.baseLevel}`}
         {added ? (
           <>
             {" "}
             <span
-              className={`font-bold ${added < 0 ? "text-[#ff777b]" : "text-[#6ee29b]"}`}
+              className={`font-bold ${added < 0 ? "text-danger" : "text-ok"}`}
             >{`${added > 0 ? "+" : ""}${added}`}</span>
           </>
         ) : null}
@@ -354,11 +345,11 @@ function RowName({ row }: { row: SkillRowView }) {
   );
 }
 
-// The Auras tab's Sealed Mana and Sealed Life cards, red when over capacity, and the warning under them (shown only when
+// The Auras tab's Sealed Mana and Sealed Life cards, in danger colours when over capacity, and the warning under them (shown only when
 // the aura setup cannot be fully activated).
 const SUMMARY = "mx-2 mt-3 grid grid-cols-2 gap-2.5 max-[720px]:grid-cols-1";
 const STATUS =
-  "col-span-full flex items-center gap-2.5 border border-[#8e3438] bg-[#2a1318] px-3.5 py-2.5 text-[#91cfc5] max-[720px]:flex-col max-[720px]:items-start";
+  "col-span-full flex items-center gap-2.5 rounded-md border border-danger/60 bg-danger/10 px-3.5 py-2.5 text-muted max-[720px]:flex-col max-[720px]:items-start";
 
 function ReservationSummary({ view }: { view: SkillsView | null }) {
   if (!view)
@@ -391,8 +382,8 @@ function ReservationSummary({ view }: { view: SkillsView | null }) {
       <div id="aura-reservation-status" className={STATUS} hidden={!problems.length}>
         {problems.length ? (
           <>
-            <strong className="text-[#ff666b]">Aura setup cannot be fully activated</strong>
-            <span className="text-[#a9bbc9]">{`${problems.join(" · ")}.`}</span>
+            <strong className="text-danger">Aura setup cannot be fully activated</strong>
+            <span>{`${problems.join(" · ")}.`}</span>
           </>
         ) : null}
       </div>
@@ -409,22 +400,19 @@ function SealedCard(props: {
   overCapacity?: boolean;
 }) {
   const over = props.overCapacity === true;
-  const meter = over ? "bg-[#e5474d]" : props.kind === "life" ? "bg-[#d75458]" : "bg-[#3aa8e8]";
+  const meter = over || props.kind === "life" ? "bg-danger" : "bg-info";
   return (
     <div
-      className={`border px-4 py-3.5 text-[#8ea3b9] ${over ? "border-[#8e3438] bg-[#2a1318]" : "border-[#29384a] bg-[#0b121a]"}`}
+      className={`rounded-md border px-4 py-3.5 text-muted ${over ? "border-danger/60 bg-danger/10" : "border-line bg-raised"}`}
     >
       <span className="block">{props.label}</span>
-      <strong
-        id={`aura-sealed-${props.kind}`}
-        className={`my-1 block text-[1.35rem] ${over ? "text-[#ff666b]" : "text-[#e6f2ff]"}`}
-      >
+      <strong id={`aura-sealed-${props.kind}`} className={`my-1 block text-xl ${over ? "text-danger" : "text-text"}`}>
         {props.sealed}
       </strong>
-      <small id={`aura-${props.kind}-percent`} className="block text-[0.8333rem]">
+      <small id={`aura-${props.kind}-percent`} className="block text-sm">
         {props.detail}
       </small>
-      <i className="mt-2.5 block h-1.75 overflow-hidden bg-[#202b38]">
+      <i className="mt-2.5 block h-1.5 overflow-hidden rounded-full bg-sunken">
         <b
           id={`aura-${props.kind}-meter`}
           className={`block h-full ${meter}`}

@@ -19,16 +19,18 @@ import {
   RANGE,
   SELECTED_CARD,
   SELECTED_CHANGE,
+  SELECTED_DETAIL,
   SELECTED_ICON,
+  SELECTED_NAME,
 } from "./crafter-classes";
 import { Choices, ItemPreview, LegendaryModControl, Options, type LegendaryLineChange } from "./crafter-parts";
 
 // The list column: the search, the results (they scroll), the count.
 const LIST_COLUMN =
-  "grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-3 border-r border-[#36404d] p-4 max-[800px]:shrink-0 max-[800px]:border-r-0";
+  "grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-3 border-r border-line p-4 max-[800px]:shrink-0 max-[800px]:border-r-0";
 // A legendary in the list: its art, name and slot · level.
 const CHOICE =
-  "legendary-choice grid min-h-17.5 cursor-pointer grid-cols-[54px_minmax(0,1fr)] items-center gap-2.5 border border-[#263548] bg-[#172136] p-2 text-left text-white hover:border-[#f69335] hover:bg-[#202b3a] focus-visible:border-[#f69335] focus-visible:outline-none";
+  "legendary-choice grid min-h-17.5 cursor-pointer grid-cols-[54px_minmax(0,1fr)] items-center gap-2.5 rounded border border-line bg-raised p-2 text-left text-text hover:border-accent focus-visible:border-accent focus-visible:outline-none";
 
 const change = (craftChange: CraftChange) => plannerCommands().changeEquipmentCraft(craftChange);
 const LINE_NAMES = {
@@ -89,12 +91,12 @@ export function LegendaryList({ list }: { list: Extract<EquipmentCrafterBody, { 
               <img src={entry.icon} alt="" className="h-14.5 w-13 object-contain" />
               <span className="min-w-0">
                 <strong className="block">{entry.name}</strong>
-                <small className="mt-1 block text-[0.8rem] text-[#91a2b4]">{entry.detail}</small>
+                <small className="mt-1 block text-xs text-muted">{entry.detail}</small>
               </span>
             </button>
           ))}
         </div>
-        <small className="text-[0.82rem] text-[#c9d1da]">{list.count}</small>
+        <small className="text-sm text-muted">{list.count}</small>
       </section>
       <aside className={CRAFT_ASIDE}>
         <p>Select a legendary item to configure it.</p>
@@ -110,8 +112,8 @@ export function LegendaryConfig({ config }: { config: LegendaryConfigView }) {
         <div className={SELECTED_CARD}>
           <img src={config.icon} alt="" className={SELECTED_ICON} />
           <span className="min-w-0">
-            <strong className="block text-[1.05rem] text-[#ff9a3f]">{config.name}</strong>
-            <small className="block text-[0.82rem] text-[#c9d1da]">{config.slot}</small>
+            <strong className={SELECTED_NAME}>{config.name}</strong>
+            <small className={SELECTED_DETAIL}>{config.slot}</small>
           </span>
           <button
             type="button"

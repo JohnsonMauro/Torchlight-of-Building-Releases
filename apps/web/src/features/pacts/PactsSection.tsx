@@ -6,6 +6,8 @@ import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { ExtraSlotView, PactNodeView, PactSlotView, PactsView } from "@legacy/app/bridge/pacts-view-model.ts";
 import { useViewSource } from "../../ui/use-view-source";
 import {
+  CARD,
+  EMPTY_PORTRAIT,
   FILLED_PORTRAIT,
   LEVEL_LABEL,
   LEVEL_SELECT,
@@ -13,6 +15,7 @@ import {
   nodeClasses,
   nodeImage,
   nodeStatus,
+  rarityTone,
   slotSurface,
   type DragState,
 } from "./pact-classes";
@@ -21,28 +24,20 @@ import { useKismetDrag, type DropSlot } from "./use-kismet-drag";
 const LEVELS = [1, 2, 3, 4, 5, 6];
 
 // A pact slot's grid: portrait and name, LEVEL, the tree, the count; up to 1100 px the tree takes a row of its own,
-// up to 560 px the count too (the +1 px keeps the legacy max-width breakpoints inclusive). The surface (border,
-// rarity gradient) and the nodes' drawing are in pact-classes.ts.
+// up to 560 px the count too (the +1 px keeps the legacy max-width breakpoints inclusive). The surface (border in the
+// rarity's colour) and the nodes' drawing are in pact-classes.ts.
 const SLOT_LAYOUT =
   "relative grid min-h-23 grid-cols-[minmax(260px,310px)_84px_minmax(0,1fr)_80px] items-center gap-x-4.5 gap-y-4 py-3 pr-11.5 pl-3.5 " +
   "max-[1101px]:grid-cols-[minmax(0,1fr)_84px_80px] max-[1101px]:gap-y-2 max-[701px]:items-start " +
   "max-[561px]:grid-cols-[minmax(0,1fr)_84px] max-[561px]:gap-x-2.5";
-const EMPTY_PORTRAIT =
-  "border-2 border-dashed border-[#8391a4] bg-[rgb(12_18_27/0.6)] text-[1.6rem] leading-none text-[#c4d4e5] " +
-  "group-hover:border-[#ffa95b] group-hover:bg-[rgb(230_118_45/0.08)] group-hover:text-[#ffa95b] " +
-  "group-focus-visible:border-[#ffa95b] group-focus-visible:bg-[rgb(230_118_45/0.08)] group-focus-visible:text-[#ffa95b]";
 const TREE_LAYOUT =
   "relative flex w-full min-w-0 items-center justify-start gap-4.5 overflow-x-auto px-1 py-1.75 [scrollbar-width:none] " +
   "[&::-webkit-scrollbar]:hidden max-[1101px]:col-span-full max-[1101px]:row-start-2";
 const COUNT_LAYOUT =
-  "block flex-none justify-self-end text-[0.75rem] font-bold whitespace-nowrap text-[#d3e1ee] " +
+  "block flex-none justify-self-end text-xs font-bold whitespace-nowrap text-muted " +
   "max-[1101px]:col-start-3 max-[1101px]:row-start-1 " +
   "max-[561px]:col-span-full max-[561px]:row-start-3 max-[561px]:justify-self-start";
-const REMOVE_BUTTON =
-  "absolute top-[11px] right-3 grid size-[25px] cursor-pointer place-items-center rounded-md border border-[#8d4c4e] " +
-  "bg-[#342225] font-[Arial,sans-serif] text-[1.15rem] leading-none text-[#f4b3b1] transition-colors duration-150 " +
-  "hover:border-[#f27d77] hover:bg-[#a53537] hover:text-white focus-visible:border-[#f27d77] " +
-  "focus-visible:bg-[#a53537] focus-visible:text-white focus-visible:outline-none";
+const REMOVE_BUTTON = "btn-danger absolute top-3 right-3 size-6 rounded-md text-lg leading-none";
 
 /** "2/3": filled pact slots. */
 export function PactspiritCount() {
@@ -54,12 +49,12 @@ export function KismetSummary() {
   const view = useViewSource("pacts");
   if (!view) return null;
   const group = (kind: string, count: number, max: number) => (
-    <section className="pact-kismet-group flex min-h-11.5 items-center rounded-lg border border-[#293342] bg-[#151b23] px-3.5 py-2.5">
-      <h3 className="text-[0.83rem] font-bold whitespace-nowrap text-[#c8d1dc]">
+    <section className={`pact-kismet-group ${CARD} flex min-h-11.5 items-center border-line px-3.5 py-2.5`}>
+      <h3 className="text-sm font-bold whitespace-nowrap text-muted">
         {`${kind} Kismets `}
-        <strong className="font-black text-gold">
+        <strong className="font-black text-accent">
           {count}
-          <span className="text-[#8c99a8]">{` / ${max}`}</span>
+          <span className="text-dim">{` / ${max}`}</span>
         </strong>
       </h3>
     </section>
@@ -133,10 +128,13 @@ function PactSlotList({ view }: { view: PactsView }) {
   return (
     <>
       {view.slots.map((slot) => (
-        <article key={slot.index} className={`pact-slot ${slotSurface(slot.spirit?.rarity)} ${SLOT_LAYOUT}`}>
+        <article
+          key={slot.index}
+          className={`pact-slot ${rarityTone(slot.spirit?.rarity)} ${slotSurface(Boolean(slot.spirit))} ${SLOT_LAYOUT}`}
+        >
           <button
             type="button"
-            className="pact-slot-select group flex w-full min-w-0 cursor-pointer items-center gap-3 text-left text-[#e9edf3]"
+            className="pact-slot-select group flex w-full min-w-0 cursor-pointer items-center gap-3 text-left text-text"
             data-pactspirit-name={slot.spirit ? slot.name : undefined}
             onClick={() => commands.openPactspiritSelector(slot.index)}
             onContextMenu={(event) => {
@@ -146,7 +144,7 @@ function PactSlotList({ view }: { view: PactsView }) {
             }}
           >
             <span
-              className={`grid size-16 flex-none place-items-center overflow-hidden rounded-lg ${slot.spirit ? FILLED_PORTRAIT : EMPTY_PORTRAIT}`}
+              className={`grid size-16 flex-none place-items-center overflow-hidden rounded-md ${slot.spirit ? FILLED_PORTRAIT : EMPTY_PORTRAIT}`}
             >
               {slot.spirit ? (
                 <img className="w-full" src={slot.spirit.icon} alt="" />
@@ -156,13 +154,13 @@ function PactSlotList({ view }: { view: PactsView }) {
             </span>
             {slot.spirit ? (
               <span className="min-w-0">
-                <strong className="block max-w-42.5 truncate text-[0.9rem] text-(--pact-accent)">{slot.name}</strong>
-                <small className="block max-w-42.5 truncate text-[0.7rem] text-[#aeb8c6]">
+                <strong className="block max-w-42.5 truncate text-sm text-(--pact-tone)">{slot.name}</strong>
+                <small className="block max-w-42.5 truncate text-xs text-muted">
                   {`${slot.spirit.category} · ${slot.spirit.rarity}`}
                 </small>
               </span>
             ) : (
-              <span className="pact-slot-empty text-gilded min-w-0 text-[0.72rem] font-extrabold tracking-[0.12em] uppercase">
+              <span className="pact-slot-empty min-w-0 text-xs font-bold tracking-widest text-accent uppercase">
                 {`Select Pactspirit ${slot.index + 1}`}
               </span>
             )}

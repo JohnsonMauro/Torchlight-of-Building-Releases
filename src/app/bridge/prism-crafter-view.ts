@@ -1,4 +1,4 @@
-// What the Prism crafter shows (src/app/talents/prism-controller.js prismCrafterSource; apps/web/src/shell/dialogs/PrismCrafterDialog.tsx).
+// What the Prism crafter shows (src/app/talents/prism-controller.js prismCrafterSource; apps/web/src/features/talents/PrismCrafterDialog.tsx).
 // Types only.
 
 /** A line of a prism's affix section: an effect, or an Inverse Image's mod value. */

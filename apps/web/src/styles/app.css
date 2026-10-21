@@ -15,38 +15,171 @@
 @source "../../../../src/game-log";
 
 /*
- * Design tokens: the planner's dark material, gold-bronze trim, an ember accent and a frost secondary. Static, so
- * arbitrary values can read every token as a custom property even when no utility uses it. --art-magic is the magic
- * rarity's card art, a token because its file name spells "active", a word the e2e tests read off class lists.
+ * Themes. Every colour is a semantic token whose value depends on the theme: <html data-theme="dark|light">, set before
+ * the first render by apps/web/src/ui/theme.ts (the stored choice, else the system's). Components use the tokens'
+ * utilities (bg-surface, text-muted, border-line, text-grade-legendary…) and opacity modifiers (bg-accent/15), never a
+ * colour of their own, so a theme changes here only.
+ *
+ *   bg          the page                     surface     a panel or dialog          raised   a control or card on a panel
+ *   sunken      a well inside a panel        line        borders and dividers       line-strong  borders that must show
+ *   text        body text                    muted       secondary text             dim      hints, disabled
+ *   accent      the brand colour (gold)      accent-strong  the warm highlight      on-accent  text on an accent fill
+ *   info / ok / warn / danger / violet       status and effect colours
+ *   grade-*     the game's item, memory and follower rarities: normal, magic (blue), rare (purple: "epic" items and
+ *               memories), legendary (orange), vorax (red: "ult" followers, "ultimate" memories); the affix tiers too
+ *               grade-priceless: Priceless, six-affix and item level 100 items (pink)
+ *   dmg-*       damage types: physical, fire, cold, lightning, erosion       life / mana: their bars
+ *   god-*       the talent gods' families: might, hunting, knowledge, war, deception, machines
  */
-@theme static {
-  --color-ink: #080b10;
-  --color-surface: #101720;
-  --color-raised: #171f2a;
-  --color-line: #384250;
-  --color-edge: #303844;
-  --color-text: #f2f0ec;
-  --color-muted: #99a4b0;
-  --color-dim: #7f8b98;
-  --color-ember: #f09a42;
-  --color-frost: #61cddd;
-  --color-ok: #82d7b0;
-  --color-danger: #ff7a6b;
-  --color-violet: #9a8cff;
-  --color-gold: #f9ca65;
-  --color-gold-pale: #ffe0a0;
-  --color-bronze: #a67736;
+:root {
+  color-scheme: dark;
+  --c-bg: #0e1218;
+  --c-surface: #161c24;
+  --c-raised: #1e2530;
+  --c-sunken: #10151c;
+  --c-line: #2b3441;
+  --c-line-strong: #414c5b;
+  --c-text: #e7e9ec;
+  --c-muted: #a2acb8;
+  --c-dim: #737e8b;
+  --c-accent: #e3b45a;
+  --c-accent-strong: #f0913a;
+  --c-on-accent: #1b1306;
+  --c-info: #5cc6d6;
+  --c-ok: #6cce9e;
+  --c-warn: #ffb35c;
+  --c-danger: #ff7a6b;
+  --c-violet: #a490ff;
+  --c-grade-normal: #c9ced4;
+  --c-grade-magic: #4fc3f7;
+  --c-grade-rare: #c77dff;
+  --c-grade-legendary: #ff9a3f;
+  --c-grade-vorax: #ff6b5e;
+  --c-dmg-physical: #d8c7a8;
+  --c-dmg-fire: #ff8a4c;
+  --c-dmg-cold: #6cc8ff;
+  --c-dmg-lightning: #ffd84a;
+  --c-dmg-erosion: #c58cff;
+  --c-grade-priceless: #ff6fcf;
+  --c-life: #e0575b;
+  --c-mana: #4fa8e8;
+  --c-god-might: #f4bd4e;
+  --c-god-hunting: #62d76e;
+  --c-god-knowledge: #69b7ff;
+  --c-god-war: #f06c69;
+  --c-god-deception: #c276ed;
+  --c-god-machines: #52d6dc;
+  --c-overlay: rgb(3 6 10 / 0.72);
+  --c-veil: rgb(22 28 36 / 0.55);
+  --c-shadow: rgb(0 0 0 / 0.45);
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --c-bg: #f3f4f6;
+  --c-surface: #ffffff;
+  --c-raised: #f0f2f5;
+  --c-sunken: #e8ebef;
+  --c-line: #d6dbe2;
+  --c-line-strong: #b4bdc9;
+  --c-text: #1a1f26;
+  --c-muted: #4c5562;
+  --c-dim: #7a838f;
+  --c-accent: #93600a;
+  --c-accent-strong: #b3540c;
+  --c-on-accent: #ffffff;
+  --c-info: #0d7686;
+  --c-ok: #17754b;
+  --c-warn: #a35800;
+  --c-danger: #c2321f;
+  --c-violet: #5a46c4;
+  --c-grade-normal: #636b77;
+  --c-grade-magic: #0272b5;
+  --c-grade-rare: #7a2cbf;
+  --c-grade-legendary: #bf5a00;
+  --c-grade-vorax: #c42a22;
+  --c-dmg-physical: #7a5f33;
+  --c-dmg-fire: #c2410c;
+  --c-dmg-cold: #0369a1;
+  --c-dmg-lightning: #a16207;
+  --c-dmg-erosion: #7e22ce;
+  --c-grade-priceless: #b4247f;
+  --c-life: #b8262b;
+  --c-mana: #0b62a8;
+  --c-god-might: #a16207;
+  --c-god-hunting: #15803d;
+  --c-god-knowledge: #1d4ed8;
+  --c-god-war: #b91c1c;
+  --c-god-deception: #7e22ce;
+  --c-god-machines: #0e7490;
+  --c-overlay: rgb(20 26 36 / 0.4);
+  --c-veil: rgb(255 255 255 / 0.86);
+  --c-shadow: rgb(20 26 36 / 0.16);
+}
+
+/*
+ * The tokens as Tailwind theme values (inline: utilities read the custom properties above, so they follow the theme).
+ * --art-magic is the magic rarity's card art, a token because its file name spells "active", a word the e2e tests read
+ * off class lists.
+ */
+@theme inline {
+  --color-*: initial;
+  --color-white: #fff;
+  --color-black: #000;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-raised: var(--c-raised);
+  --color-sunken: var(--c-sunken);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
+  --color-text: var(--c-text);
+  --color-muted: var(--c-muted);
+  --color-dim: var(--c-dim);
+  --color-accent: var(--c-accent);
+  --color-accent-strong: var(--c-accent-strong);
+  --color-on-accent: var(--c-on-accent);
+  --color-info: var(--c-info);
+  --color-ok: var(--c-ok);
+  --color-warn: var(--c-warn);
+  --color-danger: var(--c-danger);
+  --color-violet: var(--c-violet);
+  --color-grade-normal: var(--c-grade-normal);
+  --color-grade-magic: var(--c-grade-magic);
+  --color-grade-rare: var(--c-grade-rare);
+  --color-grade-legendary: var(--c-grade-legendary);
+  --color-grade-vorax: var(--c-grade-vorax);
+  --color-dmg-physical: var(--c-dmg-physical);
+  --color-dmg-fire: var(--c-dmg-fire);
+  --color-dmg-cold: var(--c-dmg-cold);
+  --color-dmg-lightning: var(--c-dmg-lightning);
+  --color-dmg-erosion: var(--c-dmg-erosion);
+  --color-grade-priceless: var(--c-grade-priceless);
+  --color-life: var(--c-life);
+  --color-mana: var(--c-mana);
+  --color-god-might: var(--c-god-might);
+  --color-god-hunting: var(--c-god-hunting);
+  --color-god-knowledge: var(--c-god-knowledge);
+  --color-god-war: var(--c-god-war);
+  --color-god-deception: var(--c-god-deception);
+  --color-god-machines: var(--c-god-machines);
+  --color-overlay: var(--c-overlay);
+  --color-veil: var(--c-veil);
+  --color-shadow: var(--c-shadow);
   --font-display: "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  --font-serif: Georgia, "Times New Roman", serif;
-  --font-sans: "Segoe UI", Arial, sans-serif;
+  --font-sans: "Segoe UI", system-ui, Arial, sans-serif;
   --art-magic: url("../../../../src/assets/active-skill-rare-background.png");
 }
 
-@layer base {
-  :root {
-    color-scheme: dark;
-  }
+/*
+ * The veil over game art (rarity cards, slate and skill art): light in the dark theme, strong in the light one, so the
+ * theme's text reads on dark art. As a colour (bg-veil) or as a background layer (bg-[image:var(--veil),url(...)]).
+ */
+:root {
+  --veil: linear-gradient(var(--c-veil), var(--c-veil));
+}
 
+@layer base {
   /*
    * The React mount point takes no box: the shell's elements lay out as children of <body> (the view rail and header
    * are fixed/sticky against it, the main grid spans it).
@@ -55,24 +188,12 @@
     display: contents;
   }
 
-  /* The page frame: dark ink with an ember glow at the top right, a violet one at the left and a faint 32px grid. */
   body {
     min-width: 320px;
     min-height: 100vh;
     color: var(--color-text);
     font-family: var(--font-sans);
-    background-color: #080b10;
-    background-image:
-      radial-gradient(circle at 72% 3%, rgb(189 72 31 / 0.12), transparent 30rem),
-      radial-gradient(circle at 16% 30%, rgb(95 47 105 / 0.1), transparent 27rem),
-      linear-gradient(rgb(255 255 255 / 0.01) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(255 255 255 / 0.01) 1px, transparent 1px);
-    background-size:
-      auto,
-      auto,
-      32px 32px,
-      32px 32px;
-    background-attachment: fixed;
+    background: var(--color-bg);
   }
 
   /* While a support skill is dragged (apps/web/src/ui/use-pointer-drag.ts marks <body>), its ghost is the cursor. */
@@ -85,19 +206,16 @@
     width: 10px;
     height: 10px;
   }
-
   ::-webkit-scrollbar-track {
-    background: #0a0e13;
+    background: var(--color-bg);
   }
-
   ::-webkit-scrollbar-thumb {
-    border: 2px solid #0a0e13;
+    border: 2px solid var(--color-bg);
     border-radius: 8px;
-    background: linear-gradient(#775036, #3e4651);
+    background: var(--color-line-strong);
   }
-
   ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(#bd6e38, #596371);
+    background: var(--color-dim);
   }
 }
 
@@ -117,73 +235,143 @@
 /* A short desktop window (wide, at most 1100px tall): the Stats page tightens its spacing to fit more above the fold. */
 @custom-variant compact (@media (min-width: 1101px) and (max-height: 1100px));
 
-/* A chamfered box: the top-left and bottom-right corners cut by the given number of pixels (clip-chamfer-9). */
-@utility clip-chamfer-* {
-  --chamfer: calc(--value(integer) * 1px);
-  clip-path: polygon(
-    var(--chamfer) 0,
-    100% 0,
-    100% calc(100% - var(--chamfer)),
-    calc(100% - var(--chamfer)) 100%,
-    0 100%,
-    0 var(--chamfer)
-  );
+/*
+ * Shared building blocks. Each sets colours, border and shape only; size, padding and type are the caller's utilities,
+ * so they never fight over a property.
+ */
+
+/* A panel: the box every section, card group and dialog body sits in. */
+@utility panel {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
 }
 
-/* Gilded lettering: the section titles' gold gradient with a dark emboss. */
-@utility text-gilded {
-  background: linear-gradient(180deg, #fff0b0 0%, #f9ca65 43%, #df9230 100%);
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 1px 1px rgb(84 47 16 / 0.65));
+/* A panel's heading bar: title on the left, actions or help on the right. */
+@utility panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-line);
+  color: var(--color-accent);
 }
 
-/* The bronze button: gold border, dark bronze gradient, pale gold text; brightens on hover and keyboard focus. */
-@utility btn-bronze {
-  border: 1px solid #a67736;
-  border-radius: 3px;
-  color: #ffe0a0;
-  background: linear-gradient(180deg, #483723 0%, #2d271f 48%, #191d22 100%);
-  box-shadow:
-    inset 0 1px rgb(255 230 166 / 0.18),
-    0 1px 3px rgb(0 0 0 / 0.35);
+/* A button: a raised control that takes the accent on hover and keyboard focus. */
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-text);
   cursor: pointer;
   &:hover:not(:disabled),
   &:focus-visible {
-    border-color: #e7b35d;
-    color: #fff1bd;
-    background: linear-gradient(180deg, #604525 0%, #3c2f20 52%, #222329 100%);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
     outline: none;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }
 
-/*
- * The gold call to action (New Build, Save details): pale-to-amber gradient, dark lettering, 7px chamfered corners;
- * lighter on hover and keyboard focus. Height, padding and font size are set where it is used.
- */
-@utility btn-gold {
-  border: 1px solid #c58b38;
-  border-radius: 3px;
-  color: #241707;
-  background: linear-gradient(#fff0b0, #f9ca65 43%, #df9230);
-  box-shadow: inset 0 1px rgb(255 255 255 / 0.35);
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+/* The call to action (New Build, Save details): an accent fill. */
+@utility btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  cursor: pointer;
+  &:hover:not(:disabled),
+  &:focus-visible {
+    filter: brightness(1.1);
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* A destructive action (Delete, Reset build). */
+@utility btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border: 1px solid color-mix(in oklab, var(--color-danger) 60%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--color-danger) 10%, transparent);
+  color: var(--color-danger);
+  cursor: pointer;
+  &:hover:not(:disabled),
+  &:focus-visible {
+    border-color: var(--color-danger);
+    background: color-mix(in oklab, var(--color-danger) 18%, transparent);
+    outline: none;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* A tab: muted text over a bottom rule that takes the accent when the tab is open (.active or aria-selected). */
+@utility tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-muted);
   cursor: pointer;
   &:hover,
   &:focus-visible {
-    border-color: #e7b35d;
-    background: linear-gradient(#fff5c7, #ffd47e 43%, #e8a641);
+    color: var(--color-text);
+    outline: none;
+  }
+  &.active,
+  &[aria-selected="true"] {
+    border-bottom-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+}
+
+/* A text field, select or textarea. */
+@utility field {
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-sunken);
+  color: var(--color-text);
+  &:focus,
+  &:focus-within {
+    border-color: var(--color-accent);
     outline: none;
   }
 }
 
+/* A small label (a tag, a count, a status). */
+@utility chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-muted);
+}
+
 /*
- * A modal dialog: bronze-edged dark panel over a blurred veil. Size and inner layout are the dialog's; a click on the
- * veil reaches the <dialog> itself, which the dialogs use to close, so the panel must not fill the viewport.
+ * A modal dialog over a veil. Size and inner layout are the dialog's; a click on the veil reaches the <dialog> itself,
+ * which the dialogs use to close, so the panel must not fill the viewport.
  */
 @utility dialog-panel {
   max-width: calc(100vw - 2rem);
@@ -191,56 +379,47 @@
   margin: auto;
   padding: 0;
   overflow: auto;
-  border: 1px solid #806037;
-  border-radius: 5px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
   color: var(--color-text);
-  background: linear-gradient(150deg, #1d2329, #111821 72%);
-  box-shadow:
-    0 26px 75px rgb(0 0 0 / 0.7),
-    inset 0 1px rgb(255 231 165 / 0.12);
+  background: var(--color-surface);
+  box-shadow: 0 24px 64px var(--color-shadow);
   &::backdrop {
-    background: rgb(2 6 11 / 0.8);
-    backdrop-filter: blur(3px);
+    background: var(--color-overlay);
   }
 }
 
-/* A dialog's title bar: title on the left, close button on the right, warm gold light over slate. */
+/* A dialog's title bar: title on the left, close button on the right. */
 @utility dialog-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 15px 17px;
-  border-bottom: 1px solid #956d37;
-  background:
-    linear-gradient(105deg, rgb(246 193 84 / 0.15), rgb(206 139 50 / 0.06) 43%, transparent 82%),
-    linear-gradient(#252a2c, #151c25);
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-raised);
 }
 
-/* A dialog's title: gilded Palatino. */
+/* A dialog's title. */
 @utility dialog-title {
+  color: var(--color-accent);
   font-family: var(--font-display);
   font-size: 1.05rem;
-  font-weight: 900;
-  letter-spacing: 0.015em;
-  background: linear-gradient(180deg, #fff0b0 0%, #f9ca65 43%, #df9230 100%);
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
+  font-weight: 700;
 }
 
 /* A dialog's × button. */
 @utility dialog-close {
-  padding: 1px 6px;
+  padding: 0 0.375rem;
   border: 0;
   background: transparent;
-  color: #d6b77e;
-  font-size: 1.55rem;
+  color: var(--color-muted);
+  font-size: 1.5rem;
   line-height: 1;
   cursor: pointer;
   &:hover,
   &:focus-visible {
-    color: #fff1bd;
+    color: var(--color-text);
     outline: none;
   }
 }
@@ -249,57 +428,21 @@
 @utility field-search {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid #756044;
-  border-radius: 5px;
-  background: linear-gradient(#171e27, #0c131b);
-  color: #d6b77e;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-sunken);
+  color: var(--color-muted);
   & input {
     min-width: 0;
     border: 0;
     background: transparent;
-    color: #f1e5cc;
+    color: var(--color-text);
     font-size: 0.9rem;
     outline: none;
   }
   &:focus-within {
-    border-color: #c59a52;
+    border-color: var(--color-accent);
   }
-}
-
-/* A section card: the chamfered dark panel the Build view's sections sit in. */
-@utility bg-section {
-  background:
-    radial-gradient(circle at 86% 4%, rgb(216 91 35 / 0.055), transparent 24rem),
-    linear-gradient(145deg, rgb(23 30 40 / 0.94), rgb(10 14 20 / 0.97) 68%);
-}
-
-/* A section heading strip: warm gold light from the left over a dark slate gradient. */
-@utility bg-heading {
-  background:
-    linear-gradient(
-      105deg,
-      rgb(246 193 84 / 0.15) 0%,
-      rgb(206 139 50 / 0.09) 27%,
-      rgb(129 84 36 / 0.03) 58%,
-      transparent 82%
-    ),
-    linear-gradient(180deg, #252a2c 0%, #1a222b 55%, #111923 100%);
-  box-shadow: inset 0 1px rgb(255 231 165 / 0.12);
-}
-
-/* The gold hairline under a heading: bright on the left, fading out to the right. */
-@utility rule-gold {
-  background: linear-gradient(90deg, #ffe4a0 0%, #e8ad4f 20%, rgb(213 145 57 / 0.42) 52%, transparent 95%);
-}
-
-/* A raised inner panel (energy allocator, gear workbench): slate gradient with an ember glow at the top right. */
-@utility bg-panel {
-  background:
-    radial-gradient(circle at 82% 0, rgb(160 68 34 / 0.067), transparent 18rem),
-    linear-gradient(145deg, #192230, #0e141d 72%);
-  box-shadow:
-    inset 0 1px rgb(255 255 255 / 0.024),
-    0 12px 28px rgb(0 0 0 / 0.18);
 }

@@ -1,88 +1,110 @@
-// Class lists the stat sheet's pieces share: the Stats switch and report button, the slate card both banners and the
-// Character stats panel sit in, and the recount card the damage banner and the Effective HP banner both draw.
-// Each banner is a size container (`@container`), so `@max-[…]:` below reads the banner's own width. "Compact" is a
-// wide but short window: `compact:`.
+// Class lists the Stats pieces share: the Stats switch and report button, the card both banners and the Character
+// stats panel sit in, the recount card the damage banner and the Effective HP banner both draw, and the tabs of the
+// Character stats and the Damage path. Each banner is a size container (`@container`), so `@max-[…]:` below reads the
+// banner's own width. "Compact" is a wide but short window: `compact:`.
 
 /** A Stats button: the Stat sheet / Damage path switch and the report button (both Stats panels show it). */
-export const STATS_BUTTON =
-  "cursor-pointer rounded-[7px] border border-[#425463] bg-[#18232e] px-[0.9rem] py-[0.55rem] font-bold text-[#b8cad6] hover:text-[#dcebf5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffbd82] compact:px-3 compact:py-[0.4rem] compact:text-[0.82rem]";
+export const STATS_BUTTON = "btn px-3.5 py-2 text-sm font-bold compact:px-3 compact:py-1.5 compact:text-xs";
 
-/** The slate card with an ember edge on the left: both banners and the Character stats panel. */
-export const CARD =
-  "overflow-hidden rounded-[5px] border border-[#3b4a59] border-l-3 border-l-[#db9850] bg-[linear-gradient(#27333f,#1f2a36_55%,#1b2531)] shadow-[0_14px_34px_rgb(0_0_0/0.26)]";
+/** The card both banners and the Character stats panel sit in. */
+export const CARD = "panel overflow-hidden";
 
 /** The heading strip of a card (a banner's title, the Character stats head). */
-export const HEAD_STRIP = "border-b border-white/8 bg-[linear-gradient(90deg,#36434f,#2c3845_60%,#303c49)]";
+export const HEAD_STRIP = "border-b border-line";
+
+/** A card's title: a banner's skill name or "Effective HP", "Character stats". */
+export const CARD_TITLE = "font-display text-base font-semibold tracking-wider text-accent uppercase";
 
 /** A banner: the card, a size container; side by side with the other banner on a wide window. */
-export const BANNER = `stat-sheet-banner @container ${CARD} mb-[0.6rem] grid min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] px-3.5 pb-3 min-[1101px]:mb-0 compact:pb-2`;
+export const BANNER = `stat-sheet-banner @container ${CARD} mb-2.5 grid min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] px-3.5 pb-3 min-[1101px]:mb-0 compact:pb-2`;
 
-export const BANNER_TITLE = `${HEAD_STRIP} -mx-3.5 mb-[0.8rem] flex flex-wrap items-center gap-x-[0.7rem] gap-y-[0.4rem] px-3.5 py-[9px] font-serif text-base/[normal] font-semibold tracking-[0.07em] text-[#f6f1e7] uppercase compact:mb-2 compact:py-1.5 compact:text-[0.88rem]`;
+export const BANNER_TITLE = `${HEAD_STRIP} ${CARD_TITLE} -mx-3.5 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3.5 py-2 compact:mb-2 compact:py-1.5 compact:text-sm`;
 
-/** The bronze chip beside a title ("Level 31") or a tab ("12" rows). */
+/** The chip beside a title ("Level 31") or a tab ("12" rows). */
 export const CHIP =
-  "rounded-[3px] border border-[#a67736] bg-[#2d241a] px-2 py-[0.14rem] font-sans text-[0.62rem] font-bold tracking-[0.08em] text-[#ffd39b] uppercase";
+  "rounded-sm border border-accent/50 bg-accent/10 px-2 py-0.5 font-sans text-[10px] font-bold tracking-widest text-accent uppercase";
 
 /** The recount card inside a banner: a tab strip, the figures (body), more below. */
-export const PANEL =
-  "flex min-h-0 flex-col overflow-hidden rounded-[5px] border border-[#3d4b5a] bg-[linear-gradient(#1a2531,#16212c)] shadow-[inset_0_1px_rgb(255_255_255/0.04),0_8px_22px_rgb(0_0_0/0.22)]";
+export const PANEL = "flex min-h-0 flex-col overflow-hidden rounded-md border border-line bg-raised";
 
-export const PANEL_HEAD =
-  "flex flex-wrap items-baseline gap-x-[1.3rem] border-b border-white/11 bg-[#303c49] px-3.5 @max-[500px]:px-3";
+export const PANEL_HEAD = "flex flex-wrap items-baseline gap-x-5 border-b border-line px-3.5 @max-[500px]:px-3";
 
-/** The panel's one tab, with its ember underline. */
+/** The panel's one tab, with its accent underline. */
 export const PANEL_TAB =
-  "relative py-[0.6rem] text-[0.74rem] font-bold tracking-[0.06em] text-[#fff3e2] uppercase after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-[linear-gradient(90deg,#ffbd82,#db9850)] after:shadow-[0_0_8px_rgb(219_152_80/0.55)] after:content-[''] compact:py-[0.4rem]";
+  "-mb-px border-b-2 border-accent py-2.5 text-xs font-bold tracking-wider text-accent uppercase compact:py-1.5";
 
 export const PANEL_NOTE =
-  "inline-flex items-baseline gap-[0.4rem] py-[0.45rem] text-[0.74rem] font-bold tracking-[0.04em] text-[#a9bac8] uppercase compact:py-[0.4rem]";
+  "inline-flex items-baseline gap-1.5 py-2 text-xs font-bold tracking-wide text-muted uppercase compact:py-1.5";
 
-export const PANEL_NOTE_VALUE = "text-[#ffbd82] tabular-nums";
+export const PANEL_NOTE_VALUE = "text-accent-strong tabular-nums";
+
+/** A secondary zone of the recount card: the share by source, the ailment checklist. */
+export const PANEL_WELL = "bg-sunken";
 
 /** A small uppercase caption ("Share by source over 10 s", "Ailments and crowd control"). */
-export const CAPTION = "text-xs/[1.45] font-bold tracking-[0.08em] text-[#a8c3c0] uppercase";
+export const CAPTION = "text-xs font-bold tracking-widest text-muted uppercase";
 
 /** The figures: the hero figure on the left and its companions stacked on the right (the caller sets the columns). */
 export const FIGURES = "grid flex-1";
 
-/** The companions' column: a hairline on its left, or on top once the figures stack. */
-export const PAIR = "grid auto-rows-fr border-white/8";
+/** The companions' column: a line on its left, or on top once the figures stack. */
+export const PAIR = "grid auto-rows-fr border-line";
 
-const LABEL = "text-[0.68rem]/[1.45] font-bold tracking-[0.09em] uppercase";
+const LABEL = "text-xs font-bold tracking-widest uppercase";
 
-/** The hero figure: an ember glow from the left and an ember underline; a size container, its figure scales with it. */
+/** The hero figure: a size container, its figure scales with it. */
 export const HERO =
-  "@container flex min-w-0 flex-wrap content-center items-baseline gap-x-2 gap-y-[0.3rem] bg-[radial-gradient(at_0%_45%,rgb(219_152_80/0.16),transparent_62%)] px-[1.1rem] pt-[1.05rem] pb-4 after:mt-2 after:block after:h-0.5 after:basis-full after:bg-[linear-gradient(90deg,#ff8a2c,#ff8a2c_55%,transparent)] after:shadow-[0_0_10px_rgb(255_123_34/0.4)] after:content-[''] @max-[500px]:px-3.5 @max-[500px]:py-3.5 compact:px-[0.9rem] compact:pt-[0.6rem] compact:pb-[0.55rem] compact:after:mt-[0.3rem]";
+  "@container flex min-w-0 flex-wrap content-center items-baseline gap-x-2 gap-y-1 p-4 @max-[500px]:p-3.5 compact:px-3.5 compact:py-2.5";
 
-export const HERO_LABEL = `${LABEL} basis-full text-[#a9bac8]`;
+export const HERO_LABEL = `${LABEL} basis-full text-muted`;
 
 export const HERO_VALUE =
-  "min-w-0 text-[clamp(1.4rem,10cqw,2.2rem)]/[1.1] font-bold tracking-[-0.01em] wrap-anywhere text-[#ffbd82] tabular-nums [text-shadow:0_0_18px_rgb(255_160_80/0.22)]";
+  "min-w-0 text-[clamp(1.4rem,10cqw,2.2rem)] leading-tight font-bold tracking-tight wrap-anywhere text-accent-strong tabular-nums";
 
-/** A companion figure: label over value, a hairline under it. */
+/** A companion figure: label over value, a line under it. */
 export const ROW =
-  "grid min-w-0 content-center gap-y-[0.3rem] border-b border-white/8 px-4 last:border-b-0 @max-[500px]:px-3.5 compact:px-[0.9rem] compact:py-[0.42rem]";
+  "grid min-w-0 content-center gap-y-1 border-b border-line px-4 last:border-b-0 @max-[500px]:px-3.5 compact:px-3.5 compact:py-1.5";
 
-export const ROW_LABEL = `${LABEL} text-[#bfcbd5]`;
+export const ROW_LABEL = `${LABEL} text-muted`;
 
 export const ROW_VALUE =
-  "min-w-0 text-[1.12rem]/[1.2] font-bold wrap-anywhere text-[#f3e3cf] tabular-nums compact:text-base/[1.2]";
+  "min-w-0 text-lg leading-tight font-bold wrap-anywhere text-text tabular-nums compact:text-base";
 
 /** Under the card: the secondary figures, the chips and "How this is calculated". */
 export const FOOT =
-  "dummy-recount-foot mt-3 grid gap-[0.3rem] border-t border-white/7 px-[0.15rem] pt-[0.65rem] text-[0.8rem] text-muted compact:mt-[0.45rem] compact:pt-[0.4rem]";
+  "dummy-recount-foot mt-3 grid gap-1 border-t border-line px-0.5 pt-2.5 text-xs text-muted compact:mt-2 compact:pt-1.5";
 
-export const DETAILS = "mt-[0.4rem] text-[0.8rem] text-[#b7c3cd] compact:mt-[0.2rem]";
+export const DETAILS = "mt-1.5 text-xs text-muted compact:mt-1";
 
 export const DETAILS_SUMMARY =
-  "inline-block cursor-pointer rounded-[3px] py-[0.15rem] text-[0.78rem] font-bold text-[#bcd5e4] hover:text-[#dcebf5] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#74c8ed]";
+  "inline-block cursor-pointer rounded-sm py-0.5 text-xs font-bold text-accent hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
-export const ASSUMPTIONS = "my-2 list-disc pl-[1.1rem] leading-normal";
+export const ASSUMPTIONS = "my-2 list-disc pl-4 leading-normal";
 
-export const FOOTNOTE = "mx-[0.1rem] mt-3 text-[0.72rem]/normal text-[#91a2ae]";
+export const FOOTNOTE = "mx-0.5 mt-3 text-xs leading-normal text-dim";
 
 /** A table cell of the recount sources and the Effective HP damage types; the caller aligns it. */
-export const CELL = "border-b border-white/10 px-2 py-[0.35rem] tabular-nums";
+export const CELL = "border-b border-line px-2 py-1.5 tabular-nums";
 
 /** A table's column heading. */
-export const HEAD_CELL = `${CELL} align-bottom text-[0.64rem] font-bold tracking-[0.08em] text-[#91a2ae] uppercase`;
+export const HEAD_CELL = `${CELL} align-bottom text-[10px] font-bold tracking-widest text-dim uppercase`;
+
+/**
+ * A tab of the Character stats and of the Damage path (the open one carries `active` and aria-selected), and the
+ * figure or row count chip inside it. The tab overlaps its strip's bottom line.
+ */
+export const TAB =
+  "tab group -mb-px inline-flex items-baseline gap-1.5 px-2.5 py-2.5 text-xs font-bold tracking-wider uppercase focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent max-[560px]:px-2 max-[560px]:py-2 max-[560px]:text-[10px]";
+
+export const TAB_COUNT =
+  "rounded-sm border border-line px-1.5 text-[10px] tracking-normal text-dim tabular-nums group-on:border-accent/50 group-on:bg-accent/10 group-on:text-accent";
+
+/** A collapsible section's chevron (a summary's ::before): right when closed, down when open. */
+const SECTION_CHEVRON =
+  "before:size-1.5 before:shrink-0 before:-rotate-45 before:border-r-2 before:border-b-2 before:border-accent before:transition-transform before:content-[''] group-open/section:before:-mt-1 group-open/section:before:mr-0.5 group-open/section:before:rotate-45";
+
+/** A collapsible section's summary bar (needs `group/section` on its <details>). */
+export const SECTION_SUMMARY = `cursor-pointer list-none bg-raised text-xs font-bold tracking-wider text-text uppercase hover:text-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden ${SECTION_CHEVRON}`;
+
+/** A section's row count at the right of its summary. */
+export const SECTION_COUNT = "ml-auto text-xs font-normal tracking-normal text-dim tabular-nums";

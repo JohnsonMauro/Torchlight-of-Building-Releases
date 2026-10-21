@@ -25,7 +25,7 @@ let selectedPactspiritSlot = 0;
 let activeKismetSlot = null;
 let selectedKismetName = "";
 let selectedKismetRolls = [];
-let pactspiritSelectorSession = 0; // the Pactspirit selector's openings (apps/web/src/shell/dialogs/PactspiritSelectorDialog.tsx)
+let pactspiritSelectorSession = 0; // the Pactspirit selector's openings (apps/web/src/features/pacts/PactspiritSelectorDialog.tsx)
 export const pactCommands = {
   // Pactspirits section (apps/web/src/features/pacts).
   openPactspiritSelector: (slot) => {
@@ -66,7 +66,7 @@ export const pactCommands = {
     refreshPactCandidate();
   },
   openKismetCrafter,
-  // The Kismet crafter (apps/web/src/shell/dialogs/KismetCrafterDialog.tsx).
+  // The Kismet crafter (apps/web/src/features/pacts/KismetCrafterDialog.tsx).
   selectKismetChoice,
   setKismetRoll,
   commitKismetRoll,
@@ -118,7 +118,7 @@ function removeSelectedPactspirit(index) {
   refreshPactCandidate();
 }
 
-// The Fate slot selector (apps/web/src/shell/dialogs/FateSlotSelectorDialog.tsx) is open for this Pactspirit.
+// The Fate slot selector (apps/web/src/features/pacts/FateSlotSelectorDialog.tsx) is open for this Pactspirit.
 let fateSlotSpirit = "";
 function openFateSlotSelector(name) {
   fateSlotSpirit = name;
@@ -163,7 +163,7 @@ function clearKismetNode(key) {
   hidePlannerTooltip();
   refreshPactCandidate();
 }
-// The Kismet crafter (apps/web/src/shell/dialogs/KismetCrafterDialog.tsx) shows the "kismetCrafter" source for the slot
+// The Kismet crafter (apps/web/src/features/pacts/KismetCrafterDialog.tsx) shows the "kismetCrafter" source for the slot
 // it is open for: its kind's Kismets (the dialog searches them), the chosen one's values and preview.
 let kismetCrafterSession = 0,
   kismetCrafterKind = "micro";

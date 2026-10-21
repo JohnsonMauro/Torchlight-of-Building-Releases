@@ -11,7 +11,8 @@ import { updateStorageStatus } from "./page.js";
 import { calculationsPaused } from "./session.js";
 import { saveWorkspaceLocation, ui } from "./ui-state.js";
 
-const plannerSectionViews = new Set(["talents", "skills", "equipment", "pacts"]);
+// Every view shows its one section (#<view>-view). The build's sections are tabs in the build strip (data-build-tab:
+// hero, follower, skills, equipment, pacts, talents); the rail's Build opens the first and stays lit on any of them.
 const focusedViews = new Set(["builds", "character", "configuration"]);
 export function activateWorkspaceView(viewName, { scroll = true, remember = true } = {}) {
   if (calculationsPaused) viewName = "builds";
@@ -23,12 +24,13 @@ export function activateWorkspaceView(viewName, { scroll = true, remember = true
   document.body.classList.toggle("stats-workspace", viewName === "character");
   document.body.classList.toggle("config-workspace", viewName === "configuration");
   document.querySelectorAll(".app-view").forEach((view) => {
-    const name = view.id.replace("-view", "");
-    view.hidden = focused ? name !== viewName : !plannerSectionViews.has(name);
+    view.hidden = view.id !== `${viewName}-view`;
   });
-  document
-    .querySelectorAll(".view-tab")
-    .forEach((button) => button.classList.toggle("active", button.dataset.view === viewName));
+  const railView = focused ? viewName : "hero";
+  document.querySelectorAll(".view-tab").forEach((button) => {
+    const tabView = button.hasAttribute("data-build-tab") ? viewName : railView;
+    button.classList.toggle("active", button.dataset.view === tabView);
+  });
   if (focused) {
     if (viewName === "builds") updateStorageStatus();
     if (viewName === "character") renderCharacter();

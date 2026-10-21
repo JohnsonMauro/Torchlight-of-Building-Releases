@@ -4,22 +4,21 @@ import { ConfirmDialog } from "../../ui/ConfirmDialog";
 import { activeBuild, useBuildLibrary, type LibraryBuild } from "./build-library";
 import { BuildDetails } from "./BuildDetails";
 import { BuildList } from "./BuildList";
+import { newBuildWithHero } from "./build-actions";
 
-/** The small gold caps over a heading. */
-const EYEBROW = "mb-1.75 text-[0.72rem] font-extrabold tracking-[0.17em] text-gold uppercase";
+/** The small accent caps over a heading. */
+const EYEBROW = "mb-1.5 text-xs font-bold tracking-widest text-accent uppercase";
 
-/** The two cards (library, details): chamfered slate panel with a short silver hairline on the top-left edge. */
-const PANEL =
-  "relative overflow-hidden rounded-[5px] border border-[#3d4854] bg-[linear-gradient(145deg,#19212b,#111820)] p-5.5 clip-chamfer-9 before:absolute before:top-0 before:left-0 before:h-px before:w-13.5 before:bg-[#bdcee0] before:opacity-65 max-[520px]:p-4";
+/** The two cards (library, details). */
+const PANEL = "panel overflow-hidden p-5 max-[520px]:p-4";
 
 const PANEL_HEADING =
-  "mb-4.5 flex min-h-16 items-center justify-between border-b border-[#78603d] px-4 py-3 max-[600px]:items-start max-[600px]:gap-2.5";
+  "mb-4 flex min-h-16 items-center justify-between border-b border-line px-4 py-3 max-[600px]:items-start max-[600px]:gap-2.5";
 
-const PANEL_TITLE = "mt-0.5 font-display text-lg/[normal] font-bold tracking-[0.015em] text-[#f0e5ce]";
+const PANEL_TITLE = "mt-0.5 font-display text-lg/[normal] font-bold text-text";
 
-/** The library's toolbar buttons; each adds its border, background and text colors. */
-const LIBRARY_BUTTON =
-  "min-h-9 cursor-pointer rounded-[3px] border px-3.25 py-2 text-[11px] font-extrabold tracking-[0.04em] uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold off:cursor-not-allowed off:opacity-45";
+/** The library's toolbar buttons, after `btn` or `btn-danger`. */
+const LIBRARY_BUTTON = "min-h-9 px-3 text-xs font-bold tracking-wide uppercase";
 
 /** The Builds view ("Notes" tab): the saved-build library, the open build's details, and the delete confirmations. */
 export function BuildsPage() {
@@ -29,26 +28,20 @@ export function BuildsPage() {
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   return (
     <>
-      <div className="flex items-end justify-between gap-5.5 px-0.5 pt-1.25 pb-4.5 max-[600px]:flex-col max-[600px]:items-stretch">
+      <div className="flex items-end justify-between gap-5 px-0.5 pt-1 pb-4 max-[600px]:flex-col max-[600px]:items-stretch">
         <div>
           <p className={EYEBROW}>Your workspace</p>
-          <h1 className="mt-0.5 mb-1.25 font-display text-[clamp(27px,2.4vw,38px)]/[1.1] font-bold tracking-[-0.02em] text-[#f3e8cb]">
-            Builds
-          </h1>
-          <p className="text-[13px] text-[#aeb9c6]">Open a build or edit its details.</p>
+          <h1 className="mt-0.5 mb-1 font-display text-3xl/tight font-bold tracking-tight text-text">Builds</h1>
+          <p className="text-sm text-muted">Open a build or edit its details.</p>
         </div>
-        <div className="flex items-center gap-4.5 max-[600px]:justify-between">
-          <span className="grid min-w-18 justify-items-center border-r border-[#665036] pr-4.5">
-            <strong id="build-count" className="text-[25px] leading-none font-bold text-gold">
+        <div className="flex items-center gap-4 max-[600px]:justify-between">
+          <span className="grid min-w-18 justify-items-center border-r border-line pr-4">
+            <strong id="build-count" className="text-2xl leading-none font-bold text-accent">
               {library.builds.length}
             </strong>
-            <small className="mt-1.25 text-[10px] tracking-[0.09em] text-[#9eabb9] uppercase">builds</small>
+            <small className="mt-1 text-[10px] tracking-wider text-muted uppercase">builds</small>
           </span>
-          <button
-            className="btn-gold min-h-10.5 px-5 text-[0.68rem]"
-            type="button"
-            onClick={() => plannerCommands().newBuild()}
-          >
+          <button className="btn-primary h-10 px-5 text-xs font-bold" type="button" onClick={newBuildWithHero}>
             New Build
           </button>
         </div>
@@ -60,9 +53,9 @@ export function BuildsPage() {
               <p className={EYEBROW}>Library</p>
               <h2 className={PANEL_TITLE}>Your builds</h2>
             </div>
-            <div className="ml-auto flex flex-wrap items-center justify-end gap-[0.55rem]">
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
               <button
-                className={`${LIBRARY_BUTTON} border-bronze bg-[linear-gradient(#3c3224,#202025)] text-gold hover:border-[#e7b35d] hover:bg-[linear-gradient(#604525,#3c2f20_52%,#222329)] hover:text-[#fff1bd]`}
+                className={`btn ${LIBRARY_BUTTON}`}
                 type="button"
                 data-duplicate-build=""
                 disabled={!active}
@@ -71,21 +64,21 @@ export function BuildsPage() {
                 Duplicate current
               </button>
               <button
-                className={`${LIBRARY_BUTTON} border-[#3a4352] bg-[#151a23] text-[#d8dde3]`}
+                className={`btn ${LIBRARY_BUTTON}`}
                 type="button"
                 onClick={() => plannerCommands().backupBuilds()}
               >
                 Back up all builds
               </button>
               <button
-                className={`${LIBRARY_BUTTON} border-[#3a4352] bg-[#151a23] text-[#d8dde3]`}
+                className={`btn ${LIBRARY_BUTTON}`}
                 type="button"
                 onClick={() => plannerCommands().restoreBuilds()}
               >
                 Restore from backup
               </button>
               <button
-                className={`${LIBRARY_BUTTON} border-[#a65c4c] bg-[linear-gradient(#55302c,#2c2022)] text-[#ffc0ad] hover:border-[#db8570] hover:bg-[linear-gradient(#754037,#382426)] hover:text-[#ffe1d5]`}
+                className={`btn-danger ${LIBRARY_BUTTON}`}
                 type="button"
                 data-delete-all-builds=""
                 disabled={!library.builds.length}

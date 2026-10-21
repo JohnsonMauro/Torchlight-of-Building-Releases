@@ -35,7 +35,7 @@ test("desktop app loads the planner and reads the game log", async () => {
     );
     for (const name of VIEWS) {
       await expect(async () => {
-        await window.locator(`button.view-tab[data-view="${name}"]`).click();
+        await window.locator(`button.view-tab[data-view="${name}"]`).first().click();
         await expect(window.locator(`#${name}-view`)).toBeVisible({ timeout: 500 });
       }).toPass({ timeout: 10_000 });
       await expect(window.locator(`#${name}-view`)).not.toBeEmpty();

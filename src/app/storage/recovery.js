@@ -24,12 +24,11 @@ const escapeText = (value) =>
     (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character],
   );
 
-// The body shows only the recovery screen; the screen is a chamfered panel with an ember eyebrow and a large title.
+// The body shows only the recovery screen; the screen is a panel with an accent eyebrow and a large title.
 const BODY_CLASS = "[&>:not(.recovery-screen)]:hidden!";
-const PANEL_CLASS =
-  "relative border border-[#3a4655] bg-panel p-5.5 leading-[normal] clip-chamfer-9 before:absolute before:top-0 before:left-0 before:h-px before:w-13.5 before:bg-[#bdcee0] before:opacity-65 max-[520px]:p-4";
-const EYEBROW_CLASS = "mb-1.75 text-[0.72rem] font-extrabold tracking-[0.12em] text-[#f08b3c] uppercase";
-const TITLE_CLASS = "mb-3 font-serif text-5xl/[1.1] font-bold tracking-[-0.03em] max-[520px]:text-4xl";
+const PANEL_CLASS = "panel p-5 leading-[normal] max-[520px]:p-4";
+const EYEBROW_CLASS = "mb-1.5 text-xs font-bold tracking-widest text-accent-strong uppercase";
+const TITLE_CLASS = "mb-3 font-display text-5xl/tight font-bold tracking-tight text-text max-[520px]:text-4xl";
 
 const intro = {
   unfinished: "The planner didn't finish loading last time. Your builds are safe.",

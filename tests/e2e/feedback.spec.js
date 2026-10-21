@@ -37,9 +37,9 @@ test("Report bug: the title, the form's fields; the title follows the Area until
   await expect(dialog.locator("[data-feedback-field]")).toHaveCount(7);
   const area = dialog.locator('[data-feedback-input="area"]');
   const title = dialog.locator('[data-feedback-input="title"]');
-  // The Build page holds several areas, so none is picked.
-  await expect(area).toHaveValue("");
-  await expect(title).toHaveValue("[Bug] ");
+  // The open build tab names the area: the planner opens on Hero Trait.
+  await expect(area).toHaveValue("Hero");
+  await expect(title).toHaveValue("[Bug] Hero: ");
   await expect(title).toBeFocused();
   await expect(dialog.locator("[data-feedback-auto]")).toHaveCount(2);
   await expect(dialog.locator('[data-feedback-auto="app_version"]')).toHaveText(/\S/);

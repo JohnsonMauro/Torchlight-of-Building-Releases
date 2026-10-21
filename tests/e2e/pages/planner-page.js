@@ -4,7 +4,17 @@ import { expect } from "@playwright/test";
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
 // apps/web/src/boot.tsx sets this session key before loading the planner and removes it once the first render has painted.
 const BOOT_FLAG_KEY = "tli-builder:booting";
-export const VIEWS = ["talents", "character", "configuration", "builds"];
+export const VIEWS = [
+  "hero",
+  "follower",
+  "skills",
+  "equipment",
+  "pacts",
+  "talents",
+  "character",
+  "configuration",
+  "builds",
+];
 
 export class PlannerPage {
   constructor(page) {
@@ -56,7 +66,7 @@ export class PlannerPage {
     }
     await this.page.goto("./");
     await this.waitUntilReady();
-    await expect(this.view("talents")).toBeVisible();
+    await expect(this.view("hero")).toBeVisible();
   }
 
   /** Waits for the boot flag to clear on the current load (the init script above runs again on every reload). */
@@ -70,14 +80,12 @@ export class PlannerPage {
   selectedHeroTrait() {
     return this.page.locator("#selected-hero-trait");
   }
+  /** A view's tab: the rail's or the build strip's ("hero" has both, the rail's Build and Hero Trait; the first is taken). */
   viewTab(name) {
-    return this.page.locator(`button.view-tab[data-view="${name}"]`);
+    return this.page.locator(`button.view-tab[data-view="${name}"]`).first();
   }
   statsPanelTab(name) {
     return this.page.locator(`[role="tab"][data-stats-panel="${name}"]`);
-  }
-  heroPanelTab(name) {
-    return this.page.locator(`[role="tab"][data-hero-panel-tab="${name}"]`);
   }
 
   async showView(name) {

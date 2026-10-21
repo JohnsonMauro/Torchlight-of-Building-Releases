@@ -45,8 +45,7 @@ import { traitClasses } from "../tooltips/tooltip-kind-classes.js";
 // (#skill-selector, src/app/skills/skill-selector.js selectorKind "follower-skill"; followerSkillSelectorView below fills it with the follower's
 // Tartarus / Origin Tartarus Skills, 2026-10-15 user request); right-click clears it. Tooltips use the planner tooltip's
 // hero-trait layout tinted with the follower's rarity (followerTooltipRarity; the hero-memory rarity colours), and the card
-// portrait and the picker cards take the gear-tile rarity tint (follower-tint-<rarity>). The active tab is remembered per build
-// in localStorage (UI only).
+// portrait and the picker cards take the gear-tile rarity tint (follower-tint-<rarity>).
 // Tier and support affixes (2026-10-19; src/engine/followers/follower-affixes.js): each skill has a tier and its affix slots ("None" first, then
 // the skill's Drop pool and, for the optional third slot, its Tempering pool); every game value is fixed, so a roll input
 // appears only for a ranged affix (none on 2026-10-19). They are edited in the skill picker's preview card
@@ -61,31 +60,6 @@ import { traitClasses } from "../tooltips/tooltip-kind-classes.js";
 // follower picker.
 
 const KIND_LABEL = { tartarus: "Tartarus Skill", origin: "Origin Tartarus Skill" };
-const TAB_STORAGE_KEY = "tli-builder:hero-panel-tab:v1";
-
-/** The remembered Hero panel tab ("hero" | "follower") of a build view; "hero" when none is stored or storage fails. */
-export function readHeroPanelTab(buildId) {
-  try {
-    const stored = JSON.parse(globalThis.localStorage?.getItem(TAB_STORAGE_KEY) || "{}");
-    return stored && stored[buildId] === "follower" ? "follower" : "hero";
-  } catch {
-    return "hero";
-  }
-}
-
-/** Remembers a build view's Hero panel tab (UI state only; failures are ignored). */
-export function writeHeroPanelTab(buildId, tab) {
-  try {
-    const storage = globalThis.localStorage;
-    if (!storage || !buildId) return;
-    const stored = JSON.parse(storage.getItem(TAB_STORAGE_KEY) || "{}");
-    const next = stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
-    if (tab === "follower") next[buildId] = "follower";
-    else delete next[buildId];
-    storage.setItem(TAB_STORAGE_KEY, JSON.stringify(next));
-  } catch {}
-}
-
 const rarityClass = (rarity) => `follower-rarity follower-rarity-${escapeHtml(rarity?.id || "rare")}`;
 const tintClass = (rarity) => (rarity?.id ? ` follower-tint-${escapeHtml(rarity.id)}` : "");
 const skillTitle = (skill, tier) => `${skill.shortName}${tier ? ` ${tier}` : ""}`;
@@ -426,7 +400,7 @@ export function followerPickerOptions(query = "") {
  */
 
 /**
- * The follower selector's cards (apps/web/src/shell/dialogs/FollowerSelectorDialog.tsx): one per follower and rarity, in
+ * The follower selector's cards (apps/web/src/features/follower/FollowerSelectorDialog.tsx): one per follower and rarity, in
  * catalog order. The dialog filters them by `search`, as followerPickerOptions does.
  * @returns {FollowerPickerCard[]}
  */
@@ -649,7 +623,7 @@ export function followerSelectorInitialIndex(state, slot) {
 }
 
 /**
- * The picker's title and list for follower slot `slot` (apps/web/src/shell/dialogs/SkillSelectorDialog.tsx): the
+ * The picker's title and list for follower slot `slot` (apps/web/src/features/skills/SkillSelectorDialog.tsx): the
  * eligible skills grouped by kind, each with what the search box matches (name, short name, tags, lines; lower case).
  */
 export function followerSkillSelectorList(state, slot) {

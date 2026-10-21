@@ -29,17 +29,15 @@ import {
 } from "./crafter-classes";
 
 // A keyword roll shows its keyword; holding Alt (body.revival-alt-held, src/app/tooltips/tooltip-host.js) shows its effect.
-const KEYWORD_NAME = "keyword-roll-name font-bold text-[#75d8f6] underline underline-offset-2";
+const KEYWORD_NAME = "keyword-roll-name font-bold text-info underline underline-offset-2";
 const KEYWORD_EFFECT = "keyword-roll-effect hidden [.revival-alt-held_&]:inline";
 // The item card: its rarity's art and colours (itemCardLook), a framed box per modifier section.
-const PREVIEW =
-  "block rounded-[3px] border border-(--item-frame) p-5 text-center shadow-[inset_0_0_0_3px_rgb(22_20_27/0.45)]";
-const MOD_SECTION =
-  "rounded-[5px] border border-[rgb(151_112_75/0.48)] bg-[rgb(18_13_10/0.38)] p-2.5 [.rarity-common:not(.item-level-100)_&]:border-[rgb(61_69_77/0.45)] [.rarity-common:not(.item-level-100)_&]:bg-white/20";
+const PREVIEW = "relative block rounded-md border border-(--item-frame) p-5 text-center";
+const MOD_SECTION = "rounded border border-line bg-surface/60 p-2.5";
 // A modifier line; a corroded one (corrosion-affix, read by the e2e tests) in violet.
-const MOD_LINE = "my-1.25 flex items-start gap-1.5 text-[0.95rem] whitespace-pre-line";
+const MOD_LINE = "my-1.25 flex items-start gap-1.5 text-sm whitespace-pre-line";
 const lineClasses = (className: string) =>
-  `${MOD_LINE} ${className}${className.split(" ").includes("corrosion-affix") ? " text-[#d9a3ff]" : ""}`;
+  `${MOD_LINE} ${className}${className.split(" ").includes("corrosion-affix") ? " text-violet" : ""}`;
 
 export function ModifierText({ text }: { text: ModifierTextView }) {
   if (text.kind === "plain") return <>{text.text}</>;
@@ -67,14 +65,14 @@ export function ItemPreview({ preview }: { preview: ItemPreviewView }) {
   return (
     <article className={`${PREVIEW} ${itemCardLook(preview.className)} ${preview.className}`}>
       <img src={preview.icon} alt="" className="mx-auto h-36 w-28 object-contain" />
-      <p className="mt-1 text-[0.62rem] tracking-[0.12em] text-(--item-name) uppercase">{preview.rarity}</p>
-      <h3 className="mt-3 font-display text-[0.95rem] font-black text-(--item-name)">{preview.name}</h3>
-      <small className="mt-3 block text-[0.85rem] opacity-80">{preview.detail}</small>
+      <p className="mt-1 text-[10px] tracking-widest text-(--item-name) uppercase">{preview.rarity}</p>
+      <h3 className="mt-3 font-display text-base font-bold text-(--item-name)">{preview.name}</h3>
+      <small className="mt-3 block text-sm text-muted">{preview.detail}</small>
       <div className="mt-4 grid gap-2.25 text-left">
         {preview.sections.length ? (
           preview.sections.map((section, index) => (
             <section key={index} className={MOD_SECTION}>
-              <h4 className="mb-1.75 flex justify-between gap-2 text-[0.58rem] font-bold tracking-widest uppercase opacity-75">
+              <h4 className="mb-1.75 flex justify-between gap-2 text-[10px] font-bold tracking-widest text-muted uppercase">
                 {section.label}
                 {section.detail ? <small className="tracking-normal normal-case">{section.detail}</small> : null}
               </h4>
@@ -91,16 +89,11 @@ export function ItemPreview({ preview }: { preview: ItemPreviewView }) {
             </section>
           ))
         ) : (
-          <p className="text-[0.82rem] opacity-80">Configure affixes to preview this item.</p>
+          <p className="text-sm text-muted">Configure affixes to preview this item.</p>
         )}
       </div>
       {preview.source ? (
-        <a
-          href={preview.source}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 inline-block text-[#9aa8ff] underline"
-        >
+        <a href={preview.source} target="_blank" rel="noreferrer" className="mt-2 inline-block text-info underline">
           Open TLIDB source
         </a>
       ) : null}

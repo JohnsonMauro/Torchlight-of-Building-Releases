@@ -28,7 +28,9 @@ import {
   ROLL_VALUE,
   SELECTED_CARD,
   SELECTED_CHANGE,
+  SELECTED_DETAIL,
   SELECTED_ICON,
+  SELECTED_NAME,
 } from "./crafter-classes";
 import { Choices, ItemPreview, LegendaryModControl } from "./crafter-parts";
 
@@ -122,8 +124,8 @@ export function InventoryItemEditor({ editor }: { editor: InventoryItemEditorVie
         <div className={SELECTED_CARD}>
           <img src={editor.icon} alt="" className={SELECTED_ICON} />
           <span className="min-w-0">
-            <strong className="block text-[1.05rem] text-[#ff9a3f]">{editor.name}</strong>
-            <small className="block text-[0.82rem] text-[#c9d1da]">{editor.detail}</small>
+            <strong className={SELECTED_NAME}>{editor.name}</strong>
+            <small className={SELECTED_DETAIL}>{editor.detail}</small>
           </span>
           <button type="button" className={SELECTED_CHANGE} data-change-edit-item="">
             Change
@@ -220,7 +222,7 @@ export function InventoryItemEditor({ editor }: { editor: InventoryItemEditorVie
         </label>
         <h3 className={CRAFT_HEADING}>{editor.heading}</h3>
         <div className="gear-mod-editor grid gap-2.5">
-          {lines.length ? lines : <p className="text-[0.82rem] text-muted">No modifiers configured.</p>}
+          {lines.length ? lines : <p className="text-sm text-muted">No modifiers configured.</p>}
           {editor.corrosionLines.map((line, index) => (
             <div
               key={`corroded:${index}`}

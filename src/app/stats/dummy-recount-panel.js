@@ -66,8 +66,19 @@ export function recountTiles(recount, { excluded = excludedSources } = {}) {
   ];
 }
 
-/** Legend/bar colours by share rank (largest first), from the planner's existing accent palette. */
-export const MIX_COLORS = ["#e9a362", "#6fb7d2", "#c97c70", "#9c8ac6", "#7fc9a5", "#d9c27a", "#8fa1b0"];
+/**
+ * Legend/bar colours by share rank (largest first): theme tokens (apps/web/src/styles/app.css), set as an inline
+ * custom property, so they read the raw --c-* values that every theme defines.
+ */
+export const MIX_COLORS = [
+  "var(--c-accent)",
+  "var(--c-info)",
+  "var(--c-danger)",
+  "var(--c-violet)",
+  "var(--c-ok)",
+  "var(--c-warn)",
+  "var(--c-dim)",
+];
 
 /**
  * Each damage source's DPS and share over the fixed span, largest first. With `excluded` (the recount card's

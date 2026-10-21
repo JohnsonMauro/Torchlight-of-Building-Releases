@@ -69,7 +69,7 @@ test("the status, the skill picker and the recount of the build's main skill", (
   assert.equal(recount.sources.length, 4);
   assert.equal(recount.shown, 4);
   assert.equal(recount.sources[0].label, "Homing Frost Bolt hits");
-  assert.equal(recount.sources[0].color, "#e9a362");
+  assert.equal(recount.sources[0].color, "var(--c-accent)");
 });
 
 test("a source left out of the view drops out of the fields and the total, and keeps its colour", () => {
@@ -77,7 +77,7 @@ test("a source left out of the view drops out of the fields and the total, and k
   const { recount, totalModeled } = view(youga, "game-log-skill-1", ["hit:game-log-skill-1"]).sheet.damage;
   assert.equal(recount.shown, 3);
   const left = recount.sources.find((item) => item.key === "hit:game-log-skill-1");
-  assert.deepEqual([left.excluded, left.share, left.dps, left.color], [true, "off", "off", "#e9a362"]);
+  assert.deepEqual([left.excluded, left.share, left.dps, left.color], [true, "off", "off", "var(--c-accent)"]);
   assert.ok(recount.fields[0].value.full !== full.recount.fields[0].value.full);
   assert.ok(totalModeled.full !== full.totalModeled.full);
   assert.match(recount.summary, /^Homing Frost Bolt hits off, /);

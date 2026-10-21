@@ -78,7 +78,7 @@ export class TalentsPage {
     return this.page.locator("#toast");
   }
 
-  /** The talent trees open the Build page. */
+  /** The Talent tab in the build strip: the talent trees alone. */
   async open() {
     await this.page.locator('button.view-tab[data-view="talents"]').click();
     await expect(this.tabs()).toBeVisible();

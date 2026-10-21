@@ -2,14 +2,14 @@
 // electron/updater.cjs). In a plain browser there is no bridge and nothing is installed (apps/web/src/boot.tsx only imports this
 // file when the bridge exists). Status text is set with textContent; nothing from the network is parsed as HTML.
 
-// The banner: a raised slate bar with a gold top edge, centred at the top; its buttons small and dark, the primary one
-// gold-lettered.
+// The banner: a raised bar with an accent top edge, centred at the top; its buttons small and sunken, the primary one
+// accent-lettered.
 const BANNER_CLASS =
-  "update-banner fixed top-2.5 left-1/2 z-160 flex max-w-[calc(100vw-32px)] -translate-x-1/2 flex-wrap items-center gap-2 rounded-md border border-t-2 border-line border-t-gold bg-raised py-1.75 pr-2 pl-3.5 text-[0.82rem] text-text shadow-[0_8px_24px_rgb(0_0_0/0.5)]";
+  "update-banner fixed top-2.5 left-1/2 z-160 flex max-w-[calc(100vw-32px)] -translate-x-1/2 flex-wrap items-center gap-2 rounded-md border border-t-2 border-line border-t-accent bg-raised py-1.5 pr-2 pl-3.5 text-sm text-text shadow-lg shadow-shadow";
 const BUTTON_CLASS =
-  "update-banner-button h-7 cursor-pointer rounded-[5px] border bg-[#0c1219] px-2.5 text-[0.78rem]/none font-bold hover:border-gold hover:text-gold focus-visible:border-gold focus-visible:text-gold focus-visible:outline-none";
-const PLAIN_BUTTON_CLASS = `${BUTTON_CLASS} border-[#465363] text-muted`;
-const PRIMARY_BUTTON_CLASS = `${BUTTON_CLASS} primary border-gold text-gold`;
+  "update-banner-button h-7 cursor-pointer rounded-sm border bg-sunken px-2.5 text-xs/none font-bold hover:border-accent hover:text-accent focus-visible:border-accent focus-visible:text-accent focus-visible:outline-none";
+const PLAIN_BUTTON_CLASS = `${BUTTON_CLASS} border-line-strong text-muted`;
+const PRIMARY_BUTTON_CLASS = `${BUTTON_CLASS} primary border-accent text-accent`;
 
 /** What the banner shows for one status: { text, actions: [{ id, label, primary }], progress } or null (hidden). */
 export function updateBannerView(status) {
@@ -107,7 +107,7 @@ export function installUpdateBanner(doc = globalThis.document, bridge = globalTh
     if (view.progress != null) {
       const bar = doc.createElement("progress");
       bar.className =
-        "update-banner-progress h-1.5 w-35 appearance-none overflow-hidden rounded-full bg-line [&::-moz-progress-bar]:bg-gold [&::-webkit-progress-bar]:bg-line [&::-webkit-progress-value]:bg-gold";
+        "update-banner-progress h-1.5 w-35 appearance-none overflow-hidden rounded-full bg-line [&::-moz-progress-bar]:bg-accent [&::-webkit-progress-bar]:bg-line [&::-webkit-progress-value]:bg-accent";
       bar.max = 100;
       bar.value = view.progress;
       bar.setAttribute("aria-label", "Download progress");

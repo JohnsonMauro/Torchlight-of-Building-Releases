@@ -19,11 +19,13 @@ import {
 } from "./crafter-classes";
 import { Choices, ItemPreview, Options, RollInputs } from "./crafter-parts";
 
-// The Vorax Legendary toggle: an L badge and a switch whose knob moves right when pressed.
-const LEGENDARY_TOGGLE = "group flex cursor-pointer items-center gap-0.5 text-[#ddb077] aria-pressed:text-[#ffd34d]";
-const LEGENDARY_TOGGLE_BADGE = "grid size-3.75 place-items-center rounded-full border border-[#d98733] text-[0.58rem]";
+// The Vorax Legendary toggle: an L badge and a switch whose knob moves right and takes the legendary orange when
+// pressed.
+const LEGENDARY_TOGGLE =
+  "group flex cursor-pointer items-center gap-0.5 text-muted hover:text-text aria-pressed:text-grade-legendary";
+const LEGENDARY_TOGGLE_BADGE = "grid size-3.75 place-items-center rounded-full border border-current text-[10px]";
 const LEGENDARY_TOGGLE_SWITCH =
-  "relative h-3 w-6.5 rounded-lg border border-[#a7561f] bg-[#48240f] after:absolute after:top-px after:left-0.5 after:size-2 after:rounded-full after:bg-[#d98733] after:transition-[left] after:content-[''] group-aria-pressed:border-[#e4a126] group-aria-pressed:bg-[#8b5314] group-aria-pressed:after:left-3.5 group-aria-pressed:after:bg-[#ffd34d]";
+  "relative h-3 w-6.5 rounded-full border border-line-strong bg-sunken after:absolute after:top-px after:left-0.5 after:size-2 after:rounded-full after:bg-dim after:transition-[left] after:content-[''] group-aria-pressed:border-grade-legendary group-aria-pressed:bg-grade-legendary/25 group-aria-pressed:after:left-3.5 group-aria-pressed:after:bg-grade-legendary";
 
 const change = (craftChange: CraftChange) => plannerCommands().changeEquipmentCraft(craftChange);
 
@@ -32,7 +34,7 @@ function CraftAffix({ affix }: { affix: CraftAffixView }) {
     active = Boolean(affix.legendaryToggle?.active);
   return (
     <div className={`craft-affix-control ${active ? `legendary-affix-active ${MOD_BOX_LEGENDARY}` : MOD_BOX}`}>
-      <span className="flex items-center gap-2.25 text-[0.95rem] text-[#dde5ee]">
+      <span className="flex items-center gap-2.25 text-sm text-text">
         {affix.legendaryToggle ? (
           <button
             type="button"
@@ -60,7 +62,7 @@ function CraftAffix({ affix }: { affix: CraftAffixView }) {
       </select>
       <div className="craft-affix-config grid gap-2" data-craft-affix-config={index}>
         {config.kind === "warning" ? (
-          <small className="text-[0.72rem] text-danger">No tiers available at this item level.</small>
+          <small className="text-xs text-danger">No tiers available at this item level.</small>
         ) : config.kind === "tiers" ? (
           <>
             {config.tier ? (

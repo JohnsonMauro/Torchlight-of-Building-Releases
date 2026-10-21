@@ -121,7 +121,7 @@ export const gearViewSources = {
   equipmentCrafter: equipmentCrafterSource,
 };
 
-// ---- Inventory item dialog commands (apps/web/src/shell/dialogs/InventoryItemDialog.tsx).
+// ---- Inventory item dialog commands (apps/web/src/features/gear/InventoryItemDialog.tsx).
 // Equip / Unequip of the open item; the dialog closes.
 function toggleSelectedItemEquip() {
   const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
@@ -308,7 +308,7 @@ function resetEquipment() {
   renderCandidateViews();
   showToast("Gear reset to empty");
 }
-// ---- Equipment crafter (apps/web/src/shell/dialogs/EquipmentCrafterDialog.tsx): the planner keeps its draft
+// ---- Equipment crafter (apps/web/src/features/gear/EquipmentCrafterDialog.tsx): the planner keeps its draft
 // (src/app/gear/equipment-craft.ts) and publishes the "equipmentCrafter" source; the controls are commands.
 function showEquipmentCrafter(craft) {
   equipmentCraft = craft;
@@ -434,7 +434,7 @@ function inventoryEditingPreview(item) {
     }),
   };
 }
-// The Inventory item dialog (apps/web/src/shell/dialogs/InventoryItemDialog.tsx) shows the "inventoryItem" source: the
+// The Inventory item dialog (apps/web/src/features/gear/InventoryItemDialog.tsx) shows the "inventoryItem" source: the
 // item and its actions, or, while editing, the item editor, which the planner still writes into the body React gives it
 // (data-legacy-editor) once React shows the editor.
 function renderInventoryItemDialog() {

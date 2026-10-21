@@ -11,19 +11,22 @@ for (const [name, viewport] of [
   test.describe(name, () => {
     test.use({ viewport });
 
-    test("the hero panel is shown: Change Hero and the Follower tab work", async ({ page }) => {
+    test("the Hero Trait tab is shown, the Follower tab works and Change Hero opens from the build's details", async ({
+      page,
+    }) => {
       const planner = new PlannerPage(page);
       await planner.open();
       const panel = page.locator(".planner-hero-panel");
       await expect(panel).toBeVisible();
-      await page.getByRole("button", { name: /Change Hero$/ }).click();
+      await planner.showView("builds");
+      await page.locator("#build-editor").getByRole("button", { name: "Change Hero", exact: true }).click();
       await expect(page.locator("#hero-selector")).toBeVisible();
       await page.keyboard.press("Escape");
       const follower = new FollowerPage(page);
       await follower.tab().click();
       await expect(follower.panel()).toBeVisible();
       await expect(follower.panel()).toContainText("No follower selected");
-      const box = await panel.boundingBox();
+      const box = await follower.panel().boundingBox();
       expect(box.width).toBeLessThanOrEqual(viewport.width);
       await planner.expectNoErrors();
     });

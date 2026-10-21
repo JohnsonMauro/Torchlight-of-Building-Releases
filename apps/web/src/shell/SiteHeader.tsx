@@ -2,11 +2,14 @@ import type { ReactNode } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { openDialog } from "../ui/dialog-registry";
 import { StrokeIcon } from "../ui/StrokeIcon";
+import { toggleTheme } from "../ui/theme";
 
-// The page header: the planner's name and the open build's actions, over a gold hairline. `site-header` is the find
-// bar's anchor (src/app/planner/find-bar.js); the workspace views sit in the rail beside the page (ViewRail), which
-// starts under the header, so the header keeps a fixed height: 66px, or 108px on phones, where the actions (icons only
-// below lg) wrap under the name.
+// The page header: the planner's name, whether the open build is saved (src/app/planner/page.js updateStorageStatus
+// fills the status's first <span> and marks it "storage-warning" or "no-build"; phones drop Manage Loadouts, the Builds
+// action opens the same view) and the open build's actions, over a bottom line. `site-header` is the find bar's
+// anchor (src/app/planner/find-bar.js); the workspace views sit in the rail beside the page (ViewRail), which starts
+// under the header, so the header keeps a fixed height: 66px, or 108px on phones, where the actions (icons only below
+// lg) wrap under the name.
 
 interface ActionProps {
   id?: string;
@@ -22,11 +25,7 @@ function Action({ id, label, title, icon, danger, onClick, view }: ActionProps) 
   return (
     <button
       id={id}
-      className={`flex h-[38px] items-center justify-center gap-1.5 px-[11px] text-[0.68rem] font-[650] uppercase ${
-        danger
-          ? "cursor-pointer rounded-[3px] border border-[#c46b39] bg-[linear-gradient(180deg,#633025_0%,#43231f_50%,#251a1c_100%)] text-[#ffbd8b] shadow-[inset_0_1px_rgb(255_198_150/0.2),0_0_12px_rgb(197_78_37/0.14)] hover:border-[#e7a05d] hover:text-[#ffe0c4] focus-visible:border-[#e7a05d] focus-visible:outline-none"
-          : "btn-bronze"
-      }`}
+      className={`${danger ? "btn-danger" : "btn"} h-9 px-3 text-xs font-semibold uppercase`}
       type="button"
       title={title}
       data-view={view}
@@ -40,20 +39,39 @@ function Action({ id, label, title, icon, danger, onClick, view }: ActionProps) 
 
 export function SiteHeader() {
   return (
-    <header className="site-header sticky top-0 z-20 flex h-[66px] flex-wrap content-center items-center gap-x-3 gap-y-1.5 bg-[linear-gradient(180deg,rgb(20_24_31/0.98),rgb(10_14_20/0.96))] pr-[18px] pl-[22px] shadow-[0_8px_30px_rgb(0_0_0/0.42),inset_0_-1px_rgb(240_132_53/0.09)] max-sm:h-[108px] max-sm:px-3">
+    <header className="site-header sticky top-0 z-20 flex h-[66px] flex-wrap content-center items-center gap-x-3 gap-y-1.5 border-b border-line bg-surface px-6 max-sm:h-[108px] max-sm:px-3">
       <a
         className="flex shrink-0 items-baseline gap-3 no-underline max-sm:h-13 max-sm:items-center"
         href="./"
         aria-label="Torchlight of Building home"
       >
-        <span className="text-gilded font-display text-xl font-black tracking-[0.06em] uppercase max-sm:text-lg">
+        <span className="font-display text-xl font-bold tracking-wider text-accent uppercase max-sm:text-lg">
           Torchlight of Building
         </span>
-        <span className="text-[0.7rem] font-semibold tracking-[0.22em] text-[#c9b58d] uppercase max-md:hidden">
+        <span className="text-xs font-semibold tracking-widest text-muted uppercase max-md:hidden">
           SS14 · Tartarus
         </span>
       </a>
-      <div className="header-actions ml-auto flex gap-1.5 max-sm:mr-auto max-sm:ml-0">
+      <div className="loadout-status group/status ml-auto flex items-center gap-2 px-3 text-xs text-muted max-md:px-2 [&.storage-warning]:text-warn">
+        <i className="size-1.5 shrink-0 rounded-full bg-ok group-[.no-build]/status:bg-dim group-[.storage-warning]/status:bg-warn" />
+        <span className="max-md:hidden">Autosaved locally</span>
+        <button
+          type="button"
+          className="btn ml-3 h-7 px-2.5 text-xs whitespace-nowrap max-md:ml-1 max-sm:hidden"
+          data-view="builds"
+        >
+          Manage Loadouts
+        </button>
+        <button
+          type="button"
+          className="btn ml-3 h-7 px-2.5 text-xs whitespace-nowrap max-md:ml-1 max-sm:px-1.5"
+          data-report-bug=""
+          title="Open a GitHub form to report a planner bug"
+        >
+          Report bug
+        </button>
+      </div>
+      <div className="header-actions flex gap-1.5 max-sm:mr-auto">
         <Action
           label="Builds"
           view="builds"
@@ -99,11 +117,14 @@ export function SiteHeader() {
           onClick={() => openDialog("reset-build-confirm")}
           icon={<path d="M4 11a8 8 0 1 1 2.3 6M4 4v7h7" />}
         />
+        <Action
+          id="theme-toggle"
+          label="Theme"
+          title="Switch between the light and dark theme"
+          onClick={() => toggleTheme()}
+          icon={<path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" />}
+        />
       </div>
-      <span
-        aria-hidden="true"
-        className="absolute inset-x-0 -bottom-px h-px bg-[linear-gradient(90deg,#f9ca65_0%,#e8ad4f_38%,#9a6d37_75%,#59452f_100%)]"
-      />
     </header>
   );
 }

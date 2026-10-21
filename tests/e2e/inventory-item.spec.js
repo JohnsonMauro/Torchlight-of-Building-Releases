@@ -15,7 +15,7 @@ test.use({ viewport: { width: 1440, height: 1000 } });
 async function openItem(page, name) {
   const planner = new PlannerPage(page);
   await planner.open(youga);
-  await planner.showView("talents");
+  await planner.showView("equipment");
   const gear = new GearPage(page);
   await gear.cardButton(name).click();
   await expect(gear.itemDialog()).toBeVisible();
@@ -200,7 +200,7 @@ test("a captured item (the default build's): its lines are text fields, saved as
 }) => {
   const planner = new PlannerPage(page);
   await planner.open();
-  await planner.showView("talents");
+  await planner.showView("equipment");
   const gear = new GearPage(page);
   const name = "Long Night Sorcerer's Robe - Priceless";
   await gear.cardButton(name).click();
@@ -225,7 +225,7 @@ test("a captured item (the default build's): its lines are text fields, saved as
 test("the editor's Belt Blend and fields of a captured belt are saved", async ({ page }) => {
   const planner = new PlannerPage(page);
   await planner.open();
-  await planner.showView("talents");
+  await planner.showView("equipment");
   const gear = new GearPage(page);
   await gear.cardButton("Elder Sage Girdle - Priceless").click();
   await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();

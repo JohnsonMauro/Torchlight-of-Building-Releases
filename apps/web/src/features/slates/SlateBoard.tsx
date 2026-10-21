@@ -28,7 +28,7 @@ import {
   LABEL_NAME,
   LABEL_NUMBER,
   judgmentEdge,
-  pieceArt,
+  PIECE_ART,
   pieceClasses,
   tileClasses,
 } from "./slate-classes";
@@ -47,7 +47,7 @@ export function SlateBoard() {
         <HelpButton topic="slates" label="Slates" />
         <button
           type="button"
-          className="min-h-8.5 cursor-pointer rounded-[3px] border border-[#465363] bg-[linear-gradient(180deg,#1a2330,#10161e)] px-3 py-1.75 text-[0.68rem] font-bold tracking-[0.06em] text-[#dce3e9] uppercase shadow-[inset_0_1px_rgb(255_255_255/0.035)] clip-chamfer-7 hover:border-[#bd6a32] hover:text-[#ffab61] hover:brightness-108"
+          className="btn min-h-8.5 px-3 text-xs font-bold tracking-wider uppercase"
           onClick={() => plannerCommands().openSlateInventory()}
         >
           Inventory
@@ -215,14 +215,14 @@ function SlateStage({ view }: { view: SlatesView }) {
     >
       {/* Centred across the stage, at the height that centres it in the panel (--slate-grid-top, set above). */}
       <div
-        className={`${view.editMode ? "editing " : ""}divinity-board absolute top-(--slate-grid-top,109px) left-1/2 grid size-[calc(var(--cell)*6)] -translate-x-1/2 grid-cols-[repeat(6,var(--cell))] grid-rows-[repeat(6,var(--cell))] bg-[radial-gradient(circle_at_center,rgb(52_68_89/0.3),transparent_60%)]`}
+        className={`${view.editMode ? "editing " : ""}divinity-board absolute top-(--slate-grid-top,109px) left-1/2 grid size-[calc(var(--cell)*6)] -translate-x-1/2 grid-cols-[repeat(6,var(--cell))] grid-rows-[repeat(6,var(--cell))]`}
         ref={boardRef}
       >
         {view.cells.map((cell) => (
           <button
             key={`${cell.column},${cell.row}`}
             type="button"
-            className="slate-cell pointer-events-none border border-[#3d4652] bg-[#171e29] shadow-[inset_0_0_0_2px_#111720] editmode:pointer-events-auto editmode:cursor-crosshair hover:bg-[#263749] hover:shadow-[inset_0_0_0_2px_#55d6dd]"
+            className="slate-cell pointer-events-none border border-line-strong bg-raised editmode:pointer-events-auto editmode:cursor-crosshair hover:border-info hover:bg-info/15"
             style={{ gridColumn: cell.column, gridRow: cell.row }}
             data-slate-cell={`${cell.column},${cell.row}`}
             aria-label={`Board cell ${cell.column}, ${cell.row}`}
@@ -310,7 +310,7 @@ function SlatePiece({ piece, drag, onClick, onContextMenu, onPointerDown }: Slat
           {piece.cellIcon ? <img className={CELL_ART} src={piece.cellIcon} alt="" /> : null}
         </i>
       ))}
-      {piece.icon ? <img className={pieceArt(piece)} src={piece.icon} alt="" /> : null}
+      {piece.icon ? <img className={PIECE_ART} src={piece.icon} alt="" /> : null}
       {parked ? null : <span className={labelled ? LABEL_NUMBER : "hidden"}>{piece.number}</span>}
       <strong className={labelled ? LABEL_NAME : "hidden"}>{piece.name}</strong>
       {piece.adjacentCount !== null ? (
@@ -320,20 +320,15 @@ function SlatePiece({ piece, drag, onClick, onContextMenu, onPointerDown }: Slat
   );
 }
 
-// The selected slate's tool buttons: bronze, and Remove in rust at the far end.
-const TOOL =
-  "grid size-7.75 cursor-pointer place-items-center rounded-[2px] border p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9ca65]";
-const TOOL_PLAIN =
-  "border-[#806341] bg-[linear-gradient(#393226,#192027)] text-[#f0c77e] hover:border-[#f9ca65] hover:bg-[linear-gradient(#51412a,#292a24)] hover:text-[#ffe4a8]";
-const TOOL_DANGER =
-  "border-[#a36742] bg-[linear-gradient(#492920,#241a18)] text-[#edb797] hover:border-[#e7a072] hover:bg-[linear-gradient(#633025,#352019)] hover:text-[#ffcfad]";
+// The selected slate's tool buttons, Remove at the far end.
+const TOOL = "size-8 p-0 text-sm";
 
 function SlateTools({ tools }: { tools: SlateToolsView }) {
   const commands = plannerCommands();
   const tool = (title: string, symbol: string, action: () => void, danger = false) => (
     <button
       type="button"
-      className={`${TOOL} ${danger ? `ml-auto ${TOOL_DANGER}` : TOOL_PLAIN}`}
+      className={`${TOOL} ${danger ? "btn-danger ml-auto" : "btn"}`}
       title={title}
       aria-label={title}
       onClick={action}
@@ -343,13 +338,13 @@ function SlateTools({ tools }: { tools: SlateToolsView }) {
   );
   return (
     <div
-      className="slate-quick-tools absolute top-[clamp(8px,var(--tool-y),calc(100%-82px))] left-[clamp(8px,var(--tool-x),calc(100%-265px))] z-30 min-w-[230px] rounded-[3px] border border-[#806341] border-t-[#cba257] bg-[linear-gradient(135deg,#343329,#141c24_75%)] p-2.5 text-[#f0c77e] shadow-[0_10px_28px_#0009,inset_0_1px_#f9ca651a]"
+      className="slate-quick-tools absolute top-[clamp(8px,var(--tool-y),calc(100%-82px))] left-[clamp(8px,var(--tool-x),calc(100%-265px))] z-30 min-w-57.5 rounded-md border border-line-strong bg-surface p-2.5 text-text shadow-lg shadow-shadow"
       style={{ "--tool-x": `${tools.x}px`, "--tool-y": `${tools.y}px` } as CSSProperties}
     >
-      <strong className="mb-2 block border-b border-[#80634166] pb-1.75 font-serif text-[0.76rem]/[1.3] font-bold text-[#f9ca65]">
+      <strong className="mb-2 block border-b border-line pb-1.5 font-display text-xs/snug font-bold text-accent">
         {tools.name}
       </strong>
-      <div className="flex gap-1.25">
+      <div className="flex gap-1">
         {tool("Move", "✥", () => commands.startSlateMove(tools.id))}
         {tools.rules.rotate ? (
           <>

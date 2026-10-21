@@ -1,36 +1,39 @@
 import { SiteHeader } from "./SiteHeader";
 import { LoadoutStrip } from "./LoadoutStrip";
 import { ViewRail } from "./ViewRail";
-import { BuildsView } from "./views/BuildsView";
-import { CharacterView } from "./views/CharacterView";
-import { SkillsView } from "./views/SkillsView";
-import { ConfigurationView } from "./views/ConfigurationView";
-import { TalentsView } from "./views/TalentsView";
-import { EquipmentView } from "./views/EquipmentView";
-import { PactsView } from "./views/PactsView";
-import { SlatesView } from "./views/SlatesView";
+import { BuildsView } from "../pages/builds/BuildsView";
+import { CharacterView } from "../pages/stats/CharacterView";
+import { SkillsView } from "../pages/build/SkillsView";
+import { ConfigurationView } from "../pages/configuration/ConfigurationView";
+import { TalentsView } from "../pages/build/TalentsView";
+import { HeroView } from "../pages/build/HeroView";
+import { FollowerView } from "../pages/build/FollowerView";
+import { EquipmentView } from "../pages/build/EquipmentView";
+import { PactsView } from "../pages/build/PactsView";
+import { SlatesView } from "../pages/build/SlatesView";
 import { SiteDisclaimer } from "./SiteDisclaimer";
-import { PactspiritSelectorDialog } from "./dialogs/PactspiritSelectorDialog";
-import { KismetCrafterDialog } from "./dialogs/KismetCrafterDialog";
-import { FateSlotSelectorDialog } from "./dialogs/FateSlotSelectorDialog";
-import { PrismInventoryDialog } from "./dialogs/PrismInventoryDialog";
-import { PrismCrafterDialog } from "./dialogs/PrismCrafterDialog";
-import { HeroSelectorDialog } from "./dialogs/HeroSelectorDialog";
-import { FollowerSelectorDialog } from "./dialogs/FollowerSelectorDialog";
-import { HeroMemorySelectorDialog } from "./dialogs/HeroMemorySelectorDialog";
-import { SageScentSelectorDialog } from "./dialogs/SageScentSelectorDialog";
-import { CarinoAmmoSelectorDialog } from "./dialogs/CarinoAmmoSelectorDialog";
-import { TalentPanelPickerDialog } from "./dialogs/TalentPanelPickerDialog";
-import { CoreTalentPickerDialog } from "./dialogs/CoreTalentPickerDialog";
-import { SlateInventoryDialog } from "./dialogs/SlateInventoryDialog";
-import { SlateEditorDialog } from "./dialogs/SlateEditorDialog";
-import { EquipmentCrafterDialog } from "./dialogs/EquipmentCrafterDialog";
-import { InventoryItemDialog } from "./dialogs/InventoryItemDialog";
-import { SkillSelectorDialog } from "./dialogs/SkillSelectorDialog";
-import { ImportBuildDialog } from "./dialogs/ImportBuildDialog";
-import { FeedbackDialog } from "./dialogs/FeedbackDialog";
-import { ImportGameLogDialog } from "./dialogs/ImportGameLogDialog";
-import { ResetBuildConfirmDialog } from "./dialogs/ResetBuildConfirmDialog";
+import { CharacterColumn } from "../features/hero/HeroPanel";
+import { PactspiritSelectorDialog } from "../features/pacts/PactspiritSelectorDialog";
+import { KismetCrafterDialog } from "../features/pacts/KismetCrafterDialog";
+import { FateSlotSelectorDialog } from "../features/pacts/FateSlotSelectorDialog";
+import { PrismInventoryDialog } from "../features/talents/PrismInventoryDialog";
+import { PrismCrafterDialog } from "../features/talents/PrismCrafterDialog";
+import { HeroSelectorDialog } from "../features/hero/HeroSelectorDialog";
+import { FollowerSelectorDialog } from "../features/follower/FollowerSelectorDialog";
+import { HeroMemorySelectorDialog } from "../features/hero/HeroMemorySelectorDialog";
+import { SageScentSelectorDialog } from "../features/hero/SageScentSelectorDialog";
+import { CarinoAmmoSelectorDialog } from "../features/hero/CarinoAmmoSelectorDialog";
+import { TalentPanelPickerDialog } from "../features/talents/TalentPanelPickerDialog";
+import { CoreTalentPickerDialog } from "../features/talents/CoreTalentPickerDialog";
+import { SlateInventoryDialog } from "../features/slates/SlateInventoryDialog";
+import { SlateEditorDialog } from "../features/slates/SlateEditorDialog";
+import { EquipmentCrafterDialog } from "../features/gear/EquipmentCrafterDialog";
+import { InventoryItemDialog } from "../features/gear/InventoryItemDialog";
+import { SkillSelectorDialog } from "../features/skills/SkillSelectorDialog";
+import { ImportBuildDialog } from "../features/builds/ImportBuildDialog";
+import { FeedbackDialog } from "../features/feedback/FeedbackDialog";
+import { ImportGameLogDialog } from "../features/builds/ImportGameLogDialog";
+import { ResetBuildConfirmDialog } from "../features/builds/ResetBuildConfirmDialog";
 import { PlannerTooltip } from "./PlannerTooltip";
 import { Toast } from "./Toast";
 import { RestoreBuildsFileInput } from "./RestoreBuildsFileInput";
@@ -45,12 +48,15 @@ export function AppShell() {
       <SiteHeader />
       <ViewRail />
       <LoadoutStrip />
-      {/* The Build view (body.unified-planner) lays its sections on a two-column grid; the other views show one, padded. */}
-      <main className="mr-5 ml-16 pt-4 in-[.unified-planner]:grid in-[.unified-planner]:grid-cols-2 in-[.unified-planner]:items-start in-[.unified-planner]:gap-3 max-[900px]:in-[.unified-planner]:grid-cols-1 max-[760px]:mr-3 max-[760px]:ml-19 max-[760px]:pt-5.5 in-[body:not(.unified-planner)]:px-8.5 in-[body:not(.unified-planner)]:pt-8.5 in-[body:not(.unified-planner)]:pb-17.5 max-[760px]:in-[body:not(.unified-planner)]:mr-0 max-[760px]:in-[body:not(.unified-planner)]:ml-16 max-[760px]:in-[body:not(.unified-planner)]:px-3.5 max-[760px]:in-[body:not(.unified-planner)]:pt-5.5 max-[760px]:in-[body:not(.unified-planner)]:pb-22.5">
+      {/* The build's tabs (body.unified-planner): the character column, and the open tab's section beside it; the other views show one, padded. */}
+      <main className="ml-16 px-6 pt-6 pb-20 max-[760px]:px-3 max-[760px]:pt-4 max-[760px]:pb-28 in-[.unified-planner]:grid in-[.unified-planner]:grid-cols-[minmax(240px,300px)_minmax(0,1fr)] in-[.unified-planner]:items-start in-[.unified-planner]:gap-6 max-[900px]:in-[.unified-planner]:grid-cols-1 max-[900px]:in-[.unified-planner]:gap-4">
+        <CharacterColumn className="hidden in-[.unified-planner]:block col-start-1 row-start-1 self-start" />
         <BuildsView />
         <CharacterView />
         <SkillsView />
         <ConfigurationView />
+        <HeroView />
+        <FollowerView />
         <TalentsView />
         <EquipmentView />
         <PactsView />

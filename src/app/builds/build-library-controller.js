@@ -106,14 +106,14 @@ export const buildLibraryCommands = {
     showToast("Build selected");
   },
   editBuild: (id) => {
-    openLibraryBuild(id, "talents");
+    openLibraryBuild(id, "hero");
     showToast("Build opened for editing");
   },
   newBuild: () => {
     createBuild({ name: "New build", state: emptyPlannerState() });
     applyPlannerState(loadPlannerState());
     renderCandidateViews();
-    activateWorkspaceView("talents", { scroll: false });
+    activateWorkspaceView("hero", { scroll: false });
     showToast("New build ready · Rename it in Build Library");
   },
   duplicateActiveBuild: () => {
@@ -150,7 +150,7 @@ export const buildLibraryCommands = {
   importBuild,
 };
 
-// The header's Reset Build (confirmed in apps/web/src/shell/dialogs/ResetBuildConfirmDialog.tsx): the open build empties.
+// The header's Reset Build (confirmed in apps/web/src/features/builds/ResetBuildConfirmDialog.tsx): the open build empties.
 function resetBuild() {
   const empty = emptyPlannerState();
   applyPlannerState(empty);
@@ -179,7 +179,7 @@ async function importBuildText(text) {
   activateWorkspaceView("builds", { scroll: false });
   showToast(`${escapeHtml(imported.name)} imported and active`);
 }
-// The Import dialog's Import Code (apps/web/src/shell/dialogs/ImportBuildDialog.tsx).
+// The Import dialog's Import Code (apps/web/src/features/builds/ImportBuildDialog.tsx).
 function importBuild(text) {
   importBuildText(text).catch(() => showToast("That build code could not be read"));
 }
@@ -270,7 +270,7 @@ function showOtherTabNotice() {
   if (document.getElementById("other-tab-notice")) return;
   document.body.insertAdjacentHTML(
     "beforeend",
-    `<div id="other-tab-notice" class="${STICKY_TOAST_CLASS}" role="status" aria-live="polite"><span>This build was changed in another tab · </span><button type="button" class="${STICKY_TOAST_BUTTON_CLASS}" data-reload-other-tab>Reload it</button><button type="button" class="ml-1.5 cursor-pointer text-[1.15em]/none" data-dismiss-other-tab aria-label="Dismiss">×</button></div>`,
+    `<div id="other-tab-notice" class="${STICKY_TOAST_CLASS}" role="status" aria-live="polite"><span>This build was changed in another tab · </span><button type="button" class="${STICKY_TOAST_BUTTON_CLASS}" data-reload-other-tab>Reload it</button><button type="button" class="ml-1.5 cursor-pointer text-lg/none" data-dismiss-other-tab aria-label="Dismiss">×</button></div>`,
   );
   const notice = document.getElementById("other-tab-notice");
   notice.querySelector("[data-reload-other-tab]").addEventListener("click", () => {

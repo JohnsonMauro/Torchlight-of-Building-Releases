@@ -1,61 +1,63 @@
+import type { ReactNode } from "react";
 import { HelpButton } from "../../ui/HelpButton";
 import { FollowerPanel } from "../follower/FollowerPanel";
-import { goldTab, panelGlow } from "./hero-classes";
 import { HeroDetailTabs, HeroShowcase, HeroTraitTree } from "./HeroTab";
 
-// The Build view's hero column: the Hero / Follower tabs (src/app/hero/hero-controller.js switches them by .active and
-// data-hero-panel-tab) over the hero's showcase and trait tree, or the follower panel. The grid placement is the caller's.
+// The character column and the Hero Trait and Follower tabs' panels: a panel under its heading bar, with its help
+// button when it has one. The width and placement are the caller's.
+function CharacterPanel({
+  title,
+  help,
+  className,
+  children,
+}: {
+  title: string;
+  help?: "hero" | "follower";
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <aside className={`panel relative overflow-hidden leading-[normal] ${className ?? ""}`}>
+      <div className="panel-head min-h-11 px-4 text-xs font-bold tracking-wider uppercase">
+        <h2>{title}</h2>
+        {help ? <HelpButton topic={help} label={title} /> : null}
+      </div>
+      {children}
+    </aside>
+  );
+}
+
+/**
+ * The character column beside every build tab: the hero's portrait, name and main trait, with Change Hero. The
+ * character's figures for the calculation join it later.
+ */
+export function CharacterColumn({ className }: { className?: string }) {
+  return (
+    <CharacterPanel title="Character" className={className}>
+      <HeroShowcase />
+    </CharacterPanel>
+  );
+}
+
+/** The Hero Trait tab: the hero's trait tabs over the open one (trait tiers, Trait Path or Scent Bottle). */
 export function HeroPanel({ className }: { className?: string }) {
   return (
-    <aside
-      className={`planner-hero-panel relative min-h-152.5 overflow-hidden border border-[#3a4655] bg-panel leading-[normal] clip-chamfer-10 max-[900px]:min-h-auto ${panelGlow} ${className ?? ""}`}
-    >
-      <div className="planner-section-title hero-panel-tabs relative flex h-12 items-center justify-between gap-2 border-b border-[#8b6333] bg-heading pr-3 text-[0.69rem] font-extrabold tracking-[0.12em] text-[#f2943c] uppercase after:absolute after:inset-x-0 after:-bottom-px after:h-px after:rule-gold after:content-['']">
-        <div
-          className="hero-panel-tab-list grid min-w-0 flex-1 grid-cols-2 self-stretch"
-          role="tablist"
-          aria-label="Hero and follower"
-        >
-          <button
-            type="button"
-            role="tab"
-            id="hero-panel-tab-hero"
-            className={`active ${goldTab}`}
-            aria-selected="true"
-            aria-controls="hero-panel-hero"
-            data-hero-panel-tab="hero"
-          >
-            Hero
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="hero-panel-tab-follower"
-            className={goldTab}
-            aria-selected="false"
-            aria-controls="follower-panel"
-            tabIndex={-1}
-            data-hero-panel-tab="follower"
-          >
-            Follower
-          </button>
-        </div>
-        <HelpButton topic="hero" label="Hero" />
-      </div>
-      <div id="hero-panel-hero" className="hero-panel-content" role="tabpanel" aria-labelledby="hero-panel-tab-hero">
-        <HeroShowcase />
+    <CharacterPanel title="Hero Trait" help="hero" className={`planner-hero-panel ${className ?? ""}`}>
+      <div id="hero-panel-hero">
         <HeroDetailTabs />
         <HeroTraitTree />
       </div>
-      <div
-        id="follower-panel"
-        className="hero-panel-content follower-panel"
-        role="tabpanel"
-        aria-labelledby="hero-panel-tab-follower"
-        hidden
-      >
+    </CharacterPanel>
+  );
+}
+
+/** The Follower tab: the follower card and its Tartarus Skill slots. */
+export function FollowerColumn({ className }: { className?: string }) {
+  return (
+    <CharacterPanel title="Follower" help="follower" className={className}>
+      <div id="follower-panel" className="follower-panel">
         <FollowerPanel />
       </div>
-    </aside>
+    </CharacterPanel>
   );
 }

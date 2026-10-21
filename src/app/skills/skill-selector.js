@@ -40,7 +40,7 @@ import { ui } from "../planner/ui-state.js";
 import { activeSkillBoardTab, selectorBoardSetups } from "./skill-board.js";
 
 export let selectorKind = "skill";
-export let skillSelectorSession = 0; // the skill selector's openings (apps/web/src/shell/dialogs/SkillSelectorDialog.tsx)
+export let skillSelectorSession = 0; // the skill selector's openings (apps/web/src/features/skills/SkillSelectorDialog.tsx)
 export let selectorChoiceIndex = -1;
 export let selectorLevel = 20;
 export let selectorSpecialConfig = null;
@@ -301,7 +301,7 @@ function renderSkillSelector() {
   viewSourceChanged("skillSelector");
 }
 
-// Skill selector commands (apps/web/src/shell/dialogs/SkillSelectorDialog.tsx and SkillSelectorDetail.tsx).
+// Skill selector commands (apps/web/src/features/skills/SkillSelectorDialog.tsx and SkillSelectorDetail.tsx).
 // Confirm: `levelText` is the level field as typed (the generic modes).
 function confirmSkillSelector(levelText) {
   if (selectorKind === "follower-skill") {

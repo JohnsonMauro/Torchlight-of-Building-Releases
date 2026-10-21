@@ -178,7 +178,7 @@ export function pactsView(pacts: Pacts): PactsView {
   };
 }
 
-/** A Pactspirit of the Pactspirit selector (apps/web/src/shell/dialogs/PactspiritSelectorDialog.tsx). */
+/** A Pactspirit of the Pactspirit selector (apps/web/src/features/pacts/PactspiritSelectorDialog.tsx). */
 export interface PactspiritChoiceView {
   name: string;
   category: string;

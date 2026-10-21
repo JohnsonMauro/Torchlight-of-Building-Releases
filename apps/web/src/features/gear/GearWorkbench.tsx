@@ -16,21 +16,22 @@ import {
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";
 import {
+  CARD_TOOL,
+  CURSE_BADGE,
   CURSE_LIMIT_OUTLINE,
   DRAG_GHOST,
   DRAG_GHOST_ICON,
   DROP_ELIGIBLE,
   DROP_TARGET,
   EMPTY_SLOT,
+  EQUIPPED_BADGE,
+  SECTION_BUTTON,
   SELECTED_BORDER,
-  SELECTED_EMPTY_BORDER,
-  SELECTED_GLOW,
+  SELECTED_RING,
   gearLook,
   inventoryIconShift,
 } from "./gear-classes";
 
-/** The bronze buttons of the section (Reset Gear, the craft buttons). */
-const BRONZE_BUTTON = "btn-bronze px-3.5 py-2.25 text-[0.68rem] font-bold uppercase";
 const CRAFT_MODES = [
   { mode: "rare", label: "Craft Rare Item" },
   { mode: "legendary", label: "Craft Legendary" },
@@ -85,8 +86,7 @@ export function GearWorkbench() {
   const draggedSource = view && drag.source ? sourceOf(view, drag.source) : null;
 
   return (
-    <div className="gear-workbench relative m-3 grid min-[901px]:flex-1 grid-cols-[290px_minmax(0,1fr)] gap-4.5 border border-[#3a4655] bg-panel p-4.5 leading-[normal] clip-chamfer-9 max-[1250px]:grid-cols-1">
-      <span aria-hidden="true" className="absolute top-0 left-0 h-px w-13.5 bg-[#bdcee0] opacity-65" />
+    <div className="gear-workbench panel relative m-3 grid grid-cols-[290px_minmax(0,1fr)] gap-4.5 p-4.5 leading-[normal] max-[1250px]:grid-cols-1 min-[901px]:flex-1">
       <aside className="grid content-start gap-3.5 max-[1250px]:w-[min(290px,100%)] min-[901px]:grid-rows-[minmax(0,1fr)_auto] min-[901px]:content-stretch">
         <div
           id="equipment-grid"
@@ -116,18 +116,18 @@ export function GearWorkbench() {
           })}
         </div>
         <button
-          className={`${BRONZE_BUTTON} min-h-10.5 w-32.5 justify-self-end`}
+          className={`${SECTION_BUTTON} min-h-10.5 w-32.5 justify-self-end`}
           type="button"
           onClick={() => plannerCommands().resetEquipment()}
         >
           Reset Gear
         </button>
       </aside>
-      <section className="min-w-0 border-l border-[#2c3542] pl-4.5 max-[1250px]:border-t max-[1250px]:border-l-0 max-[1250px]:pt-4 max-[1250px]:pl-0">
-        <header className="flex items-center justify-between gap-3 border-b border-[#2c3542] pb-3">
+      <section className="min-w-0 border-l border-line pl-4.5 max-[1250px]:border-t max-[1250px]:border-l-0 max-[1250px]:pt-4 max-[1250px]:pl-0">
+        <header className="flex items-center justify-between gap-3 border-b border-line pb-3">
           <div>
-            <p className="mb-1.75 text-gilded text-[0.72rem] font-extrabold tracking-[0.12em] uppercase">Inventory</p>
-            <h2 className="my-0.5 font-serif text-[1.15rem] font-semibold tracking-[0.015em]">
+            <p className="mb-1.75 text-xs font-bold tracking-wider text-accent uppercase">Inventory</p>
+            <h2 className="my-0.5 font-display text-lg font-semibold">
               {"Items "}
               <span id="inventory-count">{view ? `(${view.inventory.length})` : ""}</span>
             </h2>
@@ -136,7 +136,7 @@ export function GearWorkbench() {
             {CRAFT_MODES.map(({ mode, label }) => (
               <button
                 key={mode}
-                className={BRONZE_BUTTON}
+                className={SECTION_BUTTON}
                 type="button"
                 data-open-equipment-craft={mode}
                 onClick={() => plannerCommands().openEquipmentCrafter(mode)}
@@ -177,7 +177,7 @@ export function GearWorkbench() {
                 ))}
               </div>
             ) : (
-              <div className="grid min-h-70 place-items-center text-[#8795a5]">
+              <div className="grid min-h-70 place-items-center text-muted">
                 <strong>No items crafted yet</strong>
                 <span className="-mt-27.5">Use a crafting button above to add an item.</span>
               </div>
@@ -219,10 +219,6 @@ function ghost(source: GearDragSource | null): HTMLElement {
   return element;
 }
 
-/** The red CURSE OFF badge at the bottom of a slot whose curse the curse limit leaves out. */
-const CURSE_BADGE =
-  "curse-off-badge absolute bottom-1.5 left-1/2 z-4 -translate-x-1/2 rounded-[3px] border border-[#e33349] bg-[#e33349] px-1.25 py-0.75 text-[0.52rem] leading-none font-extrabold tracking-[0.04em] whitespace-nowrap text-white not-italic shadow-[0_1px_4px_rgb(0_0_0/0.65)]";
-
 function SlotButton(props: {
   slot: EquipmentSlotView;
   dragSource: boolean;
@@ -234,18 +230,20 @@ function SlotButton(props: {
 }) {
   const { slot } = props;
   const item = slot.item;
-  const look = item ? gearLook(item.classes, false) : null;
-  // One frame color and one outline/glow, by priority: the curse limit, the drop target, then selection over the art.
+  const look = item ? gearLook(item.classes) : null;
+  // One frame colour and one outline, by priority: the curse limit, the drop target, then selection over the art.
   const frame = look
-    ? `border-solid ${look.background} ${slot.selected ? SELECTED_BORDER : look.border}`
-    : `${EMPTY_SLOT} ${slot.selected ? SELECTED_EMPTY_BORDER : "border-line"}`;
+    ? `border-solid ${look.background} ${slot.selected ? `${SELECTED_BORDER} ${SELECTED_RING}` : look.border}`
+    : `${EMPTY_SLOT} ${slot.selected ? SELECTED_BORDER : "border-line-strong"}`;
   const outline = item?.curseOffReason
     ? CURSE_LIMIT_OUTLINE
     : props.target
       ? DROP_TARGET
-      : `${props.eligible ? DROP_ELIGIBLE : ""} ${slot.selected && look ? SELECTED_GLOW : (look?.glow ?? "")}`;
+      : props.eligible
+        ? DROP_ELIGIBLE
+        : "";
   const classes = [
-    "equipment-item relative flex min-h-29 cursor-grab touch-none flex-col justify-end overflow-hidden rounded-[7px] border p-3 text-center text-text select-none focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#ff9636]",
+    "equipment-item relative flex min-h-29 cursor-grab touch-none flex-col justify-end overflow-hidden rounded-md border p-3 text-center text-text select-none focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent",
     frame,
     outline,
     slot.selected ? "selected" : "",
@@ -272,7 +270,7 @@ function SlotButton(props: {
         </em>
       ) : null}
       <span
-        className={`block text-[0.61rem] tracking-[0.09em] text-gold uppercase${item ? " absolute inset-x-1 top-2.25 z-1" : ""}`}
+        className={`block text-[10px] tracking-wider text-accent uppercase${item ? " absolute inset-x-1 top-2.25 z-1" : ""}`}
       >
         {slot.label}
       </span>
@@ -285,21 +283,17 @@ function SlotButton(props: {
           />
         </b>
       ) : (
-        <b className="mx-auto my-1.75 grid size-10.75 place-items-center overflow-hidden rounded-[5px] border border-[#4d5967] font-bold text-[#7b8997]">
+        <b className="mx-auto my-1.75 grid size-10.75 place-items-center overflow-hidden rounded border border-line-strong font-bold text-dim">
           +
         </b>
       )}
-      <strong className={item ? "hidden" : "my-1.25 line-clamp-2 text-[0.73rem] font-bold"}>
+      <strong className={item ? "hidden" : "my-1.25 line-clamp-2 text-xs font-bold"}>
         {item ? item.name : "Empty"}
       </strong>
       <small className="hidden">{item ? item.level : "Select slot"}</small>
     </button>
   );
 }
-
-/** An Inventory card's small square tool buttons (edit, duplicate). */
-const CARD_TOOL =
-  "grid size-5.5 cursor-pointer place-items-center rounded-[3px] bg-[#222b37] p-0 text-[#9aa8b8] hover:bg-[#3a4655] hover:text-white";
 
 function InventoryCard(props: {
   card: InventoryCardView;
@@ -308,10 +302,10 @@ function InventoryCard(props: {
   onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
 }) {
   const { card } = props;
-  const look = gearLook(card.rarityClass, true);
+  const look = gearLook(card.rarityClass);
   return (
     <article
-      className={`inventory-item ${card.rarityClass} relative block aspect-square w-full cursor-pointer border text-left text-[#dbe4ec] ${look.border} ${look.background} ${look.glow}`}
+      className={`inventory-item ${card.rarityClass} relative block aspect-square w-full cursor-pointer border text-left text-text ${look.border} ${look.background}`}
       data-equip-inventory={card.id}
       onClick={(event) => {
         if (!(event.target as Element).closest(".inventory-item-tools")) props.onOpen();
@@ -327,23 +321,19 @@ function InventoryCard(props: {
         data-equip-inventory={card.id}
         onPointerDown={props.onPointerDown}
       >
-        <span className="inventory-item-icon flex min-h-0 w-full items-center justify-center self-stretch text-[#d39437]">
+        <span className="inventory-item-icon flex min-h-0 w-full items-center justify-center self-stretch text-accent">
           <img
             src={card.icon}
             alt=""
-            className={`max-h-[86%] max-w-[86%] min-h-0 min-w-0 object-contain drop-shadow-[0_7px_8px_rgb(0_0_0/0.45)] ${inventoryIconShift(card.icon)}`}
+            className={`max-h-[86%] max-w-[86%] min-h-0 min-w-0 object-contain ${inventoryIconShift(card.icon)}`}
           />
         </span>
-        <strong className={`line-clamp-2 max-w-full text-center text-[0.68rem] leading-[1.15] ${look.name}`}>
+        <strong className={`line-clamp-2 max-w-full text-center text-xs leading-tight ${look.name}`}>
           {card.name}
         </strong>
         <small className="hidden">{card.detail}</small>
       </button>
-      {card.equipped ? (
-        <em className="pointer-events-none absolute top-1.25 left-1.25 z-2 rounded-[3px] border border-[#c58b38] bg-[#1c1b19] px-1.25 py-0.75 text-[0.52rem] leading-none font-extrabold tracking-[0.04em] text-[#fff0c2] uppercase not-italic shadow-[0_1px_4px_rgb(0_0_0/0.65)]">
-          Equipped
-        </em>
-      ) : null}
+      {card.equipped ? <em className={EQUIPPED_BADGE}>Equipped</em> : null}
       <span className="inventory-item-tools absolute top-1.25 right-1.25 z-3 grid gap-0.75">
         <button
           type="button"

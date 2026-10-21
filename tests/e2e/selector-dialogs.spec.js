@@ -36,7 +36,7 @@ const matching = (query) =>
 
 test("the hero selector lists every hero, marks the current one and filters by name or trait", async ({ page }) => {
   const { planner, hero } = await openPlanner(page);
-  await hero.changeHero().click();
+  await hero.openHeroSelector();
   const dialog = hero.heroSelector();
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("heading", { name: "Select Hero" })).toBeVisible();
@@ -64,16 +64,16 @@ test("the hero selector closes from ×, from outside and from Escape, and opens 
   const { planner, hero } = await openPlanner(page);
   const dialog = hero.heroSelector();
   const search = dialog.getByRole("searchbox", { name: "Search heroes" });
-  await hero.changeHero().click();
+  await hero.openHeroSelector();
   await search.fill("sel");
   await dialog.getByRole("button", { name: "Close hero selector" }).click();
   await expect(dialog).toBeHidden();
-  await hero.changeHero().click();
+  await hero.openHeroSelector();
   await expect(search).toHaveValue("");
   await expect(heroCards(dialog)).toHaveCount(heroCatalogSs13.length);
   await page.mouse.click(5, 5);
   await expect(dialog).toBeHidden();
-  await hero.changeHero().click();
+  await hero.openHeroSelector();
   await expect(dialog).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();

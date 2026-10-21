@@ -284,19 +284,18 @@ const tooltipKinds = [
 // The classes of the plain title / text / footer content, and of a damage path source's breakdown (a fixed title, a
 // scrolling text, a fixed footer; the frame is in apps/web/src/shell/planner-tooltip-classes.ts).
 const GENERIC_CONTENT = {
-  title: "block font-serif text-base font-bold text-[#ff9b3d]",
-  body: "mt-2 block max-h-[300px] overflow-hidden text-[0.74rem]/[1.55] whitespace-pre-line text-[#dce3ea]",
-  foot: "mt-2.5 block border-t border-[#343c47] pt-2 text-[0.62rem] tracking-[0.08em] text-[#7e8995] uppercase",
+  title: "block font-display text-base font-bold text-accent",
+  body: "mt-2 block max-h-[300px] overflow-hidden text-xs/normal whitespace-pre-line text-text",
+  foot: "mt-2.5 block border-t border-line pt-2 text-[10px] tracking-widest text-dim uppercase",
 };
 const SOURCE_SUMMARY_CONTENT = {
-  title:
-    "block flex-none border-b border-[#80634166] px-3.5 py-3 font-serif text-[0.9rem]/[1.3] font-bold text-[#f9ca65]",
-  body: "block min-h-0 overflow-y-auto px-3.5 py-3 text-[0.74rem]/[1.6] whitespace-pre-line text-[#e3e6e4] [scrollbar-width:thin] [scrollbar-color:#806341_#071316]",
-  foot: "block flex-none border-t border-[#80634166] px-3.5 py-[9px] text-[0.62rem] text-[#c4b18f]",
+  title: "block flex-none border-b border-line px-3.5 py-3 font-display text-sm/snug font-bold text-accent",
+  body: "block min-h-0 overflow-y-auto px-3.5 py-3 text-xs/relaxed whitespace-pre-line text-text [scrollbar-width:thin] [scrollbar-color:var(--color-line-strong)_transparent]",
+  foot: "block flex-none border-t border-line px-3.5 py-2 text-xs text-muted",
 };
 // The element's own hint (its title attribute), under any kind's content.
 const ACTION_HINT =
-  "planner-tooltip-action-hint block border-t border-[#45525d] bg-black/20 px-[11px] py-[9px] text-[0.65rem]/[1.4] text-[#d6c098]";
+  "planner-tooltip-action-hint block border-t border-line bg-raised px-3 py-2 text-xs/snug text-muted";
 function plannerTooltipContent(element) {
   const kind = tooltipKinds.find(([selector]) => element.matches(selector));
   if (kind) return kind[1](element);

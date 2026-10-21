@@ -10,7 +10,7 @@ export class FollowerPage {
   }
 
   tab() {
-    return this.page.locator('[role="tab"][data-hero-panel-tab="follower"]');
+    return this.page.locator('button.view-tab[data-view="follower"]');
   }
   panel() {
     return this.page.locator("#follower-panel");
@@ -55,7 +55,6 @@ export class FollowerPage {
   }
 
   async open() {
-    await this.page.locator('button.view-tab[data-view="talents"]').click();
     await this.tab().click();
     await expect(this.panel()).toBeVisible();
   }

@@ -25,6 +25,7 @@ import {
   BANNER_TITLE,
   CAPTION,
   CARD,
+  CARD_TITLE,
   CELL,
   CHIP,
   DETAILS,
@@ -43,30 +44,27 @@ import {
   PANEL_NOTE,
   PANEL_NOTE_VALUE,
   PANEL_TAB,
+  PANEL_WELL,
   ROW,
   ROW_LABEL,
   ROW_VALUE,
+  SECTION_COUNT,
+  SECTION_SUMMARY,
   STATS_BUTTON,
+  TAB,
+  TAB_COUNT,
 } from "./stat-sheet-classes";
 import { tabKeyTarget } from "./tab-keys";
 
-// A Character stats row (a plain row, or a drill-down row's summary): label left, value right, a hairline under it.
-const STAT_ROW = "border-b border-white/7 text-[0.74rem] text-[#bfcbd5] last:border-b-0";
-const STAT_ROW_LINE = "flex justify-between gap-[0.6rem] py-[0.3rem]";
-const DRILL_TEXT = "mb-[0.3rem] text-[0.66rem] leading-[1.4]";
-// A Character stats tab, the open one with an ember underline, and its row count chip.
-const STAT_TAB =
-  "group relative inline-flex cursor-pointer items-baseline gap-[0.4rem] px-[0.6rem] py-[0.65rem] text-[0.72rem] font-bold tracking-[0.06em] text-[#a9bac8] uppercase hover:text-[#dcebf5] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#ffbd82] max-[560px]:px-[0.45rem] max-[560px]:py-[0.55rem] max-[560px]:text-[0.66rem] on:text-[#fff3e2] on:after:absolute on:after:inset-x-0 on:after:-bottom-px on:after:h-0.5 on:after:bg-[linear-gradient(90deg,#ffbd82,#db9850)] on:after:shadow-[0_0_8px_rgb(219_152_80/0.55)] on:after:content-['']";
-const STAT_TAB_COUNT =
-  "rounded-[3px] border border-white/10 px-[0.38rem] py-[0.08rem] text-[0.6rem] tracking-normal text-[#8ea0ad] tabular-nums group-on:border-[#a67736] group-on:bg-[#2d241a] group-on:text-[#ffd39b]";
+// A Character stats row (a plain row, or a drill-down row's summary): label left, value right, a line under it.
+const STAT_ROW = "border-b border-line text-xs text-muted last:border-b-0";
+const STAT_ROW_LINE = "flex justify-between gap-2.5 py-1";
+const DRILL_TEXT = "mb-1 text-xs leading-snug";
 // A recount source in the bar or the legend: a click leaves it out of the view.
 const SOURCE_TOGGLE =
-  "cursor-pointer focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-[#f09a42]";
-// A Character stats section's chevron: right when closed, down when open.
-const SECTION_CHEVRON =
-  "before:size-[0.38rem] before:shrink-0 before:-rotate-45 before:border-r-2 before:border-b-2 before:border-[#ffbd82] before:transition-transform before:content-[''] group-open/section:before:-mt-[0.2rem] group-open/section:before:mr-[0.15rem] group-open/section:before:rotate-45";
+  "cursor-pointer focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-accent";
 // One of the older 5 s / 20 s tiles.
-const DPS_TILE = "grid content-start gap-1 rounded border border-white/12 bg-[#18232e] p-[0.6rem]";
+const DPS_TILE = "grid content-start gap-1 rounded border border-line bg-raised p-2.5";
 
 const INCLUDED_HINT = "Click to leave this source out of the view";
 const EXCLUDED_HINT = "Click to include it again";
@@ -114,7 +112,7 @@ function RecountPanel({ recount }: { recount: RecountView }) {
     <section className={PANEL} aria-label="Training dummy recount">
       <header className={PANEL_HEAD}>
         <span className={PANEL_TAB}>Damage (Level 85)</span>
-        <HelpButton topic="recount" label="Dummy recount" className="-ml-[0.8rem]! self-center" />
+        <HelpButton topic="recount" label="Dummy recount" className="-ml-3! self-center" />
         <span
           className={PANEL_NOTE}
           data-recount-field="duration"
@@ -131,10 +129,12 @@ function RecountPanel({ recount }: { recount: RecountView }) {
         </div>
       </div>
       {recount.sources.length ? (
-        <div className="grid gap-2 border-t border-white/8 bg-[#15202b] px-4 pt-[0.65rem] pb-3 @max-[500px]:px-3.5 compact:gap-[0.35rem] compact:px-[0.9rem] compact:py-2">
+        <div
+          className={`grid gap-2 border-t border-line ${PANEL_WELL} px-4 pt-2.5 pb-3 @max-[500px]:px-3.5 compact:gap-1.5 compact:px-3.5 compact:py-2`}
+        >
           <span className={CAPTION}>{`Share by source over ${recount.spanSeconds} s`}</span>
           <div
-            className="flex h-[7px] overflow-hidden rounded-[2px] bg-[#0f171f] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.047)]"
+            className="flex h-2 overflow-hidden rounded-sm border border-line bg-surface"
             role="group"
             aria-label={recount.summary}
           >
@@ -143,7 +143,7 @@ function RecountPanel({ recount }: { recount: RecountView }) {
               .map((item) => (
                 <i
                   key={item.key}
-                  className={`block h-full bg-(--mix-color) hover:brightness-[1.18] ${SOURCE_TOGGLE}`}
+                  className={`block h-full bg-(--mix-color) hover:brightness-125 ${SOURCE_TOGGLE}`}
                   style={{ "--mix-color": item.color, width: item.width } as CSSProperties}
                   role="button"
                   tabIndex={0}
@@ -156,7 +156,7 @@ function RecountPanel({ recount }: { recount: RecountView }) {
                 />
               ))}
           </div>
-          <ul className="dummy-recount-mix-legend flex flex-wrap gap-x-[1.1rem] gap-y-[0.3rem] text-[0.68rem] text-[#bfcbd5]">
+          <ul className="dummy-recount-mix-legend flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
             {recount.sources.map((item) => (
               <li
                 key={item.key}
@@ -164,7 +164,7 @@ function RecountPanel({ recount }: { recount: RecountView }) {
                   if (element) legend.current.set(item.key, element);
                   else legend.current.delete(item.key);
                 }}
-                className={`group/source inline-flex min-w-0 items-center gap-[0.4rem] before:size-2 before:shrink-0 before:rounded-[2px] before:bg-(--mix-color) before:content-[''] aria-[pressed=false]:opacity-45 ${SOURCE_TOGGLE}`}
+                className={`group/source inline-flex min-w-0 items-center gap-1.5 before:size-2 before:shrink-0 before:rounded-sm before:bg-(--mix-color) before:content-[''] aria-[pressed=false]:opacity-45 ${SOURCE_TOGGLE}`}
                 style={{ "--mix-color": item.color } as CSSProperties}
                 role="button"
                 tabIndex={0}
@@ -174,19 +174,19 @@ function RecountPanel({ recount }: { recount: RecountView }) {
                 onClick={() => toggle(item.key)}
                 onKeyDown={(event) => activateOnKey(event, () => toggle(item.key))}
               >
-                <span className="text-xs/[1.45] text-[#a8c3c0] group-hover/source:text-[#e9f4ff] group-aria-[pressed=false]/source:line-through">
+                <span className="group-hover/source:text-text group-aria-[pressed=false]/source:line-through">
                   {item.label}
                 </span>
-                <b className="text-[#e9f4ff] tabular-nums">{item.share}</b>
+                <b className="text-text tabular-nums">{item.share}</b>
               </li>
             ))}
           </ul>
           {recount.shown < recount.sources.length ? (
-            <p className="text-[0.68rem] text-[#8fa1b0]">
+            <p className="text-xs text-dim">
               {`Showing ${recount.shown} of ${recount.sources.length} sources · `}
               <a
                 href="#"
-                className="inline-block font-bold text-[#f09a42] no-underline underline-offset-2 hover:text-[#ffbd82] hover:underline focus-visible:text-[#ffbd82] focus-visible:underline"
+                className="inline-block font-bold text-accent no-underline underline-offset-2 hover:underline focus-visible:underline"
                 data-recount-show-all=""
                 onClick={(event) => {
                   event.preventDefault();
@@ -223,7 +223,7 @@ function RecountDetails({ recount }: { recount: RecountView }) {
           <tbody>
             {recount.sources.map((item) => (
               <tr key={item.key}>
-                <th scope="row" className={`${CELL} text-left font-semibold wrap-anywhere text-[#c8d4db]`}>
+                <th scope="row" className={`${CELL} text-left font-semibold wrap-anywhere text-text`}>
                   {item.label}
                 </th>
                 <td className={`${CELL} text-right whitespace-nowrap`}>{item.dps}</td>
@@ -253,15 +253,15 @@ interface FigureLook {
 }
 
 const SECONDARY: FigureLook = {
-  label: "text-[0.68rem] font-bold tracking-[0.07em] text-[#a9bac8] uppercase",
-  value: "text-[0.9rem] text-[#d9e4ec] tabular-nums",
-  note: "basis-full text-[0.68rem]/[1.4] text-[#91a2ae]",
+  label: "text-xs font-bold tracking-wider text-muted uppercase",
+  value: "text-sm text-text tabular-nums",
+  note: "basis-full text-xs leading-snug text-dim",
 };
 
 const TILE: FigureLook = {
-  label: "text-[0.72rem] font-bold tracking-[0.04em] text-[#d9e4ec] uppercase",
-  value: "text-[1.4rem] text-[#ffbd82] tabular-nums",
-  note: "text-[0.7rem]/[1.4] text-[#a8c3c0]",
+  label: "text-xs font-bold tracking-wide text-text uppercase",
+  value: "text-2xl text-accent-strong tabular-nums",
+  note: "text-xs leading-snug text-muted",
 };
 
 function TotalModeled({ total, look }: { total: NumberText | null; look: FigureLook }) {
@@ -278,13 +278,13 @@ function TotalModeled({ total, look }: { total: NumberText | null; look: FigureL
   );
 }
 
-const BANNER_TEXT = "text-xs/[1.45] text-[#a8c3c0]";
+const BANNER_TEXT = "text-xs leading-snug text-muted";
 
 function Damage({ damage }: { damage: StatDamageView }) {
   if (damage.kind === "not-modeled")
     return (
       <>
-        <strong className="text-[1.15rem] text-[#ffbd82]">Damage not modeled</strong>
+        <strong className="text-lg text-accent-strong">Damage not modeled</strong>
         <span className={BANNER_TEXT}>
           Known mechanics for this skill are shown below; its damage is not included in the planner total.
         </span>
@@ -295,17 +295,17 @@ function Damage({ damage }: { damage: StatDamageView }) {
       <>
         <RecountPanel recount={damage.recount} />
         <footer className={FOOT}>
-          <div className="dummy-recount-secondary flex flex-wrap items-baseline gap-x-[0.6rem] gap-y-[0.15rem]">
+          <div className="dummy-recount-secondary flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
             <TotalModeled total={damage.totalModeled} look={SECONDARY} />
           </div>
-          {damage.beamLine ? <span className="text-[0.72rem]/[1.45] text-[#91a2ae]">{damage.beamLine}</span> : null}
+          {damage.beamLine ? <span className="text-xs leading-snug text-dim">{damage.beamLine}</span> : null}
           <RecountDetails recount={damage.recount} />
         </footer>
       </>
     );
   return (
     <>
-      <div className="grid grid-cols-2 gap-[0.6rem] @max-[500px]:grid-cols-1">
+      <div className="grid grid-cols-2 gap-2.5 @max-[500px]:grid-cols-1">
         {damage.tiles.map((tile) => (
           <div key={tile.label} className={DPS_TILE}>
             <span className={TILE.label}>{tile.label}</span>
@@ -324,33 +324,28 @@ function Damage({ damage }: { damage: StatDamageView }) {
 
 function Drill({ drill }: { drill: StatDrillView }) {
   return (
-    <div className="stat-drill mt-[0.2rem] mb-[0.45rem] rounded-r-[3px] border-l-2 border-[#db985066] bg-[#15202b] px-[0.65rem] py-2">
-      <p className={`${DRILL_TEXT} text-[#dbe6ee]`}>{drill.formula}</p>
+    <div className="stat-drill mt-1 mb-2 rounded-r-sm border-l-2 border-accent/40 bg-sunken px-2.5 py-2">
+      <p className={`${DRILL_TEXT} text-text`}>{drill.formula}</p>
       {drill.notes.map((note, index) => (
-        <p key={index} className={`${DRILL_TEXT} text-[#a9bac8]`}>
+        <p key={index} className={`${DRILL_TEXT} text-muted`}>
           {note}
         </p>
       ))}
       {drill.groups.length ? (
         <ul>
           {drill.groups.map((group) => (
-            <li key={group.name} className="mt-[0.3rem]">
-              <div className="flex justify-between gap-[0.6rem] border-b border-white/8 py-[0.2rem] text-[0.64rem] font-bold tracking-[0.06em] text-[#ffd39b] uppercase">
+            <li key={group.name} className="mt-1">
+              <div className="flex items-baseline justify-between gap-2.5 border-b border-line py-1 text-[10px] font-bold tracking-wider text-accent uppercase">
                 <span>{group.name}</span>
-                <strong className="text-right tracking-normal whitespace-nowrap text-[#f3e3cf] normal-case tabular-nums">
+                <strong className="text-right text-xs tracking-normal whitespace-nowrap text-text normal-case tabular-nums">
                   {group.total}
                 </strong>
               </div>
               <ul>
                 {group.lines.map((line, index) => (
-                  <li
-                    key={index}
-                    className="flex justify-between gap-[0.6rem] py-[0.18rem] pl-2 text-[0.68rem] leading-[1.35] text-[#b7c3cd]"
-                  >
+                  <li key={index} className="flex justify-between gap-2.5 py-0.5 pl-2 text-xs leading-snug text-muted">
                     <span className="min-w-0 wrap-anywhere">{line.text}</span>
-                    <strong className="font-semibold whitespace-nowrap text-[#dbe6ee] tabular-nums">
-                      {line.value}
-                    </strong>
+                    <strong className="font-semibold whitespace-nowrap text-text tabular-nums">{line.value}</strong>
                   </li>
                 ))}
               </ul>
@@ -362,19 +357,17 @@ function Drill({ drill }: { drill: StatDrillView }) {
   );
 }
 
-// A drill-down row's label: an ember "›" after it that turns down when the row is open; gold on hover and when open.
+// A drill-down row's label: an accent "›" after it that turns down when the row is open; accent on hover and when open.
 const DRILL_LABEL =
-  "after:ml-[0.35rem] after:inline-block after:font-bold after:text-[#db9850] after:transition-transform after:content-['›'] group-hover/summary:text-[#ffd39b] group-open/row:text-[#ffd39b] group-open/row:after:rotate-90";
+  "after:ml-1.5 after:inline-block after:font-bold after:text-accent after:transition-transform after:content-['›'] group-hover/summary:text-accent group-open/row:text-accent group-open/row:after:rotate-90";
 
 function StatRow({ row }: { row: StatRowView }) {
   const inner = (
     <>
       <span className={`min-w-0 wrap-anywhere ${row.drill ? DRILL_LABEL : ""}`}>{row.label}</span>
-      <strong className="flex max-w-[62%] flex-[0_1_auto] flex-col items-end text-right wrap-anywhere text-[#e9f4ff] tabular-nums max-[560px]:max-w-[56%]">
+      <strong className="flex max-w-[62%] flex-[0_1_auto] flex-col items-end text-right wrap-anywhere text-text tabular-nums max-[560px]:max-w-[56%]">
         {row.value}
-        {row.detail ? (
-          <small className="text-[0.62rem] font-normal tracking-[0.02em] text-[#8ea0ad]">{row.detail}</small>
-        ) : null}
+        {row.detail ? <small className="text-xs font-normal text-dim">{row.detail}</small> : null}
       </strong>
     </>
   );
@@ -387,7 +380,7 @@ function StatRow({ row }: { row: StatRowView }) {
   return (
     <details className={`stat-sheet-row-drill group/row block ${STAT_ROW}`}>
       <summary
-        className={`group/summary ${STAT_ROW_LINE} cursor-pointer list-none rounded-[3px] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#ffbd82]`}
+        className={`group/summary ${STAT_ROW_LINE} cursor-pointer list-none rounded-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent`}
         title={row.title || undefined}
       >
         {inner}
@@ -411,18 +404,16 @@ function StatPanel({ tabs }: { tabs: StatTabView[] }) {
   return (
     <section className={CARD} aria-label="Character stats">
       <header
-        className={`${HEAD_STRIP} flex flex-wrap items-baseline gap-x-4 gap-y-[0.3rem] px-3.5 py-[9px] max-[560px]:px-2.5 compact:py-[7px]`}
+        className={`${HEAD_STRIP} flex flex-wrap items-baseline gap-x-4 gap-y-1 px-3.5 py-2 max-[560px]:px-2.5 compact:py-1.5`}
       >
-        <h2 className="font-serif text-base font-semibold tracking-[0.07em] text-[#f6f1e7] uppercase">
+        <h2 className={CARD_TITLE}>
           Character stats
           <HelpButton topic="stats" label="Character stats" />
         </h2>
-        <p className="text-[0.72rem] text-[#a9bac8]">
-          Only stats the build has are listed. Open a row for the lines behind it.
-        </p>
+        <p className="text-xs text-muted">Only stats the build has are listed. Open a row for the lines behind it.</p>
       </header>
       <div
-        className="flex flex-wrap gap-x-1 border-b border-white/8 bg-[#1b2531] px-3.5 max-[560px]:px-2.5"
+        className="flex flex-wrap gap-x-1 border-b border-line px-3.5 max-[560px]:px-2.5"
         role="tablist"
         aria-label="Stat categories"
       >
@@ -439,7 +430,7 @@ function StatPanel({ tabs }: { tabs: StatTabView[] }) {
             aria-controls={`stat-tabpanel-${tab.key}`}
             aria-selected={tab === selected}
             tabIndex={tab === selected ? 0 : -1}
-            className={`${STAT_TAB}${tab === selected ? " active" : ""}`}
+            className={`${TAB}${tab === selected ? " active" : ""}`}
             onClick={() => select(tab.key)}
             onKeyDown={(event) => {
               const next = tabKeyTarget(event.key, index, tabs.length);
@@ -450,7 +441,7 @@ function StatPanel({ tabs }: { tabs: StatTabView[] }) {
             }}
           >
             {tab.title}
-            <small className={STAT_TAB_COUNT}>{tab.rowCount}</small>
+            <small className={TAB_COUNT}>{tab.rowCount}</small>
           </button>
         ))}
       </div>
@@ -461,23 +452,19 @@ function StatPanel({ tabs }: { tabs: StatTabView[] }) {
           id={`stat-tabpanel-${tab.key}`}
           aria-labelledby={`stat-tab-${tab.key}`}
           hidden={tab !== selected}
-          className="px-3.5 pt-[0.75rem] pb-[0.15rem] max-[560px]:px-2.5 max-[560px]:pt-[0.6rem] max-[560px]:pb-[0.1rem] min-[900px]:columns-2 min-[900px]:gap-x-[0.6rem] compact:pt-[0.6rem]"
+          className="px-3.5 pt-3 pb-0.5 max-[560px]:px-2.5 max-[560px]:pt-2.5 min-[900px]:columns-2 min-[900px]:gap-x-2.5 compact:pt-2.5"
         >
           {tab.sections.map((section, index) => (
             <details
               key={`${index}:${section.key}`}
-              className="group/section mb-[0.6rem] break-inside-avoid overflow-hidden rounded border border-white/8 bg-[#18232e]"
+              className="group/section mb-2.5 break-inside-avoid overflow-hidden rounded border border-line"
               open
             >
-              <summary
-                className={`flex cursor-pointer list-none items-center gap-2 bg-[#303c49] px-3 py-2 font-serif text-[0.8rem] tracking-[0.05em] text-[#f1f5f8] uppercase hover:text-[#ffd39b] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#ffbd82] ${SECTION_CHEVRON}`}
-              >
+              <summary className={`${SECTION_SUMMARY} flex items-center gap-2 px-3 py-2`}>
                 <span className="min-w-0">{section.title}</span>
-                <span className="ml-auto font-sans text-[0.62rem] tracking-[0.04em] text-[#8ea0ad] tabular-nums">
-                  {section.rows.length}
-                </span>
+                <span className={SECTION_COUNT}>{section.rows.length}</span>
               </summary>
-              <div className="px-3 pt-[0.15rem] pb-[0.35rem]">
+              <div className="px-3 pt-0.5 pb-1.5">
                 {section.rows.map((row, rowIndex) => (
                   <StatRow key={`${rowIndex}:${row.label}`} row={row} />
                 ))}
@@ -493,13 +480,13 @@ function StatPanel({ tabs }: { tabs: StatTabView[] }) {
 export function StatSheet({ sheet }: { sheet: StatSheetView }) {
   return (
     <>
-      <div className="stat-sheet-controls mb-[0.8rem] flex items-center gap-[0.65rem] text-[0.82rem] text-[#b9c8d3] max-[560px]:flex-wrap min-[1101px]:col-span-full compact:mb-2 compact:min-h-8 compact:pl-[218px]">
+      <div className="stat-sheet-controls mb-3 flex items-center gap-2.5 text-sm text-muted max-[560px]:flex-wrap min-[1101px]:col-span-full compact:mb-2 compact:min-h-8 compact:pl-54.5">
         <label htmlFor="stat-sheet-skill" className="font-bold">
           Active skill
         </label>
         <select
           id="stat-sheet-skill"
-          className="min-w-[180px] cursor-pointer rounded-[5px] border border-[#b98345] bg-[#252b32] px-[0.55rem] py-[0.45rem] text-[13px] text-[#f5d09d] compact:py-[0.32rem]"
+          className="field min-w-45 cursor-pointer px-2 py-1.5 text-sm compact:py-1"
           value={sheet.selected}
           onChange={(event) => plannerCommands().selectStatSheetSkill(event.target.value)}
         >
@@ -510,7 +497,7 @@ export function StatSheet({ sheet }: { sheet: StatSheetView }) {
           ))}
         </select>
         <ReportCalculationButton />
-        <span className="ml-auto text-[#8ec5a7] max-[560px]:ml-0">
+        <span className={`ml-auto max-[560px]:ml-0 ${sheet.active ? "text-ok" : "text-warn"}`}>
           {sheet.active ? "Active" : "Inactive · insufficient Energy"}
         </span>
       </div>
@@ -522,10 +509,10 @@ export function StatSheet({ sheet }: { sheet: StatSheetView }) {
         <Damage damage={sheet.damage} />
       </section>
       <EffectiveHp view={sheet.ehp} />
-      <div className="mb-[0.6rem] grid items-start gap-[0.7rem] min-[1101px]:col-span-full">
+      <div className="mb-2.5 grid items-start gap-3 min-[1101px]:col-span-full">
         <StatPanel tabs={sheet.tabs} />
       </div>
-      <p className="mb-3 text-[0.75rem] leading-[1.5] text-[#9cadb9] min-[1101px]:col-span-full">
+      <p className="mb-3 text-xs leading-normal text-dim min-[1101px]:col-span-full">
         The Character stats panel lists only what the build has: stat totals sum every recognized stat line from gear,
         talents, cores, prisms, slates, pacts, kismets, hero memories and traits, including lines with no dummy-damage
         effect, and each row opens to its lines by source (sums for flat and increased, products for additional). Life,

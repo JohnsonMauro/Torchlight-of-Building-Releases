@@ -25,7 +25,7 @@ interface ConfirmDialogProps {
 }
 
 /**
- * A modal yes/no question whose yes is destructive (drawn in ember red). The cancel button takes the focus when it
+ * A modal yes/no question whose yes is destructive (drawn in the danger colour). The cancel button takes the focus when it
  * opens; Escape counts as cancel.
  */
 export function ConfirmDialog({

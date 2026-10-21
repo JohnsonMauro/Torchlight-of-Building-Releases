@@ -39,7 +39,7 @@ export const skillSelectorViewSources = {
   // The skill selector's title and list.
   skillSelector: skillSelectorSource,
 };
-// The skill selector's data (apps/web/src/shell/dialogs/SkillSelectorDialog.tsx): the title and list, which the dialog
+// The skill selector's data (apps/web/src/features/skills/SkillSelectorDialog.tsx): the title and list, which the dialog
 // filters by its search box, and the highlighted choice's detail and Confirm button (skillSelectorDetail).
 function skillSelectorSource() {
   const result = (entry, index, tintClass = "") => ({
@@ -83,7 +83,7 @@ function skillSelectorSource() {
 }
 const rangeText = ({ min, max }) => (min === max ? min : `${min}–${max}`);
 const rollControl = (range, value, index = 0) => ({ index, min: range.min, max: range.max, step: range.step, value });
-// The skill selector's detail (apps/web/src/shell/dialogs/SkillSelectorDetail.tsx) for the highlighted choice, and its
+// The skill selector's detail (apps/web/src/features/skills/SkillSelectorDetail.tsx) for the highlighted choice, and its
 // Confirm button. A follower skill's detail is still the HTML of src/app/hero/follower-panel.js followerSkillSelectorView.
 function skillSelectorDetail() {
   if (selectorKind === "follower-skill") {

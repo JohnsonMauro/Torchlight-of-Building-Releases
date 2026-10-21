@@ -24,7 +24,7 @@ import {
 } from "../hero/hero-classes";
 
 // The rarity line under the follower's name.
-const rarityLine = "block text-[0.72rem] font-bold tracking-[0.04em]";
+const rarityLine = "block text-xs font-bold tracking-wide";
 /** The rarity id in the view's " follower-tint-<id>" or "follower-rarity follower-rarity-<id>" class. */
 const rarityIn = (classes: string, prefix: string) => new RegExp(`\\b${prefix}-(\\S+)`).exec(classes)?.[1] ?? null;
 
@@ -43,7 +43,7 @@ export function FollowerPanel() {
           </div>
           <div className={followerIdentityClass}>
             <strong className={identityTitle}>No follower selected</strong>
-            <small className={`follower-rarity mb-2.25 text-muted ${rarityLine}`}>Choose a follower</small>
+            <small className={`follower-rarity mb-2 text-muted ${rarityLine}`}>Choose a follower</small>
             <button
               type="button"
               className={`change-hero-button ${changeButton}`}
@@ -65,7 +65,7 @@ export function FollowerPanel() {
   return (
     <>
       <FollowerCard card={view.card} />
-      <div className="@container grid gap-2 border-t border-[#343b48] p-2.5" aria-label={view.slotsLabel}>
+      <div className="@container grid gap-2 border-t border-line p-2.5" aria-label={view.slotsLabel}>
         {view.slots.map((slot) => (
           <SkillSlot key={slot.index} slot={slot} />
         ))}
@@ -94,7 +94,7 @@ function FollowerCard({ card }: { card: FollowerCardView }) {
         <strong id="selected-follower-name" className={identityTitle}>
           {card.displayName}
         </strong>
-        <div className="follower-rarity-line relative z-3 mb-2.25 flex flex-wrap items-center gap-x-2 gap-y-1.25">
+        <div className="follower-rarity-line relative mb-2 flex flex-wrap items-center gap-x-2 gap-y-1.25">
           <small
             className={`${card.rarityClass} ${rarityLine} ${rarityText(rarityIn(card.rarityClass, "follower-rarity"))}`}
             id="selected-follower-rarity"
@@ -137,7 +137,7 @@ function SpecialEffect({ card }: { card: FollowerCardView }) {
     );
   return (
     <span
-      className={`follower-special-effect ${bronzeChip} max-w-full cursor-default gap-1 px-1.75 py-0.5 text-[0.66rem] leading-tight font-bold whitespace-nowrap normal-case`}
+      className={`follower-special-effect ${bronzeChip} max-w-full cursor-default gap-1 px-1.75 py-0.5 text-xs leading-tight font-bold whitespace-nowrap normal-case`}
       data-follower-tooltip={card.id}
       tabIndex={0}
       aria-label={`Special effect: ${first}`}
@@ -165,7 +165,7 @@ function SpecialEffect({ card }: { card: FollowerCardView }) {
 }
 
 // A skill slot's small caps line (its kind).
-const skillCaption = "text-[0.55rem] font-extrabold tracking-[0.12em] text-[#8291a1] uppercase";
+const skillCaption = "text-[10px] font-bold tracking-wider text-dim uppercase";
 
 function SkillSlot({ slot }: { slot: FollowerSlotView }) {
   const commands = plannerCommands();
@@ -179,7 +179,7 @@ function SkillSlot({ slot }: { slot: FollowerSlotView }) {
     <div className="relative min-w-0">
       <button
         type="button"
-        className={`follower-skill-slot ${slot.skillName ? "filled" : "empty"} ${tierRow} w-full cursor-pointer text-left text-inherit hover:border-[#e7b35d] hover:shadow-[0_0_0_1px_rgb(249_202_101/0.17)] focus-visible:border-[#e7b35d] focus-visible:shadow-[0_0_0_1px_rgb(249_202_101/0.17)] focus-visible:outline-0`}
+        className={`follower-skill-slot ${slot.skillName ? "filled" : "empty"} ${tierRow} w-full cursor-pointer text-left text-inherit hover:border-accent focus-visible:border-accent focus-visible:outline-0`}
         data-follower-skill-tooltip={slot.skillName ?? undefined}
         aria-label={slot.label}
         onClick={() => commands.openFollowerSkillSelector(slot.index)}
@@ -195,7 +195,7 @@ function SkillSlot({ slot }: { slot: FollowerSlotView }) {
             <Artwork src={slot.icon} alt={slot.skillName} className={choiceArt(false)} />
           ) : (
             <b
-              className="grid size-[46px] place-items-center rounded-full border-2 border-dashed border-[#64717e] text-[1.15rem] text-[#8b98a5] @min-[391px]:size-[52px]"
+              className="grid size-[46px] place-items-center rounded-full border-2 border-dashed border-line-strong text-lg text-dim @min-[391px]:size-[52px]"
               aria-hidden="true"
             >
               +
@@ -206,12 +206,12 @@ function SkillSlot({ slot }: { slot: FollowerSlotView }) {
         <span className="grid min-w-0 justify-items-start gap-0.75">
           <small className={skillCaption}>{slot.kind}</small>
           <strong
-            className={`wrap-anywhere ${slot.skillName ? "font-serif text-[0.8rem] leading-[1.2] text-[#f6f8fa]" : "text-[0.7rem] leading-[1.2] text-[#9aa7b4]"}`}
+            className={`wrap-anywhere ${slot.skillName ? "font-display text-sm leading-tight text-text" : "text-xs leading-tight text-muted"}`}
           >
             {slot.title}
           </strong>
           {slot.summary ? (
-            <small className="text-[0.55rem] font-semibold wrap-anywhere text-[#8291a1]">{slot.summary}</small>
+            <small className="text-[10px] font-semibold wrap-anywhere text-dim">{slot.summary}</small>
           ) : null}
         </span>
       </button>

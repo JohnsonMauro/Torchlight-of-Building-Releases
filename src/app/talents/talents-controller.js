@@ -66,7 +66,7 @@ function talentsSource() {
     pendingPrism: pendingPrismPlacement,
   });
 }
-// The talent tree picker's data (apps/web/src/shell/dialogs/TalentPanelPickerDialog.tsx): the trees the open slot takes.
+// The talent tree picker's data (apps/web/src/features/talents/TalentPanelPickerDialog.tsx): the trees the open slot takes.
 function talentPickerSource() {
   const selectedTrees = plannerState.talents.selectedTrees;
   const pointTotals = talentPointTotals(activeTalentLayouts(), Object.fromEntries(talentRanks));
@@ -111,7 +111,7 @@ function selectTalentTree(name) {
   saveWorkspaceLocation();
 }
 
-// The core talent picker's data (apps/web/src/shell/dialogs/CoreTalentPickerDialog.tsx): the open tree's choices for a slot.
+// The core talent picker's data (apps/web/src/features/talents/CoreTalentPickerDialog.tsx): the open tree's choices for a slot.
 function corePickerSource() {
   const threshold = activeCoreThreshold,
     panel = currentTalentPanel();

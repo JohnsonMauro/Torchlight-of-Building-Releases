@@ -9,7 +9,7 @@ import { openFollowerSkillSelector } from "../skills/skill-selector.js";
 import { hidePlannerTooltip } from "../tooltips/tooltip-host.js";
 import { commitFollower } from "./hero-controller.js";
 
-let followerSelectorSession = 0; // the follower selector's openings (apps/web/src/shell/dialogs/FollowerSelectorDialog.tsx)
+let followerSelectorSession = 0; // the follower selector's openings (apps/web/src/features/follower/FollowerSelectorDialog.tsx)
 export const followerCommands = {
   // Follower tab (apps/web/src/features/follower).
   openFollowerSelector: () => {
@@ -37,7 +37,7 @@ export const followerCommands = {
 export const followerViewSources = {
   // The FOLLOWER tab's data (src/app/hero/follower-panel.js).
   follower: () => followerPanelView(plannerState),
-  // The follower selector's data (apps/web/src/shell/dialogs/FollowerSelectorDialog.tsx).
+  // The follower selector's data (apps/web/src/features/follower/FollowerSelectorDialog.tsx).
   followerSelector: () => ({
     session: followerSelectorSession,
     cards: followerPickerView(plannerState),

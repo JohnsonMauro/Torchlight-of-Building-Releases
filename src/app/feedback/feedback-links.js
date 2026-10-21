@@ -6,7 +6,7 @@
 //   bugReportUrl          "Report bug" beside Manage Loadouts (apps/web/src/shell/LoadoutStrip.tsx, src/app/feedback/feedback-controller.js) → planner-bug.yml, label planner-bug
 // Issue forms fill each field from the query parameter named after its id. Long text fields are trimmed with "…" so a
 // URL stays at or under ANSWER_URL_MAX characters. scripts/collect-submissions.mjs reads the issues back.
-// The buttons now open the in-planner dialog first (apps/web/src/shell/dialogs/FeedbackDialog.tsx), which builds its URL with issueFormUrlInfo
+// The buttons now open the in-planner dialog first (apps/web/src/features/feedback/FeedbackDialog.tsx), which builds its URL with issueFormUrlInfo
 // from the shared form schema (src/app/feedback/feedback-forms.js); the three builders below remain the direct pre-fills.
 import { FEEDBACK_FORMS } from "./feedback-forms.js";
 
@@ -115,14 +115,14 @@ export function bugReportUrl({ area = "", version = "", platform = "" } = {}) {
 }
 
 /**
- * The bug form's area for the open planner view, "" when it cannot be told: the Build tab shows every section at once,
- * so only a section-specific view, the slate board, the Damage path panel or the build library name one.
+ * The bug form's area for the open planner view: the build's tab (the Talent tab's slate board apart), the Damage path
+ * panel or the build library; "" when it cannot be told.
  */
 export function bugAreaForView({ view = "", statsPanel = "", slateMode = false } = {}) {
   if (view === "builds") return "Build library & codes";
   if (view === "character") return statsPanel === "damage-path" ? "Damage path" : "";
-  if (view === "talents") return slateMode ? "Slates" : "";
-  return { skills: "Skills", equipment: "Gear", pacts: "Pacts" }[view] || "";
+  if (view === "talents") return slateMode ? "Slates" : "Talents";
+  return { hero: "Hero", follower: "Followers", skills: "Skills", equipment: "Gear", pacts: "Pacts" }[view] || "";
 }
 
 /** "desktop" in the Electron app (its preload exposes window.tliDesktop), otherwise "web". */

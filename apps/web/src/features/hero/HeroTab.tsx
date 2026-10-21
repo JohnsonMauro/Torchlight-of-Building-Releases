@@ -1,8 +1,10 @@
-// The HERO tab of the Build page's hero panel: the selected hero with Change Hero, the Hero Trait / Trait Path (or Scent
-// Bottle) tabs, and the open tab: the trait tiers with their memory sockets and the base trait's support slots, a tree
-// hero's Trait Path board, or Sage's Scent Bottle. A tree hero's picks are dragged between rows. The data is the
-// planner's "heroTraits" source (src/app/bridge/hero-traits-view-model.ts); every edit is a planner command, and the
-// hero, memory, scent, ammo and support dialogs stay legacy, as do the HERO | FOLLOWER tabs. The legacy hover tooltip
+// The hero: its showcase (portrait, name, main trait, Change Hero) heads the character column beside the build's tabs,
+// and the Hero Trait tab holds the Hero Trait / Trait Path (or Scent Bottle) tabs and the open one: the trait tiers with
+// their memory sockets and the base trait's support slots, a tree hero's Trait Path board, or Sage's Scent Bottle. A
+// tree hero's picks are dragged between rows. The hero is picked when a build is created, and changed from the showcase
+// or from the build's details (Builds view). The data is the planner's "heroTraits" source
+// (src/app/bridge/hero-traits-view-model.ts); every edit is a planner command, and the hero, memory, scent, ammo and
+// support dialogs stay legacy. The legacy hover tooltip
 // reads data-hero-trait-tooltip with data-hero-trait-level-key, .hero-memory-socket.filled with data-memory-tier,
 // data-support-tooltip with data-parent-skill and data-carino-support-slot, data-hero-trait-support-id,
 // data-tree-extra-row-tooltip and data-sage-scent-tooltip, so they stay.
@@ -31,8 +33,9 @@ import {
   dropBlocked,
   dropEligible,
   dropTarget,
-  goldTab,
+  detailTab,
   identityClass,
+  identityName,
   identityTitle,
   memoryArt,
   memoryEmpty,
@@ -72,10 +75,7 @@ export function HeroShowcase() {
         )}
       </div>
       <div className={identityClass}>
-        <span
-          id="selected-hero-name"
-          className="relative z-3 block text-[0.62rem] font-extrabold tracking-[0.14em] text-[#f6f8fa] uppercase"
-        >
+        <span id="selected-hero-name" className={identityName}>
           {view ? (hero?.name ?? "No hero selected") : "Selena"}
         </span>
         <strong id="selected-hero-trait" className={identityTitle}>
@@ -99,14 +99,14 @@ export function HeroDetailTabs() {
   return (
     <div
       id="hero-detail-tabs"
-      className="hero-detail-tabs mx-2.5 mt-2 grid grid-cols-2 border-b border-[#806037]"
+      className="hero-detail-tabs mx-2.5 mt-2 grid grid-cols-2 border-b border-line"
       hidden={!tabs}
     >
       {(tabs ?? []).map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={`${tab.id === view?.activeTab ? "active " : ""}${goldTab} py-3`}
+          className={`${tab.id === view?.activeTab ? "active " : ""}${detailTab}`}
           onClick={() => plannerCommands().setHeroDetailTab(tab.id)}
         >
           {tab.label}
@@ -142,7 +142,7 @@ export function HeroTraitTree() {
   return (
     <div
       id="hero-trait-tree"
-      className="hero-trait-tree @container grid gap-2 border-t border-[#343b48] p-2.5 min-[1101px]:has-[.dual-trait-tier]:max-h-[350px] min-[1101px]:has-[.dual-trait-tier]:overflow-y-auto min-[1101px]:has-[.dual-trait-tier]:overscroll-contain"
+      className="hero-trait-tree @container grid gap-2 border-t border-line p-2.5 min-[1101px]:has-[.dual-trait-tier]:max-h-[350px] min-[1101px]:has-[.dual-trait-tier]:overflow-y-auto min-[1101px]:has-[.dual-trait-tier]:overscroll-contain"
       aria-label={view ? view.label : "Selena hero traits and memories"}
     >
       {view ? <TreeContent view={view} drag={pickDrag} /> : null}
@@ -169,11 +169,10 @@ function TreeContent({ view, drag }: { view: HeroTraitsView; drag: PickDrag }) {
   return <TraitTiers tiers={content} drag={drag} />;
 }
 
-// Sage's Scent Bottle: the elixir on top, the three ingredient slots under a gold rule.
-const scentHover =
-  "cursor-pointer rounded border hover:border-[#e7b35d] hover:bg-[linear-gradient(145deg,#342e25,#1b2229)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold";
-const scentPlus =
-  "grid place-items-center border-2 border-dashed border-[#a77a3d] bg-[linear-gradient(180deg,#333026,#151d25)] text-base text-gold shadow-[inset_0_1px_rgb(255_231_165/0.12)]";
+// Sage's Scent Bottle: the elixir on top, the three ingredient slots under an accent rule.
+const scentSlot =
+  "cursor-pointer rounded border border-line bg-raised hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+const scentPlus = "grid place-items-center border-2 border-dashed border-line-strong bg-sunken text-base text-accent";
 
 function ScentBottle({ scent }: { scent: ScentBottleView }) {
   const open = (kind: string) => () => plannerCommands().openScentSlot(kind);
@@ -181,43 +180,43 @@ function ScentBottle({ scent }: { scent: ScentBottleView }) {
     <section className="sage-scent-panel grid gap-2.25 p-3">
       <button
         type="button"
-        className={`sage-basic-scent ${scent.elixir ? "filled min-h-32" : "min-h-23"} ${scentHover} grid justify-items-center gap-1.5 border-[#756044] bg-[linear-gradient(145deg,#272820,#151c24_70%)] p-4.5 text-gold shadow-[inset_0_1px_rgb(255_231_165/0.09)]`}
+        className={`sage-basic-scent ${scent.elixir ? "filled min-h-32" : "min-h-23"} ${scentSlot} grid justify-items-center gap-1.5 p-4.5 text-accent`}
         data-sage-scent-tooltip={scent.elixir ? "elixir" : undefined}
         onClick={open("elixir")}
       >
         {scent.elixir ? (
           <>
             <img
-              className="size-[62px] rounded border border-[#a77a3d] bg-[#1d2229] object-contain"
+              className="size-[62px] rounded border border-line-strong bg-sunken object-contain"
               src={scent.elixir.icon}
               alt=""
             />
-            <strong className="text-[0.76rem] uppercase">{scent.elixir.name}</strong>
-            <small className="text-[#c8b997]">{scent.elixir.tags.join(" · ")}</small>
+            <strong className="text-xs uppercase">{scent.elixir.name}</strong>
+            <small className="text-muted">{scent.elixir.tags.join(" · ")}</small>
           </>
         ) : (
           <b className={`${scentPlus} size-[43px] rounded-lg`}>+</b>
         )}
       </button>
-      <div className="border-b border-[#a77a3d] pb-2.25 text-center text-[0.72rem] font-extrabold tracking-[0.09em] text-gold uppercase">
+      <div className="border-b border-accent pb-2 text-center text-xs font-bold tracking-wider text-accent uppercase">
         Basic Scent
       </div>
       {scent.ingredients.map((slot) => (
         <button
           key={slot.kind}
           type="button"
-          className={`${slot.filled ? "filled " : ""}${scentHover} grid min-h-18 grid-cols-[1fr_58px] items-center gap-1 border-[#554a3a] bg-[linear-gradient(145deg,#1d252d,#151b23)] px-2.5 py-2 text-left text-[#e9dcc0]`}
+          className={`${slot.filled ? "filled " : ""}${scentSlot} grid min-h-18 grid-cols-[1fr_58px] items-center gap-1 px-2.5 py-2 text-left text-text`}
           data-sage-scent-tooltip={slot.ingredient ? slot.kind : undefined}
           onClick={open(slot.kind)}
         >
           <span>{slot.label}</span>
           <b
-            className={`${scentPlus} col-start-2 row-[1/span_2] size-[54px] overflow-hidden rounded-full ${slot.filled ? "border-solid border-[#e7b35d] bg-[#252820] text-center text-[0.62rem] text-[#f2f5f7]" : ""}`}
+            className={`${scentPlus} col-start-2 row-[1/span_2] size-[54px] overflow-hidden rounded-full ${slot.filled ? "border-solid border-accent text-center text-[10px] text-text" : ""}`}
           >
             {slot.ingredient ? <img className="block size-12 object-contain" src={slot.ingredient.icon} alt="" /> : "+"}
           </b>
           {slot.ingredient ? (
-            <small className="max-w-[135px] text-[0.58rem] text-[#c8b997]">{slot.ingredient.name}</small>
+            <small className="max-w-[135px] text-[10px] text-muted">{slot.ingredient.name}</small>
           ) : null}
         </button>
       ))}
@@ -250,8 +249,8 @@ function TraitPath({ path }: { path: TraitPathView }) {
   const position = new Map((layout ?? path.initial).nodes.map((node) => [node.name, node]));
   const lines = layout ? layout.lines : path.initial.lines;
   return (
-    <section className="selena-dance-tree overflow-hidden rounded-md border border-[#303b49] bg-[radial-gradient(circle_at_50%_24%,#321427_0,#151a25_48%,#0d141d_100%)]">
-      <header className="flex items-center justify-between border-b border-[#3b2936] px-2.5 py-2 text-[0.58rem] tracking-[0.08em] text-gold uppercase">
+    <section className="selena-dance-tree overflow-hidden rounded-md border border-line bg-sunken">
+      <header className="flex items-center justify-between border-b border-line px-2.5 py-2 text-[10px] tracking-wider text-accent uppercase">
         <span>Hero trait path</span>
         <strong>{`${path.picked}/${path.capacity} selected`}</strong>
       </header>
@@ -269,7 +268,7 @@ function TraitPath({ path }: { path: TraitPathView }) {
           {lines.map((line) => (
             <line
               key={line.key}
-              className={`stroke-2 ${line.active ? "stroke-[#f3a05b] drop-shadow-[0_0_3px_#ff7024]" : "stroke-[#465262]"}`}
+              className={`stroke-2 ${line.active ? "stroke-accent-strong" : "stroke-line-strong"}`}
               x1={line.x1}
               y1={line.y1}
               x2={line.x2}
@@ -287,7 +286,7 @@ function TraitPath({ path }: { path: TraitPathView }) {
             <button
               key={node.name}
               type="button"
-              className={`selena-dance-node ${node.base ? "base" : ""} ${node.selected ? "selected" : ""} ${node.locked ? "locked" : ""} group/node absolute top-(--node-y) left-(--node-x) grid w-[54px] -translate-1/2 cursor-pointer justify-items-center gap-0.5 border-0 bg-transparent p-0 text-[#b8c4ce] focus-visible:outline-0 off:cursor-not-allowed off:opacity-28 off:grayscale`}
+              className={`selena-dance-node ${node.base ? "base" : ""} ${node.selected ? "selected" : ""} ${node.locked ? "locked" : ""} group/node absolute top-(--node-y) left-(--node-x) grid w-[54px] -translate-1/2 cursor-pointer justify-items-center gap-0.5 border-0 bg-transparent p-0 text-muted focus-visible:outline-0 off:cursor-not-allowed off:opacity-28 off:grayscale`}
               style={style}
               disabled={node.locked}
               data-hero-trait-tooltip={node.name}
@@ -299,7 +298,7 @@ function TraitPath({ path }: { path: TraitPathView }) {
             >
               <Artwork src={node.art} alt={node.name} className={pathNodeArt(node)} />
               <span
-                className={`rounded-lg px-1.25 py-px text-[0.48rem] ${node.selected ? "bg-[#823d1c] text-white" : "bg-[#242c38] text-[#aab5c0]"}`}
+                className={`rounded-md px-1.25 py-px text-[10px] ${node.selected ? "bg-accent-strong text-on-accent" : "bg-raised text-muted"}`}
               >
                 {node.caption}
               </span>
@@ -402,7 +401,7 @@ function TraitTiers({ tiers, drag }: { tiers: TraitTiersView; drag: PickDrag }) 
                 {tier.groups.map((group) => (
                   <div
                     key={group.selectionKey}
-                    className={`${choicesClass} ${group.position === "lower" ? "border-t border-[#3a4654] pt-1.75" : ""}`}
+                    className={`${choicesClass} ${group.position === "lower" ? "border-t border-line pt-1.75" : ""}`}
                     aria-label={group.label ?? undefined}
                   >
                     <Choices group={group} dual />
@@ -428,7 +427,7 @@ function TraitTiers({ tiers, drag }: { tiers: TraitTiersView; drag: PickDrag }) 
             <strong>{tiers.extraRow.level}</strong>
             <small>MAX</small>
           </span>
-          <span className="max-w-[55px] justify-self-center rounded-[9px] border border-gold bg-[#2a2213] px-1.25 py-0.75 text-center text-[0.5rem] leading-[1.15] font-bold text-gold">
+          <span className="max-w-[55px] justify-self-center rounded-md border border-accent bg-accent/15 px-1.25 py-0.75 text-center text-[10px] leading-tight font-bold text-accent">
             {tiers.extraRow.chip.replace(" ", " ")}
           </span>
           {tiers.extraRow.pick ? (
@@ -497,30 +496,18 @@ function RevivalBadge({ id }: { id: string }) {
   const symbol = `memory-moon-${id.replace(/[^a-z0-9_-]/gi, "")}`;
   return (
     <span
-      className="pointer-events-none absolute -top-1.25 -left-1 z-2 grid size-[23px] place-items-center rounded-full border border-[#8bcdea] bg-[#173f61] shadow-[0_0_0_1px_#06111d,0_1px_5px_#07131dcc]"
+      className="pointer-events-none absolute -top-1.25 -left-1 z-2 grid size-[23px] place-items-center rounded-full border border-info bg-surface"
       aria-hidden="true"
     >
-      <svg className="block size-5 drop-shadow-[0_1px_1px_#04111d]" viewBox="0 0 24 24" focusable="false">
+      <svg className="block size-5" viewBox="0 0 24 24" focusable="false">
         <defs>
-          <linearGradient id={`${symbol}-shine`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#fff" />
-            <stop offset=".52" stopColor="#c9efff" />
-            <stop offset="1" stopColor="#65bdf0" />
-          </linearGradient>
+          {/* The mask's white keeps, its black cuts the crescent: luminance, not colour. */}
           <mask id={`${symbol}-cut`} maskUnits="userSpaceOnUse">
-            <rect width="24" height="24" fill="#fff" />
-            <circle cx="14.9" cy="9" r="5.9" fill="#000" />
+            <rect className="fill-white" width="24" height="24" />
+            <circle className="fill-black" cx="14.9" cy="9" r="5.9" />
           </mask>
         </defs>
-        <circle className="fill-[#173f61]" cx="12" cy="12" r="10.2" />
-        <circle
-          className="drop-shadow-[0_0_1px_#f5ffff]"
-          cx="12"
-          cy="12"
-          r="6.7"
-          fill={`url(#${symbol}-shine)`}
-          mask={`url(#${symbol}-cut)`}
-        />
+        <circle className="fill-info" cx="12" cy="12" r="6.7" mask={`url(#${symbol}-cut)`} />
       </svg>
     </span>
   );

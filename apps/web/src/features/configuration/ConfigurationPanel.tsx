@@ -12,30 +12,31 @@ import { applicableManualConditions, manualConditionRows } from "./configuration
 
 // A collapsible group; the one nested in Scenario (Manual conditions) sits closer to its neighbours.
 const SECTION =
-  "config-section break-inside-avoid rounded border border-white/8 bg-[#18232e] not-in-[.config-section]:mb-[0.6rem] in-[.config-section]:mt-[0.45rem] in-[.config-section]:mb-[0.3rem]";
+  "config-section panel break-inside-avoid not-in-[.config-section]:mb-2.5 in-[.config-section]:mt-2 in-[.config-section]:mb-1";
 // A switch row; rows are split by hairlines.
 const TOGGLE_ROW =
-  "toggle-row flex cursor-pointer items-center justify-between gap-[0.8rem] border-b border-white/7 py-[0.4rem] last:border-b-0";
-// A row's text block (toggle rows and choice rows): its title and the muted note under it.
-const ROW_TEXT = "min-w-0 text-[0.74rem] leading-[1.4] text-[#bfcbd5]";
-const ROW_TITLE = "block text-[0.78rem] font-semibold text-[#e9f4ff]";
-const ROW_NOTE = "block text-[0.66rem] leading-[1.35] text-[#8ea0ad]";
-// A group's header: an ember chevron, pointing down while open and right while closed ([[open]>&] is "my <details> is
+  "toggle-row flex cursor-pointer items-center justify-between gap-3 border-b border-line py-1.5 last:border-b-0";
+// A row's text block (toggle rows and choice rows): its title and the dimmer note under it.
+const ROW_TEXT = "min-w-0 text-xs leading-snug text-muted";
+const ROW_TITLE = "block text-sm font-semibold text-text";
+const ROW_NOTE = "block text-xs leading-snug text-dim";
+// A group's header: an accent chevron, pointing down while open and right while closed ([[open]>&] is "my <details> is
 // open"; group-open would also match a closed group nested in an open one).
 const SUMMARY =
-  "flex cursor-pointer list-none items-center gap-2 rounded bg-[#303c49] px-3 py-2 font-serif text-[0.8rem] tracking-wider text-[#f1f5f8] uppercase hover:text-[#ffd39b] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#ffbd82] [&::-webkit-details-marker]:hidden [[open]>&]:rounded-b-none before:mr-0.5 before:box-content before:size-1.5 before:flex-none before:-rotate-45 before:border-r-2 before:border-b-2 before:border-[#ffbd82] before:transition-transform before:duration-150 before:content-[''] [[open]>&]:before:-mt-1 [[open]>&]:before:rotate-45";
-// The on/off switch: a square track, grey when off and orange when on, with a white knob that slides right.
+  "flex cursor-pointer list-none items-center gap-2 rounded-md px-3 py-2 text-xs font-bold tracking-wider text-accent uppercase hover:text-accent-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden [[open]>&]:border-b [[open]>&]:border-line before:mr-0.5 before:box-content before:size-1.5 before:flex-none before:-rotate-45 before:border-r-2 before:border-b-2 before:border-current before:transition-transform before:duration-150 before:content-[''] [[open]>&]:before:-mt-1 [[open]>&]:before:rotate-45";
+// The on/off switch: a square track, line-coloured when off and accent when on, with a knob that slides right.
 const SWITCH =
-  "relative m-[3px] ml-1 h-5.25 w-9.5 flex-none cursor-pointer appearance-none rounded-xs bg-[#343b46] transition-colors duration-200 checked:bg-[#e57d27] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffbd82] off:cursor-not-allowed before:absolute before:top-0.75 before:left-0.75 before:size-3.75 before:rounded-[1px] before:bg-white before:transition-transform before:duration-200 before:content-[''] checked:before:translate-x-4.25";
-// One option of a segmented choice; the pressed one is ember with an underline.
+  "relative m-0.75 ml-1 h-5.25 w-9.5 flex-none cursor-pointer appearance-none rounded-xs bg-line-strong transition-colors duration-200 checked:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent off:cursor-not-allowed before:absolute before:top-0.75 before:left-0.75 before:size-3.75 before:rounded-xs before:bg-text before:transition-transform before:duration-200 before:content-[''] checked:before:translate-x-4.25 checked:before:bg-on-accent";
+// One option of a segmented choice; the pressed one takes the accent.
 const SEGMENT =
-  "inline-flex cursor-pointer items-center gap-[0.4rem] border-[#3b4a59] bg-[#18232e] px-[0.7rem] py-[0.35rem] text-[0.72rem] font-bold text-[#a9bac8] not-first:border-l hover:text-[#dcebf5] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#ffbd82] aria-pressed:bg-[#2a2015] aria-pressed:text-[#ffbd82] aria-pressed:shadow-[inset_0_-2px_0_#f09a42] max-[560px]:flex-[1_1_0] max-[560px]:justify-center";
+  "inline-flex cursor-pointer items-center gap-1.5 border-line bg-raised px-3 py-1.5 text-xs font-bold text-muted not-first:border-l hover:text-text focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent aria-pressed:bg-accent/15 aria-pressed:text-accent max-[560px]:flex-[1_1_0] max-[560px]:justify-center";
 // The Advanced group's grid of number fields, under a hairline.
 const NUMBER_GRID =
-  "combat-number-controls mt-[0.4rem] grid grid-cols-2 gap-[0.65rem] border-t border-white/7 pt-[0.6rem] max-[700px]:grid-cols-1";
+  "combat-number-controls mt-1.5 grid grid-cols-2 gap-2.5 border-t border-line pt-2.5 max-[700px]:grid-cols-1";
 // A number field of the Advanced group.
-const NUMBER_INPUT =
-  "w-full rounded-lg border border-line bg-[#08131f] p-[0.65rem] text-text focus:border-frost focus:outline-2 focus:outline-[rgb(101_226_255/0.45)]";
+const NUMBER_INPUT = "field w-full p-2.5";
+// A small caps label beside a title (the mode, the best option).
+const TAG = "chip text-[10px] font-bold tracking-wider text-accent uppercase not-italic";
 
 type SectionKey = "scenario" | "manual" | "choices" | "assumptions" | "advanced";
 // Open until closed: Scenario and the choices; closed until opened: the rest. Kept across re-renders and builds.
@@ -102,9 +103,7 @@ export function ConfigurationPanel({ planner, combat, probe, activeNames }: Conf
                 />
               ))
             ) : (
-              <p className="mb-3 text-[0.75rem] leading-normal text-[#9cadb9]">
-                This build has no conditions to switch.
-              </p>
+              <p className="mb-3 text-xs text-muted">This build has no conditions to switch.</p>
             ),
             applicableManualConditions(planner, probe).length,
           )}
@@ -113,16 +112,13 @@ export function ConfigurationPanel({ planner, combat, probe, activeNames }: Conf
 
   return (
     <section
-      className="config-banner mb-4 grid overflow-hidden rounded-[5px] border border-l-3 border-[#3b4a59] border-l-[#db9850] bg-[linear-gradient(180deg,#27333f,#1f2a36_55%,#1b2531)] px-3.5 pb-3 leading-[normal] shadow-[0_14px_34px_rgb(0_0_0/0.26)] compact:pb-2"
+      className="config-banner panel mb-4 grid overflow-hidden px-3.5 pb-3 leading-[normal] compact:pb-2"
       aria-label="Configuration"
     >
-      <h2 className="-mx-3.5 mb-[0.8rem] flex flex-wrap items-center gap-x-[0.7rem] gap-y-[0.4rem] border-b border-white/8 bg-[linear-gradient(90deg,#36434f,#2c3845_60%,#303c49)] px-3.5 py-2.25 font-serif text-base/[normal] font-semibold tracking-[0.07em] text-[#f6f1e7] uppercase compact:mb-2 compact:py-1.5 compact:text-[0.88rem]">
-        Configuration{" "}
-        <small className="rounded-[3px] border border-bronze bg-[#2d241a] px-2 py-[0.14rem] font-sans text-[0.62rem] font-bold tracking-[0.08em] text-[#ffd39b] uppercase">
-          {automatic ? "Best case" : "Manual"}
-        </small>
+      <h2 className="panel-head -mx-3.5 mb-3 min-h-11 px-3.5 text-xs font-bold tracking-wider uppercase compact:mb-2 compact:min-h-9">
+        Configuration <small className={`${TAG} px-2 py-0.5`}>{automatic ? "Best case" : "Manual"}</small>
       </h2>
-      <div className="config-sections pt-[0.1rem]">
+      <div className="config-sections">
         {section("scenario", "Scenario", scenario)}
         {choices.length
           ? section(
@@ -149,7 +145,7 @@ export function ConfigurationPanel({ planner, combat, probe, activeNames }: Conf
                 ))}
                 <a
                   href="#"
-                  className="mt-[0.35rem] inline-block cursor-pointer text-[0.78rem] font-bold text-ember no-underline hover:text-[#ffbd82] hover:underline hover:underline-offset-2 focus-visible:text-[#ffbd82] focus-visible:underline focus-visible:underline-offset-2"
+                  className="mt-1.5 inline-block cursor-pointer text-xs font-bold text-accent-strong no-underline hover:text-accent hover:underline hover:underline-offset-2 focus-visible:text-accent focus-visible:underline focus-visible:underline-offset-2"
                   data-best-case-reset=""
                   onClick={(event) => {
                     event.preventDefault();
@@ -182,12 +178,10 @@ function Section({ title, count, open, onToggle, children }: SectionProps) {
       <summary className={SUMMARY}>
         <span className="stat-section-title min-w-0">{title}</span>
         {count == null ? null : (
-          <span className="stat-section-count ml-auto font-sans text-[0.62rem] tracking-[0.04em] text-[#8ea0ad] tabular-nums">
-            {count}
-          </span>
+          <span className="stat-section-count ml-auto text-[10px] font-normal text-dim tabular-nums">{count}</span>
         )}
       </summary>
-      <div className="px-3 pt-[0.15rem] pb-[0.35rem]">{children}</div>
+      <div className="px-3 pt-0.5 pb-1.5">{children}</div>
     </details>
   );
 }
@@ -226,13 +220,13 @@ function ChoiceRow({ choice }: { choice: ExclusiveChoice }) {
     .map((option) => `${option.label}: ${formatNumber(option.twentySecondDps)}`)
     .join(" · ");
   return (
-    <div className="config-choice flex flex-wrap items-center justify-between gap-x-4 gap-y-[0.45rem] border-b border-white/7 py-[0.45rem] last:border-b-0">
+    <div className="config-choice flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line py-2 last:border-b-0">
       <span className={ROW_TEXT}>
         <strong className={ROW_TITLE}>{choice.group}</strong>
         <small className={ROW_NOTE}>{`20 s DPS · ${figures}`}</small>
       </span>
       <div
-        className="config-segmented inline-flex max-w-full flex-wrap overflow-hidden rounded border border-[#3b4a59] max-[560px]:flex max-[560px]:w-full"
+        className="config-segmented inline-flex max-w-full flex-wrap overflow-hidden rounded-sm border border-line max-[560px]:flex max-[560px]:w-full"
         role="group"
         aria-label={choice.group}
       >
@@ -249,11 +243,7 @@ function ChoiceRow({ choice }: { choice: ExclusiveChoice }) {
               }}
             >
               {option.label}
-              {option.label === best ? (
-                <em className="rounded-[3px] border border-bronze bg-[#2d241a] px-[0.32rem] py-[0.04rem] text-[0.58rem] tracking-[0.06em] text-[#ffd39b] uppercase not-italic">
-                  best
-                </em>
-              ) : null}
+              {option.label === best ? <em className={`${TAG} px-1`}>best</em> : null}
             </button>
           );
         })}
@@ -276,8 +266,8 @@ interface NumberFieldProps {
 function NumberField({ label, value, field, max, step = 1, readOnly = false, title }: NumberFieldProps) {
   const limits = field ? combatNumberLimits[field] : null;
   return (
-    <label className="grid gap-[0.35rem] text-[0.72rem] text-muted" title={title || undefined}>
-      <span className="text-[0.7rem] leading-[1.45] text-[#a9bac8]">{label}</span>
+    <label className="grid gap-1.5 text-xs text-muted" title={title || undefined}>
+      <span className="leading-snug">{label}</span>
       <CommitNumberInput
         className={NUMBER_INPUT}
         key={String(value ?? "")}
@@ -361,7 +351,7 @@ function Advanced({ planner, combat }: Pick<ConfigurationSource, "planner" | "co
             field="extraInitialChanneledStacks"
             value={combat.extraInitialChanneledStacks}
           />
-          <small>{`Enter effective extra stacks after any Bard Song bonus. Sea Foam uses their sum, capped at 5. Current Tide Effect: +${seaFoam.tideEffectPercent}%${seaFoam.applied ? "" : " · inactive without Tide Contact"}.`}</small>
+          <small className="text-xs text-dim">{`Enter effective extra stacks after any Bard Song bonus. Sea Foam uses their sum, capped at 5. Current Tide Effect: +${seaFoam.tideEffectPercent}%${seaFoam.applied ? "" : " · inactive without Tide Contact"}.`}</small>
         </div>
       ) : null}
     </>

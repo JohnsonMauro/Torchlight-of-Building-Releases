@@ -1,6 +1,11 @@
 /**
- * The frame of a Build view section (Skills, Gear, Pactspirits): a chamfered dark card. `app-view` is how
+ * The frame of a Build view section (Skills, Gear, Pactspirits): a panel. `app-view` is how
  * src/app/planner/workspace.js finds the views to show and hide; the grid placement is the caller's.
  */
-export const sectionCardClass =
-  "app-view relative min-w-0 scroll-mt-[82px] border border-[#4b515b] bg-section shadow-[0_18px_46px_rgb(0_0_0/0.32),inset_0_0_0_1px_rgb(255_255_255/0.02)] clip-chamfer-9";
+/**
+ * Where a build tab's section sits: right of the character column (CharacterColumn, apps/web/src/shell/AppShell.tsx),
+ * under it on narrow screens. Each tab shows one section, so they all share the cell.
+ */
+export const buildSectionPlace = "col-start-2 row-start-1 max-[900px]:col-start-1 max-[900px]:row-start-2";
+
+export const sectionCardClass = "app-view panel relative min-w-0 scroll-mt-[82px]";

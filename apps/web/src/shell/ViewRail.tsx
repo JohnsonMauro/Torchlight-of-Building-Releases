@@ -13,7 +13,7 @@ interface ViewTabProps {
 
 const viewTabs: ViewTabProps[] = [
   {
-    view: "talents",
+    view: "hero",
     label: "Build",
     icon: (
       <>
@@ -60,22 +60,18 @@ const viewTabs: ViewTabProps[] = [
 function ViewTab({ view, label, icon }: ViewTabProps) {
   return (
     <button
-      className={`view-tab group relative h-16 w-full shrink-0 cursor-pointer border-0 border-l-2 border-transparent bg-transparent text-dim hover:bg-[linear-gradient(90deg,rgb(190_131_58/0.2),rgb(190_131_58/0.025)_82%,transparent)] focus-visible:bg-[linear-gradient(90deg,rgb(190_131_58/0.2),rgb(190_131_58/0.025)_82%,transparent)] focus-visible:outline-none on:border-l-[#d9a34e] on:bg-[linear-gradient(90deg,rgb(216_162_72/0.2),rgb(216_162_72/0.04)_75%,transparent)] on:text-[#ff9b45] on:shadow-[inset_-1px_0_#303945] ${view === "talents" ? "active" : ""}`}
+      className={`view-tab group relative h-16 w-full shrink-0 cursor-pointer border-0 border-l-2 border-transparent bg-transparent hover:bg-raised focus-visible:bg-raised focus-visible:outline-none on:border-l-accent on:bg-accent/10 ${view === "hero" ? "active" : ""}`}
       type="button"
       data-view={view}
       aria-label={label}
       title={label}
     >
-      <StrokeIcon className="absolute top-[19px] left-1/2 size-[26px] -translate-x-1/2 stroke-[#b6a17e] transition-transform duration-150 group-hover:scale-112 group-hover:stroke-gold group-hover:drop-shadow-[0_0_5px_rgb(249_202_101/0.38)] group-focus-visible:scale-112 group-focus-visible:stroke-gold group-on:stroke-gold group-on:drop-shadow-[0_0_5px_rgb(249_202_101/0.38)]">
+      <StrokeIcon className="absolute top-1/2 left-1/2 size-6.5 -translate-1/2 stroke-muted transition-transform duration-150 group-hover:scale-112 group-hover:stroke-accent group-focus-visible:scale-112 group-focus-visible:stroke-accent group-on:stroke-accent">
         {icon}
       </StrokeIcon>
-      <span className="pointer-events-none absolute top-[15px] left-14 z-10 -translate-x-[5px] border border-[#96703d] bg-[linear-gradient(180deg,#332b22,#171d24)] px-3 py-2 text-[0.72rem] whitespace-nowrap text-[#f9d593] opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 max-md:hidden">
+      <span className="pointer-events-none absolute top-4 left-14 z-10 -translate-x-1.25 rounded-sm border border-line-strong bg-raised px-3 py-2 text-xs whitespace-nowrap text-text opacity-0 shadow-lg shadow-shadow transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 max-md:hidden">
         {label}
       </span>
-      <span
-        aria-hidden="true"
-        className="absolute inset-x-2.5 bottom-0 h-px bg-[linear-gradient(90deg,transparent,#695338,transparent)]"
-      />
     </button>
   );
 }
@@ -83,7 +79,7 @@ function ViewTab({ view, label, icon }: ViewTabProps) {
 export function ViewRail() {
   return (
     <nav
-      className="fixed top-[66px] bottom-0 left-0 z-[6] flex w-16 flex-col border-r border-[#59462d] bg-[linear-gradient(180deg,#1d2227,#101720_55%,#0b1017)] shadow-[6px_0_20px_rgb(0_0_0/0.2)] max-sm:top-[108px]"
+      className="fixed top-[66px] bottom-0 left-0 z-[6] flex w-16 flex-col border-r border-line bg-surface max-sm:top-[108px]"
       aria-label="Builder sections"
     >
       {viewTabs.map((tab) => (

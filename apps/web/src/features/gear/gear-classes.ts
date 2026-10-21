@@ -2,128 +2,80 @@
 // classes the planner's view model sets ("rarity-legendary", "rarity-epic priceless-item", "rarity-vorax
 // graft-legendary", plus "six-affix", "item-level-100"), and the drag-and-drop states. Those classes stay on the element
 // (tooltips and tests read them); the look is chosen here, so no rule keys off them. The rarity art wins over the
-// Priceless and six-affix looks, item level 100 over every art; a Priceless or six-affix magic/epic item keeps its pink
-// frame over the art.
+// Priceless and six-affix looks, item level 100 over every art; a Priceless or six-affix magic/epic item keeps its
+// violet frame over the art.
+// The colours are the grade-* tokens; Priceless, six-affix and item-level-100 pink is `violet`.
 
-/** What an item looks like, part by part, so a slot state can replace one part (its frame, its glow). */
+/** What an item looks like, part by part, so a slot state can replace one part (its frame). */
 export interface GearLook {
   border: string;
   background: string;
-  glow: string;
-  /** The item name's color (and shadow) on an Inventory card. */
+  /** The item name's colour on an Inventory card. */
   name: string;
 }
 
-// The rarity art, cover and anchored at the top (url() paths are relative to apps/web/src/styles/app.css).
-const LEGENDARY_ART = "bg-[#2b1c13] bg-[url(../../../../src/assets/legendary-memory-gear-background.png)]";
-const VORAX_ART = "bg-[#2d1110] bg-[url(../../../../src/assets/ultimate-memory-vorax-background.png)]";
-const EPIC_ART = "bg-[#1b1740] bg-[url(../../../../src/assets/epic-gear-memory-aura-background.png)]";
-const MAGIC_ART = "bg-[#122b38] bg-(image:--art-magic)";
-const LEVEL_100_ART = "bg-[#341229] bg-[url(../../../../src/assets/item-level-100-inventory-background.png)]";
-const ART_FIT = "bg-cover bg-top bg-no-repeat";
+/**
+ * A veil of the theme's surface over a rarity art, so the text on it reads in both themes (the art is dark, the light
+ * theme's text is dark). The element is `relative`; the veil sits between its background and its content.
+ */
+const ART_VEIL =
+  "isolate before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:bg-veil before:content-['']";
 
-const COMMON_LIGHT =
-  "bg-[radial-gradient(circle_at_50%_38%,rgb(190_198_207/0.34),rgb(89_98_108/0.2)_42%,rgb(17_24_33/0.96)_82%)]";
-const SIX_AFFIX_LIGHT =
-  "bg-[radial-gradient(circle_at_48%_34%,rgb(255_100_202/0.58),rgb(154_48_118/0.42)_45%,rgb(42_17_39/0.98)_84%)]";
-/** Priceless without art: a plum gradient with faint pink rings and specks drawn by ::before. */
-const PRICELESS_PLUM =
-  "isolate bg-[#3c1d35] bg-[linear-gradient(155deg,#70405f_0,#653554_24%,#522642_59%,#35172e_100%)] before:pointer-events-none before:absolute before:inset-1 before:-z-1 before:opacity-70 before:content-[''] before:[background-image:radial-gradient(circle_2px_at_77%_24%,rgb(255_165_226/0.42)_0_60%,transparent_70%),radial-gradient(circle_2px_at_29%_62%,rgb(255_165_226/0.34)_0_60%,transparent_70%),repeating-radial-gradient(circle_at_58%_48%,transparent_0_17px,rgb(255_164_226/0.17)_18px_19px,transparent_20px_31px)]";
+// The rarity art, cover and anchored at the top (url() paths are relative to apps/web/src/styles/app.css), over the
+// raised colour while it loads.
+const ART_FIT = `bg-raised bg-cover bg-top bg-no-repeat ${ART_VEIL}`;
+export const RARITY_ART: Readonly<Record<string, string>> = {
+  common: "bg-[url(../../../../src/assets/common-memory-gear-background.webp)]",
+  magic: "bg-(image:--art-magic)",
+  epic: "bg-[url(../../../../src/assets/epic-gear-memory-aura-background.png)]",
+  legendary: "bg-[url(../../../../src/assets/legendary-memory-gear-background.png)]",
+  vorax: "bg-[url(../../../../src/assets/ultimate-memory-vorax-background.png)]",
+};
+/** The art of an item level 100 card or slot (the item preview has its own, taller one). */
+const LEVEL_100_ART = "bg-[url(../../../../src/assets/item-level-100-inventory-background.png)]";
+/** Rarity art and its fit and veil. */
+export const artBackground = (art: string): string => `${art} ${ART_FIT}`;
 
-const LEGENDARY_GLOW = "shadow-[0_0_10px_rgb(239_119_29/0.18)]";
-const VORAX_GLOW = "shadow-[0_0_10px_rgb(226_62_47/0.24)]";
-/** Priceless: a dark and a pink inner frame. */
-const PRICELESS_FRAME = "shadow-[inset_0_0_0_3px_rgb(22_20_27/0.72),inset_0_0_0_4px_rgb(255_100_205/0.34)]";
-const SIX_AFFIX_GLOW = "shadow-[0_0_10px_rgb(238_63_177/0.18)]";
-
-/** The look of an item from its rarity classes; `card` is an Inventory card (its own frame colors), else a slot. */
-export function gearLook(rarityClasses: string, card: boolean): GearLook {
-  const has = (word: string) => rarityClasses.split(/\s+/).includes(word);
-  const level100 = has("item-level-100");
-  const legendary = has("rarity-legendary");
-  const vorax = has("rarity-vorax");
-  const epic = has("rarity-epic");
-  const magic = has("rarity-magic");
-  const priceless = has("priceless-item");
-  const sixAffix = has("six-affix");
-  const plainBorder = card ? "border-[#593313]" : "border-[#3b4552]";
-  const pinkBorder = priceless ? "border-[#ff55c7]" : sixAffix ? "border-[#f149ba]" : null;
-
-  let border: string;
-  let background: string;
-  if (level100) {
-    border = "border-[#f45ac3]";
-    background = `${LEVEL_100_ART} ${ART_FIT}`;
-  } else if (vorax) {
-    border = "border-[#e14f40]";
-    background = `${VORAX_ART} ${ART_FIT}`;
-  } else if (legendary) {
-    border = "border-[#ef771d]";
-    background = `${LEGENDARY_ART} ${ART_FIT}`;
-  } else if (epic || magic) {
-    border = pinkBorder ?? (card ? (epic ? "border-[#9b35c8]" : "border-[#138fc0]") : plainBorder);
-    background = `${epic ? EPIC_ART : MAGIC_ART} ${ART_FIT}`;
-  } else if (priceless) {
-    border = "border-[#ff55c7]";
-    background = PRICELESS_PLUM;
-  } else if (sixAffix) {
-    border = "border-[#f149ba]";
-    background = SIX_AFFIX_LIGHT;
-  } else if (has("rarity-common")) {
-    border = card ? "border-[#777f89]" : plainBorder;
-    background = COMMON_LIGHT;
-  } else {
-    border = plainBorder;
-    background = card ? "bg-[#111720]" : "bg-[#111821]";
-  }
-
-  const glow = legendary
-    ? LEGENDARY_GLOW
-    : vorax
-      ? VORAX_GLOW
-      : priceless
-        ? PRICELESS_FRAME
-        : sixAffix
-          ? SIX_AFFIX_GLOW
-          : "";
-  const nameColor = legendary
-    ? "text-[#ff9a3d]"
-    : vorax
-      ? "text-[#ff796b]"
-      : priceless
-        ? "text-[#ff9edf]"
-        : sixAffix
-          ? "text-[#ff83d5]"
-          : epic
-            ? "text-[#df6cff]"
-            : magic
-              ? "text-[#55d9ff]"
-              : has("rarity-common")
-                ? "text-[#e0e3e6]"
-                : "text-[#ff8626]";
-  return {
-    border,
-    background,
-    glow,
-    name: level100 ? `${nameColor} text-shadow-[0_2px_5px_#1a0918]` : nameColor,
-  };
+/** The art (or flat tint) behind an item: item level 100 over the rarity art, the rarity art over Priceless and six-affix. */
+function background(has: (word: string) => boolean): string {
+  if (has("item-level-100")) return artBackground(LEVEL_100_ART);
+  for (const rarity of ["vorax", "legendary", "epic", "magic"])
+    if (has(`rarity-${rarity}`)) return artBackground(RARITY_ART[rarity]);
+  if (has("priceless-item")) return "bg-violet/15";
+  return has("six-affix") ? "bg-violet/10" : "bg-raised";
 }
 
-/** The drag-and-drop states of a slot or of the Inventory (the outline and glow they add). */
-export const DROP_ELIGIBLE = "outline-1 outline-dashed outline-[#74c8ed] -outline-offset-3";
-export const DROP_TARGET =
-  "outline-2 outline-[#68dcaa] -outline-offset-3 shadow-[inset_0_0_18px_#44bd9666,0_0_16px_#44bd9666]";
+/** The frame and name colours: item level 100 violet; Vorax and Legendary over a Priceless or six-affix violet. */
+function tint(has: (word: string) => boolean): [border: string, name: string] {
+  if (has("item-level-100")) return ["border-violet", "text-violet"];
+  if (has("rarity-vorax")) return ["border-grade-vorax", "text-grade-vorax"];
+  if (has("rarity-legendary")) return ["border-grade-legendary", "text-grade-legendary"];
+  if (has("priceless-item") || has("six-affix")) return ["border-violet", "text-violet"];
+  if (has("rarity-epic")) return ["border-grade-rare", "text-grade-rare"];
+  if (has("rarity-magic")) return ["border-grade-magic", "text-grade-magic"];
+  if (has("rarity-common")) return ["border-grade-normal", "text-grade-normal"];
+  return ["border-line-strong", "text-text"];
+}
 
-/** An empty slot: a dashed frame with a faint light in the middle, greyed out. */
-export const EMPTY_SLOT =
-  "border-dashed bg-[#0c1118] bg-[radial-gradient(circle_at_50%_35%,rgb(97_117_139/0.18),transparent_45%)] opacity-65 grayscale";
-/** The selected slot's frame: ember when empty, a lit amber frame over the art when filled. */
-export const SELECTED_EMPTY_BORDER = "border-ember";
-export const SELECTED_BORDER = "border-[#f4a04f]";
-export const SELECTED_GLOW = "shadow-[inset_0_0_0_1px_rgb(255_174_85/0.65),0_0_12px_rgb(255_132_35/0.22)]";
+/** The look of an item from its rarity classes. */
+export function gearLook(rarityClasses: string): GearLook {
+  const words = rarityClasses.split(/\s+/);
+  const has = (word: string) => words.includes(word);
+  const [border, name] = tint(has);
+  return { border, background: background(has), name };
+}
+
+/** The drag-and-drop states of a slot or of the Inventory (the outline they add). */
+export const DROP_ELIGIBLE = "outline-1 outline-dashed outline-info -outline-offset-3";
+export const DROP_TARGET = "outline-2 outline-ok -outline-offset-3";
+
+/** An empty slot: a dashed frame, greyed out. */
+export const EMPTY_SLOT = "border-dashed bg-sunken opacity-65 grayscale";
+/** The selected slot's frame (and, over an item's art, a second line inside it). */
+export const SELECTED_BORDER = "border-accent";
+export const SELECTED_RING = "ring-1 ring-inset ring-accent";
 /** A slot whose curse the curse limit leaves out: a red outline over every other state. */
-export const CURSE_LIMIT_OUTLINE =
-  "outline-3 outline-[#e33349] outline-offset-1 shadow-[0_0_0_1px_rgb(0_0_0/0.6),0_0_12px_2px_rgb(227_51_73/0.75)]";
+export const CURSE_LIMIT_OUTLINE = "outline-3 outline-danger outline-offset-1";
 
 /** Vorax limbs sit high in their art: lower them in an Inventory card. */
 export function inventoryIconShift(icon: string): string {
@@ -136,5 +88,15 @@ export function inventoryIconShift(icon: string): string {
 
 /** The ghost that follows the pointer during a drag (appended to <body>), and its icon. */
 export const DRAG_GHOST =
-  "gear-drag-ghost pointer-events-none fixed z-10000 flex max-w-45 items-center gap-1.75 rounded-[7px] border border-[#ffab59] bg-[#261a13] px-2.5 py-1.75 font-[Arial,sans-serif] text-[0.72rem]/[normal] font-bold text-[#ffe0bd] shadow-[0_12px_30px_#0009]";
+  "gear-drag-ghost pointer-events-none fixed z-10000 flex max-w-45 items-center gap-2 rounded-md border border-accent bg-raised px-2.5 py-2 text-xs/[normal] font-bold text-text shadow-lg shadow-shadow";
 export const DRAG_GHOST_ICON = "size-9.5 object-contain";
+
+/** The section's buttons (Reset Gear, the craft buttons). */
+export const SECTION_BUTTON = "btn px-3.5 py-2 text-xs font-bold uppercase";
+/** An Inventory card's small square tool buttons (edit, duplicate). */
+export const CARD_TOOL = "btn size-5.5 p-0 text-xs";
+/** A small caps badge on a slot or card (CURSE OFF, Equipped). */
+const BADGE =
+  "rounded-sm border bg-surface px-1.5 py-0.5 text-[10px] leading-none font-bold tracking-wide whitespace-nowrap uppercase not-italic";
+export const CURSE_BADGE = `curse-off-badge absolute bottom-1.5 left-1/2 z-4 -translate-x-1/2 border-danger text-danger ${BADGE}`;
+export const EQUIPPED_BADGE = `pointer-events-none absolute top-1.25 left-1.25 z-2 border-accent text-accent ${BADGE}`;

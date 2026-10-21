@@ -28,11 +28,16 @@ test("lists the default build as the active one, with its details", async ({ pag
   await planner.expectNoErrors();
 });
 
-test("a new build becomes active and opens the Build view", async ({ page }) => {
+test("a new build becomes active, asks for its hero and opens the Build view", async ({ page }) => {
   const { planner, builds } = await openBuilds(page);
   await builds.newBuildButton().click();
   await builds.expectToast("New build ready · Rename it in Build Library");
-  await expect(planner.view("talents")).toBeVisible();
+  const heroSelector = page.locator("#hero-selector");
+  await expect(heroSelector).toBeVisible();
+  await heroSelector.locator('[data-select-hero="selena-sing-with-the-tide"]').click();
+  await expect(heroSelector).toBeHidden();
+  await expect(planner.view("hero")).toBeVisible();
+  await expect(page.locator("#selected-hero-name")).toHaveText("Selena");
   await expect(builds.loadoutTabName()).toHaveText("New build");
   await builds.open();
   await expect(builds.count()).toHaveText("2");
@@ -44,8 +49,7 @@ test("a new build becomes active and opens the Build view", async ({ page }) => 
 test("an edit in the planner shows in the build list (autosave)", async ({ page }) => {
   const { planner, builds } = await openBuilds(page);
   await expect(builds.activeCard()).not.toContainText("Youga");
-  await planner.showView("talents");
-  await page.getByRole("button", { name: /Change Hero$/ }).click();
+  await page.locator("#build-editor").getByRole("button", { name: "Change Hero", exact: true }).click();
   const youga = page.locator('[data-select-hero="youga-the-ultimate-one"]');
   const heroName = (await youga.locator("strong").textContent()).trim();
   await youga.click();
@@ -88,7 +92,7 @@ test("duplicate, open another build, and edit it", async ({ page }) => {
 
   await builds.editCard(copyName);
   await builds.expectToast("Build opened for editing");
-  await expect(planner.view("talents")).toBeVisible();
+  await expect(planner.view("hero")).toBeVisible();
   await expect(builds.loadoutTabName()).toHaveText(copyName);
   await planner.expectNoErrors();
 });
@@ -129,6 +133,7 @@ test("deleting all builds leaves the empty state", async ({ page }) => {
 
   await builds.emptyStateNewBuildButton().click();
   await builds.expectToast("New build ready · Rename it in Build Library");
+  await page.locator('#hero-selector [data-select-hero="selena-sing-with-the-tide"]').click();
   await builds.open();
   await expect(builds.count()).toHaveText("1");
   await planner.expectNoErrors();

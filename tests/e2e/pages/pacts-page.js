@@ -65,7 +65,7 @@ export class PactsPage {
 
   /** Pacts is a section of the Build page (talents, skills, equipment and pacts on one page). */
   async open() {
-    await this.page.locator('button.view-tab[data-view="talents"]').click();
+    await this.page.locator('button.view-tab[data-view="pacts"]').click();
     await expect(this.view()).toBeVisible();
     await this.view().scrollIntoViewIfNeeded();
   }

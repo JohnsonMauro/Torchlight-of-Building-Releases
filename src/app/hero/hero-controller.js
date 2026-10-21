@@ -8,18 +8,17 @@ import { carinoAmmoSelectorView, sageScentSelectorView } from "../bridge/hero-di
 import { heroTraitsView } from "../bridge/hero-traits-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { renderConfiguration } from "../configuration/configuration-controller.js";
-import { readHeroPanelTab } from "./follower-panel.js";
 import { escapeHtml } from "../html.js";
-import { $, activeBuildViewId, showToast } from "../planner/page.js";
+import { $, showToast } from "../planner/page.js";
 import { currentEditedSetups, persistPlannerState, plannerState, renderCandidateViews } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
 
-let heroSelectorSession = 0; // the hero selector's openings (apps/web/src/shell/dialogs/HeroSelectorDialog.tsx)
+let heroSelectorSession = 0; // the hero selector's openings (apps/web/src/features/hero/HeroSelectorDialog.tsx)
 let activeHeroDetailTab = "traits";
 let sageScentSelectorKind = "elixir";
-let sageScentSelectorSession = 0; // its openings (apps/web/src/shell/dialogs/SageScentSelectorDialog.tsx)
+let sageScentSelectorSession = 0; // its openings (apps/web/src/features/hero/SageScentSelectorDialog.tsx)
 let activeCarinoAmmoSlot = 0;
-let carinoAmmoSelectorSession = 0; // its openings (apps/web/src/shell/dialogs/CarinoAmmoSelectorDialog.tsx)
+let carinoAmmoSelectorSession = 0; // its openings (apps/web/src/features/hero/CarinoAmmoSelectorDialog.tsx)
 export const heroCommands = {
   // HERO tab (apps/web/src/features/hero).
   setHeroDetailTab: (tab) => {
@@ -60,7 +59,7 @@ export const heroViewSources = {
       plannerState.hero.selectedTraits["carino-ranger-of-glory:level75"] === "Well Prepared",
     ),
   }),
-  // The hero selector's data (apps/web/src/shell/dialogs/HeroSelectorDialog.tsx).
+  // The hero selector's data (apps/web/src/features/hero/HeroSelectorDialog.tsx).
   heroSelector: () => ({
     session: heroSelectorSession,
     selectedHeroId: plannerState.hero.selectedHeroId,
@@ -209,22 +208,8 @@ function removeHeroTraitSupport(heroId) {
   showToast(`${escapeHtml(name || "Trait support")} removed`);
 }
 export function renderHeroPanel() {
-  const follower = readHeroPanelTab(activeBuildViewId()) === "follower";
-  document.querySelectorAll("[data-hero-panel-tab]").forEach((button) => {
-    const active = (button.dataset.heroPanelTab === "follower") === follower;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-selected", String(active));
-    button.tabIndex = active ? 0 : -1;
-  });
-  $("#hero-panel-hero").hidden = follower;
-  $("#follower-panel").hidden = !follower;
-  const help = document.querySelector(".hero-panel-tabs [data-qol-help]");
-  if (help) {
-    help.dataset.qolHelp = follower ? "follower" : "hero";
-    help.setAttribute("aria-label", follower ? "Follower controls" : "Hero controls");
-  }
-  // The FOLLOWER tab is React (apps/web/src/features/follower): it re-reads its source while the tab is open.
-  if (follower) viewSourceChanged("follower");
+  // The Follower tab is React (apps/web/src/features/follower): it re-reads its source.
+  viewSourceChanged("follower");
 }
 export function commitFollower(next, message) {
   plannerState.followers = next;

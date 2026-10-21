@@ -11,14 +11,13 @@ import {
 import { gameLogImportCommands, gameLogImportViewSources } from "./builds/game-log-import-controller.js";
 import { configurationCommands, configurationViewSources } from "./configuration/configuration-controller.js";
 import { feedbackViewSources, installFeedbackEvents } from "./feedback/feedback-controller.js";
-import { writeHeroPanelTab } from "./hero/follower-panel.js";
 import { gearCommands, gearViewSources } from "./gear/gear-controller.js";
 import { followerCommands, followerViewSources } from "./hero/follower-controller.js";
-import { heroCommands, heroViewSources, renderHeroPanel } from "./hero/hero-controller.js";
+import { heroCommands, heroViewSources } from "./hero/hero-controller.js";
 import { heroMemoryCommands, heroMemoryViewSources } from "./hero/hero-memory-controller.js";
 import { escapeHtml } from "./html.js";
 import { pactCommands, pactViewSources } from "./pacts/pacts-controller.js";
-import { $, activeBuildViewId, showToast, updateStorageStatus } from "./planner/page.js";
+import { $, showToast, updateStorageStatus } from "./planner/page.js";
 import { installRangeFills, scheduleRangeFillRefresh } from "./planner/range-fill.js";
 import { NOTICE_BUTTON_CLASS, NOTICE_CLASS } from "./notice-classes.js";
 import { installSearchableSelectEvents } from "./planner/searchable-select.js";
@@ -98,13 +97,6 @@ installSearchableSelectEvents();
 installBuildRenameEvents();
 
 document.addEventListener("click", (event) => {
-  const heroPanelTab = event.target.closest("[data-hero-panel-tab]");
-  if (heroPanelTab) {
-    writeHeroPanelTab(activeBuildViewId(), heroPanelTab.dataset.heroPanelTab);
-    hidePlannerTooltip();
-    renderHeroPanel();
-    return;
-  }
   const viewButton = event.target.closest("[data-view]");
   if (viewButton) {
     if (viewButton.dataset.view === "slates") {
@@ -176,6 +168,8 @@ renderCandidateViews();
 scheduleRangeFillRefresh();
 updateStorageStatus();
 const restoredView = [
+  "hero",
+  "follower",
   "talents",
   "slates",
   "skills",
@@ -186,7 +180,7 @@ const restoredView = [
   "configuration",
 ].includes(restoredWorkspaceLocation?.view)
   ? restoredWorkspaceLocation.view
-  : "talents";
+  : "hero";
 runGuardedRender(() =>
   activateWorkspaceView(restoredView === "slates" ? "talents" : restoredView, { scroll: false, remember: false }),
 );

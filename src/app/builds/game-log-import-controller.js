@@ -24,7 +24,7 @@ import { activateWorkspaceView } from "../planner/workspace.js";
 import { createBuild, loadPlannerState } from "../storage/build-library.ts";
 
 export const gameLogImportCommands = {
-  // Import from game (apps/web/src/shell/dialogs/ImportGameLogDialog.tsx).
+  // Import from game (apps/web/src/features/builds/ImportGameLogDialog.tsx).
   openGameLogImport,
   chooseGameLogFile,
   showGameLogPicker: () => setGameLogView({ chooseOther: false, picker: true }),
@@ -36,7 +36,7 @@ export const gameLogImportViewSources = {
   // The Import from game dialog.
   gameLogImport: gameLogImportSource,
 };
-// Import from game (apps/web/src/shell/dialogs/ImportGameLogDialog.tsx shows the "gameLogImport" source). On open the
+// Import from game (apps/web/src/features/builds/ImportGameLogDialog.tsx shows the "gameLogImport" source). On open the
 // planner asks its local reader for UE_game.log (the pnpm dev server /api/game-log/snapshots, or the desktop bridge);
 // both return only sanitised build dumps (src/game-log/game-log-local.js). Without it, or when the user asks, the picked
 // log is read in the page. Everything is dropped with the dialog, and an import always adds a new library entry.

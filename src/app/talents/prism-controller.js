@@ -108,7 +108,7 @@ export function prismTooltipHtml(item) {
   const icon = prismIcon(item);
   return `<div class="prism-tooltip-head ${prismClasses.head}">${icon ? `<img class="${prismClasses.icon}" src="${icon}" alt="">` : ""}<strong class="${prismClasses.title}">${escapeHtml(prismName(item))}</strong><small class="${prismClasses.kicker}">${item.type === "inverse" ? "Inverse Image" : "Ethereal Prism"}</small></div><div class="prism-tooltip-body ${prismClasses.body}"><p class="prism-effect-area ${prismClasses.area}">Effect Area: <strong>${prismArea(item)}</strong> ${coverageBadge("Planner only")}</p>${prismAffixSections(item, true)}</div><footer class="${prismClasses.footer}">Click to change · Right-click to remove</footer>`;
 }
-// The prism inventory's data (apps/web/src/shell/dialogs/PrismInventoryDialog.tsx) for the tree slot it is open for.
+// The prism inventory's data (apps/web/src/features/talents/PrismInventoryDialog.tsx) for the tree slot it is open for.
 function prismInventorySource() {
   const panel = plannerState.talents.selectedTrees[activePrismTreeSlot],
     installed = plannerState.talents.installedPrisms || {};
@@ -128,7 +128,7 @@ function prismInventorySource() {
     installedHere: Boolean(installed[panel]),
   });
 }
-// Prism inventory commands (apps/web/src/shell/dialogs/PrismInventoryDialog.tsx).
+// Prism inventory commands (apps/web/src/features/talents/PrismInventoryDialog.tsx).
 function editCraftedPrism(id) {
   const item = plannerState.talents.prismInventory.find((entry) => entry.id === id);
   if (item) openPrismCrafter(item);
@@ -169,7 +169,7 @@ export function openPrismInventory() {
 function inverseRollSign(value) {
   return value < 0 ? "negative" : value > 0 ? "positive" : "zero";
 }
-// The Prism crafter (apps/web/src/shell/dialogs/PrismCrafterDialog.tsx) shows the "prismCrafter" source.
+// The Prism crafter (apps/web/src/features/talents/PrismCrafterDialog.tsx) shows the "prismCrafter" source.
 function renderPrismCrafter() {
   viewSourceChanged("prismCrafter");
 }

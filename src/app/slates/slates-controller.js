@@ -125,7 +125,7 @@ export const slateCommands = {
   },
   finishPendingSlate,
   editSlate,
-  // Slate Inventory (apps/web/src/shell/dialogs/SlateInventoryDialog.tsx).
+  // Slate Inventory (apps/web/src/features/slates/SlateInventoryDialog.tsx).
   placeCraftedSlate,
   startSlateCraft,
   deleteCraftedSlate,
@@ -162,7 +162,7 @@ export const slateViewSources = {
   slateEditor: slateEditorSource,
 };
 
-// ---- Slate Inventory commands (apps/web/src/shell/dialogs/SlateInventoryDialog.tsx).
+// ---- Slate Inventory commands (apps/web/src/features/slates/SlateInventoryDialog.tsx).
 // A right-click on a slate: places it on the grid (the first free cells, its rotations tried), or beside a full grid.
 function placeCraftedSlate(id) {
   const slate = slatesForBoard().find((item) => item.id === id),
@@ -260,7 +260,7 @@ function removeCraftedSlate(id) {
 }
 
 export const slateAffixes = (slate) => plannerState.slates?.affixOverrides?.[slate.id] || slate.fixed || [];
-// The Slate Inventory dialog (apps/web/src/shell/dialogs/SlateInventoryDialog.tsx) shows the "slateInventory" source: the
+// The Slate Inventory dialog (apps/web/src/features/slates/SlateInventoryDialog.tsx) shows the "slateInventory" source: the
 // crafted slates, or, in the crafter's mode, the crafter (src/app/slates/slate-craft.ts slateCrafterView).
 let slateInventoryMode = "inventory";
 function renderSlateInventory() {
@@ -288,7 +288,7 @@ function renderSlateCrafter() {
   slateInventoryMode = "crafter";
   viewSourceChanged("slateInventory");
 }
-// ---- Slate crafter commands (apps/web/src/shell/dialogs/SlateCrafter.tsx).
+// ---- Slate crafter commands (apps/web/src/features/slates/SlateCrafter.tsx).
 function changeSlateCrafter(change) {
   slateCraft = changeSlateCraftDraft(slateCraft, change);
   viewSourceChanged("slateInventory");
@@ -309,7 +309,7 @@ function backToSlateInventory() {
   slateCraft = { ...slateCraft, editingId: null };
   renderSlateInventory();
 }
-// The slate editor (apps/web/src/shell/dialogs/SlateEditorDialog.tsx) shows the "slateEditor" source; each drawing
+// The slate editor (apps/web/src/features/slates/SlateEditorDialog.tsx) shows the "slateEditor" source; each drawing
 // (opening, a rotation) starts its affix fields over from the slate, as the planner's markup did.
 let slateEditorSession = 0,
   slateEditorId = "";
