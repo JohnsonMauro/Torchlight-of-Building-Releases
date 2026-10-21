@@ -7,8 +7,8 @@ import { cancelTooltipHide, hideTooltip, tooltipScrolled, useTooltipState } from
 
 /**
  * The page's tooltip (what a <Tooltip> shows): placed where it opened or beside its element, following the pointer
- * (unless sticky), placed again when Alt changes its content, hidden by any scroll outside it. Inside a modal dialog it
- * renders in that dialog, so it shows over the modal.
+ * (unless sticky), placed again when Alt changes its content, hidden by any scroll or press outside it. Inside a modal
+ * dialog it renders in that dialog, so it shows over the modal.
  */
 export function TooltipHost() {
   const { request, shown } = useTooltipState();
@@ -44,6 +44,23 @@ export function TooltipHost() {
       document.removeEventListener("pointermove", follow);
     };
   }, [shown, request]);
+
+  // A press anywhere but in the tooltip hides it: an edit, a drag or a dialog starts with one, and would leave the
+  // tooltip showing what the element was. Caught before any handler can stop it, and done once the press is through:
+  // the press focuses its element (which shows the tooltip again), and a toggle's own press reads the state first.
+  useEffect(() => {
+    let timer = 0;
+    const pressed = (event: PointerEvent) => {
+      if (event.target instanceof Node && tooltip.current?.contains(event.target)) return;
+      clearTimeout(timer);
+      timer = window.setTimeout(() => hideTooltip());
+    };
+    document.addEventListener("pointerdown", pressed, true);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("pointerdown", pressed, true);
+    };
+  }, []);
 
   useEffect(() => {
     const scrolled = (event: Event) => {

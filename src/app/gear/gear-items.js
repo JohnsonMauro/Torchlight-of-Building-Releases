@@ -311,6 +311,7 @@ export function equipmentPreviewView(item) {
     className: `equipment-preview rarity-${itemCardRarity(itemDisplayRarity(item), item)}${sixAffixClass(item)}${pricelessClass(item)}${itemLevel100Class(item)}`,
     icon: gearIcon(item),
     priceless,
+    corroded: Boolean(item.corroded),
     ...displayTexts({
       // The game names a Priceless item "<name>- Priceless".
       name: priceless && !/Priceless$/i.test(item.name || "") ? `${item.name}- Priceless` : item.name,

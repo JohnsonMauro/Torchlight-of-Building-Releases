@@ -42,6 +42,7 @@ import {
   type CraftPickStep,
   type CraftedItem,
   type EquipmentCraft,
+  type CraftTier,
   type RareDraft,
 } from "../gear/equipment-craft.ts";
 import { displayTexts } from "./display-text.ts";
@@ -91,6 +92,8 @@ export interface ItemPreviewView {
   icon: string;
   /** A Priceless item (level 100 rare, or so named): "- Priceless" after its name, its level in the accent colour. */
   priceless: boolean;
+  /** A corroded item: "Corroded" under its energy. */
+  corroded: boolean;
   name: string;
   /** "Lv.86"; "" when the item has no item level. */
   itemLevel: string;
@@ -113,6 +116,29 @@ export interface AffixOptionView {
   checked: boolean;
   /** Why it cannot be checked ("Requires Priceless", "Requires Lv.82", "Three prefixes chosen"); "" when it can. */
   blocked: string;
+  /** A checked family's slot (0–5), the tiers the item level offers (its own marked) and its rolls; null unchecked. */
+  config: {
+    slot: number;
+    tiers: { value: string; label: string; title: string; current: boolean }[];
+    rolls: RollView[];
+  } | null;
+}
+/** A base affix in a rare's list: its fixed tier, and its slot and rolls once checked. */
+export interface BaseAffixOptionView {
+  value: string;
+  label: string;
+  /** Its tier ("T2"); "" for none. */
+  tier: string;
+  checked: boolean;
+  /** "Two base affixes chosen" when both slots hold another; "" when it can be checked. */
+  blocked: string;
+  config: { slot: number; rolls: RollView[] } | null;
+}
+/** A rare's base affix list: every base affix its type offers, up to two checked. */
+export interface BaseAffixListView {
+  /** "1/2". */
+  count: string;
+  options: BaseAffixOptionView[];
 }
 /** A rare's prefix or suffix list: the families by category (Basic, Advanced, Ultimate), up to three checked. */
 export interface AffixListView {
@@ -125,8 +151,6 @@ export interface AffixListView {
 export interface CraftAffixView {
   index: number;
   label: string;
-  /** The chosen family's label (without its category); "" for an empty slot. */
-  familyLabel: string;
   /** A Vorax slot's Legendary affix toggle; null on a rare. */
   legendaryToggle: { active: boolean } | null;
   family: string;
@@ -168,6 +192,10 @@ export interface RareFormView {
   beltBlend: string;
   beltBlends: SelectChoice[];
   baseAffixes: { index: number; value: string; options: OptionView[]; rolls: RollView[] }[];
+  /** A rare's base affix list (its two selects' place); null on a Vorax form. */
+  baseAffixList: BaseAffixListView | null;
+  /** The Corroded check. */
+  corroded: boolean;
   energyShown: boolean;
   energy: string;
   sequenceShown: boolean;
@@ -270,7 +298,6 @@ function rareFormView(
         index,
         label: index < 3 ? `Prefix ${index + 1}` : `Suffix ${index - 2}`,
         legendaryToggle: craft.mode === "vorax" ? { active: affix.legendary } : null,
-        familyLabel: family ? text(withoutCategory(family.label)) : "",
         family: affix.familyId,
         families: craftAffixPool(craft.mode, draft.type, index, affix.legendary)
           .filter((entry) => !takenFamilies(index).has(entry.id))
@@ -336,6 +363,8 @@ function rareFormView(
         })),
       rolls: rollViews(affix.template, affix.rolls),
     })),
+    baseAffixList: craft.mode === "rare" ? baseAffixList(craft, draft) : null,
+    corroded: draft.corroded,
     energyShown: equipmentEnergyAllowed(slot),
     energy: draft.energy,
     sequenceShown: towerSequencesForType(draft.type).length > 0,
@@ -548,6 +577,7 @@ function affixList(craft: EquipmentCraft, draft: RareDraft, side: AffixSide): Af
     const category = family.label.match(CATEGORY)?.[1] || "Other",
       tiers = eligibleCraftTiers(draft, family),
       checked = chosen.includes(family.id),
+      slot = offset + chosen.indexOf(family.id),
       lowest = Math.min(...family.tiers.map((tier) => tier.level));
     const blocked = checked
       ? ""
@@ -566,6 +596,7 @@ function affixList(craft: EquipmentCraft, draft: RareDraft, side: AffixSide): Af
         highestTier: tiers.length ? `T${text(tiers[0].tier)}` : "",
         checked,
         blocked,
+        config: checked ? affixConfig(craft, draft, slot, tiers) : null,
       },
     ]);
   }
@@ -574,5 +605,48 @@ function affixList(craft: EquipmentCraft, draft: RareDraft, side: AffixSide): Af
     heading: side === "prefix" ? "Prefixes" : "Suffixes",
     count: `${chosen.filter(Boolean).length}/3`,
     tabs: [...tabs].map(([id, options]) => ({ id, label: id.replace(/ Affix$/, ""), options })),
+  };
+}
+
+/** A checked family's tiers (the item level's, lowest first, its own marked) and the rolls of its tier. */
+function affixConfig(
+  craft: EquipmentCraft,
+  draft: RareDraft,
+  slot: number,
+  tiers: CraftTier[],
+): AffixOptionView["config"] {
+  const affix = draft.affixes[slot],
+    tier = selectedCraftTier(craft, draft, slot);
+  return {
+    slot,
+    // From the lowest tier (T7) to the highest (T0+), left to right.
+    tiers: [...tiers].reverse().map((entry) => ({
+      value: entry.tier,
+      label: `T${text(entry.tier)}`,
+      title: `T${text(entry.tier)} · Requires Lv.${entry.level}`,
+      current: entry.tier === affix.tier,
+    })),
+    rolls: tier ? rollViews(tier.template, affix.rolls) : [],
+  };
+}
+
+/** Every base affix the type offers, the checked ones with their slot and rolls; up to two. */
+function baseAffixList(craft: EquipmentCraft, draft: RareDraft): BaseAffixListView {
+  const chosen = draft.baseAffixes.map((affix) => affix.template),
+    full = chosen.every(Boolean);
+  return {
+    count: `${chosen.filter(Boolean).length}/2`,
+    options: baseAffixChoices(craft, draft.type, 0).map((choice) => {
+      const slot = chosen.indexOf(choice.template),
+        checked = slot >= 0;
+      return {
+        value: choice.template,
+        label: text(choice.template.replaceAll("\n", " / ")),
+        tier: choice.tier ? `T${text(choice.tier)}` : "",
+        checked,
+        blocked: !checked && full ? "Two base affixes chosen" : "",
+        config: checked ? { slot, rolls: rollViews(choice.template, draft.baseAffixes[slot].rolls) } : null,
+      };
+    }),
   };
 }

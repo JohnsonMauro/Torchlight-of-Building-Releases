@@ -61,6 +61,10 @@ test("checks the special cases: custom supports, slate rotation, follower skills
   );
   rejects({ followers: { skills: [{ name: "N", level: 3 }] } }, "build.followers.skills[0].level");
   rejects({ equipmentInventory: [{ defenses: { "bad key": 1 } }] }, "build.equipmentInventory[0].defenses");
+  // A crafted item keeps its Corroded mark, in the Inventory and on its equipped copy.
+  const corroded = { equipmentInventory: [{ corroded: true }], equipmentOverrides: { helmet: { corroded: true } } };
+  assert.equal(validatePlannerState(corroded), corroded);
+  rejects({ equipmentInventory: [{ corroded: "yes" }] }, "build.equipmentInventory[0].corroded");
 });
 
 test("combat numbers the Config tab writes are part of the stored build, within their limits", () => {

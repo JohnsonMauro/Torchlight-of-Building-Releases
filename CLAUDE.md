@@ -73,8 +73,9 @@ HTML strings); `tests/unit/dom-ratchet.test.js` counts them and they may only go
 change removes some.
 
 Tooltips are components (`apps/web/src/ui/tooltip/`: `<Tooltip content>` around one element; `TooltipHost` places it,
-follows the pointer, hides it on scroll and shows it inside an open dialog). A drag (pointer capture keeps the anchor
-"hovered" until the drop) or an edit of the element hides it with `hideTooltip()` from `tooltip-store.ts`. Each domain
+follows the pointer, hides it on scroll and on any press outside it, and shows it inside an open dialog). An edit or a
+drag a press does not start (the keyboard; pointer capture keeps a dragged anchor "hovered" until the drop) hides it
+with `hideTooltip()` from `tooltip-store.ts`. Each domain
 owns its tooltip, the way gear does (the guide for the others):
 - the item's display model and its pure builder in `src/app/bridge/<domain>-…-view.ts` (`gear-item-view.ts`
   `gearTooltipView`), with a unit test; what depends on the open build is passed in;

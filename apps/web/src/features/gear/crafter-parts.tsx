@@ -59,6 +59,7 @@ export function ItemPreview({ preview }: { preview: ItemPreviewView }) {
                 </i>
               </div>
             ) : null}
+            {preview.corroded ? <p className="text-violet">Corroded</p> : null}
           </div>
         </div>
         <img src={preview.icon} alt="" className="size-24 object-contain" />
@@ -128,15 +129,17 @@ export function Choices({ choices }: { choices: SelectChoice[] }) {
   );
 }
 
-/** A roll's slider (with the attributes that name its line) and number field, then the value shown. */
+/** A roll's slider (with the attributes that name its line) and number field, then the value shown (unless `bare`). */
 export function RollInputs({
   roll,
   attributes,
   onValue,
+  bare = false,
 }: {
   roll: RollView;
   attributes: InputHTMLAttributes<HTMLInputElement> & Record<`data-${string}`, string | number>;
   onValue: (value: number, commit?: boolean) => void;
+  bare?: boolean;
 }) {
   const style = {
     "--range-fill": `${roll.rangeFill}%`,
@@ -168,7 +171,7 @@ export function RollInputs({
           onCommit={(text) => onValue(Number(text), true)}
         />
       </span>
-      <em className={ROLL_VALUE}>{roll.value}</em>
+      {bare ? null : <em className={ROLL_VALUE}>{roll.value}</em>}
     </>
   );
 }

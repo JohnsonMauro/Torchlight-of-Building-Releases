@@ -105,6 +105,8 @@ export interface RareDraft {
   energy: string;
   beltBlendId: string;
   sequenceId: string;
+  /** The item was corroded (a mark the item keeps; it adds no line). */
+  corroded: boolean;
   baseAffixes: BaseAffixDraft[];
   affixes: CraftAffixDraft[];
 }
@@ -285,6 +287,7 @@ function newRareDraft(craft: EquipmentCraft, type = craftTypes(craft)[0][0]): Ra
     energy: String(maxEquipmentEnergy(100, slot, type)),
     beltBlendId: "",
     sequenceId: "",
+    corroded: false,
     baseAffixes: [0, 1].map(() => ({ template: "", rolls: [] })),
     affixes: AFFIX_SLOTS.map(() => ({ familyId: "", tier: "", rolls: [], legendary: false })),
   };
@@ -340,6 +343,7 @@ export function equipmentCraftFromItem(item: CraftedItem, weaponType: string): E
     level: String(item.itemLevel || item.level || 100),
     baseId: item.baseId ? (bases.includes(item.baseId) ? item.baseId : "") : draft.baseId,
     energy: String(item.energy || 0),
+    corroded: Boolean(item.corroded),
     beltBlendId: beltBlendById(blendId) ? blendId : "",
     sequenceId: towerSequencesForType(draft.type).some((entry: { id: string }) => entry.id === sequenceId)
       ? sequenceId
@@ -487,8 +491,11 @@ export type CraftChange =
    * item level); unchecked, it leaves its slot and the ones below move up.
    */
   | { kind: "toggleAffix"; side: AffixSide; familyId: string }
+  /** A rare's base affix list: checked, a base affix takes the free slot (refused past two); unchecked, the other moves up. */
+  | { kind: "toggleBaseAffix"; template: string }
   /** A rare's Priceless check: level 100, or back to the highest typed level. */
   | { kind: "priceless"; value: boolean }
+  | { kind: "corroded"; value: boolean }
   /** The rare item picker: a group, its entry's type, a base (the form shows); back to a step from the form. */
   | { kind: "pickGroup" | "pickType" | "pickBase"; value: string }
   | { kind: "repick"; step: CraftPickStep }
@@ -593,6 +600,8 @@ function changedRare(craft: EquipmentCraft, draft: RareDraft, change: CraftChang
         draft,
         craft.mode === "rare" && Number(change.value) > MAX_TYPED_LEVEL ? String(MAX_TYPED_LEVEL) : change.value,
       );
+    case "corroded":
+      return { ...draft, corroded: change.value };
     case "priceless":
       return withLevel(craft, draft, change.value ? PRICELESS_LEVEL : String(MAX_TYPED_LEVEL));
     case "type":
@@ -628,6 +637,19 @@ function changedRare(craft: EquipmentCraft, draft: RareDraft, change: CraftChang
       if (!eligibleCraftTiers(draft, family).length)
         return { notice: `${family.label.replace(/^\[[^\]]+\]\s*/, "")} needs a higher item level` };
       return changedRare(craft, draft, { kind: "affixFamily", index, value: change.familyId });
+    }
+    case "toggleBaseAffix": {
+      const at = draft.baseAffixes.findIndex((affix) => affix.template === change.template);
+      if (at >= 0)
+        return {
+          ...draft,
+          baseAffixes: [...draft.baseAffixes.filter((_, index) => index !== at), { template: "", rolls: [] }],
+        };
+      const free = draft.baseAffixes.findIndex((affix) => !affix.template);
+      if (free < 0) return { notice: "An item takes up to two base affixes" };
+      if (!baseAffixChoices(craft, draft.type, free).some((choice) => choice.template === change.template))
+        return draft;
+      return changedRare(craft, draft, { kind: "baseAffix", index: free, value: change.template });
     }
     case "affixTier": {
       const affix = draft.affixes[change.index],
@@ -758,6 +780,7 @@ export interface CraftedItem {
   craftAffixFamilyIds?: string[];
   craftAffixTierIds?: string[];
   craftAffixLegendary?: boolean[];
+  corroded?: boolean;
   modifiers?: string[];
   [field: string]: unknown;
 }
@@ -814,6 +837,7 @@ export function craftedRareItem(craft: EquipmentCraft): CraftedItem | null {
     baseId: baseEntry?.id,
     beltBlendId: blend?.id,
     towerSequenceId: sequence?.id,
+    corroded: draft.corroded || undefined,
     implicitModifiers: [...(baseEntry?.modifiers || [])],
     baseAffixModifiers,
     baseAffixTierIds,

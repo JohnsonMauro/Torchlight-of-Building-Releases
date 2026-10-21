@@ -2,6 +2,7 @@
 // Energy, TOWER Sequence, three prefixes (a Vorax item's organ affixes, each able to inherit a Legendary affix) and three
 // suffixes with their tiers and rolls, and the preview. Each control is a change to the planner's draft
 // (src/app/gear/equipment-craft.ts); the fields a slot does not allow stay hidden, as before.
+import type { ReactNode } from "react";
 import type { CraftChange } from "@legacy/app/gear/equipment-craft.ts";
 import type { CraftAffixView, RareFormView } from "@legacy/app/bridge/equipment-crafter-view.ts";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
@@ -18,7 +19,7 @@ import {
   MOD_BOX_LEGENDARY,
 } from "./crafter-classes";
 import { Choices, ItemPreview, Options, RollInputs } from "./crafter-parts";
-import { AffixList } from "./AffixList";
+import { AffixList, BaseAffixList } from "./AffixList";
 import { CraftPath } from "./CraftPicker";
 
 // The Vorax Legendary toggle: an L badge and a switch whose knob moves right and takes the legendary orange when
@@ -31,8 +32,8 @@ const LEGENDARY_TOGGLE_SWITCH =
 
 const change = (craftChange: CraftChange) => plannerCommands().changeEquipmentCraft(craftChange);
 
-/** A slot: its family (a select, or on a rare the family checked in its list), tier and rolls. */
-function CraftAffix({ affix, listed = false }: { affix: CraftAffixView; listed?: boolean }) {
+/** A Vorax slot: its family, tier and rolls. */
+function CraftAffix({ affix }: { affix: CraftAffixView }) {
   const { index, config } = affix,
     active = Boolean(affix.legendaryToggle?.active);
   return (
@@ -52,19 +53,17 @@ function CraftAffix({ affix, listed = false }: { affix: CraftAffixView; listed?:
             <i className={LEGENDARY_TOGGLE_SWITCH} />
           </button>
         ) : null}
-        <span className="flex-1">{listed ? affix.familyLabel : affix.label}</span>
+        <span className="flex-1">{affix.label}</span>
       </span>
-      {listed ? null : (
-        <select
-          className={CONTROL}
-          data-craft-affix-family={index}
-          value={affix.family}
-          onChange={(event) => change({ kind: "affixFamily", index, value: event.target.value })}
-        >
-          <option value="">None</option>
-          <Options options={affix.families} />
-        </select>
-      )}
+      <select
+        className={CONTROL}
+        data-craft-affix-family={index}
+        value={affix.family}
+        onChange={(event) => change({ kind: "affixFamily", index, value: event.target.value })}
+      >
+        <option value="">None</option>
+        <Options options={affix.families} />
+      </select>
       <div className="craft-affix-config grid gap-2" data-craft-affix-config={index}>
         {config.kind === "warning" ? (
           <small className="text-xs text-danger">No tiers available at this item level.</small>
@@ -103,12 +102,30 @@ function CraftAffix({ affix, listed = false }: { affix: CraftAffixView; listed?:
   );
 }
 
+/** A rare's affix section, folded by its heading (open at first). */
+function CraftSection({ heading, children }: { heading: string; children: ReactNode }) {
+  return (
+    <details open className="group/section border-t border-line pt-3" data-craft-section="">
+      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-bold [&::-webkit-details-marker]:hidden">
+        <span aria-hidden="true" className="text-muted transition-transform group-open/section:rotate-90">
+          ›
+        </span>
+        <h3>{heading}</h3>
+      </summary>
+      <div className="mt-3 grid gap-3">{children}</div>
+    </details>
+  );
+}
+
 export function RareCraftForm({ form }: { form: RareFormView }) {
   return (
     <div className={CRAFT_LAYOUT}>
       <section className={CRAFT_FORM}>
         {form.path ? <CraftPath path={form.path} /> : null}
-        <div className="grid grid-cols-[minmax(0,1fr)_120px_auto] gap-3 max-[800px]:grid-cols-1">
+        {/* Level and Energy take the same width; the name takes what is left. */}
+        <div
+          className={`grid gap-3 max-[800px]:grid-cols-1 ${form.energyShown ? "grid-cols-[minmax(0,1fr)_96px_96px_auto_auto]" : "grid-cols-[minmax(0,1fr)_96px_auto_auto]"}`}
+        >
           <label className={FIELD}>
             Name
             <input
@@ -117,6 +134,17 @@ export function RareCraftForm({ form }: { form: RareFormView }) {
               placeholder="Custom name (optional)"
               value={form.name}
               onChange={(event) => change({ kind: "name", value: event.target.value })}
+            />
+          </label>
+          <label className={FIELD} data-equipment-energy-field="" hidden={!form.energyShown}>
+            Energy
+            <input
+              className={CONTROL}
+              data-craft-energy=""
+              type="number"
+              min="0"
+              value={form.energy}
+              onChange={(event) => change({ kind: "energy", value: event.target.value })}
             />
           </label>
           <label className={FIELD}>
@@ -144,6 +172,16 @@ export function RareCraftForm({ form }: { form: RareFormView }) {
               Priceless
             </label>
           )}
+          <label className="flex cursor-pointer items-center gap-2 self-end pb-2.5 text-xs text-muted">
+            <input
+              type="checkbox"
+              className="size-4 accent-accent"
+              data-craft-corroded=""
+              checked={form.corroded}
+              onChange={(event) => change({ kind: "corroded", value: event.target.checked })}
+            />
+            Corroded
+          </label>
         </div>
         {form.path ? null : (
           <>
@@ -183,64 +221,52 @@ export function RareCraftForm({ form }: { form: RareFormView }) {
             <Choices choices={form.beltBlends} />
           </select>
         </label>
-        {form.baseAffixes.map((affix) => (
-          <div key={affix.index} className="grid gap-2">
-            <label className={FIELD}>
-              {`Base Affix ${affix.index + 1}`}
-              <select
-                className={CONTROL}
-                data-craft-base-affix={affix.index}
-                value={affix.value}
-                onChange={(event) => change({ kind: "baseAffix", index: affix.index, value: event.target.value })}
+        {form.baseAffixList ? (
+          <CraftSection heading={`Base affixes (${form.baseAffixList.count})`}>
+            <BaseAffixList list={form.baseAffixList} />
+          </CraftSection>
+        ) : (
+          form.baseAffixes.map((affix) => (
+            <div key={affix.index} className="grid gap-2">
+              <label className={FIELD}>
+                {`Base Affix ${affix.index + 1}`}
+                <select
+                  className={CONTROL}
+                  data-craft-base-affix={affix.index}
+                  value={affix.value}
+                  onChange={(event) => change({ kind: "baseAffix", index: affix.index, value: event.target.value })}
+                >
+                  <option value="">None</option>
+                  <Options options={affix.options} />
+                </select>
+              </label>
+              <div
+                className={`base-affix-rolls grid gap-2 ${affix.rolls.length ? "" : "hidden"}`}
+                data-base-affix-rolls={affix.index}
               >
-                <option value="">None</option>
-                <Options options={affix.options} />
-              </select>
-            </label>
-            <div
-              className={`base-affix-rolls grid gap-2 ${affix.rolls.length ? "" : "hidden"}`}
-              data-base-affix-rolls={affix.index}
-            >
-              {affix.rolls.map((roll) => (
-                <label key={roll.rangeIndex} className="base-affix-roll grid gap-1">
-                  <RollInputs
-                    roll={roll}
-                    attributes={{ "data-base-affix-roll": affix.index, "data-range-index": roll.rangeIndex }}
-                    onValue={(value, commit) =>
-                      change({
-                        kind: "roll",
-                        group: "base",
-                        index: affix.index,
-                        rangeIndex: roll.rangeIndex,
-                        value,
-                        commit,
-                      })
-                    }
-                  />
-                </label>
-              ))}
+                {affix.rolls.map((roll) => (
+                  <label key={roll.rangeIndex} className="base-affix-roll grid gap-1">
+                    <RollInputs
+                      roll={roll}
+                      attributes={{ "data-base-affix-roll": affix.index, "data-range-index": roll.rangeIndex }}
+                      onValue={(value, commit) =>
+                        change({
+                          kind: "roll",
+                          group: "base",
+                          index: affix.index,
+                          rangeIndex: roll.rangeIndex,
+                          value,
+                          commit,
+                        })
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-        <label className={FIELD}>
-          Corrosion Implicit
-          <select className={CONTROL}>
-            <option>None</option>
-            <option>Corroded implicit</option>
-          </select>
-        </label>
+          ))
+        )}
         <div className={FIELD_PAIR}>
-          <label className={FIELD} data-equipment-energy-field="" hidden={!form.energyShown}>
-            Equipment Energy
-            <input
-              className={CONTROL}
-              data-craft-energy=""
-              type="number"
-              min="0"
-              value={form.energy}
-              onChange={(event) => change({ kind: "energy", value: event.target.value })}
-            />
-          </label>
           <label className={FIELD} data-tower-sequence-field="" hidden={!form.sequenceShown}>
             TOWER Sequence
             <select
@@ -255,17 +281,10 @@ export function RareCraftForm({ form }: { form: RareFormView }) {
           </label>
         </div>
         {form.affixLists ? (
-          form.affixLists.map((list, side) => (
-            <section key={list.side} className="grid gap-3">
-              <h3 className={CRAFT_HEADING}>{`${list.heading} (${list.count})`}</h3>
+          form.affixLists.map((list) => (
+            <CraftSection key={list.side} heading={`${list.heading} (${list.count})`}>
               <AffixList list={list} />
-              {form.affixes
-                .slice(side * 3, side * 3 + 3)
-                .filter((affix) => affix.family)
-                .map((affix) => (
-                  <CraftAffix key={affix.family} affix={affix} listed />
-                ))}
-            </section>
+            </CraftSection>
           ))
         ) : (
           <>

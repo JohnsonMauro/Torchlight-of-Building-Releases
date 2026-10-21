@@ -277,11 +277,47 @@ test("rare: an affix list checks up to three a side, refuses a family without a 
     craft.rare.affixes.slice(0, 3).map((affix) => affix.familyId),
     [basic[1].value, basic[2].value, ""],
   );
-  assert.equal(equipmentCrafterView(craft, 1, preview).body.affixes[0].familyLabel, basic[1].label);
+  const moved = list(craft).tabs[0].options.find((option) => option.value === basic[1].value);
+  assert.equal(moved.config.slot, 0);
+  assert.ok(moved.config.tiers.some((tier) => tier.current));
+  assert.ok(moved.config.rolls.length > 0);
   craft = apply(craft, { kind: "priceless", value: false });
   const ultimate = list(craft).tabs[2].options[0];
   assert.deepEqual([ultimate.blocked, ultimate.highestTier], ["Requires Priceless", ""]);
   const tooLow = changeEquipmentCraft(craft, { kind: "toggleAffix", side: "prefix", familyId: ultimate.value });
   assert.match(tooLow.notice, /needs a higher item level$/);
   assert.equal(list(craft, 1).count, "0/3");
+});
+
+test("rare: the base affix list checks up to two, and an unchecked one lets the other move up", () => {
+  const options = (craft) => equipmentCrafterView(craft, 1, preview).body.baseAffixList.options;
+  let craft = rareCraft();
+  const [first, second, third] = options(craft);
+  craft = apply(
+    craft,
+    { kind: "toggleBaseAffix", template: first.value },
+    { kind: "toggleBaseAffix", template: second.value },
+  );
+  assert.equal(equipmentCrafterView(craft, 1, preview).body.baseAffixList.count, "2/2");
+  assert.equal(options(craft)[2].blocked, "Two base affixes chosen");
+  assert.equal(
+    changeEquipmentCraft(craft, { kind: "toggleBaseAffix", template: third.value }).notice,
+    "An item takes up to two base affixes",
+  );
+  craft = apply(craft, { kind: "toggleBaseAffix", template: first.value });
+  assert.deepEqual(
+    craft.rare.baseAffixes.map((affix) => affix.template),
+    [second.value, ""],
+  );
+  assert.equal(options(craft)[1].config.slot, 0);
+  assert.ok(options(craft)[1].config.rolls.length > 0 || !/\(/.test(second.value));
+});
+
+test("rare: the Corroded check is kept on the crafted item and back in the form on Edit", () => {
+  const craft = apply(rareCraft(), { kind: "corroded", value: true });
+  assert.equal(equipmentCrafterView(craft, 1, preview).body.corroded, true);
+  const item = craftedRareItem(craft);
+  assert.equal(item.corroded, true);
+  assert.equal(equipmentCraftFromItem(item, "").rare.corroded, true);
+  assert.equal("corroded" in craftedRareItem(rareCraft()), false);
 });

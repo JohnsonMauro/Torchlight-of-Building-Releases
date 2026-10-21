@@ -4,7 +4,8 @@
 // (tooltips and tests read them); the look is chosen here, so no rule keys off them. The rarity art wins over the
 // Priceless and six-affix looks, item level 100 over every art; a Priceless or six-affix magic/epic item keeps its
 // violet frame over the art.
-// The colours are the grade-* tokens; Priceless, six-affix and item-level-100 pink is `violet`.
+// The colours are the grade-* tokens; Priceless, six-affix and item-level-100 pink is `grade-priceless`, as the gear
+// tooltip's frame.
 
 /** What an item looks like, part by part, so a slot state can replace one part (its frame). */
 export interface GearLook {
@@ -41,16 +42,16 @@ function background(has: (word: string) => boolean): string {
   if (has("item-level-100")) return artBackground(LEVEL_100_ART);
   for (const rarity of ["vorax", "legendary", "epic", "magic"])
     if (has(`rarity-${rarity}`)) return artBackground(RARITY_ART[rarity]);
-  if (has("priceless-item")) return "bg-violet/15";
-  return has("six-affix") ? "bg-violet/10" : "bg-raised";
+  if (has("priceless-item")) return "bg-grade-priceless/15";
+  return has("six-affix") ? "bg-grade-priceless/10" : "bg-raised";
 }
 
-/** The frame and name colours: item level 100 violet; Vorax and Legendary over a Priceless or six-affix violet. */
+/** The frame and name colours: item level 100 pink; Vorax and Legendary over a Priceless or six-affix pink. */
 function tint(has: (word: string) => boolean): [border: string, name: string] {
-  if (has("item-level-100")) return ["border-violet", "text-violet"];
+  if (has("item-level-100")) return ["border-grade-priceless", "text-grade-priceless"];
   if (has("rarity-vorax")) return ["border-grade-vorax", "text-grade-vorax"];
   if (has("rarity-legendary")) return ["border-grade-legendary", "text-grade-legendary"];
-  if (has("priceless-item") || has("six-affix")) return ["border-violet", "text-violet"];
+  if (has("priceless-item") || has("six-affix")) return ["border-grade-priceless", "text-grade-priceless"];
   if (has("rarity-epic")) return ["border-grade-rare", "text-grade-rare"];
   if (has("rarity-magic")) return ["border-grade-magic", "text-grade-magic"];
   if (has("rarity-common")) return ["border-grade-normal", "text-grade-normal"];

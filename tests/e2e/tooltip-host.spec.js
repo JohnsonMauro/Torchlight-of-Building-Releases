@@ -155,3 +155,14 @@ test("a damage source naming a skill or a support shows its card; another shows 
   await expect(tooltip(page)).toContainText(breakdown);
   await planner.expectNoErrors();
 });
+
+test("a press outside the tooltip hides it: an unequipped memory's tooltip does not stay", async ({ page }) => {
+  const planner = new PlannerPage(page);
+  await planner.open(youga);
+  await planner.showView("hero");
+  const socket = page.locator(".hero-memory-socket.filled").first();
+  await hoverUntilShown(page, socket);
+  await socket.click({ button: "right" });
+  await expect(tooltip(page)).toBeHidden();
+  await planner.expectNoErrors();
+});

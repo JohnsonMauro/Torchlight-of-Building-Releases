@@ -14,7 +14,6 @@ import {
   CRAFT_LAYOUT,
   CRAFTER_BODY,
   CRAFTER_DIALOG,
-  CRAFTER_EYEBROW,
   CRAFTER_FOOTER,
   CRAFTER_HEAD,
   FOOTER_BUTTON,
@@ -82,12 +81,9 @@ export function EquipmentCrafterDialog() {
       onClose={() => plannerCommands().closeEquipmentCrafter()}
     >
       <header className={CRAFTER_HEAD}>
-        <div>
-          <p className={CRAFTER_EYEBROW}>Inventory workshop</p>
-          <h2 id="equipment-crafter-title" className="dialog-title">
-            {view?.title ?? "Craft Rare Item"}
-          </h2>
-        </div>
+        <h2 id="equipment-crafter-title" className="dialog-title">
+          {view?.title ?? "Craft Rare Item"}
+        </h2>
         <button type="button" className="dialog-close" aria-label="Close" onClick={close}>
           ×
         </button>

@@ -72,7 +72,8 @@ const TINT: Readonly<Record<string, string>> = {
   vorax: "[--item-name:var(--color-grade-vorax)] [--item-frame:var(--color-grade-vorax)]",
 };
 const PLAIN_TINT = "[--item-name:var(--color-text)] [--item-frame:var(--color-line-strong)]";
-const VIOLET_TINT = "[--item-name:var(--color-violet)] [--item-frame:var(--color-violet)]";
+/** Priceless, six-affix and item level 100: pink, as the gear tooltip's frame. */
+const PRICELESS_TINT = "[--item-name:var(--color-grade-priceless)] [--item-frame:var(--color-grade-priceless)]";
 /** The item preview's item level 100 art (taller than the Inventory card's). */
 const LEVEL_100_ART = "bg-[url(../../../../src/assets/item-level-100-background.png)]";
 
@@ -89,16 +90,16 @@ export function itemCardLook(classes: string): string {
   const levelHundred = names.has("item-level-100"),
     priceless = names.has("priceless-item"),
     sixAffix = names.has("six-affix");
-  const tint = levelHundred || priceless || sixAffix ? VIOLET_TINT : TINT[rarity] || PLAIN_TINT;
+  const tint = levelHundred || priceless || sixAffix ? PRICELESS_TINT : TINT[rarity] || PLAIN_TINT;
   const art =
     rarity === "legendary" || rarity === "vorax"
       ? artBackground(RARITY_ART[rarity])
-      : priceless
-        ? "bg-violet/15"
-        : sixAffix
-          ? "bg-violet/10"
-          : levelHundred
-            ? artBackground(LEVEL_100_ART)
+      : levelHundred
+        ? artBackground(LEVEL_100_ART)
+        : priceless
+          ? "bg-grade-priceless/15"
+          : sixAffix
+            ? "bg-grade-priceless/10"
             : RARITY_ART[rarity]
               ? artBackground(RARITY_ART[rarity])
               : "bg-raised";
