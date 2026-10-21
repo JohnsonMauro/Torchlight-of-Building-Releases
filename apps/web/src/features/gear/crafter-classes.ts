@@ -1,6 +1,6 @@
 // Class lists the equipment crafter, the item editor and the Inventory item dialog share (Tailwind utilities). The
-// rarity classes (rarity-<id>, six-affix, priceless-item, item-level-100) come from the planner's view models; the
-// rarity looks below key off them.
+// rarity classes (rarity-<id>, six-affix, priceless-item, item-level-100) come from the planner's view models;
+// itemCardLook picks an item card's colours and art from them.
 
 /** The crafter and the item editor: a tall dialog whose body fills it between header and footer; the width is the user's. */
 export const CRAFTER_DIALOG =
@@ -59,40 +59,66 @@ export const SELECTED_CARD =
 export const SELECTED_ICON = "size-11.5 rounded-[3px] bg-[linear-gradient(145deg,#bd6f28,#653a19)] object-contain";
 export const SELECTED_CHANGE = "btn-bronze px-2.5 py-1 text-[0.8rem]";
 
-/** Rarity colours as custom properties: the name, the frame and the icon's light and dark. */
-export const RARITY_VARS = [
-  "[--item-name:#ffe0a0] [--item-frame:#a67736] [--item-light:#604525] [--item-dark:#27211d]",
-  "[&.rarity-common:not(.item-level-100)]:[--item-name:#0f1215] [&.rarity-common:not(.item-level-100)]:[--item-frame:#5b636b] [&.rarity-common]:[--item-light:#67717b] [&.rarity-common]:[--item-dark:#343d46]",
-  "[&.rarity-magic]:[--item-name:#4ed8ff] [&.rarity-magic]:[--item-frame:#5de0ff] [&.rarity-magic]:[--item-light:#178fba] [&.rarity-magic]:[--item-dark:#08465f]",
-  "[&.rarity-epic]:[--item-name:#e58bff] [&.rarity-epic]:[--item-frame:#e19aff] [&.rarity-epic]:[--item-light:#a457c4] [&.rarity-epic]:[--item-dark:#54286d]",
-  "[&.rarity-legendary]:[--item-name:#ff9a3f] [&.rarity-legendary]:[--item-frame:#ff9a3f] [&.rarity-legendary]:[--item-light:#bd6f28] [&.rarity-legendary]:[--item-dark:#653a19]",
-  "[&.rarity-vorax]:[--item-name:#ff7769] [&.rarity-vorax]:[--item-frame:#ff8d80] [&.rarity-vorax]:[--item-light:#b84b43] [&.rarity-vorax]:[--item-dark:#602724]",
-  "[&.six-affix.six-affix]:[--item-name:#ff79d1] [&.six-affix.six-affix]:[--item-frame:#f149ba]",
-  "[&.priceless-item.priceless-item]:[--item-name:#ff9edf] [&.priceless-item.priceless-item]:[--item-frame:#ff55c7]",
-  "[&.item-level-100.item-level-100]:[--item-name:#ff9edf] [&.item-level-100.item-level-100]:[--item-frame:#ff55c7]",
-].join(" ");
+// The rarity colours as custom properties (the name, the frame and the icon's light and dark) and the rarity's art.
+const NAME_FRAME: Readonly<Record<string, string>> = {
+  common: "[--item-name:#0f1215] [--item-frame:#5b636b]",
+  magic: "[--item-name:#4ed8ff] [--item-frame:#5de0ff]",
+  epic: "[--item-name:#e58bff] [--item-frame:#e19aff]",
+  legendary: "[--item-name:#ff9a3f] [--item-frame:#ff9a3f]",
+  vorax: "[--item-name:#ff7769] [--item-frame:#ff8d80]",
+};
+const PLAIN_NAME_FRAME = "[--item-name:#ffe0a0] [--item-frame:#a67736]";
+const PINK_NAME_FRAME = "[--item-name:#ff9edf] [--item-frame:#ff55c7]";
+const SIX_AFFIX_NAME_FRAME = "[--item-name:#ff79d1] [--item-frame:#f149ba]";
+const LIGHT_DARK: Readonly<Record<string, string>> = {
+  common: "[--item-light:#67717b] [--item-dark:#343d46]",
+  magic: "[--item-light:#178fba] [--item-dark:#08465f]",
+  epic: "[--item-light:#a457c4] [--item-dark:#54286d]",
+  legendary: "[--item-light:#bd6f28] [--item-dark:#653a19]",
+  vorax: "[--item-light:#b84b43] [--item-dark:#602724]",
+};
+const PLAIN_LIGHT_DARK = "[--item-light:#604525] [--item-dark:#27211d]";
+const ART: Readonly<Record<string, string>> = {
+  common: "bg-[#c9ced3] bg-[url(../../../../src/assets/common-memory-gear-background.webp)] text-[#15191d]",
+  magic: "bg-[#122b38] bg-(image:--art-magic) text-text",
+  epic: "bg-[#1b1740] bg-[url(../../../../src/assets/epic-gear-memory-aura-background.png)] text-text",
+  legendary: "bg-[#2b1c13] bg-[url(../../../../src/assets/legendary-memory-gear-background.png)] text-text",
+  vorax: "bg-[#2d1110] bg-[url(../../../../src/assets/ultimate-memory-vorax-background.png)] text-text",
+};
+const PLAIN_ART = "bg-[#1b2129] text-text";
+const SIX_AFFIX_ART =
+  "bg-[#1b2129] bg-[radial-gradient(circle_at_50%_14%,rgb(255_100_202/0.36),rgb(154_48_118/0.24)_38%,rgb(35_15_32/0.99)_78%)] text-text";
+const PRICELESS_ART =
+  "bg-[#1b2129] bg-[linear-gradient(155deg,#70405f_0,#653554_24%,#522642_59%,#35172e_100%)] text-text";
+const LEVEL_100_ART = "bg-[#251027] bg-[url(../../../../src/assets/item-level-100-background.png)] text-text";
 
 /**
- * The rarity's art behind an item card (light grey for a common item, which takes dark lettering). Item level 100, six
- * affixes and priceless replace the art of a common, magic or epic item, as on the Inventory cards.
+ * An item card's look from its rarity classes: the colours its parts read and the art behind it (light grey for a common
+ * item, which takes dark lettering). Item level 100, priceless and six affixes take over the name and frame colours and
+ * replace the art of a common, magic or epic item, as on the Inventory cards. Picked here rather than by variants on the
+ * classes because the e2e tests read them (`toHaveClass(/\brarity-legendary\b/)`).
  */
-export const RARITY_ART = [
-  "bg-[#1b2129] bg-cover bg-top bg-no-repeat",
-  "[&.rarity-common:not(.item-level-100):not(.six-affix):not(.priceless-item)]:bg-[#c9ced3] [&.rarity-common:not(.item-level-100):not(.six-affix):not(.priceless-item)]:bg-[url(../../../../src/assets/common-memory-gear-background.webp)] [&.rarity-common:not(.item-level-100):not(.six-affix):not(.priceless-item)]:text-[#15191d]",
-  "[&.rarity-magic:not(.item-level-100):not(.six-affix):not(.priceless-item)]:bg-[#122b38] [&.rarity-magic:not(.item-level-100):not(.six-affix):not(.priceless-item)]:bg-[url(../../../../src/assets/active-skill-rare-background.png)]",
-  "[&.rarity-epic:not(.item-level-100):not(.six-affix):not(.priceless-item)]:bg-[#1b1740] [&.rarity-epic:not(.item-level-100):not(.six-affix):not(.priceless-item)]:bg-[url(../../../../src/assets/epic-gear-memory-aura-background.png)]",
-  "[&.rarity-legendary]:bg-[#2b1c13] [&.rarity-legendary]:bg-[url(../../../../src/assets/legendary-memory-gear-background.png)]",
-  "[&.rarity-vorax]:bg-[#2d1110] [&.rarity-vorax]:bg-[url(../../../../src/assets/ultimate-memory-vorax-background.png)]",
-  "[&.six-affix:not(.rarity-legendary):not(.rarity-vorax)]:bg-[radial-gradient(circle_at_50%_14%,rgb(255_100_202/0.36),rgb(154_48_118/0.24)_38%,rgb(35_15_32/0.99)_78%)]",
-  "[&.priceless-item:not(.rarity-legendary):not(.rarity-vorax)]:bg-[linear-gradient(155deg,#70405f_0,#653554_24%,#522642_59%,#35172e_100%)]",
-  "[&.item-level-100:not(.rarity-legendary):not(.rarity-vorax):not(.six-affix):not(.priceless-item)]:bg-[#251027] [&.item-level-100:not(.rarity-legendary):not(.rarity-vorax):not(.six-affix):not(.priceless-item)]:bg-[url(../../../../src/assets/item-level-100-background.png)]",
-].join(" ");
-
-/** An affix tier badge (T0…T7, L); its tier-<n> class picks the colour. */
-export const TIER_BADGE = [
-  "inline-grid h-3.75 min-w-5.5 shrink-0 place-items-center rounded-[3px] border border-[#756858] bg-[#332d29] px-1 font-sans text-[0.55rem]/none font-bold text-[#ddd1c6] not-italic mt-0.5",
-  "[&.tier-t0]:border-[#ef554d] [&.tier-t0]:bg-[#8b211c] [&.tier-t0]:text-[#fff0ee] [&.tier-t0plus]:border-[#ef554d] [&.tier-t0plus]:bg-[#8b211c] [&.tier-t0plus]:text-[#fff0ee]",
-  "[&.tier-t1]:border-[#ff9a3d] [&.tier-t1]:bg-[#8a3d08] [&.tier-t1]:text-[#fff0dd] [&.tier-l]:border-[#ff9a3d] [&.tier-l]:bg-[#a64a0b] [&.tier-l]:text-[#fff0dd]",
-  "[&.tier-t2]:border-[#bf6aff] [&.tier-t2]:bg-[#5b247d] [&.tier-t2]:text-[#f4ddff] [&.tier-t3]:border-[#bf6aff] [&.tier-t3]:bg-[#5b247d] [&.tier-t3]:text-[#f4ddff] [&.tier-t4]:border-[#bf6aff] [&.tier-t4]:bg-[#5b247d] [&.tier-t4]:text-[#f4ddff]",
-  "[&.tier-t5]:border-[#58a7ff] [&.tier-t5]:bg-[#174d83] [&.tier-t5]:text-[#e2f2ff] [&.tier-t6]:border-[#58a7ff] [&.tier-t6]:bg-[#174d83] [&.tier-t6]:text-[#e2f2ff] [&.tier-t7]:border-[#58a7ff] [&.tier-t7]:bg-[#174d83] [&.tier-t7]:text-[#e2f2ff]",
-].join(" ");
+export function itemCardLook(classes: string): string {
+  const names = new Set(classes.split(/\s+/));
+  const rarity = [...names].find((name) => name.startsWith("rarity-"))?.slice("rarity-".length) ?? "";
+  const levelHundred = names.has("item-level-100"),
+    priceless = names.has("priceless-item"),
+    sixAffix = names.has("six-affix");
+  const nameFrame =
+    levelHundred || priceless
+      ? PINK_NAME_FRAME
+      : sixAffix
+        ? SIX_AFFIX_NAME_FRAME
+        : NAME_FRAME[rarity] || PLAIN_NAME_FRAME;
+  const art =
+    rarity === "legendary" || rarity === "vorax"
+      ? ART[rarity]
+      : priceless
+        ? PRICELESS_ART
+        : sixAffix
+          ? SIX_AFFIX_ART
+          : levelHundred
+            ? LEVEL_100_ART
+            : ART[rarity] || PLAIN_ART;
+  return `bg-cover bg-top bg-no-repeat ${nameFrame} ${LIGHT_DARK[rarity] || PLAIN_LIGHT_DARK} ${art}`;
+}

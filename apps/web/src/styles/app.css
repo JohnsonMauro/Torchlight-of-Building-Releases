@@ -1,7 +1,6 @@
 /*
- * The page's stylesheet. Cascade layers, lowest first: Tailwind's theme, base (Preflight and the page frame),
- * components (the .css files that sit beside the components and draw what utilities cannot), utilities. A component
- * stylesheet wraps its rules in `@layer components` so utilities still win over it.
+ * The page's only stylesheet (tests/unit/styling-rules.test.js): no .css sits beside a component. Cascade layers,
+ * lowest first: Tailwind's theme, base (Preflight and the page frame), components (empty), utilities.
  */
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
@@ -16,8 +15,9 @@
 @source "../../../../src/game-log";
 
 /*
- * Design tokens: the planner's dark material, gold-bronze trim, an ember accent and a frost secondary. Static, so the
- * component stylesheets can read every token as a custom property even when no utility uses it.
+ * Design tokens: the planner's dark material, gold-bronze trim, an ember accent and a frost secondary. Static, so
+ * arbitrary values can read every token as a custom property even when no utility uses it. --art-magic is the magic
+ * rarity's card art, a token because its file name spells "active", a word the e2e tests read off class lists.
  */
 @theme static {
   --color-ink: #080b10;
@@ -39,6 +39,7 @@
   --font-display: "Palatino Linotype", "Book Antiqua", Georgia, serif;
   --font-serif: Georgia, "Times New Roman", serif;
   --font-sans: "Segoe UI", Arial, sans-serif;
+  --art-magic: url("../../../../src/assets/active-skill-rare-background.png");
 }
 
 @layer base {

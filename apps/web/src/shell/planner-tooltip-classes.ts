@@ -16,14 +16,14 @@ const FRAME = [
   "leading-[normal] text-text opacity-0 shadow-[0_18px_55px_rgb(0_0_0/0.55)] clip-chamfer-7",
   "transition-[opacity,translate] duration-120",
   "[&.visible]:visible [&.visible]:translate-y-0 [&.visible]:opacity-100",
-  "[--tip-name:var(--tip-special,var(--tip-accent))] [--tip-line:var(--tip-special,var(--tip-edge))]",
+  "[--tip-name:var(--tip-pink,var(--tip-accent))] [--tip-line:var(--tip-pink,var(--tip-edge))]",
 ].join(" ");
 
 // Rarity colours and artwork, from data-rarity (gear, hero memories, followers, pacts).
 const RARITY = [
   "[--tip-accent:#d6dce2] [--tip-edge:#858b92]",
   "data-[rarity=magic]:[--tip-accent:#50d0f4] data-[rarity=magic]:[--tip-edge:#159dcc]",
-  "data-[rarity=magic]:[--tip-art:url(../../../../src/assets/active-skill-rare-background.png)]",
+  "data-[rarity=magic]:[--tip-art:var(--art-magic)]",
   "data-[rarity=rare]:[--tip-accent:#d96bf2] data-[rarity=rare]:[--tip-edge:#a45cc1]",
   "data-[rarity=rare]:[--tip-art:url(../../../../src/assets/epic-gear-memory-aura-background.png)]",
   "data-[rarity=epic]:[--tip-accent:#d96bf2] data-[rarity=epic]:[--tip-edge:#a342cb]",
@@ -44,7 +44,7 @@ const GEAR = [
   "[&.gear-tooltip]:bg-[image:var(--tip-lv100,var(--tip-art,linear-gradient(145deg,#30363d,#12171c_72%)))]",
   "[&.gear-tooltip]:bg-cover [&.gear-tooltip]:bg-top [&.gear-tooltip]:bg-no-repeat",
   "[&.gear-tooltip]:shadow-[inset_0_-3px_0_var(--tip-line),0_14px_38px_#000b]",
-  "[&.six-affix]:[--tip-special:#ff91dc] [&.priceless-item]:[--tip-special:#ff72d6]",
+  "[&.six-affix]:[--tip-pink:#ff91dc] [&.priceless-item]:[--tip-pink:#ff72d6]",
   "[&.item-level-100]:[--tip-lv100:url(../../../../src/assets/item-level-100-background.png)]",
 ].join(" ");
 
@@ -54,7 +54,7 @@ const SKILL = [
   "[&.skill-tooltip]:overflow-y-auto [&.skill-tooltip]:rounded-[7px] [&.skill-tooltip]:p-0",
   "[&.skill-tooltip]:[clip-path:none] [&.skill-tooltip]:border [&.skill-tooltip]:border-[#655744]",
   "[&.skill-tooltip]:bg-[#122b38] [&.skill-tooltip]:bg-cover [&.skill-tooltip]:bg-top [&.skill-tooltip]:bg-no-repeat",
-  "[&.skill-tooltip]:bg-[url(../../../../src/assets/active-skill-rare-background.png)]",
+  "[&.skill-tooltip]:bg-(image:--art-magic)",
   "[&.skill-tooltip]:text-[#e9edf3] [&.skill-tooltip]:shadow-[0_18px_55px_rgb(0_0_0/0.68)]",
   "[&.skill-tooltip]:[--tip-name:#71b8ff] [&.skill-tooltip]:[--tip-line:#5c9ee1] [&.skill-tooltip]:[--tip-icon:#7092b0]",
   "[&.skill-tooltip]:[--tip-tag:#69583c] [&.skill-tooltip]:[--tip-tag-text:#b7c5d4]",
@@ -152,7 +152,7 @@ const OTHER_KINDS = [
 
 /*
  * Markup several kinds share, from helpers outside the tooltip modules: coverage badges (coverageBadge and the
- * keyword-roll lines' badges), affix tier badges (affixTierBadge), keyword rolls whose effect shows while Alt is held
+ * keyword-roll lines' badges), keyword rolls whose effect shows while Alt is held
  * (modifierTextMarkup; Alt puts revival-alt-held on <body>), the curse note and the trait grant note. The base looks
  * sit in :where() so a kind's own placement of them wins.
  */
@@ -170,21 +170,6 @@ const SHARED_CONTENT = [
   "[&_:is(.calc-coverage,.keyword-roll-line>b).neutral]:border-[#4f5a66]",
   "[&_:is(.calc-coverage,.keyword-roll-line>b).neutral]:bg-[#20262d]",
   "[&_:is(.calc-coverage,.keyword-roll-line>b).neutral]:text-[#aab6c3]",
-  "[&_:where(.affix-tier-badge)]:inline-grid [&_:where(.affix-tier-badge)]:h-[15px] [&_:where(.affix-tier-badge)]:min-w-[22px]",
-  "[&_:where(.affix-tier-badge)]:place-items-center [&_:where(.affix-tier-badge)]:rounded-[3px] [&_:where(.affix-tier-badge)]:border",
-  "[&_:where(.affix-tier-badge)]:border-[#756858] [&_:where(.affix-tier-badge)]:bg-[#332d29] [&_:where(.affix-tier-badge)]:px-1",
-  "[&_:where(.affix-tier-badge)]:font-[Arial,sans-serif] [&_:where(.affix-tier-badge)]:text-[0.55rem]/none",
-  "[&_:where(.affix-tier-badge)]:font-bold [&_:where(.affix-tier-badge)]:text-[#ddd1c6] [&_:where(.affix-tier-badge)]:not-italic",
-  "[&_.affix-tier-badge:is(.tier-t0plus,.tier-t0)]:border-[#ef554d] [&_.affix-tier-badge:is(.tier-t0plus,.tier-t0)]:bg-[#8b211c]",
-  "[&_.affix-tier-badge:is(.tier-t0plus,.tier-t0)]:text-[#fff0ee]",
-  "[&_.affix-tier-badge:is(.tier-t1,.tier-l)]:border-[#ff9a3d] [&_.affix-tier-badge:is(.tier-t1,.tier-l)]:bg-[#8a3d08]",
-  "[&_.affix-tier-badge:is(.tier-t1,.tier-l)]:text-[#fff0dd]",
-  "[&_.affix-tier-badge:is(.tier-t2,.tier-t3,.tier-t4)]:border-[#bf6aff]",
-  "[&_.affix-tier-badge:is(.tier-t2,.tier-t3,.tier-t4)]:bg-[#5b247d]",
-  "[&_.affix-tier-badge:is(.tier-t2,.tier-t3,.tier-t4)]:text-[#f4ddff]",
-  "[&_.affix-tier-badge:is(.tier-t5,.tier-t6,.tier-t7)]:border-[#58a7ff]",
-  "[&_.affix-tier-badge:is(.tier-t5,.tier-t6,.tier-t7)]:bg-[#174d83]",
-  "[&_.affix-tier-badge:is(.tier-t5,.tier-t6,.tier-t7)]:text-[#e2f2ff]",
   "[&_.keyword-roll-name]:text-[#75d8f6] [&_.keyword-roll-effect]:hidden",
   "[.revival-alt-held_&_.keyword-roll-effect]:inline",
   "[.revival-alt-held_&_.keyword-roll-effect.keyword-roll-lines]:mt-1 [.revival-alt-held_&_.keyword-roll-effect.keyword-roll-lines]:grid",

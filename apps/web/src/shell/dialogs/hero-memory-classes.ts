@@ -1,7 +1,7 @@
 // Class strings of the hero memory dialog (HeroMemorySelectorDialog.tsx) and its crafter (HeroMemoryCrafter.tsx): a
-// memory's rarity accent, the inventory rows and their buttons, the crafter's form controls, and the preview card with
-// its affix tier badges. States the tests read (active, incompatible, special, wax-applied) are passed in or come from
-// the `on:` variant, never spelled in a class.
+// memory's rarity accent, the inventory rows and their buttons, the crafter's form controls and the preview card (its
+// affix tier badges: src/app/gear/tier-badge.ts). States the tests read (active, incompatible, special, wax-applied) are
+// passed in or come from the `on:` variant, never spelled in a class.
 
 const accents: Record<string, string> = {
   normal: "[--memory-accent:#d6dce2] [--memory-tint:#343b44]",
@@ -48,19 +48,3 @@ export const previewCard =
   "mt-2.25 rounded-lg border p-3.25 leading-[1.4] text-[#e9e7e6] [&_h4]:mt-2.5 [&_h4]:mb-0.75 [&_h4]:text-[0.65rem] [&_h4]:font-bold [&_h4]:text-[#bbad9e] [&_h4]:uppercase";
 export const affixRow =
   "my-1 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2.25 text-[0.72rem] leading-[1.4] text-[#f1f3f5]";
-
-const tierColours: Record<string, string> = {
-  t0plus: "border-[#ef554d] bg-[#8b211c] text-[#fff0ee]",
-  t0: "border-[#ef554d] bg-[#8b211c] text-[#fff0ee]",
-  t1: "border-[#ff9a3d] bg-[#8a3d08] text-[#fff0dd]",
-  t2: "border-[#bf6aff] bg-[#5b247d] text-[#f4ddff]",
-  t3: "border-[#bf6aff] bg-[#5b247d] text-[#f4ddff]",
-  t4: "border-[#bf6aff] bg-[#5b247d] text-[#f4ddff]",
-  t5: "border-[#58a7ff] bg-[#174d83] text-[#e2f2ff]",
-  t6: "border-[#58a7ff] bg-[#174d83] text-[#e2f2ff]",
-  t7: "border-[#58a7ff] bg-[#174d83] text-[#e2f2ff]",
-  l: "border-[#ff9a3d] bg-[#a64a0b] text-[#fff0dd]",
-};
-/** An affix's tier badge (T0+, T1… L): its tier's colours on a small chip. */
-export const tierBadge = (key: string): string =>
-  `mt-px inline-grid h-3.75 min-w-5.5 place-items-center rounded-[3px] border px-1 font-[Arial,sans-serif] text-[0.55rem] leading-none font-bold not-italic ${tierColours[key] ?? "border-[#756858] bg-[#332d29] text-[#ddd1c6]"}`;

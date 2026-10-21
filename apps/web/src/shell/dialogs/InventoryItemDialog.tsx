@@ -11,8 +11,7 @@ import {
   CRAFTER_FOOTER,
   CRAFTER_HEAD,
   FOOTER_BUTTON,
-  RARITY_ART,
-  RARITY_VARS,
+  itemCardLook,
 } from "../../features/gear/crafter-classes";
 import { InventoryItemEditor } from "../../features/gear/InventoryItemEditor";
 
@@ -22,7 +21,7 @@ const ITEM_DIALOG = "dialog-panel w-78.75 leading-[normal]";
 const ITEM_HEAD = "absolute top-1.25 right-1.25 z-2 [&>div]:hidden";
 const ITEM_CLOSE =
   "grid size-7 cursor-pointer place-items-center rounded-[4px] bg-[#1a2430] text-xl text-[#aab8c7] hover:bg-[#344253] hover:text-white focus-visible:bg-[#344253] focus-visible:text-white focus-visible:outline-none";
-const QUICK_ACTIONS = `grid gap-2.25 px-5 pt-7 pb-5 ${RARITY_VARS} ${RARITY_ART}`;
+const QUICK_ACTIONS = "grid gap-2.25 px-5 pt-7 pb-5";
 const QUICK_BUTTON = "btn-bronze p-2.5 text-xs font-extrabold tracking-[0.03em] uppercase";
 const DELETE_BUTTON =
   "cursor-pointer rounded-[3px] border border-[#a35343] bg-[linear-gradient(180deg,#60332b,#2b1e1d)] p-2.5 text-xs font-extrabold tracking-[0.03em] text-[#ffbdad] uppercase hover:border-[#e78e74] hover:bg-[linear-gradient(180deg,#804237,#39231f)] hover:text-[#ffe0d5] focus-visible:border-[#e78e74] focus-visible:text-[#ffe0d5] focus-visible:outline-none";
@@ -70,7 +69,9 @@ export function InventoryItemDialog() {
       ) : (
         <div key="item" id="inventory-item-body">
           {view?.item ? (
-            <div className={`inventory-quick-actions ${QUICK_ACTIONS} ${view.item.classes}`}>
+            <div
+              className={`inventory-quick-actions ${QUICK_ACTIONS} ${itemCardLook(view.item.classes)} ${view.item.classes}`}
+            >
               <img
                 src={view.item.icon}
                 alt=""

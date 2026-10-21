@@ -19,6 +19,7 @@ import { fullTextTitle, titleCase } from "../planner/page.js";
 import { currentEquipmentImpact, disabledEquipmentSlots, plannerState } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
 import { tierMatchesResolved } from "./affix-rolls.js";
+import { tierBadgeClasses, tierBadgeKey } from "./tier-badge.ts";
 import { towerSequenceById } from "./gear-rules.js";
 import { legendaryKnownModifierSignatures, modifierSignature } from "./stored-items.js";
 
@@ -320,8 +321,7 @@ export function itemModifierSections(item) {
 }
 export function affixTierBadge(badge) {
   if (!badge) return "";
-  const key = badge.toLowerCase().replace("+", "plus");
-  return `<i class="affix-tier-badge tier-${escapeHtml(key)}">${escapeHtml(badge)}</i>`;
+  return `<i class="${escapeHtml(tierBadgeClasses(tierBadgeKey(badge)))}">${escapeHtml(badge)}</i>`;
 }
 // An item's preview card as data, for the crafter and the item editor (src/app/bridge/equipment-crafter-view.ts).
 export function equipmentPreviewView(item) {
@@ -338,10 +338,11 @@ export function equipmentPreviewView(item) {
     sections: itemModifierSections(item).map((section) => ({
       ...displayTexts({ label: section.label, detail: section.detail || "" }),
       entries: section.entries.map((entry) => {
-        const key = entry.badge?.toLowerCase().replace("+", "plus");
         return {
           className: `${entry.tone === "legendary" || entry.badge === "L" ? "legendary-affix " : ""}${entry.tone === "corrosion" || corroded.has(entry.index) ? "corrosion-affix" : ""}`,
-          badge: entry.badge ? displayTexts({ className: `affix-tier-badge tier-${key}`, text: entry.badge }) : null,
+          badge: entry.badge
+            ? displayTexts({ className: tierBadgeClasses(tierBadgeKey(entry.badge)), text: entry.badge })
+            : null,
           text: modifierTextView(entry.text),
         };
       }),

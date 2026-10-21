@@ -4,6 +4,7 @@
 // the revived affix's select keeps data-memory-field="revivedAffix", which the planner's select search popover reads.
 import { useLayoutEffect, useRef, useState } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import { tierBadgeClasses, tierBadgeKey } from "@legacy/app/gear/tier-badge.ts";
 import type {
   MemoryAffixLineView,
   MemoryCrafterView,
@@ -24,7 +25,6 @@ import {
   rollControls,
   switchInput,
   switchRow,
-  tierBadge,
   tierButton,
   typeButton,
 } from "./hero-memory-classes";
@@ -33,10 +33,6 @@ import { numberField, rangeField } from "./selector-classes";
 const commands = plannerCommands;
 const craftAction =
   "btn-bronze min-h-10 flex-1 text-[0.72rem] font-extrabold tracking-[0.08em] uppercase off:cursor-not-allowed off:opacity-50";
-const tierBadgeClass = (badge: string) => {
-  const key = badge.toLowerCase().replace("+", "plus");
-  return `affix-tier-badge tier-${key} ${tierBadge(key)}`;
-};
 
 function RollControls({
   roll,
@@ -163,7 +159,7 @@ function RevivedEffect({ effect }: { effect: MemoryRevivedEffectView }) {
     <div
       className={`memory-revived-effect ${effect.special ? "special" : ""} flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 whitespace-pre-line`}
     >
-      {effect.tierBadge ? <i className={tierBadgeClass(effect.tierBadge)}>{effect.tierBadge}</i> : null}
+      {effect.tierBadge ? <i className={tierBadgeClasses(tierBadgeKey(effect.tierBadge))}>{effect.tierBadge}</i> : null}
       <span
         className={`memory-revived-name ${effect.special ? "font-bold text-[#75d8f6] underline underline-offset-2" : ""}`}
       >
@@ -207,7 +203,7 @@ function AffixRows({ heading, rows }: { heading: string; rows: MemoryPreviewView
       <h4>{heading}</h4>
       {rows.map((row) => (
         <div key={row.index} className={`memory-affix-row ${affixRow}`}>
-          {row.tier !== null ? <i className={tierBadgeClass(`T${row.tier}`)}>{`T${row.tier}`}</i> : null}
+          {row.tier !== null ? <i className={tierBadgeClasses(`t${row.tier}`)}>{`T${row.tier}`}</i> : null}
           <span>{row.text}</span>
         </div>
       ))}

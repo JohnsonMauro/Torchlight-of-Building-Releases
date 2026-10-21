@@ -18,7 +18,7 @@ export interface GearLook {
 const LEGENDARY_ART = "bg-[#2b1c13] bg-[url(../../../../src/assets/legendary-memory-gear-background.png)]";
 const VORAX_ART = "bg-[#2d1110] bg-[url(../../../../src/assets/ultimate-memory-vorax-background.png)]";
 const EPIC_ART = "bg-[#1b1740] bg-[url(../../../../src/assets/epic-gear-memory-aura-background.png)]";
-const MAGIC_ART = "bg-[#122b38] bg-[url(../../../../src/assets/active-skill-rare-background.png)]";
+const MAGIC_ART = "bg-[#122b38] bg-(image:--art-magic)";
 const LEVEL_100_ART = "bg-[#341229] bg-[url(../../../../src/assets/item-level-100-inventory-background.png)]";
 const ART_FIT = "bg-cover bg-top bg-no-repeat";
 

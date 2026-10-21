@@ -172,7 +172,10 @@ export function RareCraftForm({ form }: { form: RareFormView }) {
                 <Options options={affix.options} />
               </select>
             </label>
-            <div className="base-affix-rolls grid gap-2 empty:hidden" data-base-affix-rolls={affix.index}>
+            <div
+              className={`base-affix-rolls grid gap-2 ${affix.rolls.length ? "" : "hidden"}`}
+              data-base-affix-rolls={affix.index}
+            >
               {affix.rolls.map((roll) => (
                 <label key={roll.rangeIndex} className="base-affix-roll grid gap-1">
                   <RollInputs

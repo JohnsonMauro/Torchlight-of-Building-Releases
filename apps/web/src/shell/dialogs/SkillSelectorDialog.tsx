@@ -10,7 +10,7 @@ import { useSessionState } from "../../ui/use-session-state";
 import { useViewSource } from "../../ui/use-view-source";
 import { setAutofocusAttribute } from "../autofocus";
 import { SkillSelectorDetail } from "./SkillSelectorDetail";
-import { DETAIL, RESULT, RESULT_SELECTED, RESULT_TINT, SUPPORT_ART } from "./skill-selector-classes";
+import { DETAIL, RESULT, RESULT_SELECTED, resultTint, SUPPORT_ART } from "./skill-selector-classes";
 
 const FOOTER_BUTTON = "px-3.5 py-2 text-[0.72rem] font-extrabold tracking-[0.06em] uppercase";
 // Clear slot: a reddish bronze.
@@ -85,7 +85,7 @@ export function SkillSelectorDialog() {
                       <button
                         key={item.index}
                         type="button"
-                        className={`${item.index === view.selected ? `${RESULT_SELECTED} selected` : RESULT}${item.tintClass} ${RESULT_TINT}`}
+                        className={`${item.index === view.selected ? `${RESULT_SELECTED} selected` : RESULT}${item.tintClass} ${resultTint(item.tintClass)}`}
                         onClick={() => plannerCommands().chooseSkillSelectorEntry(item.index)}
                       >
                         <Artwork src={item.icon} alt={item.name} className={SUPPORT_ART} />

@@ -20,25 +20,26 @@ import {
   MOD_HEAD,
   MOD_TAG,
   MOD_TAG_CORRODED,
+  itemCardLook,
   RANGE,
   RANGE_NEGATIVE,
-  RARITY_ART,
-  RARITY_VARS,
   ROLL_NUMBER,
   ROLL_ROW,
   ROLL_VALUE,
-  TIER_BADGE,
 } from "./crafter-classes";
 
 // A keyword roll shows its keyword; holding Alt (body.revival-alt-held, src/app/tooltips/tooltip-host.js) shows its effect.
 const KEYWORD_NAME = "keyword-roll-name font-bold text-[#75d8f6] underline underline-offset-2";
 const KEYWORD_EFFECT = "keyword-roll-effect hidden [.revival-alt-held_&]:inline";
-// The item card: its rarity's art and colours (RARITY_VARS / RARITY_ART), a framed box per modifier section.
-const PREVIEW = `block rounded-[3px] border border-(--item-frame) p-5 text-center text-text shadow-[inset_0_0_0_3px_rgb(22_20_27/0.45)] ${RARITY_VARS} ${RARITY_ART}`;
+// The item card: its rarity's art and colours (itemCardLook), a framed box per modifier section.
+const PREVIEW =
+  "block rounded-[3px] border border-(--item-frame) p-5 text-center shadow-[inset_0_0_0_3px_rgb(22_20_27/0.45)]";
 const MOD_SECTION =
   "rounded-[5px] border border-[rgb(151_112_75/0.48)] bg-[rgb(18_13_10/0.38)] p-2.5 [.rarity-common:not(.item-level-100)_&]:border-[rgb(61_69_77/0.45)] [.rarity-common:not(.item-level-100)_&]:bg-white/20";
-const MOD_LINE =
-  "my-1.25 flex items-start gap-1.5 text-[0.95rem] whitespace-pre-line [&.corrosion-affix]:text-[#d9a3ff]";
+// A modifier line; a corroded one (corrosion-affix, read by the e2e tests) in violet.
+const MOD_LINE = "my-1.25 flex items-start gap-1.5 text-[0.95rem] whitespace-pre-line";
+const lineClasses = (className: string) =>
+  `${MOD_LINE} ${className}${className.split(" ").includes("corrosion-affix") ? " text-[#d9a3ff]" : ""}`;
 
 export function ModifierText({ text }: { text: ModifierTextView }) {
   if (text.kind === "plain") return <>{text.text}</>;
@@ -64,7 +65,7 @@ export function ModifierText({ text }: { text: ModifierTextView }) {
 
 export function ItemPreview({ preview }: { preview: ItemPreviewView }) {
   return (
-    <article className={`${PREVIEW} ${preview.className}`}>
+    <article className={`${PREVIEW} ${itemCardLook(preview.className)} ${preview.className}`}>
       <img src={preview.icon} alt="" className="mx-auto h-36 w-28 object-contain" />
       <p className="mt-1 text-[0.62rem] tracking-[0.12em] text-(--item-name) uppercase">{preview.rarity}</p>
       <h3 className="mt-3 font-display text-[0.95rem] font-black text-(--item-name)">{preview.name}</h3>
@@ -79,10 +80,8 @@ export function ItemPreview({ preview }: { preview: ItemPreviewView }) {
               </h4>
               <ul>
                 {section.entries.map((entry, position) => (
-                  <li key={position} className={`${MOD_LINE} ${entry.className}`}>
-                    {entry.badge ? (
-                      <i className={`${TIER_BADGE} ${entry.badge.className}`}>{entry.badge.text}</i>
-                    ) : null}
+                  <li key={position} className={lineClasses(entry.className)}>
+                    {entry.badge ? <i className={entry.badge.className}>{entry.badge.text}</i> : null}
                     <span>
                       <ModifierText text={entry.text} />
                     </span>

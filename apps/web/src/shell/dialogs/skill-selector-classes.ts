@@ -11,14 +11,19 @@ const RESULT_BASE =
   "selector-result flex w-full cursor-pointer items-center gap-3 rounded-[4px] border p-2.75 text-left text-text hover:border-[#e7b35d] hover:bg-[linear-gradient(145deg,#302a23,#1b2229)] focus-visible:border-[#e7b35d] focus-visible:outline-none";
 export const RESULT = `${RESULT_BASE} border-[#554a3a] bg-[linear-gradient(145deg,#1d252d,#151b23)]`;
 export const RESULT_SELECTED = `${RESULT_BASE} border-[#e7b35d] bg-[linear-gradient(145deg,#302a23,#1b2229)]`;
-/** A follower Tartarus skill's rarity, as an accent on the choice's left edge. */
-export const RESULT_TINT = [
-  "[&.follower-tint-normal]:shadow-[inset_3px_0_0_#d6dce2]",
-  "[&.follower-tint-magic]:shadow-[inset_3px_0_0_#50d0f4]",
-  "[&.follower-tint-rare]:shadow-[inset_3px_0_0_#d96bf2]",
-  "[&.follower-tint-legendary]:shadow-[inset_3px_0_0_#ff993f]",
-  "[&.follower-tint-ult]:shadow-[inset_3px_0_0_#ff635c]",
-].join(" ");
+const RESULT_TINTS: Readonly<Record<string, string>> = {
+  normal: "shadow-[inset_3px_0_0_#d6dce2]",
+  magic: "shadow-[inset_3px_0_0_#50d0f4]",
+  rare: "shadow-[inset_3px_0_0_#d96bf2]",
+  legendary: "shadow-[inset_3px_0_0_#ff993f]",
+  ult: "shadow-[inset_3px_0_0_#ff635c]",
+};
+/**
+ * A follower Tartarus skill's rarity, as an accent on the choice's left edge: picked from its " follower-tint-<id>" class
+ * (the e2e tests read that class, so no variant may spell it).
+ */
+export const resultTint = (tintClass: string): string =>
+  RESULT_TINTS[tintClass.trim().slice("follower-tint-".length)] ?? "";
 
 /** A tier, star or level button: dark slate; `active` (the chosen one) in ember. */
 export const TIER_BUTTON =
@@ -40,22 +45,22 @@ export const RANGE =
   "h-1.5 w-full min-w-0 cursor-pointer appearance-none rounded-full border border-[#5e4a30] bg-[linear-gradient(to_right,#f9ca65_var(--range-fill,0%),#2a2f36_var(--range-fill,0%))] [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-[#7b5525] [&::-webkit-slider-thumb]:bg-[radial-gradient(circle_at_35%_30%,#fff0b0,#e8ad4f_58%,#a66b2c)] [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-[#7b5525] [&::-moz-range-thumb]:bg-[radial-gradient(circle_at_35%_30%,#fff0b0,#e8ad4f_58%,#a66b2c)]";
 /**
  * The detail column and the preview card in it: a skill's colours, a support's (green), an aura's (violet) or a follower
- * skill's rarity, set as custom properties on the card and read by its parts.
+ * skill's rarity (data-tint), set as custom properties on the card and read by its parts.
  */
 export const DETAIL = [
   "skill-selector-detail min-h-0 overflow-auto p-4 max-[700px]:hidden",
   "[&>p]:grid [&>p]:h-full [&>p]:place-items-center [&>p]:text-muted",
   // The card and its kinds.
   "[&_.selector-preview]:mx-auto [&_.selector-preview]:max-w-90 [&_.selector-preview]:overflow-hidden [&_.selector-preview]:rounded-[7px] [&_.selector-preview]:border [&_.selector-preview]:border-(--pv-border) [&_.selector-preview]:bg-(--pv-color) [&_.selector-preview]:bg-cover [&_.selector-preview]:bg-top [&_.selector-preview]:bg-no-repeat [&_.selector-preview]:text-[#e9edf3]",
-  "[&_.selector-preview]:[--pv-border:#655744] [&_.selector-preview]:[--pv-color:#122b38] [&_.selector-preview]:[--pv-head:rgb(15_53_70/0.46)] [&_.selector-preview]:[--pv-accent:#5c9ee1] [&_.selector-preview]:[--pv-title:#71b8ff] [&_.selector-preview]:[--pv-rule:#526070] [&_.selector-preview]:[--pv-label:#a7b8c9] [&_.selector-preview]:bg-[url(../../../../src/assets/active-skill-rare-background.png)]",
+  "[&_.selector-preview]:[--pv-border:#655744] [&_.selector-preview]:[--pv-color:#122b38] [&_.selector-preview]:[--pv-head:rgb(15_53_70/0.46)] [&_.selector-preview]:[--pv-accent:#5c9ee1] [&_.selector-preview]:[--pv-title:#71b8ff] [&_.selector-preview]:[--pv-rule:#526070] [&_.selector-preview]:[--pv-label:#a7b8c9] [&_.selector-preview]:bg-(image:--art-magic)",
   "[&_.selector-preview.support]:[--pv-border:#4f8266] [&_.selector-preview.support]:[--pv-color:#10352b] [&_.selector-preview.support]:[--pv-head:rgb(11_58_42/0.46)] [&_.selector-preview.support]:[--pv-accent:#45c893] [&_.selector-preview.support]:[--pv-title:#65e5b1] [&_.selector-preview.support]:[--pv-rule:#4c7560] [&_.selector-preview.support]:[--pv-label:#a9cfba] [&_.selector-preview.support]:bg-[url(../../../../src/assets/support-skill-background.png)]",
   "[&_.selector-preview.aura]:[--pv-border:#76559a] [&_.selector-preview.aura]:[--pv-color:#1b1740] [&_.selector-preview.aura]:[--pv-head:rgb(31_23_75/0.48)] [&_.selector-preview.aura]:[--pv-accent:#ab78d9] [&_.selector-preview.aura]:[--pv-title:#d9a8ff] [&_.selector-preview.aura]:[--pv-rule:#715589] [&_.selector-preview.aura]:[--pv-label:#cdb6df] [&_.selector-preview.aura]:bg-[url(../../../../src/assets/epic-gear-memory-aura-background.png)]",
-  "[&_.selector-preview[class*=follower-tint-]]:[--pv-title:#fff] [&_.selector-preview[class*=follower-tint-]]:[--pv-label:rgb(255_255_255/0.75)]",
-  "[&_.selector-preview.follower-tint-normal]:[--pv-border:#d6dce2] [&_.selector-preview.follower-tint-normal]:[--pv-color:#30363d] [&_.selector-preview.follower-tint-normal]:[--pv-head:rgb(52_59_68/0.46)] [&_.selector-preview.follower-tint-normal]:[--pv-accent:#d6dce2] [&_.selector-preview.follower-tint-normal]:bg-none",
-  "[&_.selector-preview.follower-tint-magic]:[--pv-border:#50d0f4] [&_.selector-preview.follower-tint-magic]:[--pv-head:rgb(15_53_70/0.46)] [&_.selector-preview.follower-tint-magic]:[--pv-accent:#50d0f4]",
-  "[&_.selector-preview.follower-tint-rare]:[--pv-border:#d96bf2] [&_.selector-preview.follower-tint-rare]:[--pv-color:#1b1740] [&_.selector-preview.follower-tint-rare]:[--pv-head:rgb(31_23_75/0.45)] [&_.selector-preview.follower-tint-rare]:[--pv-accent:#d96bf2] [&_.selector-preview.follower-tint-rare]:bg-[url(../../../../src/assets/epic-gear-memory-aura-background.png)]",
-  "[&_.selector-preview.follower-tint-legendary]:[--pv-border:#ff993f] [&_.selector-preview.follower-tint-legendary]:[--pv-color:#2b1c13] [&_.selector-preview.follower-tint-legendary]:[--pv-head:rgb(49_30_17/0.48)] [&_.selector-preview.follower-tint-legendary]:[--pv-accent:#ff993f] [&_.selector-preview.follower-tint-legendary]:bg-[url(../../../../src/assets/legendary-memory-gear-background.png)]",
-  "[&_.selector-preview.follower-tint-ult]:[--pv-border:#ff635c] [&_.selector-preview.follower-tint-ult]:[--pv-color:#2d1110] [&_.selector-preview.follower-tint-ult]:[--pv-head:rgb(42_13_12/0.52)] [&_.selector-preview.follower-tint-ult]:[--pv-accent:#ff635c] [&_.selector-preview.follower-tint-ult]:bg-[url(../../../../src/assets/ultimate-memory-vorax-background.png)]",
+  "[&_.selector-preview[data-tint]]:[--pv-title:#fff] [&_.selector-preview[data-tint]]:[--pv-label:rgb(255_255_255/0.75)]",
+  "[&_.selector-preview[data-tint=normal]]:[--pv-border:#d6dce2] [&_.selector-preview[data-tint=normal]]:[--pv-color:#30363d] [&_.selector-preview[data-tint=normal]]:[--pv-head:rgb(52_59_68/0.46)] [&_.selector-preview[data-tint=normal]]:[--pv-accent:#d6dce2] [&_.selector-preview[data-tint=normal]]:bg-none",
+  "[&_.selector-preview[data-tint=magic]]:[--pv-border:#50d0f4] [&_.selector-preview[data-tint=magic]]:[--pv-head:rgb(15_53_70/0.46)] [&_.selector-preview[data-tint=magic]]:[--pv-accent:#50d0f4]",
+  "[&_.selector-preview[data-tint=rare]]:[--pv-border:#d96bf2] [&_.selector-preview[data-tint=rare]]:[--pv-color:#1b1740] [&_.selector-preview[data-tint=rare]]:[--pv-head:rgb(31_23_75/0.45)] [&_.selector-preview[data-tint=rare]]:[--pv-accent:#d96bf2] [&_.selector-preview[data-tint=rare]]:bg-[url(../../../../src/assets/epic-gear-memory-aura-background.png)]",
+  "[&_.selector-preview[data-tint=legendary]]:[--pv-border:#ff993f] [&_.selector-preview[data-tint=legendary]]:[--pv-color:#2b1c13] [&_.selector-preview[data-tint=legendary]]:[--pv-head:rgb(49_30_17/0.48)] [&_.selector-preview[data-tint=legendary]]:[--pv-accent:#ff993f] [&_.selector-preview[data-tint=legendary]]:bg-[url(../../../../src/assets/legendary-memory-gear-background.png)]",
+  "[&_.selector-preview[data-tint=ult]]:[--pv-border:#ff635c] [&_.selector-preview[data-tint=ult]]:[--pv-color:#2d1110] [&_.selector-preview[data-tint=ult]]:[--pv-head:rgb(42_13_12/0.52)] [&_.selector-preview[data-tint=ult]]:[--pv-accent:#ff635c] [&_.selector-preview[data-tint=ult]]:bg-[url(../../../../src/assets/ultimate-memory-vorax-background.png)]",
   // The head: art, name, level, tags.
   "[&_.selector-preview-head]:grid [&_.selector-preview-head]:grid-cols-[38px_minmax(0,1fr)_auto] [&_.selector-preview-head]:items-start [&_.selector-preview-head]:gap-x-2.25 [&_.selector-preview-head]:gap-y-1 [&_.selector-preview-head]:border-b-2 [&_.selector-preview-head]:border-(--pv-accent) [&_.selector-preview-head]:bg-(--pv-head) [&_.selector-preview-head]:px-3 [&_.selector-preview-head]:py-2.75",
   "[&_.selector-preview-head_.art-frame]:relative [&_.selector-preview-head_.art-frame]:row-span-2 [&_.selector-preview-head_.art-frame]:mt-0.5 [&_.selector-preview-head_.art-frame]:grid [&_.selector-preview-head_.art-frame]:size-8.5 [&_.selector-preview-head_.art-frame]:place-items-center [&_.selector-preview-head_.art-frame]:overflow-hidden [&_.selector-preview-head_.art-frame]:rounded-[7px] [&_.selector-preview-head_.art-frame]:border [&_.selector-preview-head_.art-frame]:border-[rgb(85_214_221/0.35)]",

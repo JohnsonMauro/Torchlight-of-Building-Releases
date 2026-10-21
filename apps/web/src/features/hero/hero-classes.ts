@@ -83,7 +83,7 @@ const rarityTint: Record<string, { text: string; art: string }> = {
   normal: { text: "text-[#d6dce2]", art: "border-[#d6dce2] bg-[#30363d]" },
   magic: {
     text: "text-[#50d0f4]",
-    art: "border-[#50d0f4] bg-[#122b38] bg-[url(../../../../src/assets/active-skill-rare-background.png)]",
+    art: "border-[#50d0f4] bg-[#122b38] bg-(image:--art-magic)",
   },
   epic: {
     text: "text-[#d96bf2]",
