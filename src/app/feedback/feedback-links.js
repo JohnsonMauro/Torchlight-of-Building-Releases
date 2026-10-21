@@ -6,7 +6,7 @@
 //   bugReportUrl          "Report bug" beside Manage Loadouts (apps/web/src/shell/LoadoutStrip.tsx, src/app/app.js) → planner-bug.yml, label planner-bug
 // Issue forms fill each field from the query parameter named after its id. Long text fields are trimmed with "…" so a
 // URL stays at or under ANSWER_URL_MAX characters. scripts/collect-submissions.mjs reads the issues back.
-// The buttons now open the in-planner dialog first (src/app/feedback/feedback-dialog.js), which builds its URL with issueFormUrlInfo
+// The buttons now open the in-planner dialog first (apps/web/src/shell/dialogs/FeedbackDialog.tsx), which builds its URL with issueFormUrlInfo
 // from the shared form schema (src/app/feedback/feedback-forms.js); the three builders below remain the direct pre-fills.
 import { FEEDBACK_FORMS } from "./feedback-forms.js";
 

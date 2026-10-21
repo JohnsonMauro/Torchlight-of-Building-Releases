@@ -2,7 +2,6 @@ import { additionalDamagePathSources } from "./stats/damage-path-sources.js";
 import { neutralStatuses, refineCoverage, setCoverageContext, dazeStatus } from "../engine/text/line-coverage.js";
 import { OPEN_QUESTIONS, openQuestionsFor, openQuestionsText } from "./stats/open-questions.js";
 import { bugAreaForView, platformName } from "./feedback/feedback-links.js";
-import { createFeedbackDialog } from "./feedback/feedback-dialog.js";
 import { expandBuildCode } from "../engine/state/build-code-compact.js";
 import { calculationReportContext } from "./feedback/feedback-report-context.js";
 import { APP_VERSION } from "./app-version.js";
@@ -1772,6 +1771,8 @@ provideViewSource("heroMemory", heroMemorySource);
 provideViewSource("inventoryItem", inventoryItemSource);
 // The equipment crafter.
 provideViewSource("equipmentCrafter", equipmentCrafterSource);
+// The feedback dialog.
+provideViewSource("feedback", () => ({ session: feedbackSession, ...feedbackRequest }));
 // The Prism crafter.
 provideViewSource("prismCrafter", prismCrafterSource);
 // The Kismet crafter.
@@ -5361,17 +5362,26 @@ function submitOpenQuestion(id) {
   const entry = OPEN_QUESTIONS.find((item) => item.id === id);
   if (!entry) return;
   persistPlannerState();
-  feedbackDialog.open("answer", {
+  openFeedback("answer", {
     entry,
     version: APP_VERSION,
     platform: platformName(window),
     buildCode: currentBuildCode(),
   });
 }
-// Report buttons: each opens the in-planner feedback dialog (src/app/feedback/feedback-dialog.js) with its GitHub form's fields; "Send to
-// GitHub" puts the compact build code in the URL when it is included and fits (else copies it) and opens the pre-filled
-// issue form in a new tab (the desktop app hands it to the system browser, electron/main.cjs setWindowOpenHandler).
-const feedbackDialog = createFeedbackDialog({ dialog: $("#feedback-dialog"), toast: showToast });
+// Report buttons: each opens the in-planner feedback dialog (apps/web/src/shell/dialogs/FeedbackDialog.tsx) with its GitHub
+// form's fields; "Send to GitHub" puts the compact build code in the URL when it is included and fits (else copies it)
+// and opens the pre-filled issue form in a new tab (the desktop app hands it to the system browser,
+// electron/main.cjs setWindowOpenHandler). The dialog reads the "feedback" source: the form and its context.
+let feedbackSession = 0,
+  feedbackRequest = { formKey: "", context: {} };
+function openFeedback(formKey, context) {
+  feedbackSession++;
+  feedbackRequest = { formKey, context };
+  viewSourceChanged("feedback");
+  const dialog = $("#feedback-dialog");
+  if (!dialog.open) dialog.showModal();
+}
 function currentBuildCode() {
   try {
     return encodePlannerState(plannerState);
@@ -5382,7 +5392,7 @@ function currentBuildCode() {
 function reportCalculation() {
   persistPlannerState();
   const context = calculationReportContext(currentPlanner(), selectedStatSheetSkill);
-  feedbackDialog.open("calculation", {
+  openFeedback("calculation", {
     ...context,
     version: APP_VERSION,
     platform: platformName(window),
@@ -5391,7 +5401,7 @@ function reportCalculation() {
 }
 $("[data-report-bug]").addEventListener("click", () => {
   persistPlannerState();
-  feedbackDialog.open("bug", {
+  openFeedback("bug", {
     area: bugAreaForView({ view: activeWorkspaceView, statsPanel: activeStatsPanel, slateMode: talentSlateMode }),
     version: APP_VERSION,
     platform: platformName(window),

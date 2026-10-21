@@ -19439,7 +19439,7 @@ body.unified-planner #equipment-view .inventory-item .inventory-item-icon img[sr
   cursor: default;
   filter: none;
 }
-/* Feedback dialog (src/app/feedback/feedback-dialog.js): the import-build dialog's look, with a scrolling body of form fields. */
+/* Feedback dialog (apps/web/src/shell/dialogs/FeedbackDialog.tsx): the import-build dialog's look, with a scrolling body of form fields. */
 .feedback-dialog {
   width: min(600px, calc(100vw - 32px));
   max-height: calc(100vh - 32px);

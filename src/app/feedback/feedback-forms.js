@@ -1,5 +1,5 @@
 // The three player-feedback forms, one schema for both ends (pure; no DOM, no network):
-//   - the in-planner dialog (src/app/feedback/feedback-dialog.js) renders the fields in this order;
+//   - the in-planner dialog (apps/web/src/shell/dialogs/FeedbackDialog.tsx) renders the fields in this order;
 //   - scripts/build-issue-forms.mjs writes .github/ISSUE_TEMPLATE/<template> from it (issueFormYaml), and
 //     tests/feedback-forms.test.js checks the committed YAML equals that output, so the dialog and GitHub cannot drift.
 // Field ids and labels are what scripts/collect-submissions.mjs (FIELD_LABELS) and the pre-filled URLs read: keep them.
