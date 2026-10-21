@@ -4339,15 +4339,11 @@ function inventoryItemEditorView(item) {
     preview: equipmentPreviewView(inventoryEditingPreview(item)),
   };
 }
-// A change in the item editor. A tier, random roll or corroded-line change redraws the editor as the legacy one did:
-// the typed fields start again from the item.
+// A change in the item editor (the typed fields stay through a line's change; the legacy redraw reset them).
 function changeInventoryItemEditor(change) {
   const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId),
     source = legendaryEditorSource(item);
   if (!item || !inventoryItemEditing) return;
-  const redraw = () => {
-    inventoryItemFields = inventoryItemFieldsFrom(item);
-  };
   switch (change.kind) {
     case "field":
       inventoryItemFields = { ...(inventoryItemFields || inventoryItemFieldsFrom(item)), [change.field]: change.value };
@@ -4364,18 +4360,15 @@ function changeInventoryItemEditor(change) {
       if (editingCorrodedModifierIndices.has(change.index)) editingCorrodedModifierIndices.delete(change.index);
       else editingCorrodedModifierIndices.add(change.index);
       editingLegendaryTexts.delete(change.index);
-      redraw();
       break;
     case "tier":
       editingTierChoices.set(change.index, change.value);
       editingLegendaryTexts.delete(change.index);
-      redraw();
       break;
     case "placeholder":
       if (change.value) editingPlaceholderChoices.set(change.index, change.value);
       else editingPlaceholderChoices.delete(change.index);
       editingLegendaryTexts.delete(change.index);
-      redraw();
       break;
     case "ring":
       editingFolkloreRingOption = change.value;

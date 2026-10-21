@@ -41,6 +41,8 @@ test("rare: an Item Level change caps the energy and re-picks each affix's tier 
     rolls: [130],
     legendary: false,
   });
+  craft = apply(craft, { kind: "level", value: "90" });
+  assert.deepEqual(craft.rare.affixes[0].rolls, [130], "T2 still offered: its roll stays");
   craft = apply(craft, { kind: "level", value: "60" });
   assert.equal(craft.rare.energy, "18");
   assert.deepEqual([craft.rare.affixes[0].tier, craft.rare.affixes[0].rolls], ["5", [70]]);
@@ -113,7 +115,7 @@ test("Edit on each crafted item of the Youga build: the form crafts its affixes 
   }
 });
 
-test("legendary: a tier change rolls every line again at its best value, as the legacy re-render did", () => {
+test("legendary: a tier change rolls only its own line again; a new base caps the energy and drops the corrosion", () => {
   let craft = apply(newEquipmentCraft("legendary"), { kind: "legendary", id: "Ice_Pulse" });
   craft = apply(
     craft,
@@ -123,10 +125,13 @@ test("legendary: a tier change rolls every line again at its best value, as the 
   assert.equal(craftedLegendaryItem(craft).legendaryModifiers[0], "+6 to Max Frostbite Rating");
   craft = apply(craft, { kind: "legendaryTier", index: 1, value: 2 });
   const item = craftedLegendaryItem(craft);
-  assert.deepEqual(item.legendaryModifiers.slice(0, 2), ["+8 to Max Frostbite Rating", "+29% Spell Damage"]);
-  assert.equal(item.energy, 61);
+  assert.deepEqual(item.legendaryModifiers.slice(0, 2), ["+6 to Max Frostbite Rating", "+29% Spell Damage"]);
+  assert.equal(item.energy, 30);
   craft = apply(craft, { kind: "legendaryCorrosion", value: 1 }, { kind: "corrosionRoll", value: 0 });
   assert.deepEqual(craftedLegendaryItem(craft).corrosionModifiers, ["+12% Attack Speed"]);
+  craft = apply(craft, { kind: "legendaryBase", value: "INT Gloves" });
+  assert.deepEqual([craft.legendary.energy, craft.legendary.corrosionIndex], ["61", -1]);
+  assert.equal(craftedLegendaryItem(craft).legendaryModifiers[0], "+6 to Max Frostbite Rating");
 });
 
 test("the views: the legendary list's count and the Vorax limbs; a keyword line keeps its keyword apart", () => {

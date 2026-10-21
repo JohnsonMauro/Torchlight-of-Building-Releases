@@ -144,6 +144,24 @@ test("the legendary editor: a tier and a roll change their line; the fields and 
   await planner.expectNoErrors();
 });
 
+test("the legendary editor keeps the typed fields through a tier or corroded-line change", async ({ page }) => {
+  const { planner, gear } = await openItem(page, "Ice Pulse");
+  await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
+  const editor = gear.itemDialog().locator("#inventory-item-body");
+  const name = gear.itemDialog().getByRole("textbox", { name: "Name", exact: true });
+  const level = gear.itemDialog().getByRole("spinbutton", { name: "Item level", exact: true });
+  await name.fill("Kept Pulse");
+  await level.fill("91");
+  await editor.locator('[data-edit-legendary-tier="1"]').selectOption("2");
+  await editor.locator(".legendary-mod-control").nth(2).locator("[data-toggle-edit-corrosion]").click();
+  await expect(name).toHaveValue("Kept Pulse");
+  await expect(level).toHaveValue("91");
+  await gear.itemDialog().locator("footer").getByRole("button", { name: "Save Changes", exact: true }).click();
+  const saved = (await gear.stored()).inventory.find((item) => item.id === "gear-game-log-gloves");
+  expect(saved).toMatchObject({ name: "Kept Pulse", level: 91 });
+  await planner.expectNoErrors();
+});
+
 test("the editor opens on the stored corrosion: a corroded line and a corrosion implicit; both can be dropped", async ({
   page,
 }) => {

@@ -3,9 +3,8 @@
 // crafts. Pure: the planner (src/app/app.js) keeps the draft, applies each change with changeEquipmentCraft, and
 // publishes the view (src/app/bridge/equipment-crafter-view.ts). Typed numbers stay text, as their fields hold them.
 //
-// Every rule here is the legacy crafter's, which kept this state in its controls: a control's change resets what the
-// legacy re-rendered (an Item Level change re-picks each affix's tier and rolls; on a legendary, a base, corrosion, tier,
-// random-roll or corroded-line change rolls every line again at its best value), and a roll snaps as a range input does.
+// The rules are the legacy crafter's, which kept this state in its controls (a roll snaps as a range input does), except
+// that a change keeps what it does not touch: the legacy re-render also put every other roll back at its best value.
 import { craftItemTypes, voraxItemTypes } from "../../data/gear/crafting-catalog-ss13.js";
 import { rareBaseItemsSs13 } from "../../data/gear/rare-base-items-ss13.generated.js";
 import { baseAffixesSs13, baseAffixTiersSs13 } from "../../data/gear/base-affixes-ss13.generated.js";
@@ -223,13 +222,17 @@ function readRolls(template: string, current: number[], values: number[]): numbe
 
 // ---- Rare and Vorax form.
 
-/** A prefix or suffix slot with its family's tier picked (the preferred one when still offered, else T1, else the first). */
+/**
+ * A prefix or suffix slot with its family's tier picked (the preferred one when still offered, else T1, else the first),
+ * at its best rolls; `shown`, the tier it showed before, keeps its rolls when it is picked again.
+ */
 function configuredAffix(
   craft: EquipmentCraft,
   draft: RareDraft,
   index: number,
   affix: CraftAffixDraft,
   preferredTier = "",
+  shown?: CraftTier,
 ): CraftAffixDraft {
   const family = craftAffixPool(craft.mode, draft.type, index, affix.legendary).find(
     (entry) => entry.id === affix.familyId,
@@ -238,7 +241,11 @@ function configuredAffix(
   if (!family || !tiers.length) return { ...affix, tier: "", rolls: [] };
   const selected =
     tiers.find((tier) => tier.tier === preferredTier) || tiers.find((tier) => tier.tier === "1") || tiers[0];
-  return { ...affix, tier: affix.legendary ? "" : selected.tier, rolls: preferredRolls(selected.template) };
+  return {
+    ...affix,
+    tier: affix.legendary ? "" : selected.tier,
+    rolls: selected === shown ? affix.rolls : preferredRolls(selected.template),
+  };
 }
 /** The tier a slot's rolls belong to: its select's tier, or a Legendary affix's only one. */
 export function selectedCraftTier(craft: EquipmentCraft, draft: RareDraft, index: number): CraftTier | undefined {
@@ -393,17 +400,29 @@ function legendaryTemplate(entry: LegendaryEntry, draft: LegendaryDraft, index: 
   return corroded ? corrodedLines[entry.id]?.[index] || entry.modifiers[index] : entry.modifiers[index];
 }
 export const legendaryLineTemplate = legendaryTemplate;
-/** Every line rolled at its best value, the energy at its cap and the corrosion at its full roll (the legacy re-render). */
-function rerolledLegendary(entry: LegendaryEntry, draft: LegendaryDraft): LegendaryDraft {
+/** A line whose template changed (a tier, random roll or corroded form) rolled again at its best value; the rest kept. */
+function rerolledLines(entry: LegendaryEntry, before: LegendaryDraft, after: LegendaryDraft): LegendaryDraft {
+  return {
+    ...after,
+    rolls: entry.modifiers.map((_, index) => {
+      const template = legendaryTemplate(entry, after, index);
+      return before.rolls[index] && template === legendaryTemplate(entry, before, index)
+        ? before.rolls[index]
+        : preferredRolls(template);
+    }),
+  };
+}
+/** On a new base: the energy at the base's cap and no corrosion implicit (the base's own pool). */
+function legendaryOnBase(entry: LegendaryEntry, draft: LegendaryDraft): LegendaryDraft {
   return {
     ...draft,
-    rolls: entry.modifiers.map((_, index) => preferredRolls(legendaryTemplate(entry, draft, index))),
     energy: String(maxEquipmentEnergy(100, entry.slot, draft.base)),
+    corrosionIndex: -1,
     corrosionRoll: 100,
   };
 }
 function newLegendaryDraft(entry: LegendaryEntry): LegendaryDraft {
-  return rerolledLegendary(entry, {
+  const draft: LegendaryDraft = {
     id: entry.id,
     base: defaultBaseForItem(entry),
     beltBlendId: "",
@@ -416,7 +435,8 @@ function newLegendaryDraft(entry: LegendaryEntry): LegendaryDraft {
     ring: "left",
     rolls: [],
     energy: "",
-  });
+  };
+  return legendaryOnBase(entry, rerolledLines(entry, draft, draft));
 }
 /** A legendary line as its controls resolve it. */
 export function legendaryLineText(entry: LegendaryEntry, draft: LegendaryDraft, index: number): string {
@@ -525,7 +545,9 @@ function changedRare(craft: EquipmentCraft, draft: RareDraft, change: CraftChang
       };
       return {
         ...next,
-        affixes: draft.affixes.map((affix, index) => configuredAffix(craft, next, index, affix, affix.tier)),
+        affixes: draft.affixes.map((affix, index) =>
+          configuredAffix(craft, next, index, affix, affix.tier, selectedCraftTier(craft, draft, index)),
+        ),
       };
     }
     case "type":
@@ -569,11 +591,10 @@ function changedRare(craft: EquipmentCraft, draft: RareDraft, change: CraftChang
 function changedLegendary(entry: LegendaryEntry, draft: LegendaryDraft, change: CraftChange): LegendaryDraft {
   switch (change.kind) {
     case "legendaryBase":
-      return rerolledLegendary(entry, {
+      return legendaryOnBase(entry, {
         ...draft,
         base: change.value,
         sequenceId: towerSequenceById(draft.sequenceId)?.weaponType === change.value ? draft.sequenceId : "",
-        corrosionIndex: -1,
       });
     case "legendaryBeltBlend":
       return { ...draft, beltBlendId: change.value };
@@ -584,19 +605,19 @@ function changedLegendary(entry: LegendaryEntry, draft: LegendaryDraft, change: 
     case "legendaryRing":
       return { ...draft, ring: change.value };
     case "legendaryCorrosion":
-      return rerolledLegendary(entry, { ...draft, corrosionIndex: change.value });
+      return { ...draft, corrosionIndex: change.value, corrosionRoll: 100 };
     case "corrosionRoll":
       return { ...draft, corrosionRoll: change.value };
     case "legendaryTier":
-      return rerolledLegendary(entry, { ...draft, tiers: { ...draft.tiers, [change.index]: change.value } });
+      return rerolledLines(entry, draft, { ...draft, tiers: { ...draft.tiers, [change.index]: change.value } });
     case "legendaryPlaceholder": {
       const placeholders = Object.fromEntries(
         Object.entries({ ...draft.placeholders, [change.index]: change.value }).filter(([, id]) => id),
       );
-      return rerolledLegendary(entry, { ...draft, placeholders });
+      return rerolledLines(entry, draft, { ...draft, placeholders });
     }
     case "toggleLegendaryCorrosion":
-      return rerolledLegendary(entry, {
+      return rerolledLines(entry, draft, {
         ...draft,
         corroded: draft.corroded.includes(change.index)
           ? draft.corroded.filter((index) => index !== change.index)

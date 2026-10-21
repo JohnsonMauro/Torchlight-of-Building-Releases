@@ -229,6 +229,38 @@ test("legendary lines: a corroded line, a corrosion implicit's roll, the energy;
   await planner.expectNoErrors();
 });
 
+test("legendary: a line's tier, random roll or corroded form leaves the other lines' rolls and the energy as set", async ({
+  page,
+}) => {
+  const { planner, gear, body } = await openCrafter(page, "Craft Legendary");
+  await field(body, "data-legendary-search").fill("ice pulse");
+  await body.locator('[data-legendary-id="Ice_Pulse"]').click();
+  await field(body, 'data-legendary-roll="0"').fill("6");
+  await field(body, "data-legendary-energy").fill("30");
+  await field(body, 'data-legendary-tier="1"').selectOption("2");
+  await body.locator(".legendary-mod-control").nth(2).locator("[data-toggle-legendary-corrosion]").click();
+  await expect(field(body, 'data-legendary-roll="0"')).toHaveValue("6");
+  await expect(body.locator('[data-legendary-mod="0"]')).toHaveText("+6 to Max Frostbite Rating");
+  await expect(field(body, "data-legendary-energy")).toHaveValue("30");
+  await gear.crafter().getByRole("button", { name: "Add to Inventory", exact: true }).click();
+  const saved = (await gear.stored()).inventory.at(-1);
+  expect(saved.legendaryModifiers.slice(0, 2)).toEqual(["+6 to Max Frostbite Rating", "+29% Spell Damage"]);
+  expect(saved.energy).toBe(30);
+  await planner.expectNoErrors();
+});
+
+test("rare: an Item Level change that keeps an affix's tier keeps its roll", async ({ page }) => {
+  const { planner, body } = await openCrafter(page, "Craft Rare Item");
+  await field(body, 'data-craft-affix-family="0"').selectOption({ label: "[Basic Affix] +# Max Life" });
+  await field(body, 'data-craft-affix-tier="0"').selectOption("2");
+  await field(body, 'data-craft-affix-roll="0"').fill("130");
+  await field(body, "data-craft-level").fill("90");
+  await expect(field(body, 'data-craft-affix-tier="0"')).toHaveValue("2");
+  await expect(field(body, 'data-craft-affix-roll="0"')).toHaveValue("130");
+  await expect(preview(body)).toContainText("PrefixT2+130 Max Life");
+  await planner.expectNoErrors();
+});
+
 test("legendary choices: a random roll's option and Folklore's ring effect, in the line, the preview and saved", async ({
   page,
 }) => {
