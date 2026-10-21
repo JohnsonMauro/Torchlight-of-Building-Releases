@@ -389,17 +389,26 @@ const calculationsPaused = (() => {
     return false;
   }
 })();
+// Where the planner is, read and changed by several sections: the workspace view, the talent tree on show and its slot,
+// the slate board shown in the tree's place, the Stats view's panel, damage path and stat sheet skill, the Gear
+// section's selected slot, and the hero trait whose support the skill selector edits.
+const ui = {
+  activeWorkspaceView: "talents",
+  activeTalentPanel: "Goddess of Deception",
+  activeTalentSlot: 0,
+  talentSlateMode: false,
+  activeStatsPanel: "sheet",
+  selectedDamagePath: "hit",
+  selectedStatSheetSkill: "Scorching Beam",
+  selectedEquipmentSlot: "helmet",
+  activeHeroTraitSupportId: "",
+};
 let plannerState = loadPlannerState();
 upgradeExistingCorrodedItems(plannerState);
 // The open tree: the build's first one (applyPlannerState does the same for every build opened later).
-let activeTalentPanel = plannerState.talents?.selectedTrees?.[0] || "Goddess of Deception";
-let activeTalentSlot = 0;
-let activeWorkspaceView = "talents";
-let activeStatsPanel = "sheet";
-let selectedDamagePath = "hit";
+ui.activeTalentPanel = plannerState.talents?.selectedTrees?.[0] || "Goddess of Deception";
 // The damage path tabs' keys (src/app/stats/damage-path-panel.js): a skill's hits, its ailments, a minion, the combined view.
 const DAMAGE_PATH_KEY = /^(hit|ignite|reaping|combined|hit:[\w:-]+|ailment:[\w:-]+|minion:[\w:-]+)$/;
-let selectedStatSheetSkill = "Scorching Beam";
 const workspaceLocationKey = "tli-builder:workspace-location:v1";
 function readWorkspaceLocation() {
   try {
@@ -413,11 +422,11 @@ function saveWorkspaceLocation() {
     sessionStorage.setItem(
       workspaceLocationKey,
       JSON.stringify({
-        view: activeWorkspaceView === "talents" && talentSlateMode ? "slates" : activeWorkspaceView,
-        panel: activeTalentPanel,
-        statsPanel: activeStatsPanel,
-        damagePath: selectedDamagePath,
-        statSheetSkill: selectedStatSheetSkill,
+        view: ui.activeWorkspaceView === "talents" && ui.talentSlateMode ? "slates" : ui.activeWorkspaceView,
+        panel: ui.activeTalentPanel,
+        statsPanel: ui.activeStatsPanel,
+        damagePath: ui.selectedDamagePath,
+        statSheetSkill: ui.selectedStatSheetSkill,
         scrollY: window.scrollY,
       }),
     );
@@ -437,7 +446,6 @@ const exclusiveChoiceConditionIds = [
   "lowManaAssumed",
 ];
 let activeCoreThreshold = 12;
-let selectedEquipmentSlot = "helmet";
 // The equipment crafter's draft (src/app/gear/equipment-craft.ts); the session counts its openings.
 let equipmentCraft = newEquipmentCraft("rare");
 let equipmentCrafterSession = 0;
@@ -457,10 +465,8 @@ let inventoryItemFields = null;
 let selectedSlateId = null;
 let slateEditMode = false;
 let slatePlacementTarget = null;
-let parkedSlates = {};
 let slateToolsPosition = null;
 let slatePendingDrop = null;
-let talentSlateMode = false;
 // The slate crafter's draft (src/app/slates/slate-craft.ts); its god and Nether King type stay for the next slate.
 let slateCraft = drawnSlateCraft({
   tab: "craft",
@@ -479,7 +485,6 @@ let sageScentSelectorKind = "elixir";
 let sageScentSelectorSession = 0; // its openings (apps/web/src/shell/dialogs/SageScentSelectorDialog.tsx)
 let activeCarinoAmmoSlot = 0;
 let carinoAmmoSelectorSession = 0; // its openings (apps/web/src/shell/dialogs/CarinoAmmoSelectorDialog.tsx)
-let activeHeroTraitSupportId = "";
 let activeHeroMemoryTier = "";
 let memoryDraft = null;
 let editingMemoryId = null;
@@ -814,7 +819,7 @@ function parkSlateBesideGrid(slate, rotation = 0, flipX = 1, flipY = 1) {
         )
       )
         continue;
-      parkedSlates = {
+      setParkedSlates({
         ...parkedSlates,
         [slate.id]: {
           x: Math.round((x / stageRect.width) * 10000) / 100,
@@ -823,7 +828,7 @@ function parkSlateBesideGrid(slate, rotation = 0, flipX = 1, flipY = 1) {
           flipX,
           flipY,
         },
-      };
+      });
       return true;
     }
   if (stageRect.height < 10000) {
@@ -842,7 +847,15 @@ let slatePlacements =
   plannerState.slates?.geometryVersion === 4 && validSlatePlacements(plannerState.slates?.placements)
     ? plannerState.slates.placements
     : structuredClone(selenaScorchingBeamSlatesSs13.capturedPlacements);
-parkedSlates = plannerState.slates?.parked || {};
+// Slates set beside the grid, by id: their stage position (percent) and transform.
+let parkedSlates = plannerState.slates?.parked || {};
+// The sections that move slates replace these objects through the setters (an imported binding cannot be assigned).
+function setSlatePlacements(next) {
+  slatePlacements = next;
+}
+function setParkedSlates(next) {
+  parkedSlates = next;
+}
 const disabledEquipmentSlots = new Set(plannerState.disabledEquipmentSlots);
 const disabledSupportNames = new Set(plannerState.disabledSupportNames);
 const talentRanks = new Map();
@@ -1266,8 +1279,8 @@ function emptyPlannerState() {
 function applyPlannerState(next) {
   upgradeExistingCorrodedItems(next);
   plannerState = next;
-  activeTalentSlot = 0;
-  activeTalentPanel = next.talents?.selectedTrees?.[0] || "Goddess of Deception";
+  ui.activeTalentSlot = 0;
+  ui.activeTalentPanel = next.talents?.selectedTrees?.[0] || "Goddess of Deception";
   disabledEquipmentSlots.clear();
   next.disabledEquipmentSlots.forEach((value) => disabledEquipmentSlots.add(value));
   disabledSupportNames.clear();
@@ -1280,11 +1293,12 @@ function applyPlannerState(next) {
   (next.equippedSlateIds || selenaScorchingBeamSlatesSs13.slates.map((slate) => slate.id)).forEach((value) =>
     equippedSlateIds.add(value),
   );
-  slatePlacements =
+  setSlatePlacements(
     next.slates?.geometryVersion === 4 && validSlatePlacements(next.slates?.placements)
       ? next.slates.placements
-      : structuredClone(selenaScorchingBeamSlatesSs13.capturedPlacements);
-  parkedSlates = next.slates?.parked || {};
+      : structuredClone(selenaScorchingBeamSlatesSs13.capturedPlacements),
+  );
+  setParkedSlates(next.slates?.parked || {});
   talentRanks.clear();
   for (const panel of selenaScorchingBeamTalentSetupSs13.panels.filter(
     (panel) => next.talents.useCapturedRanks !== false && next.talents.selectedTrees.includes(panel.name),
@@ -1325,7 +1339,7 @@ function backupLibraryBuilds() {
     showToast("The backup could not be created");
   }
 }
-providePlannerCommands({
+const buildLibraryCommands = {
   openBuild: (id) => {
     openLibraryBuild(id, "builds");
     showToast("Build selected");
@@ -1369,6 +1383,12 @@ providePlannerCommands({
   },
   backupBuilds: backupLibraryBuilds,
   restoreBuilds: () => $("#restore-builds-file").click(),
+  // Header build actions (apps/web/src/shell/SiteHeader.tsx and its dialogs).
+  resetBuild,
+  exportBuild,
+  importBuild,
+};
+const configurationCommands = {
   // Config tab (apps/web/src/features/configuration): every edit is saved and the card re-reads its source.
   setBestCaseMode: (auto) => {
     if (!auto) {
@@ -1447,6 +1467,8 @@ providePlannerCommands({
     persistPlannerState();
     renderConfiguration();
   },
+};
+const pactCommands = {
   // Pactspirits section (apps/web/src/features/pacts).
   openPactspiritSelector: (slot) => {
     selectedPactspiritSlot = slot;
@@ -1500,8 +1522,12 @@ providePlannerCommands({
   clearFateSlots,
   selectFateSlots,
   moveKismet,
+};
+const pageCommands = {
   showToast: (text) => showToast(escapeHtml(text)),
   hideTooltip: hidePlannerTooltip,
+};
+const followerCommands = {
   // Follower tab (apps/web/src/features/follower).
   openFollowerSelector: () => {
     followerSelectorSession++;
@@ -1524,11 +1550,20 @@ providePlannerCommands({
     hidePlannerTooltip();
     commitFollower(setFollowerSkill(plannerState, slot, null), "Skill slot cleared");
   },
+};
+const skillBoardCommands = {
   // Skills section (apps/web/src/features/skills).
   setSkillBoardTab: (tab) => {
     activeSkillBoardTab = tab === "auras" ? "auras" : "skills";
     renderSkills();
   },
+  removeSkill: removeBoardSkill,
+  removeSupport: removeBoardSupport,
+  moveSkill: moveBoardSkill,
+  moveSupport: moveBoardSupport,
+  resetSkills,
+};
+const skillSelectorCommands = {
   openSkillSelector,
   chooseSkillSelectorEntry,
   confirmSkillSelector,
@@ -1543,11 +1578,9 @@ providePlannerCommands({
   setAffixLineTier,
   setAffixRoll,
   setAffixChoice,
-  removeSkill: removeBoardSkill,
-  removeSupport: removeBoardSupport,
-  moveSkill: moveBoardSkill,
-  moveSupport: moveBoardSupport,
-  resetSkills,
+  openHeroTraitSupport,
+};
+const slateCommands = {
   // Divinity Slates board (apps/web/src/features/slates).
   selectSlate,
   clearSlateSelection,
@@ -1580,6 +1613,8 @@ providePlannerCommands({
     renderSlateInventory();
     $("#slate-inventory").showModal();
   },
+};
+const gearCommands = {
   // Gear section (apps/web/src/features/gear).
   openEquipmentSlot,
   unequipEquipmentSlot,
@@ -1603,6 +1638,8 @@ providePlannerCommands({
     equipmentCraft = { ...equipmentCraft, editingId: null };
   },
   dropGear,
+};
+const talentCommands = {
   // Talent trees (apps/web/src/features/talents).
   openTalentTree,
   removeTalentTree,
@@ -1615,6 +1652,8 @@ providePlannerCommands({
   resetTalentTree,
   reselectTalentTree,
   selectTalentTree,
+};
+const prismCommands = {
   openPrismInventory,
   openPrismCrafter: () => openPrismCrafter(),
   setPrismType,
@@ -1629,10 +1668,8 @@ providePlannerCommands({
   unequipPrism,
   cancelPrismPlacement,
   dropPrism,
-  // Header build actions (apps/web/src/shell/SiteHeader.tsx and its dialogs).
-  resetBuild,
-  exportBuild,
-  importBuild,
+};
+const gameLogImportCommands = {
   // Import from game (apps/web/src/shell/dialogs/ImportGameLogDialog.tsx).
   openGameLogImport,
   chooseGameLogFile,
@@ -1640,6 +1677,8 @@ providePlannerCommands({
   selectGameLogSnapshot,
   importGameLogBuild,
   closeGameLogImport: resetGameLogImport,
+};
+const heroCommands = {
   // HERO tab (apps/web/src/features/hero).
   setHeroDetailTab: (tab) => {
     activeHeroDetailTab = tab;
@@ -1647,6 +1686,22 @@ providePlannerCommands({
   },
   openHeroSelector,
   selectHero,
+  pickHeroTrait,
+  toggleTraitPathNode,
+  moveTraitPick,
+  openScentSlot,
+  selectSageScent: (name) => setSageScent(name, `${escapeHtml(name)} selected`),
+  clearSageScent: () => setSageScent("", "Scent slot cleared"),
+  openCarinoAmmo,
+  selectCarinoAmmo: (name) => {
+    if (carinoProjectileSupportOptions().some((entry) => entry.name === name))
+      setCarinoAmmo(name, `${escapeHtml(name)} installed`);
+  },
+  clearCarinoAmmo: () => setCarinoAmmo("", "Support slot cleared"),
+  removeCarinoAmmo,
+  removeHeroTraitSupport,
+};
+const heroMemoryCommands = {
   openMemorySocket,
   // Hero memory dialog (apps/web/src/shell/dialogs/HeroMemorySelectorDialog.tsx).
   toggleCraftedMemory,
@@ -1668,29 +1723,16 @@ providePlannerCommands({
   setMemoryTierPosition,
   setMemoryTierValue,
   removeMemory,
-  pickHeroTrait,
-  toggleTraitPathNode,
-  moveTraitPick,
-  openScentSlot,
-  selectSageScent: (name) => setSageScent(name, `${escapeHtml(name)} selected`),
-  clearSageScent: () => setSageScent("", "Scent slot cleared"),
-  openCarinoAmmo,
-  selectCarinoAmmo: (name) => {
-    if (carinoProjectileSupportOptions().some((entry) => entry.name === name))
-      setCarinoAmmo(name, `${escapeHtml(name)} installed`);
-  },
-  clearCarinoAmmo: () => setCarinoAmmo("", "Support slot cleared"),
-  removeCarinoAmmo,
-  openHeroTraitSupport,
-  removeHeroTraitSupport,
+};
+const statsCommands = {
   // Stats view (apps/web/src/features/stats).
   setStatsPanel: (panel) => {
-    activeStatsPanel = panel;
+    ui.activeStatsPanel = panel;
     saveWorkspaceLocation();
     viewSourceChanged("stats");
   },
   selectStatSheetSkill: (key) => {
-    selectedStatSheetSkill = key;
+    ui.selectedStatSheetSkill = key;
     saveWorkspaceLocation();
     renderCharacter();
   },
@@ -1704,157 +1746,222 @@ providePlannerCommands({
     viewSourceChanged("stats");
   },
   selectDamagePath: (key) => {
-    selectedDamagePath = DAMAGE_PATH_KEY.test(key) ? key : "hit";
+    ui.selectedDamagePath = DAMAGE_PATH_KEY.test(key) ? key : "hit";
     saveWorkspaceLocation();
     viewSourceChanged("stats");
   },
   copyOpenQuestions,
   submitOpenQuestion,
+};
+providePlannerCommands({
+  ...buildLibraryCommands,
+  ...configurationCommands,
+  ...pactCommands,
+  ...pageCommands,
+  ...followerCommands,
+  ...skillBoardCommands,
+  ...skillSelectorCommands,
+  ...slateCommands,
+  ...gearCommands,
+  ...talentCommands,
+  ...prismCommands,
+  ...gameLogImportCommands,
+  ...heroCommands,
+  ...heroMemoryCommands,
+  ...statsCommands,
 });
-// The FOLLOWER tab's data (src/app/follower-panel.js).
-provideViewSource("follower", () => followerPanelView(plannerState));
-// The Pactspirits section's data (src/app/bridge/pacts-view-model.ts).
-provideViewSource("pacts", () => pactsView(plannerState.pacts));
-// The Skills section's data (src/app/bridge/skills-view-model.ts) for the open board tab.
-// The Divinity Slates board's data (src/app/bridge/slates-view-model.ts).
-provideViewSource("slates", () =>
-  slatesView({
-    slates: slatesForBoard(),
-    placements: slatePlacements,
-    parked: parkedSlates,
-    equipped: equippedSlateIds,
-    ui: {
-      selectedId: selectedSlateId,
-      toolsPosition: slateToolsPosition,
-      editMode: slateEditMode,
-      pendingId: slatePendingDrop?.id ?? null,
-    },
+const followerViewSources = {
+  // The FOLLOWER tab's data (src/app/follower-panel.js).
+  follower: () => followerPanelView(plannerState),
+  // The follower selector's data (apps/web/src/shell/dialogs/FollowerSelectorDialog.tsx).
+  followerSelector: () => ({
+    session: followerSelectorSession,
+    cards: followerPickerView(plannerState),
   }),
-);
-provideViewSource("skills", () => skillsView(currentPlanner(), plannerState.skills, activeSkillBoardTab));
-// The Gear section's data (src/app/bridge/equipment-view-model.ts).
-provideViewSource("equipment", equipmentSource);
-// The talent trees' data (src/app/bridge/talents-view-model.ts).
-provideViewSource("talents", talentsSource);
-// The HERO tab's data (src/app/bridge/hero-traits-view-model.ts).
-provideViewSource("heroTraits", () => heroTraitsView(plannerState.hero, activeHeroDetailTab));
-// The Pactspirit selector's data (src/app/bridge/pacts-view-model.ts).
-provideViewSource("pactspiritSelector", () => ({ session: pactspiritSelectorSession, ...pactspiritSelectorView() }));
-// The follower selector's data (apps/web/src/shell/dialogs/FollowerSelectorDialog.tsx).
-provideViewSource("followerSelector", () => ({
-  session: followerSelectorSession,
-  cards: followerPickerView(plannerState),
-}));
-// The HERO tab's scent and Special Ammo selectors (src/app/bridge/hero-dialogs-view-model.ts).
-provideViewSource("sageScentSelector", () => ({
-  session: sageScentSelectorSession,
-  ...sageScentSelectorView(sageScentSelectorKind),
-}));
-provideViewSource("carinoAmmoSelector", () => ({
-  session: carinoAmmoSelectorSession,
-  ...carinoAmmoSelectorView(
-    activeCarinoAmmoSlot,
-    carinoProjectileSupportOptions(),
-    plannerState.hero.carinoSpecialAmmoSupports || [],
-    plannerState.hero.selectedTraits["carino-ranger-of-glory:level75"] === "Well Prepared",
-  ),
-}));
-// The skill selector's title and list.
-provideViewSource("skillSelector", skillSelectorSource);
-// The prism inventory.
-provideViewSource("prismInventory", prismInventorySource);
-// The Import from game dialog.
-provideViewSource("gameLogImport", gameLogImportSource);
-// The hero memory dialog.
-provideViewSource("heroMemory", heroMemorySource);
-// The Inventory item dialog.
-provideViewSource("inventoryItem", inventoryItemSource);
-// The equipment crafter.
-provideViewSource("equipmentCrafter", equipmentCrafterSource);
-// The feedback dialog.
-provideViewSource("feedback", () => ({ session: feedbackSession, ...feedbackRequest }));
-// The Prism crafter.
-provideViewSource("prismCrafter", prismCrafterSource);
-// The Kismet crafter.
-provideViewSource("kismetCrafter", kismetCrafterSource);
-// The Slate Inventory.
-provideViewSource("slateInventory", slateInventorySource);
-// The slate editor.
-provideViewSource("slateEditor", slateEditorSource);
-// The talent tree, core talent and Fate slot pickers.
-provideViewSource("talentPicker", talentPickerSource);
-provideViewSource("corePicker", corePickerSource);
-provideViewSource("fateSlotSelector", () => ({
-  spirit: fateSlotSpirit,
-  selected: plannerState.pacts.fateUnlocks?.[fateSlotSpirit] || "",
-  choices: fateSlotChoices.map((choice) => ({ id: choice.id, label: choice.label })),
-}));
-// The hero selector's data (apps/web/src/shell/dialogs/HeroSelectorDialog.tsx).
-provideViewSource("heroSelector", () => ({
-  session: heroSelectorSession,
-  selectedHeroId: plannerState.hero.selectedHeroId,
-}));
-// The Stats view's data (src/app/bridge/stats-view-model.ts).
-provideViewSource("stats", statsSource);
-// The Config tab's data (src/app/bridge/view-sources.ts). Manual mode also needs the same build in automatic mode (which conditions
-// have a source); it is calculated only then.
-provideViewSource("configuration", () => {
-  const planner = currentPlanner();
-  return {
-    planner,
-    combat: structuredClone(plannerState.combat),
-    probe: plannerState.combat.conditionMode === "manual" ? conditionSourceProbe() : null,
-    activeNames: planner.activation.activeNames,
-  };
-});
+};
+const pactViewSources = {
+  // The Pactspirits section's data (src/app/bridge/pacts-view-model.ts).
+  pacts: () => pactsView(plannerState.pacts),
+  // The Pactspirit selector's data (src/app/bridge/pacts-view-model.ts).
+  pactspiritSelector: () => ({ session: pactspiritSelectorSession, ...pactspiritSelectorView() }),
+  // The Kismet crafter.
+  kismetCrafter: kismetCrafterSource,
+  fateSlotSelector: () => ({
+    spirit: fateSlotSpirit,
+    selected: plannerState.pacts.fateUnlocks?.[fateSlotSpirit] || "",
+    choices: fateSlotChoices.map((choice) => ({ id: choice.id, label: choice.label })),
+  }),
+};
+const slateViewSources = {
+  // The Divinity Slates board's data (src/app/bridge/slates-view-model.ts).
+  slates: () =>
+    slatesView({
+      slates: slatesForBoard(),
+      placements: slatePlacements,
+      parked: parkedSlates,
+      equipped: equippedSlateIds,
+      ui: {
+        selectedId: selectedSlateId,
+        toolsPosition: slateToolsPosition,
+        editMode: slateEditMode,
+        pendingId: slatePendingDrop?.id ?? null,
+      },
+    }),
+  // The Slate Inventory.
+  slateInventory: slateInventorySource,
+  // The slate editor.
+  slateEditor: slateEditorSource,
+};
+const skillBoardViewSources = {
+  // The Skills section's data (src/app/bridge/skills-view-model.ts) for the open board tab.
+  skills: () => skillsView(currentPlanner(), plannerState.skills, activeSkillBoardTab),
+};
+const skillSelectorViewSources = {
+  // The skill selector's title and list.
+  skillSelector: skillSelectorSource,
+};
+const gearViewSources = {
+  // The Gear section's data (src/app/bridge/equipment-view-model.ts).
+  equipment: equipmentSource,
+  // The Inventory item dialog.
+  inventoryItem: inventoryItemSource,
+  // The equipment crafter.
+  equipmentCrafter: equipmentCrafterSource,
+};
+const talentViewSources = {
+  // The talent trees' data (src/app/bridge/talents-view-model.ts).
+  talents: talentsSource,
+  // The talent tree, core talent and Fate slot pickers.
+  talentPicker: talentPickerSource,
+  corePicker: corePickerSource,
+};
+const prismViewSources = {
+  // The prism inventory.
+  prismInventory: prismInventorySource,
+  // The Prism crafter.
+  prismCrafter: prismCrafterSource,
+};
+const heroViewSources = {
+  // The HERO tab's data (src/app/bridge/hero-traits-view-model.ts).
+  heroTraits: () => heroTraitsView(plannerState.hero, activeHeroDetailTab),
+  // The HERO tab's scent and Special Ammo selectors (src/app/bridge/hero-dialogs-view-model.ts).
+  sageScentSelector: () => ({
+    session: sageScentSelectorSession,
+    ...sageScentSelectorView(sageScentSelectorKind),
+  }),
+  carinoAmmoSelector: () => ({
+    session: carinoAmmoSelectorSession,
+    ...carinoAmmoSelectorView(
+      activeCarinoAmmoSlot,
+      carinoProjectileSupportOptions(),
+      plannerState.hero.carinoSpecialAmmoSupports || [],
+      plannerState.hero.selectedTraits["carino-ranger-of-glory:level75"] === "Well Prepared",
+    ),
+  }),
+  // The hero selector's data (apps/web/src/shell/dialogs/HeroSelectorDialog.tsx).
+  heroSelector: () => ({
+    session: heroSelectorSession,
+    selectedHeroId: plannerState.hero.selectedHeroId,
+  }),
+};
+const heroMemoryViewSources = {
+  // The hero memory dialog.
+  heroMemory: heroMemorySource,
+};
+const gameLogImportViewSources = {
+  // The Import from game dialog.
+  gameLogImport: gameLogImportSource,
+};
+const feedbackViewSources = {
+  // The feedback dialog.
+  feedback: () => ({ session: feedbackSession, ...feedbackRequest }),
+};
+const statsViewSources = {
+  // The Stats view's data (src/app/bridge/stats-view-model.ts).
+  stats: statsSource,
+};
+const configurationViewSources = {
+  // The Config tab's data (src/app/bridge/view-sources.ts). Manual mode also needs the same build in automatic mode (which conditions
+  // have a source); it is calculated only then.
+  configuration: () => {
+    const planner = currentPlanner();
+    return {
+      planner,
+      combat: structuredClone(plannerState.combat),
+      probe: plannerState.combat.conditionMode === "manual" ? conditionSourceProbe() : null,
+      activeNames: planner.activation.activeNames,
+    };
+  },
+};
+for (const sources of [
+  followerViewSources,
+  pactViewSources,
+  slateViewSources,
+  skillBoardViewSources,
+  skillSelectorViewSources,
+  gearViewSources,
+  talentViewSources,
+  prismViewSources,
+  heroViewSources,
+  heroMemoryViewSources,
+  gameLogImportViewSources,
+  feedbackViewSources,
+  statsViewSources,
+  configurationViewSources,
+])
+  for (const [name, read] of Object.entries(sources)) provideViewSource(name, read);
 
-document.addEventListener("change", (event) => {
-  // Follower skill tier and support affixes (src/app/follower-panel.js followerSkillEditorMarkup, 2026-10-19 user request): the picker's
-  // preview card edits the highlighted skill's draft (followerSelectorDraft); Confirm saves it, Cancel drops it.
-  if (event.target.matches("#skill-selector [data-follower-draft-tier]")) {
-    followerSelectorDraft = followerDraftWithTier(
-      plannerState,
-      followerSelectorSlot,
-      followerSelectorDraft,
-      event.target.value,
-    );
-    renderSkillSelector();
-    return;
-  }
-  if (event.target.matches("#skill-selector [data-follower-draft-affix]")) {
-    followerSelectorDraft = followerDraftWithAffix(
-      plannerState,
-      followerSelectorSlot,
-      followerSelectorDraft,
-      Number(event.target.dataset.followerDraftAffix),
-      event.target.value ? Number(event.target.value) : null,
-    );
-    renderSkillSelector();
-    return;
-  }
-  if (event.target.matches("#skill-selector [data-follower-draft-roll]")) {
-    const [affixSlot, k] = event.target.dataset.followerDraftRoll.split(":").map(Number),
-      current = followerSelectorDraft?.affixes?.[affixSlot];
-    if (current) {
-      const rolls = [...(current.rolls || [])];
-      rolls[k] = Number(event.target.value);
+// The skill selector's follower skill editor: its tier, affix and roll controls edit the draft.
+function installSkillSelectorEvents() {
+  document.addEventListener("change", (event) => {
+    // Follower skill tier and support affixes (src/app/follower-panel.js followerSkillEditorMarkup, 2026-10-19 user request): the picker's
+    // preview card edits the highlighted skill's draft (followerSelectorDraft); Confirm saves it, Cancel drops it.
+    if (event.target.matches("#skill-selector [data-follower-draft-tier]")) {
+      followerSelectorDraft = followerDraftWithTier(
+        plannerState,
+        followerSelectorSlot,
+        followerSelectorDraft,
+        event.target.value,
+      );
+      renderSkillSelector();
+      return;
+    }
+    if (event.target.matches("#skill-selector [data-follower-draft-affix]")) {
       followerSelectorDraft = followerDraftWithAffix(
         plannerState,
         followerSelectorSlot,
         followerSelectorDraft,
-        affixSlot,
-        current.id,
-        rolls,
+        Number(event.target.dataset.followerDraftAffix),
+        event.target.value ? Number(event.target.value) : null,
       );
       renderSkillSelector();
+      return;
     }
-    return;
-  }
-  if (event.target.checkValidity && !event.target.checkValidity()) {
-    event.target.reportValidity();
-    return;
-  }
-});
+    if (event.target.matches("#skill-selector [data-follower-draft-roll]")) {
+      const [affixSlot, k] = event.target.dataset.followerDraftRoll.split(":").map(Number),
+        current = followerSelectorDraft?.affixes?.[affixSlot];
+      if (current) {
+        const rolls = [...(current.rolls || [])];
+        rolls[k] = Number(event.target.value);
+        followerSelectorDraft = followerDraftWithAffix(
+          plannerState,
+          followerSelectorSlot,
+          followerSelectorDraft,
+          affixSlot,
+          current.id,
+          rolls,
+        );
+        renderSkillSelector();
+      }
+      return;
+    }
+    if (event.target.checkValidity && !event.target.checkValidity()) {
+      event.target.reportValidity();
+      return;
+    }
+  });
+}
+installSkillSelectorEvents();
 
 // A build that cannot be calculated must not stop the planner from loading: show
 // the error and offer the previous saved version or safe mode (recovery-core.js).
@@ -1907,6 +2014,12 @@ function runGuardedRender(renderStep) {
   }
 }
 
+// What a render pass redraws (the open workspace view's sections), set at startup by src/app/planner/workspace.js: the
+// sections depend on this module, not the other way round.
+let renderOpenViews = () => {};
+function setOpenViewsRenderer(render) {
+  renderOpenViews = render;
+}
 function renderCandidateViews() {
   if (calculationsPaused) {
     pendingCandidateRender = false;
@@ -1916,22 +2029,26 @@ function renderCandidateViews() {
   pendingCandidateRender = false;
   try {
     renderPassPlanner = cachedPlanner(capturePlannerState());
-    if (focusedViews.has(activeWorkspaceView)) {
-      if (activeWorkspaceView === "character") renderCharacter();
-      if (activeWorkspaceView === "configuration") renderConfiguration();
-      if (activeWorkspaceView === "builds") updateStorageStatus();
-    } else {
-      renderEquipment();
-      renderSkills();
-      renderSlates();
-      renderTalents();
-      renderPacts();
-    }
+    renderOpenViews();
     clearCalculationFailure();
   } catch (error) {
     showCalculationFailure(error);
   } finally {
     renderPassPlanner = null;
+  }
+}
+// Drops the render a save queued (a hidden tab redraws when it is shown again).
+function cancelQueuedRender() {
+  pendingCandidateRender = false;
+}
+// Runs `read` with the current calculation as the render pass's, so the planner is calculated once for all it reads.
+function withRenderPass(read) {
+  const previousRenderPass = renderPassPlanner;
+  renderPassPlanner = currentPlanner();
+  try {
+    return read();
+  } finally {
+    renderPassPlanner = previousRenderPass;
   }
 }
 
@@ -1940,7 +2057,7 @@ const focusedViews = new Set(["builds", "character", "configuration"]);
 function activateWorkspaceView(viewName, { scroll = true, remember = true } = {}) {
   if (calculationsPaused) viewName = "builds";
   if (!loadBuildLibrary().builds.length) viewName = "builds";
-  activeWorkspaceView = viewName;
+  ui.activeWorkspaceView = viewName;
   const focused = focusedViews.has(viewName);
   document.body.classList.toggle("unified-planner", !focused);
   document.body.classList.toggle("builds-workspace", viewName === "builds");
@@ -1971,6 +2088,21 @@ function activateWorkspaceView(viewName, { scroll = true, remember = true } = {}
   }
   if (remember) saveWorkspaceLocation();
 }
+// A render pass's redraw: the open focused view, or the planner sections.
+function renderWorkspaceViews() {
+  if (focusedViews.has(ui.activeWorkspaceView)) {
+    if (ui.activeWorkspaceView === "character") renderCharacter();
+    if (ui.activeWorkspaceView === "configuration") renderConfiguration();
+    if (ui.activeWorkspaceView === "builds") updateStorageStatus();
+  } else {
+    renderEquipment();
+    renderSkills();
+    renderSlates();
+    renderTalents();
+    renderPacts();
+  }
+}
+setOpenViewsRenderer(renderWorkspaceViews);
 
 // The header's Reset Build (confirmed in apps/web/src/shell/dialogs/ResetBuildConfirmDialog.tsx): the open build empties.
 function resetBuild() {
@@ -2173,11 +2305,11 @@ function showToast(message) {
 if (!calculationsPaused) runGuardedRender(currentPlanner);
 
 function currentTalentPanel() {
-  return allTalentPanelsSs13.find((panel) => panel.name === activeTalentPanel);
+  return allTalentPanelsSs13.find((panel) => panel.name === ui.activeTalentPanel);
 }
 
 function setTalentSlateMode(enabled) {
-  talentSlateMode = enabled;
+  ui.talentSlateMode = enabled;
   const talentView = $("#talents-view"),
     talentLayout = talentView.querySelector(":scope > .talent-layout");
   const slateLayout = document.querySelector(".slate-layout");
@@ -2229,7 +2361,7 @@ function renderTalents() {
   renderHeroPanel();
   viewSourceChanged("talentPicker");
   viewSourceChanged("talents");
-  setTalentSlateMode(talentSlateMode);
+  setTalentSlateMode(ui.talentSlateMode);
 }
 // The talent trees' data (src/app/bridge/talents-view-model.ts).
 function talentsSource() {
@@ -2239,8 +2371,8 @@ function talentsSource() {
     layouts: activeTalentLayouts(),
     ranks: Object.fromEntries(talentRanks),
     talents: plannerState.talents,
-    activeSlot: activeTalentSlot,
-    slateMode: talentSlateMode,
+    activeSlot: ui.activeTalentSlot,
+    slateMode: ui.talentSlateMode,
     pendingPrism: pendingPrismPlacement,
   });
 }
@@ -2250,39 +2382,39 @@ function talentPickerSource() {
   const pointTotals = talentPointTotals(activeTalentLayouts(), Object.fromEntries(talentRanks));
   return {
     title:
-      activeTalentSlot === 0
+      ui.activeTalentSlot === 0
         ? "Select a God tree"
-        : activeTalentSlot === 1
+        : ui.activeTalentSlot === 1
           ? `Select a ${selectedTrees[0] || "God"} class tree`
-          : `Select talent tree ${activeTalentSlot + 1}`,
-    god: activeTalentSlot === 0,
-    cards: talentOptionsForSlot(activeTalentSlot, selectedTrees).map((name) => ({
+          : `Select talent tree ${ui.activeTalentSlot + 1}`,
+    god: ui.activeTalentSlot === 0,
+    cards: talentOptionsForSlot(ui.activeTalentSlot, selectedTrees).map((name) => ({
       name,
       familyClass: talentFamilyClass(name),
       art: tliArt.talentPanels[name] || allProfessionTalentCatalogueSs13[name].emblem,
-      selected: selectedTrees[activeTalentSlot] === name,
+      selected: selectedTrees[ui.activeTalentSlot] === name,
       points: pointTotals.panels[name],
     })),
   };
 }
 // The tree picker's pick: the open slot takes that tree (a new God tree empties a class tree it does not lead to).
 function selectTalentTree(name) {
-  const previous = plannerState.talents.selectedTrees[activeTalentSlot];
+  const previous = plannerState.talents.selectedTrees[ui.activeTalentSlot];
   if (previous !== name) {
     clearTalentTreeState(previous);
     delete plannerState.talents.installedPrisms[previous];
     delete plannerState.talents.installedPrismNodes[previous];
   }
-  plannerState.talents.selectedTrees[activeTalentSlot] = name;
-  if (activeTalentSlot === 0 && !talentFamiliesSs13[name].includes(plannerState.talents.selectedTrees[1])) {
+  plannerState.talents.selectedTrees[ui.activeTalentSlot] = name;
+  if (ui.activeTalentSlot === 0 && !talentFamiliesSs13[name].includes(plannerState.talents.selectedTrees[1])) {
     const removed = plannerState.talents.selectedTrees[1];
     clearTalentTreeState(removed);
     delete plannerState.talents.installedPrisms[removed];
     delete plannerState.talents.installedPrismNodes[removed];
     plannerState.talents.selectedTrees[1] = "";
   }
-  activeWorkspaceView = "talents";
-  activeTalentPanel = name;
+  ui.activeWorkspaceView = "talents";
+  ui.activeTalentPanel = name;
   persistPlannerState();
   $("#talent-panel-picker").close();
   renderTalents();
@@ -2396,7 +2528,7 @@ function unequipPrism() {
   viewSourceChanged("prismInventory");
 }
 function openPrismInventory() {
-  activePrismTreeSlot = plannerState.talents.selectedTrees.indexOf(activeTalentPanel);
+  activePrismTreeSlot = plannerState.talents.selectedTrees.indexOf(ui.activeTalentPanel);
   if (activePrismTreeSlot <= 0) return;
   viewSourceChanged("prismInventory");
   $("#prism-inventory-dialog").showModal();
@@ -2614,7 +2746,7 @@ function placeCraftedPrism(coordinate) {
   if (!pendingPrismPlacement) return;
   const { id, panel } = pendingPrismPlacement,
     item = (plannerState.talents.prismInventory || []).find((entry) => entry.id === id);
-  if (!item || activeTalentPanel !== panel) return;
+  if (!item || ui.activeTalentPanel !== panel) return;
   if (!professionTreeLayoutsAllSs13[panel]?.nodes.some((node) => node.coordinate.join(",") === coordinate)) return;
   const previous = (plannerState.talents.prismInventory || []).find(
     (entry) => entry.id === plannerState.talents.installedPrisms?.[panel],
@@ -2804,7 +2936,7 @@ function setSageScent(name, toast) {
   showToast(toast);
 }
 function openCarinoAmmo(index) {
-  activeHeroTraitSupportId = "";
+  ui.activeHeroTraitSupportId = "";
   activeCarinoAmmoSlot = index;
   carinoAmmoSelectorSession++;
   viewSourceChanged("carinoAmmoSelector");
@@ -2827,7 +2959,7 @@ function removeCarinoAmmo(index) {
   showToast(`${escapeHtml(name || "Special Ammo support")} removed`);
 }
 function openHeroTraitSupport(heroId) {
-  activeHeroTraitSupportId = heroId;
+  ui.activeHeroTraitSupportId = heroId;
   selectorKind = "hero-support";
   selectorChoiceIndex = -1;
   selectorSpecialConfig = null;
@@ -3731,7 +3863,7 @@ function placeCraftedSlate(id) {
     if (placement) break;
   }
   if (placement) {
-    slatePlacements = { ...slatePlacements, [id]: placement };
+    setSlatePlacements({ ...slatePlacements, [id]: placement });
     equippedSlateIds.add(id);
     delete parkedSlates[id];
     selectedSlateId = null;
@@ -3744,7 +3876,7 @@ function placeCraftedSlate(id) {
   } else if (parkSlateBesideGrid(slate, startRotation, flipX, flipY)) {
     const next = { ...slatePlacements };
     delete next[id];
-    slatePlacements = next;
+    setSlatePlacements(next);
     equippedSlateIds.delete(id);
     selectedSlateId = null;
     slateToolsPosition = null;
@@ -3770,7 +3902,7 @@ function deleteCraftedSlate(id) {
   delete parkedSlates[id];
   const placements = { ...slatePlacements };
   delete placements[id];
-  slatePlacements = placements;
+  setSlatePlacements(placements);
   persistPlannerState();
   renderSlateInventory();
   showToast("Slate deleted");
@@ -3797,7 +3929,7 @@ function removeCraftedSlate(id) {
   delete parkedSlates[id];
   const placements = { ...slatePlacements };
   delete placements[id];
-  slatePlacements = placements;
+  setSlatePlacements(placements);
   persistPlannerState();
   renderSlateInventory();
   showToast("Slate removed from grid");
@@ -3815,7 +3947,7 @@ function equipmentSource() {
     slots: equipmentSlots,
     items: currentEquipmentImpact().allItems,
     disabled: disabledEquipmentSlots,
-    selectedSlot: selectedEquipmentSlot,
+    selectedSlot: ui.selectedEquipmentSlot,
     inventory: inventoryItems(),
     look: (item) => ({
       rarityClass: `rarity-${itemCardRarity(itemDisplayRarity(item), item)}${sixAffixClass(item)}${pricelessClass(item)}${itemLevel100Class(item)}`,
@@ -3843,14 +3975,14 @@ function compatibleEquipmentSlot(item) {
   if (item.slot === "leftRing") {
     const equipped = currentEquipmentImpact().allItems.filter((entry) => !disabledEquipmentSlots.has(entry.slot)),
       occupied = (slot) => equipped.some((entry) => entry.slot === slot);
-    if (selectedEquipmentSlot === "rightRing") return "rightRing";
-    if (selectedEquipmentSlot === "leftRing" && !occupied("leftRing")) return "leftRing";
+    if (ui.selectedEquipmentSlot === "rightRing") return "rightRing";
+    if (ui.selectedEquipmentSlot === "leftRing" && !occupied("leftRing")) return "leftRing";
     if (occupied("leftRing") && !occupied("rightRing")) return "rightRing";
     if (!occupied("leftRing")) return "leftRing";
-    return selectedEquipmentSlot === "rightRing" ? "rightRing" : "leftRing";
+    return ui.selectedEquipmentSlot === "rightRing" ? "rightRing" : "leftRing";
   }
   if (item.slot === "mainHand") {
-    if (selectedEquipmentSlot === "secondaryHand") return "secondaryHand";
+    if (ui.selectedEquipmentSlot === "secondaryHand") return "secondaryHand";
     if (!disabledEquipmentSlots.has("mainHand") && disabledEquipmentSlots.has("secondaryHand")) return "secondaryHand";
     return "mainHand";
   }
@@ -3971,7 +4103,7 @@ function equipInventoryItem(item, targetSlot = null) {
       delete plannerState.equipmentOverrides[equippedSlot];
   plannerState.equipmentOverrides[slot] = { ...structuredClone(override), sourceInventoryId: id };
   disabledEquipmentSlots.delete(slot);
-  selectedEquipmentSlot = slot;
+  ui.selectedEquipmentSlot = slot;
   persistPlannerState();
   renderCandidateViews();
   showToast(`${escapeHtml(item.name)} equipped`);
@@ -3986,7 +4118,7 @@ function openInventoryItemDialog(item) {
   $("#inventory-item-dialog").showModal();
 }
 function openEquipmentSlot(slot) {
-  selectedEquipmentSlot = slot;
+  ui.selectedEquipmentSlot = slot;
   const equippedItem = currentEquipmentImpact().allItems.find((entry) => entry.slot === slot);
   if (!equippedItem || disabledEquipmentSlots.has(slot)) {
     renderEquipment();
@@ -4997,7 +5129,7 @@ function chooseSkillSelectorEntry(index) {
       saved =
         selectorKind === "hero-support"
           ? current?.name === choice?.name
-            ? plannerState.hero.heroTraitSupportConfigs?.[activeHeroTraitSupportId]
+            ? plannerState.hero.heroTraitSupportConfigs?.[ui.activeHeroTraitSupportId]
             : null
           : targetSetup
             ? plannerState.skills.specialSupportConfigs[supportStateKey(setupStateKey(targetSetup), choice?.name)]
@@ -5031,13 +5163,13 @@ function selectorTargetSetup() {
 }
 function selectorTargetSupport() {
   if (selectorKind === "hero-support") {
-    const name = plannerState.hero.heroTraitSupports?.[activeHeroTraitSupportId] || "";
+    const name = plannerState.hero.heroTraitSupports?.[ui.activeHeroTraitSupportId] || "";
     const entry = tlidbSupportCatalogSs13.find((support) => support.name === name);
     return entry
       ? {
           ...entry,
-          level: plannerState.hero.heroTraitSupportLevels?.[activeHeroTraitSupportId] || entry.level || 20,
-          specialConfig: plannerState.hero.heroTraitSupportConfigs?.[activeHeroTraitSupportId],
+          level: plannerState.hero.heroTraitSupportLevels?.[ui.activeHeroTraitSupportId] || entry.level || 20,
+          specialConfig: plannerState.hero.heroTraitSupportConfigs?.[ui.activeHeroTraitSupportId],
         }
       : null;
   }
@@ -5090,7 +5222,7 @@ function skillSelectorSource() {
         ? "Passive Skill / Aura"
         : "Active Skill"
       : selectorKind === "hero-support"
-        ? `Support for ${heroTraitSupportConfig[activeHeroTraitSupportId]?.skill || "trait skill"}`
+        ? `Support for ${heroTraitSupportConfig[ui.activeHeroTraitSupportId]?.skill || "trait skill"}`
         : `Support for ${selectorTargetSetup()?.name || "active skill"}`;
   return {
     session: skillSelectorSession,
@@ -5327,11 +5459,11 @@ let preparedStatSheet = null,
   preparedDamagePath = null;
 function statsSource() {
   const planner = currentPlanner();
-  if (preparedStatSheet?.planner !== planner || preparedStatSheet.skill !== selectedStatSheetSkill)
+  if (preparedStatSheet?.planner !== planner || preparedStatSheet.skill !== ui.selectedStatSheetSkill)
     preparedStatSheet = {
       planner,
-      skill: selectedStatSheetSkill,
-      sheet: prepareStatSheet(planner, selectedStatSheetSkill, format),
+      skill: ui.selectedStatSheetSkill,
+      sheet: prepareStatSheet(planner, ui.selectedStatSheetSkill, format),
     };
   if (preparedDamagePath?.planner !== planner) {
     const theoretical = calculatePlanner({
@@ -5342,7 +5474,7 @@ function statsSource() {
   }
   return statsView(
     { sheet: preparedStatSheet.sheet, damagePath: preparedDamagePath.path },
-    { panel: activeStatsPanel, path: selectedDamagePath, excluded: recountExcludedSources() },
+    { panel: ui.activeStatsPanel, path: ui.selectedDamagePath, excluded: recountExcludedSources() },
   );
 }
 // Open questions "Copy questions": plain text of the build's applicable questions; false when the clipboard refused it.
@@ -5391,7 +5523,7 @@ function currentBuildCode() {
 }
 function reportCalculation() {
   persistPlannerState();
-  const context = calculationReportContext(currentPlanner(), selectedStatSheetSkill);
+  const context = calculationReportContext(currentPlanner(), ui.selectedStatSheetSkill);
   openFeedback("calculation", {
     ...context,
     version: APP_VERSION,
@@ -5399,15 +5531,23 @@ function reportCalculation() {
     buildCode: currentBuildCode(),
   });
 }
-$("[data-report-bug]").addEventListener("click", () => {
-  persistPlannerState();
-  openFeedback("bug", {
-    area: bugAreaForView({ view: activeWorkspaceView, statsPanel: activeStatsPanel, slateMode: talentSlateMode }),
-    version: APP_VERSION,
-    platform: platformName(window),
-    buildCode: currentBuildCode(),
+// The header's Report a bug button.
+function installFeedbackEvents() {
+  $("[data-report-bug]").addEventListener("click", () => {
+    persistPlannerState();
+    openFeedback("bug", {
+      area: bugAreaForView({
+        view: ui.activeWorkspaceView,
+        statsPanel: ui.activeStatsPanel,
+        slateMode: ui.talentSlateMode,
+      }),
+      version: APP_VERSION,
+      platform: platformName(window),
+      buildCode: currentBuildCode(),
+    });
   });
-});
+}
+installFeedbackEvents();
 const tooltipSelector =
   "[data-damage-source],.talent-node,.core-talent,.equipment-item,.inventory-item,.skill-setup,.support-card:not(.add-support-card),[data-skill-tooltip],[data-support-tooltip],.skill-primary-socket:not(.empty-skill-slot),[data-hero-trait-support-id],[data-hero-trait-tooltip],[data-tree-extra-row-tooltip],[data-sage-scent-tooltip],.hero-memory-socket.filled,.hero-memory-item,.pactspirit,.kismet-toggle,.micro-quantity,.slate-chip,.slate-piece,.crafted-slate-item,[data-pactspirit-name],[data-pact-node-tooltip],[data-follower-skill-tooltip],[data-follower-tooltip],[data-qol-help]";
 let tooltipAnchorX = 0,
@@ -6291,24 +6431,17 @@ function scheduleTooltipPosition(x, y) {
 }
 let damageSourceTooltipHideTimer;
 function showPlannerTooltip(element, x, y) {
-  clearTimeout(damageSourceTooltipHideTimer);
+  cancelTooltipHide();
   if (!document.body.classList.contains("unified-planner") && !element.matches("[data-damage-source],[data-qol-help]"))
     return;
-  const previousRenderPass = renderPassPlanner;
-  renderPassPlanner = currentPlanner();
-  let content;
-  try {
-    content = plannerTooltipContent(element);
-  } finally {
-    renderPassPlanner = previousRenderPass;
-  }
+  const content = withRenderPass(() => plannerTooltipContent(element));
   if (!content) return hidePlannerTooltip();
   const actionHint = element.getAttribute("title") || element.dataset.tooltipHint;
   if (element.hasAttribute("title")) {
     element.dataset.tooltipHint = actionHint;
     element.removeAttribute("title");
   }
-  tooltipAnchorElement = element;
+  setTooltipAnchor(element);
   const tooltip = $("#planner-tooltip");
   const host = element.closest("#slate-inventory,#hero-memory-selector,#follower-selector") || document.body;
   if (tooltip.parentElement !== host) host.appendChild(tooltip);
@@ -6355,8 +6488,6 @@ function showPlannerTooltip(element, x, y) {
     );
   tooltip.setAttribute("aria-hidden", "false");
   tooltip.classList.add("visible");
-  tooltipAnchorX = x;
-  tooltipAnchorY = y;
   positionPlannerTooltip(x, y);
 }
 function hidePlannerTooltip() {
@@ -6365,49 +6496,113 @@ function hidePlannerTooltip() {
   $("#planner-tooltip").classList.remove("visible");
   $("#planner-tooltip").setAttribute("aria-hidden", "true");
 }
+// A damage source's tooltip stays a moment after the pointer leaves the source, so the pointer can reach it.
+function hidePlannerTooltipSoon() {
+  damageSourceTooltipHideTimer = setTimeout(hidePlannerTooltip, 180);
+}
+function cancelTooltipHide() {
+  clearTimeout(damageSourceTooltipHideTimer);
+}
+function setTooltipAnchor(element) {
+  tooltipAnchorElement = element;
+}
 function setRevivalAltDetails(visible) {
   document.body.classList.toggle("revival-alt-held", visible);
   if ($("#planner-tooltip").classList.contains("visible"))
     requestAnimationFrame(() => positionPlannerTooltip(tooltipAnchorX, tooltipAnchorY));
 }
-window.addEventListener("keydown", (event) => {
-  if (event.key === "Alt") setRevivalAltDetails(true);
-});
-window.addEventListener("keyup", (event) => {
-  if (event.key === "Alt") setRevivalAltDetails(false);
-});
-window.addEventListener("blur", () => setRevivalAltDetails(false));
+// The planner tooltip follows the pointer and keyboard focus; Alt shows revived memory details; a scroll hides it.
+function installPlannerTooltipEvents() {
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Alt") setRevivalAltDetails(true);
+  });
+  window.addEventListener("keyup", (event) => {
+    if (event.key === "Alt") setRevivalAltDetails(false);
+  });
+  window.addEventListener("blur", () => setRevivalAltDetails(false));
+  window.addEventListener(
+    "scroll",
+    (event) => {
+      if (event.target instanceof Element && event.target.closest("#planner-tooltip")) return;
+      tooltipScrollQuietUntil = performance.now() + 160;
+      hidePlannerTooltip();
+    },
+    { passive: true, capture: true },
+  );
+  document.addEventListener("pointerover", (event) => {
+    if (performance.now() < tooltipScrollQuietUntil) return;
+    const target = event.target.closest(tooltipSelector);
+    if (
+      target &&
+      !target.contains(event.relatedTarget) &&
+      !(event.pointerType === "touch" && target.matches("[data-qol-help]"))
+    )
+      showPlannerTooltip(target, event.clientX, event.clientY);
+  });
+  document.addEventListener("pointermove", (event) => {
+    if (event.target.closest("#planner-tooltip.damage-source-tooltip")) return;
+    if ($("#planner-tooltip").classList.contains("visible")) scheduleTooltipPosition(event.clientX, event.clientY);
+  });
+  document.addEventListener("pointerout", (event) => {
+    const target = event.target.closest(tooltipSelector);
+    if (
+      target &&
+      !target.contains(event.relatedTarget) &&
+      !(event.pointerType === "touch" && target.matches("[data-qol-help]"))
+    ) {
+      if (target.matches("[data-damage-source]")) hidePlannerTooltipSoon();
+      else hidePlannerTooltip();
+    }
+  });
+  $("#planner-tooltip").addEventListener("pointerenter", cancelTooltipHide);
+  $("#planner-tooltip").addEventListener("pointerleave", (event) => {
+    if (!tooltipAnchorElement?.contains(event.relatedTarget)) hidePlannerTooltip();
+  });
+  document.addEventListener("focusin", (event) => {
+    const target = event.target.closest(tooltipSelector);
+    if (target) {
+      const box = target.getBoundingClientRect();
+      showPlannerTooltip(target, box.right, box.top);
+    }
+  });
+  document.addEventListener("focusout", (event) => {
+    if (event.target.closest(tooltipSelector)) hidePlannerTooltip();
+  });
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      const button = event.target.closest?.("[data-qol-help]");
+      qolHelpOpenAtPointerDown = button
+        ? event.pointerType !== "mouse" &&
+          tooltipAnchorElement === button &&
+          $("#planner-tooltip").classList.contains("visible")
+        : null;
+    },
+    true,
+  );
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-qol-help]");
+    if (!button) return;
+    event.preventDefault();
+    const open =
+      qolHelpOpenAtPointerDown ??
+      (tooltipAnchorElement === button && $("#planner-tooltip").classList.contains("visible"));
+    qolHelpOpenAtPointerDown = null;
+    if (open) hidePlannerTooltip();
+    else {
+      const box = button.getBoundingClientRect();
+      showPlannerTooltip(button, box.right, box.top);
+    }
+  });
+}
+installPlannerTooltipEvents();
 
 let tooltipScrollQuietUntil = 0;
-window.addEventListener(
-  "scroll",
-  (event) => {
-    if (event.target instanceof Element && event.target.closest("#planner-tooltip")) return;
-    tooltipScrollQuietUntil = performance.now() + 160;
-    hidePlannerTooltip();
-  },
-  { passive: true, capture: true },
-);
-
-document.addEventListener("pointerover", (event) => {
-  if (performance.now() < tooltipScrollQuietUntil) return;
-  const target = event.target.closest(tooltipSelector);
-  if (
-    target &&
-    !target.contains(event.relatedTarget) &&
-    !(event.pointerType === "touch" && target.matches("[data-qol-help]"))
-  )
-    showPlannerTooltip(target, event.clientX, event.clientY);
-});
-document.addEventListener("pointermove", (event) => {
-  if (event.target.closest("#planner-tooltip.damage-source-tooltip")) return;
-  if ($("#planner-tooltip").classList.contains("visible")) scheduleTooltipPosition(event.clientX, event.clientY);
-});
 
 // A rotated or flipped slate that no longer fits waits under the pointer (the board follows it) until a click places it.
 function pickUpTransformedSlate(slate, current, candidate, action) {
   slatePendingDrop = { id: slate.id, original: { ...current }, transformed: candidate, action };
-  slatePlacements = { ...slatePlacements, [slate.id]: candidate };
+  setSlatePlacements({ ...slatePlacements, [slate.id]: candidate });
   selectedSlateId = null;
   slateToolsPosition = null;
   if ($("#slate-editor").open) $("#slate-editor").close();
@@ -6423,77 +6618,26 @@ function finishPendingSlate({ placement, parked }) {
     slate = slatesForBoard().find((item) => item.id === pending.id);
   slatePendingDrop = null;
   if (placement && slate && canPlaceSlate(slate, placement, slatePlacements, slatesForBoard())) {
-    slatePlacements = { ...slatePlacements, [pending.id]: placement };
+    setSlatePlacements({ ...slatePlacements, [pending.id]: placement });
     persistPlannerState();
     showToast(`${pending.action} slate placed`);
   } else if (slate && parked) {
-    parkedSlates = { ...parkedSlates, [pending.id]: parked };
+    setParkedSlates({ ...parkedSlates, [pending.id]: parked });
     equippedSlateIds.delete(pending.id);
     const next = { ...slatePlacements };
     delete next[pending.id];
-    slatePlacements = next;
+    setSlatePlacements(next);
     persistPlannerState();
     showToast("Slate parked beside the grid");
   } else {
-    slatePlacements = { ...slatePlacements, [pending.id]: pending.original };
+    setSlatePlacements({ ...slatePlacements, [pending.id]: pending.original });
     renderSlates();
     showToast("Invalid drop · slate restored");
   }
 }
-document.addEventListener("pointerout", (event) => {
-  const target = event.target.closest(tooltipSelector);
-  if (
-    target &&
-    !target.contains(event.relatedTarget) &&
-    !(event.pointerType === "touch" && target.matches("[data-qol-help]"))
-  ) {
-    if (target.matches("[data-damage-source]")) damageSourceTooltipHideTimer = setTimeout(hidePlannerTooltip, 180);
-    else hidePlannerTooltip();
-  }
-});
-$("#planner-tooltip").addEventListener("pointerenter", () => clearTimeout(damageSourceTooltipHideTimer));
-$("#planner-tooltip").addEventListener("pointerleave", (event) => {
-  if (!tooltipAnchorElement?.contains(event.relatedTarget)) hidePlannerTooltip();
-});
-document.addEventListener("focusin", (event) => {
-  const target = event.target.closest(tooltipSelector);
-  if (target) {
-    const box = target.getBoundingClientRect();
-    showPlannerTooltip(target, box.right, box.top);
-  }
-});
-document.addEventListener("focusout", (event) => {
-  if (event.target.closest(tooltipSelector)) hidePlannerTooltip();
-});
 // Section "?" help: hover and keyboard focus show it (above); a tap, pen click or Enter / Space toggles it
 // (a mouse click only shows it, since hovering already did). Whether it was open is read at pointerdown.
 let qolHelpOpenAtPointerDown = null;
-document.addEventListener(
-  "pointerdown",
-  (event) => {
-    const button = event.target.closest?.("[data-qol-help]");
-    qolHelpOpenAtPointerDown = button
-      ? event.pointerType !== "mouse" &&
-        tooltipAnchorElement === button &&
-        $("#planner-tooltip").classList.contains("visible")
-      : null;
-  },
-  true,
-);
-document.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-qol-help]");
-  if (!button) return;
-  event.preventDefault();
-  const open =
-    qolHelpOpenAtPointerDown ??
-    (tooltipAnchorElement === button && $("#planner-tooltip").classList.contains("visible"));
-  qolHelpOpenAtPointerDown = null;
-  if (open) hidePlannerTooltip();
-  else {
-    const box = button.getBoundingClientRect();
-    showPlannerTooltip(button, box.right, box.top);
-  }
-});
 
 function changeTalentRank(coordinate, delta, max = false) {
   const panel = currentTalentPanel();
@@ -6546,13 +6690,13 @@ function changeTalentRank(coordinate, delta, max = false) {
 
 // Talent tree commands (apps/web/src/features/talents). The tree, core and prism dialogs stay here.
 function openTalentTree(slot) {
-  pendingPrismPlacement = null;
+  clearPendingPrism();
   setTalentSlateMode(false);
-  activeTalentSlot = slot;
+  ui.activeTalentSlot = slot;
   const selected = plannerState.talents.selectedTrees[slot];
   if (selected) {
-    activeWorkspaceView = "talents";
-    activeTalentPanel = selected;
+    ui.activeWorkspaceView = "talents";
+    ui.activeTalentPanel = selected;
     renderTalents();
     saveWorkspaceLocation();
     return;
@@ -6576,7 +6720,7 @@ function removeTalentTree(slot) {
   return true;
 }
 function openTalentSlates() {
-  activeWorkspaceView = "talents";
+  ui.activeWorkspaceView = "talents";
   setTalentSlateMode(true);
   renderTalents();
   renderSlates();
@@ -6589,7 +6733,7 @@ function openCorePicker(threshold) {
 }
 // The core talent picker's pick (choices are disabled below the slot's points).
 function selectCoreTalent(name) {
-  plannerState.talents.coreSelections[`${activeTalentPanel}:${activeCoreThreshold}`] = name;
+  plannerState.talents.coreSelections[`${ui.activeTalentPanel}:${activeCoreThreshold}`] = name;
   persistPlannerState();
   $("#core-talent-picker").close();
   renderTalents();
@@ -6612,8 +6756,8 @@ function clickTalentNode(coordinate) {
     return;
   }
   if (
-    plannerState.talents.installedPrismNodes?.[activeTalentPanel] === coordinate &&
-    plannerState.talents.installedPrisms?.[activeTalentPanel]
+    plannerState.talents.installedPrismNodes?.[ui.activeTalentPanel] === coordinate &&
+    plannerState.talents.installedPrisms?.[ui.activeTalentPanel]
   ) {
     openPrismInventory();
     return;
@@ -6644,24 +6788,28 @@ function rightClickTalentNode(coordinate) {
   changeTalentRank(coordinate, empty ? 1 : -1, empty);
 }
 function resetTalentTree() {
-  clearTalentTreeState(activeTalentPanel);
+  clearTalentTreeState(ui.activeTalentPanel);
   persistPlannerState();
   renderCandidateViews();
-  showToast(`${escapeHtml(activeTalentPanel)} points reset`);
+  showToast(`${escapeHtml(ui.activeTalentPanel)} points reset`);
 }
 function reselectTalentTree() {
-  const slot = plannerState.talents.selectedTrees.indexOf(activeTalentPanel);
-  activeTalentSlot = slot >= 0 ? slot : 0;
+  const slot = plannerState.talents.selectedTrees.indexOf(ui.activeTalentPanel);
+  ui.activeTalentSlot = slot >= 0 ? slot : 0;
   renderTalents();
   $("#talent-panel-picker").showModal();
 }
 function cancelPrismPlacement() {
-  pendingPrismPlacement = null;
+  clearPendingPrism();
   renderTalents();
+}
+// Opening a tree drops a prism still waiting for its node.
+function clearPendingPrism() {
+  pendingPrismPlacement = null;
 }
 // The end of a drag of the installed prism: onto another node of the open tree it moves there; anywhere else it stays.
 function dropPrism(coordinate) {
-  const panel = activeTalentPanel,
+  const panel = ui.activeTalentPanel,
     origin = plannerState.talents.installedPrismNodes?.[panel];
   const valid =
     coordinate && professionTreeLayoutsAllSs13[panel]?.nodes.some((node) => node.coordinate.join(",") === coordinate);
@@ -6690,65 +6838,73 @@ function clearTalentTreeState(name) {
     if (key.startsWith(name + ":")) delete plannerState.talents.coreSelections[key];
 }
 
-document.addEventListener("keydown", (event) => {
-  if (
-    event.target.matches("select:not([data-native-select])") &&
-    event.key.length === 1 &&
-    !event.ctrlKey &&
-    !event.metaKey &&
-    !event.altKey
-  ) {
+// Selects open the searchable list (a typed key or a press); number fields select their text when clicked or focused.
+function installSearchableSelectEvents() {
+  document.addEventListener("keydown", (event) => {
+    if (
+      event.target.matches("select:not([data-native-select])") &&
+      event.key.length === 1 &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
+      event.preventDefault();
+      openSearchableSelect(event.target, event.key);
+      return;
+    }
+    if (!event.target.matches("#select-search-popover input")) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeSearchableSelect();
+    }
+    if (event.key === "Enter" && searchableSelectMatches.length) {
+      event.preventDefault();
+      chooseSearchableOption(searchableSelectMatches[0].index);
+    }
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (event.target.matches("select:not([data-native-select])") && event.button === 0) {
+      event.preventDefault();
+      event.target.focus();
+      openSearchableSelect(event.target);
+    }
+  });
+  document.addEventListener("input", (event) => {
+    if (event.target.matches("#select-search-popover input")) renderSearchableSelectResults(event.target.value);
+  });
+  document.addEventListener("click", (event) => {
+    if (event.target.closest("[data-close-select-search]")) {
+      closeSearchableSelect();
+      return;
+    }
+    const result = event.target.closest("[data-select-search-index]");
+    if (result) {
+      chooseSearchableOption(result.dataset.selectSearchIndex);
+      return;
+    }
+    if (event.target.matches('input[type="number"]')) event.target.select();
+    if (searchableSelectTarget && !event.target.closest("#select-search-popover") && !event.target.closest("select"))
+      closeSearchableSelect();
+  });
+  document.addEventListener("focusin", (event) => {
+    if (event.target.matches('input[type="number"]')) event.target.select();
+  });
+}
+installSearchableSelectEvents();
+// The header's build tab: a right-click or the rename key renames the open build.
+function installBuildRenameEvents() {
+  document.querySelector(".loadout-tab")?.addEventListener("contextmenu", (event) => {
+    if (event.target.closest(".loadout-tab-rename")) return;
     event.preventDefault();
-    openSearchableSelect(event.target, event.key);
-    return;
-  }
-  if (!event.target.matches("#select-search-popover input")) return;
-  if (event.key === "Escape") {
+    startActiveBuildRename(event.currentTarget);
+  });
+  document.querySelector(".loadout-tab")?.addEventListener("keydown", (event) => {
+    if (event.target !== event.currentTarget || !isRenameKey(event)) return;
     event.preventDefault();
-    closeSearchableSelect();
-  }
-  if (event.key === "Enter" && searchableSelectMatches.length) {
-    event.preventDefault();
-    chooseSearchableOption(searchableSelectMatches[0].index);
-  }
-});
-document.addEventListener("pointerdown", (event) => {
-  if (event.target.matches("select:not([data-native-select])") && event.button === 0) {
-    event.preventDefault();
-    event.target.focus();
-    openSearchableSelect(event.target);
-  }
-});
-document.addEventListener("input", (event) => {
-  if (event.target.matches("#select-search-popover input")) renderSearchableSelectResults(event.target.value);
-});
-document.addEventListener("click", (event) => {
-  if (event.target.closest("[data-close-select-search]")) {
-    closeSearchableSelect();
-    return;
-  }
-  const result = event.target.closest("[data-select-search-index]");
-  if (result) {
-    chooseSearchableOption(result.dataset.selectSearchIndex);
-    return;
-  }
-  if (event.target.matches('input[type="number"]')) event.target.select();
-  if (searchableSelectTarget && !event.target.closest("#select-search-popover") && !event.target.closest("select"))
-    closeSearchableSelect();
-});
-document.addEventListener("focusin", (event) => {
-  if (event.target.matches('input[type="number"]')) event.target.select();
-});
-document.querySelector(".loadout-tab")?.addEventListener("contextmenu", (event) => {
-  if (event.target.closest(".loadout-tab-rename")) return;
-  event.preventDefault();
-  startActiveBuildRename(event.currentTarget);
-});
-document.querySelector(".loadout-tab")?.addEventListener("keydown", (event) => {
-  if (event.target !== event.currentTarget || !isRenameKey(event)) return;
-  event.preventDefault();
-  startActiveBuildRename(event.currentTarget);
-});
+    startActiveBuildRename(event.currentTarget);
+  });
+}
+installBuildRenameEvents();
 
 document.addEventListener("click", (event) => {
   const heroPanelTab = event.target.closest("[data-hero-panel-tab]");
@@ -6816,12 +6972,12 @@ function addCraftedSlate() {
             const candidate = { ...current, row, column };
             if (canPlaceSlate(boardSlate, candidate, slatePlacements, slatesForBoard())) placement = candidate;
           }
-        if (placement) slatePlacements = { ...slatePlacements, [crafted.id]: placement };
+        if (placement) setSlatePlacements({ ...slatePlacements, [crafted.id]: placement });
         else {
           equippedSlateIds.delete(crafted.id);
           const placements = { ...slatePlacements };
           delete placements[crafted.id];
-          slatePlacements = placements;
+          setSlatePlacements(placements);
           parkSlateBesideGrid(boardSlate, crafted.rotation || 0, crafted.flipX || 1, crafted.flipY || 1);
           removedFromGrid = true;
         }
@@ -6864,14 +7020,14 @@ function confirmSkillSelector(levelText) {
   if (!entry || (selectorKind === "support" && !supportFitsSlot(entry, selectorTargetSupportSlot))) return;
   const selected = selectorTargetSetup();
   if (selectorKind === "hero-support") {
-    plannerState.hero.heroTraitSupports[activeHeroTraitSupportId] = entry.name;
-    plannerState.hero.heroTraitSupportLevels[activeHeroTraitSupportId] = selectorLevel;
+    plannerState.hero.heroTraitSupports[ui.activeHeroTraitSupportId] = entry.name;
+    plannerState.hero.heroTraitSupportLevels[ui.activeHeroTraitSupportId] = selectorLevel;
     if (selectorSpecialConfig)
-      plannerState.hero.heroTraitSupportConfigs[activeHeroTraitSupportId] = { ...selectorSpecialConfig };
-    else delete plannerState.hero.heroTraitSupportConfigs[activeHeroTraitSupportId];
+      plannerState.hero.heroTraitSupportConfigs[ui.activeHeroTraitSupportId] = { ...selectorSpecialConfig };
+    else delete plannerState.hero.heroTraitSupportConfigs[ui.activeHeroTraitSupportId];
     persistPlannerState();
     showToast(
-      `${escapeHtml(entry.name)} linked to ${escapeHtml(heroTraitSupportConfig[activeHeroTraitSupportId]?.skill || "trait skill")}`,
+      `${escapeHtml(entry.name)} linked to ${escapeHtml(heroTraitSupportConfig[ui.activeHeroTraitSupportId]?.skill || "trait skill")}`,
     );
   } else if (selectorKind === "skill") {
     const board = selectorBoardSetups();
@@ -6983,9 +7139,9 @@ function clearSkillSelectorSlot() {
   }
   const selected = selectorTargetSetup();
   if (selectorKind === "hero-support") {
-    delete plannerState.hero.heroTraitSupports[activeHeroTraitSupportId];
-    delete plannerState.hero.heroTraitSupportLevels[activeHeroTraitSupportId];
-    delete plannerState.hero.heroTraitSupportConfigs[activeHeroTraitSupportId];
+    delete plannerState.hero.heroTraitSupports[ui.activeHeroTraitSupportId];
+    delete plannerState.hero.heroTraitSupportLevels[ui.activeHeroTraitSupportId];
+    delete plannerState.hero.heroTraitSupportConfigs[ui.activeHeroTraitSupportId];
   } else if (selectorKind === "skill" && (selected?.enabled || selected?.slotInactive)) {
     plannerState.skills.boardSlots = assignSkillBoardSlot(
       plannerState.skills.boardSlots,
@@ -7128,7 +7284,7 @@ function selectSlate(id, toolsPosition) {
 }
 // A click away from the slates and their tools, while the board is shown.
 function clearSlateSelection() {
-  if (!selectedSlateId || !talentSlateMode) return;
+  if (!selectedSlateId || !ui.talentSlateMode) return;
   selectedSlateId = null;
   slateToolsPosition = null;
   if (!slateEditMode) slatePlacementTarget = null;
@@ -7153,7 +7309,7 @@ function placeSlateAtCell(column, row) {
     flipY: previous.flipY || 1,
   };
   if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
-    slatePlacements = { ...slatePlacements, [slate.id]: candidate };
+    setSlatePlacements({ ...slatePlacements, [slate.id]: candidate });
     equippedSlateIds.add(slate.id);
     delete parkedSlates[slate.id];
     persistPlannerState();
@@ -7172,10 +7328,10 @@ function transformSlate(id, change) {
       ? { ...current, rotation: ((current.rotation || 0) + change.rotate * 90 + 360) % 360 }
       : { ...current, [key]: -Number(current[key] || 1) };
   if (parked) {
-    parkedSlates = { ...parkedSlates, [slate.id]: candidate };
+    setParkedSlates({ ...parkedSlates, [slate.id]: candidate });
     persistPlannerState();
   } else if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
-    slatePlacements = { ...slatePlacements, [slate.id]: candidate };
+    setSlatePlacements({ ...slatePlacements, [slate.id]: candidate });
     persistPlannerState();
     if (change.rotate && $("#slate-editor").open) renderSlateEditor(slate);
   } else pickUpTransformedSlate(slate, current, candidate, change.rotate ? "Rotated" : "Flipped");
@@ -7194,11 +7350,11 @@ function wheelTransformSlate(down) {
     ? { ...current, [axis]: -(current[axis] || 1) }
     : { ...current, rotation: ((current.rotation || 0) + (down ? 90 : -90) + 360) % 360 };
   if (parked) {
-    parkedSlates = { ...parkedSlates, [selectedSlateId]: candidate };
+    setParkedSlates({ ...parkedSlates, [selectedSlateId]: candidate });
     persistPlannerState();
     renderSlates();
   } else if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
-    slatePlacements = { ...slatePlacements, [selectedSlateId]: candidate };
+    setSlatePlacements({ ...slatePlacements, [selectedSlateId]: candidate });
     persistPlannerState();
     renderSlates();
   } else pickUpTransformedSlate(slate, current, candidate, pedigree ? "Flipped" : "Rotated");
@@ -7210,7 +7366,7 @@ function removeSlate(id) {
     delete parkedSlates[id];
     const next = { ...slatePlacements };
     delete next[id];
-    slatePlacements = next;
+    setSlatePlacements(next);
     selectedSlateId = null;
     slateToolsPosition = null;
   } else {
@@ -7225,17 +7381,17 @@ function removeSlate(id) {
 function dropSlate(id, { placement, parked }) {
   const slate = slatesForBoard().find((item) => item.id === id);
   if (slate && placement && canPlaceSlate(slate, placement, slatePlacements, slatesForBoard())) {
-    slatePlacements = { ...slatePlacements, [id]: placement };
+    setSlatePlacements({ ...slatePlacements, [id]: placement });
     equippedSlateIds.add(id);
     delete parkedSlates[id];
     persistPlannerState();
     showToast("Slate placed on grid");
   } else if (slate && parked) {
-    parkedSlates = { ...parkedSlates, [id]: parked };
+    setParkedSlates({ ...parkedSlates, [id]: parked });
     equippedSlateIds.delete(id);
     const next = { ...slatePlacements };
     delete next[id];
-    slatePlacements = next;
+    setSlatePlacements(next);
     persistPlannerState();
     showToast("Slate parked beside the grid");
   } else {
@@ -7250,7 +7406,7 @@ function rightClickRemoveSlate(id) {
   delete parkedSlates[id];
   const placements = { ...slatePlacements };
   delete placements[id];
-  slatePlacements = placements;
+  setSlatePlacements(placements);
   persistPlannerState();
   renderCandidateViews();
   showToast("Slate removed");
@@ -7450,20 +7606,20 @@ document.addEventListener("change", (event) => {
 
 const restoredWorkspaceLocation = readWorkspaceLocation();
 if (restoredWorkspaceLocation) {
-  activeStatsPanel = ["sheet", "damage-path"].includes(restoredWorkspaceLocation.statsPanel)
+  ui.activeStatsPanel = ["sheet", "damage-path"].includes(restoredWorkspaceLocation.statsPanel)
     ? restoredWorkspaceLocation.statsPanel
     : "sheet";
-  selectedDamagePath = DAMAGE_PATH_KEY.test(restoredWorkspaceLocation.damagePath || "")
+  ui.selectedDamagePath = DAMAGE_PATH_KEY.test(restoredWorkspaceLocation.damagePath || "")
     ? restoredWorkspaceLocation.damagePath
     : "hit";
   if (typeof restoredWorkspaceLocation.statSheetSkill === "string")
-    selectedStatSheetSkill = restoredWorkspaceLocation.statSheetSkill;
+    ui.selectedStatSheetSkill = restoredWorkspaceLocation.statSheetSkill;
   const slot = plannerState.talents.selectedTrees.indexOf(restoredWorkspaceLocation.panel);
   if (slot >= 0) {
-    activeTalentSlot = slot;
-    activeTalentPanel = restoredWorkspaceLocation.panel;
+    ui.activeTalentSlot = slot;
+    ui.activeTalentPanel = restoredWorkspaceLocation.panel;
   }
-  talentSlateMode = restoredWorkspaceLocation.view === "slates";
+  ui.talentSlateMode = restoredWorkspaceLocation.view === "slates";
 }
 function updateRangeFill(range) {
   const min = range.min === "" ? 0 : Number(range.min),
@@ -7482,19 +7638,24 @@ const scheduleRangeFillRefresh = () => {
     refreshRangeFills();
   });
 };
-new MutationObserver((mutations) => {
-  if (
-    mutations.some(({ addedNodes }) =>
-      [...addedNodes].some(
-        (node) =>
-          node.nodeType === 1 && (node.matches?.('input[type="range"]') || node.querySelector?.('input[type="range"]')),
-      ),
+// Range inputs added to the page, and every input or change, refresh the range fills.
+function installRangeFills() {
+  new MutationObserver((mutations) => {
+    if (
+      mutations.some(({ addedNodes }) =>
+        [...addedNodes].some(
+          (node) =>
+            node.nodeType === 1 &&
+            (node.matches?.('input[type="range"]') || node.querySelector?.('input[type="range"]')),
+        ),
+      )
     )
-  )
-    scheduleRangeFillRefresh();
-}).observe(document.body, { childList: true, subtree: true });
-document.addEventListener("input", scheduleRangeFillRefresh);
-document.addEventListener("change", scheduleRangeFillRefresh);
+      scheduleRangeFillRefresh();
+  }).observe(document.body, { childList: true, subtree: true });
+  document.addEventListener("input", scheduleRangeFillRefresh);
+  document.addEventListener("change", scheduleRangeFillRefresh);
+}
+installRangeFills();
 function restoreSummaryText({ added, renamed, unchanged, skipped, saved }) {
   const parts = [`Restored ${added} build${added === 1 ? "" : "s"}`];
   if (renamed) parts.push(`${renamed} renamed (same id already in library)`);
@@ -7503,26 +7664,30 @@ function restoreSummaryText({ added, renamed, unchanged, skipped, saved }) {
   if (added && !saved) parts.push("not saved: browser storage is full");
   return parts.join(" · ");
 }
-$("#restore-builds-file").addEventListener("change", async (event) => {
-  const file = event.target.files?.[0];
-  event.target.value = "";
-  if (!file) return;
-  let backup;
-  try {
-    backup = JSON.parse(await file.text());
-  } catch {
-    showToast("That file is not a valid backup (not JSON)");
-    return;
-  }
-  try {
-    persistPlannerState();
-    const summary = restoreBuildsFromBackup(backup);
-    updateStorageStatus();
-    showToast(restoreSummaryText(summary));
-  } catch (error) {
-    showToast(error?.message || "That backup could not be restored");
-  }
-});
+// Restore builds: the backup file picked through the hidden file input.
+function installBackupRestore() {
+  $("#restore-builds-file").addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    let backup;
+    try {
+      backup = JSON.parse(await file.text());
+    } catch {
+      showToast("That file is not a valid backup (not JSON)");
+      return;
+    }
+    try {
+      persistPlannerState();
+      const summary = restoreBuildsFromBackup(backup);
+      updateStorageStatus();
+      showToast(restoreSummaryText(summary));
+    } catch (error) {
+      showToast(error?.message || "That backup could not be restored");
+    }
+  });
+}
+installBackupRestore();
 // Stored data that could not be loaded is kept unchanged (build-library.ts); say so and offer a backup.
 function renderLibraryNotice() {
   document.querySelector(".library-notice")?.remove();
@@ -7570,7 +7735,7 @@ const restoredView = [
 runGuardedRender(() =>
   activateWorkspaceView(restoredView === "slates" ? "talents" : restoredView, { scroll: false, remember: false }),
 );
-if (restoredView === "slates") activeWorkspaceView = "talents";
+if (restoredView === "slates") ui.activeWorkspaceView = "talents";
 if (restoredWorkspaceLocation && Number.isFinite(restoredWorkspaceLocation.scrollY))
   requestAnimationFrame(() => window.scrollTo(0, Math.max(0, restoredWorkspaceLocation.scrollY)));
 window.addEventListener("pagehide", saveWorkspaceLocation);
@@ -7601,7 +7766,7 @@ let deferredExternalChange = null;
 function showExternalChange(change) {
   if (change.recalculate) renderCandidateViews();
   if (change.deleted && !loadBuildLibrary().builds.length) activateWorkspaceView("builds", { scroll: false });
-  else if (!change.recalculate && activeWorkspaceView === "builds") updateStorageStatus();
+  else if (!change.recalculate && ui.activeWorkspaceView === "builds") updateStorageStatus();
   if (change.message) showToast(change.message);
 }
 function hideOtherTabNotice() {
@@ -7618,7 +7783,7 @@ function showOtherTabNotice() {
   notice.querySelector("[data-reload-other-tab]").addEventListener("click", () => {
     hideOtherTabNotice();
     applyPlannerState(loadPlannerState());
-    pendingCandidateRender = false;
+    cancelQueuedRender();
     renderCandidateViews();
     updateStorageStatus();
     showToast("Build reloaded");
@@ -7628,40 +7793,44 @@ function showOtherTabNotice() {
     hideOtherTabNotice();
   });
 }
-window.addEventListener("storage", (event) => {
-  if (event.key !== null && event.key !== plannerLibraryStorageKey) return;
-  const result = reconcileExternalLibraryChange(capturePlannerState());
-  const hidden = document.visibilityState === "hidden";
-  if (result.kind === "deleted") {
-    hideOtherTabNotice();
-    applyPlannerState(result.state);
-    renderLibraryNotice();
-    const change = { recalculate: true, deleted: true, message: "The open build was deleted in another tab" };
-    // applyPlannerState queued a render; a hidden tab skips it until it is shown.
-    if (hidden) {
-      pendingCandidateRender = false;
-      deferredExternalChange = change;
+// Other tabs' library changes (see showExternalChange above).
+function installOtherTabSync() {
+  window.addEventListener("storage", (event) => {
+    if (event.key !== null && event.key !== plannerLibraryStorageKey) return;
+    const result = reconcileExternalLibraryChange(capturePlannerState());
+    const hidden = document.visibilityState === "hidden";
+    if (result.kind === "deleted") {
+      hideOtherTabNotice();
+      applyPlannerState(result.state);
+      renderLibraryNotice();
+      const change = { recalculate: true, deleted: true, message: "The open build was deleted in another tab" };
+      // applyPlannerState queued a render; a hidden tab skips it until it is shown.
+      if (hidden) {
+        cancelQueuedRender();
+        deferredExternalChange = change;
+        return;
+      }
+      deferredExternalChange = null;
+      showExternalChange(change);
       return;
     }
+    // "dismissed": the user already closed the notice for this version.
+    if (result.kind === "changed") showOtherTabNotice();
+    else if (result.kind === "none") hideOtherTabNotice();
+    updateStorageStatus();
+    renderLibraryNotice();
+    if (hidden) {
+      if (!deferredExternalChange) deferredExternalChange = { recalculate: false, deleted: false, message: "" };
+      return;
+    }
+    if (ui.activeWorkspaceView === "builds") updateStorageStatus();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || !deferredExternalChange) return;
+    const change = deferredExternalChange;
     deferredExternalChange = null;
     showExternalChange(change);
-    return;
-  }
-  // "dismissed": the user already closed the notice for this version.
-  if (result.kind === "changed") showOtherTabNotice();
-  else if (result.kind === "none") hideOtherTabNotice();
-  updateStorageStatus();
-  renderLibraryNotice();
-  if (hidden) {
-    if (!deferredExternalChange) deferredExternalChange = { recalculate: false, deleted: false, message: "" };
-    return;
-  }
-  if (activeWorkspaceView === "builds") updateStorageStatus();
-});
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState !== "visible" || !deferredExternalChange) return;
-  const change = deferredExternalChange;
-  deferredExternalChange = null;
-  showExternalChange(change);
-});
+  });
+}
+installOtherTabSync();
 markLoadedStateClean();
