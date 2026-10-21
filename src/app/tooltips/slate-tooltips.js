@@ -1,4 +1,7 @@
-// The tooltip of a slate on the board or in the Slate Inventory.
+// A slate's tooltip as the legacy tooltip's HTML. The board and the Slate Inventory show theirs with React
+// (apps/web/src/features/slates/SlateTooltip.tsx, from src/app/bridge/slate-tooltip-view.ts); only a damage path source
+// naming one slate still comes here (planner-tooltips.js damageSourceTooltipContent), until the Stats tooltips move.
+// Delete this file then.
 import { divinitySlateAffixesSs13 } from "../../data/divinity-slate-affixes-ss13.js";
 import { isCopySlate } from "../../engine/talents/slate-board.js";
 import {

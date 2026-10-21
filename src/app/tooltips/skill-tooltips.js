@@ -1,4 +1,7 @@
-// Tooltips of skills and supports on the skill board.
+// A skill's or a support's tooltip as the legacy tooltip's HTML. The skill board and the hero panel show theirs with
+// React (apps/web/src/features/skills/SkillTooltip.tsx, from src/app/bridge/skill-tooltip-view.ts); only a damage path
+// source naming a skill or a support still comes here (planner-tooltips.js damageSourceTooltipContent), until the Stats
+// tooltips move. Delete this file then.
 import { tliArt } from "../../data/assets/tli-art.js";
 import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
 import {

@@ -1,12 +1,13 @@
 // The Slate Inventory (the slate board's Inventory button): the crafted slates with their state, affix count and god,
 // Duplicate, Edit, Remove from grid and Delete, a right-click to place one on the grid, and Craft Slate, which shows
-// the crafter (SlateCrafter.tsx) in the dialog's header and body. A slate keeps the crafted-slate-item class for the
-// planner's tooltip, which moves into this dialog while it shows (so the dialog must not clip it).
+// the crafter (SlateCrafter.tsx) in the dialog's header and body. A slate shows its tooltip (SlateTooltip), which
+// renders inside this dialog while it shows (so the dialog must not clip it).
 import type { CSSProperties } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { useViewSource } from "../../ui/use-view-source";
 import { SlateCrafterBody, SlateCrafterHeader } from "./SlateCrafter";
 import { godTile, SLATE_PRIMARY } from "../../ui/talent-slate-styles";
+import { SlateTooltip } from "./SlateTooltip";
 import { registerDialog } from "../../ui/dialog-registry";
 
 const commands = plannerCommands;
@@ -74,77 +75,78 @@ export function SlateInventoryDialog() {
                 <div className="crafted-slate-list grid min-h-0 flex-1 content-start gap-2.25 overflow-auto">
                   {view.items.length ? (
                     view.items.map((slate) => (
-                      <article
-                        key={slate.id}
-                        className={`crafted-slate-item ${slate.state} ${ITEM} ${ITEM_STATES[slate.state] ?? ITEM_STATES[""]}`}
-                        data-crafted-slate-inventory={slate.id}
-                        onContextMenu={(event) => {
-                          event.preventDefault();
-                          commands().placeCraftedSlate(slate.id);
-                        }}
-                      >
-                        <span
-                          className={`${ICON} ${slate.state === "equipped" ? "border-accent" : "border-line-strong"}`}
+                      <SlateTooltip key={slate.id} id={slate.id}>
+                        <article
+                          className={`crafted-slate-item ${slate.state} ${ITEM} ${ITEM_STATES[slate.state] ?? ITEM_STATES[""]}`}
+                          data-crafted-slate-inventory={slate.id}
+                          onContextMenu={(event) => {
+                            event.preventDefault();
+                            commands().placeCraftedSlate(slate.id);
+                          }}
                         >
-                          {slate.shape ? (
-                            <span className={`${slate.shape.godKey} ${SHAPE} ${godTile(slate.shape.godKey)}`}>
-                              {slate.shape.cells.map(([x, y], index) => (
-                                <i key={index} style={{ "--x": x, "--y": y } as CSSProperties} />
-                              ))}
-                            </span>
-                          ) : (
-                            <img src={slate.icon} alt="" />
-                          )}
-                        </span>
-                        <span className="min-w-0">
-                          <strong className="block text-base">
-                            {slate.name}
-                            {slate.state ? (
-                              <em
-                                className={`${BADGE} ${slate.state === "equipped" ? "border-accent/60 bg-accent/15 text-accent" : "border-info/60 bg-info/15 text-info"}`}
-                              >
-                                {slate.state === "equipped" ? "Equipped" : "Workspace"}
-                              </em>
-                            ) : null}
-                          </strong>
-                          <small className="mt-1 block text-sm text-muted">{slate.detail}</small>
-                        </span>
-                        <span className="crafted-slate-tools flex items-center gap-1">
-                          <button
-                            type="button"
-                            title="Duplicate"
-                            className={TOOL}
-                            onClick={() => commands().duplicateCraftedSlate(slate.id)}
+                          <span
+                            className={`${ICON} ${slate.state === "equipped" ? "border-accent" : "border-line-strong"}`}
                           >
-                            ▢
-                          </button>
-                          <button
-                            type="button"
-                            title="Edit"
-                            className={TOOL}
-                            onClick={() => commands().editCraftedSlate(slate.id)}
-                          >
-                            ✎
-                          </button>
-                          <button
-                            type="button"
-                            title="Remove from grid"
-                            className={TOOL}
-                            disabled={!slate.state}
-                            onClick={() => commands().removeCraftedSlate(slate.id)}
-                          >
-                            ⊘
-                          </button>
-                          <button
-                            type="button"
-                            title="Delete"
-                            className={DELETE_TOOL}
-                            onClick={() => commands().deleteCraftedSlate(slate.id)}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      </article>
+                            {slate.shape ? (
+                              <span className={`${slate.shape.godKey} ${SHAPE} ${godTile(slate.shape.godKey)}`}>
+                                {slate.shape.cells.map(([x, y], index) => (
+                                  <i key={index} style={{ "--x": x, "--y": y } as CSSProperties} />
+                                ))}
+                              </span>
+                            ) : (
+                              <img src={slate.icon} alt="" />
+                            )}
+                          </span>
+                          <span className="min-w-0">
+                            <strong className="block text-base">
+                              {slate.name}
+                              {slate.state ? (
+                                <em
+                                  className={`${BADGE} ${slate.state === "equipped" ? "border-accent/60 bg-accent/15 text-accent" : "border-info/60 bg-info/15 text-info"}`}
+                                >
+                                  {slate.state === "equipped" ? "Equipped" : "Workspace"}
+                                </em>
+                              ) : null}
+                            </strong>
+                            <small className="mt-1 block text-sm text-muted">{slate.detail}</small>
+                          </span>
+                          <span className="crafted-slate-tools flex items-center gap-1">
+                            <button
+                              type="button"
+                              title="Duplicate"
+                              className={TOOL}
+                              onClick={() => commands().duplicateCraftedSlate(slate.id)}
+                            >
+                              ▢
+                            </button>
+                            <button
+                              type="button"
+                              title="Edit"
+                              className={TOOL}
+                              onClick={() => commands().editCraftedSlate(slate.id)}
+                            >
+                              ✎
+                            </button>
+                            <button
+                              type="button"
+                              title="Remove from grid"
+                              className={TOOL}
+                              disabled={!slate.state}
+                              onClick={() => commands().removeCraftedSlate(slate.id)}
+                            >
+                              ⊘
+                            </button>
+                            <button
+                              type="button"
+                              title="Delete"
+                              className={DELETE_TOOL}
+                              onClick={() => commands().deleteCraftedSlate(slate.id)}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        </article>
+                      </SlateTooltip>
                     ))
                   ) : (
                     <div className="crafted-slate-empty grid min-h-75 place-content-center gap-2 text-center text-dim">

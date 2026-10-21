@@ -17,7 +17,8 @@ import { normalizeSunsEmbraceItem } from "../../engine/state/suns-embrace-normal
 import { beltBlendById, beltBlendChoices } from "./belt-blend-options.js";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
-import { equipmentCrafterView, modifierTextView, rollViews } from "../bridge/equipment-crafter-view.ts";
+import { equipmentCrafterView, rollViews } from "../bridge/equipment-crafter-view.ts";
+import { gearTooltipView, modifierTextView } from "../bridge/gear-item-view.ts";
 import { equipmentView } from "../bridge/equipment-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import {
@@ -28,14 +29,17 @@ import {
   legendaryTierForText,
   rollValuesFromText,
 } from "./legendary-editor-model.js";
-import { curseItemOffReason } from "../planner/curse-notes.js";
+import { gearLineCoverage } from "../planner/calculation-coverage.js";
+import { curseItemOffReason, curseLineLeftOutReason } from "../planner/curse-notes.js";
 import { showToast, titleCase } from "../planner/page.js";
 import {
   currentEquipmentImpact,
+  currentPlanner,
   disabledEquipmentSlots,
   persistPlannerState,
   plannerState,
   renderCandidateViews,
+  withRenderPass,
 } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
 import { hidePlannerTooltip } from "../tooltips/tooltip-host.js";
@@ -63,11 +67,14 @@ import {
   equippedSlotForInventoryItem,
   equippedSlotInventoryItem,
   gearIcon,
+  hasSixCraftAffixes,
   inventoryItemById,
   inventoryItems,
   isItemEquipped,
+  isPricelessItem,
   itemDisplayRarity,
   itemLevel100Class,
+  itemModifierSections,
   itemWeaponType,
   modifiersWithoutSpecials,
   pricelessClass,
@@ -112,6 +119,10 @@ export const gearCommands = {
   },
   dropGear,
 };
+export const gearQueries = {
+  // An equipped slot's or an Inventory item's tooltip (apps/web/src/features/gear/GearTooltip.tsx).
+  gearTooltip,
+};
 export const gearViewSources = {
   // The Gear section's data (src/app/bridge/equipment-view-model.ts).
   equipment: equipmentSource,
@@ -120,6 +131,33 @@ export const gearViewSources = {
   // The equipment crafter.
   equipmentCrafter: equipmentCrafterSource,
 };
+
+// An item's tooltip (src/app/bridge/gear-item-view.ts): its lines with whether the calculation uses them. An equipped
+// slot's item counts in the calculation; an Inventory item counts when it is equipped.
+function gearTooltip(target) {
+  return withRenderPass(() => {
+    const inventory = "inventoryId" in target;
+    const item = inventory
+      ? inventoryItemById(target.inventoryId)
+      : currentEquipmentImpact().allItems.find((entry) => entry.slot === target.slot);
+    if (!item || (!inventory && disabledEquipmentSlots.has(item.slot))) return null;
+    const active = inventory ? isItemEquipped(item) : true;
+    const { block, lowResources, blurEffects } = currentPlanner();
+    return gearTooltipView({
+      item,
+      rarity: itemDisplayRarity(item),
+      icon: gearIcon(item),
+      sixAffix: hasSixCraftAffixes(item),
+      priceless: isPricelessItem(item),
+      itemLevel100: Boolean(itemLevel100Class(item)),
+      sections: itemModifierSections(item),
+      energyAllowed: equipmentEnergyAllowed(item.slot),
+      inventory,
+      lineStatus: (line) => gearLineCoverage(item, line, active, block, lowResources, blurEffects),
+      curseReason: (line) => (active ? curseLineLeftOutReason(line, item) : ""),
+    });
+  });
+}
 
 // ---- Inventory item dialog commands (apps/web/src/features/gear/InventoryItemDialog.tsx).
 // Equip / Unequip of the open item; the dialog closes.

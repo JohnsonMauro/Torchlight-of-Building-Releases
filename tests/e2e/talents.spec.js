@@ -311,6 +311,17 @@ test("a reload on the slate board opens it again", async ({ page }) => {
   await planner.expectNoErrors();
 });
 
+test("hovering a core talent slot shows its tooltip", async ({ page }) => {
+  const { planner, talents } = await openTalents(page);
+  await expect(async () => {
+    await page.mouse.move(0, 0);
+    await talents.core(24).hover();
+    await expect(talents.tooltip()).toContainText("Core talent · 24 points", { timeout: 500 });
+  }).toPass();
+  await expect(talents.tooltip()).toContainText("Selected · Click to change");
+  await planner.expectNoErrors();
+});
+
 test("hovering a node and the installed prism shows their tooltips", async ({ page }) => {
   const { planner, talents } = await openTalents(page);
   // The planner ignores hovers for a moment after a scroll, and hover() scrolls the node into view first.

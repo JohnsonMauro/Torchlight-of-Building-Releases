@@ -4,12 +4,15 @@
 // tree hero's picks are dragged between rows. The hero is picked when a build is created, and changed from the showcase
 // or from the build's details (Builds view). The data is the planner's "heroTraits" source
 // (src/app/bridge/hero-traits-view-model.ts); every edit is a planner command, and the hero, memory, scent, ammo and
-// support dialogs stay legacy. The legacy hover tooltip
-// reads data-hero-trait-tooltip with data-hero-trait-level-key, .hero-memory-socket.filled with data-memory-tier,
-// data-support-tooltip with data-parent-skill and data-carino-support-slot, data-hero-trait-support-id,
-// data-tree-extra-row-tooltip and data-sage-scent-tooltip, so they stay.
+// support dialogs stay legacy. Traits, the extra row, memories, scents and supports show their tooltips (TraitTooltip,
+// MemoryTooltip, ScentTooltip, SkillTooltip); a Stats damage source still finds a trait by data-hero-trait-tooltip and
+// data-hero-trait-level-key.
 import { useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import { HeroTraitTooltip, TreeExtraRowTooltip } from "./TraitTooltip";
+import { MemoryTooltip, ScentTooltip } from "./MemoryTooltip";
+import { SkillTooltip } from "../skills/SkillTooltip";
+import type { TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import type {
   ChoiceGroupView,
   HeroTraitsView,
@@ -25,6 +28,7 @@ import { StrokeIcon } from "../../ui/StrokeIcon";
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";
 import { KISMET_DRAG_GHOST, KISMET_DRAG_GHOST_IMAGE } from "../pacts/pact-classes";
+import { hideTooltip } from "../../ui/tooltip/tooltip-store";
 import {
   choiceArt,
   choiceButton,
@@ -145,7 +149,7 @@ export function HeroTraitTree() {
       ghost.style.margin = `${-element.offsetHeight / 2}px 0 0 ${-element.offsetWidth / 2}px`;
       return ghost;
     },
-    onStart: () => plannerCommands().hideTooltip(),
+    onStart: () => hideTooltip(),
     onDrop: (from, row) => plannerCommands().moveTraitPick(from, Number(row)),
     onInvalidDrop: (from) => plannerCommands().moveTraitPick(from, null),
   });
@@ -188,47 +192,55 @@ function ScentBottle({ scent }: { scent: ScentBottleView }) {
   const open = (kind: string) => () => plannerCommands().openScentSlot(kind);
   return (
     <section className="sage-scent-panel grid gap-2.25 p-3">
-      <button
-        type="button"
-        className={`sage-basic-scent ${scent.elixir ? "filled min-h-32" : "min-h-23"} ${scentSlot} grid justify-items-center gap-1.5 p-4.5 text-accent`}
-        data-sage-scent-tooltip={scent.elixir ? "elixir" : undefined}
-        onClick={open("elixir")}
-      >
-        {scent.elixir ? (
-          <>
-            <img
-              className="size-[62px] rounded border border-line-strong bg-sunken object-contain"
-              src={scent.elixir.icon}
-              alt=""
-            />
-            <strong className="text-xs uppercase">{scent.elixir.name}</strong>
-            <small className="text-muted">{scent.elixir.tags.join(" · ")}</small>
-          </>
-        ) : (
-          <b className={`${scentPlus} size-[43px] rounded-lg`}>+</b>
-        )}
-      </button>
+      <OptionalScentTooltip kind={scent.elixir ? "elixir" : null}>
+        <button
+          type="button"
+          className={`sage-basic-scent ${scent.elixir ? "filled min-h-32" : "min-h-23"} ${scentSlot} grid justify-items-center gap-1.5 p-4.5 text-accent`}
+          data-sage-scent-tooltip={scent.elixir ? "elixir" : undefined}
+          onClick={open("elixir")}
+        >
+          {scent.elixir ? (
+            <>
+              <img
+                className="size-[62px] rounded border border-line-strong bg-sunken object-contain"
+                src={scent.elixir.icon}
+                alt=""
+              />
+              <strong className="text-xs uppercase">{scent.elixir.name}</strong>
+              <small className="text-muted">{scent.elixir.tags.join(" · ")}</small>
+            </>
+          ) : (
+            <b className={`${scentPlus} size-[43px] rounded-lg`}>+</b>
+          )}
+        </button>
+      </OptionalScentTooltip>
       <div className="border-b border-accent pb-2 text-center text-xs font-bold tracking-wider text-accent uppercase">
         Basic Scent
       </div>
       {scent.ingredients.map((slot) => (
-        <button
-          key={slot.kind}
-          type="button"
-          className={`${slot.filled ? "filled " : ""}${scentSlot} grid min-h-18 grid-cols-[1fr_58px] items-center gap-1 px-2.5 py-2 text-left text-text`}
-          data-sage-scent-tooltip={slot.ingredient ? slot.kind : undefined}
-          onClick={open(slot.kind)}
-        >
-          <span>{slot.label}</span>
-          <b
-            className={`${scentPlus} col-start-2 row-[1/span_2] size-[54px] overflow-hidden rounded-full ${slot.filled ? "border-solid border-accent text-center text-[10px] text-text" : ""}`}
+        <OptionalScentTooltip key={slot.kind} kind={slot.ingredient ? slot.kind : null}>
+          <button
+            key={slot.kind}
+            type="button"
+            className={`${slot.filled ? "filled " : ""}${scentSlot} grid min-h-18 grid-cols-[1fr_58px] items-center gap-1 px-2.5 py-2 text-left text-text`}
+            data-sage-scent-tooltip={slot.ingredient ? slot.kind : undefined}
+            onClick={open(slot.kind)}
           >
-            {slot.ingredient ? <img className="block size-12 object-contain" src={slot.ingredient.icon} alt="" /> : "+"}
-          </b>
-          {slot.ingredient ? (
-            <small className="max-w-[135px] text-[10px] text-muted">{slot.ingredient.name}</small>
-          ) : null}
-        </button>
+            <span>{slot.label}</span>
+            <b
+              className={`${scentPlus} col-start-2 row-[1/span_2] size-[54px] overflow-hidden rounded-full ${slot.filled ? "border-solid border-accent text-center text-[10px] text-text" : ""}`}
+            >
+              {slot.ingredient ? (
+                <img className="block size-12 object-contain" src={slot.ingredient.icon} alt="" />
+              ) : (
+                "+"
+              )}
+            </b>
+            {slot.ingredient ? (
+              <small className="max-w-[135px] text-[10px] text-muted">{slot.ingredient.name}</small>
+            ) : null}
+          </button>
+        </OptionalScentTooltip>
       ))}
     </section>
   );
@@ -293,26 +305,27 @@ function TraitPath({ path }: { path: TraitPathView }) {
             "--node-y": `${at?.y}px`,
           } as CSSProperties;
           return (
-            <button
-              key={node.name}
-              type="button"
-              className={`selena-dance-node ${node.base ? "base" : ""} ${node.selected ? "selected" : ""} ${node.locked ? "locked" : ""} group/node absolute top-(--node-y) left-(--node-x) grid w-[54px] -translate-1/2 cursor-pointer justify-items-center gap-0.5 border-0 bg-transparent p-0 text-muted focus-visible:outline-0 off:cursor-not-allowed off:opacity-28 off:grayscale`}
-              style={style}
-              disabled={node.locked}
-              data-hero-trait-tooltip={node.name}
-              data-hero-trait-level-key={node.levelKey}
-              aria-pressed={node.selected}
-              onClick={() => {
-                if (!node.base) plannerCommands().toggleTraitPathNode(node.name);
-              }}
-            >
-              <Artwork src={node.art} alt={node.name} className={pathNodeArt(node)} />
-              <span
-                className={`rounded-md px-1.25 py-px text-[10px] ${node.selected ? "bg-accent-strong text-on-accent" : "bg-raised text-muted"}`}
+            <HeroTraitTooltip key={node.name} name={node.name} levelKey={node.levelKey} selected={node.selected}>
+              <button
+                type="button"
+                className={`selena-dance-node ${node.base ? "base" : ""} ${node.selected ? "selected" : ""} ${node.locked ? "locked" : ""} group/node absolute top-(--node-y) left-(--node-x) grid w-[54px] -translate-1/2 cursor-pointer justify-items-center gap-0.5 border-0 bg-transparent p-0 text-muted focus-visible:outline-0 off:cursor-not-allowed off:opacity-28 off:grayscale`}
+                style={style}
+                disabled={node.locked}
+                data-hero-trait-tooltip={node.name}
+                data-hero-trait-level-key={node.levelKey}
+                aria-pressed={node.selected}
+                onClick={() => {
+                  if (!node.base) plannerCommands().toggleTraitPathNode(node.name);
+                }}
               >
-                {node.caption}
-              </span>
-            </button>
+                <Artwork src={node.art} alt={node.name} className={pathNodeArt(node)} />
+                <span
+                  className={`rounded-md px-1.25 py-px text-[10px] ${node.selected ? "bg-accent-strong text-on-accent" : "bg-raised text-muted"}`}
+                >
+                  {node.caption}
+                </span>
+              </button>
+            </HeroTraitTooltip>
           );
         })}
       </div>
@@ -330,29 +343,33 @@ function TraitTiers({ tiers, drag }: { tiers: TraitTiersView; drag: PickDrag }) 
     return drag.target === String(row) ? dropTarget : dropEligible;
   };
   const pickButton = (pick: TraitView, row: number) => (
-    <button
-      type="button"
-      className={`selected ${choiceButton} touch-none ${draggedFrom === row ? "cursor-grabbing opacity-45" : "cursor-grab"}`}
-      data-hero-trait-tooltip={pick.name}
-      data-hero-trait-level-key={pick.levelKey}
-      aria-label={pick.name}
-      aria-pressed="true"
-      onPointerDown={(event) => drag.start(event, String(row), row)}
-    >
-      <Artwork src={pick.art} alt={pick.name} className={choiceArt(true)} />
-    </button>
+    <HeroTraitTooltip name={pick.name} levelKey={pick.levelKey} selected>
+      <button
+        type="button"
+        className={`selected ${choiceButton} touch-none ${draggedFrom === row ? "cursor-grabbing opacity-45" : "cursor-grab"}`}
+        data-hero-trait-tooltip={pick.name}
+        data-hero-trait-level-key={pick.levelKey}
+        aria-label={pick.name}
+        aria-pressed="true"
+        onPointerDown={(event) => drag.start(event, String(row), row)}
+      >
+        <Artwork src={pick.art} alt={pick.name} className={choiceArt(true)} />
+      </button>
+    </HeroTraitTooltip>
   );
   const traitButton = (
-    <button
-      type="button"
-      className={`selected ${choiceButton} cursor-pointer`}
-      data-hero-trait-tooltip={base.trait.name}
-      data-hero-trait-level-key="base"
-      aria-label={base.trait.name}
-      aria-pressed="true"
-    >
-      <Artwork src={base.trait.art} alt={base.trait.name} className={choiceArt(true)} />
-    </button>
+    <HeroTraitTooltip name={base.trait.name} levelKey="base" selected>
+      <button
+        type="button"
+        className={`selected ${choiceButton} cursor-pointer`}
+        data-hero-trait-tooltip={base.trait.name}
+        data-hero-trait-level-key="base"
+        aria-label={base.trait.name}
+        aria-pressed="true"
+      >
+        <Artwork src={base.trait.art} alt={base.trait.name} className={choiceArt(true)} />
+      </button>
+    </HeroTraitTooltip>
   );
   const supports = base.supports ? <SupportSlots slots={base.supports} /> : null;
   return (
@@ -427,26 +444,28 @@ function TraitTiers({ tiers, drag }: { tiers: TraitTiersView; drag: PickDrag }) 
         );
       })}
       {tiers.extraRow ? (
-        <div
-          className={`${tiers.extraRow.pick ? tierRow : memoryOnlyRow} ${dropClass(tiers.extraRow.row)}`}
-          data-selena-dance-row={tiers.extraRow.row}
-          data-tree-extra-row-tooltip=""
-          aria-label={tiers.extraRow.label}
-        >
-          <span className={tierLevelClass}>
-            <strong>{tiers.extraRow.level}</strong>
-            <small>MAX</small>
-          </span>
-          <span className="max-w-[55px] justify-self-center rounded-md border border-accent bg-accent/15 px-1.25 py-0.75 text-center text-[10px] leading-tight font-bold text-accent">
-            {tiers.extraRow.chip.replace(" ", " ")}
-          </span>
-          {tiers.extraRow.pick ? (
-            <>
-              <span className={tierDivider} />
-              <div className={choicesClass}>{pickButton(tiers.extraRow.pick, tiers.extraRow.row)}</div>
-            </>
-          ) : null}
-        </div>
+        <TreeExtraRowTooltip>
+          <div
+            className={`${tiers.extraRow.pick ? tierRow : memoryOnlyRow} ${dropClass(tiers.extraRow.row)}`}
+            data-selena-dance-row={tiers.extraRow.row}
+            data-tree-extra-row-tooltip=""
+            aria-label={tiers.extraRow.label}
+          >
+            <span className={tierLevelClass}>
+              <strong>{tiers.extraRow.level}</strong>
+              <small>MAX</small>
+            </span>
+            <span className="max-w-[55px] justify-self-center rounded-md border border-accent bg-accent/15 px-1.25 py-0.75 text-center text-[10px] leading-tight font-bold text-accent">
+              {tiers.extraRow.chip.replace(" ", " ")}
+            </span>
+            {tiers.extraRow.pick ? (
+              <>
+                <span className={tierDivider} />
+                <div className={choicesClass}>{pickButton(tiers.extraRow.pick, tiers.extraRow.row)}</div>
+              </>
+            ) : null}
+          </div>
+        </TreeExtraRowTooltip>
       ) : null}
     </>
   );
@@ -463,41 +482,44 @@ function TierLevel({ level }: { level: number }) {
 
 function Choices({ group, dual = false }: { group: ChoiceGroupView; dual?: boolean }) {
   return group.choices.map((choice) => (
-    <button
-      key={choice.name}
-      type="button"
-      className={`${choice.selected ? "selected " : "opacity-70 "}${choiceButton} cursor-pointer`}
-      data-hero-trait-tooltip={choice.name}
-      data-hero-trait-level-key={choice.levelKey}
-      aria-label={choice.name}
-      aria-pressed={choice.selected}
-      onClick={() => plannerCommands().pickHeroTrait(group.selectionKey, choice.name)}
-    >
-      <Artwork src={choice.art} alt={choice.name} className={choiceArt(choice.selected, dual)} />
-    </button>
+    <HeroTraitTooltip key={choice.name} name={choice.name} levelKey={choice.levelKey} selected={choice.selected}>
+      <button
+        type="button"
+        className={`${choice.selected ? "selected " : "opacity-70 "}${choiceButton} cursor-pointer`}
+        data-hero-trait-tooltip={choice.name}
+        data-hero-trait-level-key={choice.levelKey}
+        aria-label={choice.name}
+        aria-pressed={choice.selected}
+        onClick={() => plannerCommands().pickHeroTrait(group.selectionKey, choice.name)}
+      >
+        <Artwork src={choice.art} alt={choice.name} className={choiceArt(choice.selected, dual)} />
+      </button>
+    </HeroTraitTooltip>
   ));
 }
 
 function MemorySocket({ socket }: { socket: MemorySocketView }) {
   const memory = socket.memory;
   return (
-    <button
-      type="button"
-      className={`hero-memory-socket ${memory ? "filled " : ""}${memorySocket}`}
-      data-memory-tier={socket.tier}
-      aria-label={socket.label}
-      onClick={() => plannerCommands().openMemorySocket(socket.tier)}
-      onContextMenu={(event) => rightClick(event, () => plannerCommands().removeMemory(socket.tier))}
-    >
-      {memory ? (
-        <>
-          <Artwork src={memory.art} alt={memory.name} className={memoryArt(memory.rarity)} />
-          {memory.revivedId ? <RevivalBadge id={memory.revivedId} /> : null}
-        </>
-      ) : (
-        <b className={memoryEmpty}>+</b>
-      )}
-    </button>
+    <OptionalMemoryTooltip tier={memory ? socket.tier : null}>
+      <button
+        type="button"
+        className={`hero-memory-socket ${memory ? "filled " : ""}${memorySocket}`}
+        data-memory-tier={socket.tier}
+        aria-label={socket.label}
+        onClick={() => plannerCommands().openMemorySocket(socket.tier)}
+        onContextMenu={(event) => rightClick(event, () => plannerCommands().removeMemory(socket.tier))}
+      >
+        {memory ? (
+          <>
+            <Artwork src={memory.art} alt={memory.name} className={memoryArt(memory.rarity)} />
+            {memory.revivedId ? <RevivalBadge id={memory.revivedId} /> : null}
+          </>
+        ) : (
+          <b className={memoryEmpty}>+</b>
+        )}
+      </button>
+    </OptionalMemoryTooltip>
   );
 }
 
@@ -528,31 +550,64 @@ function SupportSlots({ slots }: { slots: SupportSlotsView }) {
   return (
     <div className={supportSlots} aria-label={slots.label}>
       {slots.slots.map((slot) => (
-        <button
+        <OptionalSupportTooltip
           key={slot.index}
-          type="button"
-          className={`${slot.support ? "filled " : ""}${carino && slot.locked ? "locked " : ""}${supportSlot(Boolean(slot.support))}`}
-          data-support-tooltip={slot.support?.name}
-          data-parent-skill={carino && slot.support ? "Special Ammo" : undefined}
-          data-carino-support-slot={carino && slot.support ? slot.index : undefined}
-          data-hero-trait-support-id={!carino && slot.support ? slots.heroId : undefined}
-          disabled={slot.locked}
-          title={slot.title}
-          aria-label={slot.label}
-          onClick={() =>
-            carino ? plannerCommands().openCarinoAmmo(slot.index) : plannerCommands().openHeroTraitSupport(slots.heroId)
+          target={
+            slot.support
+              ? carino
+                ? { skill: "Special Ammo", support: slot.support.name, editable: true }
+                : { heroSupportId: slots.heroId, support: slot.support.name, editable: true }
+              : null
           }
-          onContextMenu={(event) => {
-            if (!slot.support) return;
-            event.preventDefault();
-            plannerCommands().hideTooltip();
-            if (carino) plannerCommands().removeCarinoAmmo(slot.index);
-            else plannerCommands().removeHeroTraitSupport(slots.heroId);
-          }}
         >
-          {slot.support ? <Artwork src={slot.support.icon} alt={slot.support.name} className={supportArt} /> : <b>+</b>}
-        </button>
+          <button
+            type="button"
+            className={`${slot.support ? "filled " : ""}${carino && slot.locked ? "locked " : ""}${supportSlot(Boolean(slot.support))}`}
+            disabled={slot.locked}
+            title={slot.title || undefined}
+            aria-label={slot.label}
+            onClick={() =>
+              carino
+                ? plannerCommands().openCarinoAmmo(slot.index)
+                : plannerCommands().openHeroTraitSupport(slots.heroId)
+            }
+            onContextMenu={(event) => {
+              if (!slot.support) return;
+              event.preventDefault();
+              hideTooltip();
+              if (carino) plannerCommands().removeCarinoAmmo(slot.index);
+              else plannerCommands().removeHeroTraitSupport(slots.heroId);
+            }}
+          >
+            {slot.support ? (
+              <Artwork src={slot.support.icon} alt={slot.support.name} className={supportArt} />
+            ) : (
+              <b>+</b>
+            )}
+          </button>
+        </OptionalSupportTooltip>
       ))}
     </div>
   );
+}
+
+/** A filled support slot's tooltip; an empty one has none. */
+function OptionalSupportTooltip({
+  target,
+  children,
+}: {
+  target: Parameters<typeof SkillTooltip>[0]["target"] | null;
+  children: TooltipAnchor;
+}) {
+  return target ? <SkillTooltip target={target}>{children}</SkillTooltip> : children;
+}
+
+/** A filled scent slot's tooltip; an empty one has none. */
+function OptionalScentTooltip({ kind, children }: { kind: string | null; children: TooltipAnchor }) {
+  return kind ? <ScentTooltip kind={kind}>{children}</ScentTooltip> : children;
+}
+
+/** A filled memory socket's tooltip; an empty one has none. */
+function OptionalMemoryTooltip({ tier, children }: { tier: string | null; children: TooltipAnchor }) {
+  return tier ? <MemoryTooltip target={{ tier }}>{children}</MemoryTooltip> : children;
 }

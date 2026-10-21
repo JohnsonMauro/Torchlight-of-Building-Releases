@@ -3,12 +3,22 @@
 // content.
 import { useSyncExternalStore, type ReactNode } from "react";
 
-export interface TooltipRequest {
+/** What a tooltip shows: its content and the frame's look. */
+export interface TooltipBody {
+  body: ReactNode;
+  /** The frame's kind classes (tooltip-classes.ts: "qol-help-tooltip", "gear-tooltip six-affix"…). */
+  kind?: string;
+  /** The frame's rarity colours and art (its data-rarity). */
+  rarity?: string;
+  /** A talent's type (micro, medium, legendary, core, prism-core): the frame's colour (its data-talent-type). */
+  talentType?: string;
+  /** "pointer": beside the pointer, following it; "beside": beside its element (an Inventory card), left if it fits. */
+  placement?: "pointer" | "beside";
+}
+
+export interface TooltipRequest extends TooltipBody {
   /** The element the tooltip is about. */
   anchor: HTMLElement;
-  content: ReactNode;
-  /** The frame's kind classes (tooltip-classes.ts: "qol-help-tooltip", "gear-tooltip"…). */
-  kind: string;
   /** Where it opened: the pointer, or the focused element's top right corner. */
   x: number;
   y: number;

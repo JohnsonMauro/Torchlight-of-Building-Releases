@@ -1,55 +1,8 @@
-// Tailwind class lists of the planner tooltip kinds whose content is an HTML string: talent nodes and core talents,
-// installed prisms, Pactspirits and pact nodes, slates, hero memories, Sage's scents, hero traits and followers. The
-// frame of each kind (size, border, background, padding) and the colour it exposes (--tip-accent, --tip-edge, --tip-name)
-// are #planner-tooltip's (apps/web/src/ui/tooltip/tooltip-classes.ts), and so are the coverage badges; these lists
-// draw the content. Literal strings, so Tailwind finds every class.
-
-// Talent nodes and core talents (talent-tooltips.js); --tip-accent follows the node type.
-export const talentClasses = {
-  head: "grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-2.5 border-b border-line px-3 py-2.75",
-  icon: "grid size-10 place-items-center overflow-hidden rounded-full border border-(--tip-edge) bg-sunken text-xl text-(--tip-accent) [&>img]:size-8.5 [&>img]:object-contain",
-  kicker: "block text-[10px] font-bold tracking-widest text-(--tip-accent) uppercase",
-  title: "mt-0.75 block font-display text-sm/tight font-bold text-text",
-  badge:
-    "rounded-sm border border-(--tip-edge) bg-sunken px-1.5 py-1 text-xs font-bold whitespace-nowrap text-(--tip-accent)",
-  body: "px-3 py-2.25 [&>p]:text-xs/normal [&>p]:text-muted",
-  coreBody:
-    "px-3 py-2.25 [&>.calc-coverage]:my-0.75 [&>p]:py-1.5 [&>p]:text-xs/normal [&>p]:text-text [&>p+p]:border-t [&>p+p]:border-line",
-  effect: "flex items-baseline justify-between gap-3 py-1.5 not-first:border-t not-first:border-line",
-  effectLabel: "text-xs/snug text-muted",
-  effectValue: "text-right text-xs/snug font-bold whitespace-nowrap text-text",
-  prism: "border-t border-line bg-violet/10 px-3 pt-2.25 pb-3",
-  prismHeading: "mb-1.75 text-[10px] font-bold tracking-wider text-violet uppercase",
-  prismHeadingNote: "mt-0.75 block text-xs font-normal tracking-normal text-muted normal-case",
-  affix: "mt-1.5 rounded-sm border border-l-3 px-2.25 py-2",
-  affixOn: "border-violet/40 border-l-violet bg-violet/10 [&>small]:text-ok",
-  affixOff: "border-line border-l-dim bg-raised opacity-65 [&>small]:text-muted",
-  affixTier: "block text-[10px] text-violet uppercase",
-  affixText: "my-1.25 text-xs/normal text-text",
-  affixReason: "block text-xs",
-  prismNone: "text-xs text-muted italic",
-  footer: "block border-t border-line px-3 py-1.75 text-center text-xs text-dim",
-};
-
-// An installed prism (talents/prism-controller.js prismTooltipHtml); the frame's --tip-accent is violet.
-export const prismClasses = {
-  head: "grid grid-cols-[42px_1fr] items-center gap-x-2.25 gap-y-1 border-b border-line p-3",
-  icon: "row-span-2 size-10 object-contain",
-  title: "font-display text-sm/snug font-bold text-accent",
-  kicker: "col-start-2 text-[10px] text-muted uppercase",
-  body: "p-3",
-  area: "mb-2 text-xs text-muted [&>strong]:font-bold [&>strong]:text-info",
-  section:
-    "rounded-sm border border-l-3 border-line bg-raised px-2.75 py-2.5 not-first:mt-2.75 [&>h4]:mb-1.5 [&>h4]:text-xs/tight [&>h4]:font-bold [&>h4]:tracking-wider [&>h4]:text-accent [&>h4]:uppercase [&>p]:text-xs/normal [&>p]:wrap-anywhere [&>p]:text-text",
-  sectionEdge: {
-    base: "border-l-accent-strong",
-    "inverse-fixed": "border-l-accent-strong",
-    radiusAffix: "border-l-grade-magic",
-    rareAffix: "border-l-ok",
-    legendaryAffix: "border-l-grade-rare",
-  },
-  footer: "block border-t border-line px-3 py-2 text-center text-xs text-dim",
-};
+// Tailwind class lists of the planner tooltip kinds whose content is still an HTML string: Pactspirits and pact nodes,
+// slates, hero memories, Sage's scents, hero traits and followers. The frame of each kind (size, border, background,
+// padding) and the colour it exposes (--tip-accent, --tip-edge, --tip-name) are #planner-tooltip's
+// (apps/web/src/ui/tooltip/tooltip-classes.ts), and so are the coverage badges; these lists draw the content. Literal
+// strings, so Tailwind finds every class.
 
 // Pactspirits and their tree nodes (pact-tooltips.js); the frame's --tip-accent / --tip-edge follow the rarity.
 export const pactClasses = {

@@ -181,7 +181,13 @@ test("Reset Skills empties both tabs", async ({ page }) => {
 test("a support granted by the hero trait opens nothing and cannot be removed", async ({ page }) => {
   const { planner, skills } = await openSkills(page, youga);
   const granted = skills.support("Homing Frost Bolt", "Replace Clockwork Core");
-  await expect(granted).toHaveAttribute("title", "Granted by I Am the Ultimate One");
+  await expect(async () => {
+    await page.mouse.move(0, 0);
+    await granted.hover();
+    await expect(skills.tooltip()).toContainText("Granted by I Am the Ultimate One · second support slot", {
+      timeout: 500,
+    });
+  }).toPass();
   await granted.click();
   await expect(skills.selector()).toBeHidden();
   await granted.click({ button: "right" });

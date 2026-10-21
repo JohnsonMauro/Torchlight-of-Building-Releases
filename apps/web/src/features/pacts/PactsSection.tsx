@@ -1,6 +1,7 @@
 // The Pactspirits section of the Build page: the pact count, the three pact slots with their trees, and the Kismet counts.
-// The data is the planner's "pacts" source (src/app/bridge/pacts-view-model.ts); every edit is a planner command. The legacy hover
-// tooltip still reads the nodes' data-node-* and data-pactspirit-name attributes, so they stay.
+// The data is the planner's "pacts" source (src/app/bridge/pacts-view-model.ts); every edit is a planner command. Slots,
+// nodes and Kismets show their tooltips (PactTooltip). A Stats damage source still reads the nodes' data-pact-node-tooltip
+// and data-node-* attributes (src/app/tooltips/planner-tooltips.js), so they stay until those tooltips move.
 import { useMemo, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { ExtraSlotView, PactNodeView, PactSlotView, PactsView } from "@legacy/app/bridge/pacts-view-model.ts";
@@ -20,6 +21,9 @@ import {
   type DragState,
 } from "./pact-classes";
 import { useKismetDrag, type DropSlot } from "./use-kismet-drag";
+import { PactNodeTooltip, PactspiritTooltip } from "./PactTooltip";
+import type { TooltipAnchor } from "../../ui/tooltip/Tooltip";
+import { hideTooltip } from "../../ui/tooltip/tooltip-store";
 
 const LEVELS = [1, 2, 3, 4, 5, 6];
 
@@ -86,7 +90,7 @@ function PactSlotList({ view }: { view: PactsView }) {
   const commands = plannerCommands();
   const drag = useKismetDrag({
     slotAt: (key) => slots.get(key),
-    onStart: () => commands.hideTooltip(),
+    onStart: () => hideTooltip(),
     onDrop: (source, target, copy) => commands.moveKismet(source.key, target, source.kind, copy),
     onInvalidDrop: () => commands.showToast("Invalid drop · Kismet returned to its slot"),
   });
@@ -132,39 +136,41 @@ function PactSlotList({ view }: { view: PactsView }) {
           key={slot.index}
           className={`pact-slot ${rarityTone(slot.spirit?.rarity)} ${slotSurface(Boolean(slot.spirit))} ${SLOT_LAYOUT}`}
         >
-          <button
-            type="button"
-            className="pact-slot-select group flex w-full min-w-0 cursor-pointer items-center gap-3 text-left text-text"
-            data-pactspirit-name={slot.spirit ? slot.name : undefined}
-            onClick={() => commands.openPactspiritSelector(slot.index)}
-            onContextMenu={(event) => {
-              if (!slot.spirit) return;
-              event.preventDefault();
-              commands.removePactspirit(slot.index);
-            }}
-          >
-            <span
-              className={`grid size-16 flex-none place-items-center overflow-hidden rounded-md ${slot.spirit ? FILLED_PORTRAIT : EMPTY_PORTRAIT}`}
+          <PactspiritSlotTooltip name={slot.spirit ? slot.name : null}>
+            <button
+              type="button"
+              className="pact-slot-select group flex w-full min-w-0 cursor-pointer items-center gap-3 text-left text-text"
+              data-pactspirit-name={slot.spirit ? slot.name : undefined}
+              onClick={() => commands.openPactspiritSelector(slot.index)}
+              onContextMenu={(event) => {
+                if (!slot.spirit) return;
+                event.preventDefault();
+                commands.removePactspirit(slot.index);
+              }}
             >
+              <span
+                className={`grid size-16 flex-none place-items-center overflow-hidden rounded-md ${slot.spirit ? FILLED_PORTRAIT : EMPTY_PORTRAIT}`}
+              >
+                {slot.spirit ? (
+                  <img className="w-full" src={slot.spirit.icon} alt="" />
+                ) : (
+                  <span aria-hidden="true">+</span>
+                )}
+              </span>
               {slot.spirit ? (
-                <img className="w-full" src={slot.spirit.icon} alt="" />
+                <span className="min-w-0">
+                  <strong className="block max-w-42.5 truncate text-sm text-(--pact-tone)">{slot.name}</strong>
+                  <small className="block max-w-42.5 truncate text-xs text-muted">
+                    {`${slot.spirit.category} · ${slot.spirit.rarity}`}
+                  </small>
+                </span>
               ) : (
-                <span aria-hidden="true">+</span>
+                <span className="pact-slot-empty min-w-0 text-xs font-bold tracking-widest text-accent uppercase">
+                  {`Select Pactspirit ${slot.index + 1}`}
+                </span>
               )}
-            </span>
-            {slot.spirit ? (
-              <span className="min-w-0">
-                <strong className="block max-w-42.5 truncate text-sm text-(--pact-tone)">{slot.name}</strong>
-                <small className="block max-w-42.5 truncate text-xs text-muted">
-                  {`${slot.spirit.category} · ${slot.spirit.rarity}`}
-                </small>
-              </span>
-            ) : (
-              <span className="pact-slot-empty min-w-0 text-xs font-bold tracking-widest text-accent uppercase">
-                {`Select Pactspirit ${slot.index + 1}`}
-              </span>
-            )}
-          </button>
+            </button>
+          </PactspiritSlotTooltip>
           {slot.spirit ? (
             <>
               <label className={LEVEL_LABEL}>
@@ -209,6 +215,7 @@ function PactSlotList({ view }: { view: PactsView }) {
                       <ExtraSlot
                         key={extra.key}
                         extra={extra}
+                        spirit={slot.name}
                         drag={dragState(extra.key)}
                         onActivate={() => {
                           if (!drag.swallowClick()) extraClick(extra);
@@ -264,66 +271,102 @@ function PactNode({
 }: NodeProps & { node: PactNodeView; slotName: string; slotMode: boolean }) {
   const switchable = slotMode && node.allocatable;
   const acts = switchable || node.fate || node.kismetKind !== null;
+  const target = {
+    spirit: slotName,
+    key: node.kismetKind ? node.key : null,
+    name: node.name,
+    effect: node.effect,
+    ring: node.ring,
+    icon: node.icon,
+    allocated: switchable && node.allocated,
+    extra: false,
+  };
   return (
-    <span
-      className={nodeClasses(node, switchable, drag)}
-      tabIndex={0}
-      role={switchable ? "button" : undefined}
-      aria-pressed={switchable ? node.allocated : undefined}
-      data-pact-node-allocate={switchable ? `${slotName}:${node.index}` : undefined}
-      data-pact-node-tooltip=""
-      data-kismet-node={node.kismetKind ? node.key : undefined}
-      data-node-name={node.name}
-      data-node-effect={node.effect}
-      data-node-ring={node.ring}
-      data-node-icon={node.icon}
-      aria-label={node.label}
-      onClick={onActivate}
-      onKeyDown={(event) => {
-        if (!acts || !isActivationKey(event)) return;
-        event.preventDefault();
-        onActivate();
-      }}
-      onContextMenu={onContextMenu}
-      onPointerDown={onPointerDown}
-    >
-      <img className={nodeImage(switchable && !node.allocated)} src={node.icon} alt="" />
-      {switchable ? (
-        <i className={nodeStatus(node.allocated)} aria-hidden="true">
-          {node.allocated ? "✓" : "+"}
-        </i>
-      ) : null}
-    </span>
+    <PactNodeTooltip target={target}>
+      <span
+        className={nodeClasses(node, switchable, drag)}
+        tabIndex={0}
+        role={switchable ? "button" : undefined}
+        aria-pressed={switchable ? node.allocated : undefined}
+        data-pact-node-allocate={switchable ? `${slotName}:${node.index}` : undefined}
+        data-pact-node-tooltip=""
+        data-kismet-node={node.kismetKind ? node.key : undefined}
+        data-node-name={node.name}
+        data-node-effect={node.effect}
+        data-node-ring={node.ring}
+        data-node-icon={node.icon}
+        aria-label={node.label}
+        onClick={onActivate}
+        onKeyDown={(event) => {
+          if (!acts || !isActivationKey(event)) return;
+          event.preventDefault();
+          onActivate();
+        }}
+        onContextMenu={onContextMenu}
+        onPointerDown={onPointerDown}
+      >
+        <img className={nodeImage(switchable && !node.allocated)} src={node.icon} alt="" />
+        {switchable ? (
+          <i className={nodeStatus(node.allocated)} aria-hidden="true">
+            {node.allocated ? "✓" : "+"}
+          </i>
+        ) : null}
+      </span>
+    </PactNodeTooltip>
   );
 }
 
-function ExtraSlot({ extra, drag, onActivate, onContextMenu, onPointerDown }: NodeProps & { extra: ExtraSlotView }) {
+function ExtraSlot({
+  extra,
+  spirit,
+  drag,
+  onActivate,
+  onContextMenu,
+  onPointerDown,
+}: NodeProps & { extra: ExtraSlotView; spirit: string }) {
   const ring = extra.kind === "micro" ? "inner" : "mid";
+  const target = {
+    spirit,
+    key: extra.key,
+    name: extra.name,
+    effect: extra.effect,
+    ring,
+    icon: extra.icon,
+    allocated: false,
+    extra: true,
+  };
   return (
-    <span
-      className={extraClasses(extra, drag)}
-      tabIndex={0}
-      data-pact-node-tooltip=""
-      data-kismet-node={extra.key}
-      data-node-name={extra.name}
-      data-node-effect={extra.effect}
-      data-node-ring={ring}
-      data-node-icon={extra.icon}
-      aria-label={extra.label}
-      onClick={onActivate}
-      onKeyDown={(event) => {
-        if (!isActivationKey(event)) return;
-        event.preventDefault();
-        onActivate();
-      }}
-      onContextMenu={onContextMenu}
-      onPointerDown={onPointerDown}
-    >
-      {extra.hasKismet ? (
-        <img className="size-full object-contain" src={extra.icon} alt="" />
-      ) : (
-        <span aria-hidden="true">+</span>
-      )}
-    </span>
+    <PactNodeTooltip target={target}>
+      <span
+        className={extraClasses(extra, drag)}
+        tabIndex={0}
+        data-pact-node-tooltip=""
+        data-kismet-node={extra.key}
+        data-node-name={extra.name}
+        data-node-effect={extra.effect}
+        data-node-ring={ring}
+        data-node-icon={extra.icon}
+        aria-label={extra.label}
+        onClick={onActivate}
+        onKeyDown={(event) => {
+          if (!isActivationKey(event)) return;
+          event.preventDefault();
+          onActivate();
+        }}
+        onContextMenu={onContextMenu}
+        onPointerDown={onPointerDown}
+      >
+        {extra.hasKismet ? (
+          <img className="size-full object-contain" src={extra.icon} alt="" />
+        ) : (
+          <span aria-hidden="true">+</span>
+        )}
+      </span>
+    </PactNodeTooltip>
   );
+}
+
+/** A slot's Pactspirit tooltip; an empty slot has none. */
+function PactspiritSlotTooltip({ name, children }: { name: string | null; children: TooltipAnchor }) {
+  return name ? <PactspiritTooltip name={name}>{children}</PactspiritTooltip> : children;
 }

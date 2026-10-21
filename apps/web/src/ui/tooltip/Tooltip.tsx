@@ -1,16 +1,15 @@
+import { cloneElement, useRef, type FocusEvent, type MouseEvent, type PointerEvent, type ReactElement } from "react";
 import {
-  cloneElement,
-  useRef,
-  type FocusEvent,
-  type MouseEvent,
-  type PointerEvent,
-  type ReactElement,
-  type ReactNode,
-} from "react";
-import { hideTooltip, hideTooltipSoon, hoversQuiet, showTooltip, tooltipShownFor } from "./tooltip-store";
+  hideTooltip,
+  hideTooltipSoon,
+  hoversQuiet,
+  showTooltip,
+  tooltipShownFor,
+  type TooltipBody,
+} from "./tooltip-store";
 
 /** The handlers <Tooltip> adds to its child (and calls the child's own after). */
-interface AnchorHandlers {
+export interface AnchorHandlers {
   onPointerEnter?: (event: PointerEvent<HTMLElement>) => void;
   onPointerLeave?: (event: PointerEvent<HTMLElement>) => void;
   onPointerDown?: (event: PointerEvent<HTMLElement>) => void;
@@ -20,10 +19,8 @@ interface AnchorHandlers {
 }
 
 interface TooltipProps {
-  /** What the tooltip shows; built only when it opens. */
-  content: () => ReactNode;
-  /** The frame's kind classes (tooltip-classes.ts). */
-  kind?: string;
+  /** What the tooltip shows and its frame's look, built when it opens; null shows none. */
+  content: () => TooltipBody | null;
   /** The pointer may move into the tooltip (a long breakdown to scroll). */
   sticky?: boolean;
   /**
@@ -31,18 +28,25 @@ interface TooltipProps {
    * a touch never opens it by hovering.
    */
   toggle?: boolean;
-  children: ReactElement<AnchorHandlers>;
+  children: TooltipAnchor;
 }
 
+/** The one element a tooltip is about. */
+export type TooltipAnchor = ReactElement<AnchorHandlers>;
+
 /**
- * Shows `content` in the page's tooltip (TooltipHost) while its one child is hovered or focused. The child keeps its
- * own handlers; these run first.
+ * Shows `content` in the page's tooltip (TooltipHost) while its one child is hovered or focused. A domain wraps its
+ * elements in its own tooltip component (HelpButton, GearTooltip…), which builds the content. The child keeps its own
+ * handlers; these run first.
  */
-export function Tooltip({ content, kind = "", sticky = false, toggle = false, children }: TooltipProps) {
+export function Tooltip({ content, sticky = false, toggle = false, children }: TooltipProps) {
   const openAtPointerDown = useRef<boolean | null>(null);
   const own = children.props;
-  const show = (anchor: HTMLElement, x: number, y: number) =>
-    showTooltip({ anchor, content: content(), kind, x, y, sticky });
+  const show = (anchor: HTMLElement, x: number, y: number) => {
+    const body = content();
+    if (body) showTooltip({ ...body, anchor, x, y, sticky });
+    else hideTooltip();
+  };
   const showBeside = (anchor: HTMLElement) => {
     const box = anchor.getBoundingClientRect();
     show(anchor, box.right, box.top);

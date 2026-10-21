@@ -1,4 +1,7 @@
-// The tooltip of an equipped or Inventory item.
+// An item's tooltip as the legacy tooltip's HTML. Equipped slots and Inventory cards show theirs with React
+// (apps/web/src/features/gear/GearTooltip.tsx, from src/app/bridge/gear-item-view.ts); only a damage path source naming
+// one item still comes here (planner-tooltips.js damageSourceTooltipContent), until the Stats tooltips move. Delete
+// this file then.
 import { neutralStatuses } from "../../engine/text/line-coverage.js";
 import { gearLineCoverage } from "../planner/calculation-coverage.js";
 import {

@@ -1,7 +1,7 @@
 // The Divinity Slates board (Build page, shown in place of the talent tree by the talent column's Slates button): the
 // statue grid, the equipped slates on it, the slates parked beside it, and the selected slate's tools. The data is the
 // planner's "slates" source (src/app/bridge/slates-view-model.ts); every edit is a planner command, and the inventory,
-// crafter and affix editor dialogs stay legacy. The legacy hover tooltip reads data-slate-id. The pieces' drawing (tiles,
+// crafter and affix editor dialogs stay legacy. A piece shows its tooltip (SlateTooltip). The pieces' drawing (tiles,
 // art, states) is in slate-classes.ts. Every size counts in --cell (set on the stage). Keyboard: with a slate selected, A / D rotate and W / S flip it (src/app/slates/slate-shortcuts.js).
 import {
   useEffect,
@@ -21,6 +21,7 @@ import {
   type SlatesView,
 } from "@legacy/app/bridge/slates-view-model.ts";
 import { HelpButton } from "../../ui/HelpButton";
+import { SlateTooltip } from "./SlateTooltip";
 import { useViewSource } from "../../ui/use-view-source";
 import {
   CELL_ART,
@@ -34,6 +35,7 @@ import {
 } from "./slate-classes";
 import { dragDrop, pendingDrop, type Rect } from "./slate-drop";
 import { useSlateDrag, type SlateDragView } from "./use-slate-drag";
+import { hideTooltip } from "../../ui/tooltip/tooltip-store";
 
 const ART_CELL_PX = 72;
 const WHEEL_QUIET_MS = 80;
@@ -67,7 +69,7 @@ function SlateStage({ view }: { view: SlatesView }) {
   const lastPointer = useRef<{ x: number; y: number } | null>(null);
   const lastMenuWheel = useRef(0);
   const drag = useSlateDrag({
-    onStart: () => commands.hideTooltip(),
+    onStart: () => hideTooltip(),
     onCancel: () => commands.slateDragCancelled(),
     onDrop: (end) => {
       const piece = [...view.pieces, ...view.parked].find((item) => item.id === end.id);
@@ -291,32 +293,34 @@ function SlatePiece({ piece, drag, onClick, onContextMenu, onPointerDown }: Slat
   const tile = tileClasses(look);
   const labelled = !piece.icon && !piece.cellIcon;
   return (
-    <button
-      type="button"
-      className={pieceClasses(look, states)}
-      style={style}
-      data-slate-id={piece.id}
-      aria-label={piece.label}
-      onClick={onClick}
-      onContextMenu={onContextMenu}
-      onPointerDown={onPointerDown}
-    >
-      {tiles.map((cell, index) => (
-        <i
-          key={index}
-          className={piece.judgmentAffected ? `${tile} ${judgmentEdge(cell.outline)}` : tile}
-          style={{ "--piece-column": cell.column, "--piece-row": cell.row } as CSSProperties}
-        >
-          {piece.cellIcon ? <img className={CELL_ART} src={piece.cellIcon} alt="" /> : null}
-        </i>
-      ))}
-      {piece.icon ? <img className={PIECE_ART} src={piece.icon} alt="" /> : null}
-      {parked ? null : <span className={labelled ? LABEL_NUMBER : "hidden"}>{piece.number}</span>}
-      <strong className={labelled ? LABEL_NAME : "hidden"}>{piece.name}</strong>
-      {piece.adjacentCount !== null ? (
-        <em className={labelled ? LABEL_COUNT : "hidden"}>{`${piece.adjacentCount} adjacent`}</em>
-      ) : null}
-    </button>
+    <SlateTooltip id={piece.id}>
+      <button
+        type="button"
+        className={pieceClasses(look, states)}
+        style={style}
+        data-slate-id={piece.id}
+        aria-label={piece.label}
+        onClick={onClick}
+        onContextMenu={onContextMenu}
+        onPointerDown={onPointerDown}
+      >
+        {tiles.map((cell, index) => (
+          <i
+            key={index}
+            className={piece.judgmentAffected ? `${tile} ${judgmentEdge(cell.outline)}` : tile}
+            style={{ "--piece-column": cell.column, "--piece-row": cell.row } as CSSProperties}
+          >
+            {piece.cellIcon ? <img className={CELL_ART} src={piece.cellIcon} alt="" /> : null}
+          </i>
+        ))}
+        {piece.icon ? <img className={PIECE_ART} src={piece.icon} alt="" /> : null}
+        {parked ? null : <span className={labelled ? LABEL_NUMBER : "hidden"}>{piece.number}</span>}
+        <strong className={labelled ? LABEL_NAME : "hidden"}>{piece.name}</strong>
+        {piece.adjacentCount !== null ? (
+          <em className={labelled ? LABEL_COUNT : "hidden"}>{`${piece.adjacentCount} adjacent`}</em>
+        ) : null}
+      </button>
+    </SlateTooltip>
   );
 }
 

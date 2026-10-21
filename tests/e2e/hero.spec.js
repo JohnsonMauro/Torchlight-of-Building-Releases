@@ -169,6 +169,12 @@ test("Carino's Special Ammo slots open the ammo selector; a third one needs Well
   await expect(hero.ammoSelector()).not.toBeVisible();
   const slot = hero.button(`Edit ${name}; right-click to remove`);
   await expect(slot).toBeVisible();
+  await expect(async () => {
+    await page.mouse.move(0, 0);
+    await slot.hover();
+    await expect(hero.tooltip()).toContainText(name, { timeout: 500 });
+  }).toPass();
+  await expect(hero.tooltip()).toContainText("Click to edit · Right-click to remove");
   await slot.click({ button: "right" });
   await expect(hero.toast()).toHaveText(`${name} removed`);
   await expect(hero.button("Select support for Special Ammo slot 1")).toBeVisible();

@@ -137,7 +137,7 @@ export function memoryRevivalBadge(memory) {
 }
 // A revived affix as the crafter's preview and the memory tooltip show it: its tier, effect, and a Lunar Phase affix's
 // details (its effects and hero trait exclusive) for Alt.
-function memoryRevivedEffectView(memory) {
+export function memoryRevivedEffectView(memory) {
   const name = normalizeRevivedAffix(memory.revivedAffix),
     special = lunarPhaseRevivedAffixesSs13.includes(name);
   const effect = revivedAffixForMemoryType(memory.revivedAffix, memory.type, memory.revivedTier, memory.revivedRoll);

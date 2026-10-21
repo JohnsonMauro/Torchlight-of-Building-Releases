@@ -20,7 +20,7 @@ import {
   treeRowLevelKey,
 } from "../../engine/heroes/hero-trait-tree.js";
 import { heroMemoryIcon, heroMemoryIsRevived, heroTraitSupportConfig } from "../hero/hero-memory-display.js";
-import { EXTRA_ROW_CHIP } from "../hero/hero-trait-tree-markup.js";
+import { EXTRA_ROW_CHIP } from "./trait-tooltip-view.ts";
 
 export type HeroDetailTab = "traits" | "path" | "scent";
 interface Memory {
@@ -79,6 +79,7 @@ export interface SupportSlotView {
   opens: string;
   support: { name: string; icon: string | null } | null;
   locked: boolean;
+  /** The slot's title; "" for a filled one (its tooltip says it). */
   title: string;
   label: string;
 }
@@ -224,11 +225,7 @@ function supportSlots(heroId: string, hero: HeroState): SupportSlotsView | null 
           opens: String(index),
           support: support ? { name: support.name, icon: support.icon ?? null } : null,
           locked,
-          title: locked
-            ? "Requires Well Prepared"
-            : support
-              ? support.name
-              : `Select Special Ammo support ${index + 1}`,
+          title: locked ? "Requires Well Prepared" : support ? "" : `Select Special Ammo support ${index + 1}`,
           label: locked
             ? "Requires Well Prepared"
             : support
@@ -251,7 +248,7 @@ function supportSlots(heroId: string, hero: HeroState): SupportSlotsView | null 
         opens: heroId,
         support: support ? { name: support.name, icon: support.icon ?? null } : null,
         locked: false,
-        title: support ? support.name : `Select ${config.skill} support`,
+        title: support ? "" : `Select ${config.skill} support`,
         label: support ? `Edit ${support.name}; right-click to remove` : `Select support for ${config.skill}`,
       },
     ],

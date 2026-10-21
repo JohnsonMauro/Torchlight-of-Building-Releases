@@ -1,6 +1,7 @@
 // Hero trait keyword markup for the trait tooltip (src/app/tooltips/planner-tooltips.js): the hero's linked terms (src/engine/text/inline-keywords.js
 // heroTraitKeywords) in the keyword style, and a definitions block that holding Alt reveals (body.revival-alt-held, the same
 // key as the revived-memory and core-slate details).
+import { traitGrantNote } from "../bridge/skill-tooltip-view.ts";
 import { escapeHtml } from "../html.js";
 import { traitClasses } from "../tooltips/tooltip-kind-classes.js";
 import { heroTraitKeyword, heroTraitKeywordSegments, heroTraitKeywordsIn } from "../../engine/text/inline-keywords.js";
@@ -16,18 +17,10 @@ export function traitKeywordTextHtml(heroId, text) {
     .join("");
 }
 
-/**
- * The skill-tooltip note on a trait-granted skill or support (src/engine/heroes/trait-board-grants.js `traitGranted`): which trait grants
- * it, its energy (the skill takes none, its supports and Clockwork Core's socket cost energy as usual), and what it replaces; "" for anything else.
- */
+/** The legacy skill tooltip's note on a trait-granted skill or support (src/app/bridge/skill-tooltip-view.ts traitGrantNote). */
 export function traitGrantNoteHtml(entry) {
-  const grant = entry?.traitGranted;
-  if (!grant) return "";
-  const kept = "it stays in your build and is left out of the calculation";
-  const text = Number.isInteger(grant.row)
-    ? `Granted by ${grant.trait} (${grant.keyword}) · Lv. ${entry.effectiveLevel ?? 20} trait skill in Active slot ${grant.row + 1}, the skill takes no energy (its supports do)${grant.replaces ? ` · Replaces ${grant.replaces}: ${kept}` : ""}`
-    : `Granted by ${grant.trait} · second support slot, costs energy like any support${grant.replaces ? ` · Replaces ${grant.replaces}: ${kept}` : ""}`;
-  return `<p class="trait-grant-note">${escapeHtml(text)}</p>`;
+  const text = traitGrantNote(entry);
+  return text ? `<p class="trait-grant-note">${escapeHtml(text)}</p>` : "";
 }
 
 /** The Alt hint and the definitions of the hero's keywords in `lines` (each once, in order); "" when the lines have none. */

@@ -13,7 +13,7 @@ import { rareBaseById, rareBaseByName, rareBaseForItem } from "../../engine/gear
 import { neutralStatuses } from "../../engine/text/line-coverage.js";
 import { beltBlendById } from "./belt-blend-options.js";
 import { displayTexts } from "../bridge/display-text.ts";
-import { modifierTextView } from "../bridge/equipment-crafter-view.ts";
+import { modifierTextView } from "../bridge/gear-item-view.ts";
 import { escapeHtml } from "../html.js";
 import { fullTextTitle, titleCase } from "../planner/page.js";
 import { currentEquipmentImpact, disabledEquipmentSlots, plannerState } from "../planner/session.js";

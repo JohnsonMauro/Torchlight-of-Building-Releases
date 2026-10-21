@@ -1,9 +1,9 @@
 import { escapeHtml } from "../html.js";
-import { coverageBadge } from "../planner/calculation-coverage.js";
+import { coverageView } from "../bridge/gear-item-view.ts";
+import { paragraph, run } from "../bridge/trait-tooltip-view.ts";
 import { combineStatuses, plannerEngines, refineCoverage } from "../../engine/text/line-coverage.js";
 import {
   followers,
-  followerRarities,
   followerById,
   followerRarityById,
   followerSelection,
@@ -36,7 +36,6 @@ import {
   tartarusAffixSlotPool,
   tartarusAffixSlots,
 } from "../../engine/followers/follower-affixes.js";
-import { traitClasses } from "../tooltips/tooltip-kind-classes.js";
 
 // The Hero panel's FOLLOWER tab (2026-10-15; design: the orchestrator's brief). The panel header is a HERO | FOLLOWER tab strip
 // in the Hero Trait / Trait Path tab style; the FOLLOWER tab shows a card mirroring the hero card (portrait, name, a rarity line
@@ -502,10 +501,11 @@ export function setFollowerSkill(state, index, name) {
 }
 
 // ---- Tooltips -------------------------------------------------------------------------------------------------------
-const lineMarkup = (text, coverage) => `<p>${escapeHtml(text)} ${coverageBadge(coverage.status, coverage.reason)}</p>`;
+// The hero trait card (src/app/bridge/trait-tooltip-view.ts) of a follower and of a Tartarus Skill.
+const covered = ({ status, reason }) => coverageView(status, reason || "");
 
-/** Tooltip (hero-trait layout) of an equipped Tartarus Skill. */
-export function followerSkillTooltipHtml(skillName, { state, planner = null } = {}) {
+/** The card of a Tartarus Skill (equipped, or not): its lines, keywords, chosen support affixes and their coverage. */
+export function followerSkillTooltipView(skillName, { state, planner = null } = {}) {
   const skill = tartarusSkillByName(skillName);
   if (!skill) return null;
   const selection = followerSelection(state);
@@ -526,21 +526,33 @@ export function followerSkillTooltipHtml(skillName, { state, planner = null } = 
     .filter(Boolean)
     .join(" · ");
   const keywords = (skill.keywords || []).map((name) => tartarusKeyword(name)).filter(Boolean);
-  const affixMarkup = affixes
-    .map((item) =>
-      item.lines
-        .map((text, index) => {
-          const line = followerAffixLineCoverage(text, { skill, affix: item.affix, planner });
-          return `<p>${index ? "" : `<b>${escapeHtml(item.affix.name)}:</b> `}${escapeHtml(text)} ${coverageBadge(line.status, line.reason)}</p>`;
-        })
-        .join(""),
-    )
-    .join("");
-  return `<div class="hero-trait-tooltip-head ${traitClasses.head}"><strong class="${traitClasses.title}">${escapeHtml(tartarusSkillTierName(skill, tier))}</strong>${coverageBadge(coverage.status, coverage.reason)}<em class="${traitClasses.level}">${escapeHtml(KIND_LABEL[skill.kind] || "Tartarus Skill")}</em></div><small class="hero-trait-unlock ${traitClasses.unlock}">${escapeHtml([skill.tags.join(", "), `Followers: ${skill.species.join(", ")}`].filter(Boolean).join(" · "))}</small><div class="hero-trait-effects ${traitClasses.effects}">${skill.lines.map((text) => `<p>${escapeHtml(text)}</p>`).join("")}${keywords.map((keyword) => `<p class="follower-keyword"><b>${escapeHtml(keyword.name)}:</b> ${escapeHtml(keyword.text.join(" "))}</p>`).join("")}${affixMarkup ? `<p><b>Support affixes</b></p>${affixMarkup}` : ""}</div><small class="hero-trait-source ${traitClasses.source}">${escapeHtml([timing, tier ? `Tier ${tier}: ${supportText}` : ""].filter(Boolean).join(" · "))}</small>`;
+  const affixLines = affixes.flatMap((item) =>
+    item.lines.map((text, index) =>
+      paragraph(
+        [...(index ? [] : [run(`${item.affix.name}:`, "bold"), run(" ")]), run(text)],
+        covered(followerAffixLineCoverage(text, { skill, affix: item.affix, planner })),
+      ),
+    ),
+  );
+  return {
+    title: tartarusSkillTierName(skill, tier),
+    coverage: covered(coverage),
+    chip: KIND_LABEL[skill.kind] || "Tartarus Skill",
+    unlock: [skill.tags.join(", "), `Followers: ${skill.species.join(", ")}`].filter(Boolean).join(" · "),
+    paragraphs: [
+      ...skill.lines.map((text) => paragraph([run(text)])),
+      ...keywords.map((keyword) => paragraph([run(`${keyword.name}:`, "label"), run(` ${keyword.text.join(" ")}`)])),
+      ...(affixLines.length ? [paragraph([run("Support affixes", "bold")]), ...affixLines] : []),
+    ],
+    keywords: [],
+    source: [timing, tier ? `Tier ${tier}: ${supportText}` : ""].filter(Boolean).join(" · "),
+    follower: true,
+    rarity: followerTooltipRarity({ state, skillName }),
+  };
 }
 
-/** Tooltip (hero-trait layout) of the follower card: rarity, slots, flavor and a named follower's trait. */
-export function followerTooltipHtml(followerId, { state, planner = null, rarityId = null } = {}) {
+/** The card of a follower: its rarity, its special effect's lines with their coverage, and its flavour. */
+export function followerTooltipView(followerId, { state, planner = null, rarityId = null } = {}) {
   const selection = followerSelection(state);
   const follower = selection?.follower?.id === followerId ? selection.follower : followerById(followerId);
   if (!follower) return null;
@@ -558,10 +570,27 @@ export function followerTooltipHtml(followerId, { state, planner = null, rarityI
       follower,
     }),
   }));
-  const badge = lines.length ? coverageBadge(combineStatuses(lines.map((line) => line.coverage.status))) : "";
   // A ULT letter's special effect (one per letter; game modifier specialEffect.modifierId) with its coverage badges.
   const effect = followerSpecialEffects(follower)[0] || null;
-  return `<div class="hero-trait-tooltip-head ${traitClasses.head}"><strong class="${traitClasses.title}">${escapeHtml(follower.displayName)}</strong>${badge}<em class="${traitClasses.level}">${escapeHtml(rarity?.name || "")}</em></div><div class="hero-trait-effects ${traitClasses.effects}">${effect ? `<p><b>Special effect: ${escapeHtml(effect.name)}</b></p>${lines.map((line) => lineMarkup(line.text, line.coverage)).join("")}` : ""}<p class="follower-flavor">${escapeHtml(follower.flavor)}</p></div>`;
+  return {
+    title: follower.displayName,
+    coverage: lines.length ? coverageView(combineStatuses(lines.map((line) => line.coverage.status))) : null,
+    chip: rarity?.name || "",
+    unlock: "",
+    paragraphs: [
+      ...(effect
+        ? [
+            paragraph([run(`Special effect: ${effect.name}`, "bold")]),
+            ...lines.map((line) => paragraph([run(line.text)], covered(line.coverage))),
+          ]
+        : []),
+      paragraph([run(follower.flavor)], null, true),
+    ],
+    keywords: [],
+    source: "",
+    follower: true,
+    rarity: followerTooltipRarity({ state, followerId, rarityId }),
+  };
 }
 
 // Tier → rarity background for a Tartarus Skill (2026-10-15 user request; letter rarities 2026-10-19): the item quality of the

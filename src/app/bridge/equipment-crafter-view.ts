@@ -3,7 +3,7 @@
 // and Vorax form, each with its preview. Pure; the planner (src/app/gear/gear-controller.js) publishes it as the "equipmentCrafter"
 // source and passes in how an item's preview looks, which depends on the open build. Texts are as the legacy markup
 // printed them (src/app/bridge/display-text.ts).
-import { keywordRollParts, placeholderPool } from "../../engine/gear/legendary-placeholder-pools.js";
+import { placeholderPool } from "../../engine/gear/legendary-placeholder-pools.js";
 import { legendaryLineTiers } from "../../engine/gear/legendary-affix-tiers.js";
 import { normalizePercentageText } from "../../engine/text/percentage-text.js";
 import { baseTypesForSlot } from "../../data/gear/corrosion-implicits-ss13.js";
@@ -37,20 +37,8 @@ import {
   type RareDraft,
 } from "../gear/equipment-craft.ts";
 import { displayTexts } from "./display-text.ts";
+import { modifierTextView, type ModifierTextView } from "./gear-item-view.ts";
 
-/** A modifier line as the legacy markup printed it: plain text, or a keyword roll (src/app/gear/gear-items.js modifierTextMarkup). */
-export type ModifierTextView =
-  | { kind: "plain"; text: string }
-  | {
-      kind: "keyword";
-      keyword: string;
-      /** The text around a mid-line keyword; null for a keyword that opens the line. */
-      inline: { before: string; after: string } | null;
-      /** ": effect lines" (" · Keyword: …" for a mid-line keyword). */
-      effect: string;
-      /** The lines after the keyword's, each led by a line break. */
-      rest: string;
-    };
 /** An option; `data` are its data-* attributes (camelCase keys), which the planner's searchable select reads. */
 export interface OptionView {
   value: string;
@@ -174,24 +162,6 @@ const titleCase = (value: string) =>
   value.replace(/([A-Z])/g, " $1").replace(/^./, (character) => character.toUpperCase());
 const text = (value: string) => normalizePercentageText(value);
 
-/** A modifier line: plain, or a keyword roll (collapsed; holding Alt shows its effect, by CSS). */
-export function modifierTextView(value: string): ModifierTextView {
-  const clean = String(value ?? "").replace(/(\d)\s+%/g, "$1%"),
-    parts = keywordRollParts(clean) as {
-      keyword: string;
-      effect: string[];
-      rest: string[];
-      inline?: { before: string; after: string };
-    } | null;
-  if (!parts) return { kind: "plain", text: text(clean) };
-  return {
-    kind: "keyword",
-    keyword: text(parts.keyword),
-    inline: parts.inline ? { before: text(parts.inline.before), after: text(parts.inline.after) } : null,
-    effect: `${parts.inline ? ` · ${text(parts.keyword)}` : ""}: ${text(parts.effect.join("\n"))}`,
-    rest: parts.inline ? "" : parts.rest.map((line) => `\n${text(line)}`).join(""),
-  };
-}
 export function rollViews(template: string, values: readonly number[]): RollView[] {
   return modifierRollRanges(template).map((range, rangeIndex) => {
     const value = values[rangeIndex] ?? range.max,

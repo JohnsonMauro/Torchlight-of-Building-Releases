@@ -130,6 +130,10 @@ export interface TalentNodeView {
   symbol: string;
   rank: number;
   max: number;
+  /** Not allocated, and its prerequisites are not met. */
+  locked: boolean;
+  /** In the installed prism's area (an Inverse Image's reflected one). */
+  prismAffected: boolean;
   /** The installed prism, drawn over this node. */
   prism: { label: string; art: string } | null;
 }
@@ -374,6 +378,8 @@ function stageView(
         : nodeIcon(node),
       rank,
       max,
+      locked: !rank && !availability.allowed,
+      prismAffected: affected,
       prism:
         isPrismNode && installedPrism
           ? { label: `${prismName(installedPrism)} installed here`, art: prismIcon(installedPrism) }

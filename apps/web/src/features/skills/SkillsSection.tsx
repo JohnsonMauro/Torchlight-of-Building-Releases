@@ -1,14 +1,16 @@
 // The Skills section of the Build page: the setup count, the Energy allocator, and the skill board (Skills and Auras tabs,
 // each row's skill, supports and Energy, the aura reservation, Reset Skills). The data is the planner's "skills" source
-// (src/app/bridge/skills-view-model.ts); every edit is a planner command, and the skill selector dialog stays legacy. The legacy hover
-// tooltip reads data-skill-tooltip, data-support-tooltip, data-parent-skill, data-selector-row and
-// data-selector-support-slot (and finds the board by #skill-groups), so they stay.
+// (src/app/bridge/skills-view-model.ts); every edit is a planner command. A support drop finds its socket by
+// data-selector-row and data-selector-support-slot inside #skill-groups.
 import type { CSSProperties, MouseEvent } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { SkillBoardTab, SkillRowView, SkillsView } from "@legacy/app/bridge/skills-view-model.ts";
 import { Artwork } from "../../ui/Artwork";
+import type { TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";
+import { SkillTooltip } from "./SkillTooltip";
+import { hideTooltip } from "../../ui/tooltip/tooltip-store";
 
 const TABS: { tab: SkillBoardTab; label: string }[] = [
   { tab: "skills", label: "Skills" },
@@ -171,7 +173,7 @@ function BoardRows({ view }: { view: SkillsView }) {
   const skillDrag = usePointerDrag<SkillDragSource>({
     targetAt: (element) =>
       element?.closest("#skill-groups [data-skill-board-row]")?.getAttribute("data-skill-board-row") ?? null,
-    onStart: () => commands.hideTooltip(),
+    onStart: () => hideTooltip(),
     onDrop: (source, target) => commands.moveSkill(source.tab, source.from, Number(target)),
     onInvalidDrop: () => commands.showToast("Invalid drop · skill returned to its original slot"),
   });
@@ -189,7 +191,7 @@ function BoardRows({ view }: { view: SkillsView }) {
       return ghost;
     },
     bodyClass: "support-dragging",
-    onStart: () => commands.hideTooltip(),
+    onStart: () => hideTooltip(),
     onDrop: (source, target, duplicate) => {
       const [toRow, toSlot] = target.split(":").map(Number);
       commands.moveSupport({ ...source, toRow, toSlot, duplicate });
@@ -214,28 +216,29 @@ function BoardRows({ view }: { view: SkillsView }) {
         className={`${ROW} ${rowFrame(dropTarget, curseLimit)}${rowClasses}`}
         data-skill-board-row={row.row}
       >
-        <button
-          type="button"
-          className={`skill-primary-socket ${PRIMARY_SOCKET} ${socketState}${skill ? "" : " empty-skill-slot"}${dragging ? " skill-dragging" : ""}`}
-          data-selector-row={row.row}
-          data-skill-tooltip={skill?.name}
-          title={skill ? undefined : "Select skill"}
-          aria-label={row.label}
-          onClick={() => {
-            if (skillDrag.swallowClick() || skill?.grantedBy) return;
-            commands.openSkillSelector(row.row, null);
-          }}
-          onContextMenu={(event) => {
-            if (!skill?.grantedBy) removeOnRightClick(event, () => commands.removeSkill(row.row));
-          }}
-          onPointerDown={
-            skill?.draggable
-              ? (event) => skillDrag.start(event, String(row.row), { tab: view.tab, from: row.row })
-              : undefined
-          }
-        >
-          {skill ? <Artwork src={skill.art} alt={skill.name} className={SKILL_ART} /> : "−"}
-        </button>
+        <OptionalSkillTooltip row={row.row} skill={skill?.name ?? null}>
+          <button
+            type="button"
+            className={`skill-primary-socket ${PRIMARY_SOCKET} ${socketState}${skill ? "" : " empty-skill-slot"}${dragging ? " skill-dragging" : ""}`}
+            data-selector-row={row.row}
+            title={skill ? undefined : "Select skill"}
+            aria-label={row.label}
+            onClick={() => {
+              if (skillDrag.swallowClick() || skill?.grantedBy) return;
+              commands.openSkillSelector(row.row, null);
+            }}
+            onContextMenu={(event) => {
+              if (!skill?.grantedBy) removeOnRightClick(event, () => commands.removeSkill(row.row));
+            }}
+            onPointerDown={
+              skill?.draggable
+                ? (event) => skillDrag.start(event, String(row.row), { tab: view.tab, from: row.row })
+                : undefined
+            }
+          >
+            {skill ? <Artwork src={skill.art} alt={skill.name} className={SKILL_ART} /> : "−"}
+          </button>
+        </OptionalSkillTooltip>
         <RowName row={row} />
         <div className={`relative grid grid-cols-5 items-center max-[720px]:col-span-full ${SUPPORT_LINE}`}>
           {row.supports.map((support) => {
@@ -250,47 +253,52 @@ function BoardRows({ view }: { view: SkillsView }) {
               dropTarget: supportDropTarget,
             });
             return (
-              <button
+              <OptionalSkillTooltip
                 key={support.slot}
-                type="button"
-                className={`skill-support-socket ${SUPPORT_SOCKET} ${state}${dragSource ? " support-drag-source" : ""}${supportDropTarget ? " support-drop-target" : ""}`}
-                data-selector-row={row.row}
-                data-selector-support-slot={support.slot}
-                data-support-tooltip={support.name ?? undefined}
-                data-parent-skill={support.name ? (skill?.name ?? "") : undefined}
-                disabled={!skill}
-                title={support.title}
-                aria-label={support.label}
-                onClick={() => {
-                  if (supportDrag.swallowClick() || support.grantedBy) return;
-                  commands.openSkillSelector(row.row, support.slot);
-                }}
-                onContextMenu={(event) => {
-                  if (supportDrag.swallowContextMenu()) return event.preventDefault();
-                  if (!support.grantedBy)
-                    removeOnRightClick(event, () => commands.removeSupport(row.row, support.slot));
-                }}
-                onPointerDown={
-                  support.draggable && skill
-                    ? (event) =>
-                        supportDrag.start(event, key, {
-                          tab: view.tab,
-                          fromRow: row.row,
-                          fromSlot: support.slot,
-                          setupKey: skill.setupKey,
-                        })
-                    : undefined
-                }
-                onDragStart={(event) => event.preventDefault()}
+                row={row.row}
+                skill={skill?.name ?? null}
+                support={support.name}
+                hint={support.title}
               >
-                {support.name ? (
-                  <Artwork src={support.art} alt={support.name} className={SUPPORT_ART} />
-                ) : skill ? (
-                  "+"
-                ) : (
-                  ""
-                )}
-              </button>
+                <button
+                  type="button"
+                  className={`skill-support-socket ${SUPPORT_SOCKET} ${state}${dragSource ? " support-drag-source" : ""}${supportDropTarget ? " support-drop-target" : ""}`}
+                  data-selector-row={row.row}
+                  data-selector-support-slot={support.slot}
+                  disabled={!skill}
+                  title={support.name ? undefined : support.title}
+                  aria-label={support.label}
+                  onClick={() => {
+                    if (supportDrag.swallowClick() || support.grantedBy) return;
+                    commands.openSkillSelector(row.row, support.slot);
+                  }}
+                  onContextMenu={(event) => {
+                    if (supportDrag.swallowContextMenu()) return event.preventDefault();
+                    if (!support.grantedBy)
+                      removeOnRightClick(event, () => commands.removeSupport(row.row, support.slot));
+                  }}
+                  onPointerDown={
+                    support.draggable && skill
+                      ? (event) =>
+                          supportDrag.start(event, key, {
+                            tab: view.tab,
+                            fromRow: row.row,
+                            fromSlot: support.slot,
+                            setupKey: skill.setupKey,
+                          })
+                      : undefined
+                  }
+                  onDragStart={(event) => event.preventDefault()}
+                >
+                  {support.name ? (
+                    <Artwork src={support.art} alt={support.name} className={SUPPORT_ART} />
+                  ) : skill ? (
+                    "+"
+                  ) : (
+                    ""
+                  )}
+                </button>
+              </OptionalSkillTooltip>
             );
           })}
         </div>
@@ -317,31 +325,55 @@ function RowName({ row }: { row: SkillRowView }) {
   const added = skill.addedLevels;
   const curseLabel = skill.curseOffReason ? `Curse not applied: ${skill.curseOffReason}` : "";
   return (
-    <div className={`skill-row-name ${ROW_NAME}`} data-skill-tooltip={skill.name}>
-      {skill.curseOffReason ? (
-        <em className={`curse-off-badge ${BADGE}`} title={curseLabel} aria-label={curseLabel}>
-          CURSE OFF
-        </em>
-      ) : null}
-      {skill.inactiveReason ? (
-        <em className={`curse-off-badge ${BADGE}`} title={skill.inactiveReason} aria-label={skill.inactiveReason}>
-          INACTIVE
-        </em>
-      ) : null}
-      <strong className="block">{skill.name}</strong>
-      <small className="mt-1 block text-xs text-muted group-[.trait-granted-row]:text-info">
-        {`Lv.${skill.baseLevel}`}
-        {added ? (
-          <>
-            {" "}
-            <span
-              className={`font-bold ${added < 0 ? "text-danger" : "text-ok"}`}
-            >{`${added > 0 ? "+" : ""}${added}`}</span>
-          </>
+    <SkillTooltip target={{ row: row.row, skill: skill.name }}>
+      <div className={`skill-row-name ${ROW_NAME}`}>
+        {skill.curseOffReason ? (
+          <em className={`curse-off-badge ${BADGE}`} title={curseLabel} aria-label={curseLabel}>
+            CURSE OFF
+          </em>
         ) : null}
-        {skill.grantNote}
-      </small>
-    </div>
+        {skill.inactiveReason ? (
+          <em className={`curse-off-badge ${BADGE}`} title={skill.inactiveReason} aria-label={skill.inactiveReason}>
+            INACTIVE
+          </em>
+        ) : null}
+        <strong className="block">{skill.name}</strong>
+        <small className="mt-1 block text-xs text-muted group-[.trait-granted-row]:text-info">
+          {`Lv.${skill.baseLevel}`}
+          {added ? (
+            <>
+              {" "}
+              <span
+                className={`font-bold ${added < 0 ? "text-danger" : "text-ok"}`}
+              >{`${added > 0 ? "+" : ""}${added}`}</span>
+            </>
+          ) : null}
+          {skill.grantNote}
+        </small>
+      </div>
+    </SkillTooltip>
+  );
+}
+
+/** A filled socket's tooltip (a support's when `support` is set); an empty one has none. */
+function OptionalSkillTooltip({
+  row,
+  skill,
+  support = undefined,
+  hint = "",
+  children,
+}: {
+  row: number;
+  skill: string | null;
+  support?: string | null;
+  hint?: string;
+  children: TooltipAnchor;
+}) {
+  if (!skill || support === null) return children;
+  return (
+    <SkillTooltip target={{ row, skill, support }} hint={hint}>
+      {children}
+    </SkillTooltip>
   );
 }
 

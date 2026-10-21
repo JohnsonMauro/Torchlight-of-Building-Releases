@@ -9,7 +9,8 @@ import {
   slateShapeCodes,
 } from "./slate-catalog.js";
 
-const slateAffixFamilyClass = (tree) => {
+/** A talent tree's god colour class ("talent-family-god-of-war"); "" for a tree of no god family. */
+export const slateAffixFamilyClass = (tree) => {
   const god = Object.entries(divinitySlateTreeFamiliesSs13).find(([, trees]) => trees.includes(tree))?.[0];
   return god ? `talent-family-${god.toLowerCase().replaceAll(" ", "-")}` : "";
 };

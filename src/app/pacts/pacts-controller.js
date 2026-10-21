@@ -1,25 +1,36 @@
 // The Pactspirits section: spirits, Fate slots and the Kismet crafter.
 import { kismetCatalogSs13 } from "../../data/pacts/kismet-catalog-ss13.js";
+import { pactspiritCatalogSs13 } from "../../data/pacts/pactspirit-catalog-ss13.js";
 import { pactspiritTreesSs13 } from "../../data/pacts/pactspirit-trees-ss13.js";
 import { selenaScorchingBeamPactsSs13 } from "../../data/pacts/selena-scorching-beam-ss13.js";
 import { fateExtraSlots, fateSlotChoice, fateSlotChoices } from "../../engine/pacts/fate-slot-unlocks.js";
 import {
   kismetAffixesWithRolls,
+  kismetKindForRing,
   kismetRollControls,
   normalizeKismetRolls,
 } from "../../engine/pacts/kismet-crafting.js";
 import { microFateEffectScale, starTrailNote } from "../../engine/pacts/kismet-effects.js";
 import { transferKismetSlot } from "../../engine/pacts/kismet-slot-transfer.js";
 import { equippedKismetSummary } from "../../engine/pacts/pact-kismet-summary.js";
-import { orderedPactspiritNodes, pactspiritLevel, togglePactNodeChain } from "../../engine/pacts/pactspirit-levels.js";
+import {
+  orderedPactspiritNodes,
+  pactspiritEffectsAtLevel,
+  pactspiritLevel,
+  togglePactNodeChain,
+} from "../../engine/pacts/pactspirit-levels.js";
 import { activeCapturedPactspirits, selectPactspirit } from "../../engine/pacts/pactspirit-selection.js";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
+import { coverageView } from "../bridge/gear-item-view.ts";
+import { kismetTooltipView, pactNodeTooltipView, pactspiritTooltipView } from "../bridge/pact-tooltip-view.ts";
 import { pactsView, pactspiritSelectorView } from "../bridge/pacts-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { boostedKismetAffixParts } from "./kismet-markup.js";
+import { kismetAffixCoverage, pactEffectCoverage } from "./pact-coverage.js";
+import { curseLineLeftOutReason } from "../planner/curse-notes.js";
 import { $, showToast } from "../planner/page.js";
-import { persistPlannerState, plannerState, refreshPactCandidate } from "../planner/session.js";
+import { persistPlannerState, plannerState, refreshPactCandidate, withRenderPass } from "../planner/session.js";
 import { hidePlannerTooltip } from "../tooltips/tooltip-host.js";
 
 let selectedPactspiritSlot = 0;
@@ -82,6 +93,12 @@ export const pactCommands = {
   selectFateSlots,
   moveKismet,
 };
+export const pactQueries = {
+  // A tree node's tooltip, or its Kismet's (apps/web/src/features/pacts/PactTooltip.tsx).
+  pactNodeTooltip: (target) => withRenderPass(() => pactNodeTooltip(target)),
+  // A Pactspirit's tooltip.
+  pactspiritTooltip: (name) => withRenderPass(() => pactspiritTooltip(name)),
+};
 export const pactViewSources = {
   // The Pactspirits section's data (src/app/bridge/pacts-view-model.ts).
   pacts: () => pactsView(plannerState.pacts),
@@ -95,6 +112,66 @@ export const pactViewSources = {
     choices: fateSlotChoices.map((choice) => ({ id: choice.id, label: choice.label })),
   }),
 };
+
+// The Pactspirits section's tooltips (src/app/bridge/pact-tooltip-view.ts). A line names why the curse limit leaves it
+// out, when it does.
+const lineCoverage = (status, line) => {
+  const reason = curseLineLeftOutReason(line);
+  return coverageView(status, reason ? `${status}: ${reason}` : "");
+};
+// A node as the section shows it ({ spirit, key, name, effect, ring, icon, allocated, extra }): its Kismet when one is
+// installed, else its effect or its spirit's level bonuses.
+function pactNodeTooltip(target) {
+  const equipped = target.key ? plannerState.pacts.kismetSlots?.[target.key] : null,
+    kismet = kismetCatalogSs13.find((item) => item.name === equipped?.name);
+  const slotMode = Boolean(plannerState.pacts.kismetSlotMode);
+  if (kismet) {
+    const boost = microFateEffectScale(plannerState.pacts, target.key);
+    return kismetTooltipView({
+      kismet,
+      affixes: kismetAffixesWithRolls(kismet, equipped.rolls).map((affix) => ({
+        text: boostedKismetAffixParts(affix, boost),
+        coverage: lineCoverage(kismetAffixCoverage(affix, { key: target.key }), affix),
+      })),
+      boostNote: starTrailNote(boost) || "",
+      nodeName: target.name,
+      slotMode,
+      extra: target.extra,
+    });
+  }
+  const entry = target.spirit ? pactspiritCatalogSs13.find((spirit) => spirit.name === target.spirit) : null;
+  const level = target.spirit ? selectedPactspiritLevel(target.spirit) : 1;
+  return pactNodeTooltipView({
+    name: target.name,
+    effect: target.effect,
+    ring: target.ring,
+    icon: target.icon || null,
+    spirit: target.spirit ? { name: target.spirit, level, rarity: entry?.rarity || "" } : null,
+    rewards:
+      target.ring === "outer" && target.spirit
+        ? pactspiritEffectsAtLevel(target.spirit, level).map((effect) => ({
+            text: effect,
+            coverage: lineCoverage(pactEffectCoverage(effect), effect),
+          }))
+        : [],
+    effectCoverage: target.effect ? lineCoverage(pactEffectCoverage(target.effect), target.effect) : null,
+    slotMode,
+    allocated: target.allocated,
+    holdsKismet: Boolean(kismetKindForRing(target.ring)),
+  });
+}
+function pactspiritTooltip(name) {
+  const spirit = pactspiritCatalogSs13.find((entry) => entry.name === name);
+  if (!spirit) return null;
+  const level = selectedPactspiritLevel(name),
+    outer = pactspiritTreesSs13[name]?.find((node) => node.ring === "outer");
+  return pactspiritTooltipView({
+    spirit,
+    level,
+    rewards: pactspiritEffectsAtLevel(name, level),
+    outer: outer ? { icon: outer.icon, name: outer.name } : null,
+  });
+}
 
 export function selectedPactspiritLevel(name) {
   const fallback = plannerState.pacts.kismetSlotMode

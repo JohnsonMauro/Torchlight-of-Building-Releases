@@ -108,6 +108,18 @@ test("hovering a node shows its tooltip", async ({ page }) => {
   await planner.expectNoErrors();
 });
 
+test("hovering a Pactspirit shows its overview and level bonuses", async ({ page }) => {
+  const { planner, pacts } = await openPacts(page);
+  await expect(async () => {
+    await page.mouse.move(0, 0);
+    await pacts.slotButton(DREAMWEAVER).hover();
+    await expect(pacts.tooltip()).toContainText("Pactspirit overview", { timeout: 500 });
+  }).toPass();
+  await expect(pacts.tooltip()).toContainText(DREAMWEAVER);
+  await expect(pacts.tooltip()).toContainText("bonuses");
+  await planner.expectNoErrors();
+});
+
 test("an equipped Kismet moves to another slot by drag, and is copied with a right-click during the drag", async ({
   page,
 }) => {

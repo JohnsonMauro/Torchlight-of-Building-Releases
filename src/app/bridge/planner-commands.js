@@ -129,7 +129,6 @@
  * @property {(from: string, to: string, kind: "micro" | "medium", copy: boolean) => void} moveKismet Moves (or copies)
  *   a Kismet to another slot of the same kind, or swaps the two.
  * @property {(text: string) => void} showToast Shows a short message (plain text).
- * @property {() => void} hideTooltip Hides the planner's hover tooltip (a drag starts, a dialog opens).
  * @property {() => void} openFollowerSelector Opens the follower selector.
  * @property {(followerId: string, rarityId: string) => void} selectFollower Follower selector: makes that follower at that
  *   rarity the open build's.

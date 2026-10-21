@@ -1,12 +1,12 @@
 // The Gear section of the Build page: the ten equipped slots with Reset Gear, and the Inventory with the craft buttons.
 // The data is the planner's "equipment" source (src/app/bridge/equipment-view-model.ts); every edit is a planner command,
 // and the item dialog and the crafter stay legacy. Drags go both ways: a card onto a slot equips it there, an equipped
-// slot onto another slot moves it, onto the Inventory unequips it. The legacy hover tooltip reads data-equipment-slot and
-// data-equip-inventory (and finds .equipment-item / .inventory-item, placing itself by #equipment-inventory
-// .inventory-item), so they stay, as do the rarity classes the view model sets (tests read them). The rarity art and the
+// slot onto another slot moves it, onto the Inventory unequips it. An equipped slot and an Inventory card show the
+// item's tooltip (GearTooltip). The rarity classes the view model sets stay (tests read them). The rarity art and the
 // slot, card and drag states are chosen in gear-classes.ts from the view model's data.
 import { useRef, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import { GearTooltip } from "./GearTooltip";
 import {
   gearDropAllowed,
   type EquipmentSlotView,
@@ -15,6 +15,7 @@ import {
 } from "@legacy/app/bridge/equipment-view-model.ts";
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";
+import { hideTooltip } from "../../ui/tooltip/tooltip-store";
 import {
   CARD_TOOL,
   CURSE_BADGE,
@@ -70,7 +71,7 @@ export function GearWorkbench() {
       return source.fromSlot && element?.closest("#equipment-inventory") ? INVENTORY : null;
     },
     ghost: () => ghost(dragged.current),
-    onStart: () => plannerCommands().hideTooltip(),
+    onStart: () => hideTooltip(),
     onDrop: (source, target) =>
       plannerCommands().dropGear({
         itemId: source.itemId,
@@ -254,12 +255,12 @@ function SlotButton(props: {
     props.target ? "gear-drop-target" : "",
   ];
   const curseLabel = item?.curseOffReason ? `Curse not applied: ${item.curseOffReason}` : "";
-  return (
+  const button = (
     <button
       type="button"
       className={classes.filter(Boolean).join(" ")}
       data-equipment-slot={slot.slot}
-      title={item ? "Right-click to unequip" : "Select this slot, then choose an Inventory item"}
+      title={item ? undefined : "Select this slot, then choose an Inventory item"}
       onClick={props.onClick}
       onContextMenu={props.onContextMenu}
       onPointerDown={props.onPointerDown}
@@ -293,6 +294,7 @@ function SlotButton(props: {
       <small className="hidden">{item ? item.level : "Select slot"}</small>
     </button>
   );
+  return item ? <GearTooltip target={{ slot: slot.slot }}>{button}</GearTooltip> : button;
 }
 
 function InventoryCard(props: {
@@ -304,54 +306,56 @@ function InventoryCard(props: {
   const { card } = props;
   const look = gearLook(card.rarityClass);
   return (
-    <article
-      className={`inventory-item ${card.rarityClass} relative block aspect-square w-full cursor-pointer border text-left text-text ${look.border} ${look.background}`}
-      data-equip-inventory={card.id}
-      onClick={(event) => {
-        if (!(event.target as Element).closest(".inventory-item-tools")) props.onOpen();
-      }}
-      onContextMenu={(event) => {
-        event.preventDefault();
-        plannerCommands().equipInventoryItem(card.id);
-      }}
-    >
-      <button
-        type="button"
-        className={`inventory-item-main relative z-1 grid size-full cursor-grab touch-none grid-rows-[minmax(0,1fr)_auto] justify-items-center gap-1.25 px-7 py-2.25 select-none @min-[232px]:@max-[292px]:px-6.5 @min-[408px]:@max-[444px]:px-6.5 @min-[548px]:@max-[596px]:px-6.5 @min-[688px]:@max-[748px]:px-6.5 ${props.dragSource ? "gear-drag-source opacity-48" : ""}`}
+    <GearTooltip target={{ inventoryId: card.id }}>
+      <article
+        className={`inventory-item ${card.rarityClass} relative block aspect-square w-full cursor-pointer border text-left text-text ${look.border} ${look.background}`}
         data-equip-inventory={card.id}
-        onPointerDown={props.onPointerDown}
+        onClick={(event) => {
+          if (!(event.target as Element).closest(".inventory-item-tools")) props.onOpen();
+        }}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          plannerCommands().equipInventoryItem(card.id);
+        }}
       >
-        <span className="inventory-item-icon flex min-h-0 w-full items-center justify-center self-stretch text-accent">
-          <img
-            src={card.icon}
-            alt=""
-            className={`max-h-[86%] max-w-[86%] min-h-0 min-w-0 object-contain ${inventoryIconShift(card.icon)}`}
-          />
+        <button
+          type="button"
+          className={`inventory-item-main relative z-1 grid size-full cursor-grab touch-none grid-rows-[minmax(0,1fr)_auto] justify-items-center gap-1.25 px-7 py-2.25 select-none @min-[232px]:@max-[292px]:px-6.5 @min-[408px]:@max-[444px]:px-6.5 @min-[548px]:@max-[596px]:px-6.5 @min-[688px]:@max-[748px]:px-6.5 ${props.dragSource ? "gear-drag-source opacity-48" : ""}`}
+          data-equip-inventory={card.id}
+          onPointerDown={props.onPointerDown}
+        >
+          <span className="inventory-item-icon flex min-h-0 w-full items-center justify-center self-stretch text-accent">
+            <img
+              src={card.icon}
+              alt=""
+              className={`max-h-[86%] max-w-[86%] min-h-0 min-w-0 object-contain ${inventoryIconShift(card.icon)}`}
+            />
+          </span>
+          <strong className={`line-clamp-2 max-w-full text-center text-xs leading-tight ${look.name}`}>
+            {card.name}
+          </strong>
+          <small className="hidden">{card.detail}</small>
+        </button>
+        {card.equipped ? <em className={EQUIPPED_BADGE}>Equipped</em> : null}
+        <span className="inventory-item-tools absolute top-1.25 right-1.25 z-3 grid gap-0.75">
+          <button
+            type="button"
+            className={CARD_TOOL}
+            title="Edit item"
+            onClick={() => plannerCommands().editInventoryItem(card.id)}
+          >
+            ✎
+          </button>
+          <button
+            type="button"
+            className={CARD_TOOL}
+            title="Duplicate item"
+            onClick={() => plannerCommands().duplicateInventoryItem(card.id)}
+          >
+            ◉
+          </button>
         </span>
-        <strong className={`line-clamp-2 max-w-full text-center text-xs leading-tight ${look.name}`}>
-          {card.name}
-        </strong>
-        <small className="hidden">{card.detail}</small>
-      </button>
-      {card.equipped ? <em className={EQUIPPED_BADGE}>Equipped</em> : null}
-      <span className="inventory-item-tools absolute top-1.25 right-1.25 z-3 grid gap-0.75">
-        <button
-          type="button"
-          className={CARD_TOOL}
-          title="Edit item"
-          onClick={() => plannerCommands().editInventoryItem(card.id)}
-        >
-          ✎
-        </button>
-        <button
-          type="button"
-          className={CARD_TOOL}
-          title="Duplicate item"
-          onClick={() => plannerCommands().duplicateInventoryItem(card.id)}
-        >
-          ◉
-        </button>
-      </span>
-    </article>
+      </article>
+    </GearTooltip>
   );
 }

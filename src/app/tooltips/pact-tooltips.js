@@ -1,7 +1,9 @@
-// Tooltips of the Pactspirits section: spirits and their tree nodes (with an installed Kismet).
+// A Kismet's tooltip as the legacy tooltip's HTML. The Pactspirits section shows its tooltips with React
+// (apps/web/src/features/pacts/PactTooltip.tsx, from src/app/bridge/pact-tooltip-view.ts); only a damage path source
+// naming a Kismet still comes here (planner-tooltips.js damageSourceTooltipContent), until the Stats tooltips move.
+// Delete this file then.
 import { kismetCatalogSs13 } from "../../data/pacts/kismet-catalog-ss13.js";
 import { pactspiritCatalogSs13 } from "../../data/pacts/pactspirit-catalog-ss13.js";
-import { pactspiritTreesSs13 } from "../../data/pacts/pactspirit-trees-ss13.js";
 import { kismetAffixesWithRolls, kismetKindForRing } from "../../engine/pacts/kismet-crafting.js";
 import { microFateEffectScale, starTrailNote } from "../../engine/pacts/kismet-effects.js";
 import { pactspiritEffectsAtLevel } from "../../engine/pacts/pactspirit-levels.js";
@@ -41,18 +43,5 @@ export function pactNodeTooltipContent(element) {
   return {
     rarity: spiritRarity,
     pactHtml: `<div class="pact-tooltip-head ${pc.head}">${nodeIcon ? `<img src="${nodeIcon}" alt="">` : ""}<div><strong class="${pc.title}">${escapeHtml(nodeName)}</strong><small class="${pc.kicker}">${nodeRing === "inner" ? "Micro node" : nodeRing === "mid" ? "Medium node" : nodeRing === "outer" ? "Outer node" : "Fate slot"}</small></div></div>${rewards.length ? `<h4 class="${pc.heading}">Level ${level} bonuses</h4><ul class="pact-tooltip-rewards ${pc.rewards}">${rewards.map((effect) => `<li>${escapeHtml(effect)} ${curseBadge(pactEffectCoverage(effect), effect)}</li>`).join("")}</ul>` : nodeEffect ? `<p class="${pc.text}">${escapeHtml(nodeEffect)} ${curseBadge(pactEffectCoverage(nodeEffect), nodeEffect)}</p>` : ""}<footer class="${pc.footer}">${plannerState.pacts.kismetSlotMode ? `Left-click to ${element.getAttribute("aria-pressed") === "true" ? "refund" : "allocate"}${nodeRing === "destiny" ? " · Right-click to configure Fate slots" : kismetKindForRing(nodeRing) ? " · Right-click to add a Kismet" : ""}` : nodeRing === "destiny" ? "Click to unlock extra Fate slots · Right-click to remove them" : kismetKindForRing(nodeRing) ? "Click to craft a Kismet · Right-click to remove" : "TLIDB · outer node"}</footer>`,
-  };
-}
-
-// A Pactspirit: its overview and level bonuses.
-export function pactspiritTooltipContent(element) {
-  const entry = pactspiritCatalogSs13.find((spirit) => spirit.name === element.dataset.pactspiritName);
-  if (!entry) return null;
-  const outer = pactspiritTreesSs13[entry.name]?.find((node) => node.ring === "outer");
-  const level = selectedPactspiritLevel(entry.name),
-    rewards = pactspiritEffectsAtLevel(entry.name, level);
-  return {
-    rarity: entry.rarity.toLowerCase(),
-    pactHtml: `<div class="pact-tooltip-head ${pc.head}"><img src="${entry.icon}" alt=""><div><strong class="${pc.title}">${escapeHtml(entry.name)}</strong><small class="${pc.kicker}">${entry.category} · ${entry.rarity} · Level ${level}</small></div></div><h4 class="${pc.heading}">Pactspirit overview</h4><p class="${pc.text}">${escapeHtml(entry.description)}</p>${entry.rarity !== "Magic" ? `<p class="${pc.text}">Unlock ${entry.rarity === "Legendary" ? 2 : 1} Pact Node${entry.rarity === "Legendary" ? "s" : ""} in advance</p>` : ""}${outer ? `<section class="pact-tooltip-feature ${pc.feature}"><img src="${outer.icon}" alt=""><strong>${escapeHtml(outer.name)}</strong></section>` : ""}<h4 class="${pc.heading}">Level ${level} bonuses</h4>${rewards.length ? `<ul class="pact-tooltip-rewards ${pc.rewards}">${rewards.map((effect) => `<li>${escapeHtml(effect)}</li>`).join("")}</ul>` : `<p class="${pc.text}">No level bonus listed.</p>`}<footer class="${pc.footer}">Click to change · Right-click to remove</footer>`,
   };
 }

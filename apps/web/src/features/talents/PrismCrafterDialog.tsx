@@ -3,11 +3,12 @@
 // The planner opens it and announces the "prismCrafter" source; every control is a planner command.
 import type { CSSProperties } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
-import type { PrismCrafterView, PrismSectionView } from "@legacy/app/bridge/prism-crafter-view.ts";
+import type { PrismCrafterView } from "@legacy/app/bridge/prism-crafter-view.ts";
 import { LiveNumberInput } from "../../ui/LiveNumberInput";
 import { useViewSource } from "../../ui/use-view-source";
 import { FIELD, FOOTER, FORM_HEADING, PREVIEW_CAPTION } from "../../ui/talent-slate-styles";
 import { PRISM_ICON } from "./talent-classes";
+import { PrismSections } from "./PrismSections";
 import { registerDialog } from "../../ui/dialog-registry";
 
 const commands = plannerCommands;
@@ -22,16 +23,8 @@ const AFFIX_TAGS: Record<string, string> = {
 /** An Inverse Image mod value's colour, by sign. */
 const SIGN_COLORS: Record<string, string> = { negative: "var(--color-danger)", positive: "var(--color-ok)" };
 const signColor = (sign: string) => SIGN_COLORS[sign] ?? "var(--color-muted)";
-const SIGN_TEXT: Record<string, string> = { negative: "text-danger", positive: "text-ok" };
-/** A preview section's left edge, by section. */
-const SECTION_EDGES: Record<string, string> = {
-  radiusAffix: "border-l-grade-magic",
-  rareAffix: "border-l-ok",
-  legendaryAffix: "border-l-grade-rare",
-};
 const RANGE_THUMB =
   "[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-surface [&::-webkit-slider-thumb]:bg-accent [&::-moz-range-thumb]:size-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-surface [&::-moz-range-thumb]:bg-accent";
-const LINE = "text-xs leading-normal text-text [overflow-wrap:anywhere]";
 /** A form box (the description, a mod value, the fixed effect, an affix select). */
 const BOX = "rounded-sm border border-line";
 const LABEL = "text-sm text-muted";
@@ -184,31 +177,6 @@ function EtherealForm({ ethereal }: { ethereal: NonNullable<PrismCrafterView["et
   );
 }
 
-function Sections({ sections, inverse }: { sections: PrismSectionView[]; inverse: boolean }) {
-  return sections.map((section) => (
-    <section
-      key={section.className}
-      className={`prism-affix-section ${section.className} mt-3 rounded-sm border border-l-3 border-line bg-raised px-3 py-2.5 ${SECTION_EDGES[section.className] ?? (inverse ? "border-l-grade-vorax" : "border-l-accent")}`}
-    >
-      <h4
-        className={`mb-1.5 text-xs leading-tight font-bold tracking-wide uppercase ${inverse ? "text-grade-vorax" : "text-accent"}`}
-      >
-        {section.heading}
-      </h4>
-      {section.lines.map((line) =>
-        "value" in line ? (
-          <p key={line.kind} className={`${LINE} my-1`}>
-            {`${line.label}: `}
-            <strong className={`${line.sign} ${SIGN_TEXT[line.sign] ?? "text-muted"}`}>{line.value}</strong>{" "}
-          </p>
-        ) : (
-          <p key={line.kind} className={LINE}>{`${line.text} `}</p>
-        ),
-      )}
-    </section>
-  ));
-}
-
 export function PrismCrafterDialog() {
   const view = useViewSource("prismCrafter");
   return (
@@ -268,7 +236,7 @@ export function PrismCrafterDialog() {
                   <p className="prism-effect-area mb-2 text-xs text-muted">
                     Effect Area: <strong className="font-bold text-info">{view.preview.area}</strong>
                   </p>
-                  <Sections sections={view.preview.sections} inverse={view.preview.inverse} />
+                  <PrismSections sections={view.preview.sections} inverse={view.preview.inverse} />
                 </div>
               </div>
             ) : view ? (

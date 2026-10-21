@@ -10,15 +10,40 @@ import {
 } from "../../engine/talents/talent-rules.js";
 import { talentFamiliesSs13, talentOptionsForSlot } from "../../engine/talents/talent-selection-rules.js";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
+import { coverageView } from "../bridge/gear-item-view.ts";
+import { coreTalentTooltipView, talentNodeTooltipView } from "../bridge/talent-tooltip-view.ts";
 import { talentFamilyClass, talentsView } from "../bridge/talents-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { renderConfiguration } from "../configuration/configuration-controller.js";
 import { showToast } from "../planner/page.js";
-import { persistPlannerState, plannerState, renderCandidateViews, talentRanks } from "../planner/session.js";
+import { modeledCoreTalents } from "../../engine/talents/core-talent-model.js";
+import { prismReplacesCore, prismBaseEffect } from "../../engine/talents/prism-crafting.js";
+import { dazeStatus, refineCoverage } from "../../engine/text/line-coverage.js";
+import {
+  prismAffixCoverage,
+  prismAffixCoverageReason,
+  talentEffectCoverage,
+  talentLineCoverage,
+} from "../planner/calculation-coverage.js";
+import {
+  currentPlanner,
+  persistPlannerState,
+  plannerState,
+  renderCandidateViews,
+  talentRanks,
+  withRenderPass,
+} from "../planner/session.js";
 import { saveWorkspaceLocation, ui } from "../planner/ui-state.js";
 import { renderSkills } from "../skills/skill-board.js";
 import { renderSlates } from "../slates/slates-controller.js";
-import { clearPendingPrism, openPrismInventory, pendingPrismPlacement, placeCraftedPrism } from "./prism-controller.js";
+import {
+  clearPendingPrism,
+  openPrismInventory,
+  pendingPrismPlacement,
+  placeCraftedPrism,
+  prismTooltip,
+} from "./prism-controller.js";
+import { prismIcon, prismName } from "./prism-icons.js";
 import {
   activeTalentLayouts,
   clearInverseReflectedRanks,
@@ -46,6 +71,12 @@ export const talentCommands = {
   reselectTalentTree,
   selectTalentTree,
 };
+export const talentQueries = {
+  // A node's tooltip, or the installed prism's on its node (apps/web/src/features/talents/TalentTooltip.tsx).
+  talentNodeTooltip: (target) => withRenderPass(() => talentNodeTooltip(target)),
+  // A core talent slot's tooltip, or the prism's shown among the cores.
+  coreTalentTooltip: (target) => withRenderPass(() => coreTalentTooltip(target)),
+};
 export const talentViewSources = {
   // The talent trees' data (src/app/bridge/talents-view-model.ts).
   talents: talentsSource,
@@ -53,6 +84,79 @@ export const talentViewSources = {
   talentPicker: talentPickerSource,
   corePicker: corePickerSource,
 };
+// The talent trees' tooltips (src/app/bridge/talent-tooltip-view.ts). A node is the one the trees show (talentsView):
+// its art, whether it is locked and whether it sits in the prism's area come with it.
+const installedPrismIn = (tree) =>
+  (plannerState.talents.prismInventory || []).find((item) => item.id === plannerState.talents.installedPrisms?.[tree]);
+function talentNodeTooltip({ coordinate, art, locked, prismAffected }) {
+  const panel = currentTalentPanel(),
+    prism = installedPrismIn(panel.name) || null,
+    prismCoordinate = plannerState.talents.installedPrismNodes?.[panel.name] || null;
+  if (prism && prismCoordinate === coordinate) return { kind: "prism", view: prismTooltip(prism) };
+  const nodes = talentDisplayNodes(panel),
+    node = nodes.find((item) => item.coordinate.join(",") === coordinate);
+  if (!node) return null;
+  return {
+    kind: "node",
+    view: talentNodeTooltipView({
+      tree: panel.name,
+      node,
+      nodes,
+      rankAt: (at) => talentRanks.get(`${panel.name}:${at}`) || 0,
+      icon: art,
+      locked,
+      prismAffected,
+      prism,
+      prismCoordinate,
+      prismName: prism ? prismName(prism) : "",
+      effectCoverage: talentEffectCoverage,
+      lineCoverage: talentLineCoverage,
+      prismAffixCoverage: (kind) => prismAffixCoverage(prism, kind),
+    }),
+  };
+}
+// A core slot ({ threshold, locked }) or the prism shown among the cores ({ prism: true }).
+function coreTalentTooltip(target) {
+  const panel = currentTalentPanel(),
+    planner = currentPlanner();
+  const prism = target.prism ? installedPrismIn(panel.name) : null;
+  if (target.prism && !prism) return null;
+  const selected = target.prism ? null : plannerState.talents.coreSelections[`${panel.name}:${target.threshold}`];
+  const core = selected
+    ? panel.coreTalents.find((item) => item.unlockPoints === target.threshold && item.name === selected)
+    : null;
+  return coreTalentTooltipView({
+    tree: panel.name,
+    threshold: target.threshold ?? 0,
+    core: core ? { ...core, icon: tliArt.coreTalents[core.name] || core.icon || null } : null,
+    prism: prism
+      ? {
+          base: prism.base,
+          icon: prismIcon(prism) || "",
+          effect: prismBaseEffect(prism.type, prism.base, prism.legendaryAffix),
+          replacesCore: prismReplacesCore(prism),
+        }
+      : null,
+    locked: Boolean(target.locked),
+    coverage: (lines) =>
+      prism
+        ? coverageView(prismAffixCoverage(prism, "base"), prismAffixCoverageReason(prism, "base"))
+        : coverageView(
+            core?.name === "Subtle Impact" && !planner.conditions.blur
+              ? planner.blurSources.some((source) => source.available)
+                ? "Inactive"
+                : "Missing Blur source"
+              : !core
+                ? "Not selected"
+                : core.name === "Daze"
+                  ? dazeStatus(planner)
+                  : modeledCoreTalents.includes(core.name)
+                    ? "In calc"
+                    : refineCoverage("Not independently modeled", lines.join("\n")),
+          ),
+  });
+}
+
 // The talent trees' data (src/app/bridge/talents-view-model.ts).
 function talentsSource() {
   return talentsView({

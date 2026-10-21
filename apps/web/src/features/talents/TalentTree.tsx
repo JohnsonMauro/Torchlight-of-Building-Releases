@@ -1,9 +1,8 @@
 // The talent trees of the Build page: the tree tabs (with the Slates tab and the total), the open tree's heading and
 // actions, the prism placement prompt, the core talents and the stage of nodes with the installed prism. The data is
 // the planner's "talents" source (src/app/bridge/talents-view-model.ts); every edit is a planner command, and the tree,
-// core and prism dialogs stay legacy (the Slates tab's board takes the tree's place in TalentsView). The legacy hover
-// tooltip reads .talent-node with data-coordinate (and its .talent-node-art), .core-talent with data-core-slot, and
-// .prism-affected-node, so they stay. The state-dependent looks are in talent-classes.ts.
+// core and prism dialogs stay legacy (the Slates tab's board takes the tree's place in TalentsView). Nodes, cores and the
+// installed prism show their tooltips (TalentTooltip). The state-dependent looks are in talent-classes.ts.
 import { useEffect, useRef, type CSSProperties, type MouseEvent } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { CoreView, TalentsView } from "@legacy/app/bridge/talents-view-model.ts";
@@ -12,8 +11,10 @@ import { familyTint } from "../../ui/talent-slate-styles";
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";
 import { HelpButton } from "../../ui/HelpButton";
+import { CoreTalentTooltip, TalentNodeTooltip } from "./TalentTooltip";
 import { PRISM_ART, areaLook, lineLook, nodeLook, prismLook } from "./talent-classes";
 import { TalentEmblem } from "./TalentEmblem";
+import { hideTooltip } from "../../ui/tooltip/tooltip-store";
 
 // Under 1100px (max-[1100px]:) the trees column narrows to 205px: smaller slots, emblems and type.
 /** A tree slot: emblem beside the slot label, the tree name and its points chip. */
@@ -244,36 +245,40 @@ export function CoreTalents() {
 function Core({ core }: { core: CoreView }) {
   if (core.kind === "prism")
     return (
-      <article className={`${CORE_CARD} ${CORE_PRISM} prism`}>
-        <Artwork src={core.art} alt={core.name} className={CORE_ART} />
-        <div className="min-w-0">
-          <span className={`${CORE_CAPTION} text-violet`}>{core.caption}</span>
-          <strong className={CORE_NAME}>{core.name}</strong>
-          <small className="hidden">{core.details}</small>
-        </div>
-      </article>
+      <CoreTalentTooltip target={{ prism: true }}>
+        <article className={`${CORE_CARD} ${CORE_PRISM} prism`}>
+          <Artwork src={core.art} alt={core.name} className={CORE_ART} />
+          <div className="min-w-0">
+            <span className={`${CORE_CAPTION} text-violet`}>{core.caption}</span>
+            <strong className={CORE_NAME}>{core.name}</strong>
+            <small className="hidden">{core.details}</small>
+          </div>
+        </article>
+      </CoreTalentTooltip>
     );
   return (
-    <button
-      type="button"
-      className={`${CORE_CARD} ${CORE_SLOT} ${core.selected ? "selected" : ""} ${core.locked ? "locked opacity-40 grayscale" : ""}`}
-      data-core-slot={core.threshold}
-      onClick={() => plannerCommands().openCorePicker(core.threshold)}
-      onContextMenu={(event) => rightClick(event, () => plannerCommands().removeCoreTalent(core.threshold))}
-    >
-      {core.name ? (
-        <Artwork src={core.art} alt={core.name} className={CORE_ART} />
-      ) : (
-        <span className={`empty-core-art size-11.5 flex-[0_0_46px] ${EMPTY_ART}`}>+</span>
-      )}
-      <div className="min-w-0">
-        <span
-          className={`${CORE_CAPTION} text-accent`}
-        >{`${core.threshold} point core${core.locked ? " · locked" : ""}`}</span>
-        <strong className={CORE_NAME}>{core.name || "Select core talent"}</strong>
-        <small className="hidden">{core.description}</small>
-      </div>
-    </button>
+    <CoreTalentTooltip target={{ threshold: core.threshold, locked: core.locked }}>
+      <button
+        type="button"
+        className={`${CORE_CARD} ${CORE_SLOT} ${core.selected ? "selected" : ""} ${core.locked ? "locked opacity-40 grayscale" : ""}`}
+        data-core-slot={core.threshold}
+        onClick={() => plannerCommands().openCorePicker(core.threshold)}
+        onContextMenu={(event) => rightClick(event, () => plannerCommands().removeCoreTalent(core.threshold))}
+      >
+        {core.name ? (
+          <Artwork src={core.art} alt={core.name} className={CORE_ART} />
+        ) : (
+          <span className={`empty-core-art size-11.5 flex-[0_0_46px] ${EMPTY_ART}`}>+</span>
+        )}
+        <div className="min-w-0">
+          <span
+            className={`${CORE_CAPTION} text-accent`}
+          >{`${core.threshold} point core${core.locked ? " · locked" : ""}`}</span>
+          <strong className={CORE_NAME}>{core.name || "Select core talent"}</strong>
+          <small className="hidden">{core.description}</small>
+        </div>
+      </button>
+    </CoreTalentTooltip>
   );
 }
 
@@ -286,7 +291,7 @@ export function TalentStage() {
       element
         ?.closest("#talent-stage .talent-node[data-coordinate]:not(.installed-prism-node)")
         ?.getAttribute("data-coordinate") ?? null,
-    onStart: () => plannerCommands().hideTooltip(),
+    onStart: () => hideTooltip(),
     onDrop: (_origin, coordinate) => plannerCommands().dropPrism(coordinate),
     onInvalidDrop: () => plannerCommands().dropPrism(null),
   });
@@ -313,12 +318,12 @@ function StageContent({ view, drag }: { view: TalentsView; drag: ReturnType<type
   const dragging = drag.source !== null;
   const nodeHandlers = (coordinate: string) => ({
     onClick: () => {
-      plannerCommands().hideTooltip();
+      hideTooltip();
       plannerCommands().clickTalentNode(coordinate);
     },
     onContextMenu: (event: MouseEvent) => {
       event.preventDefault();
-      plannerCommands().hideTooltip();
+      hideTooltip();
       plannerCommands().rightClickTalentNode(coordinate);
     },
   });
@@ -357,55 +362,57 @@ function StageContent({ view, drag }: { view: TalentsView; drag: ReturnType<type
         const dropTarget = drag.target === node.coordinate;
         const look = nodeLook(node.classes, dropTarget, dragging);
         const button = (
-          <button
-            key={node.coordinate}
-            type="button"
-            role="gridcell"
-            className={`${NODE} talent-node ${node.classes}${dropTarget ? " prism-drop-target" : ""} ${look.node}`}
-            style={style}
-            data-coordinate={node.coordinate}
-            data-node-type={node.type}
-            aria-label={node.label}
-            {...nodeHandlers(node.coordinate)}
-          >
-            {node.art ? (
-              <img
-                className={`talent-node-art block size-9.75 object-contain [grid-area:1/1] ${look.art}`}
-                src={node.art}
-                alt=""
-              />
-            ) : (
-              <span className={NODE_SYMBOL}>{node.symbol}</span>
-            )}
-            <span
-              className={`node-rank absolute -right-1 -bottom-1 min-w-6 rounded-full px-1 py-0.5 text-[10px] font-bold ${look.rank}`}
-            >{`${node.rank}/${node.max}`}</span>
-          </button>
+          <TalentNodeTooltip key={node.coordinate} node={node}>
+            <button
+              type="button"
+              role="gridcell"
+              className={`${NODE} talent-node ${node.classes}${dropTarget ? " prism-drop-target" : ""} ${look.node}`}
+              style={style}
+              data-coordinate={node.coordinate}
+              data-node-type={node.type}
+              aria-label={node.label}
+              {...nodeHandlers(node.coordinate)}
+            >
+              {node.art ? (
+                <img
+                  className={`talent-node-art block size-9.75 object-contain [grid-area:1/1] ${look.art}`}
+                  src={node.art}
+                  alt=""
+                />
+              ) : (
+                <span className={NODE_SYMBOL}>{node.symbol}</span>
+              )}
+              <span
+                className={`node-rank absolute -right-1 -bottom-1 min-w-6 rounded-full px-1 py-0.5 text-[10px] font-bold ${look.rank}`}
+              >{`${node.rank}/${node.max}`}</span>
+            </button>
+          </TalentNodeTooltip>
         );
         if (!node.prism) return button;
         return [
           button,
-          <button
-            key={`${node.coordinate}:prism`}
-            type="button"
-            className={`${NODE} talent-node prism-node installed-prism-node${dragging ? " prism-dragging" : ""} ${prismLook(dragging)}`}
-            style={style}
-            data-coordinate={node.coordinate}
-            data-node-type={node.type}
-            aria-label={node.prism.label}
-            {...nodeHandlers(node.coordinate)}
-            onPointerDown={(event) => {
-              if (view.placingPrism) return;
-              event.preventDefault();
-              drag.start(event, node.coordinate, node.coordinate);
-            }}
-          >
-            {node.prism.art ? (
-              <img className={`talent-node-art ${PRISM_ART}`} src={node.prism.art} alt="" />
-            ) : (
-              <span className={`${NODE_SYMBOL} text-violet`}>✦</span>
-            )}
-          </button>,
+          <TalentNodeTooltip key={`${node.coordinate}:prism`} node={node}>
+            <button
+              type="button"
+              className={`${NODE} talent-node prism-node installed-prism-node${dragging ? " prism-dragging" : ""} ${prismLook(dragging)}`}
+              style={style}
+              data-coordinate={node.coordinate}
+              data-node-type={node.type}
+              aria-label={node.prism.label}
+              {...nodeHandlers(node.coordinate)}
+              onPointerDown={(event) => {
+                if (view.placingPrism) return;
+                event.preventDefault();
+                drag.start(event, node.coordinate, node.coordinate);
+              }}
+            >
+              {node.prism.art ? (
+                <img className={`talent-node-art ${PRISM_ART}`} src={node.prism.art} alt="" />
+              ) : (
+                <span className={`${NODE_SYMBOL} text-violet`}>✦</span>
+              )}
+            </button>
+          </TalentNodeTooltip>,
         ];
       })}
     </>

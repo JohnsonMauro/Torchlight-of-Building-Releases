@@ -65,6 +65,8 @@ that module exports. Dependencies point down: `app.js` → controllers → `plan
 A React view reads a view source (`useViewSource("equipment")`); a user action calls a planner command; the command edits
 `plannerState`, calls `persistPlannerState()` (save, then one queued render) or `viewSourceChanged(name)`; the view
 re-reads its source.
+What is read only when the user asks (a tooltip's details) is a planner query (`plannerQueries().gearTooltip(target)`,
+`src/app/bridge/planner-queries.js`): computed on demand, never published ahead, never changing the build.
 
 Page state the UI shows belongs in a source too, not in the DOM: the open view is the `workspace` source (each section
 hides itself with `useViewOpen`, the rail and the build strip light their tab, `PageMain` picks the layout). The
@@ -72,11 +74,19 @@ planner still reaches into the page in many places (DOM lookups, `classList`, `s
 HTML strings); `tests/unit/dom-ratchet.test.js` counts them and they may only go down — lower its baseline when a
 change removes some.
 
-Tooltips are components: wrap the element in `<Tooltip content={() => <SomethingTooltip … />} kind="…">`
-(`apps/web/src/ui/tooltip/`; `TooltipHost` places it, follows the pointer, hides it on scroll and shows it inside an open
-dialog). Each domain owns its tooltip's content component; the planner gives the data through its view source. The
-legacy planner tooltip (`src/app/tooltips/`, `#planner-tooltip`) still serves the kinds not moved yet; a kind that moves
-leaves its selector there. Tests find either by `getByRole("tooltip")`.
+Tooltips are components (`apps/web/src/ui/tooltip/`: `<Tooltip content>` around one element; `TooltipHost` places it,
+follows the pointer, hides it on scroll and shows it inside an open dialog). A drag (pointer capture keeps the anchor
+"hovered" until the drop) or an edit of the element hides it with `hideTooltip()` from `tooltip-store.ts`. Each domain
+owns its tooltip, the way gear does (the guide for the others):
+- the item's display model and its pure builder in `src/app/bridge/<domain>-…-view.ts` (`gear-item-view.ts`
+  `gearTooltipView`), with a unit test; what depends on the open build is passed in;
+- a query in the domain's controller that gathers that input (`gear-controller.js` `gearTooltip`, inside
+  `withRenderPass`), provided in `app.js`;
+- a wrapper component in the feature (`features/gear/GearTooltip.tsx`: `<GearTooltip target>{element}</GearTooltip>`)
+  that reads the query when the tooltip opens and renders the content, with its classes in `*-tooltip-classes.ts`;
+  pieces several domains share sit in `ui/` (`ModifierText` with Alt via `useAltHeld`, `CoverageBadge`);
+- the domain's selector and kind leave the legacy tooltip (`src/app/tooltips/planner-tooltips.js`, `#planner-tooltip`),
+  which serves the kinds not moved yet. Tests find either by `getByRole("tooltip")`.
 
 ## Refactor direction (2026-10-20)
 

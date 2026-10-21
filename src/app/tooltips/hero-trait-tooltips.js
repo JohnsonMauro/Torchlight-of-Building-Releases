@@ -1,47 +1,17 @@
-// Tooltips of the hero panel's traits and follower: a trait at its level in this build, a follower and its skills.
+// A hero trait's tooltip as the legacy tooltip's HTML. The hero panel shows its traits with React
+// (apps/web/src/features/hero/TraitTooltip.tsx, from src/app/bridge/trait-tooltip-view.ts); only a damage path source
+// naming a trait still comes here (planner-tooltips.js damageSourceTooltipContent), until the Stats tooltips move.
+// Delete this file then.
 import { allHeroTraitsSs13 } from "../../data/heroes/all-hero-traits-ss13.generated.js";
 import { heroById } from "../../data/heroes/hero-catalog-ss13.js";
 import { baseTraitDescriptionForLevel, withoutArtificialMoonLines } from "../../engine/heroes/hero-memory-rules.js";
-import { followerSkillTooltipHtml, followerTooltipHtml, followerTooltipRarity } from "../hero/follower-panel.js";
-import { EXTRA_ROW_NOTE } from "../hero/hero-trait-tree-markup.js";
+import { EXTRA_ROW_NOTE } from "../bridge/trait-tooltip-view.ts";
 import { traitKeywordDetailsHtml, traitKeywordTextHtml } from "../hero/trait-keyword-markup.js";
 import { escapeHtml } from "../html.js";
 import { coverageBadge, heroTraitCoverage, heroTraitCoverageReason } from "../planner/calculation-coverage.js";
-import { currentPlanner, plannerState } from "../planner/session.js";
-import { heroTraitTooltipLevel } from "./hero-tooltips.js";
+import { plannerState } from "../planner/session.js";
+import { heroTraitTooltipLevel } from "../hero/hero-tooltip-queries.js";
 import { traitClasses as trc } from "./tooltip-kind-classes.js";
-
-// A follower skill (src/app/hero/follower-panel.js).
-export function followerSkillTooltipContent(element) {
-  const traitHtml = followerSkillTooltipHtml(element.dataset.followerSkillTooltip, {
-    state: plannerState,
-    planner: currentPlanner(),
-  });
-  return traitHtml
-    ? {
-        traitHtml,
-        rarity: followerTooltipRarity({ state: plannerState, skillName: element.dataset.followerSkillTooltip }),
-        followerTooltip: true,
-      }
-    : null;
-}
-
-// A follower card (src/app/hero/follower-panel.js).
-export function followerTooltipContent(element) {
-  const rarityId = element.dataset.followerTooltipRarity || null,
-    traitHtml = followerTooltipHtml(element.dataset.followerTooltip, {
-      state: plannerState,
-      planner: currentPlanner(),
-      rarityId,
-    });
-  return traitHtml
-    ? {
-        traitHtml,
-        rarity: followerTooltipRarity({ state: plannerState, followerId: element.dataset.followerTooltip, rarityId }),
-        followerTooltip: true,
-      }
-    : null;
-}
 
 // A hero trait: its effects at the level the trait has in this build.
 export function heroTraitTooltipContent(element) {

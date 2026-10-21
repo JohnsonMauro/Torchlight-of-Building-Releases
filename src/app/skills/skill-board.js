@@ -3,7 +3,6 @@ import { assignSkillBoardSlot, moveSkillBoardSlot, skillBoardRows } from "../../
 import { transferSupportSlot, userInstalledSupports } from "../../engine/supports/support-slot-transfer.js";
 import { skillsView } from "../bridge/skills-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
-import { escapeHtml } from "../html.js";
 import { showToast } from "../planner/page.js";
 import {
   currentEditedSetups,
@@ -134,7 +133,7 @@ function moveBoardSupport({ tab, fromRow, fromSlot, setupKey, toRow, toSlot, dup
   persistPlannerState();
   renderCandidateViews();
   showToast(
-    `${duplicate ? "Support duplicated" : result.action === "swapped" ? "Supports swapped" : "Support moved"} to ${escapeHtml(toSetup.name)}`,
+    `${duplicate ? "Support duplicated" : result.action === "swapped" ? "Supports swapped" : "Support moved"} to ${toSetup.name}`,
   );
 }
 function resetSkills() {

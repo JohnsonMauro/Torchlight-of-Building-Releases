@@ -1,9 +1,4 @@
 {
-  "src/app/hero/follower-panel.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/app/stats/damage-path-panel.js": {
     "no-unused-vars": {
       "count": 1

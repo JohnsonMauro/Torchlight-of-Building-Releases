@@ -8,17 +8,6 @@ export function positionPlannerTooltip(x, y) {
   tooltipAnchorX = x;
   tooltipAnchorY = y;
   const tooltip = $("#planner-tooltip");
-  const inventoryCard = tooltipAnchorElement?.closest?.("#equipment-inventory .inventory-item");
-  if (inventoryCard) {
-    const card = inventoryCard.getBoundingClientRect();
-    const width = tooltip.offsetWidth;
-    const left =
-      card.left - width - 12 >= 10 ? card.left - width - 12 : Math.min(window.innerWidth - width - 10, card.right + 12);
-    const top = Math.min(Math.max(10, card.top), Math.max(10, window.innerHeight - tooltip.offsetHeight - 12));
-    tooltip.style.left = Math.max(10, left) + "px";
-    tooltip.style.top = top + "px";
-    return;
-  }
   const left = Math.min(window.innerWidth - 370, x + 18);
   const top = Math.min(window.innerHeight - tooltip.offsetHeight - 12, y + 18);
   tooltip.style.left = Math.max(10, left) + "px";

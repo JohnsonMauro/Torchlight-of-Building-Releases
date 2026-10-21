@@ -1,17 +1,17 @@
-// Pieces the equipment crafter's views share (src/app/bridge/equipment-crafter-view.ts): a modifier line (a keyword roll
-// collapses to its keyword; holding Alt shows its effect, by CSS), the item preview, a select's options and groups (with
-// the data-* attributes the planner's searchable select reads), a roll's slider and number field, and a legendary line
-// with its controls (the crafter's and the item editor's differ by their data-* names).
+// Pieces the equipment crafter's views share (src/app/bridge/equipment-crafter-view.ts): the item preview (its lines
+// through ModifierText), a select's options and groups (with the data-* attributes the planner's searchable select
+// reads), a roll's slider and number field, and a legendary line with its controls (the crafter's and the item editor's
+// differ by their data-* names).
 import type { CSSProperties, InputHTMLAttributes } from "react";
 import type {
   ItemPreviewView,
   LegendaryLineView,
-  ModifierTextView,
   OptionView,
   RollView,
   SelectChoice,
 } from "@legacy/app/bridge/equipment-crafter-view.ts";
 import { LiveNumberInput } from "../../ui/LiveNumberInput";
+import { ModifierText } from "../../ui/ModifierText";
 import {
   CONTROL,
   MOD_BOX,
@@ -28,9 +28,6 @@ import {
   ROLL_VALUE,
 } from "./crafter-classes";
 
-// A keyword roll shows its keyword; holding Alt (body.revival-alt-held, src/app/tooltips/tooltip-host.js) shows its effect.
-const KEYWORD_NAME = "keyword-roll-name font-bold text-info underline underline-offset-2";
-const KEYWORD_EFFECT = "keyword-roll-effect hidden [.revival-alt-held_&]:inline";
 // The item card: its rarity's art and colours (itemCardLook), a framed box per modifier section.
 const PREVIEW = "relative block rounded-md border border-(--item-frame) p-5 text-center";
 const MOD_SECTION = "rounded border border-line bg-surface/60 p-2.5";
@@ -38,28 +35,6 @@ const MOD_SECTION = "rounded border border-line bg-surface/60 p-2.5";
 const MOD_LINE = "my-1.25 flex items-start gap-1.5 text-sm whitespace-pre-line";
 const lineClasses = (className: string) =>
   `${MOD_LINE} ${className}${className.split(" ").includes("corrosion-affix") ? " text-violet" : ""}`;
-
-export function ModifierText({ text }: { text: ModifierTextView }) {
-  if (text.kind === "plain") return <>{text.text}</>;
-  if (text.inline)
-    return (
-      <span className="keyword-roll">
-        {text.inline.before}
-        <span className={KEYWORD_NAME}>{text.keyword}</span>
-        {text.inline.after}
-        <span className={KEYWORD_EFFECT}>{text.effect}</span>
-      </span>
-    );
-  return (
-    <>
-      <span className="keyword-roll">
-        <span className={KEYWORD_NAME}>{text.keyword}</span>
-        <span className={KEYWORD_EFFECT}>{text.effect}</span>
-      </span>
-      {text.rest}
-    </>
-  );
-}
 
 export function ItemPreview({ preview }: { preview: ItemPreviewView }) {
   return (

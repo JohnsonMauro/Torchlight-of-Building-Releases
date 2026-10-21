@@ -14,12 +14,12 @@ import {
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
-import { coverageBadge, prismAffixCoverage, prismAffixCoverageReason } from "../planner/calculation-coverage.js";
-import { escapeHtml } from "../html.js";
+import { coverageView } from "../bridge/gear-item-view.ts";
+import { prismTooltipView } from "../bridge/talent-tooltip-view.ts";
+import { prismAffixCoverage, prismAffixCoverageReason } from "../planner/calculation-coverage.js";
 import { showToast } from "../planner/page.js";
 import { persistPlannerState, plannerState, renderCandidateViews, talentRanks } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
-import { prismClasses } from "../tooltips/tooltip-kind-classes.js";
 import { prismIcon, prismName } from "./prism-icons.js";
 import {
   clearInverseReflectedRanks,
@@ -89,25 +89,16 @@ function prismAffixSectionsView(item) {
       .map(([key, heading]) => ({ className: key, heading, lines: [{ kind: key, text: item[key] }] })),
   ];
 }
-function prismAffixSections(item, showCoverage = false) {
-  const badge = (kind) =>
-    showCoverage ? coverageBadge(prismAffixCoverage(item, kind), prismAffixCoverageReason(item, kind)) : "";
-  return prismAffixSectionsView(item)
-    .map(
-      (section) =>
-        `<section class="prism-affix-section ${section.className} ${prismClasses.section} ${prismClasses.sectionEdge[section.className] || ""}"><h4>${section.heading}</h4>${section.lines
-          .map((line) =>
-            "value" in line
-              ? `<p>${escapeHtml(line.label)}: <strong class="${line.sign}">${line.value}</strong> ${badge(line.kind)}</p>`
-              : `<p>${escapeHtml(line.text)} ${badge(line.kind)}</p>`,
-          )
-          .join("")}</section>`,
-    )
-    .join("");
-}
-export function prismTooltipHtml(item) {
-  const icon = prismIcon(item);
-  return `<div class="prism-tooltip-head ${prismClasses.head}">${icon ? `<img class="${prismClasses.icon}" src="${icon}" alt="">` : ""}<strong class="${prismClasses.title}">${escapeHtml(prismName(item))}</strong><small class="${prismClasses.kicker}">${item.type === "inverse" ? "Inverse Image" : "Ethereal Prism"}</small></div><div class="prism-tooltip-body ${prismClasses.body}"><p class="prism-effect-area ${prismClasses.area}">Effect Area: <strong>${prismArea(item)}</strong> ${coverageBadge("Planner only")}</p>${prismAffixSections(item, true)}</div><footer class="${prismClasses.footer}">Click to change · Right-click to remove</footer>`;
+// An installed prism's tooltip (src/app/bridge/talent-tooltip-view.ts), each affix with whether the calculation uses it.
+export function prismTooltip(item) {
+  return prismTooltipView({
+    name: prismName(item),
+    icon: prismIcon(item) || "",
+    inverse: item.type === "inverse",
+    area: prismArea(item),
+    sections: prismAffixSectionsView(item),
+    coverage: (kind) => coverageView(prismAffixCoverage(item, kind), prismAffixCoverageReason(item, kind)),
+  });
 }
 // The prism inventory's data (apps/web/src/features/talents/PrismInventoryDialog.tsx) for the tree slot it is open for.
 function prismInventorySource() {

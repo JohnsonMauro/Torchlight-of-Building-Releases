@@ -11,7 +11,8 @@ import {
   equipmentCraftFromItem,
   newEquipmentCraft,
 } from "../../src/app/gear/equipment-craft.ts";
-import { equipmentCrafterView, modifierTextView } from "../../src/app/bridge/equipment-crafter-view.ts";
+import { equipmentCrafterView } from "../../src/app/bridge/equipment-crafter-view.ts";
+import { modifierTextView } from "../../src/app/bridge/gear-item-view.ts";
 import { snappedModifierRoll } from "../../src/app/gear/affix-rolls.js";
 
 const youga = JSON.parse(

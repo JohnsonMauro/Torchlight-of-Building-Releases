@@ -76,7 +76,6 @@ test("right-clicking an equipped slot unequips it; right-clicking its Inventory 
   page,
 }) => {
   const { planner, gear } = await openGear(page);
-  await expect(gear.slot("helmet")).toHaveAttribute("title", "Right-click to unequip");
   await gear.slot("helmet").click({ button: "right" });
   await expect(gear.toast()).toHaveText("Helmet unequipped");
   await expect(gear.equippedCount()).toHaveText("9/10");

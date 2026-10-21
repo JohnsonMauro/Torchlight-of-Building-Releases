@@ -9,20 +9,17 @@ import { resolveTalentCandidate } from "../../engine/candidate-sources.js";
 import { collectNormalizedGearModifiers } from "../../engine/engine.js";
 import { heroTreeSelections, treeRowLevelKey } from "../../engine/heroes/hero-trait-tree.js";
 import { orderedPactspiritNodes, pactspiritEffectsAtLevel } from "../../engine/pacts/pactspirit-levels.js";
-import { treeExtraRowTooltipHtml } from "../hero/hero-trait-tree-markup.js";
 import { escapeHtml } from "../html.js";
 import { selectedPactspiritLevel } from "../pacts/pacts-controller.js";
 import { $ } from "../planner/page.js";
 import { currentPlanner, equippedSlateIds, plannerState, slatesForBoard, withRenderPass } from "../planner/session.js";
-import { FOCUSED_VIEWS, ui } from "../planner/ui-state.js";
 import { effectLabel, formatEffect } from "../talents/talent-labels.js";
 import { gearTooltipContent } from "./gear-tooltips.js";
-import { heroMemoryTooltipContent, sageScentTooltipContent } from "./hero-tooltips.js";
-import { followerSkillTooltipContent, followerTooltipContent, heroTraitTooltipContent } from "./hero-trait-tooltips.js";
-import { pactNodeTooltipContent, pactspiritTooltipContent } from "./pact-tooltips.js";
+import { heroMemoryTooltipContent } from "./hero-tooltips.js";
+import { heroTraitTooltipContent } from "./hero-trait-tooltips.js";
+import { pactNodeTooltipContent } from "./pact-tooltips.js";
 import { skillTooltipContent } from "./skill-tooltips.js";
 import { slateTooltipContent } from "./slate-tooltips.js";
-import { coreTalentTooltipContent, talentNodeTooltipContent } from "./talent-tooltips.js";
 import {
   cancelTooltipHide,
   hidePlannerTooltip,
@@ -34,8 +31,8 @@ import {
   tooltipAnchorElement,
 } from "./tooltip-host.js";
 
-const tooltipSelector =
-  "[data-damage-source],.talent-node,.core-talent,.equipment-item,.inventory-item,[data-skill-tooltip],[data-support-tooltip],.skill-primary-socket:not(.empty-skill-slot),[data-hero-trait-support-id],[data-hero-trait-tooltip],[data-tree-extra-row-tooltip],[data-sage-scent-tooltip],.hero-memory-socket.filled,.hero-memory-item,.slate-piece,.crafted-slate-item,[data-pactspirit-name],[data-pact-node-tooltip],[data-follower-skill-tooltip],[data-follower-tooltip]";
+// Only the Stats damage path's sources still show this tooltip; every other kind is a React <Tooltip>.
+const tooltipSelector = "[data-damage-source]";
 function damageSourceTooltipContent(element) {
   const source = element.dataset.damageSource;
   const category = element.dataset.damageCategory || "";
@@ -120,13 +117,14 @@ function damageSourceTooltipContent(element) {
   const trait = [...document.querySelectorAll("[data-hero-trait-tooltip]")].find(
     (entry) => entry.dataset.heroTraitTooltip === traitName,
   );
-  if (trait) return plannerTooltipContent(trait);
+  if (trait) return heroTraitTooltipContent(trait);
   const heroTrait = allHeroTraitsSs13[plannerState.hero.selectedHeroId]?.traits.find(
     (entry) => entry.name === traitName,
   );
   const treeRow = heroTreeSelections(plannerState.hero).indexOf(traitName);
-  if (heroTrait)
-    return proxy("", {
+  if (heroTrait) {
+    const target = document.createElement("span");
+    Object.assign(target.dataset, {
       heroTraitTooltip: traitName,
       heroTraitLevelKey:
         heroTrait.level <= 1
@@ -135,18 +133,24 @@ function damageSourceTooltipContent(element) {
             ? treeRowLevelKey(plannerState.hero.selectedHeroId, treeRow)
             : `level${heroTrait.level}`,
     });
+    return heroTraitTooltipContent(target);
+  }
   const namedGear = planner.equipment.candidateItems.filter(
     (item) => source === item.name || source.startsWith(`${item.name}:`),
   );
-  if (namedGear.length === 1) return proxy("equipment-item", { equipmentSlot: namedGear[0].slot });
+  if (namedGear.length === 1) return gearTooltipContent({ dataset: { equipmentSlot: namedGear[0].slot } });
   const namedSlate = slatesForBoard().find((item) => source === item.name);
-  if (namedSlate) return proxy("slate-piece", { slateId: namedSlate.id });
+  if (namedSlate) return slateTooltipContent({ dataset: { slateId: namedSlate.id } });
   if (source.startsWith("Kismet: ")) {
     const name = source.slice(8);
     const slot = Object.entries(plannerState.pacts.kismetSlots || {}).find(
       ([, item]) => item.name === source || item.name === name,
     );
-    if (slot) return proxy("", { pactNodeTooltip: "", kismetNode: slot[0], nodeName: "Equipped Kismet" });
+    if (slot) {
+      const target = document.createElement("span");
+      Object.assign(target.dataset, { kismetNode: slot[0], nodeName: "Equipped Kismet" });
+      return pactNodeTooltipContent(target);
+    }
     const kismet = kismetCatalogSs13.find((item) => item.name === source || item.name === name);
     if (kismet) return { title: name, body: (kismet.affixes || []).join("\n") };
   }
@@ -265,20 +269,8 @@ function damageSourceTooltipContent(element) {
 
 // The tooltip content of an element: the first kind whose selector it matches, else its own text.
 const tooltipKinds = [
-  ["[data-tree-extra-row-tooltip]", () => ({ traitHtml: treeExtraRowTooltipHtml() })],
   ["[data-damage-source]", damageSourceTooltipContent],
-  ["[data-sage-scent-tooltip]", sageScentTooltipContent],
-  [".core-talent", coreTalentTooltipContent],
-  ["[data-pact-node-tooltip]", pactNodeTooltipContent],
-  ["[data-pactspirit-name]", pactspiritTooltipContent],
-  [".hero-memory-socket.filled,.hero-memory-item", heroMemoryTooltipContent],
-  [".slate-piece,.crafted-slate-item", slateTooltipContent],
-  ["[data-follower-skill-tooltip]", followerSkillTooltipContent],
-  ["[data-follower-tooltip]", followerTooltipContent],
-  ["[data-hero-trait-tooltip]", heroTraitTooltipContent],
-  [".skill-primary-socket,.skill-support-socket,[data-skill-tooltip],[data-support-tooltip]", skillTooltipContent],
-  [".talent-node", talentNodeTooltipContent],
-  [".equipment-item,.inventory-item", gearTooltipContent],
+  ["[data-skill-tooltip],[data-support-tooltip]", skillTooltipContent],
 ];
 // The classes of the plain title / text / footer content, and of a damage path source's breakdown (a fixed title, a
 // scrolling text, a fixed footer; the frame is in apps/web/src/ui/tooltip/tooltip-classes.ts).
@@ -304,7 +296,6 @@ function plannerTooltipContent(element) {
 }
 function showPlannerTooltip(element, x, y) {
   cancelTooltipHide();
-  if (FOCUSED_VIEWS.has(ui.activeWorkspaceView) && !element.matches("[data-damage-source]")) return;
   const content = withRenderPass(() => plannerTooltipContent(element));
   if (!content) return hidePlannerTooltip();
   const actionHint = element.getAttribute("title") || element.dataset.tooltipHint;

@@ -4,6 +4,7 @@
 // "heroMemory" source; every button is a planner command. A memory keeps data-memory-inventory-id for the planner's
 // tooltip.
 import { useRef } from "react";
+import { MemoryTooltip } from "./MemoryTooltip";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { MemoryInventoryView } from "@legacy/app/bridge/hero-memory-view.ts";
 import { useViewSource } from "../../ui/use-view-source";
@@ -24,54 +25,57 @@ function Inventory({ view }: { view: MemoryInventoryView }) {
         ) : null}
         {view.items.length ? (
           view.items.map((item) => (
-            <article
-              key={item.id}
-              className={`hero-memory-item memory-rarity-${item.rarity} ${item.available ? "" : "incompatible opacity-62"} ${inventoryItem} ${memoryAccent(item.rarity)}`}
-              data-memory-inventory-id={item.id}
-              onContextMenu={(event) => {
-                event.preventDefault();
-                commands().memoryContextMenu(item.id);
-              }}
-            >
-              <img src={item.icon} alt="" className="size-9.5 object-contain" />
-              <div className="min-w-0 max-[700px]:basis-[calc(100%-56px)]">
-                <strong className="block font-bold text-(--memory-accent)">{item.name}</strong>
-                <small className="mt-1 block text-xs text-muted">{item.detail}</small>
-              </div>
-              <button
-                type="button"
-                className={inventoryButton}
-                disabled={item.action.disabled}
-                title={item.action.title ?? undefined}
-                onClick={() => (base ? commands().toggleBaseMemory(item.id) : commands().toggleCraftedMemory(item.id))}
+            <MemoryTooltip key={item.id} target={{ inventoryId: item.id }}>
+              <article
+                className={`hero-memory-item memory-rarity-${item.rarity} ${item.available ? "" : "incompatible opacity-62"} ${inventoryItem} ${memoryAccent(item.rarity)}`}
+                data-memory-inventory-id={item.id}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  commands().memoryContextMenu(item.id);
+                }}
               >
-                {item.action.label}
-              </button>
-              <button
-                type="button"
-                className={inventoryButton}
-                aria-label={`Copy ${item.name}`}
-                onClick={() => commands().copyCraftedMemory(item.id)}
-              >
-                Copy
-              </button>
-              <button
-                type="button"
-                className={inventoryButton}
-                aria-label={`Edit ${item.name}`}
-                onClick={() => commands().editCraftedMemory(item.id)}
-              >
-                ✎
-              </button>
-              <button
-                type="button"
-                className={inventoryButton}
-                aria-label={`Delete ${item.name}`}
-                onClick={() => commands().deleteCraftedMemory(item.id)}
-              >
-                ×
-              </button>
-            </article>
+                <img src={item.icon} alt="" className="size-9.5 object-contain" />
+                <div className="min-w-0 max-[700px]:basis-[calc(100%-56px)]">
+                  <strong className="block font-bold text-(--memory-accent)">{item.name}</strong>
+                  <small className="mt-1 block text-xs text-muted">{item.detail}</small>
+                </div>
+                <button
+                  type="button"
+                  className={inventoryButton}
+                  disabled={item.action.disabled}
+                  title={item.action.title ?? undefined}
+                  onClick={() =>
+                    base ? commands().toggleBaseMemory(item.id) : commands().toggleCraftedMemory(item.id)
+                  }
+                >
+                  {item.action.label}
+                </button>
+                <button
+                  type="button"
+                  className={inventoryButton}
+                  aria-label={`Copy ${item.name}`}
+                  onClick={() => commands().copyCraftedMemory(item.id)}
+                >
+                  Copy
+                </button>
+                <button
+                  type="button"
+                  className={inventoryButton}
+                  aria-label={`Edit ${item.name}`}
+                  onClick={() => commands().editCraftedMemory(item.id)}
+                >
+                  ✎
+                </button>
+                <button
+                  type="button"
+                  className={inventoryButton}
+                  aria-label={`Delete ${item.name}`}
+                  onClick={() => commands().deleteCraftedMemory(item.id)}
+                >
+                  ×
+                </button>
+              </article>
+            </MemoryTooltip>
           ))
         ) : (
           <div className="hero-memory-empty px-2.5 py-14 text-center text-muted">

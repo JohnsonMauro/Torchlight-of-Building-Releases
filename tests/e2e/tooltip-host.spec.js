@@ -1,7 +1,7 @@
 // The planner tooltip's behaviour, whatever it shows: it follows the pointer (beside an Inventory card instead), a scroll
-// hides it, an element's own hint shows under it, Alt shows a named affix's effect, the "?" help toggles from the
-// keyboard, and a damage source's breakdown stays while the pointer moves into it. Written against the planner's own
-// tooltip before it moved to React, so both must pass it unchanged.
+// or a drag hides it, an equipped slot's says how to unequip, Alt shows a named affix's effect, the "?" help toggles
+// from the keyboard, and a damage source's breakdown stays while the pointer moves into it. Written against the
+// planner's own tooltip before it moved to React, so both must pass it unchanged.
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { PlannerPage } from "./pages/planner-page.js";
@@ -58,11 +58,22 @@ test("an Inventory card's tooltip sits beside the card", async ({ page }) => {
   await planner.expectNoErrors();
 });
 
-test("an element's own hint shows under its tooltip", async ({ page }) => {
+test("an equipped slot's tooltip says how to unequip, with no browser tooltip on top", async ({ page }) => {
   const { planner, gear } = await openGear(page);
-  await expect(gear.slot("helmet")).toHaveAttribute("title", "Right-click to unequip");
   await hoverUntilShown(page, gear.slot("helmet"));
   await expect(tooltip(page)).toContainText("Right-click to unequip");
+  await expect(gear.slot("helmet")).not.toHaveAttribute("title");
+  await planner.expectNoErrors();
+});
+
+test("dragging the element hides its tooltip", async ({ page }) => {
+  const { planner, gear } = await openGear(page);
+  await hoverUntilShown(page, gear.slot("boots"));
+  const slot = await gear.slot("boots").boundingBox();
+  await page.mouse.down();
+  await page.mouse.move(slot.x + 200, slot.y + 150, { steps: 8 });
+  await expect(tooltip(page)).toBeHidden();
+  await page.mouse.up();
   await planner.expectNoErrors();
 });
 
@@ -113,5 +124,16 @@ test("a damage source's breakdown stays while the pointer moves into it", async 
   await expect(tooltip(page)).toBeVisible();
   await page.mouse.move(1, 899);
   await expect(tooltip(page)).toBeHidden();
+  await planner.expectNoErrors();
+});
+
+test("a damage source naming one item shows that item's tooltip", async ({ page }) => {
+  const planner = new PlannerPage(page);
+  await planner.open(youga);
+  await planner.showView("character");
+  await planner.statsPanelTab("damage-path").click();
+  await hoverUntilShown(page, page.locator('[data-damage-source="Blind Vision"]').first());
+  await expect(tooltip(page)).toContainText("Blind Vision");
+  await expect(tooltip(page)).toContainText("Require Lv");
   await planner.expectNoErrors();
 });

@@ -9,7 +9,6 @@ import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { heroTraitsView } from "../bridge/hero-traits-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { renderConfiguration } from "../configuration/configuration-controller.js";
-import { escapeHtml } from "../html.js";
 import { $, showToast } from "../planner/page.js";
 import { currentEditedSetups, persistPlannerState, plannerState, renderCandidateViews } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
@@ -32,12 +31,11 @@ export const heroCommands = {
   toggleTraitPathNode,
   moveTraitPick,
   openScentSlot,
-  selectSageScent: (name) => setSageScent(name, `${escapeHtml(name)} selected`),
+  selectSageScent: (name) => setSageScent(name, `${name} selected`),
   clearSageScent: () => setSageScent("", "Scent slot cleared"),
   openCarinoAmmo,
   selectCarinoAmmo: (name) => {
-    if (carinoProjectileSupportOptions().some((entry) => entry.name === name))
-      setCarinoAmmo(name, `${escapeHtml(name)} installed`);
+    if (carinoProjectileSupportOptions().some((entry) => entry.name === name)) setCarinoAmmo(name, `${name} installed`);
   },
   clearCarinoAmmo: () => setCarinoAmmo("", "Support slot cleared"),
   removeCarinoAmmo,

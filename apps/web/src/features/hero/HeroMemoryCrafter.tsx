@@ -4,15 +4,15 @@
 // the revived affix's select keeps data-memory-field="revivedAffix", which the planner's select search popover reads.
 import { useLayoutEffect, useRef, useState } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
-import { tierBadgeClasses, tierBadgeKey } from "@legacy/app/gear/tier-badge.ts";
+import { tierBadgeClasses } from "@legacy/app/gear/tier-badge.ts";
 import type {
   MemoryAffixLineView,
   MemoryCrafterView,
   MemoryPreviewView,
-  MemoryRevivedEffectView,
   MemoryRollView,
 } from "@legacy/app/bridge/hero-memory-view.ts";
 import { CommitNumberInput } from "../../ui/CommitNumberInput";
+import { RevivedEffect } from "./RevivedEffect";
 import { LiveNumberInput } from "../../ui/LiveNumberInput";
 import {
   affixRow,
@@ -149,44 +149,6 @@ function AffixLine({ line, onTier }: { line: MemoryAffixLineView; onTier: (focus
         <TierValueControls line={line} tierValue={line.tierValue} />
       ) : null}
     </label>
-  );
-}
-
-function RevivedEffect({ effect }: { effect: MemoryRevivedEffectView }) {
-  return (
-    <div
-      className={`memory-revived-effect ${effect.special ? "special" : ""} flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 whitespace-pre-line`}
-    >
-      {effect.tierBadge ? <i className={tierBadgeClasses(tierBadgeKey(effect.tierBadge))}>{effect.tierBadge}</i> : null}
-      <span
-        className={`memory-revived-name ${effect.special ? "font-bold text-info underline underline-offset-2" : ""}`}
-      >
-        {effect.effect}
-      </span>
-      {effect.details ? (
-        <>
-          <small className="memory-revived-hint text-xs whitespace-nowrap text-muted">Hold Alt for details</small>
-          <div className="memory-revived-detail mt-1.25 hidden basis-full border-l-2 border-info bg-info/10 px-2 py-1.75 text-xs leading-normal whitespace-normal text-text [.revival-alt-held_&]:block">
-            <ul className="grid gap-1.25">
-              {effect.details.effects.map((line, index) => (
-                <li
-                  key={index}
-                  className="relative pl-2.5 before:absolute before:top-[0.48em] before:left-0 before:size-1 before:rounded-full before:bg-info before:content-['']"
-                >
-                  {line}
-                </li>
-              ))}
-            </ul>
-            {effect.details.exclusive !== null ? (
-              <div className="memory-revived-exclusive mt-2 grid gap-0.5 border-t border-line pt-1.75 text-muted">
-                <small className="text-[10px] font-bold tracking-wide text-info uppercase">Hero trait exclusive</small>
-                <span className="text-xs leading-snug">{effect.details.exclusive}</span>
-              </div>
-            ) : null}
-          </div>
-        </>
-      ) : null}
-    </div>
   );
 }
 

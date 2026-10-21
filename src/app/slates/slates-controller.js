@@ -2,11 +2,23 @@
 import { canPlaceSlate, slateSize, slateTransformRules } from "../../engine/talents/slate-board.js";
 import { closeDialog, dialogOpen, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
+import { divinitySlateAffixesSs13 } from "../../data/divinity-slate-affixes-ss13.js";
+import { isCopySlate } from "../../engine/talents/slate-board.js";
+import {
+  isActiveJudgment,
+  judgmentAffectedSlateIds,
+  judgmentAffixTargetPercent,
+  scaleJudgmentAffix,
+} from "../../engine/talents/slate-judgment.js";
+import { coverageView } from "../bridge/gear-item-view.ts";
+import { slateTooltipView } from "../bridge/slate-tooltip-view.ts";
 import { slatesView } from "../bridge/slates-view-model.ts";
+import { slateLineCoverage } from "../planner/calculation-coverage.js";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { showToast, titleCase } from "../planner/page.js";
 import { slateAffixSelectPools } from "../planner/searchable-select.js";
 import {
+  currentPlanner,
   equippedSlateIds,
   parkedSlates,
   persistPlannerState,
@@ -16,9 +28,15 @@ import {
   setSlatePlacements,
   slatePlacements,
   slatesForBoard,
+  withRenderPass,
 } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
-import { slateGodKey } from "./slate-catalog.js";
+import {
+  legendaryTalentSlotTypes,
+  slateCraftedAffixGroups,
+  slateGodFamilyClass,
+  slateGodKey,
+} from "./slate-catalog.js";
 import {
   changeSlateCraft as changeSlateCraftDraft,
   craftedSlate,
@@ -27,9 +45,77 @@ import {
   slateCrafterView,
   slateSlotChoices,
 } from "./slate-craft.ts";
-import { craftedSlateForBoard, craftedSlateIcon, slateShapeCells } from "./slate-shapes.js";
+import { craftedSlateForBoard, craftedSlateIcon, slateAffixFamilyClass, slateShapeCells } from "./slate-shapes.js";
 
 let selectedSlateId = null;
+
+// The affixes only one equipped slate can apply ("<tree>: <name>: <effect>").
+const singleDivinityAffixes = new Set(
+  Object.values(divinitySlateAffixesSs13)
+    .flat()
+    .filter((affix) => affix.maxDivinityEffect === 1)
+    .map((affix) => `${affix.tree}: ${affix.name}: ${affix.effect}`),
+);
+// A slate's tooltip (src/app/bridge/slate-tooltip-view.ts): its affixes by group as Judgment scales them, each with
+// whether the calculation uses it, and a copy slate's copied affixes.
+function slateTooltip(id) {
+  const slate = slatesForBoard().find((item) => item.id === id);
+  if (!slate) return null;
+  const placed = equippedSlateIds.has(slate.id) && Boolean(slatePlacements[slate.id]);
+  const affixes = slateAffixes(slate);
+  const affected = judgmentAffectedSlateIds(slatesForBoard(), slatePlacements, equippedSlateIds).has(slate.id);
+  const judgmentContext = {
+    linked: affected,
+    ownAuthority: Boolean(isActiveJudgment(slate) && placed),
+  };
+  const display = (affix) =>
+    scaleJudgmentAffix(affix, slate.amplifiedPercent || 0, judgmentAffixTargetPercent(slate, affix, judgmentContext));
+  const template = slate.template || slate.name;
+  const crafted =
+    slate.affixes && !legendaryTalentSlotTypes[template] && !slate.copyRule ? slateCraftedAffixGroups(slate) : null;
+  const groups = crafted
+    ? [
+        ["Fixed Affixes", crafted.fixed],
+        ["Random Affixes", crafted.random || crafted.brand || []],
+      ]
+    : slate.brands
+      ? [
+          ["Fixed Affixes", affixes],
+          ["Brand Talent Nodes", slate.brands],
+        ]
+      : legendaryTalentSlotTypes[template]
+        ? [["Talent Affixes", affixes]]
+        : slate.copyRule
+          ? [["Fixed Affix", affixes.length ? affixes : [slate.copyRule]]]
+          : [
+              ["Fixed Affixes", affixes.slice(0, 2)],
+              ["Random Affixes", affixes.slice(2)],
+            ];
+  const copy = isCopySlate(slate);
+  return slateTooltipView({
+    slate: { name: slate.name, rarity: slate.rarity, icon: slate.icon || slate.cellIcon || "" },
+    pose: slatePlacements[id] || parkedSlates[id] || slate,
+    family: slateGodFamilyClass(slate.god),
+    judgment: affected,
+    groups: groups.map(([title, entries]) => ({ title, affixes: entries })),
+    display,
+    limited: (affix) => singleDivinityAffixes.has(affix),
+    coverage: (affix) =>
+      coverageView(
+        /^Copies?\b/i.test(affix) ? (placed ? "In calc" : "Not equipped") : slateLineCoverage(display(affix), placed),
+      ),
+    familyOf: slateAffixFamilyClass,
+    copy: copy
+      ? {
+          placed,
+          copied: placed
+            ? currentPlanner().resolvedSlates.find((item) => item.id === slate.id)?.copiedAffixSources || []
+            : [],
+        }
+      : null,
+    copiedCoverage: (affix) => coverageView(slateLineCoverage(affix, placed)),
+  });
+}
 let slateEditMode = false;
 let slatePlacementTarget = null;
 let slateToolsPosition = null;
@@ -141,6 +227,10 @@ export const slateCommands = {
     renderSlateInventory();
     openDialog("slate-inventory");
   },
+};
+export const slateQueries = {
+  // A slate's tooltip, on the board or in the Slate Inventory (apps/web/src/features/slates/SlateTooltip.tsx).
+  slateTooltip: (id) => withRenderPass(() => slateTooltip(id)),
 };
 export const slateViewSources = {
   // The Divinity Slates board's data (src/app/bridge/slates-view-model.ts).

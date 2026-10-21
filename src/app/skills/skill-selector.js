@@ -27,7 +27,6 @@ import {
 } from "../hero/follower-panel.js";
 import { heroTraitSupportConfig } from "../hero/hero-memory-display.js";
 import { commitFollower, heroTraitSupportOptions } from "../hero/hero-controller.js";
-import { escapeHtml } from "../html.js";
 import { $, showToast } from "../planner/page.js";
 import {
   currentEditedSetups,
@@ -314,10 +313,7 @@ function confirmSkillSelector(levelText) {
         : followerSkillDraft(plannerState, followerSelectorSlot, entry.name);
     followerSelectorDraft = null;
     closeDialog("skill-selector");
-    commitFollower(
-      applyFollowerSkillDraft(plannerState, followerSelectorSlot, draft),
-      `${escapeHtml(entry.name)} equipped`,
-    );
+    commitFollower(applyFollowerSkillDraft(plannerState, followerSelectorSlot, draft), `${entry.name} equipped`);
     return;
   }
   selectorLevel = Math.max(1, Math.min(40, Number(levelText) || selectorLevel || 20));
@@ -331,9 +327,7 @@ function confirmSkillSelector(levelText) {
       plannerState.hero.heroTraitSupportConfigs[ui.activeHeroTraitSupportId] = { ...selectorSpecialConfig };
     else delete plannerState.hero.heroTraitSupportConfigs[ui.activeHeroTraitSupportId];
     persistPlannerState();
-    showToast(
-      `${escapeHtml(entry.name)} linked to ${escapeHtml(heroTraitSupportConfig[ui.activeHeroTraitSupportId]?.skill || "trait skill")}`,
-    );
+    showToast(`${entry.name} linked to ${heroTraitSupportConfig[ui.activeHeroTraitSupportId]?.skill || "trait skill"}`);
   } else if (selectorKind === "skill") {
     const board = selectorBoardSetups();
     const replaced = board[selectorTargetRow];

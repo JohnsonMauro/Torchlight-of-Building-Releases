@@ -1,4 +1,5 @@
 import { providePlannerCommands } from "./bridge/planner-commands.js";
+import { providePlannerQueries } from "./bridge/planner-queries.js";
 import { provideViewSource } from "./bridge/view-sources.ts";
 import {
   buildLibraryCommands,
@@ -9,11 +10,12 @@ import {
 import { gameLogImportCommands, gameLogImportViewSources } from "./builds/game-log-import-controller.js";
 import { configurationCommands, configurationViewSources } from "./configuration/configuration-controller.js";
 import { feedbackViewSources, installFeedbackEvents } from "./feedback/feedback-controller.js";
-import { gearCommands, gearViewSources } from "./gear/gear-controller.js";
-import { followerCommands, followerViewSources } from "./hero/follower-controller.js";
+import { gearCommands, gearQueries, gearViewSources } from "./gear/gear-controller.js";
+import { followerCommands, followerQueries, followerViewSources } from "./hero/follower-controller.js";
 import { heroCommands, heroViewSources } from "./hero/hero-controller.js";
 import { heroMemoryCommands, heroMemoryViewSources } from "./hero/hero-memory-controller.js";
-import { pactCommands, pactViewSources } from "./pacts/pacts-controller.js";
+import { heroTooltipQueries } from "./hero/hero-tooltip-queries.js";
+import { pactCommands, pactQueries, pactViewSources } from "./pacts/pacts-controller.js";
 import { pageViewSources, showToast, updateStorageStatus } from "./planner/page.js";
 import { installRangeFills, scheduleRangeFillRefresh } from "./planner/range-fill.js";
 import { installSearchableSelectEvents } from "./planner/searchable-select.js";
@@ -31,18 +33,17 @@ import { DAMAGE_PATH_KEY, readWorkspaceLocation, saveWorkspaceLocation, ui } fro
 import { activateWorkspaceView, workspaceViewSources, renderWorkspaceViews } from "./planner/workspace.js";
 import { skillBoardCommands, skillBoardViewSources } from "./skills/skill-board.js";
 import { skillSelectorViewSources } from "./skills/skill-selector-source.js";
+import { skillTooltipQueries } from "./skills/skill-tooltip-queries.js";
 import { installSkillSelectorEvents, skillSelectorCommands } from "./skills/skill-selector.js";
-import { slateCommands, slateViewSources } from "./slates/slates-controller.js";
+import { slateCommands, slateQueries, slateViewSources } from "./slates/slates-controller.js";
 import { statsCommands, statsViewSources } from "./stats/stats-controller.js";
 import { prismCommands, prismViewSources } from "./talents/prism-controller.js";
 import { renderTalents, setTalentSlateMode } from "./talents/talent-trees.js";
-import { talentCommands, talentViewSources } from "./talents/talents-controller.js";
+import { talentCommands, talentQueries, talentViewSources } from "./talents/talents-controller.js";
 import { installPlannerTooltipEvents } from "./tooltips/planner-tooltips.js";
-import { hidePlannerTooltip } from "./tooltips/tooltip-host.js";
 
 const pageCommands = {
   showToast,
-  hideTooltip: hidePlannerTooltip,
 };
 providePlannerCommands({
   ...buildLibraryCommands,
@@ -60,6 +61,15 @@ providePlannerCommands({
   ...heroCommands,
   ...heroMemoryCommands,
   ...statsCommands,
+});
+providePlannerQueries({
+  ...gearQueries,
+  ...talentQueries,
+  ...pactQueries,
+  ...slateQueries,
+  ...heroTooltipQueries,
+  ...followerQueries,
+  ...skillTooltipQueries,
 });
 for (const sources of [
   pageViewSources,

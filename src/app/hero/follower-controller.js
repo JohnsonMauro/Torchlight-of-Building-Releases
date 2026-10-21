@@ -2,9 +2,15 @@
 import { followerById, followerRarityById } from "../../engine/followers/follower-model.js";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
-import { followerPanelView, followerPickerView, pickFollower, setFollowerSkill } from "./follower-panel.js";
-import { escapeHtml } from "../html.js";
-import { plannerState } from "../planner/session.js";
+import {
+  followerPanelView,
+  followerPickerView,
+  followerSkillTooltipView,
+  followerTooltipView,
+  pickFollower,
+  setFollowerSkill,
+} from "./follower-panel.js";
+import { currentPlanner, plannerState, withRenderPass } from "../planner/session.js";
 import { openFollowerSkillSelector } from "../skills/skill-selector.js";
 import { hidePlannerTooltip } from "../tooltips/tooltip-host.js";
 import { commitFollower } from "./hero-controller.js";
@@ -22,7 +28,7 @@ export const followerCommands = {
     closeDialog("follower-selector");
     commitFollower(
       next,
-      `${escapeHtml(followerById(next.followerId)?.displayName || "Follower")} · ${escapeHtml(followerRarityById(next.rarity)?.name || "")} selected`,
+      `${followerById(next.followerId)?.displayName || "Follower"} · ${followerRarityById(next.rarity)?.name || ""} selected`,
     );
   },
   openFollowerSkillSelector: (slot) => {
@@ -33,6 +39,13 @@ export const followerCommands = {
     hidePlannerTooltip();
     commitFollower(setFollowerSkill(plannerState, slot, null), "Skill slot cleared");
   },
+};
+export const followerQueries = {
+  // A follower's card ({ followerId, rarityId }: a selector card's rarity, else the build's) and a Tartarus Skill's.
+  followerTooltip: ({ followerId, rarityId = null }) =>
+    withRenderPass(() => followerTooltipView(followerId, { state: plannerState, planner: currentPlanner(), rarityId })),
+  followerSkillTooltip: (name) =>
+    withRenderPass(() => followerSkillTooltipView(name, { state: plannerState, planner: currentPlanner() })),
 };
 export const followerViewSources = {
   // The FOLLOWER tab's data (src/app/hero/follower-panel.js).
