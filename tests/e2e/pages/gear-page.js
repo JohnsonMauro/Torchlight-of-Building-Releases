@@ -63,7 +63,7 @@ export class GearPage {
     return this.page.locator("#equipment-crafter-title");
   }
   tooltip() {
-    return this.page.locator("#planner-tooltip");
+    return this.page.getByRole("tooltip");
   }
   toast() {
     return this.page.locator("#toast");

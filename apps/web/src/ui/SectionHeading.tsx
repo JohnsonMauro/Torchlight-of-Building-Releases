@@ -3,7 +3,7 @@ import { HelpButton } from "./HelpButton";
 
 interface SectionHeadingProps {
   title: string;
-  /** The controls help topic for the "?" beside the title (src/app/tooltips/qol-help.js). */
+  /** The controls help topic for the "?" beside the title (apps/web/src/ui/help-topics.ts). */
   help?: string;
   /** The figure on the right: a small caption over a large value. */
   total?: { label: string; id: string; value: ReactNode };

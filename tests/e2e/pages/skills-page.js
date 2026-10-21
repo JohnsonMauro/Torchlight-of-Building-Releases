@@ -59,7 +59,7 @@ export class SkillsPage {
     return this.selector().getByRole("button", { name: "Confirm", exact: true });
   }
   tooltip() {
-    return this.page.locator("#planner-tooltip");
+    return this.page.getByRole("tooltip");
   }
   toast() {
     return this.page.locator("#toast");

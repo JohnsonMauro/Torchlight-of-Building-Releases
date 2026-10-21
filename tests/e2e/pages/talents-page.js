@@ -72,7 +72,7 @@ export class TalentsPage {
     return this.page.locator("#prism-inventory-dialog");
   }
   tooltip() {
-    return this.page.locator("#planner-tooltip");
+    return this.page.getByRole("tooltip");
   }
   toast() {
     return this.page.locator("#toast");

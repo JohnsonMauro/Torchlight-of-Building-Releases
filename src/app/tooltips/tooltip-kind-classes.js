@@ -1,7 +1,7 @@
 // Tailwind class lists of the planner tooltip kinds whose content is an HTML string: talent nodes and core talents,
 // installed prisms, Pactspirits and pact nodes, slates, hero memories, Sage's scents, hero traits and followers. The
 // frame of each kind (size, border, background, padding) and the colour it exposes (--tip-accent, --tip-edge, --tip-name)
-// are #planner-tooltip's (apps/web/src/shell/planner-tooltip-classes.ts), and so are the coverage badges; these lists
+// are #planner-tooltip's (apps/web/src/ui/tooltip/tooltip-classes.ts), and so are the coverage badges; these lists
 // draw the content. Literal strings, so Tailwind finds every class.
 
 // Talent nodes and core talents (talent-tooltips.js); --tip-accent follows the node type.

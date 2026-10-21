@@ -1,4 +1,4 @@
-import { PLANNER_TOOLTIP } from "./planner-tooltip-classes";
+import { PLANNER_TOOLTIP } from "../ui/tooltip/tooltip-classes";
 
 // The planner's one tooltip: src/app/tooltips/planner-tooltips.js fills it, shows it ("visible") and places it.
 export function PlannerTooltip() {

@@ -54,7 +54,7 @@ export class SlatesPage {
     return this.page.locator("#slate-editor");
   }
   tooltip() {
-    return this.page.locator("#planner-tooltip");
+    return this.page.getByRole("tooltip");
   }
   toast() {
     return this.page.locator("#toast");

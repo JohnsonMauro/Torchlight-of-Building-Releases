@@ -74,7 +74,7 @@ export class HeroPage {
     return this.page.locator("#skill-selector");
   }
   tooltip() {
-    return this.page.locator("#planner-tooltip");
+    return this.page.getByRole("tooltip");
   }
   toast() {
     return this.page.locator("#toast");

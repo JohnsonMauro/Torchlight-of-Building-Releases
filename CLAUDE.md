@@ -72,6 +72,12 @@ planner still reaches into the page in many places (DOM lookups, `classList`, `s
 HTML strings); `tests/unit/dom-ratchet.test.js` counts them and they may only go down — lower its baseline when a
 change removes some.
 
+Tooltips are components: wrap the element in `<Tooltip content={() => <SomethingTooltip … />} kind="…">`
+(`apps/web/src/ui/tooltip/`; `TooltipHost` places it, follows the pointer, hides it on scroll and shows it inside an open
+dialog). Each domain owns its tooltip's content component; the planner gives the data through its view source. The
+legacy planner tooltip (`src/app/tooltips/`, `#planner-tooltip`) still serves the kinds not moved yet; a kind that moves
+leaves its selector there. Tests find either by `getByRole("tooltip")`.
+
 ## Refactor direction (2026-10-20)
 
 Refactor by exclusion: delete legacy code in large blocks and write the replacement for this architecture. The safety

@@ -20,7 +20,6 @@ import { gearTooltipContent } from "./gear-tooltips.js";
 import { heroMemoryTooltipContent, sageScentTooltipContent } from "./hero-tooltips.js";
 import { followerSkillTooltipContent, followerTooltipContent, heroTraitTooltipContent } from "./hero-trait-tooltips.js";
 import { pactNodeTooltipContent, pactspiritTooltipContent } from "./pact-tooltips.js";
-import { qolHelpTooltipHtml } from "./qol-help.js";
 import { skillTooltipContent } from "./skill-tooltips.js";
 import { slateTooltipContent } from "./slate-tooltips.js";
 import { coreTalentTooltipContent, talentNodeTooltipContent } from "./talent-tooltips.js";
@@ -36,7 +35,7 @@ import {
 } from "./tooltip-host.js";
 
 const tooltipSelector =
-  "[data-damage-source],.talent-node,.core-talent,.equipment-item,.inventory-item,[data-skill-tooltip],[data-support-tooltip],.skill-primary-socket:not(.empty-skill-slot),[data-hero-trait-support-id],[data-hero-trait-tooltip],[data-tree-extra-row-tooltip],[data-sage-scent-tooltip],.hero-memory-socket.filled,.hero-memory-item,.slate-piece,.crafted-slate-item,[data-pactspirit-name],[data-pact-node-tooltip],[data-follower-skill-tooltip],[data-follower-tooltip],[data-qol-help]";
+  "[data-damage-source],.talent-node,.core-talent,.equipment-item,.inventory-item,[data-skill-tooltip],[data-support-tooltip],.skill-primary-socket:not(.empty-skill-slot),[data-hero-trait-support-id],[data-hero-trait-tooltip],[data-tree-extra-row-tooltip],[data-sage-scent-tooltip],.hero-memory-socket.filled,.hero-memory-item,.slate-piece,.crafted-slate-item,[data-pactspirit-name],[data-pact-node-tooltip],[data-follower-skill-tooltip],[data-follower-tooltip]";
 function damageSourceTooltipContent(element) {
   const source = element.dataset.damageSource;
   const category = element.dataset.damageCategory || "";
@@ -267,7 +266,6 @@ function damageSourceTooltipContent(element) {
 // The tooltip content of an element: the first kind whose selector it matches, else its own text.
 const tooltipKinds = [
   ["[data-tree-extra-row-tooltip]", () => ({ traitHtml: treeExtraRowTooltipHtml() })],
-  ["[data-qol-help]", (element) => ({ qolHtml: qolHelpTooltipHtml(element.dataset.qolHelp) })],
   ["[data-damage-source]", damageSourceTooltipContent],
   ["[data-sage-scent-tooltip]", sageScentTooltipContent],
   [".core-talent", coreTalentTooltipContent],
@@ -283,7 +281,7 @@ const tooltipKinds = [
   [".equipment-item,.inventory-item", gearTooltipContent],
 ];
 // The classes of the plain title / text / footer content, and of a damage path source's breakdown (a fixed title, a
-// scrolling text, a fixed footer; the frame is in apps/web/src/shell/planner-tooltip-classes.ts).
+// scrolling text, a fixed footer; the frame is in apps/web/src/ui/tooltip/tooltip-classes.ts).
 const GENERIC_CONTENT = {
   title: "block font-display text-base font-bold text-accent",
   body: "mt-2 block max-h-[300px] overflow-hidden text-xs/normal whitespace-pre-line text-text",
@@ -306,7 +304,7 @@ function plannerTooltipContent(element) {
 }
 function showPlannerTooltip(element, x, y) {
   cancelTooltipHide();
-  if (FOCUSED_VIEWS.has(ui.activeWorkspaceView) && !element.matches("[data-damage-source],[data-qol-help]")) return;
+  if (FOCUSED_VIEWS.has(ui.activeWorkspaceView) && !element.matches("[data-damage-source]")) return;
   const content = withRenderPass(() => plannerTooltipContent(element));
   if (!content) return hidePlannerTooltip();
   const actionHint = element.getAttribute("title") || element.dataset.tooltipHint;
@@ -333,7 +331,6 @@ function showPlannerTooltip(element, x, y) {
   tooltip.classList.toggle("follower-tooltip", Boolean(content.followerTooltip));
   tooltip.classList.toggle("slate-tooltip", Boolean(content.slateHtml));
   tooltip.classList.toggle("pact-tooltip", Boolean(content.pactHtml));
-  tooltip.classList.toggle("qol-help-tooltip", Boolean(content.qolHtml));
   tooltip.classList.toggle("prism-tooltip", Boolean(content.prismHtml));
   tooltip.classList.toggle("basic-talent-tooltip", Boolean(content.basicTalentHtml));
   tooltip.classList.toggle("damage-source-tooltip", element.matches("[data-damage-source]"));
@@ -344,7 +341,6 @@ function showPlannerTooltip(element, x, y) {
   tooltip.dataset.talentType = content.basicTalentHtml ? content.talentType || element.dataset.nodeType || "micro" : "";
   const generic = sourceSummary ? SOURCE_SUMMARY_CONTENT : GENERIC_CONTENT;
   tooltip.innerHTML =
-    content.qolHtml ||
     content.basicTalentHtml ||
     content.prismHtml ||
     content.pactHtml ||
@@ -382,12 +378,7 @@ export function installPlannerTooltipEvents() {
   document.addEventListener("pointerover", (event) => {
     if (performance.now() < tooltipScrollQuietUntil) return;
     const target = event.target.closest(tooltipSelector);
-    if (
-      target &&
-      !target.contains(event.relatedTarget) &&
-      !(event.pointerType === "touch" && target.matches("[data-qol-help]"))
-    )
-      showPlannerTooltip(target, event.clientX, event.clientY);
+    if (target && !target.contains(event.relatedTarget)) showPlannerTooltip(target, event.clientX, event.clientY);
   });
   document.addEventListener("pointermove", (event) => {
     if (event.target.closest("#planner-tooltip.damage-source-tooltip")) return;
@@ -395,11 +386,7 @@ export function installPlannerTooltipEvents() {
   });
   document.addEventListener("pointerout", (event) => {
     const target = event.target.closest(tooltipSelector);
-    if (
-      target &&
-      !target.contains(event.relatedTarget) &&
-      !(event.pointerType === "touch" && target.matches("[data-qol-help]"))
-    ) {
+    if (target && !target.contains(event.relatedTarget)) {
       if (target.matches("[data-damage-source]")) hidePlannerTooltipSoon();
       else hidePlannerTooltip();
     }
@@ -418,35 +405,6 @@ export function installPlannerTooltipEvents() {
   document.addEventListener("focusout", (event) => {
     if (event.target.closest(tooltipSelector)) hidePlannerTooltip();
   });
-  document.addEventListener(
-    "pointerdown",
-    (event) => {
-      const button = event.target.closest?.("[data-qol-help]");
-      qolHelpOpenAtPointerDown = button
-        ? event.pointerType !== "mouse" &&
-          tooltipAnchorElement === button &&
-          $("#planner-tooltip").classList.contains("visible")
-        : null;
-    },
-    true,
-  );
-  document.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-qol-help]");
-    if (!button) return;
-    event.preventDefault();
-    const open =
-      qolHelpOpenAtPointerDown ??
-      (tooltipAnchorElement === button && $("#planner-tooltip").classList.contains("visible"));
-    qolHelpOpenAtPointerDown = null;
-    if (open) hidePlannerTooltip();
-    else {
-      const box = button.getBoundingClientRect();
-      showPlannerTooltip(button, box.right, box.top);
-    }
-  });
 }
 
 let tooltipScrollQuietUntil = 0;
-// Section "?" help: hover and keyboard focus show it (above); a tap, pen click or Enter / Space toggles it
-// (a mouse click only shows it, since hovering already did). Whether it was open is read at pointerdown.
-let qolHelpOpenAtPointerDown = null;

@@ -34,6 +34,7 @@ import { FeedbackDialog } from "../features/feedback/FeedbackDialog";
 import { ImportGameLogDialog } from "../features/builds/ImportGameLogDialog";
 import { ResetBuildConfirmDialog } from "../features/builds/ResetBuildConfirmDialog";
 import { PlannerTooltip } from "./PlannerTooltip";
+import { TooltipHost } from "../ui/tooltip/TooltipHost";
 import { Toast } from "./Toast";
 import { OtherTabNotice } from "./OtherTabNotice";
 import { RestoreBackupInput } from "../features/builds/RestoreBackupInput";
@@ -82,6 +83,7 @@ export function AppShell() {
       <ImportGameLogDialog />
       <ResetBuildConfirmDialog />
       <PlannerTooltip />
+      <TooltipHost />
       <Toast />
       <OtherTabNotice />
       <RestoreBackupInput />

@@ -19,7 +19,7 @@ import { curseLimitNoteHtml, curseLineLeftOutReason } from "../planner/curse-not
 import { titleCase } from "../planner/page.js";
 import { currentEquipmentImpact, currentPlanner, disabledEquipmentSlots } from "../planner/session.js";
 
-// The parts' classes. The frame (apps/web/src/shell/planner-tooltip-classes.ts) gives the rarity's colours as
+// The parts' classes. The frame (apps/web/src/ui/tooltip/tooltip-classes.ts) gives the rarity's colours as
 // --tip-accent / --tip-edge, and --tip-name turns pink for six-affix and Priceless items.
 const HEAD =
   "gear-tooltip-head grid grid-cols-[32px_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1.5 border-b border-(--tip-edge) px-3 pt-3 pb-2.5";

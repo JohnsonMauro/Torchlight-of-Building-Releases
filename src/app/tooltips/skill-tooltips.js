@@ -29,7 +29,7 @@ import { activeSkillBoardTab, skillRoleLabels } from "../skills/skill-board.js";
 import { highlightedSupportEffect, supportDisplaySs13 } from "../skills/support-display-ss13.js";
 import { traitGrantNoteHtml } from "../hero/trait-keyword-markup.js";
 
-// The parts' classes. The frame (apps/web/src/shell/planner-tooltip-classes.ts) gives the skill, support or aura
+// The parts' classes. The frame (apps/web/src/ui/tooltip/tooltip-classes.ts) gives the skill, support or aura
 // colour as --tip-name and --tip-edge.
 const HEAD = "skill-tooltip-head grid grid-cols-[34px_minmax(0,1fr)] items-center gap-2 px-3 pt-2.5 pb-1";
 const ICON = "size-8 rounded border border-(--tip-edge) bg-sunken object-contain [&[src='']]:invisible";

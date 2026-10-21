@@ -125,7 +125,7 @@ test("the follower selector shows a follower's tooltip, closes from × and outsi
   await expect(async () => {
     await page.mouse.move(0, 0);
     await follower.selectorChoice("Lion Queen Normal").hover();
-    await expect(dialog.locator("#planner-tooltip")).toBeVisible({ timeout: 500 });
+    await expect(dialog.getByRole("tooltip")).toBeVisible({ timeout: 500 });
   }).toPass();
   await expect(follower.tooltip()).toContainText("Lion Queen");
   const search = dialog.getByRole("searchbox", { name: "Search followers" });

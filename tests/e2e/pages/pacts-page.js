@@ -45,7 +45,7 @@ export class PactsPage {
     return this.page.locator("#pact-kismet-summary");
   }
   tooltip() {
-    return this.page.locator("#planner-tooltip");
+    return this.page.getByRole("tooltip");
   }
   pactspiritSelector() {
     return this.page.locator("#pactspirit-selector");
