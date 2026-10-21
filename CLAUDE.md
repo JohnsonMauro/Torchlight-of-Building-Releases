@@ -65,6 +65,12 @@ A React view reads a view source (`useViewSource("equipment")`); a user action c
 `plannerState`, calls `persistPlannerState()` (save, then one queued render) or `viewSourceChanged(name)`; the view
 re-reads its source.
 
+Page state the UI shows belongs in a source too, not in the DOM: the open view is the `workspace` source (each section
+hides itself with `useViewOpen`, the rail and the build strip light their tab, `PageMain` picks the layout). The
+planner still reaches into the page in many places (DOM lookups, `classList`, `style`, `hidden`, `innerHTML`, listeners,
+HTML strings); `tests/unit/dom-ratchet.test.js` counts them and they may only go down — lower its baseline when a
+change removes some.
+
 ## Refactor direction (2026-10-20)
 
 Refactor by exclusion: delete legacy code in large blocks and write the replacement for this architecture. The safety

@@ -12,7 +12,7 @@ import { EquipmentView } from "../pages/build/EquipmentView";
 import { PactsView } from "../pages/build/PactsView";
 import { SlatesView } from "../pages/build/SlatesView";
 import { SiteDisclaimer } from "./SiteDisclaimer";
-import { CharacterColumn } from "../features/hero/HeroPanel";
+import { PageMain } from "./PageMain";
 import { PactspiritSelectorDialog } from "../features/pacts/PactspiritSelectorDialog";
 import { KismetCrafterDialog } from "../features/pacts/KismetCrafterDialog";
 import { FateSlotSelectorDialog } from "../features/pacts/FateSlotSelectorDialog";
@@ -48,9 +48,7 @@ export function AppShell() {
       <SiteHeader />
       <ViewRail />
       <LoadoutStrip />
-      {/* The build's tabs (body.unified-planner): the character column, and the open tab's section beside it; the other views show one, padded. */}
-      <main className="ml-16 px-6 pt-6 pb-20 max-[760px]:px-3 max-[760px]:pt-4 max-[760px]:pb-28 in-[.unified-planner]:grid in-[.unified-planner]:grid-cols-[minmax(240px,300px)_minmax(0,1fr)] in-[.unified-planner]:items-start in-[.unified-planner]:gap-6 max-[900px]:in-[.unified-planner]:grid-cols-1 max-[900px]:in-[.unified-planner]:gap-4">
-        <CharacterColumn className="hidden in-[.unified-planner]:block col-start-1 row-start-1 self-start" />
+      <PageMain>
         <BuildsView />
         <CharacterView />
         <SkillsView />
@@ -62,7 +60,7 @@ export function AppShell() {
         <PactsView />
         <SlatesView />
         <SiteDisclaimer />
-      </main>
+      </PageMain>
       <PactspiritSelectorDialog />
       <KismetCrafterDialog />
       <FateSlotSelectorDialog />

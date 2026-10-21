@@ -1,10 +1,12 @@
 import { KismetSummary, PactSlots, PactspiritCount } from "../../features/pacts/PactsSection";
 import { buildSectionPlace, sectionCardClass } from "../../ui/section-card";
 import { SectionHeading } from "../../ui/SectionHeading";
+import { useViewOpen } from "../../ui/use-workspace";
 
 export function PactsView() {
+  const open = useViewOpen("pacts");
   return (
-    <section id="pacts-view" className={`${sectionCardClass} ${buildSectionPlace}`} hidden>
+    <section id="pacts-view" className={`${sectionCardClass} ${buildSectionPlace}`} hidden={!open}>
       <SectionHeading
         title="Pactspirits"
         help="pacts"

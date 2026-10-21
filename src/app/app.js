@@ -33,7 +33,7 @@ import {
   setOpenViewsRenderer,
 } from "./planner/session.js";
 import { DAMAGE_PATH_KEY, readWorkspaceLocation, saveWorkspaceLocation, ui } from "./planner/ui-state.js";
-import { activateWorkspaceView, renderWorkspaceViews } from "./planner/workspace.js";
+import { activateWorkspaceView, workspaceViewSources, renderWorkspaceViews } from "./planner/workspace.js";
 import { skillBoardCommands, skillBoardViewSources } from "./skills/skill-board.js";
 import { skillSelectorViewSources } from "./skills/skill-selector-source.js";
 import { installSkillSelectorEvents, skillSelectorCommands } from "./skills/skill-selector.js";
@@ -69,6 +69,7 @@ providePlannerCommands({
   ...statsCommands,
 });
 for (const sources of [
+  workspaceViewSources,
   followerViewSources,
   pactViewSources,
   slateViewSources,

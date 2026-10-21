@@ -14,6 +14,8 @@ export const ui = {
   selectedEquipmentSlot: "helmet",
   activeHeroTraitSupportId: "",
 };
+/** The views that show one page on their own (the rest are the build's tabs, beside the character column). */
+export const FOCUSED_VIEWS = new Set(["builds", "character", "configuration"]);
 // The damage path tabs' keys (src/app/stats/damage-path-panel.js): a skill's hits, its ailments, a minion, the combined view.
 export const DAMAGE_PATH_KEY = /^(hit|ignite|reaping|combined|hit:[\w:-]+|ailment:[\w:-]+|minion:[\w:-]+)$/;
 const workspaceLocationKey = "tli-builder:workspace-location:v1";

@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import { StrokeIcon } from "../ui/StrokeIcon";
+import { useWorkspace } from "../ui/use-workspace";
 
 // The workspace views, as a rail of icons fixed to the page's left edge under the header; hovering a view slides its
-// name out beside the rail. The tabs keep the "view-tab" class and data-view: src/app/planner/workspace.js marks the
-// active one, and the e2e page objects click them by it.
+// name out beside the rail. A tab is lit (`active`) for its focused view; Build stays lit on every build tab. The
+// "view-tab" class and data-view are what the e2e page objects click (and the planner's click handler reads).
 
 interface ViewTabProps {
   view: string;
@@ -58,9 +59,11 @@ const viewTabs: ViewTabProps[] = [
 ];
 
 function ViewTab({ view, label, icon }: ViewTabProps) {
+  const open = useWorkspace();
+  const lit = open.focused ? open.view === view : view === "hero";
   return (
     <button
-      className={`view-tab group relative h-16 w-full shrink-0 cursor-pointer border-0 border-l-2 border-transparent bg-transparent hover:bg-raised focus-visible:bg-raised focus-visible:outline-none on:border-l-accent on:bg-accent/10 ${view === "hero" ? "active" : ""}`}
+      className={`view-tab group relative h-16 w-full shrink-0 cursor-pointer border-0 border-l-2 border-transparent bg-transparent hover:bg-raised focus-visible:bg-raised focus-visible:outline-none on:border-l-accent on:bg-accent/10 ${lit ? "active" : ""}`}
       type="button"
       data-view={view}
       aria-label={label}

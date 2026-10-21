@@ -1,11 +1,11 @@
 import { HelpButton } from "../ui/HelpButton";
+import { useWorkspace } from "../ui/use-workspace";
 
 // The open build under the header, beside the view rail: its name in a flat block (right-click or the rename key
 // renames it, src/app/builds/build-library-controller.js); whether it is saved sits in the header (SiteHeader).
 // src/app/planner/page.js updateStorageStatus fills the tab's <span> and <strong>; renaming marks the tab "renaming"
 // and puts a .loadout-tab-rename input in it. Beside the name, the build's tabs, one per part of the character as in
-// the game: each is a "view-tab" with data-view (its section, #<view>-view) and data-build-tab;
-// src/app/planner/workspace.js marks the open one active.
+// the game: each is a "view-tab" with data-view (its section, #<view>-view), lit from the workspace source.
 const buildTabs = [
   ["hero", "Hero Trait"],
   ["follower", "Follower"],
@@ -14,6 +14,25 @@ const buildTabs = [
   ["pacts", "Pacts"],
   ["talents", "Talent"],
 ] as const;
+
+/** The build's tabs; the open one is lit (`active`), none while a focused view is open. */
+function BuildTabs() {
+  const open = useWorkspace();
+  return (
+    <nav className="ml-4 flex min-w-0 items-stretch overflow-x-auto max-sm:ml-1" aria-label="Build sections">
+      {buildTabs.map(([view, label]) => (
+        <button
+          key={view}
+          type="button"
+          className={`view-tab tab shrink-0 px-4 text-xs font-bold tracking-wider uppercase ${open.view === view ? "active" : ""}`}
+          data-view={view}
+        >
+          {label}
+        </button>
+      ))}
+    </nav>
+  );
+}
 
 export function LoadoutStrip() {
   return (
@@ -32,19 +51,7 @@ export function LoadoutStrip() {
         </strong>
       </div>
       <HelpButton topic="builds" label="Builds" className="self-center" />
-      <nav className="ml-4 flex min-w-0 items-stretch overflow-x-auto max-sm:ml-1" aria-label="Build sections">
-        {buildTabs.map(([view, label]) => (
-          <button
-            key={view}
-            type="button"
-            className={`view-tab tab shrink-0 px-4 text-xs font-bold tracking-wider uppercase ${view === "hero" ? "active" : ""}`}
-            data-view={view}
-            data-build-tab=""
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
+      <BuildTabs />
     </div>
   );
 }

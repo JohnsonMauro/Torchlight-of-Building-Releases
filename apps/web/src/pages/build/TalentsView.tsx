@@ -6,14 +6,16 @@ import {
   TalentStage,
   TalentTabs,
 } from "../../features/talents/TalentTree";
+import { useViewOpen } from "../../ui/use-workspace";
 
 export function TalentsView() {
+  const open = useViewOpen("talents");
   return (
     // The Talent tab (src/app/planner/workspace.js "talents"): the talent trees beside the talent panel; under 760px
     // they stack.
     <section
       id="talents-view"
-      hidden
+      hidden={!open}
       className={`app-view ${buildSectionPlace} grid min-w-0 scroll-mt-[82px] grid-cols-[230px_minmax(0,1fr)] items-start gap-x-0 gap-y-3 max-[1100px]:grid-cols-[205px_minmax(0,1fr)] max-[1100px]:gap-3 max-[760px]:block min-[1500px]:grid-cols-[minmax(230px,13fr)_minmax(700px,63fr)] min-[1500px]:gap-y-4`}
     >
       <div

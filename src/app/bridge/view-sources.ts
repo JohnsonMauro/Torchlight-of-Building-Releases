@@ -37,6 +37,8 @@ export interface DialogSession {
 }
 
 export interface ViewSources {
+  /** The open view (src/app/planner/workspace.js): a build tab, or a focused view (builds, character, configuration). */
+  workspace: { view: string; focused: boolean };
   configuration: ConfigurationSource;
   /** The Pactspirits section (src/app/bridge/pacts-view-model.ts). */
   pacts: PactsView;

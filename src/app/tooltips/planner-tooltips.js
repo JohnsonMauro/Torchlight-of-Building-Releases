@@ -14,6 +14,7 @@ import { escapeHtml } from "../html.js";
 import { selectedPactspiritLevel } from "../pacts/pacts-controller.js";
 import { $ } from "../planner/page.js";
 import { currentPlanner, equippedSlateIds, plannerState, slatesForBoard, withRenderPass } from "../planner/session.js";
+import { FOCUSED_VIEWS, ui } from "../planner/ui-state.js";
 import { effectLabel, formatEffect } from "../talents/talent-labels.js";
 import { gearTooltipContent } from "./gear-tooltips.js";
 import { heroMemoryTooltipContent, sageScentTooltipContent } from "./hero-tooltips.js";
@@ -305,8 +306,7 @@ function plannerTooltipContent(element) {
 }
 function showPlannerTooltip(element, x, y) {
   cancelTooltipHide();
-  if (!document.body.classList.contains("unified-planner") && !element.matches("[data-damage-source],[data-qol-help]"))
-    return;
+  if (FOCUSED_VIEWS.has(ui.activeWorkspaceView) && !element.matches("[data-damage-source],[data-qol-help]")) return;
   const content = withRenderPass(() => plannerTooltipContent(element));
   if (!content) return hidePlannerTooltip();
   const actionHint = element.getAttribute("title") || element.dataset.tooltipHint;

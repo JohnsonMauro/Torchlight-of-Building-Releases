@@ -4,6 +4,7 @@ import { DamagePath } from "../../features/stats/DamagePath";
 import { StatSheet } from "../../features/stats/StatSheet";
 import { STATS_BUTTON } from "../../features/stats/stat-sheet-classes";
 import { useViewSource } from "../../ui/use-view-source";
+import { useViewOpen } from "../../ui/use-workspace";
 
 const PANELS: { id: StatsPanel; label: string }[] = [
   { id: "sheet", label: "Stat sheet" },
@@ -16,10 +17,11 @@ const PANELS: { id: StatsPanel; label: string }[] = [
 // controls row (a negative margin; the row leaves room for it), and on a wide one the stat sheet's two banners sit side
 // by side.
 export function CharacterView() {
+  const open = useViewOpen("character");
   const view = useViewSource("stats");
   const panel = view?.panel ?? "sheet";
   return (
-    <section id="character-view" className="app-view leading-[normal]" hidden>
+    <section id="character-view" className="app-view leading-[normal]" hidden={!open}>
       <div className="talent-page-heading hidden">
         <div>
           <p className="eyebrow">Candidate build</p>

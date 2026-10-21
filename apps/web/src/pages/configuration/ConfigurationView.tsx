@@ -1,9 +1,11 @@
 import { ConfigurationPanel } from "../../features/configuration/ConfigurationPanel";
 import { useViewSource } from "../../ui/use-view-source";
+import { useViewOpen } from "../../ui/use-workspace";
 
 export function ConfigurationView() {
+  const open = useViewOpen("configuration");
   return (
-    <section id="configuration-view" className="app-view" hidden>
+    <section id="configuration-view" className="app-view" hidden={!open}>
       <div id="combat-conditions" className="configuration-card">
         <Configuration />
       </div>
