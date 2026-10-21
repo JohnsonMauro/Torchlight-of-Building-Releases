@@ -28,6 +28,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - run: pnpm typecheck
       - run: pnpm format:check
       - run: pnpm test
       # Builds dist-web/ and runs the UI smoke on the raw modules and on the build (Google Chrome ships with the runner).
