@@ -18,7 +18,7 @@ export function MemoryTooltip({
     <Tooltip
       content={() => {
         const view = plannerQueries().heroMemoryTooltip(target);
-        return view ? { body: <MemoryCard view={view} />, kind: "memory-tooltip", rarity: view.rarity } : null;
+        return view ? { body: <MemoryCard view={view} />, kind: classes.MEMORY_FRAME, rarity: view.rarity } : null;
       }}
     >
       {children}
@@ -40,7 +40,8 @@ export function ScentTooltip({ kind, children }: { kind: string; children: Toolt
   );
 }
 
-function MemoryCard({ view }: { view: MemoryTooltipView }) {
+/** A memory's card (its tooltip, and a damage path source naming it). */
+export function MemoryCard({ view }: { view: MemoryTooltipView }) {
   return (
     <>
       <div className={classes.HEAD}>

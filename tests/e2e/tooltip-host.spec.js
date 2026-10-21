@@ -137,3 +137,21 @@ test("a damage source naming one item shows that item's tooltip", async ({ page 
   await expect(tooltip(page)).toContainText("Require Lv");
   await planner.expectNoErrors();
 });
+
+test("a damage source naming a skill or a support shows its card; another shows its breakdown", async ({ page }) => {
+  const planner = new PlannerPage(page);
+  await planner.open(youga);
+  await planner.showView("character");
+  await planner.statsPanelTab("damage-path").click();
+  await hoverUntilShown(page, page.locator('[data-damage-source="Homing Frost Bolt level 26"]').first());
+  // The frame's kind variants spell every kind in its class list: tell the cards apart by their content.
+  const breakdown = "Source breakdown · scroll for more";
+  await expect(tooltip(page)).toContainText("Homing Frost Bolt:");
+  await expect(tooltip(page)).not.toContainText(breakdown);
+  await hoverUntilShown(page, page.locator('[data-damage-source="Support: Slow Projectile"]').first());
+  await expect(tooltip(page)).toContainText("Slow Projectile:");
+  await expect(tooltip(page)).not.toContainText(breakdown);
+  await hoverUntilShown(page, page.locator('[data-damage-source="Critical strike chance"]').first());
+  await expect(tooltip(page)).toContainText(breakdown);
+  await planner.expectNoErrors();
+});

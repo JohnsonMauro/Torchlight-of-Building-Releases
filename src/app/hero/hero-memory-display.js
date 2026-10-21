@@ -1,6 +1,6 @@
 // How the HERO tab names and draws a hero's memories and trait supports: the memory type of each tier, the memory icons,
 // whether a memory is revived, and the heroes whose base trait takes a support. Shared by the HERO tab
-// (src/app/bridge/hero-traits-view-model.ts) and the planner's memory dialogs and tooltips (src/app/hero/hero-memory-controller.js, src/app/tooltips/hero-tooltips.js).
+// (src/app/bridge/hero-traits-view-model.ts) and the planner's memory dialogs and tooltips (src/app/hero/hero-memory-controller.js).
 export const memoryTypesByTier = {
   level45: "Memory of Origin",
   level60: "Memory of Discipline",

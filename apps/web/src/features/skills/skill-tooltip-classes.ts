@@ -25,3 +25,10 @@ export const LINE_COVERAGE = "ml-1.5 inline-block px-1.5 py-0.5 align-middle";
 export const SOURCE = "block border-t border-line px-3 py-2 text-[10px] tracking-widest text-dim uppercase";
 /** What the element does on a click or drag (a board support's), under the content. */
 export const HINT = "block border-t border-line bg-raised px-3 py-2 text-xs/snug text-muted";
+
+/** The frame's kind (apps/web/src/ui/tooltip/tooltip-classes.ts) by the card's look. */
+export const FRAMES: Record<"skill" | "support" | "aura", string> = {
+  skill: "skill-tooltip",
+  support: "skill-tooltip support-tooltip",
+  aura: "skill-tooltip aura-tooltip",
+};

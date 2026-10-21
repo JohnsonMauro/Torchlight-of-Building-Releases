@@ -1,8 +1,6 @@
 // Curse limit notes: which skill bar curses and triggered curse lines the calculation left out, and why.
 import { curseSlotSummary } from "../../engine/skills/curse-limit.js";
-import { coverageBadge } from "./calculation-coverage.js";
 import { equippedSlotForInventoryItem } from "../gear/gear-items.js";
-import { escapeHtml } from "../html.js";
 import { currentPlanner } from "./session.js";
 
 // Curse limit (user-confirmed 2026-10-19: slots go in skill bar order, then gear, then pacts): the skill bar curses and the
@@ -46,11 +44,4 @@ export function curseItemOffReason(item) {
   if (!item) return "";
   const hit = curseLinesLeftOut().find((curse) => curseOnItem(curse, item));
   return hit ? hit.reason || curseLimitState()?.reason || "curse limit reached" : "";
-}
-export function curseBadge(status, text) {
-  const reason = curseLineLeftOutReason(text);
-  return coverageBadge(status, reason ? `${status}: ${reason}` : "");
-}
-export function curseLimitNoteHtml(reason) {
-  return reason ? `<p class="curse-limit-note">Not applied: ${escapeHtml(reason)}</p>` : "";
 }

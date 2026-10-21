@@ -30,7 +30,8 @@ export function GearTooltip({ target, children }: { target: GearTarget; children
   );
 }
 
-function GearTooltipCard({ view }: { view: GearTooltipView }) {
+/** An item's card (its tooltip, and a damage path source naming one item). */
+export function GearTooltipCard({ view }: { view: GearTooltipView }) {
   return (
     <>
       <div className={classes.HEAD}>

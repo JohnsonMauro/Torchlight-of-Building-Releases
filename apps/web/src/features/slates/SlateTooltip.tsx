@@ -11,7 +11,7 @@ export function SlateTooltip({ id, children }: { id: string; children: TooltipAn
     <Tooltip
       content={() => {
         const view = plannerQueries().slateTooltip(id);
-        return view ? { body: <SlateCard view={view} />, kind: "slate-tooltip" } : null;
+        return view ? { body: <SlateCard view={view} />, kind: classes.FRAME } : null;
       }}
     >
       {children}
@@ -19,7 +19,8 @@ export function SlateTooltip({ id, children }: { id: string; children: TooltipAn
   );
 }
 
-function SlateCard({ view }: { view: SlateTooltipView }) {
+/** A slate's card (its tooltip, and a damage path source naming it). */
+export function SlateCard({ view }: { view: SlateTooltipView }) {
   const { rotation, flipX, flipY } = view.pose;
   return (
     <>

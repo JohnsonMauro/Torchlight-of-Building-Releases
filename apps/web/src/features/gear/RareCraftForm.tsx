@@ -1,4 +1,4 @@
-// The equipment crafter's rare and Vorax form: name, Item Level, type, base, Belt Blend, two base affixes, Equipment
+// The equipment crafter's rare and Vorax form: name, Item Level (a rare's up to 89, or Priceless: 100), type, base, Belt Blend, two base affixes, Equipment
 // Energy, TOWER Sequence, three prefixes (a Vorax item's organ affixes, each able to inherit a Legendary affix) and three
 // suffixes with their tiers and rolls, and the preview. Each control is a change to the planner's draft
 // (src/app/gear/equipment-craft.ts); the fields a slot does not allow stay hidden, as before.
@@ -18,6 +18,8 @@ import {
   MOD_BOX_LEGENDARY,
 } from "./crafter-classes";
 import { Choices, ItemPreview, Options, RollInputs } from "./crafter-parts";
+import { AffixList } from "./AffixList";
+import { CraftPath } from "./CraftPicker";
 
 // The Vorax Legendary toggle: an L badge and a switch whose knob moves right and takes the legendary orange when
 // pressed.
@@ -29,7 +31,8 @@ const LEGENDARY_TOGGLE_SWITCH =
 
 const change = (craftChange: CraftChange) => plannerCommands().changeEquipmentCraft(craftChange);
 
-function CraftAffix({ affix }: { affix: CraftAffixView }) {
+/** A slot: its family (a select, or on a rare the family checked in its list), tier and rolls. */
+function CraftAffix({ affix, listed = false }: { affix: CraftAffixView; listed?: boolean }) {
   const { index, config } = affix,
     active = Boolean(affix.legendaryToggle?.active);
   return (
@@ -49,17 +52,19 @@ function CraftAffix({ affix }: { affix: CraftAffixView }) {
             <i className={LEGENDARY_TOGGLE_SWITCH} />
           </button>
         ) : null}
-        <span className="flex-1">{affix.label}</span>
+        <span className="flex-1">{listed ? affix.familyLabel : affix.label}</span>
       </span>
-      <select
-        className={CONTROL}
-        data-craft-affix-family={index}
-        value={affix.family}
-        onChange={(event) => change({ kind: "affixFamily", index, value: event.target.value })}
-      >
-        <option value="">None</option>
-        <Options options={affix.families} />
-      </select>
+      {listed ? null : (
+        <select
+          className={CONTROL}
+          data-craft-affix-family={index}
+          value={affix.family}
+          onChange={(event) => change({ kind: "affixFamily", index, value: event.target.value })}
+        >
+          <option value="">None</option>
+          <Options options={affix.families} />
+        </select>
+      )}
       <div className="craft-affix-config grid gap-2" data-craft-affix-config={index}>
         {config.kind === "warning" ? (
           <small className="text-xs text-danger">No tiers available at this item level.</small>
@@ -102,7 +107,8 @@ export function RareCraftForm({ form }: { form: RareFormView }) {
   return (
     <div className={CRAFT_LAYOUT}>
       <section className={CRAFT_FORM}>
-        <div className="grid grid-cols-[minmax(0,1fr)_120px] gap-3 max-[800px]:grid-cols-1">
+        {form.path ? <CraftPath path={form.path} /> : null}
+        <div className="grid grid-cols-[minmax(0,1fr)_120px_auto] gap-3 max-[800px]:grid-cols-1">
           <label className={FIELD}>
             Name
             <input
@@ -116,38 +122,55 @@ export function RareCraftForm({ form }: { form: RareFormView }) {
           <label className={FIELD}>
             Item Level
             <input
-              className={CONTROL}
+              className={`${CONTROL} off:cursor-not-allowed off:text-muted`}
               data-craft-level=""
               type="number"
               min="1"
-              max="100"
+              max={form.levelMax}
+              disabled={form.priceless === true}
               value={form.level}
               onChange={(event) => change({ kind: "level", value: event.target.value })}
             />
           </label>
+          {form.priceless === null ? null : (
+            <label className="flex items-center gap-2 self-end pb-2.5 text-xs text-muted">
+              <input
+                type="checkbox"
+                className="size-4 accent-accent"
+                data-craft-priceless=""
+                checked={form.priceless}
+                onChange={(event) => change({ kind: "priceless", value: event.target.checked })}
+              />
+              Priceless
+            </label>
+          )}
         </div>
-        <label className={FIELD}>
-          Item Type
-          <select
-            className={CONTROL}
-            data-craft-type=""
-            value={form.type}
-            onChange={(event) => change({ kind: "type", value: event.target.value })}
-          >
-            <Options options={form.types} />
-          </select>
-        </label>
-        <label className={FIELD}>
-          Base Item
-          <select
-            className={CONTROL}
-            data-craft-base=""
-            value={form.base}
-            onChange={(event) => change({ kind: "base", value: event.target.value })}
-          >
-            <Options options={form.bases} />
-          </select>
-        </label>
+        {form.path ? null : (
+          <>
+            <label className={FIELD}>
+              Item Type
+              <select
+                className={CONTROL}
+                data-craft-type=""
+                value={form.type}
+                onChange={(event) => change({ kind: "type", value: event.target.value })}
+              >
+                <Options options={form.types} />
+              </select>
+            </label>
+            <label className={FIELD}>
+              Base Item
+              <select
+                className={CONTROL}
+                data-craft-base=""
+                value={form.base}
+                onChange={(event) => change({ kind: "base", value: event.target.value })}
+              >
+                <Options options={form.bases} />
+              </select>
+            </label>
+          </>
+        )}
         <label className={FIELD} data-belt-blend-field="" hidden={!form.beltBlendShown}>
           Belt Blend
           <select
@@ -231,14 +254,31 @@ export function RareCraftForm({ form }: { form: RareFormView }) {
             </select>
           </label>
         </div>
-        <h3 className={CRAFT_HEADING}>{form.prefixHeading}</h3>
-        {form.affixes.slice(0, 3).map((affix) => (
-          <CraftAffix key={affix.index} affix={affix} />
-        ))}
-        <h3 className={CRAFT_HEADING}>Suffixes</h3>
-        {form.affixes.slice(3).map((affix) => (
-          <CraftAffix key={affix.index} affix={affix} />
-        ))}
+        {form.affixLists ? (
+          form.affixLists.map((list, side) => (
+            <section key={list.side} className="grid gap-3">
+              <h3 className={CRAFT_HEADING}>{`${list.heading} (${list.count})`}</h3>
+              <AffixList list={list} />
+              {form.affixes
+                .slice(side * 3, side * 3 + 3)
+                .filter((affix) => affix.family)
+                .map((affix) => (
+                  <CraftAffix key={affix.family} affix={affix} listed />
+                ))}
+            </section>
+          ))
+        ) : (
+          <>
+            <h3 className={CRAFT_HEADING}>{form.prefixHeading}</h3>
+            {form.affixes.slice(0, 3).map((affix) => (
+              <CraftAffix key={affix.index} affix={affix} />
+            ))}
+            <h3 className={CRAFT_HEADING}>Suffixes</h3>
+            {form.affixes.slice(3).map((affix) => (
+              <CraftAffix key={affix.index} affix={affix} />
+            ))}
+          </>
+        )}
       </section>
       <aside id="crafted-equipment-preview" className={CRAFT_ASIDE}>
         <small className={CRAFT_ASIDE_LABEL}>Preview</small>

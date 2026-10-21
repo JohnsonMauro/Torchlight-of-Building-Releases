@@ -2,8 +2,8 @@
 // several skills deal damage), the open path's summary card (hero figure, chain of stage chips, windows, assumptions,
 // the Ill Omen card), its stages with the sources feeding each, its extra sections and notes, and the open questions
 // that apply to the build. The data is the planner's "stats" source (src/app/bridge/damage-path-view-model.ts); the
-// path, the copy, the answer form and the report are planner commands. The legacy hover tooltip reads
-// data-damage-source with data-damage-category; each chain chip draws its operator from data-op.
+// path, the copy, the answer form and the report are planner commands. Each source shows its tooltip
+// (DamageSourceTooltip); data-damage-source names its row for the tests. Each chain chip draws its operator from data-op.
 // Everything is drawn with utilities. Each stage kind sets --stage-color, read by its chain chip, its card's left
 // border and its feeders' share bars. `compact:` is a wide but short window (app.css).
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -17,6 +17,7 @@ import type {
   PathTabView,
   StageView,
 } from "@legacy/app/bridge/damage-path-view-model.ts";
+import { DamageSourceTooltip } from "./DamageSourceTooltip";
 import { NumberToggle } from "./NumberToggle";
 import { ReportCalculationButton } from "./StatSheet";
 import { HEAD_STRIP, SECTION_COUNT, SECTION_SUMMARY, TAB, TAB_COUNT } from "./stat-sheet-classes";
@@ -215,25 +216,25 @@ function Stage({ stage }: { stage: StageView }) {
           {stage.feeders.length ? (
             <ol className="damage-feeders mt-0.5 grid list-none gap-0.5 p-0" aria-label="Sources feeding this bucket">
               {stage.feeders.map((row, index) => (
-                <li
-                  key={index}
-                  className={`damage-feed ${FEED}`}
-                  tabIndex={0}
-                  data-damage-source={row.source}
-                  data-damage-category={row.category}
-                  style={row.share != null ? ({ "--share": row.share } as CSSProperties) : undefined}
-                >
-                  <span className="damage-feed-name relative min-w-0 wrap-anywhere">
-                    {row.source}
-                    {row.text ? <small className="block text-xs leading-snug text-dim">{row.text}</small> : null}
-                  </span>
-                  <em className="damage-feed-tag relative justify-self-start rounded-sm border border-line px-1.5 py-px text-[10px] font-bold tracking-wide whitespace-nowrap text-muted uppercase not-italic max-[699px]:col-start-1 max-[699px]:mt-0.5">
-                    {row.group}
-                  </em>
-                  <strong className="damage-feed-value relative min-w-14 justify-self-end text-right text-xs font-semibold whitespace-nowrap text-text tabular-nums max-[699px]:col-start-2 max-[699px]:row-span-2 max-[699px]:row-start-1">
-                    {row.value}
-                  </strong>
-                </li>
+                <DamageSourceTooltip key={index} source={row.source} category={row.category}>
+                  <li
+                    className={`damage-feed ${FEED}`}
+                    tabIndex={0}
+                    data-damage-source={row.source}
+                    style={row.share != null ? ({ "--share": row.share } as CSSProperties) : undefined}
+                  >
+                    <span className="damage-feed-name relative min-w-0 wrap-anywhere">
+                      {row.source}
+                      {row.text ? <small className="block text-xs leading-snug text-dim">{row.text}</small> : null}
+                    </span>
+                    <em className="damage-feed-tag relative justify-self-start rounded-sm border border-line px-1.5 py-px text-[10px] font-bold tracking-wide whitespace-nowrap text-muted uppercase not-italic max-[699px]:col-start-1 max-[699px]:mt-0.5">
+                      {row.group}
+                    </em>
+                    <strong className="damage-feed-value relative min-w-14 justify-self-end text-right text-xs font-semibold whitespace-nowrap text-text tabular-nums max-[699px]:col-start-2 max-[699px]:row-span-2 max-[699px]:row-start-1">
+                      {row.value}
+                    </strong>
+                  </li>
+                </DamageSourceTooltip>
               ))}
             </ol>
           ) : null}

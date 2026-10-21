@@ -2,25 +2,23 @@
 import { baseAffixTiersSs13 } from "../../data/gear/base-affixes-ss13.generated.js";
 import { craftAffixesSs13 } from "../../data/gear/craft-affixes-ss13.generated.js";
 import { craftItemTypes } from "../../data/gear/crafting-catalog-ss13.js";
+import { gearGroupOfType } from "../../data/gear/gear-groups-ss13.js";
 import { legendaryGearSs13 } from "../../data/gear/legendary-gear-ss13.generated.js";
 import { rareBaseItemsSs13 } from "../../data/gear/rare-base-items-ss13.generated.js";
 import { selenaScorchingBeamGearSs13 } from "../../data/gear/selena-scorching-beam-ss13.js";
 import { voraxCraftingSs13 } from "../../data/gear/vorax-crafting-ss13.generated.js";
 import { canDropGearInSlot } from "../../engine/gear/gear-drag.js";
 import { itemCardRarity } from "../../engine/gear/graft-legendaries.js";
-import { keywordRollParts } from "../../engine/gear/legendary-placeholder-pools.js";
 import { rareBaseById, rareBaseByName, rareBaseForItem } from "../../engine/gear/rare-base-lookup.js";
-import { neutralStatuses } from "../../engine/text/line-coverage.js";
 import { beltBlendById } from "./belt-blend-options.js";
 import { displayTexts } from "../bridge/display-text.ts";
 import { modifierTextView } from "../bridge/gear-item-view.ts";
-import { escapeHtml } from "../html.js";
-import { fullTextTitle, titleCase } from "../planner/page.js";
+import { titleCase } from "../planner/page.js";
 import { currentEquipmentImpact, disabledEquipmentSlots, plannerState } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
 import { tierMatchesResolved } from "./affix-rolls.js";
-import { tierBadgeClasses, tierBadgeKey } from "./tier-badge.ts";
-import { towerSequenceById } from "./gear-rules.js";
+import { tierBadgeKey, tierMarkerClasses } from "./tier-badge.ts";
+import { equipmentEnergyAllowed, maxEquipmentEnergy, towerSequenceById } from "./gear-rules.js";
 import { legendaryKnownModifierSignatures, modifierSignature } from "./stored-items.js";
 
 // The Inventory entry an equipped slot holds: its source, or an entry of the same name that fits the slot (a drag of
@@ -204,25 +202,6 @@ export function gearIcon(item) {
     ""
   );
 }
-// A modifier line as HTML. A keyword roll (Pantheon's Elegy's Dirges) or a named gear affix (Wield My Sword, src/engine/text/named-gear-affixes.js)
-// shows its keyword in the revived-memory keyword style; holding Alt (body.revival-alt-held, setRevivalAltDetails) expands it into its effect lines, each with its own badge when `lineStatus` (line -> status) is given, else inline "Keyword: effect". Other lines are plain text.
-export function modifierTextMarkup(text, lineStatus = null) {
-  const clean = String(text ?? "").replace(/(\d)\s+%/g, "$1%"),
-    parts = keywordRollParts(clean);
-  if (!parts) return escapeHtml(clean);
-  const effect = lineStatus
-    ? `<span class="keyword-roll-effect keyword-roll-lines">${parts.effect
-        .map((line, lineIndex) => {
-          const fixed = parts.statuses?.[lineIndex],
-            status = fixed?.status || lineStatus(line);
-          return `<span class="keyword-roll-line"><span>${escapeHtml(line)}</span><b class="${status === "In calc" ? "calculated" : neutralStatuses.has(status) ? "neutral" : "pending"}"${fullTextTitle(fixed?.reason)}>${escapeHtml(status)}</b></span>`;
-        })
-        .join("")}</span>`
-    : `<span class="keyword-roll-effect">${parts.inline ? ` · ${escapeHtml(parts.keyword)}` : ""}: ${escapeHtml(parts.effect.join("\n"))}</span>`;
-  if (parts.inline)
-    return `<span class="keyword-roll">${escapeHtml(parts.inline.before)}<span class="keyword-roll-name">${escapeHtml(parts.keyword)}</span>${escapeHtml(parts.inline.after)}${effect}</span>`;
-  return `<span class="keyword-roll"><span class="keyword-roll-name">${escapeHtml(parts.keyword)}</span>${effect}</span>${parts.rest.map((line) => `\n${escapeHtml(line)}`).join("")}`;
-}
 export function itemModifierSections(item) {
   const modifiers = item.modifiers || [],
     used = new Set(),
@@ -319,34 +298,48 @@ export function itemModifierSections(item) {
   }
   return sections.filter((section) => section.entries.length);
 }
-export function affixTierBadge(badge) {
-  if (!badge) return "";
-  return `<i class="${escapeHtml(tierBadgeClasses(tierBadgeKey(badge)))}">${escapeHtml(badge)}</i>`;
-}
 // An item's preview card as data, for the crafter and the item editor (src/app/bridge/equipment-crafter-view.ts).
+// The preview's blocks, as the game's card splits them: the implicit, the base lines, then the affixes.
+const BASE_LINE_KINDS = new Set(["Base Affix", "Belt Blend", "TOWER Sequence"]);
 export function equipmentPreviewView(item) {
-  const rarity = itemDisplayRarity(item),
-    corroded = new Set(item.corrodedModifierIndices || []);
+  const corroded = new Set(item.corrodedModifierIndices || []),
+    group = gearGroupOfType(item.base)?.group.label,
+    energy = Number(item.energy),
+    energyMax = maxEquipmentEnergy(item.itemLevel ?? 100, item.slot, item.base),
+    priceless = isPricelessItem(item);
   return {
-    className: `equipment-preview rarity-${itemCardRarity(rarity, item)}${sixAffixClass(item)}${pricelessClass(item)}${itemLevel100Class(item)}`,
+    className: `equipment-preview rarity-${itemCardRarity(itemDisplayRarity(item), item)}${sixAffixClass(item)}${pricelessClass(item)}${itemLevel100Class(item)}`,
     icon: gearIcon(item),
-    rarity: rarity === "vorax" ? "VORAX GEAR" : rarity.toUpperCase(),
+    priceless,
     ...displayTexts({
-      name: item.name,
-      detail: `${item.base || titleCase(item.slot)} · Require Lv.${item.level || 1}`,
+      // The game names a Priceless item "<name>- Priceless".
+      name: priceless && !/Priceless$/i.test(item.name || "") ? `${item.name}- Priceless` : item.name,
+      itemLevel: item.itemLevel ? `Lv.${item.itemLevel}` : "",
+      typeLine: `${item.base || titleCase(item.slot)}${group ? `(${group})` : ""}`,
+      require: `Require lv ${item.level || 1}`,
     }),
-    sections: itemModifierSections(item).map((section) => ({
-      ...displayTexts({ label: section.label, detail: section.detail || "" }),
-      entries: section.entries.map((entry) => {
+    energy:
+      equipmentEnergyAllowed(item.slot) && Number.isFinite(energy)
+        ? { text: `Energy ${energy}`, fill: energyMax ? Math.min(100, (energy / energyMax) * 100) : 0 }
+        : null,
+    // The lines in the game's order, each with where it comes from (its kind and title) and its tier's marker.
+    lines: itemModifierSections(item).flatMap((section) =>
+      section.entries.map((entry) => {
+        const corrosion = entry.tone === "corrosion" || corroded.has(entry.index);
+        const kind = section.label.replace(" · Corroded", "");
         return {
-          className: `${entry.tone === "legendary" || entry.badge === "L" ? "legendary-affix " : ""}${entry.tone === "corrosion" || corroded.has(entry.index) ? "corrosion-affix" : ""}`,
-          badge: entry.badge
-            ? displayTexts({ className: tierBadgeClasses(tierBadgeKey(entry.badge)), text: entry.badge })
-            : null,
+          kind,
+          block: kind === "Implicit" ? "implicit" : BASE_LINE_KINDS.has(kind) ? "base" : "affix",
+          title: displayTexts([section.label, section.detail, entry.badge].filter(Boolean).join(" · ")),
+          marker: {
+            className: tierMarkerClasses(entry.badge ? tierBadgeKey(entry.badge) : corrosion ? "corrosion" : ""),
+            text: entry.badge || "",
+          },
+          className: `${entry.tone === "legendary" || entry.badge === "L" ? "legendary-affix " : ""}${corrosion ? "corrosion-affix" : ""}`,
           text: modifierTextView(entry.text),
         };
       }),
-    })),
+    ),
     source: item.source || "",
   };
 }

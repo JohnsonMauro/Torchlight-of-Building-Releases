@@ -31,7 +31,6 @@ import { kismetAffixCoverage, pactEffectCoverage } from "./pact-coverage.js";
 import { curseLineLeftOutReason } from "../planner/curse-notes.js";
 import { $, showToast } from "../planner/page.js";
 import { persistPlannerState, plannerState, refreshPactCandidate, withRenderPass } from "../planner/session.js";
-import { hidePlannerTooltip } from "../tooltips/tooltip-host.js";
 
 let selectedPactspiritSlot = 0;
 let activeKismetSlot = null;
@@ -64,7 +63,6 @@ export const pactCommands = {
   // A level change is saved without recalculating the page (as before); the section shows the new level.
   setPactspiritLevel: (name, level) => {
     plannerState.pacts.spiritLevels[name] = level;
-    hidePlannerTooltip();
     persistPlannerState();
     renderPacts();
   },
@@ -192,7 +190,6 @@ function removeSelectedPactspirit(index) {
     plannerState.pacts.selectedSpirits,
     selenaScorchingBeamPactsSs13.pactspirits.map((spirit) => spirit.name),
   );
-  hidePlannerTooltip();
   refreshPactCandidate();
 }
 
@@ -218,7 +215,6 @@ function selectFateSlots(choiceId) {
   plannerState.pacts.kismetSlots = nextKismets;
   plannerState.pacts.kismetSlotMode = true;
   closeDialog("fate-slot-selector");
-  hidePlannerTooltip();
   refreshPactCandidate();
 }
 function clearFateSlots(name) {
@@ -229,7 +225,6 @@ function clearFateSlots(name) {
   plannerState.pacts.kismetSlots = Object.fromEntries(
     Object.entries(plannerState.pacts.kismetSlots || {}).filter(([key]) => !key.startsWith(`${name}:extra:`)),
   );
-  hidePlannerTooltip();
   refreshPactCandidate();
 }
 function clearKismetNode(key) {
@@ -237,7 +232,6 @@ function clearKismetNode(key) {
   const slots = { ...plannerState.pacts.kismetSlots };
   delete slots[key];
   plannerState.pacts.kismetSlots = slots;
-  hidePlannerTooltip();
   refreshPactCandidate();
 }
 // The Kismet crafter (apps/web/src/features/pacts/KismetCrafterDialog.tsx) shows the "kismetCrafter" source for the slot
@@ -361,7 +355,6 @@ function saveKismetSlot(clear = false) {
   plannerState.pacts.kismetSlotMode = true;
   closeDialog("kismet-crafter");
   activeKismetSlot = null;
-  hidePlannerTooltip();
   refreshPactCandidate();
 }
 // Moves (or copies) a Kismet dropped on another slot of its kind (apps/web/src/features/pacts/use-kismet-drag.ts).
@@ -382,7 +375,6 @@ function moveKismet(fromKey, toKey, kind, duplicate) {
     return;
   }
   plannerState.pacts.kismetSlots = result.slots;
-  hidePlannerTooltip();
   refreshPactCandidate();
   showToast(`Kismet ${result.action}`);
 }

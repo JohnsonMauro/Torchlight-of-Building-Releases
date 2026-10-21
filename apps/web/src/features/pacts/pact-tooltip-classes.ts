@@ -15,3 +15,6 @@ export const ITEM = "border-l-2 border-(--tip-edge) pl-2.5 text-xs/snug text-tex
 export const BOOSTED = "text-ok";
 export const INLINE_COVERAGE = "ml-1 inline-block px-1.5 py-0.5 align-middle";
 export const FOOTER = "block border-t border-line px-3.5 py-2.25 text-center text-xs text-dim";
+
+/** The frame's kind (apps/web/src/ui/tooltip/tooltip-classes.ts); its rarity is the view's. */
+export const FRAME = "pact-tooltip";

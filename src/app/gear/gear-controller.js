@@ -42,7 +42,6 @@ import {
   withRenderPass,
 } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
-import { hidePlannerTooltip } from "../tooltips/tooltip-host.js";
 import { towerSequenceChoices } from "./tower-sequence-options.js";
 import {
   modifierRollRange,
@@ -300,7 +299,6 @@ function equipInventoryItem(item, targetSlot = null) {
   showToast(`${item.name} equipped`);
 }
 function openInventoryItemDialog(item) {
-  hidePlannerTooltip();
   selectedInventoryItemId = item.id;
   inventoryItemEditing = false;
   renderInventoryItemDialog();
@@ -376,7 +374,13 @@ function addCraftedEquipment() {
       showToast("Select a legendary item first");
       return;
     }
-  } else item = craftedRareItem(equipmentCraft);
+  } else {
+    item = equipmentCraft.pick ? null : craftedRareItem(equipmentCraft);
+    if (!item) {
+      showToast("Select an item base first");
+      return;
+    }
+  }
   item = definedItemFields(item);
   const editingItem = equipmentCraft.editingId
     ? plannerState.equipmentInventory.find((entry) => entry.id === equipmentCraft.editingId)

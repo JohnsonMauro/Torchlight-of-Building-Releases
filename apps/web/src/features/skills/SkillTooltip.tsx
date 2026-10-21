@@ -7,12 +7,6 @@ import * as classes from "./skill-tooltip-classes";
 
 type SkillTarget = Parameters<ReturnType<typeof plannerQueries>["skillTooltip"]>[0];
 
-const FRAMES: Record<SkillTooltipView["look"], string> = {
-  skill: "skill-tooltip",
-  support: "skill-tooltip support-tooltip",
-  aura: "skill-tooltip aura-tooltip",
-};
-
 /**
  * A skill's or a support's tooltip (`target`): the planner's skillTooltip query, read when it opens. `hint` says what
  * the element does on a click or a drag, under the content.
@@ -30,7 +24,7 @@ export function SkillTooltip({
     <Tooltip
       content={() => {
         const view = plannerQueries().skillTooltip(target);
-        return view ? { body: <SkillCard view={view} hint={hint} />, kind: FRAMES[view.look] } : null;
+        return view ? { body: <SkillCard view={view} hint={hint} />, kind: classes.FRAMES[view.look] } : null;
       }}
     >
       {children}
@@ -38,7 +32,8 @@ export function SkillTooltip({
   );
 }
 
-function SkillCard({ view, hint }: { view: SkillTooltipView; hint: string }) {
+/** A skill's, support's or aura's card (its tooltip, and a damage path source naming one). */
+export function SkillCard({ view, hint = "" }: { view: SkillTooltipView; hint?: string }) {
   return (
     <>
       <div className={classes.HEAD}>

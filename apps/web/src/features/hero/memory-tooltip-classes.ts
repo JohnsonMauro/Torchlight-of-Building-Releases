@@ -31,3 +31,6 @@ export const SCENT_TAG = "rounded-xs border border-line bg-raised px-1.5 py-0.75
 export const SCENT_EFFECTS = "grid gap-1.5 px-3 py-2.75";
 export const SCENT_LINE = "text-xs/normal text-text";
 export const SCENT_HINT = "block border-t border-line px-3 py-1.75 text-[10px] text-dim uppercase";
+
+/** The memory card's frame kind (apps/web/src/ui/tooltip/tooltip-classes.ts); its rarity is the view's. */
+export const MEMORY_FRAME = "memory-tooltip";

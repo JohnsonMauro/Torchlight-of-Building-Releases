@@ -12,7 +12,7 @@ const traitBody = (view: TraitTooltipView | null): TooltipBody | null =>
   view
     ? {
         body: <TraitCard view={view} />,
-        kind: view.follower ? "hero-trait-tooltip follower-tooltip" : "hero-trait-tooltip",
+        kind: classes.traitFrame(view.follower),
         rarity: view.rarity ?? undefined,
       }
     : null;
@@ -61,7 +61,8 @@ export function FollowerSkillTooltip({ name, children }: { name: string; childre
   return <Tooltip content={() => traitBody(plannerQueries().followerSkillTooltip(name))}>{children}</Tooltip>;
 }
 
-function TraitCard({ view }: { view: TraitTooltipView }) {
+/** A hero trait's, follower's or Tartarus Skill's card (its tooltip, and a damage path source naming a trait). */
+export function TraitCard({ view }: { view: TraitTooltipView }) {
   const altHeld = useAltHeld();
   return (
     <>

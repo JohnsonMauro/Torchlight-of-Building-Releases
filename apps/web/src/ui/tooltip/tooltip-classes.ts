@@ -1,9 +1,8 @@
 /*
- * The planner tooltip's classes (#planner-tooltip, apps/web/src/shell/PlannerTooltip.tsx). src/app/tooltips/
- * planner-tooltips.js shows it by adding "visible", marks its kind with a class (gear-tooltip, skill-tooltip…) and sets
- * data-rarity / data-talent-type; every state below is a variant on the element itself. Each kind's content carries its
- * own utility classes (src/app/tooltips/*-tooltips.js); this frame sets, per kind, the size and the artwork, and exposes
- * the kind's colour as custom properties the content reads:
+ * The page's tooltip frame (TooltipHost). It shows by "visible"; a <Tooltip>'s content names its kind (gear-tooltip,
+ * skill-tooltip…, `kind`) and sets data-rarity / data-talent-type; every state below is a variant on the element itself.
+ * Each kind's card carries its own utility classes (apps/web/src/features/<feature>/*Tooltip.tsx); this frame sets, per
+ * kind, the size and the artwork, and exposes the kind's colour as custom properties the card reads:
  *   --tip-accent  the rarity's (or kind's, or talent type's) colour   --tip-name  a name's colour (the accent, or the
  *   --tip-edge    a softer line in that colour                                     Priceless / six-affix pink)
  *   --tip-art     the rarity's card art (url) or unset
@@ -73,7 +72,7 @@ const DAMAGE_SOURCE = [
   "[&.source-summary-tooltip]:bg-[image:var(--tip-veil),var(--tip-slate)]",
 ].join(" ");
 
-// The other kinds' frames (their content: talent-, hero-, hero-trait-, pact- and slate-tooltips.js).
+// The other kinds' frames (their cards: TalentTooltip, MemoryTooltip, TraitTooltip, PactTooltip, SlateTooltip).
 const OTHER_KINDS = [
   // Hero memory: the rarity art.
   "[&.memory-tooltip]:w-[min(335px,calc(100vw-24px))] [&.memory-tooltip]:p-0",
@@ -101,42 +100,4 @@ const OTHER_KINDS = [
   "[&.basic-talent-tooltip[data-talent-type=prism-core]]:[--tip-accent:var(--color-grade-rare)]",
 ].join(" ");
 
-/*
- * Markup several kinds share, from helpers outside the tooltip modules: coverage badges (coverageBadge and the
- * keyword-roll lines' badges: calculated, neutral, else pending), keyword rolls whose effect shows while Alt is held
- * (modifierTextMarkup; Alt puts revival-alt-held on <body>), the curse note and the trait grant note. The base looks
- * sit in :where() so a kind's own placement of them wins.
- */
-const SHARED_CONTENT = [
-  "[&_:where(.calc-coverage,.keyword-roll-line>b)]:inline-block [&_:where(.calc-coverage,.keyword-roll-line>b)]:rounded-sm",
-  "[&_:where(.calc-coverage,.keyword-roll-line>b)]:border [&_:where(.calc-coverage,.keyword-roll-line>b)]:border-warn/50",
-  "[&_:where(.calc-coverage,.keyword-roll-line>b)]:bg-warn/10 [&_:where(.calc-coverage,.keyword-roll-line>b)]:px-1.5",
-  "[&_:where(.calc-coverage,.keyword-roll-line>b)]:py-0.5 [&_:where(.calc-coverage,.keyword-roll-line>b)]:align-middle",
-  "[&_:where(.calc-coverage,.keyword-roll-line>b)]:text-[10px]/tight",
-  "[&_:where(.calc-coverage,.keyword-roll-line>b)]:font-bold [&_:where(.calc-coverage,.keyword-roll-line>b)]:whitespace-nowrap",
-  "[&_:where(.calc-coverage,.keyword-roll-line>b)]:text-warn [&_:where(.calc-coverage)]:ml-1.5",
-  "[&_:is(.calc-coverage,.keyword-roll-line>b).calculated]:border-ok/50",
-  "[&_:is(.calc-coverage,.keyword-roll-line>b).calculated]:bg-ok/10",
-  "[&_:is(.calc-coverage,.keyword-roll-line>b).calculated]:text-ok",
-  "[&_:is(.calc-coverage,.keyword-roll-line>b).neutral]:border-line",
-  "[&_:is(.calc-coverage,.keyword-roll-line>b).neutral]:bg-raised",
-  "[&_:is(.calc-coverage,.keyword-roll-line>b).neutral]:text-muted",
-  "[&_.keyword-roll-name]:text-info [&_.keyword-roll-effect]:hidden",
-  "[.revival-alt-held_&_.keyword-roll-effect]:inline",
-  "[.revival-alt-held_&_.keyword-roll-effect.keyword-roll-lines]:mt-1 [.revival-alt-held_&_.keyword-roll-effect.keyword-roll-lines]:grid",
-  "[.revival-alt-held_&_.keyword-roll-effect.keyword-roll-lines]:gap-1",
-  "[.revival-alt-held_&_.keyword-roll-effect.keyword-roll-lines]:border-l-2",
-  "[.revival-alt-held_&_.keyword-roll-effect.keyword-roll-lines]:border-info",
-  "[.revival-alt-held_&_.keyword-roll-effect.keyword-roll-lines]:pl-2",
-  "[&_.keyword-roll-line]:flex [&_.keyword-roll-line]:items-start [&_.keyword-roll-line]:justify-between",
-  "[&_.keyword-roll-line]:gap-2",
-  "[&_:where(.curse-limit-note)]:mb-1.5 [&_:where(.curse-limit-note)]:px-2.5 [&_:where(.curse-limit-note)]:py-1",
-  "[&_:where(.curse-limit-note)]:text-xs/snug [&_:where(.curse-limit-note)]:text-danger",
-  "[&_:where(.trait-grant-note)]:mt-2 [&_:where(.trait-grant-note)]:border-l-2 [&_:where(.trait-grant-note)]:border-info",
-  "[&_:where(.trait-grant-note)]:bg-info/10 [&_:where(.trait-grant-note)]:px-2 [&_:where(.trait-grant-note)]:py-1",
-  "[&_:where(.trait-grant-note)]:text-xs/snug [&_:where(.trait-grant-note)]:text-text",
-].join(" ");
-
-export const PLANNER_TOOLTIP = [FRAME, RARITY, GEAR, SKILL, QOL_HELP, DAMAGE_SOURCE, OTHER_KINDS, SHARED_CONTENT].join(
-  " ",
-);
+export const PLANNER_TOOLTIP = [FRAME, RARITY, GEAR, SKILL, QOL_HELP, DAMAGE_SOURCE, OTHER_KINDS].join(" ");

@@ -54,8 +54,6 @@ Every change: lint, typecheck, format:check and `pnpm test` green; e2e green bef
 - `<section>/*-controller.js` — one per section (gear, talents + prisms, slates, skills board + selector, hero +
   memories + follower, pacts, stats, configuration, builds + game log, feedback): its state, its commands object
   (`gearCommands`…) and its view sources (`gearViewSources`…).
-- `tooltips/` — `tooltip-host.js` (position, hide; low level) and the content per kind; `planner-tooltips.js` shows
-  them and owns their listeners.
 
 An imported binding cannot be assigned: a module that must change another module's `let` calls a setter or function
 that module exports. Dependencies point down: `app.js` → controllers → `planner/session.js` → `planner/ui-state.js`.
@@ -85,8 +83,11 @@ owns its tooltip, the way gear does (the guide for the others):
 - a wrapper component in the feature (`features/gear/GearTooltip.tsx`: `<GearTooltip target>{element}</GearTooltip>`)
   that reads the query when the tooltip opens and renders the content, with its classes in `*-tooltip-classes.ts`;
   pieces several domains share sit in `ui/` (`ModifierText` with Alt via `useAltHeld`, `CoverageBadge`);
-- the domain's selector and kind leave the legacy tooltip (`src/app/tooltips/planner-tooltips.js`, `#planner-tooltip`),
-  which serves the kinds not moved yet. Tests find either by `getByRole("tooltip")`.
+- the card itself is exported (`GearTooltipCard`, `SkillCard`, `TraitCard`…) with its frame kind in its classes module,
+  so another tooltip can show it: a Stats damage path source (`features/stats/DamageSourceTooltip.tsx`, query
+  `damageSourceTooltip` in `src/app/stats/damage-source-tooltip.js`) shows the card of what it names.
+Tests find a tooltip by `getByRole("tooltip")` and tell kinds apart by their content: the frame's kind variants
+(`[&.skill-tooltip]:…`) spell every kind in its class list, so `toHaveClass(/skill-tooltip/)` always matches.
 
 ## Refactor direction (2026-10-20)
 

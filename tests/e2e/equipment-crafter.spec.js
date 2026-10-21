@@ -1,6 +1,6 @@
 // The equipment crafter (the Gear section's Craft Rare Item, Craft Vorax Item and Craft Legendary, or Edit on a crafted
-// rare): the rare form (type, base, the fields that depend on the slot, base affixes, prefixes and suffixes with their
-// tiers and rolls) and its preview; the Vorax limbs and their Legendary affix toggles; the legendary list with its search
+// rare): the rare item picker (group, type, base) and its path back, the rare form (the fields that depend on the slot,
+// base affixes, prefixes and suffixes with their tiers and rolls) and its preview; the Vorax limbs and their Legendary affix toggles; the legendary list with its search
 // and a legendary's configuration (base, corrosion, its mods' tiers and rolls); Add to Inventory and Save Changes.
 // Written against the legacy crafter before it moves to React, so both must pass it unchanged.
 import { test, expect } from "@playwright/test";
@@ -23,30 +23,66 @@ async function openCrafter(page, mode) {
   return { planner, gear, body: gear.crafter().locator("#equipment-crafter-body") };
 }
 const preview = (body) => body.locator("aside");
+/** The preview's lines of one kind ("Prefix", "Base Affix"…); each reads its tier marker's text, then the line. */
+const lines = (body, kind) => preview(body).locator(`[data-preview-line="${kind}"]`);
 const field = (body, attribute) => body.locator(`[${attribute}]`);
+const path = (body) => body.getByRole("navigation", { name: "Item" });
+/** A rare's affix in its side's list ("prefix", "suffix"), on the tab it sits in ("Basic", "Advanced", "Ultimate"). */
+function affixOption(body, side, label, tab = "Basic") {
+  const list = body.locator(`[data-affix-list="${side}"]`);
+  return {
+    tab: list.getByRole("tab", { name: new RegExp(`^${tab}`) }),
+    box: list.locator("label").filter({ hasText: label }).getByRole("checkbox"),
+  };
+}
+/** Checks (or unchecks) a rare's affix, its tab opened first. */
+async function checkAffix(body, side, label, tab = "Basic", checked = true) {
+  const option = affixOption(body, side, label, tab);
+  await option.tab.click();
+  await option.box.setChecked(checked);
+}
+const MAX_LIFE = /^\+# Max Life/;
+/** Craft Rare Item's picker: a group, a type, then a base (the type's top one unless `base` is given). */
+async function pickRare(body, group, type, base = null) {
+  await field(body, `data-craft-pick="${group}"`).click();
+  await field(body, `data-craft-pick="${type}"`).click();
+  await (base ? field(body, `data-craft-pick="${base}"`) : field(body, "data-craft-pick").first()).click();
+  await expect(field(body, "data-craft-name")).toBeVisible();
+}
 
-test("the rare form: type, base, the fields its slot allows, and the preview", async ({ page }) => {
+test("the rare picker drills down to a base; the form shows the fields its slot allows, and the preview", async ({
+  page,
+}) => {
   const { planner, gear, body } = await openCrafter(page, "Craft Rare Item");
-  await expect(field(body, "data-craft-type")).toHaveValue("STR Helmet");
-  await expect(field(body, "data-craft-base").locator("option").first()).toHaveText("Lv 82 · Ranger's Broken Mask");
+  await expect(body.locator("h3")).toHaveText("Select an item group");
+  await expect(field(body, "data-craft-pick")).toHaveCount(8);
+  await gear.crafter().getByRole("button", { name: "Add to Inventory", exact: true }).click();
+  await expect(gear.toast()).toHaveText("Select an item base first");
+  await field(body, 'data-craft-pick="helmet"').click();
+  await expect(field(body, "data-craft-pick")).toHaveText(["STR12 bases", "DEX12 bases", "INT12 bases"]);
+  await field(body, 'data-craft-pick="STR Helmet"').click();
+  await expect(field(body, "data-craft-pick").first()).toHaveText("Ranger's Broken MaskLv 82");
+  await field(body, "data-craft-pick").first().click();
+  await expect(path(body)).toHaveText("Item groups›Helmet›STR›Lv 82 · Ranger's Broken Mask");
   await expect(field(body, "data-craft-level")).toHaveValue("100");
   await expect(field(body, "data-craft-energy")).toHaveValue("61");
   await expect(field(body, "data-belt-blend-field")).toBeHidden();
   await expect(field(body, "data-tower-sequence-field")).toBeHidden();
-  await expect(body.locator("h3")).toHaveText(["Prefixes", "Suffixes", "Ranger's Broken Mask"]);
+  await expect(body.locator("h3")).toHaveText(["Prefixes (0/3)", "Suffixes (0/3)", "Ranger's Broken Mask- Priceless"]);
   await expect(preview(body)).toContainText("Ranger's Broken Mask");
-  await expect(preview(body)).toContainText("STR Helmet · Require Lv.82");
+  await expect(preview(body).locator("header")).toHaveText(
+    "Ranger's Broken Mask- PricelessLv.100STR Helmet(Helmet)Require lv 82Energy 61",
+  );
   await expect(preview(body)).toContainText("+1920 Gear Armor");
 
-  const types = await field(body, "data-craft-type").locator("option").allTextContents();
-  const belt = types.find((name) => /Belt/.test(name));
-  await field(body, "data-craft-type").selectOption(belt);
+  await path(body).getByRole("button", { name: "Item groups" }).click();
+  await pickRare(body, "trinket", "Belt");
   await expect(field(body, "data-belt-blend-field")).toBeVisible();
-  const weapon = types.find((name) => /Bow|Wand|Sword|Staff|Hammer/.test(name));
-  await field(body, "data-craft-type").selectOption(weapon);
+  await path(body).getByRole("button", { name: "Item groups" }).click();
+  await pickRare(body, "two-handed", "Bow");
   await expect(field(body, "data-belt-blend-field")).toBeHidden();
-  await expect(field(body, "data-craft-base").locator("option").first()).not.toHaveText("Lv 82 · Ranger's Broken Mask");
-  await expect(preview(body)).toContainText(weapon);
+  await expect(path(body)).toContainText("Two-Handed›Bow›");
+  await expect(preview(body)).toContainText("Bow");
   await gear.crafter().getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(gear.crafter()).toBeHidden();
   await planner.expectNoErrors();
@@ -56,22 +92,24 @@ test("rare affixes: a base affix and a prefix with its tier and roll, in the pre
   page,
 }) => {
   const { planner, gear, body } = await openCrafter(page, "Craft Rare Item");
+  await pickRare(body, "helmet", "STR Helmet");
   await field(body, 'data-craft-base-affix="0"').selectOption("+(54–74) Max Life");
   await expect(field(body, 'data-base-affix-roll="0"')).toHaveValue("74");
-  await expect(preview(body)).toContainText("Base AffixT2+74 Max Life");
+  await expect(lines(body, "Base Affix")).toHaveText("T2+74 Max Life");
 
-  await field(body, 'data-craft-affix-family="0"').selectOption({ label: "[Basic Affix] +# Max Life" });
+  await checkAffix(body, "prefix", MAX_LIFE);
   const tier = field(body, 'data-craft-affix-tier="0"');
   await expect(tier).toHaveValue("1");
   await expect(tier.locator("option").first()).toHaveText("T0+ · Requires Lv.100");
   const roll = field(body, 'data-craft-affix-roll="0"');
   await expect(roll).toHaveValue("220");
-  await expect(preview(body)).toContainText("PrefixT1+220 Max Life");
-  await expect(preview(body)).toContainText("MAGIC");
+  await expect(lines(body, "Prefix")).toHaveText("T1+220 Max Life");
+  await expect(lines(body, "Prefix")).toHaveAttribute("title", "Prefix · T1");
+  await expect(preview(body).locator("article")).toHaveClass(/\brarity-magic\b/);
   const number = body.locator(".craft-affix-control").first().locator("[data-affix-roll-number]");
   await number.fill("200");
   await expect(roll).toHaveValue("200");
-  await expect(preview(body)).toContainText("PrefixT1+200 Max Life");
+  await expect(lines(body, "Prefix")).toHaveText("T1+200 Max Life");
 
   await field(body, "data-craft-name").fill("Test Helm");
   await gear.crafter().getByRole("button", { name: "Add to Inventory", exact: true }).click();
@@ -84,13 +122,23 @@ test("rare affixes: a base affix and a prefix with its tier and roll, in the pre
   await planner.expectNoErrors();
 });
 
-test("rare tiers: the Item Level bounds the tiers and the energy; a tier sets its roll range", async ({ page }) => {
+test("rare tiers: the Item Level (up to 89, or Priceless: 100) bounds the tiers and the energy; a tier sets its roll range", async ({
+  page,
+}) => {
   const { planner, body } = await openCrafter(page, "Craft Rare Item");
-  await field(body, 'data-craft-affix-family="0"').selectOption({ label: "[Basic Affix] +# Max Life" });
+  await pickRare(body, "helmet", "STR Helmet");
+  await checkAffix(body, "prefix", MAX_LIFE);
   const tier = field(body, 'data-craft-affix-tier="0"');
   const roll = field(body, 'data-craft-affix-roll="0"');
   await expect(tier.locator("option")).toHaveCount(9);
   const level = field(body, "data-craft-level");
+  const priceless = field(body, "data-craft-priceless");
+  await expect(priceless).toBeChecked();
+  await expect(level).toBeDisabled();
+  await priceless.uncheck();
+  await expect(level).toHaveValue("89");
+  await level.fill("95");
+  await expect(level).toHaveValue("89");
   await level.fill("82");
   await expect(field(body, "data-craft-energy")).toHaveValue("61");
   await expect(tier.locator("option").first()).toHaveText("T2 · Requires Lv.82");
@@ -106,7 +154,8 @@ test("rare tiers: the Item Level bounds the tiers and the energy; a tier sets it
   await expect(field(body, "data-craft-energy")).toHaveValue("0");
   await expect(tier.locator("option")).toHaveText(["T7 · Requires Lv.1"]);
   // Back at 100 the tier chosen at level 1 stays.
-  await level.fill("100");
+  await priceless.check();
+  await expect(level).toHaveValue("100");
   await expect(tier.locator("option")).toHaveCount(9);
   await expect(tier).toHaveValue("7");
   await expect(roll).toHaveValue("44");
@@ -116,28 +165,29 @@ test("rare tiers: the Item Level bounds the tiers and the energy; a tier sets it
   await expect(roll).toHaveAttribute("min", "129");
   await expect(roll).toHaveAttribute("max", "154");
   await expect(body.locator(".craft-affix-control").first().locator("em")).toHaveText("154");
-  await expect(preview(body)).toContainText("PrefixT2+154 Max Life");
+  await expect(lines(body, "Prefix")).toHaveText("T2+154 Max Life");
   await roll.fill("130");
   await expect(body.locator(".craft-affix-control").first().locator("[data-affix-roll-number]")).toHaveValue("130");
-  await expect(preview(body)).toContainText("PrefixT2+130 Max Life");
-  await field(body, 'data-craft-affix-family="0"').selectOption("");
-  await expect(field(body, 'data-craft-affix-config="0"')).toBeEmpty();
+  await expect(lines(body, "Prefix")).toHaveText("T2+130 Max Life");
+  await checkAffix(body, "prefix", MAX_LIFE, "Basic", false);
+  await expect(field(body, 'data-craft-affix-config="0"')).toHaveCount(0);
   await expect(preview(body)).not.toContainText("Max Life");
   await planner.expectNoErrors();
 });
 
 test("a base affix's roll, the Belt Blend and the TOWER Sequence: in the preview and saved", async ({ page }) => {
   const { planner, gear, body } = await openCrafter(page, "Craft Rare Item");
-  await field(body, "data-craft-type").selectOption("Belt");
+  await pickRare(body, "trinket", "Belt");
   await expect(field(body, "data-equipment-energy-field")).toBeHidden();
   await field(body, 'data-craft-base-affix="1"').selectOption("+(40–60) Max Mana");
   const baseRoll = field(body, 'data-base-affix-roll="1"');
   await expect(baseRoll).toHaveValue("60");
   await baseRoll.fill("45");
   await expect(body.locator('[data-base-affix-rolls="1"] em')).toHaveText("45");
-  await expect(preview(body)).toContainText("Base AffixT2+45 Max Mana");
+  await expect(lines(body, "Base Affix")).toHaveText("T2+45 Max Mana");
   await field(body, "data-craft-belt-blend").selectOption("belt-blend-005");
-  await expect(preview(body)).toContainText("Belt BlendImmune to IgniteImmune to Ignite");
+  await expect(lines(body, "Belt Blend")).toHaveAttribute("title", "Belt Blend · Immune to Ignite");
+  await expect(lines(body, "Belt Blend")).toContainText("Immune to Ignite");
   await gear.crafter().getByRole("button", { name: "Add to Inventory", exact: true }).click();
   const belt = (await gear.stored()).inventory.at(-1);
   expect(belt).toMatchObject({ base: "Belt", slot: "belt", beltBlendId: "belt-blend-005", energy: 0 });
@@ -146,11 +196,11 @@ test("a base affix's roll, the Belt Blend and the TOWER Sequence: in the preview
   expect(belt.modifiers.at(-1)).toBe("Immune to Ignite\nMinions are immune to Fire Damage");
 
   await gear.button("Craft Rare Item").click();
-  await field(body, "data-craft-type").selectOption("Wand");
+  await pickRare(body, "one-handed", "Wand");
   await expect(field(body, "data-tower-sequence-field")).toBeVisible();
   await expect(field(body, "data-belt-blend-field")).toBeHidden();
   await field(body, "data-craft-sequence").selectOption("tower-sequence-160423032");
-  await expect(preview(body)).toContainText("TOWER Sequence");
+  await expect(lines(body, "TOWER Sequence")).toHaveCount(1);
   await expect(preview(body)).toContainText("+8% Fire Penetration");
   await gear.crafter().getByRole("button", { name: "Add to Inventory", exact: true }).click();
   const wand = (await gear.stored()).inventory.at(-1);
@@ -217,7 +267,8 @@ test("legendary lines: a corroded line, a corrosion implicit's roll, the energy;
 
   await field(body, "data-legendary-corrosion").selectOption("1");
   await expect(body.locator("[data-corrosion-text]")).toHaveText("+15% Attack Speed");
-  await expect(preview(body)).toContainText("Implicit · CorrodedSTR Gloves+15% Attack Speed");
+  await expect(lines(body, "Implicit")).toHaveText("+15% Attack Speed");
+  await expect(lines(body, "Implicit")).toHaveAttribute("title", "Implicit · Corroded · STR Gloves");
   await field(body, "data-corrosion-roll").fill("0");
   await expect(body.locator("[data-corrosion-text]")).toHaveText("+12% Attack Speed");
   await expect(preview(body)).toContainText("+12% Attack Speed");
@@ -251,13 +302,15 @@ test("legendary: a line's tier, random roll or corroded form leaves the other li
 
 test("rare: an Item Level change that keeps an affix's tier keeps its roll", async ({ page }) => {
   const { planner, body } = await openCrafter(page, "Craft Rare Item");
-  await field(body, 'data-craft-affix-family="0"').selectOption({ label: "[Basic Affix] +# Max Life" });
+  await pickRare(body, "helmet", "STR Helmet");
+  await checkAffix(body, "prefix", MAX_LIFE);
   await field(body, 'data-craft-affix-tier="0"').selectOption("2");
   await field(body, 'data-craft-affix-roll="0"').fill("130");
-  await field(body, "data-craft-level").fill("90");
+  await field(body, "data-craft-priceless").uncheck();
+  await field(body, "data-craft-level").fill("85");
   await expect(field(body, 'data-craft-affix-tier="0"')).toHaveValue("2");
   await expect(field(body, 'data-craft-affix-roll="0"')).toHaveValue("130");
-  await expect(preview(body)).toContainText("PrefixT2+130 Max Life");
+  await expect(lines(body, "Prefix")).toHaveText("T2+130 Max Life");
   await planner.expectNoErrors();
 });
 
@@ -309,7 +362,8 @@ test("legendary: the search, a legendary's base, corrosion, mod tiers and rolls,
 
   await expect(field(body, "data-legendary-base")).toHaveValue("STR Gloves");
   await expect(field(body, "data-legendary-energy")).toHaveValue("61");
-  await expect(preview(body)).toContainText("Ice PulseSTR Gloves · Require Lv.14");
+  await expect(preview(body).locator("header")).toContainText("Ice Pulse");
+  await expect(preview(body).locator("header")).toContainText("STR Gloves(Gloves)Require lv 14");
   await expect(preview(body)).toContainText("+8 to Max Frostbite Rating+80% Spell Damage");
   const mods = body.locator(".legendary-mod-control");
   await expect(mods.first().locator("[data-legendary-mod]")).toHaveText("+8 to Max Frostbite Rating");
@@ -324,7 +378,7 @@ test("legendary: the search, a legendary's base, corrosion, mod tiers and rolls,
   await expect(preview(body)).toContainText("+29% Spell Damage");
 
   await field(body, "data-legendary-base").selectOption("INT Gloves");
-  await expect(preview(body)).toContainText("INT Gloves · Require Lv.14");
+  await expect(preview(body).locator("header")).toContainText("INT Gloves(Gloves)Require lv 14");
   await field(body, "data-legendary-corrosion").selectOption({ index: 1 });
   await expect(preview(body)).toContainText("+1 to Max Tenacity Blessing Stacks");
 
@@ -349,7 +403,7 @@ test("Edit on a crafted rare fills the form from the item; Save Changes updates 
   await expect(gear.crafterTitle()).toHaveText("Edit Arcanist Girdle");
   const body = gear.crafter().locator("#equipment-crafter-body");
   await expect(gear.crafter().getByRole("button", { name: "Save Changes", exact: true })).toBeVisible();
-  await expect(field(body, "data-craft-type")).toHaveValue(/Belt/);
+  await expect(path(body)).toContainText("Trinket›Belt›");
   await expect(field(body, "data-belt-blend-field")).toBeVisible();
   await expect(preview(body)).toContainText("Arcanist Girdle");
   await field(body, "data-craft-name").fill("Renamed Girdle");
@@ -374,8 +428,7 @@ test("Edit fills every field from the item: level, base, Belt Blend, each affix'
   const body = gear.crafter().locator("#equipment-crafter-body");
   await expect(field(body, "data-craft-name")).toHaveValue("Arcanist Girdle");
   await expect(field(body, "data-craft-level")).toHaveValue("83");
-  await expect(field(body, "data-craft-type")).toHaveValue("Belt");
-  await expect(field(body, "data-craft-base")).toHaveValue("Belt-Arcanist-Girdle-76-9");
+  await expect(path(body)).toHaveText("Item groups›Trinket›Belt›Lv 76 · Arcanist Girdle");
   await expect(field(body, "data-craft-belt-blend")).toHaveValue("belt-blend-014");
   const families = [
     "prefix-1402303",
@@ -386,18 +439,19 @@ test("Edit fills every field from the item: level, base, Belt Blend, each affix'
     "suffix-1082301",
   ];
   const rolls = ["42", "35", "219", "19", "18", "17"];
-  for (const [index, family] of families.entries()) {
-    await expect(field(body, `data-craft-affix-family="${index}"`)).toHaveValue(family);
+  await expect(body.locator("h3", { hasText: "Prefixes" })).toHaveText("Prefixes (3/3)");
+  await expect(body.locator("h3", { hasText: "Suffixes" })).toHaveText("Suffixes (3/3)");
+  for (const index of families.keys()) {
     await expect(field(body, `data-craft-affix-tier="${index}"`)).toHaveValue("2");
     await expect(field(body, `data-craft-affix-roll="${index}"`)).toHaveValue(rolls[index]);
     await expect(body.locator(".craft-affix-control").nth(index).locator("[data-affix-roll-number]")).toHaveValue(
       rolls[index],
     );
   }
-  await expect(preview(body)).toContainText("PrefixT2+42% damageT2+35 IntelligenceT2+219 Max Energy Shield");
+  await expect(lines(body, "Prefix")).toHaveText(["T2+42% damage", "T2+35 Intelligence", "T2+219 Max Energy Shield"]);
 
   await body.locator(".craft-affix-control").first().locator("[data-affix-roll-number]").fill("40");
-  await expect(preview(body)).toContainText("T2+40% damage");
+  await expect(lines(body, "Prefix").first()).toHaveText("T2+40% damage");
   await gear.crafter().getByRole("button", { name: "Save Changes", exact: true }).click();
   const after = (await gear.stored()).inventory.find((entry) => entry.id === "gear-game-log-belt");
   expect(after.prefixModifiers).toEqual(["+40% damage", ...before.prefixModifiers.slice(1)]);
@@ -409,5 +463,56 @@ test("Edit fills every field from the item: level, base, Belt Blend, each affix'
     craftAffixFamilyIds: before.craftAffixFamilyIds,
     craftAffixTierIds: before.craftAffixTierIds,
   });
+  await planner.expectNoErrors();
+});
+
+test("rare: back from the form to the type's bases, another base keeps what the form holds", async ({ page }) => {
+  const { planner, body } = await openCrafter(page, "Craft Rare Item");
+  await pickRare(body, "helmet", "DEX Helmet");
+  await field(body, "data-craft-name").fill("Kept Helm");
+  await path(body).getByRole("button", { name: "DEX" }).click();
+  await expect(body.locator("h3")).toHaveText("Select a base");
+  await expect(path(body)).toHaveText("Item groups›Helmet›DEX");
+  await field(body, "data-craft-pick").nth(1).click();
+  await expect(field(body, "data-craft-name")).toHaveValue("Kept Helm");
+  await path(body).getByRole("button", { name: "Helmet" }).click();
+  await expect(field(body, "data-craft-pick")).toHaveCount(3);
+  await planner.expectNoErrors();
+});
+
+test("rare: up to three affixes a side, from tabbed lists; the Ultimate ones need Priceless; a base affix is offered once", async ({
+  page,
+}) => {
+  const { planner, gear, body } = await openCrafter(page, "Craft Rare Item");
+  await pickRare(body, "helmet", "STR Helmet");
+  const prefixes = body.locator('[data-affix-list="prefix"]');
+  await expect(prefixes.getByRole("tab")).toHaveText(["Basic (0)", "Advanced (0)", "Ultimate (0)"]);
+  await checkAffix(body, "prefix", MAX_LIFE);
+  await checkAffix(body, "prefix", /^\+#% damage/);
+  await checkAffix(body, "prefix", /^\+# Strength/, "Advanced");
+  await expect(body.locator("h3", { hasText: "Prefixes" })).toHaveText("Prefixes (3/3)");
+  await expect(prefixes.getByRole("tab")).toHaveText(["Basic (2)", "Advanced (1)", "Ultimate (0)"]);
+  const dexterity = affixOption(body, "prefix", /^\+# Dexterity/, "Advanced").box;
+  await expect(dexterity).toBeDisabled();
+  await expect(prefixes.locator("label").filter({ hasText: /^\+# Dexterity/ })).toContainText("Three prefixes chosen");
+  // Unchecked, the first one leaves its slot and the others move up.
+  await checkAffix(body, "prefix", MAX_LIFE, "Basic", false);
+  await expect(body.locator(".craft-affix-control").first()).toContainText("+#% damage");
+  await prefixes.getByRole("tab", { name: /^Advanced/ }).click();
+  await expect(dexterity).toBeEnabled();
+
+  await prefixes.getByRole("tab", { name: /^Ultimate/ }).click();
+  await field(body, "data-craft-priceless").uncheck();
+  const ultimate = prefixes.locator("label").first();
+  await expect(ultimate).toContainText("Requires Priceless");
+  await expect(ultimate.getByRole("checkbox")).toBeDisabled();
+  await field(body, "data-craft-priceless").check();
+  await expect(ultimate.getByRole("checkbox")).toBeEnabled();
+
+  await field(body, 'data-craft-base-affix="0"').selectOption("+(54–74) Max Life");
+  await expect(
+    field(body, 'data-craft-base-affix="1"').locator("option", { hasText: "+(54–74) Max Life" }),
+  ).toHaveCount(0);
+  await expect(gear.toast()).not.toHaveText(/up to three|item level/);
   await planner.expectNoErrors();
 });

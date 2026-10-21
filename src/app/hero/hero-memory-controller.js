@@ -26,13 +26,9 @@ import {
 import { displayTexts } from "../bridge/display-text.ts";
 import { openDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
-import { affixTierBadge } from "../gear/gear-items.js";
 import { heroMemoryIcon, heroMemoryIsRevived, memoryTypesByTier } from "./hero-memory-display.js";
-import { escapeHtml } from "../html.js";
 import { showToast } from "../planner/page.js";
 import { persistPlannerState, plannerState } from "../planner/session.js";
-import { memoryClasses } from "../tooltips/tooltip-kind-classes.js";
-import { hidePlannerTooltip } from "../tooltips/tooltip-host.js";
 import { renderHeroTraitTree } from "./hero-controller.js";
 
 let activeHeroMemoryTier = "";
@@ -130,11 +126,6 @@ function clearInvalidBaseTraitMemory() {
     plannerState.hero.baseTraitMemoryRoll = null;
   }
 }
-export function memoryRevivalBadge(memory) {
-  return heroMemoryIsRevived(memory)
-    ? `<span class="memory-revival-badge ${memoryClasses.revivalBadge}"><span aria-hidden="true">☾</span> Revived</span>`
-    : "";
-}
 // A revived affix as the crafter's preview and the memory tooltip show it: its tier, effect, and a Lunar Phase affix's
 // details (its effects and hero trait exclusive) for Alt.
 export function memoryRevivedEffectView(memory) {
@@ -172,13 +163,6 @@ export function memoryRevivedEffectView(memory) {
       : null,
   };
 }
-export function memoryRevivedAffixMarkup(memory) {
-  const view = memoryRevivedEffectView(memory);
-  const details = view.details
-    ? `<small class="memory-revived-hint ${memoryClasses.revivedHint}">Hold Alt for details</small><div class="memory-revived-detail ${memoryClasses.revivedDetail}"><ul class="${memoryClasses.revivedList}">${view.details.effects.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>${view.details.exclusive !== null ? `<div class="memory-revived-exclusive ${memoryClasses.revivedExclusive}"><small>Hero trait exclusive</small><span>${escapeHtml(view.details.exclusive)}</span></div>` : ""}</div>`
-    : "";
-  return `<div class="memory-revived-effect ${memoryClasses.revived} ${view.special ? `special ${memoryClasses.revivedSpecial}` : ""}">${view.tierBadge ? affixTierBadge(view.tierBadge) : ""}<span class="memory-revived-name ${memoryClasses.revivedName}">${escapeHtml(view.effect)}</span>${details}</div>`;
-}
 function otherEquippedRevivedMemory(memory) {
   const equippedIds = [
     ...Object.values(plannerState.hero.equippedMemoryIds || {}),
@@ -196,7 +180,6 @@ function otherEquippedRevivedMemory(memory) {
 }
 function unequipHeroMemory(tier) {
   if (!tier || !plannerState.hero.equippedMemoryIds?.[tier]) return;
-  hidePlannerTooltip();
   plannerState.hero.memories[tier] = "";
   plannerState.hero.memoryTraitLevels[tier] = 0;
   delete plannerState.hero.equippedMemoryIds[tier];
@@ -213,7 +196,6 @@ function equipHeroMemory(memory) {
     showToast("Only one revived memory can be equipped");
     return;
   }
-  hidePlannerTooltip();
   plannerState.hero.equippedMemoryIds ||= {};
   // The game-log import keys a memory by its level alone ("level45"), the planner by hero ("<hero>:level45"), and the
   // calculation counts every key: the level's other key goes, so one memory sits at a level.
@@ -637,7 +619,6 @@ function memoryContextMenu(id) {
   if (plannerState.hero.baseTraitMemoryId === id) {
     plannerState.hero.baseTraitMemoryId = "";
     plannerState.hero.baseTraitMemoryRoll = null;
-    hidePlannerTooltip();
     persistPlannerState();
     renderHeroTraitTree();
     renderHeroMemoryInventory();
@@ -649,7 +630,6 @@ function memoryContextMenu(id) {
     const slot = equippedBaseTraitSlot(plannerState.hero);
     plannerState.hero.baseTraitMemoryId = id;
     plannerState.hero.baseTraitMemoryRoll = slot.reductionRange.max;
-    hidePlannerTooltip();
     persistPlannerState();
     renderHeroTraitTree();
     renderHeroMemoryInventory();

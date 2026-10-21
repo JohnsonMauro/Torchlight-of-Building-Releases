@@ -3,6 +3,7 @@
 // and Vorax form, each with its preview. Pure; the planner (src/app/gear/gear-controller.js) publishes it as the "equipmentCrafter"
 // source and passes in how an item's preview looks, which depends on the open build. Texts are as the legacy markup
 // printed them (src/app/bridge/display-text.ts).
+import { gearGroupOfType, gearGroupsSs13 } from "../../data/gear/gear-groups-ss13.js";
 import { placeholderPool } from "../../engine/gear/legendary-placeholder-pools.js";
 import { legendaryLineTiers } from "../../engine/gear/legendary-affix-tiers.js";
 import { normalizePercentageText } from "../../engine/text/percentage-text.js";
@@ -16,10 +17,14 @@ import {
   corrosionPool,
   craftAffixPool,
   craftFamily,
+  affixSideOffset,
+  craftPickStep,
   craftTypes,
   craftedRareItem,
   eligibleCraftTiers,
   equipmentEnergyAllowed,
+  MAX_TYPED_LEVEL,
+  PRICELESS_LEVEL,
   legendaries,
   legendaryById,
   legendaryCorrodedLine,
@@ -32,6 +37,9 @@ import {
   towerSequencesForType,
   typeSlot,
   voraxBases,
+  type AffixSide,
+  type CraftPick,
+  type CraftPickStep,
   type CraftedItem,
   type EquipmentCraft,
   type RareDraft,
@@ -63,24 +71,62 @@ export interface RollView {
   /** The slider's filled part (--range-fill, as the planner's range refresh sets it). */
   rangeFill: number;
 }
-export interface ItemPreviewEntryView {
+/** A modifier line of the item preview. */
+export interface ItemPreviewLineView {
+  /** Where it comes from: "Implicit", "Base Affix", "Prefix", "Suffix", "Belt Blend", "TOWER Sequence", "Legendary Mod". */
+  kind: string;
+  /** The card's block it sits in (a rule between blocks): the implicit (muted, no marker), the base lines, the affixes. */
+  block: "implicit" | "base" | "affix";
+  /** Its source, detail and tier ("Prefix · T1"), shown on hover. */
+  title: string;
+  /** Hooks: legendary-affix, corrosion-affix. */
   className: string;
-  badge: { className: string; text: string } | null;
+  /** The diamond in its tier's colour; `text` is the tier ("T1", "L"; "" for none), read by screen readers. */
+  marker: { className: string; text: string };
   text: ModifierTextView;
 }
+/** The item preview, laid out as the game's item card: the head (name, icon, level, type, requirement, energy), then the lines. */
 export interface ItemPreviewView {
   className: string;
   icon: string;
-  rarity: string;
+  /** A Priceless item (level 100 rare, or so named): "- Priceless" after its name, its level in the accent colour. */
+  priceless: boolean;
   name: string;
-  /** "Base · Require Lv.N" */
-  detail: string;
-  sections: { label: string; detail: string; entries: ItemPreviewEntryView[] }[];
+  /** "Lv.86"; "" when the item has no item level. */
+  itemLevel: string;
+  /** "STR Helmet(Helmet)": the base and its gear group. */
+  typeLine: string;
+  /** "Require lv 82". */
+  require: string;
+  /** The Equipment Energy and how full it is against the level's cap (percent); null where the slot takes none. */
+  energy: { text: string; fill: number } | null;
+  lines: ItemPreviewLineView[];
   source: string;
+}
+/** A family in a rare's affix list. */
+export interface AffixOptionView {
+  value: string;
+  /** Its label without its category ("+# Max Life"). */
+  label: string;
+  /** The highest tier the item level offers ("T0+"); "" when it offers none. */
+  highestTier: string;
+  checked: boolean;
+  /** Why it cannot be checked ("Requires Priceless", "Requires Lv.82", "Three prefixes chosen"); "" when it can. */
+  blocked: string;
+}
+/** A rare's prefix or suffix list: the families by category (Basic, Advanced, Ultimate), up to three checked. */
+export interface AffixListView {
+  side: AffixSide;
+  heading: string;
+  /** "1/3". */
+  count: string;
+  tabs: { id: string; label: string; options: AffixOptionView[] }[];
 }
 export interface CraftAffixView {
   index: number;
   label: string;
+  /** The chosen family's label (without its category); "" for an empty slot. */
+  familyLabel: string;
   /** A Vorax slot's Legendary affix toggle; null on a rare. */
   legendaryToggle: { active: boolean } | null;
   family: string;
@@ -91,10 +137,29 @@ export interface CraftAffixView {
     | { kind: "warning" }
     | { kind: "tiers"; tier: { value: string; options: OptionView[] } | null; rolls: RollView[] };
 }
+/** A step of the rare item picker's path: `step` opens it again; null for where the picker or the form stands. */
+export interface CraftCrumbView {
+  label: string;
+  step: CraftPickStep | null;
+}
+/** The rare item picker: the item groups, a group's types, then a type's bases, as cards. */
+export interface CraftPickView {
+  kind: "craftPick";
+  step: CraftPickStep;
+  heading: string;
+  path: CraftCrumbView[];
+  cards: { value: string; label: string; detail: string; icon: string }[];
+}
 export interface RareFormView {
   kind: "form";
+  /** A rare's group, type and base, each a way back to the picker (its Item Type and Base Item replace them); null on a Vorax form. */
+  path: CraftCrumbView[] | null;
   name: string;
   level: string;
+  /** The highest level the field takes: 89 on a rare, whose level 100 is the Priceless check; 100 on a Vorax item. */
+  levelMax: number;
+  /** A rare's Priceless check (level 100); null on a Vorax form. */
+  priceless: boolean | null;
   type: string;
   types: OptionView[];
   base: string;
@@ -109,6 +174,8 @@ export interface RareFormView {
   sequence: string;
   sequences: SelectChoice[];
   prefixHeading: string;
+  /** A rare's affix lists (its slots show only their tier and rolls); null on a Vorax form, which keeps a select per slot. */
+  affixLists: AffixListView[] | null;
   affixes: CraftAffixView[];
   preview: ItemPreviewView;
 }
@@ -150,6 +217,7 @@ export type EquipmentCrafterBody =
       count: string;
     }
   | LegendaryConfigView
+  | CraftPickView
   | RareFormView;
 export interface EquipmentCrafterView {
   session: number;
@@ -187,6 +255,13 @@ function rareFormView(
   preview: (item: CraftedItem) => ItemPreviewView,
 ): RareFormView {
   const slot = typeSlot(craft, draft.type),
+    // One line per family and per base affix: what a sibling slot holds is not offered again.
+    takenFamilies = (index: number) =>
+      new Set(
+        draft.affixes
+          .filter((affix, position) => position !== index && position < 3 === index < 3 && affix.familyId)
+          .map((affix) => affix.familyId),
+      ),
     affixes = draft.affixes.map((affix, index): CraftAffixView => {
       const family = craftFamily(craft, draft, index),
         tiers = eligibleCraftTiers(draft, family),
@@ -195,11 +270,11 @@ function rareFormView(
         index,
         label: index < 3 ? `Prefix ${index + 1}` : `Suffix ${index - 2}`,
         legendaryToggle: craft.mode === "vorax" ? { active: affix.legendary } : null,
+        familyLabel: family ? text(withoutCategory(family.label)) : "",
         family: affix.familyId,
-        families: craftAffixPool(craft.mode, draft.type, index, affix.legendary).map((entry) => ({
-          value: entry.id,
-          label: text(entry.label),
-        })),
+        families: craftAffixPool(craft.mode, draft.type, index, affix.legendary)
+          .filter((entry) => !takenFamilies(index).has(entry.id))
+          .map((entry) => ({ value: entry.id, label: text(entry.label) })),
         config: !family
           ? { kind: "none" }
           : !tiers.length
@@ -221,8 +296,11 @@ function rareFormView(
     });
   return {
     kind: "form",
+    path: craft.mode === "rare" ? formPath(draft) : null,
     name: draft.name,
     level: draft.level,
+    levelMax: craft.mode === "rare" ? MAX_TYPED_LEVEL : 100,
+    priceless: craft.mode === "rare" ? draft.level === PRICELESS_LEVEL : null,
     type: draft.type,
     types: craftTypes(craft).map(([name, typeSlotName]) => ({
       value: name,
@@ -243,14 +321,19 @@ function rareFormView(
     baseAffixes: draft.baseAffixes.map((affix, index) => ({
       index,
       value: affix.template,
-      options: baseAffixChoices(craft, draft.type, index).map((choice) => ({
-        value: choice.template,
-        label:
-          craft.mode === "rare"
-            ? text(choice.template.replaceAll("\n", " / "))
-            : `T${text(choice.tier)} · ${text(choice.template.replaceAll("\n", " / "))}`,
-        data: { tier: choice.tier },
-      })),
+      options: baseAffixChoices(craft, draft.type, index)
+        .filter(
+          (choice) =>
+            !draft.baseAffixes.some((other, position) => position !== index && other.template === choice.template),
+        )
+        .map((choice) => ({
+          value: choice.template,
+          label:
+            craft.mode === "rare"
+              ? text(choice.template.replaceAll("\n", " / "))
+              : `T${text(choice.tier)} · ${text(choice.template.replaceAll("\n", " / "))}`,
+          data: { tier: choice.tier },
+        })),
       rolls: rollViews(affix.template, affix.rolls),
     })),
     energyShown: equipmentEnergyAllowed(slot),
@@ -259,6 +342,8 @@ function rareFormView(
     sequence: draft.sequenceId,
     sequences: displayTexts(towerSequenceChoices(towerSequencesForType(draft.type))),
     prefixHeading: craft.mode === "vorax" ? "Organ affixes" : "Prefixes",
+    affixLists:
+      craft.mode === "rare" ? (["prefix", "suffix"] as const).map((side) => affixList(craft, draft, side)) : null,
     affixes,
     preview: preview(item),
   };
@@ -379,7 +464,115 @@ export function equipmentCrafterView(
       },
     };
   }
+  if (craft.pick) return { ...base, body: craftPickView(craft.pick) };
   const item = craftedRareItem(craft);
   if (!craft.rare || !item) throw new Error("The equipment crafter has no form to show");
   return { ...base, body: rareFormView(craft, craft.rare, item, preview) };
+}
+
+interface GearGroup {
+  id: string;
+  label: string;
+  entries: { label: string; type: string }[];
+}
+const gearGroups = gearGroupsSs13 as GearGroup[];
+const groupOfType = gearGroupOfType as (
+  type: string,
+) => { group: GearGroup; entry: GearGroup["entries"][number] } | undefined;
+
+const STEP_HEADINGS: Record<CraftPickStep, string> = {
+  group: "Select an item group",
+  type: "Select a type",
+  base: "Select a base",
+};
+const ALL_GROUPS = "Item groups";
+const baseLabel = (base: { name: string; level: number }) => `Lv ${base.level} · ${text(base.name)}`;
+const topBaseIcon = (type: string) => rareBasesForType(type)[0]?.icon || "";
+
+function craftPickView(pick: CraftPick): CraftPickView {
+  const step = craftPickStep(pick);
+  const group = gearGroups.find((entry) => entry.id === pick.group);
+  const entry = group?.entries.find((item) => item.type === pick.type);
+  const path: CraftCrumbView[] = [{ label: ALL_GROUPS, step: step === "group" ? null : "group" }];
+  if (group) path.push({ label: group.label, step: step === "type" ? null : "type" });
+  if (entry) path.push({ label: entry.label, step: null });
+  const cards =
+    step === "group"
+      ? gearGroups.map((item) => ({
+          value: item.id,
+          label: item.label,
+          detail: `${item.entries.length} types`,
+          icon: topBaseIcon(item.entries[0].type),
+        }))
+      : step === "type"
+        ? (group?.entries || []).map((item) => ({
+            value: item.type,
+            label: item.label,
+            detail: `${rareBasesForType(item.type).length} bases`,
+            icon: topBaseIcon(item.type),
+          }))
+        : rareBasesForType(pick.type).map((base) => ({
+            value: base.id,
+            label: text(base.name),
+            detail: `Lv ${base.level}`,
+            icon: base.icon || "",
+          }));
+  return { kind: "craftPick", step, heading: STEP_HEADINGS[step], path, cards };
+}
+
+/** The form's way back: its group, type and base (a type no group holds goes back to the groups). */
+function formPath(draft: RareDraft): CraftCrumbView[] {
+  const found = groupOfType(draft.type);
+  const base = rareBasesForType(draft.type).find((entry) => entry.id === draft.baseId);
+  return [
+    { label: ALL_GROUPS, step: "group" },
+    ...(found
+      ? [
+          { label: found.group.label, step: "type" as const },
+          { label: found.entry.label, step: "base" as const },
+        ]
+      : [{ label: text(draft.type || "Unknown type"), step: "group" as const }]),
+    { label: base ? baseLabel(base) : "Base not offered", step: null },
+  ];
+}
+
+const CATEGORY = /^\[([^\]]+)\]\s*/;
+const withoutCategory = (label: string) => label.replace(CATEGORY, "");
+/** A rare's prefix or suffix list: each family with its highest tier at the item level, or why it cannot be checked. */
+function affixList(craft: EquipmentCraft, draft: RareDraft, side: AffixSide): AffixListView {
+  const offset = affixSideOffset(side),
+    chosen = draft.affixes.slice(offset, offset + 3).map((affix) => affix.familyId),
+    full = chosen.every(Boolean),
+    tabs = new Map<string, AffixOptionView[]>();
+  for (const family of craftAffixPool(craft.mode, draft.type, offset, false)) {
+    const category = family.label.match(CATEGORY)?.[1] || "Other",
+      tiers = eligibleCraftTiers(draft, family),
+      checked = chosen.includes(family.id),
+      lowest = Math.min(...family.tiers.map((tier) => tier.level));
+    const blocked = checked
+      ? ""
+      : !tiers.length
+        ? lowest >= 100
+          ? "Requires Priceless"
+          : `Requires Lv.${lowest}`
+        : full
+          ? `Three ${side}es chosen`
+          : "";
+    tabs.set(category, [
+      ...(tabs.get(category) || []),
+      {
+        value: family.id,
+        label: text(withoutCategory(family.label)),
+        highestTier: tiers.length ? `T${text(tiers[0].tier)}` : "",
+        checked,
+        blocked,
+      },
+    ]);
+  }
+  return {
+    side,
+    heading: side === "prefix" ? "Prefixes" : "Suffixes",
+    count: `${chosen.filter(Boolean).length}/3`,
+    tabs: [...tabs].map(([id, options]) => ({ id, label: id.replace(/ Affix$/, ""), options })),
+  };
 }

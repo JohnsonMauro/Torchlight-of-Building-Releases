@@ -44,3 +44,6 @@ export const COPIED_SOURCE = "min-w-0 text-xs text-muted";
 export const COPIED_BADGE =
   "inline-flex flex-none rounded-xs bg-grade-rare px-1 py-px text-[10px]/tight font-bold tracking-wide text-on-accent uppercase";
 export const COPIED_TEXT = "min-w-0 leading-snug text-text";
+
+/** The frame's kind (apps/web/src/ui/tooltip/tooltip-classes.ts). */
+export const FRAME = "slate-tooltip";

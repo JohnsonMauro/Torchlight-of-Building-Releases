@@ -1,6 +1,5 @@
-// Kismet affix markup for the planner's tooltips and the Kismet crafter preview (src/app/tooltips/planner-tooltips.js, src/app/pacts/pacts-controller.js). Kept apart from
+// Kismet affix text for the tooltips and the Kismet crafter preview (src/app/pacts/pacts-controller.js). Kept apart from
 // src/engine/pacts/kismet-effects.js, which the calculation imports, so the calculation does not load markup.
-import { escapeHtml } from "../html.js";
 import { starTrailNote } from "../../engine/pacts/kismet-effects.js";
 
 /**
@@ -20,12 +19,4 @@ export function boostedKismetAffixParts(text, boost) {
     title: `Rolled ${match[1] || (/^\+/.test(rolled.slice(0, match.index)) ? "+" : "")}${match[2]}${match[3]}, ${starTrailNote(boost)}`,
     after: rolled.slice(match.index + match[0].length),
   };
-}
-
-/** HTML for a kismet affix (boostedKismetAffixParts), e.g. "+<span>7.05%</span> Aura Effect". */
-export function boostedKismetAffixHtml(text, boost) {
-  const parts = boostedKismetAffixParts(text, boost);
-  return parts.effective === null
-    ? escapeHtml(parts.before)
-    : `${escapeHtml(parts.before)}<span class="skill-level-bonus" title="${escapeHtml(parts.title)}">${escapeHtml(parts.effective)}</span>${escapeHtml(parts.after)}`;
 }

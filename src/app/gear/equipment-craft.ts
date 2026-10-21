@@ -6,6 +6,7 @@
 // The rules are the legacy crafter's, which kept this state in its controls (a roll snaps as a range input does), except
 // that a change keeps what it does not touch: the legacy re-render also put every other roll back at its best value.
 import { craftItemTypes, voraxItemTypes } from "../../data/gear/crafting-catalog-ss13.js";
+import { gearGroupOfType } from "../../data/gear/gear-groups-ss13.js";
 import { rareBaseItemsSs13 } from "../../data/gear/rare-base-items-ss13.generated.js";
 import { baseAffixesSs13, baseAffixTiersSs13 } from "../../data/gear/base-affixes-ss13.generated.js";
 import { craftAffixesSs13 } from "../../data/gear/craft-affixes-ss13.generated.js";
@@ -32,6 +33,9 @@ import {
 } from "./affix-rolls.js";
 
 export type CraftMode = "rare" | "vorax" | "legendary";
+export type AffixSide = "prefix" | "suffix";
+/** A side's three slots: prefixes 0–2, suffixes 3–5. */
+export const affixSideOffset = (side: AffixSide): number => (side === "prefix" ? 0 : 3);
 
 export interface CraftTier {
   tier: string;
@@ -133,7 +137,20 @@ export interface EquipmentCraft {
   search: string;
   rare: RareDraft | null;
   legendary: LegendaryDraft | null;
+  /**
+   * Rare: where the item picker stands (src/data/gear/gear-groups-ss13.js: a group, then its entry's type, then a
+   * base); null while the form shows. Back in the picker from the form, `rare` keeps the draft until a base is picked.
+   */
+  pick: CraftPick | null;
 }
+export interface CraftPick {
+  /** The group's id; "" to pick one. */
+  group: string;
+  /** The entry's item type; "" to pick one. */
+  type: string;
+}
+export type CraftPickStep = "group" | "type" | "base";
+export const craftPickStep = (pick: CraftPick): CraftPickStep => (!pick.group ? "group" : !pick.type ? "type" : "base");
 
 const craftAffixes = craftAffixesSs13 as Record<string, { prefix?: CraftFamily[]; suffix?: CraftFamily[] }>;
 const vorax = voraxCraftingSs13 as {
@@ -147,6 +164,7 @@ const baseAffixTiers = baseAffixTiersSs13 as Record<string, Record<string, strin
 export const legendaries = legendaryGearSs13 as LegendaryEntry[];
 const corrodedLines = legendaryCorrodedModifiersSs13 as Record<string, (string | undefined)[]>;
 const AFFIX_SLOTS = [0, 1, 2, 3, 4, 5];
+const EMPTY_AFFIX: CraftAffixDraft = { familyId: "", tier: "", rolls: [], legendary: false };
 
 export const voraxBases = (): VoraxBase[] => vorax.bases;
 export const legendaryById = (id: string): LegendaryEntry | undefined => legendaries.find((entry) => entry.id === id);
@@ -257,8 +275,8 @@ export function selectedCraftTier(craft: EquipmentCraft, draft: RareDraft, index
     ? (tiers.find((tier) => tier.tier === "1") ?? tiers[0])
     : tiers.find((t) => t.tier === affix.tier);
 }
-function newRareDraft(craft: EquipmentCraft): RareDraft {
-  const [type, slot] = craftTypes(craft)[0];
+function newRareDraft(craft: EquipmentCraft, type = craftTypes(craft)[0][0]): RareDraft {
+  const slot = typeSlot(craft, type);
   return {
     name: "",
     level: "100",
@@ -297,8 +315,9 @@ export function newEquipmentCraft(mode: CraftMode): EquipmentCraft {
     search: "",
     rare: null,
     legendary: null,
+    pick: null,
   };
-  return mode === "rare" ? { ...craft, rare: newRareDraft(craft) } : craft;
+  return mode === "rare" ? { ...craft, pick: { group: "", type: "" } } : craft;
 }
 
 /** Edit on a crafted rare or Vorax item: the form filled from it. */
@@ -306,6 +325,7 @@ export function equipmentCraftFromItem(item: CraftedItem, weaponType: string): E
   const mode: CraftMode = item.rarity === "vorax" ? "vorax" : "rare";
   const craft: EquipmentCraft = {
     ...newEquipmentCraft(mode),
+    pick: null,
     editingId: item.id ?? null,
     editingName: item.name || "",
     voraxBase: mode === "vorax" ? item.base || item.name || "" : "",
@@ -462,6 +482,16 @@ export type CraftChange =
   | { kind: "baseAffix" | "affixFamily" | "affixTier"; index: number; value: string }
   | { kind: "voraxLegendary"; index: number }
   | { kind: "voraxBase"; value: string }
+  /**
+   * A rare's affix list: a family checked takes the side's first free slot (refused past three, or without a tier at the
+   * item level); unchecked, it leaves its slot and the ones below move up.
+   */
+  | { kind: "toggleAffix"; side: AffixSide; familyId: string }
+  /** A rare's Priceless check: level 100, or back to the highest typed level. */
+  | { kind: "priceless"; value: boolean }
+  /** The rare item picker: a group, its entry's type, a base (the form shows); back to a step from the form. */
+  | { kind: "pickGroup" | "pickType" | "pickBase"; value: string }
+  | { kind: "repick"; step: CraftPickStep }
   | { kind: "search"; value: string }
   | { kind: "legendary"; id: string }
   | { kind: "changeLegendary" }
@@ -519,6 +549,26 @@ function changedRoll(craft: EquipmentCraft, change: Extract<CraftChange, { kind:
         rare: { ...draft, affixes: draft.affixes.map((a, i) => (i === change.index ? { ...a, rolls } : a)) },
       };
 }
+/**
+ * A rare's Item Level is typed up to 89, or Priceless: level 100, the only level above it a rare is crafted at, which
+ * offers the T0+ tiers (src/app/gear/gear-items.js isPricelessItem reads a level 100 rare as Priceless).
+ */
+export const MAX_TYPED_LEVEL = 89;
+export const PRICELESS_LEVEL = "100";
+/** The level changed: the energy capped at it, each affix's tier picked again among those it offers. */
+function withLevel(craft: EquipmentCraft, draft: RareDraft, level: string): RareDraft {
+  const next = {
+    ...draft,
+    level,
+    energy: String(maxEquipmentEnergy(level, typeSlot(craft, draft.type), draft.type)),
+  };
+  return {
+    ...next,
+    affixes: draft.affixes.map((affix, index) =>
+      configuredAffix(craft, next, index, affix, affix.tier, selectedCraftTier(craft, draft, index)),
+    ),
+  };
+}
 function changedRare(craft: EquipmentCraft, draft: RareDraft, change: CraftChange): RareDraft | { notice: string } {
   const setAffix = (index: number, affix: CraftAffixDraft) =>
     draft.affixes.map((entry, position) => (position === index ? affix : entry));
@@ -537,19 +587,14 @@ function changedRare(craft: EquipmentCraft, draft: RareDraft, change: CraftChang
       }[change.kind] as "name" | "baseId" | "energy" | "beltBlendId" | "sequenceId";
       return { ...draft, [field]: change.value };
     }
-    case "level": {
-      const next = {
-        ...draft,
-        level: change.value,
-        energy: String(maxEquipmentEnergy(change.value, typeSlot(craft, draft.type), draft.type)),
-      };
-      return {
-        ...next,
-        affixes: draft.affixes.map((affix, index) =>
-          configuredAffix(craft, next, index, affix, affix.tier, selectedCraftTier(craft, draft, index)),
-        ),
-      };
-    }
+    case "level":
+      return withLevel(
+        craft,
+        draft,
+        craft.mode === "rare" && Number(change.value) > MAX_TYPED_LEVEL ? String(MAX_TYPED_LEVEL) : change.value,
+      );
+    case "priceless":
+      return withLevel(craft, draft, change.value ? PRICELESS_LEVEL : String(MAX_TYPED_LEVEL));
     case "type":
       return withType(craft, draft, change.value);
     case "baseAffix":
@@ -567,6 +612,23 @@ function changedRare(craft: EquipmentCraft, draft: RareDraft, change: CraftChang
           configuredAffix(craft, draft, change.index, { ...draft.affixes[change.index], familyId: change.value }),
         ),
       };
+    case "toggleAffix": {
+      const offset = affixSideOffset(change.side),
+        slots = draft.affixes.slice(offset, offset + 3),
+        at = slots.findIndex((affix) => affix.familyId === change.familyId);
+      if (at >= 0) {
+        const moved = [...slots.slice(0, at), ...slots.slice(at + 1), EMPTY_AFFIX];
+        return { ...draft, affixes: draft.affixes.map((affix, index) => moved[index - offset] ?? affix) };
+      }
+      const free = slots.findIndex((affix) => !affix.familyId);
+      if (free < 0) return { notice: `An item takes up to three ${change.side}es` };
+      const index = offset + free,
+        family = craftAffixPool(craft.mode, draft.type, index, false).find((entry) => entry.id === change.familyId);
+      if (!family) return draft;
+      if (!eligibleCraftTiers(draft, family).length)
+        return { notice: `${family.label.replace(/^\[[^\]]+\]\s*/, "")} needs a higher item level` };
+      return changedRare(craft, draft, { kind: "affixFamily", index, value: change.familyId });
+    }
     case "affixTier": {
       const affix = draft.affixes[change.index],
         tier = craftFamily(craft, draft, change.index)?.tiers.find((entry) => entry.tier === change.value);
@@ -627,6 +689,24 @@ function changedLegendary(entry: LegendaryEntry, draft: LegendaryDraft, change: 
       return draft;
   }
 }
+/** A base picked: the form shows it, keeping the draft's other fields when it had one (a new type resets its own). */
+function pickedBase(craft: EquipmentCraft, baseId: string): EquipmentCraft {
+  const base = rareBases.find((entry) => entry.id === baseId);
+  if (!base) return craft;
+  const draft = !craft.rare
+    ? newRareDraft(craft, base.type)
+    : craft.rare.type === base.type
+      ? craft.rare
+      : withType(craft, craft.rare, base.type);
+  return { ...craft, pick: null, rare: { ...draft, baseId } };
+}
+/** Back to a picker step, from the picker or from the form (its draft's type tells where it stands). */
+function repicked(craft: EquipmentCraft, step: CraftPickStep): CraftPick {
+  const type = craft.pick ? craft.pick.type : craft.rare?.type || "";
+  const group = craft.pick ? craft.pick.group : gearGroupOfType(type)?.group.id || "";
+  if (step === "group" || !group) return { group: "", type: "" };
+  return { group, type: step === "base" ? type : "" };
+}
 /** The draft after a control's change; `notice` (and the draft unchanged) when the change is refused. */
 export function changeEquipmentCraft(
   craft: EquipmentCraft,
@@ -637,6 +717,11 @@ export function changeEquipmentCraft(
     const next = { ...craft, voraxBase: change.value };
     return { craft: { ...next, rare: newRareDraft(next) } };
   }
+  if (change.kind === "pickGroup") return { craft: { ...craft, pick: { group: change.value, type: "" } } };
+  if (change.kind === "pickType")
+    return { craft: craft.pick ? { ...craft, pick: { ...craft.pick, type: change.value } } : craft };
+  if (change.kind === "pickBase") return { craft: pickedBase(craft, change.value) };
+  if (change.kind === "repick") return { craft: { ...craft, pick: repicked(craft, change.step) } };
   if (change.kind === "search") return { craft: { ...craft, search: change.value } };
   if (change.kind === "legendary") {
     const entry = legendaryById(change.id);

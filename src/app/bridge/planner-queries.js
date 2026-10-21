@@ -36,6 +36,17 @@
  *   editable?: boolean }) => import("./skill-tooltip-view.ts").SkillTooltipView | null} skillTooltip A skill (on a
  *   board row, or by name) or a support (of a board row's skill, of a named skill, or in a hero trait's support slot);
  *   `editable` for a hero panel slot.
+ * @property {(target: { source: string, category: string }) => DamageSourceTooltipView} damageSourceTooltip A Stats
+ *   damage path source: the card of what it names, or the breakdown of what feeds it.
+ */
+/**
+ * @typedef {{ kind: "gear", view: import("./gear-item-view.ts").GearTooltipView }
+ *   | { kind: "pact", view: import("./pact-tooltip-view.ts").PactTooltipView }
+ *   | { kind: "slate", view: import("./slate-tooltip-view.ts").SlateTooltipView }
+ *   | { kind: "trait", view: import("./trait-tooltip-view.ts").TraitTooltipView }
+ *   | { kind: "memory", view: import("./memory-tooltip-view.ts").MemoryTooltipView }
+ *   | { kind: "skill", view: import("./skill-tooltip-view.ts").SkillTooltipView }
+ *   | { kind: "summary", title: string, body: string }} DamageSourceTooltipView
  */
 
 /** @type {PlannerQueries | null} */

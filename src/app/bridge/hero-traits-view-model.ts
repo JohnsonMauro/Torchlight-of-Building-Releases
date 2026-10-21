@@ -63,7 +63,7 @@ interface TreeNode {
 export interface TraitView {
   name: string;
   art: string | null;
-  /** The level key the trait tooltip reads (data-hero-trait-level-key). */
+  /** The level key the trait tooltip reads. */
   levelKey: string;
 }
 /** A memory socket: data-memory-tier is its slot key ("base", "level45", "<hero>:level45"). */
@@ -483,4 +483,30 @@ export function heroTraitsView(hero: HeroState, activeTab: HeroDetailTab): HeroT
   if (sage && activeTab === "scent") return { ...view, content: scentBottle(hero) };
   if (treeHero && activeTab === "path") return { ...view, content: traitPath(selected.id, hero, traits) };
   return { ...view, content: traitTiers(selected.id, hero, traits, treeHero) };
+}
+
+/**
+ * A trait of the hero where the hero panel shows it (its level key and whether the build picked it), for a tooltip
+ * opened elsewhere (a Stats damage path source naming it): the Hero Trait tab first, then a tree hero's Trait Path; null
+ * when the hero has no trait of that name.
+ */
+export function heroTraitTarget(
+  hero: HeroState,
+  name: string,
+): { name: string; levelKey: string; selected: boolean } | null {
+  const tiers = heroTraitsView(hero, "traits").content;
+  if (tiers?.kind === "tiers") {
+    if (tiers.base.trait.name === name) return { name, levelKey: "base", selected: true };
+    for (const pick of [...tiers.tiers.map((tier) => tier.pick), tiers.extraRow?.pick])
+      if (pick?.name === name) return { name, levelKey: pick.levelKey, selected: true };
+    for (const tier of tiers.tiers)
+      for (const choice of tier.groups.flatMap((group) => group.choices))
+        if (choice.name === name) return { name, levelKey: choice.levelKey, selected: choice.selected };
+  }
+  const path = heroTraitsView(hero, "path").content;
+  if (path?.kind === "path") {
+    const node = path.nodes.find((entry) => entry.name === name);
+    if (node) return { name, levelKey: node.levelKey, selected: node.selected };
+  }
+  return null;
 }

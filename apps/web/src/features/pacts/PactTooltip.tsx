@@ -8,7 +8,7 @@ type PactNodeTarget = Parameters<ReturnType<typeof plannerQueries>["pactNodeTool
 
 const body = (view: PactTooltipView) => ({
   body: <PactCard view={view} />,
-  kind: "pact-tooltip",
+  kind: classes.FRAME,
   rarity: view.rarity ?? undefined,
 });
 
@@ -31,7 +31,8 @@ export function PactspiritTooltip({ name, children }: { name: string; children: 
   );
 }
 
-function PactCard({ view }: { view: PactTooltipView }) {
+/** A node's, Kismet's or Pactspirit's card (its tooltip, and a damage path source naming a Kismet). */
+export function PactCard({ view }: { view: PactTooltipView }) {
   return (
     <>
       <div className={classes.HEAD}>

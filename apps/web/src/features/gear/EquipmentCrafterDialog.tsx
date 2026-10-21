@@ -1,10 +1,11 @@
 // The equipment crafter (the Gear section's Craft Rare Item, Craft Vorax Item and Craft Legendary, or Edit on a crafted
-// rare or Vorax item): the Vorax limb picker, the legendary list and configuration, or the rare and Vorax form
+// rare or Vorax item): the rare item picker, the Vorax limb picker, the legendary list and configuration, or the rare and Vorax form
 // (apps/web/src/features/gear), and Cancel / Add to Inventory (Save Changes when editing). The planner opens it and
 // announces the "equipmentCrafter" source; each view is drawn anew at every opening and on a change of view, as before.
 import { useRef } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { EquipmentCrafterBody } from "@legacy/app/bridge/equipment-crafter-view.ts";
+import { CraftPicker } from "./CraftPicker";
 import { LegendaryConfig, LegendaryList } from "./LegendaryCraft";
 import {
   CRAFT_ASIDE,
@@ -17,13 +18,12 @@ import {
   CRAFTER_FOOTER,
   CRAFTER_HEAD,
   FOOTER_BUTTON,
+  PICK_CARD,
+  PICK_CARDS,
 } from "./crafter-classes";
 import { RareCraftForm } from "./RareCraftForm";
 import { useViewSource } from "../../ui/use-view-source";
 import { useRegisteredDialog } from "../../ui/dialog-registry";
-
-const LIMB =
-  "grid min-h-19.5 cursor-pointer place-items-center gap-1 rounded border border-line bg-raised p-2 text-text hover:border-accent focus-visible:border-accent focus-visible:outline-none";
 
 function CrafterBody({ body }: { body: EquipmentCrafterBody }) {
   switch (body.kind) {
@@ -32,12 +32,12 @@ function CrafterBody({ body }: { body: EquipmentCrafterBody }) {
         <div className={CRAFT_LAYOUT}>
           <section className={CRAFT_FORM}>
             <small className={CRAFT_ASIDE_LABEL}>Select Limb</small>
-            <div className="grid grid-cols-4 gap-2.25 max-[800px]:grid-cols-2">
+            <div className={PICK_CARDS}>
               {body.limbs.map((limb) => (
                 <button
                   key={limb.name}
                   type="button"
-                  className={LIMB}
+                  className={PICK_CARD}
                   data-select-vorax-base={limb.name}
                   onClick={() => plannerCommands().changeEquipmentCraft({ kind: "voraxBase", value: limb.name })}
                 >
@@ -59,6 +59,8 @@ function CrafterBody({ body }: { body: EquipmentCrafterBody }) {
       return <LegendaryList list={body} />;
     case "legendary":
       return <LegendaryConfig config={body} />;
+    case "craftPick":
+      return <CraftPicker pick={body} />;
     default:
       return <RareCraftForm form={body} />;
   }

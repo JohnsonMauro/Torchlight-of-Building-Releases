@@ -27,13 +27,13 @@ const patterns = {
   eventListeners: /addEventListener\(/g,
 };
 const baseline = {
-  domLookups: 35,
-  classListWrites: 22,
-  styleWrites: 11,
+  domLookups: 23,
+  classListWrites: 2,
+  styleWrites: 9,
   hiddenWrites: 7,
-  htmlWrites: 5,
-  eventListeners: 36,
-  markupFiles: 22,
+  htmlWrites: 4,
+  eventListeners: 25,
+  markupFiles: 9,
 };
 
 function measure() {

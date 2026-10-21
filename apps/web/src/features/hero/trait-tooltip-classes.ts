@@ -30,3 +30,7 @@ export const RUN_LOOKS: Record<string, string> = {
   other: "text-accent",
   separator: "mx-0.5 text-dim",
 };
+
+/** The card's frame kind (apps/web/src/ui/tooltip/tooltip-classes.ts): a follower's and a skill's take their rarity. */
+export const traitFrame = (follower: boolean) =>
+  follower ? "hero-trait-tooltip follower-tooltip" : "hero-trait-tooltip";

@@ -36,11 +36,11 @@ import { skillSelectorViewSources } from "./skills/skill-selector-source.js";
 import { skillTooltipQueries } from "./skills/skill-tooltip-queries.js";
 import { installSkillSelectorEvents, skillSelectorCommands } from "./skills/skill-selector.js";
 import { slateCommands, slateQueries, slateViewSources } from "./slates/slates-controller.js";
+import { damageSourceQueries } from "./stats/damage-source-tooltip.js";
 import { statsCommands, statsViewSources } from "./stats/stats-controller.js";
 import { prismCommands, prismViewSources } from "./talents/prism-controller.js";
 import { renderTalents, setTalentSlateMode } from "./talents/talent-trees.js";
 import { talentCommands, talentQueries, talentViewSources } from "./talents/talents-controller.js";
-import { installPlannerTooltipEvents } from "./tooltips/planner-tooltips.js";
 
 const pageCommands = {
   showToast,
@@ -70,6 +70,7 @@ providePlannerQueries({
   ...heroTooltipQueries,
   ...followerQueries,
   ...skillTooltipQueries,
+  ...damageSourceQueries,
 });
 for (const sources of [
   pageViewSources,
@@ -98,7 +99,6 @@ setOpenViewsRenderer(renderWorkspaceViews);
 // the planner from loading.
 if (!calculationsPaused) runGuardedRender(currentPlanner);
 installFeedbackEvents();
-installPlannerTooltipEvents();
 installSearchableSelectEvents();
 
 document.addEventListener("click", (event) => {

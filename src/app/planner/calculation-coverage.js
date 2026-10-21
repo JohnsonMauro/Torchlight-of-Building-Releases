@@ -32,13 +32,6 @@ import { resolveHeroModules } from "../../engine/heroes/hero-trait-modules.js";
 import { weaponLocalLineKind, weaponHands, weaponTypeOf, readWeapon } from "../../engine/skills/weapon-damage-model.js";
 import { TRAIT_SLOT_GRANTS, YOUGA_ULTIMATE_ONE_ID } from "../../engine/heroes/trait-board-grants.js";
 
-export function coverageBadge(status, title = "") {
-  const titleAttribute = title
-    ? ` title="${String(title).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")}"`
-    : "";
-  return `<b class="calc-coverage ${status === "In calc" ? "calculated" : neutralStatuses.has(status) ? "neutral" : "pending"}"${titleAttribute}>${status}</b>`;
-}
-
 function baseGearLineCoverage(item, text, active, block, lowResources, blurEffects) {
   if (!active) return "Not equipped";
   // A "[Core]" grant of a core the planner applies by name ("[Affliction] +30 Affliction inflicted per second"; core audit

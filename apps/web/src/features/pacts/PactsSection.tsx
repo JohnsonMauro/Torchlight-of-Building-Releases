@@ -1,7 +1,6 @@
 // The Pactspirits section of the Build page: the pact count, the three pact slots with their trees, and the Kismet counts.
 // The data is the planner's "pacts" source (src/app/bridge/pacts-view-model.ts); every edit is a planner command. Slots,
-// nodes and Kismets show their tooltips (PactTooltip). A Stats damage source still reads the nodes' data-pact-node-tooltip
-// and data-node-* attributes (src/app/tooltips/planner-tooltips.js), so they stay until those tooltips move.
+// nodes and Kismets show their tooltips (PactTooltip).
 import { useMemo, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { ExtraSlotView, PactNodeView, PactSlotView, PactsView } from "@legacy/app/bridge/pacts-view-model.ts";
@@ -140,7 +139,6 @@ function PactSlotList({ view }: { view: PactsView }) {
             <button
               type="button"
               className="pact-slot-select group flex w-full min-w-0 cursor-pointer items-center gap-3 text-left text-text"
-              data-pactspirit-name={slot.spirit ? slot.name : undefined}
               onClick={() => commands.openPactspiritSelector(slot.index)}
               onContextMenu={(event) => {
                 if (!slot.spirit) return;
@@ -289,12 +287,7 @@ function PactNode({
         role={switchable ? "button" : undefined}
         aria-pressed={switchable ? node.allocated : undefined}
         data-pact-node-allocate={switchable ? `${slotName}:${node.index}` : undefined}
-        data-pact-node-tooltip=""
         data-kismet-node={node.kismetKind ? node.key : undefined}
-        data-node-name={node.name}
-        data-node-effect={node.effect}
-        data-node-ring={node.ring}
-        data-node-icon={node.icon}
         aria-label={node.label}
         onClick={onActivate}
         onKeyDown={(event) => {
@@ -340,12 +333,7 @@ function ExtraSlot({
       <span
         className={extraClasses(extra, drag)}
         tabIndex={0}
-        data-pact-node-tooltip=""
         data-kismet-node={extra.key}
-        data-node-name={extra.name}
-        data-node-effect={extra.effect}
-        data-node-ring={ring}
-        data-node-icon={extra.icon}
         aria-label={extra.label}
         onClick={onActivate}
         onKeyDown={(event) => {

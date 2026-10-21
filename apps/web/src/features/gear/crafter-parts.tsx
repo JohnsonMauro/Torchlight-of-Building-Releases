@@ -29,46 +29,75 @@ import {
 } from "./crafter-classes";
 
 // The item card: its rarity's art and colours (itemCardLook), a framed box per modifier section.
-const PREVIEW = "relative block rounded-md border border-(--item-frame) p-5 text-center";
-const MOD_SECTION = "rounded border border-line bg-surface/60 p-2.5";
+// The item preview, laid out as the game's item card: name and level, type, requirement and energy beside the icon, then
+// the implicit (muted), the base lines and the affixes, a rule above each; a base line or affix is led by a diamond in
+// its tier's colour (the line's source and tier on hover).
+const PREVIEW = "relative block rounded-md border border-(--item-frame) p-4 text-left";
 // A modifier line; a corroded one (corrosion-affix, read by the e2e tests) in violet.
-const MOD_LINE = "my-1.25 flex items-start gap-1.5 text-sm whitespace-pre-line";
-const lineClasses = (className: string) =>
-  `${MOD_LINE} ${className}${className.split(" ").includes("corrosion-affix") ? " text-violet" : ""}`;
+const MOD_LINE = "flex items-start gap-2.5 text-sm whitespace-pre-line";
+const BLOCKS = ["implicit", "base", "affix"] as const;
+const lineClasses = (className: string, block: string) =>
+  `${MOD_LINE} ${className}${className.split(" ").includes("corrosion-affix") ? " text-violet" : block === "implicit" ? " text-muted" : ""}`;
 
 export function ItemPreview({ preview }: { preview: ItemPreviewView }) {
   return (
     <article className={`${PREVIEW} ${itemCardLook(preview.className)} ${preview.className}`}>
-      <img src={preview.icon} alt="" className="mx-auto h-36 w-28 object-contain" />
-      <p className="mt-1 text-[10px] tracking-widest text-(--item-name) uppercase">{preview.rarity}</p>
-      <h3 className="mt-3 font-display text-base font-bold text-(--item-name)">{preview.name}</h3>
-      <small className="mt-3 block text-sm text-muted">{preview.detail}</small>
-      <div className="mt-4 grid gap-2.25 text-left">
-        {preview.sections.length ? (
-          preview.sections.map((section, index) => (
-            <section key={index} className={MOD_SECTION}>
-              <h4 className="mb-1.75 flex justify-between gap-2 text-[10px] font-bold tracking-widest text-muted uppercase">
-                {section.label}
-                {section.detail ? <small className="tracking-normal normal-case">{section.detail}</small> : null}
-              </h4>
-              <ul>
-                {section.entries.map((entry, position) => (
-                  <li key={position} className={lineClasses(entry.className)}>
-                    {entry.badge ? <i className={entry.badge.className}>{entry.badge.text}</i> : null}
-                    <span>
-                      <ModifierText text={entry.text} />
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))
-        ) : (
-          <p className="text-sm text-muted">Configure affixes to preview this item.</p>
-        )}
-      </div>
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+        <div className="min-w-0">
+          <h3 className="font-display text-lg/tight font-bold text-(--item-name)">{preview.name}</h3>
+          <div className="mt-2 grid gap-1 text-sm text-muted">
+            {preview.itemLevel ? (
+              <p className={preview.priceless ? "text-accent" : undefined}>{preview.itemLevel}</p>
+            ) : null}
+            <p>{preview.typeLine}</p>
+            <p>{preview.require}</p>
+            {preview.energy ? (
+              <div>
+                <p>{preview.energy.text}</p>
+                <i className="mt-1 block h-1 overflow-hidden rounded-full bg-sunken">
+                  <b className="block h-full bg-accent" style={{ width: `${preview.energy.fill}%` }} />
+                </i>
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <img src={preview.icon} alt="" className="size-24 object-contain" />
+      </header>
+      {preview.lines.length ? (
+        BLOCKS.map((block) => {
+          const lines = preview.lines.filter((line) => line.block === block);
+          return lines.length ? (
+            <ul key={block} className="mt-3 grid gap-1.5 border-t border-line pt-3">
+              {lines.map((line, index) => (
+                <li
+                  key={index}
+                  className={lineClasses(line.className, block)}
+                  data-preview-line={line.kind}
+                  title={line.title}
+                >
+                  {block === "implicit" ? null : (
+                    <i className={line.marker.className}>
+                      {line.marker.text ? <span className="sr-only">{line.marker.text}</span> : null}
+                    </i>
+                  )}
+                  <span className="min-w-0">
+                    <ModifierText text={line.text} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null;
+        })
+      ) : (
+        <p className="mt-3 border-t border-line pt-3 text-sm text-muted">Configure affixes to preview this item.</p>
+      )}
       {preview.source ? (
-        <a href={preview.source} target="_blank" rel="noreferrer" className="mt-2 inline-block text-info underline">
+        <a
+          href={preview.source}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-block text-xs text-info underline"
+        >
           Open TLIDB source
         </a>
       ) : null}

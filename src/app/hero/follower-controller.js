@@ -12,7 +12,6 @@ import {
 } from "./follower-panel.js";
 import { currentPlanner, plannerState, withRenderPass } from "../planner/session.js";
 import { openFollowerSkillSelector } from "../skills/skill-selector.js";
-import { hidePlannerTooltip } from "../tooltips/tooltip-host.js";
 import { commitFollower } from "./hero-controller.js";
 
 let followerSelectorSession = 0; // the follower selector's openings (apps/web/src/features/follower/FollowerSelectorDialog.tsx)
@@ -32,11 +31,9 @@ export const followerCommands = {
     );
   },
   openFollowerSkillSelector: (slot) => {
-    hidePlannerTooltip();
     openFollowerSkillSelector(slot);
   },
   clearFollowerSkill: (slot) => {
-    hidePlannerTooltip();
     commitFollower(setFollowerSkill(plannerState, slot, null), "Skill slot cleared");
   },
 };

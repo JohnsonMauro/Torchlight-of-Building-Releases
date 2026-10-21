@@ -186,7 +186,9 @@ test("the editor opens on the stored corrosion: a corroded line and a corrosion 
   const corrosion = gear.itemDialog().getByRole("combobox", { name: "Corrosion Implicit", exact: true });
   await expect(corrosion).toHaveValue("+51% damage");
   await expect(editor.locator(".gear-mod-editor .fixed-mod.corrosion-affix")).toHaveText("Corroded+51% damage");
-  await expect(editor.locator("aside")).toContainText("Implicit · CorrodedDEX Boots+51% damage");
+  const implicit = editor.locator('aside [data-preview-line="Implicit"]');
+  await expect(implicit).toHaveText("+51% damage");
+  await expect(implicit).toHaveAttribute("title", "Implicit · Corroded · DEX Boots");
   await corrosion.selectOption("");
   await footer.getByRole("button", { name: "Save Changes", exact: true }).click();
   await expect(gear.toast()).toHaveText("Inventory item updated");

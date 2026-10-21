@@ -5,8 +5,7 @@
 // or from the build's details (Builds view). The data is the planner's "heroTraits" source
 // (src/app/bridge/hero-traits-view-model.ts); every edit is a planner command, and the hero, memory, scent, ammo and
 // support dialogs stay legacy. Traits, the extra row, memories, scents and supports show their tooltips (TraitTooltip,
-// MemoryTooltip, ScentTooltip, SkillTooltip); a Stats damage source still finds a trait by data-hero-trait-tooltip and
-// data-hero-trait-level-key.
+// MemoryTooltip, ScentTooltip, SkillTooltip).
 import { useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { HeroTraitTooltip, TreeExtraRowTooltip } from "./TraitTooltip";
@@ -311,8 +310,6 @@ function TraitPath({ path }: { path: TraitPathView }) {
                 className={`selena-dance-node ${node.base ? "base" : ""} ${node.selected ? "selected" : ""} ${node.locked ? "locked" : ""} group/node absolute top-(--node-y) left-(--node-x) grid w-[54px] -translate-1/2 cursor-pointer justify-items-center gap-0.5 border-0 bg-transparent p-0 text-muted focus-visible:outline-0 off:cursor-not-allowed off:opacity-28 off:grayscale`}
                 style={style}
                 disabled={node.locked}
-                data-hero-trait-tooltip={node.name}
-                data-hero-trait-level-key={node.levelKey}
                 aria-pressed={node.selected}
                 onClick={() => {
                   if (!node.base) plannerCommands().toggleTraitPathNode(node.name);
@@ -347,8 +344,6 @@ function TraitTiers({ tiers, drag }: { tiers: TraitTiersView; drag: PickDrag }) 
       <button
         type="button"
         className={`selected ${choiceButton} touch-none ${draggedFrom === row ? "cursor-grabbing opacity-45" : "cursor-grab"}`}
-        data-hero-trait-tooltip={pick.name}
-        data-hero-trait-level-key={pick.levelKey}
         aria-label={pick.name}
         aria-pressed="true"
         onPointerDown={(event) => drag.start(event, String(row), row)}
@@ -362,8 +357,6 @@ function TraitTiers({ tiers, drag }: { tiers: TraitTiersView; drag: PickDrag }) 
       <button
         type="button"
         className={`selected ${choiceButton} cursor-pointer`}
-        data-hero-trait-tooltip={base.trait.name}
-        data-hero-trait-level-key="base"
         aria-label={base.trait.name}
         aria-pressed="true"
       >
@@ -486,8 +479,6 @@ function Choices({ group, dual = false }: { group: ChoiceGroupView; dual?: boole
       <button
         type="button"
         className={`${choice.selected ? "selected " : "opacity-70 "}${choiceButton} cursor-pointer`}
-        data-hero-trait-tooltip={choice.name}
-        data-hero-trait-level-key={choice.levelKey}
         aria-label={choice.name}
         aria-pressed={choice.selected}
         onClick={() => plannerCommands().pickHeroTrait(group.selectionKey, choice.name)}
