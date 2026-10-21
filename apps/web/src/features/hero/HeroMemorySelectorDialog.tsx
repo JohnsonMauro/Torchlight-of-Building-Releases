@@ -10,6 +10,7 @@ import { useViewSource } from "../../ui/use-view-source";
 import { HeroMemoryCrafter } from "./HeroMemoryCrafter";
 import { inventoryButton, inventoryItem, memoryAccent, memoryFooterButton } from "./hero-memory-classes";
 import { pickerDialog } from "../../ui/selector-classes";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 const commands = plannerCommands;
 
@@ -107,6 +108,7 @@ function Inventory({ view }: { view: MemoryInventoryView }) {
 export function HeroMemorySelectorDialog() {
   const view = useViewSource("heroMemory");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   return (
     <dialog
       id="hero-memory-selector"

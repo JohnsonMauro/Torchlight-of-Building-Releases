@@ -17,8 +17,9 @@ import {
   gameLogLogins,
   gameLogSummary,
 } from "../bridge/game-log-import-view.ts";
+import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
-import { $, showToast } from "../planner/page.js";
+import { showToast } from "../planner/page.js";
 import { applyPlannerState, persistPlannerState, renderCandidateViews } from "../planner/session.js";
 import { activateWorkspaceView } from "../planner/workspace.js";
 import { createBuild, loadPlannerState } from "../storage/build-library.ts";
@@ -140,7 +141,7 @@ async function selectGameLogSnapshot(id) {
 function openGameLogImport() {
   resetGameLogImport();
   gameLogSession += 1;
-  $("#import-game-log-dialog").showModal();
+  openDialog("import-game-log-dialog");
   findGameLog();
 }
 async function chooseGameLogFile(file) {
@@ -187,7 +188,7 @@ function importGameLogBuild() {
   });
   applyPlannerState(loadPlannerState());
   renderCandidateViews();
-  $("#import-game-log-dialog").close();
+  closeDialog("import-game-log-dialog");
   activateWorkspaceView("builds", { scroll: false });
   showToast(`${imported.name} imported and active`);
 }

@@ -36,6 +36,7 @@ import {
   plainDialogTitleClass,
 } from "../../ui/dialog-classes";
 import { useViewSource } from "../../ui/use-view-source";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 const NOTE = "GitHub opens with everything filled in. Click Create to post it publicly (free GitHub account needed).";
 // A field: its label, help, control and error stacked; a required field left empty gets a danger edge.
@@ -450,6 +451,7 @@ function trapFocus(event: KeyboardEvent<HTMLDialogElement>) {
 export function FeedbackDialog() {
   const view = useViewSource("feedback");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   return (
     <dialog
       id="feedback-dialog"

@@ -279,6 +279,38 @@ test("the Slates tab shows the slate board in place of the tree, and a tree tab 
   await planner.expectNoErrors();
 });
 
+test("the slate board takes the tree's height (at least 650px), and the tree keeps it when it comes back", async ({
+  page,
+}) => {
+  const { planner, talents } = await openTalents(page);
+  const tree = await talents.treePanel().boundingBox();
+  await talents.slatesTab().click();
+  const board = page.locator("#talents-view .slate-board-panel");
+  await expect(board).toBeVisible();
+  const slateBox = await board.boundingBox();
+  expect(Math.abs(slateBox.height - Math.max(650, Math.ceil(tree.height)))).toBeLessThanOrEqual(1);
+  expect(Math.abs(slateBox.y - tree.y)).toBeLessThanOrEqual(1);
+  await talents.openTree("Tree 4");
+  const back = await talents.treePanel().boundingBox();
+  expect(Math.abs(back.height - tree.height)).toBeLessThanOrEqual(1);
+  await planner.expectNoErrors();
+});
+
+test("a reload on the slate board opens it again", async ({ page }) => {
+  const { planner, talents } = await openTalents(page);
+  await talents.slatesTab().click();
+  await expect(page.locator("#slate-board")).toBeVisible();
+  await page.reload();
+  await planner.waitUntilReady();
+  await expect(page.locator("#slate-board")).toBeVisible();
+  await expect(talents.treePanel()).toBeHidden();
+  await expect(talents.slatesTab()).toHaveClass(/\bactive\b/);
+  await talents.openTree("Tree 4");
+  await expect(talents.treePanel()).toBeVisible();
+  await expect(page.locator("#slate-board")).toBeHidden();
+  await planner.expectNoErrors();
+});
+
 test("hovering a node and the installed prism shows their tooltips", async ({ page }) => {
   const { planner, talents } = await openTalents(page);
   // The planner ignores hovers for a moment after a scroll, and hover() scrolls the node into view first.

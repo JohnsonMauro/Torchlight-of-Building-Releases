@@ -1,17 +1,11 @@
-// The planner's static dialogs by id, so a button elsewhere in the shell (the header) can open one that another
-// component renders, as the legacy code did with document.querySelector(...).showModal().
-const dialogs = new Map<string, HTMLDialogElement>();
+// The page's dialogs by id (src/app/bridge/dialogs.ts): the planner and a button elsewhere in the shell (the header)
+// open and close a dialog that another component renders.
+import { useEffect, type RefObject } from "react";
+import { registerDialog } from "@legacy/app/bridge/dialogs.ts";
 
-/** A ref callback that registers the dialog under its id. */
-export const registerDialog = (element: HTMLDialogElement | null): void => {
-  if (element) dialogs.set(element.id, element);
-};
+export { closeDialog, openDialog, registerDialog } from "@legacy/app/bridge/dialogs.ts";
 
-export function openDialog(id: string): void {
-  const dialog = dialogs.get(id);
-  if (dialog && !dialog.open) dialog.showModal();
-}
-
-export function closeDialog(id: string): void {
-  dialogs.get(id)?.close();
+/** Registers a dialog component's own ref under the dialog's id once it is mounted. */
+export function useRegisteredDialog(dialog: RefObject<HTMLDialogElement | null>): void {
+  useEffect(() => registerDialog(dialog.current), [dialog]);
 }

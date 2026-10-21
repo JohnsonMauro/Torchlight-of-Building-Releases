@@ -1,10 +1,8 @@
 import { providePlannerCommands } from "./bridge/planner-commands.js";
 import { provideViewSource } from "./bridge/view-sources.ts";
 import {
-  backupLibraryBuilds,
   buildLibraryCommands,
-  installBackupRestore,
-  installBuildRenameEvents,
+  buildLibraryViewSources,
   installOtherTabSync,
   renderLibraryNotice,
 } from "./builds/build-library-controller.js";
@@ -15,14 +13,11 @@ import { gearCommands, gearViewSources } from "./gear/gear-controller.js";
 import { followerCommands, followerViewSources } from "./hero/follower-controller.js";
 import { heroCommands, heroViewSources } from "./hero/hero-controller.js";
 import { heroMemoryCommands, heroMemoryViewSources } from "./hero/hero-memory-controller.js";
-import { escapeHtml } from "./html.js";
 import { pactCommands, pactViewSources } from "./pacts/pacts-controller.js";
-import { $, showToast, updateStorageStatus } from "./planner/page.js";
+import { pageViewSources, showToast, updateStorageStatus } from "./planner/page.js";
 import { installRangeFills, scheduleRangeFillRefresh } from "./planner/range-fill.js";
-import { NOTICE_BUTTON_CLASS, NOTICE_CLASS } from "./notice-classes.js";
 import { installSearchableSelectEvents } from "./planner/searchable-select.js";
 import {
-  applyPlannerState,
   calculationsPaused,
   currentPlanner,
   flushPlannerState,
@@ -39,8 +34,6 @@ import { skillSelectorViewSources } from "./skills/skill-selector-source.js";
 import { installSkillSelectorEvents, skillSelectorCommands } from "./skills/skill-selector.js";
 import { slateCommands, slateViewSources } from "./slates/slates-controller.js";
 import { statsCommands, statsViewSources } from "./stats/stats-controller.js";
-import { loadPlannerState, startNewLibrary } from "./storage/build-library.ts";
-import { setSafeMode } from "./storage/recovery-core.js";
 import { prismCommands, prismViewSources } from "./talents/prism-controller.js";
 import { renderTalents, setTalentSlateMode } from "./talents/talent-trees.js";
 import { talentCommands, talentViewSources } from "./talents/talents-controller.js";
@@ -48,7 +41,7 @@ import { installPlannerTooltipEvents } from "./tooltips/planner-tooltips.js";
 import { hidePlannerTooltip } from "./tooltips/tooltip-host.js";
 
 const pageCommands = {
-  showToast: (text) => showToast(escapeHtml(text)),
+  showToast,
   hideTooltip: hidePlannerTooltip,
 };
 providePlannerCommands({
@@ -69,6 +62,8 @@ providePlannerCommands({
   ...statsCommands,
 });
 for (const sources of [
+  pageViewSources,
+  buildLibraryViewSources,
   workspaceViewSources,
   followerViewSources,
   pactViewSources,
@@ -95,7 +90,6 @@ if (!calculationsPaused) runGuardedRender(currentPlanner);
 installFeedbackEvents();
 installPlannerTooltipEvents();
 installSearchableSelectEvents();
-installBuildRenameEvents();
 
 document.addEventListener("click", (event) => {
   const viewButton = event.target.closest("[data-view]");
@@ -108,24 +102,6 @@ document.addEventListener("click", (event) => {
     } else {
       if (viewButton.dataset.view === "talents") setTalentSlateMode(false);
       activateWorkspaceView(viewButton.dataset.view);
-    }
-  }
-  // "Download backup" in the unreadable-library notice (renderLibraryNotice).
-  if (event.target.closest("[data-backup-builds]")) backupLibraryBuilds();
-  if (event.target.closest("[data-resume-calculations]")) {
-    setSafeMode(sessionStorage, false);
-    location.reload();
-  }
-  if (event.target.closest("[data-start-new-library]")) {
-    try {
-      startNewLibrary();
-      applyPlannerState(loadPlannerState());
-      renderCandidateViews();
-      renderLibraryNotice();
-      updateStorageStatus();
-      showToast("New library started · Your unreadable data stays backed up");
-    } catch (error) {
-      showToast(error?.message || "A new library could not be started");
     }
   }
 });
@@ -158,13 +134,7 @@ if (restoredWorkspaceLocation) {
   ui.talentSlateMode = restoredWorkspaceLocation.view === "slates";
 }
 installRangeFills();
-installBackupRestore();
 renderLibraryNotice();
-if (calculationsPaused)
-  $("#builds-view").insertAdjacentHTML(
-    "afterbegin",
-    `<div class="${NOTICE_CLASS}" role="status"><strong>Safe mode: calculations paused</strong><button class="${NOTICE_BUTTON_CLASS}" type="button" data-resume-calculations>Resume calculations</button></div>`,
-  );
 renderCandidateViews();
 scheduleRangeFillRefresh();
 updateStorageStatus();

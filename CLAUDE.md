@@ -49,7 +49,8 @@ Every change: lint, typecheck, format:check and `pnpm test` green; e2e green bef
   `renderCandidateViews` (calls the renderer `planner/workspace.js` registers).
 - `planner/ui-state.js` — `ui`: where the user is (view, open tree, stats panel, selections several sections share).
   Section-private UI state stays a `let` in its controller.
-- `planner/page.js` — DOM helpers (`$`, `showToast`, `artwork`, header status).
+- `planner/page.js` — DOM helpers (`$`, `artwork`) and what the page says about the open build: the `buildStatus`,
+  `toast` and `otherTabNotice` sources (`updateStorageStatus`, `showToast`: plain text, never escaped).
 - `<section>/*-controller.js` — one per section (gear, talents + prisms, slates, skills board + selector, hero +
   memories + follower, pacts, stats, configuration, builds + game log, feedback): its state, its commands object
   (`gearCommands`…) and its view sources (`gearViewSources`…).

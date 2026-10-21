@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { buildSectionPlace } from "../../ui/section-card";
+import { SlatePanel } from "../../features/slates/SlatePanel";
 import {
   CoreTalents,
   PrismPlacementPrompt,
@@ -6,13 +8,40 @@ import {
   TalentStage,
   TalentTabs,
 } from "../../features/talents/TalentTree";
+import { useViewSource } from "../../ui/use-view-source";
 import { useViewOpen } from "../../ui/use-workspace";
+
+/** The slate board is never shorter than this; a taller talent tree gives it its own height. */
+const MIN_SLATE_HEIGHT = 650;
+
+/** The talent tree's height while it shows (rounded up), so the slate board can take its place at the same height. */
+function useTreeHeight(slateMode: boolean): [RefObject<HTMLDivElement | null>, number] {
+  const layout = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const element = layout.current;
+    if (slateMode || !element) return;
+    // A hidden tree (another tab is open) measures 0: keep the height it last had.
+    const observer = new ResizeObserver(() => {
+      const measured = Math.ceil(element.getBoundingClientRect().height);
+      if (measured > 0) setHeight(measured);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [slateMode]);
+  return [layout, height];
+}
 
 export function TalentsView() {
   const open = useViewOpen("talents");
+  const slateMode = useViewSource("talents")?.slateMode ?? false;
+  const [treeLayout, treeHeight] = useTreeHeight(slateMode);
+  const slateHeight: CSSProperties | undefined = slateMode
+    ? { height: `${Math.max(MIN_SLATE_HEIGHT, treeHeight)}px` }
+    : undefined;
   return (
     // The Talent tab (src/app/planner/workspace.js "talents"): the talent trees beside the talent panel; under 760px
-    // they stack.
+    // they stack. The Slates tab shows the slate board in place of the open tree.
     <section
       id="talents-view"
       hidden={!open}
@@ -26,8 +55,16 @@ export function TalentsView() {
       >
         <TalentTabs />
       </div>
-      <div className="talent-layout col-start-2 row-start-1 grid leading-[normal] min-w-0 min-[1100px]:self-stretch [.showing-slates>&]:block [.showing-slates>&]:h-(--slate-panel-height,650px) [.showing-slates>&]:overflow-hidden">
-        <section className="panel talent-tree-panel relative min-h-127.5 min-w-0 p-3.5 max-[1100px]:overflow-x-auto max-[760px]:min-h-0 min-[1100px]:flex min-[1100px]:h-full min-[1100px]:flex-col min-[1100px]:rounded-l-none min-[1100px]:border-l-0">
+      <div
+        ref={treeLayout}
+        className={`talent-layout col-start-2 row-start-1 min-w-0 leading-[normal] ${slateMode ? "block overflow-hidden" : "grid min-[1100px]:self-stretch"}`}
+        style={slateHeight}
+      >
+        {slateMode && <SlatePanel />}
+        <section
+          hidden={slateMode}
+          className="panel talent-tree-panel relative min-h-127.5 min-w-0 p-3.5 max-[1100px]:overflow-x-auto max-[760px]:min-h-0 min-[1100px]:flex min-[1100px]:h-full min-[1100px]:flex-col min-[1100px]:rounded-l-none min-[1100px]:border-l-0"
+        >
           <TalentBoardHeading />
           <PrismPlacementPrompt />
           <CoreTalents />

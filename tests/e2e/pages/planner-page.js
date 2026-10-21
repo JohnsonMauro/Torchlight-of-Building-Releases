@@ -32,6 +32,12 @@ export class PlannerPage {
    * exists, and a click that early is lost.
    */
   async open(state = null) {
+    await this.load(state);
+    await expect(this.view("hero")).toBeVisible();
+  }
+
+  /** Loads the planner as open() does, without expecting the Build view (a library that cannot be read opens Builds). */
+  async load(state = null) {
     await this.page.addInitScript((key) => {
       const remove = Storage.prototype.removeItem;
       Storage.prototype.removeItem = function (name) {
@@ -66,7 +72,6 @@ export class PlannerPage {
     }
     await this.page.goto("./");
     await this.waitUntilReady();
-    await expect(this.view("hero")).toBeVisible();
   }
 
   /** Waits for the boot flag to clear on the current load (the init script above runs again on every reload). */

@@ -20,10 +20,12 @@ import {
   searchInput,
   searchLabel,
 } from "../../ui/selector-classes";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 export function SageScentSelectorDialog() {
   const view = useViewSource("sageScentSelector");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   const [query, setQuery] = useSessionState(view?.session ?? 0, "");
   const needle = query.trim().toLowerCase();
   const choices = (view?.choices ?? []).filter((entry) => entry.name.toLowerCase().includes(needle));

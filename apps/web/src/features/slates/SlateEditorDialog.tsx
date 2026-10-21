@@ -24,10 +24,12 @@ import {
   SLATE_SECTION,
   SLATE_TRANSFORM,
 } from "../../ui/talent-slate-styles";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 export function SlateEditorDialog() {
   const view = useViewSource("slateEditor");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   const [affixes, setAffixes] = useSessionState(view?.session ?? 0, view?.affixes ?? []);
   const close = () => dialog.current?.close();
   const id = view?.id ?? "";

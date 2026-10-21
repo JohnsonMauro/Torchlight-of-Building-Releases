@@ -5,6 +5,7 @@ import { activeBuild, useBuildLibrary, type LibraryBuild } from "./build-library
 import { BuildDetails } from "./BuildDetails";
 import { BuildList } from "./BuildList";
 import { newBuildWithHero } from "./build-actions";
+import { pickBackupFile } from "./backup-file";
 
 /** The small accent caps over a heading. */
 const EYEBROW = "mb-1.5 text-xs font-bold tracking-widest text-accent uppercase";
@@ -70,11 +71,7 @@ export function BuildsPage() {
               >
                 Back up all builds
               </button>
-              <button
-                className={`btn ${LIBRARY_BUTTON}`}
-                type="button"
-                onClick={() => plannerCommands().restoreBuilds()}
-              >
+              <button className={`btn ${LIBRARY_BUTTON}`} type="button" onClick={pickBackupFile}>
                 Restore from backup
               </button>
               <button

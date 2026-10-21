@@ -1,4 +1,7 @@
-// DOM helpers of the page shell: lookups, number format, art frames, the toast and the header's storage status.
+// The page shell: lookups, number format, art frames, and what the page says about the open build (save status, toast,
+// another tab's change).
+import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { escapeHtml } from "../html.js";
 import {
   libraryLoadIssues,
@@ -16,51 +19,54 @@ export const artwork = (src, alt, className = "game-art") =>
     : `<span class="art-frame ${className}" aria-label="${escapeHtml(alt)}"><span aria-hidden="true">◆</span></span>`;
 export const fullTextTitle = (text) => (text ? ` title="${escapeHtml(text)}"` : "");
 
-export function updateStorageStatus() {
-  const status = document.querySelector(".loadout-status");
-  if (!status) return;
+// What the page says about the open build (the header's save status, the build strip's name), the toast, and whether
+// another tab changed the open build: the planner announces a change, React renders it (apps/web/src/shell).
+export const pageViewSources = {
+  buildStatus: buildStatusView,
+  toast: () => toast,
+  otherTabNotice: () => otherTabNotice,
+};
+function buildStatusView() {
   const library = loadBuildLibrary(),
     active = library.builds.find((build) => build.id === library.activeBuildId);
-  const tab = document.querySelector(".loadout-tab");
-  if (tab) {
-    tab.querySelector("span").textContent = active ? "Active build" : "No active build";
-    tab.querySelector("strong").textContent = active?.name || "Start a new build";
-    if (active) tab.title = "Right-click to rename";
-    else tab.removeAttribute("title");
-  }
   const unsaved = plannerStorageStatus() === "unsaved";
-  status.classList.toggle("storage-warning", unsaved);
-  status.classList.toggle("no-build", !active);
-  status.querySelector("span").textContent = unsaved
-    ? libraryLoadIssues().unreadable
-      ? "Saved builds unreadable — changes not saved"
-      : "Storage full — changes not saved. Export your build."
-    : active
-      ? revisionsTrimmedToFit()
-        ? "Autosaved locally · older revisions removed to fit browser storage"
-        : "Autosaved locally"
-      : "No build saved";
+  return {
+    name: active ? active.name : null,
+    save: unsaved ? "unsaved" : active ? "saved" : "none",
+    text: unsaved
+      ? libraryLoadIssues().unreadable
+        ? "Saved builds unreadable — changes not saved"
+        : "Storage full — changes not saved. Export your build."
+      : active
+        ? revisionsTrimmedToFit()
+          ? "Autosaved locally · older revisions removed to fit browser storage"
+          : "Autosaved locally"
+        : "No build saved",
+  };
 }
-let toastTimer;
+export function updateStorageStatus() {
+  viewSourceChanged("buildStatus");
+}
+// Each message counts up, so the same message twice shows twice. React prints it as text; the percentage gap closes as
+// escapeHtml would close it in markup.
+let toast = { message: "", count: 0 };
 export function showToast(message) {
-  clearTimeout(toastTimer);
-  $("#toast").textContent = message;
-  $("#toast").classList.add("visible");
-  toastTimer = setTimeout(() => $("#toast").classList.remove("visible"), 2200);
+  toast = { message: normalizePercentageText(message), count: toast.count + 1 };
+  viewSourceChanged("toast");
 }
-
-// Hero panel HERO | FOLLOWER tabs (src/app/hero/follower-panel.js; 2026-10-15): the tab is remembered per build view (localStorage, UI
-// only); the header "?" shows the open tab's controls. The FOLLOWER tab renders the follower card and its skill slots.
-export function activeBuildViewId() {
-  try {
-    return loadBuildLibrary().activeBuildId || "";
-  } catch {
-    return "";
-  }
+// Another tab saved a different version of the open build (build-library-controller.js installOtherTabSync).
+let otherTabNotice = false;
+export function showOtherTabNotice() {
+  if (otherTabNotice) return;
+  otherTabNotice = true;
+  viewSourceChanged("otherTabNotice");
 }
+export function hideOtherTabNotice() {
+  if (!otherTabNotice) return;
+  otherTabNotice = false;
+  viewSourceChanged("otherTabNotice");
+}
+export const otherTabNoticeShown = () => otherTabNotice;
 
 export const titleCase = (value) =>
   value.replace(/([A-Z])/g, " $1").replace(/^./, (character) => character.toUpperCase());
-export function hideOtherTabNotice() {
-  document.getElementById("other-tab-notice")?.remove();
-}

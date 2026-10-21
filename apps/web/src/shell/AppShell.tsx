@@ -10,7 +10,6 @@ import { HeroView } from "../pages/build/HeroView";
 import { FollowerView } from "../pages/build/FollowerView";
 import { EquipmentView } from "../pages/build/EquipmentView";
 import { PactsView } from "../pages/build/PactsView";
-import { SlatesView } from "../pages/build/SlatesView";
 import { SiteDisclaimer } from "./SiteDisclaimer";
 import { PageMain } from "./PageMain";
 import { PactspiritSelectorDialog } from "../features/pacts/PactspiritSelectorDialog";
@@ -36,7 +35,8 @@ import { ImportGameLogDialog } from "../features/builds/ImportGameLogDialog";
 import { ResetBuildConfirmDialog } from "../features/builds/ResetBuildConfirmDialog";
 import { PlannerTooltip } from "./PlannerTooltip";
 import { Toast } from "./Toast";
-import { RestoreBuildsFileInput } from "./RestoreBuildsFileInput";
+import { OtherTabNotice } from "./OtherTabNotice";
+import { RestoreBackupInput } from "../features/builds/RestoreBackupInput";
 
 /**
  * The planner's static page structure, rendered once before the planner (src/app/app.js and its controllers) starts. The legacy code
@@ -58,7 +58,6 @@ export function AppShell() {
         <TalentsView />
         <EquipmentView />
         <PactsView />
-        <SlatesView />
         <SiteDisclaimer />
       </PageMain>
       <PactspiritSelectorDialog />
@@ -84,7 +83,8 @@ export function AppShell() {
       <ResetBuildConfirmDialog />
       <PlannerTooltip />
       <Toast />
-      <RestoreBuildsFileInput />
+      <OtherTabNotice />
+      <RestoreBackupInput />
     </>
   );
 }

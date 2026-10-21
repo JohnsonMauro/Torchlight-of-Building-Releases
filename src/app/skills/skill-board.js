@@ -70,7 +70,7 @@ function removeBoardSkill(row) {
   delete plannerState.skills.skillLevels[setupKey];
   persistPlannerState();
   renderCandidateViews();
-  showToast(`${escapeHtml(setup.name)} removed`);
+  showToast(`${setup.name} removed`);
   return true;
 }
 // Right-click on a support: false when the socket holds none of the user's supports.
@@ -94,7 +94,7 @@ function removeBoardSupport(row, slot) {
   plannerState.skills.supportOrder[setupKey] = order.slice(0, 5);
   persistPlannerState();
   renderCandidateViews();
-  showToast(`${escapeHtml(support.name)} removed`);
+  showToast(`${support.name} removed`);
   return true;
 }
 // A skill dropped on another row of its tab: the two swap places (or the skill moves to the empty row).

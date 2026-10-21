@@ -7,6 +7,7 @@ import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { useViewSource } from "../../ui/use-view-source";
 import { FOOTER } from "../../ui/talent-slate-styles";
 import { PRISM_ICON } from "./talent-classes";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 const ACTION = "prism-action min-h-7.5 px-2 py-1 text-xs font-bold";
 const EDIT = `${ACTION} prism-action-edit btn`;
@@ -17,6 +18,7 @@ const CRAFT = "btn-primary text-sm font-bold";
 export function PrismInventoryDialog() {
   const view = useViewSource("prismInventory");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   return (
     <dialog
       id="prism-inventory-dialog"

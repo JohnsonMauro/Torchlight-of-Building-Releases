@@ -9,10 +9,12 @@ import { useSessionState } from "../../ui/use-session-state";
 import { useViewSource } from "../../ui/use-view-source";
 import { fieldInput, pactChoice, pickerDialog } from "../../ui/selector-classes";
 import { rarityTone } from "./pact-classes";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 export function PactspiritSelectorDialog() {
   const view = useViewSource("pactspiritSelector");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   const session = view?.session ?? 0;
   const [search, setSearch] = useSessionState(session, "");
   const [category, setCategory] = useSessionState(session, "All");

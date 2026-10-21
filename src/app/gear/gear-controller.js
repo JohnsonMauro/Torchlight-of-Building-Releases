@@ -15,11 +15,11 @@ import { folkloreRingModifier, folkloreRingOptionFromModifiers } from "../../eng
 import { rareBaseForItem } from "../../engine/gear/rare-base-lookup.js";
 import { normalizeSunsEmbraceItem } from "../../engine/state/suns-embrace-normalization.js";
 import { beltBlendById, beltBlendChoices } from "./belt-blend-options.js";
+import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { equipmentCrafterView, modifierTextView, rollViews } from "../bridge/equipment-crafter-view.ts";
 import { equipmentView } from "../bridge/equipment-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
-import { escapeHtml } from "../html.js";
 import {
   applyLegendaryEditorEdits,
   editableLegendarySlots,
@@ -29,7 +29,7 @@ import {
   rollValuesFromText,
 } from "./legendary-editor-model.js";
 import { curseItemOffReason } from "../planner/curse-notes.js";
-import { $, showToast, titleCase } from "../planner/page.js";
+import { showToast, titleCase } from "../planner/page.js";
 import {
   currentEquipmentImpact,
   disabledEquipmentSlots,
@@ -129,12 +129,12 @@ function toggleSelectedItemEquip() {
     disabledEquipmentSlots.add(equippedSlotForInventoryItem(item) || compatibleEquipmentSlot(item));
     persistPlannerState();
     renderCandidateViews();
-    showToast(`${escapeHtml(item.name)} unequipped`);
+    showToast(`${item.name} unequipped`);
   } else equipInventoryItem(item);
-  $("#inventory-item-dialog").close();
+  closeDialog("inventory-item-dialog");
 }
 function copySelectedItem() {
-  if (duplicateInventoryItem(selectedInventoryItemId)) $("#inventory-item-dialog").close();
+  if (duplicateInventoryItem(selectedInventoryItemId)) closeDialog("inventory-item-dialog");
 }
 function deleteSelectedItem() {
   const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
@@ -151,7 +151,7 @@ function deleteSelectedItem() {
       disabledEquipmentSlots.add(slot);
     }
   }
-  $("#inventory-item-dialog").close();
+  closeDialog("inventory-item-dialog");
   persistPlannerState();
   renderCandidateViews();
   showToast("Item deleted from Inventory");
@@ -259,14 +259,14 @@ function equipInventoryItem(item, targetSlot = null) {
   ui.selectedEquipmentSlot = slot;
   persistPlannerState();
   renderCandidateViews();
-  showToast(`${escapeHtml(item.name)} equipped`);
+  showToast(`${item.name} equipped`);
 }
 function openInventoryItemDialog(item) {
   hidePlannerTooltip();
   selectedInventoryItemId = item.id;
   inventoryItemEditing = false;
   renderInventoryItemDialog();
-  $("#inventory-item-dialog").showModal();
+  openDialog("inventory-item-dialog");
 }
 function openEquipmentSlot(slot) {
   ui.selectedEquipmentSlot = slot;
@@ -298,7 +298,7 @@ function duplicateInventoryItem(id) {
   plannerState.equipmentInventory.push(copy);
   persistPlannerState();
   renderCandidateViews();
-  showToast(`${escapeHtml(source.name)} duplicated`);
+  showToast(`${source.name} duplicated`);
   return true;
 }
 function resetEquipment() {
@@ -314,7 +314,7 @@ function showEquipmentCrafter(craft) {
   equipmentCraft = craft;
   equipmentCrafterSession++;
   viewSourceChanged("equipmentCrafter");
-  $("#equipment-crafter").showModal();
+  openDialog("equipment-crafter");
 }
 function openEquipmentCrafter(mode) {
   showEquipmentCrafter(newEquipmentCraft(mode));
@@ -362,9 +362,9 @@ function addCraftedEquipment() {
   const edited = Boolean(editingItem);
   equipmentCraft = { ...equipmentCraft, editingId: null };
   persistPlannerState();
-  $("#equipment-crafter").close();
+  closeDialog("equipment-crafter");
   renderCandidateViews();
-  showToast(`${escapeHtml(item.name)} ${edited ? "updated" : "added to Inventory"}`);
+  showToast(`${item.name} ${edited ? "updated" : "added to Inventory"}`);
 }
 // The end of a gear drag (src/app/bridge/planner-commands.js GearDrop): on another slot the item equips there; dragged
 // out of a slot onto the Inventory, the slot is unequipped.
@@ -379,7 +379,7 @@ function dropGear({ itemId, fromSlot, toSlot }) {
   disabledEquipmentSlots.add(fromSlot);
   persistPlannerState();
   renderCandidateViews();
-  showToast(`${escapeHtml(item.name)} unequipped`);
+  showToast(`${item.name} unequipped`);
 }
 function editingLegendaryModifierTemplate(source, index) {
   const corroded = editingCorrodedModifierIndices.has(index),
@@ -627,7 +627,7 @@ function changeInventoryItemEditor(change) {
   viewSourceChanged("inventoryItem");
 }
 function openCraftedItemEditor(item) {
-  $("#inventory-item-dialog").close();
+  closeDialog("inventory-item-dialog");
   showEquipmentCrafter(equipmentCraftFromItem(item, itemWeaponType(item)));
 }
 function openInventoryItemEditor(item) {
@@ -677,6 +677,5 @@ function openInventoryItemEditor(item) {
   );
   inventoryItemFields = inventoryItemFieldsFrom(item);
   renderInventoryItemDialog();
-  const dialog = $("#inventory-item-dialog");
-  if (!dialog.open) dialog.showModal();
+  openDialog("inventory-item-dialog");
 }

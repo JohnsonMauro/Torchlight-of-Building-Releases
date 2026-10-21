@@ -13,6 +13,7 @@ import { transferKismetSlot } from "../../engine/pacts/kismet-slot-transfer.js";
 import { equippedKismetSummary } from "../../engine/pacts/pact-kismet-summary.js";
 import { orderedPactspiritNodes, pactspiritLevel, togglePactNodeChain } from "../../engine/pacts/pactspirit-levels.js";
 import { activeCapturedPactspirits, selectPactspirit } from "../../engine/pacts/pactspirit-selection.js";
+import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { pactsView, pactspiritSelectorView } from "../bridge/pacts-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
@@ -32,7 +33,7 @@ export const pactCommands = {
     selectedPactspiritSlot = slot;
     pactspiritSelectorSession++;
     viewSourceChanged("pactspiritSelector");
-    $("#pactspirit-selector").showModal();
+    openDialog("pactspirit-selector");
     $("[data-pactspirit-search]").focus();
   },
   selectPactspirit: (name) => {
@@ -45,7 +46,7 @@ export const pactCommands = {
       plannerState.pacts.selectedSpirits,
       selenaScorchingBeamPactsSs13.pactspirits.map((spirit) => spirit.name),
     );
-    $("#pactspirit-selector").close();
+    closeDialog("pactspirit-selector");
     refreshPactCandidate();
   },
   removePactspirit: removeSelectedPactspirit,
@@ -123,11 +124,10 @@ let fateSlotSpirit = "";
 function openFateSlotSelector(name) {
   fateSlotSpirit = name;
   viewSourceChanged("fateSlotSelector");
-  $("#fate-slot-selector").showModal();
+  openDialog("fate-slot-selector");
 }
 function selectFateSlots(choiceId) {
-  const dialog = $("#fate-slot-selector"),
-    name = fateSlotSpirit,
+  const name = fateSlotSpirit,
     choice = fateSlotChoice(choiceId);
   if (!name || !choice) return;
   const nextUnlocks = { ...(plannerState.pacts.fateUnlocks || {}), [name]: choice.id };
@@ -140,7 +140,7 @@ function selectFateSlots(choiceId) {
   plannerState.pacts.fateUnlocks = nextUnlocks;
   plannerState.pacts.kismetSlots = nextKismets;
   plannerState.pacts.kismetSlotMode = true;
-  dialog.close();
+  closeDialog("fate-slot-selector");
   hidePlannerTooltip();
   refreshPactCandidate();
 }
@@ -254,7 +254,7 @@ function openKismetCrafter(key, kind) {
   selectedKismetRolls = entry ? normalizeKismetRolls(entry, saved?.name === entry.name ? saved.rolls : []) : [];
   kismetCrafterSession++;
   viewSourceChanged("kismetCrafter");
-  $("#kismet-crafter").showModal();
+  openDialog("kismet-crafter");
   $("#kismet-search").focus();
 }
 function saveKismetSlot(clear = false) {
@@ -282,7 +282,7 @@ function saveKismetSlot(clear = false) {
   }
   plannerState.pacts.kismetSlots = next;
   plannerState.pacts.kismetSlotMode = true;
-  $("#kismet-crafter").close();
+  closeDialog("kismet-crafter");
   activeKismetSlot = null;
   hidePlannerTooltip();
   refreshPactCandidate();

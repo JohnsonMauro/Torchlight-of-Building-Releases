@@ -11,11 +11,12 @@ import {
   prismReplacesCore,
   prismSupportsLegendaryAffix,
 } from "../../engine/talents/prism-crafting.js";
+import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { coverageBadge, prismAffixCoverage, prismAffixCoverageReason } from "../planner/calculation-coverage.js";
 import { escapeHtml } from "../html.js";
-import { $, showToast } from "../planner/page.js";
+import { showToast } from "../planner/page.js";
 import { persistPlannerState, plannerState, renderCandidateViews, talentRanks } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
 import { prismClasses } from "../tooltips/tooltip-kind-classes.js";
@@ -164,7 +165,7 @@ export function openPrismInventory() {
   activePrismTreeSlot = plannerState.talents.selectedTrees.indexOf(ui.activeTalentPanel);
   if (activePrismTreeSlot <= 0) return;
   viewSourceChanged("prismInventory");
-  $("#prism-inventory-dialog").showModal();
+  openDialog("prism-inventory-dialog");
 }
 function inverseRollSign(value) {
   return value < 0 ? "negative" : value > 0 ? "positive" : "zero";
@@ -300,7 +301,7 @@ function setInverseRoll(kind, number) {
 }
 // Cancel or the close button: back to the prism inventory.
 function cancelPrismCraft() {
-  $("#prism-crafter-dialog").close();
+  closeDialog("prism-crafter-dialog");
   openPrismInventory();
 }
 function confirmPrismCraft() {
@@ -317,20 +318,20 @@ function confirmPrismCraft() {
     plannerState.talents.prismInventory[index] = item;
   } else plannerState.talents.prismInventory.push(item);
   persistPlannerState();
-  $("#prism-crafter-dialog").close();
+  closeDialog("prism-crafter-dialog");
   renderCandidateViews();
   viewSourceChanged("prismInventory");
-  $("#prism-inventory-dialog").showModal();
+  openDialog("prism-inventory-dialog");
   showToast(`${prismName(item)} ${editing ? "updated" : "crafted"}`);
 }
 function openPrismCrafter(item = null) {
-  if ($("#prism-inventory-dialog").open) $("#prism-inventory-dialog").close();
+  closeDialog("prism-inventory-dialog");
   prismEditingId = item?.id || null;
   prismDraft = item
     ? { ...item, ...(item.inverseRolls ? { inverseRolls: { ...item.inverseRolls } } : {}) }
     : { type: "ethereal", base: "", radiusAffix: "", rareAffix: "", legendaryAffix: "" };
   renderPrismCrafter();
-  $("#prism-crafter-dialog").showModal();
+  openDialog("prism-crafter-dialog");
 }
 function installCraftedPrism(id) {
   const item = (plannerState.talents.prismInventory || []).find((entry) => entry.id === id),
@@ -346,7 +347,7 @@ function installCraftedPrism(id) {
     return;
   }
   pendingPrismPlacement = { id, panel };
-  if ($("#prism-inventory-dialog").open) $("#prism-inventory-dialog").close();
+  closeDialog("prism-inventory-dialog");
   renderTalents();
 }
 export function placeCraftedPrism(coordinate) {

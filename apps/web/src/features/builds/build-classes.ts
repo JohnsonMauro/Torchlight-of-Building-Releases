@@ -1,5 +1,6 @@
 // The Builds view's shared class lists: the empty states (the library's "No saved builds", the details' "Nothing
-// selected") and the build summary that both a library card and the details' "Currently open" strip show.
+// selected") and the build summary that both a library card and the details' "Currently open" strip show; and the
+// open build's name in the build strip (ActiveBuildTab).
 
 /** An empty state: a dashed round glyph, a title, a line of text and (in the library) a button. */
 export const BUILD_EMPTY = "grid min-h-62 content-center justify-items-center p-7 text-center";
@@ -22,3 +23,13 @@ export const BUILD_SUMMARY = "grid min-w-0 gap-0.5 text-xs text-muted";
 export const BUILD_SUMMARY_CAPTION = "truncate text-[10px] font-bold tracking-wider text-accent uppercase";
 export const BUILD_SUMMARY_NAME = "truncate text-sm/[normal] font-bold text-text";
 export const BUILD_SUMMARY_META = "truncate text-xs text-muted not-italic";
+
+/** The build strip's block with the open build's name (`loadout-tab` is the tests' hook). */
+export const ACTIVE_BUILD_TAB =
+  "loadout-tab min-w-[275px] cursor-context-menu self-center py-2 pr-3.5 focus-visible:outline-2 focus-visible:outline-accent max-sm:min-w-0 max-sm:flex-[0_1_275px]";
+export const ACTIVE_BUILD_CAPTION = "block text-[10px] font-bold tracking-widest text-muted uppercase";
+export const ACTIVE_BUILD_NAME =
+  "mt-0.5 block max-w-[245px] truncate font-display text-sm font-bold tracking-wider text-accent uppercase";
+/** The name's field while renaming: the name's type over a bottom line. */
+export const ACTIVE_BUILD_RENAME =
+  "block w-full max-w-[245px] border-0 border-b border-line-strong bg-transparent p-0 font-display text-sm font-bold tracking-wider text-accent uppercase caret-accent outline-none focus:border-accent";

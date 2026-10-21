@@ -15,6 +15,7 @@ import {
   plainDialogTextClass,
   plainDialogTitleClass,
 } from "../../ui/dialog-classes";
+import { closeDialog, registerDialog } from "../../ui/dialog-registry";
 import { useViewSource } from "../../ui/use-view-source";
 
 // A warning (older login, missing sections, changed build) and a step's heading.
@@ -105,7 +106,6 @@ function Summary({ summary, selectedId }: { summary: GameLogSummaryView; selecte
 
 export function ImportGameLogDialog() {
   const view = useViewSource("gameLogImport");
-  const dialog = useRef<HTMLDialogElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   // "Choose a different file…" moves the focus to the file picker once it shows.
   const focusPicker = useRef(false);
@@ -119,7 +119,7 @@ export function ImportGameLogDialog() {
   return (
     <dialog
       id="import-game-log-dialog"
-      ref={dialog}
+      ref={registerDialog}
       className={`${plainDialogClass} w-125`}
       aria-labelledby="import-game-log-title"
       onClose={() => plannerCommands().closeGameLogImport()}
@@ -224,7 +224,7 @@ export function ImportGameLogDialog() {
         {view?.summary ? <Summary summary={view.summary} selectedId={view.selectedId} /> : null}
       </div>
       <div className={plainDialogActionsClass}>
-        <button type="button" className={plainDialogButtonClass} onClick={() => dialog.current?.close()}>
+        <button type="button" className={plainDialogButtonClass} onClick={() => closeDialog("import-game-log-dialog")}>
           Cancel
         </button>
         <button

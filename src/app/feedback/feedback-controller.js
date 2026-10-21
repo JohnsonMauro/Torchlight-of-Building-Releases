@@ -1,6 +1,7 @@
 // The in-planner feedback dialog and the build code it attaches.
 import { encodePlannerState } from "../../engine/state/planner-state.ts";
 import { APP_VERSION } from "../app-version.js";
+import { openDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { $ } from "../planner/page.js";
 import { persistPlannerState, plannerState } from "../planner/session.js";
@@ -21,8 +22,7 @@ export function openFeedback(formKey, context) {
   feedbackSession++;
   feedbackRequest = { formKey, context };
   viewSourceChanged("feedback");
-  const dialog = $("#feedback-dialog");
-  if (!dialog.open) dialog.showModal();
+  openDialog("feedback-dialog");
 }
 export function currentBuildCode() {
   try {

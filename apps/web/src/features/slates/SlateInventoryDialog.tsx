@@ -7,6 +7,7 @@ import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { useViewSource } from "../../ui/use-view-source";
 import { SlateCrafterBody, SlateCrafterHeader } from "./SlateCrafter";
 import { godTile, SLATE_PRIMARY } from "../../ui/talent-slate-styles";
+import { registerDialog } from "../../ui/dialog-registry";
 
 const commands = plannerCommands;
 
@@ -39,6 +40,7 @@ export function SlateInventoryDialog() {
   return (
     <dialog
       id="slate-inventory"
+      ref={registerDialog}
       className="slate-inventory dialog-panel h-177.5 w-245 leading-[normal] open:flex open:flex-col"
       aria-labelledby="slate-inventory-title"
     >

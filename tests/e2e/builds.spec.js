@@ -1,6 +1,7 @@
 // Builds view (the "Notes" tab): the build library flows a user reaches from there. Written against the legacy view
 // before it moved to React, so both implementations must pass it unchanged.
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import { PlannerPage } from "./pages/planner-page.js";
 import { BuildsPage } from "./pages/builds-page.js";
 
@@ -146,5 +147,47 @@ test("backing up downloads the library as JSON", async ({ page }) => {
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/\.json$/);
   await expect(builds.toast()).toContainText(`Backup downloaded · ${file.suggestedFilename()}`);
+  // The starter library was never edited (it lived in memory only): the backup holds it all the same.
+  const backup = JSON.parse(readFileSync(await file.path(), "utf8"));
+  expect(backup.library.builds.map((build) => build.name)).toEqual([DEFAULT_BUILD]);
+  await planner.expectNoErrors();
+});
+
+test("Restore from backup brings deleted builds back from a downloaded backup", async ({ page }) => {
+  const { planner, builds } = await openBuilds(page);
+  const download = page.waitForEvent("download");
+  await builds.backupButton().click();
+  const backupPath = await (await download).path();
+  await builds.deleteAllButton().click();
+  await builds.confirmDeleteAll();
+  await expect(builds.count()).toHaveText("0");
+
+  const chooser = page.waitForEvent("filechooser");
+  await builds.button("Restore from backup").click();
+  await (await chooser).setFiles(backupPath);
+  await builds.expectToast("Restored 1 build");
+  await expect(builds.count()).toHaveText("1");
+  await expect(builds.card(DEFAULT_BUILD)).toBeVisible();
+
+  // The same backup again: the build is already there.
+  const again = page.waitForEvent("filechooser");
+  await builds.button("Restore from backup").click();
+  await (await again).setFiles(backupPath);
+  await builds.expectToast("Restored 0 builds · 1 already in library");
+  await planner.expectNoErrors();
+});
+
+test("Restore from backup says when the file is not a backup", async ({ page }) => {
+  const { planner, builds } = await openBuilds(page);
+  const chooser = page.waitForEvent("filechooser");
+  await builds.button("Restore from backup").click();
+  await (await chooser).setFiles({ name: "notes.json", mimeType: "application/json", buffer: Buffer.from("not json") });
+  await builds.expectToast("That file is not a valid backup (not JSON)");
+
+  const again = page.waitForEvent("filechooser");
+  await builds.button("Restore from backup").click();
+  await (await again).setFiles({ name: "other.json", mimeType: "application/json", buffer: Buffer.from("{}") });
+  await expect(builds.toast()).not.toHaveText("That file is not a valid backup (not JSON)");
+  await expect(builds.count()).toHaveText("1");
   await planner.expectNoErrors();
 });

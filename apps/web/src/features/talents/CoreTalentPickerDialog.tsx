@@ -6,6 +6,7 @@ import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { Artwork } from "../../ui/Artwork";
 import { useViewSource } from "../../ui/use-view-source";
 import { EYEBROW, PICKER_CLOSE, PICKER_HEAD, PICKER_NOTE, PICKER_TITLE } from "../../ui/talent-slate-styles";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 const OPTION =
   "grid cursor-pointer grid-cols-[64px_1fr] items-center gap-4 rounded-md border p-3.5 text-left text-text enabled:hover:border-accent enabled:hover:bg-accent/10 focus-visible:border-accent focus-visible:outline-none off:cursor-not-allowed off:opacity-50";
@@ -17,6 +18,7 @@ const ART =
 export function CoreTalentPickerDialog() {
   const view = useViewSource("corePicker");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   return (
     <dialog
       id="core-talent-picker"

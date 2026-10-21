@@ -14,11 +14,22 @@
  * @property {(id: string) => void} deleteBuild Deletes a saved build (already confirmed by the user).
  * @property {() => void} deleteAllBuilds Deletes every saved build (already confirmed by the user).
  * @property {() => void} backupBuilds Downloads every saved build as a JSON backup.
- * @property {() => void} restoreBuilds Asks for a backup file and restores the builds in it.
+ * @property {(text: string) => void} restoreBackup Restores the builds in a backup file's text (a toast says what was
+ *   restored, or why nothing was).
  * @property {() => void} resetBuild Empties the open build (already confirmed by the user).
  * @property {() => Promise<void>} exportBuild Copies the open build's code to the clipboard (a toast says how it went).
  * @property {(text: string) => void} importBuild Adds a pasted build code as a new active build and opens the Builds view;
  *   a toast says when the code cannot be read (the Import dialog then stays open).
+ * @property {(text: string) => void} renameBuild Build strip: renames the open build (a blank or unchanged name keeps
+ *   the old one).
+ * @property {() => void} reloadOtherTabBuild Other-tab notice: opens the version another tab saved.
+ * @property {() => void} dismissOtherTabChange Other-tab notice: keeps this tab's version (the notice comes back only
+ *   when that build changes again).
+ * @property {() => void} startNewLibrary Unreadable-library notice: starts a new library (the unreadable data stays
+ *   backed up; a toast says when there is no room for that copy).
+ * @property {() => void} undoLastChange Calculation-failure notice: the build's latest saved revision replaces it.
+ * @property {() => void} openSafeMode Calculation-failure notice: reloads without calculations.
+ * @property {() => void} resumeCalculations Safe-mode notice: reloads with calculations.
  * @property {(id: string, texts: string[]) => void} saveSlateEditor Slate editor: the non-empty affix texts become the
  *   slate's affixes; closes.
  * @property {(id: string) => void} placeCraftedSlate Slate Inventory, right-click: places the slate on the grid (or

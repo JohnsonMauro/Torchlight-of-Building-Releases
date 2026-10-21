@@ -3,13 +3,13 @@ import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { openDialog } from "../ui/dialog-registry";
 import { StrokeIcon } from "../ui/StrokeIcon";
 import { toggleTheme } from "../ui/theme";
+import { useViewSource } from "../ui/use-view-source";
 
-// The page header: the planner's name, whether the open build is saved (src/app/planner/page.js updateStorageStatus
-// fills the status's first <span> and marks it "storage-warning" or "no-build"; phones drop Manage Loadouts, the Builds
-// action opens the same view) and the open build's actions, over a bottom line. `site-header` is the find bar's
-// anchor (src/app/planner/find-bar.js); the workspace views sit in the rail beside the page (ViewRail), which starts
-// under the header, so the header keeps a fixed height: 66px, or 108px on phones, where the actions (icons only below
-// lg) wrap under the name.
+// The page header: the planner's name, whether the open build is saved (the planner's "buildStatus" source; phones
+// drop Manage Loadouts, the Builds action opens the same view) and the open build's actions, over a bottom line.
+// `site-header` is the find bar's anchor (src/app/planner/find-bar.js); the workspace views sit in the rail beside the
+// page (ViewRail), which starts under the header, so the header keeps a fixed height: 66px, or 108px on phones, where
+// the actions (icons only below lg) wrap under the name.
 
 interface ActionProps {
   id?: string;
@@ -38,6 +38,8 @@ function Action({ id, label, title, icon, danger, onClick, view }: ActionProps) 
 }
 
 export function SiteHeader() {
+  const status = useViewSource("buildStatus");
+  const unsaved = status?.save === "unsaved";
   return (
     <header className="site-header sticky top-0 z-20 flex h-[66px] flex-wrap content-center items-center gap-x-3 gap-y-1.5 border-b border-line bg-surface px-6 max-sm:h-[108px] max-sm:px-3">
       <a
@@ -52,9 +54,13 @@ export function SiteHeader() {
           SS14 · Tartarus
         </span>
       </a>
-      <div className="loadout-status group/status ml-auto flex items-center gap-2 px-3 text-xs text-muted max-md:px-2 [&.storage-warning]:text-warn">
-        <i className="size-1.5 shrink-0 rounded-full bg-ok group-[.no-build]/status:bg-dim group-[.storage-warning]/status:bg-warn" />
-        <span className="max-md:hidden">Autosaved locally</span>
+      <div
+        className={`loadout-status ml-auto flex items-center gap-2 px-3 text-xs max-md:px-2 ${unsaved ? "text-warn" : "text-muted"}`}
+      >
+        <i
+          className={`size-1.5 shrink-0 rounded-full ${unsaved ? "bg-warn" : status?.save === "none" ? "bg-dim" : "bg-ok"}`}
+        />
+        <span className="max-md:hidden">{status?.text ?? "Autosaved locally"}</span>
         <button
           type="button"
           className="btn ml-3 h-7 px-2.5 text-xs whitespace-nowrap max-md:ml-1 max-sm:hidden"

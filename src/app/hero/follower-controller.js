@@ -1,9 +1,9 @@
 // The hero panel's FOLLOWER tab and the follower selector.
 import { followerById, followerRarityById } from "../../engine/followers/follower-model.js";
+import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { followerPanelView, followerPickerView, pickFollower, setFollowerSkill } from "./follower-panel.js";
 import { escapeHtml } from "../html.js";
-import { $ } from "../planner/page.js";
 import { plannerState } from "../planner/session.js";
 import { openFollowerSkillSelector } from "../skills/skill-selector.js";
 import { hidePlannerTooltip } from "../tooltips/tooltip-host.js";
@@ -15,11 +15,11 @@ export const followerCommands = {
   openFollowerSelector: () => {
     followerSelectorSession++;
     viewSourceChanged("followerSelector");
-    $("#follower-selector").showModal();
+    openDialog("follower-selector");
   },
   selectFollower: (followerId, rarityId) => {
     const next = pickFollower(plannerState, followerId, rarityId);
-    $("#follower-selector").close();
+    closeDialog("follower-selector");
     commitFollower(
       next,
       `${escapeHtml(followerById(next.followerId)?.displayName || "Follower")} · ${escapeHtml(followerRarityById(next.rarity)?.name || "")} selected`,

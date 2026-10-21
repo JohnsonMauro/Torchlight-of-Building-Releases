@@ -40,6 +40,24 @@ export interface DialogSession {
 export interface ViewSources {
   /** The open view (src/app/planner/workspace.js): a build tab, or a focused view (builds, character, configuration). */
   workspace: { view: string; focused: boolean };
+  /**
+   * The open build's name (null: no build is open) and whether it is saved: "unsaved" when storage refused it (full, or
+   * the stored library is unreadable), with the header's text for it (src/app/planner/page.js).
+   */
+  buildStatus: { name: string | null; save: "saved" | "unsaved" | "none"; text: string };
+  /** The toast's message; `count` goes up with every message, so the same one twice shows twice. */
+  toast: { message: string; count: number };
+  /** Whether another tab saved a different version of the open build (until reloaded, dismissed or saved over). */
+  otherTabNotice: boolean;
+  /** The notices over the page (src/app/builds/build-library-controller.js). */
+  pageNotices: {
+    /** Stored builds that could not be loaded: the whole library (`unreadable`), or the named builds. */
+    library: { unreadable: boolean; names: string[] } | null;
+    /** Why the open build could not be calculated; null when it was. */
+    calculationFailure: string | null;
+    /** Safe mode: the planner never calculates until resumed. */
+    calculationsPaused: boolean;
+  };
   configuration: ConfigurationSource;
   /** The Pactspirits section (src/app/bridge/pacts-view-model.ts). */
   pacts: PactsView;
@@ -213,10 +231,13 @@ export function subscribeViewSource(name: ViewSourceName, listener: () => void):
   return () => entry.listeners.delete(listener);
 }
 
-/** The source's current data, the same object until it changes; null before the planner has provided it. */
+/**
+ * The source's current data, the same object until it changes; null until the planner has provided and announced it (a
+ * hidden view re-renders when the open view changes, and must not run a calculation the planner never asked for).
+ */
 export function readViewSource<K extends ViewSourceName>(name: K): ViewSources[K] | null {
   const entry = source(name);
-  if (!entry.read) return null;
+  if (!entry.read || entry.version === 0) return null;
   if (entry.snapshot?.version !== entry.version) entry.snapshot = { version: entry.version, value: entry.read() };
   return entry.snapshot.value;
 }

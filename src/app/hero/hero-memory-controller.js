@@ -24,11 +24,12 @@ import {
   traitLevelBonusForEnhancement,
 } from "../../engine/heroes/hero-memory-rules.js";
 import { displayTexts } from "../bridge/display-text.ts";
+import { openDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { affixTierBadge } from "../gear/gear-items.js";
 import { heroMemoryIcon, heroMemoryIsRevived, memoryTypesByTier } from "./hero-memory-display.js";
 import { escapeHtml } from "../html.js";
-import { $, showToast } from "../planner/page.js";
+import { showToast } from "../planner/page.js";
 import { persistPlannerState, plannerState } from "../planner/session.js";
 import { memoryClasses } from "../tooltips/tooltip-kind-classes.js";
 import { hidePlannerTooltip } from "../tooltips/tooltip-host.js";
@@ -69,7 +70,7 @@ export const heroMemoryViewSources = {
 function openMemorySocket(tier) {
   activeHeroMemoryTier = tier;
   renderHeroMemoryInventory();
-  $("#hero-memory-selector").showModal();
+  openDialog("hero-memory-selector");
 }
 // Right-click on a memory socket: takes its memory off; false when it holds none.
 function removeMemory(tier) {
@@ -230,7 +231,7 @@ function equipHeroMemory(memory) {
   persistPlannerState();
   renderHeroTraitTree();
   renderHeroMemoryInventory();
-  showToast(`${escapeHtml(memory.name)} equipped`);
+  showToast(`${memory.name} equipped`);
 }
 function openHeroMemorySlot(memory, preferBase = false) {
   const baseOpen = !plannerState.hero.baseTraitMemoryId && canEquipBaseTraitMemory(memory);
@@ -652,7 +653,7 @@ function memoryContextMenu(id) {
     persistPlannerState();
     renderHeroTraitTree();
     renderHeroMemoryInventory();
-    showToast(`${escapeHtml(memory.name)} equipped in base trait slot`);
+    showToast(`${memory.name} equipped in base trait slot`);
   } else if (openSlot) equipHeroMemory(memory);
   else showToast("No open compatible memory slot");
 }
@@ -666,7 +667,7 @@ function copyCraftedMemory(id) {
   plannerState.hero.memoryInventory.push(copy);
   persistPlannerState();
   renderHeroMemoryInventory();
-  showToast(`${escapeHtml(original.name)} copied`);
+  showToast(`${original.name} copied`);
 }
 function editCraftedMemory(id) {
   const memory = findMemory(id);
@@ -787,5 +788,5 @@ function saveMemoryCraft() {
   persistPlannerState();
   renderHeroTraitTree();
   renderHeroMemoryInventory();
-  showToast(`${escapeHtml(memory.name)} saved`);
+  showToast(`${memory.name} saved`);
 }

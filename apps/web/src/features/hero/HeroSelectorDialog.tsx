@@ -19,10 +19,12 @@ import {
   searchInput,
   searchLabel,
 } from "../../ui/selector-classes";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 export function HeroSelectorDialog() {
   const view = useViewSource("heroSelector");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   const [query, setQuery] = useSessionState(view?.session ?? 0, "");
   const needle = query.trim().toLowerCase();
   const heroes = heroCatalogSs13.filter((hero) => `${hero.name} ${hero.trait}`.toLowerCase().includes(needle));

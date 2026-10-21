@@ -8,6 +8,7 @@ import { useSessionState } from "../../ui/use-session-state";
 import { useViewSource } from "../../ui/use-view-source";
 import { fieldInput, numberField, pickCard, pickerDialog, rangeField } from "../../ui/selector-classes";
 import { rarityTone } from "./pact-classes";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 /** A Kismet's card: icon, name and effects, its rarity tag (the <em>, whose class is the rarity alone) at the top right,
  * in the rarity's colour (--pact-tone, set by rarityTone). */
@@ -18,6 +19,7 @@ const footerButton = "h-9 min-w-24 px-4 text-sm font-semibold";
 export function KismetCrafterDialog() {
   const view = useViewSource("kismetCrafter");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   const [query, setQuery] = useSessionState(view?.session ?? 0, "");
   const needle = query.trim().toLowerCase();
   const choices = (view?.choices ?? []).filter((choice) => !needle || choice.search.includes(needle));

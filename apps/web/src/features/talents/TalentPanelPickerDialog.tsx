@@ -13,6 +13,7 @@ import {
   PICKER_TITLE,
 } from "../../ui/talent-slate-styles";
 import { TalentEmblem } from "./TalentEmblem";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 const CARD =
   "group flex min-h-39.5 cursor-pointer flex-col items-center justify-center rounded-md border border-t-2 px-2 py-3 text-text hover:border-accent focus-visible:border-accent focus-visible:outline-none";
@@ -22,6 +23,7 @@ const CARD_PRESSED = "border-accent bg-accent/10";
 export function TalentPanelPickerDialog() {
   const view = useViewSource("talentPicker");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   return (
     <dialog
       id="talent-panel-picker"

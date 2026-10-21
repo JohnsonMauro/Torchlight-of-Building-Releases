@@ -21,10 +21,12 @@ import {
   searchInput,
   searchLabel,
 } from "../../ui/selector-classes";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 export function FollowerSelectorDialog() {
   const view = useViewSource("followerSelector");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   const [query, setQuery] = useSessionState(view?.session ?? 0, "");
   const needle = query.trim().toLowerCase();
   const cards = (view?.cards ?? []).filter((card) => !needle || card.search.includes(needle));

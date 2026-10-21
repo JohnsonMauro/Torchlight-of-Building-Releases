@@ -5,6 +5,7 @@ import { carinoSpecialAmmoOptions } from "../../engine/heroes/carino-special-amm
 import { switchHeroLoadout } from "../../engine/heroes/hero-loadouts.js";
 import { heroTraitTree, heroTreeRules, heroTreeSelections } from "../../engine/heroes/hero-trait-tree.js";
 import { carinoAmmoSelectorView, sageScentSelectorView } from "../bridge/hero-dialogs-view-model.ts";
+import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { heroTraitsView } from "../bridge/hero-traits-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { renderConfiguration } from "../configuration/configuration-controller.js";
@@ -102,7 +103,7 @@ export function renderHeroTraitTree() {
 function openHeroSelector() {
   heroSelectorSession++;
   viewSourceChanged("heroSelector");
-  $("#hero-selector").showModal();
+  openDialog("hero-selector");
 }
 // A hero picked in the hero selector: its loadout replaces the open hero's.
 function selectHero(id) {
@@ -110,16 +111,16 @@ function selectHero(id) {
   if (!hero) return;
   plannerState.hero = switchHeroLoadout(plannerState.hero, hero.id);
   persistPlannerState();
-  $("#hero-selector").close();
+  closeDialog("hero-selector");
   renderCandidateViews();
-  showToast(`${escapeHtml(hero.name)} · ${escapeHtml(hero.trait)} selected`);
+  showToast(`${hero.name} · ${hero.trait} selected`);
 }
 function pickHeroTrait(selectionKey, name) {
   plannerState.hero.selectedTraits[selectionKey] = name;
   persistPlannerState();
   renderHeroTraitTree();
   renderConfiguration();
-  showToast(`${escapeHtml(name)} selected`);
+  showToast(`${name} selected`);
 }
 // Trait Path: picks a trait under the next free row, or takes the path back from a picked one.
 function toggleTraitPathNode(name) {
@@ -164,14 +165,14 @@ function openScentSlot(kind) {
   sageScentSelectorKind = kind;
   sageScentSelectorSession++;
   viewSourceChanged("sageScentSelector");
-  $("#sage-scent-selector").showModal();
+  openDialog("sage-scent-selector");
   $("#sage-scent-search").focus();
 }
 // Sage's scent selector commands: a pick fills the slot it was opened for, Clear Slot empties it.
 function setSageScent(name, toast) {
   plannerState.hero.sageScent[sageScentSelectorKind] = name;
   persistPlannerState();
-  $("#sage-scent-selector").close();
+  closeDialog("sage-scent-selector");
   renderHeroTraitTree();
   showToast(toast);
 }
@@ -180,14 +181,14 @@ function openCarinoAmmo(index) {
   activeCarinoAmmoSlot = index;
   carinoAmmoSelectorSession++;
   viewSourceChanged("carinoAmmoSelector");
-  $("#carino-ammo-selector").showModal();
+  openDialog("carino-ammo-selector");
   $("#carino-ammo-search").focus();
 }
 // Special Ammo selector commands: a pick (one the slot can take) fills the slot it was opened for, Clear Slot empties it.
 function setCarinoAmmo(name, toast) {
   plannerState.hero.carinoSpecialAmmoSupports[activeCarinoAmmoSlot] = name;
   persistPlannerState();
-  $("#carino-ammo-selector").close();
+  closeDialog("carino-ammo-selector");
   renderHeroTraitTree();
   showToast(toast);
 }
@@ -196,7 +197,7 @@ function removeCarinoAmmo(index) {
   plannerState.hero.carinoSpecialAmmoSupports[index] = "";
   persistPlannerState();
   renderHeroTraitTree();
-  showToast(`${escapeHtml(name || "Special Ammo support")} removed`);
+  showToast(`${name || "Special Ammo support"} removed`);
 }
 function removeHeroTraitSupport(heroId) {
   const name = plannerState.hero.heroTraitSupports?.[heroId];
@@ -205,7 +206,7 @@ function removeHeroTraitSupport(heroId) {
   delete plannerState.hero.heroTraitSupportConfigs[heroId];
   persistPlannerState();
   renderHeroTraitTree();
-  showToast(`${escapeHtml(name || "Trait support")} removed`);
+  showToast(`${name || "Trait support"} removed`);
 }
 export function renderHeroPanel() {
   // The Follower tab is React (apps/web/src/features/follower): it re-reads its source.

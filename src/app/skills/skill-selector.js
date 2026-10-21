@@ -14,6 +14,7 @@ import { assignSkillBoardSlot } from "../../engine/skills/skill-board-slots.js";
 import { selectorBaseLevel } from "../../engine/state/skill-level-input.js";
 import { gameRuleDecides, supportCanSupportSkill } from "../../engine/supports/support-compatibility.js";
 import { supportFitsSlot, userInstalledSupports } from "../../engine/supports/support-slot-transfer.js";
+import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import {
   applyFollowerSkillDraft,
@@ -131,7 +132,7 @@ function openHeroTraitSupport(heroId) {
   }
   skillSelectorSession++;
   renderSkillSelector();
-  $("#skill-selector").showModal();
+  openDialog("skill-selector");
   $("#skill-selector-search").focus();
 }
 // A follower skill slot opens the skill board's picker (#skill-selector) as selectorKind "follower-skill" (src/app/hero/follower-panel.js followerSkillSelectorView; 2026-10-15 user request).
@@ -148,7 +149,7 @@ export function openFollowerSkillSelector(slot) {
   selectorChoiceIndex = followerSelectorInitialIndex(plannerState, slot);
   skillSelectorSession++;
   renderSkillSelector();
-  $("#skill-selector").showModal();
+  openDialog("skill-selector");
   $("#skill-selector-search").focus();
 }
 
@@ -312,7 +313,7 @@ function confirmSkillSelector(levelText) {
         ? followerSelectorDraft
         : followerSkillDraft(plannerState, followerSelectorSlot, entry.name);
     followerSelectorDraft = null;
-    $("#skill-selector").close();
+    closeDialog("skill-selector");
     commitFollower(
       applyFollowerSkillDraft(plannerState, followerSelectorSlot, draft),
       `${escapeHtml(entry.name)} equipped`,
@@ -387,7 +388,7 @@ function confirmSkillSelector(levelText) {
       selectorTargetSetupName,
     );
     persistPlannerState();
-    showToast(`${escapeHtml(entry.name)} setup added`);
+    showToast(`${entry.name} setup added`);
   } else {
     if (!selected) return;
     const selectedKey = setupStateKey(selected),
@@ -429,15 +430,15 @@ function confirmSkillSelector(levelText) {
     order[selectorTargetSupportSlot] = entry.name;
     plannerState.skills.supportOrder[selectedKey] = order.slice(0, 5);
     persistPlannerState();
-    showToast(`${escapeHtml(entry.name)} linked to ${escapeHtml(selected.name)}`);
+    showToast(`${entry.name} linked to ${selected.name}`);
   }
-  $("#skill-selector").close();
+  closeDialog("skill-selector");
   renderCandidateViews();
 }
 // Clear slot: empties the slot the selector was opened for.
 function clearSkillSelectorSlot() {
   if (selectorKind === "follower-skill") {
-    $("#skill-selector").close();
+    closeDialog("skill-selector");
     commitFollower(setFollowerSkill(plannerState, followerSelectorSlot, null), "Skill slot cleared");
     return;
   }
@@ -481,7 +482,7 @@ function clearSkillSelectorSlot() {
     order[selectorTargetSupportSlot] = "";
     plannerState.skills.supportOrder[selectedKey] = order.slice(0, 5);
   }
-  $("#skill-selector").close();
+  closeDialog("skill-selector");
   persistPlannerState();
   renderCandidateViews();
   showToast("Slot cleared");
@@ -617,6 +618,6 @@ function openSkillSelector(row, supportSlot) {
   }
   skillSelectorSession++;
   renderSkillSelector();
-  $("#skill-selector").showModal();
+  openDialog("skill-selector");
   $("#skill-selector-search").focus();
 }

@@ -10,7 +10,6 @@ import { pruneInvalidTalentRanks } from "../../engine/talents/talent-rules.js";
 import { talentDisplayNodes as talentNodesOnBoard } from "../bridge/talents-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { renderHeroPanel, renderHeroTraitTree } from "../hero/hero-controller.js";
-import { $ } from "../planner/page.js";
 import { plannerState, talentRanks } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
 
@@ -35,26 +34,12 @@ export function currentTalentPanel() {
   return allTalentPanelsSs13.find((panel) => panel.name === ui.activeTalentPanel);
 }
 
+// The Slates tab: the slate board in place of the open tree (apps/web/src/pages/build/TalentsView.tsx, from the
+// "talents" source).
 export function setTalentSlateMode(enabled) {
+  if (ui.talentSlateMode === enabled) return;
   ui.talentSlateMode = enabled;
-  const talentView = $("#talents-view"),
-    talentLayout = talentView.querySelector(":scope > .talent-layout");
-  const slateLayout = document.querySelector(".slate-layout");
-  const treePanel = talentLayout.querySelector(".talent-tree-panel");
-  if (enabled && !talentView.classList.contains("showing-slates")) {
-    const height = Math.max(650, Math.ceil(talentLayout.getBoundingClientRect().height));
-    talentLayout.style.setProperty("--slate-panel-height", `${height}px`);
-  }
-  talentView.classList.toggle("showing-slates", enabled);
-  if (enabled) {
-    treePanel.hidden = true;
-    if (slateLayout.parentElement !== talentLayout) talentLayout.append(slateLayout);
-  } else {
-    talentLayout.style.removeProperty("--slate-panel-height");
-    treePanel.hidden = false;
-    const slateView = $("#slates-view");
-    if (slateLayout.parentElement !== slateView) slateView.append(slateLayout);
-  }
+  viewSourceChanged("talents");
 }
 
 export function activeTalentLayouts() {
@@ -88,7 +73,6 @@ export function renderTalents() {
   renderHeroPanel();
   viewSourceChanged("talentPicker");
   viewSourceChanged("talents");
-  setTalentSlateMode(ui.talentSlateMode);
 }
 export function clearInverseReflectedRanks(panel, item, coordinate) {
   for (const target of inverseImageReflectionMap(

@@ -38,8 +38,10 @@ import {
   setActiveBuild,
   setCompareBuild,
   startNewLibrary,
+  storeLibraryIfMissing,
   updateActiveBuildMetadata,
 } from "../../src/app/storage/build-library.ts";
+import { createBackup } from "../../src/app/storage/recovery-core.js";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
@@ -426,6 +428,29 @@ test("build codes are base64url JSON of the normalized state; bad codes are reje
   assert.throws(() => decodePlannerState(btoa('{"schemaVersion":2}')), {
     message: "Invalid build field: build.schemaVersion",
   });
+});
+
+test("a backup of a library never edited holds its starter build", () => {
+  // The starter library lives in memory until the first edit; a backup reads storage.
+  assert.equal(loadBuildLibrary().builds.length, 1);
+  assert.equal(createBackup(localStorage).library, null);
+  storeLibraryIfMissing();
+  const backup = createBackup(localStorage);
+  assert.deepEqual(
+    backup.library.builds.map((build) => build.name),
+    [STARTER_NAME],
+  );
+  // A stored library is left as it is.
+  const before = localStorage.getItem(plannerLibraryStorageKey);
+  storeLibraryIfMissing();
+  assert.equal(localStorage.getItem(plannerLibraryStorageKey), before);
+});
+
+test("a library that cannot be read is never written over for a backup", () => {
+  localStorage.setItem(plannerLibraryStorageKey, "{not json");
+  loadBuildLibrary();
+  storeLibraryIfMissing();
+  assert.equal(localStorage.getItem(plannerLibraryStorageKey), "{not json");
 });
 
 test("imported and duplicated builds get free names and open", () => {

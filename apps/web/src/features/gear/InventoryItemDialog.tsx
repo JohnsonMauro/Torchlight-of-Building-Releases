@@ -15,6 +15,7 @@ import {
 } from "./crafter-classes";
 import { InventoryItemEditor } from "./InventoryItemEditor";
 import { useViewSource } from "../../ui/use-view-source";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 // The item alone: a small card in its rarity's art, the close button over its top right corner and the title hidden
 // (it still names the dialog).
@@ -26,6 +27,7 @@ const QUICK_TYPE = "p-2.5 text-xs font-bold tracking-wide uppercase";
 export function InventoryItemDialog() {
   const view = useViewSource("inventoryItem");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   const editing = Boolean(view?.editing);
   const id = view?.id ?? "";
   const close = () => dialog.current?.close();

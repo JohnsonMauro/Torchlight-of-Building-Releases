@@ -11,12 +11,14 @@ import { useViewSource } from "../../ui/use-view-source";
 import { setAutofocusAttribute } from "../../shell/autofocus";
 import { SkillSelectorDetail } from "./SkillSelectorDetail";
 import { DETAIL, RESULT, RESULT_SELECTED, resultTint, SUPPORT_ART } from "./skill-selector-classes";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 const FOOTER_BUTTON = "px-3.5 py-2 text-xs font-bold tracking-wide uppercase";
 
 export function SkillSelectorDialog() {
   const view = useViewSource("skillSelector");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   const search = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useSessionState(view?.session ?? 0, "");
   const detail = view?.detail ?? null;

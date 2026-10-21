@@ -9,11 +9,11 @@ import {
   talentPointTotals,
 } from "../../engine/talents/talent-rules.js";
 import { talentFamiliesSs13, talentOptionsForSlot } from "../../engine/talents/talent-selection-rules.js";
+import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { talentFamilyClass, talentsView } from "../bridge/talents-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { renderConfiguration } from "../configuration/configuration-controller.js";
-import { escapeHtml } from "../html.js";
-import { $, showToast } from "../planner/page.js";
+import { showToast } from "../planner/page.js";
 import { persistPlannerState, plannerState, renderCandidateViews, talentRanks } from "../planner/session.js";
 import { saveWorkspaceLocation, ui } from "../planner/ui-state.js";
 import { renderSkills } from "../skills/skill-board.js";
@@ -106,7 +106,7 @@ function selectTalentTree(name) {
   ui.activeWorkspaceView = "talents";
   ui.activeTalentPanel = name;
   persistPlannerState();
-  $("#talent-panel-picker").close();
+  closeDialog("talent-panel-picker");
   renderTalents();
   saveWorkspaceLocation();
 }
@@ -197,7 +197,7 @@ function openTalentTree(slot) {
     return;
   }
   renderTalents();
-  $("#talent-panel-picker").showModal();
+  openDialog("talent-panel-picker");
 }
 // Right-click on a tree tab: the tree and every one after it are emptied.
 function removeTalentTree(slot) {
@@ -224,13 +224,13 @@ function openTalentSlates() {
 function openCorePicker(threshold) {
   activeCoreThreshold = threshold;
   viewSourceChanged("corePicker");
-  $("#core-talent-picker").showModal();
+  openDialog("core-talent-picker");
 }
 // The core talent picker's pick (choices are disabled below the slot's points).
 function selectCoreTalent(name) {
   plannerState.talents.coreSelections[`${ui.activeTalentPanel}:${activeCoreThreshold}`] = name;
   persistPlannerState();
-  $("#core-talent-picker").close();
+  closeDialog("core-talent-picker");
   renderTalents();
   showToast(`${name} selected`);
 }
@@ -286,11 +286,11 @@ function resetTalentTree() {
   clearTalentTreeState(ui.activeTalentPanel);
   persistPlannerState();
   renderCandidateViews();
-  showToast(`${escapeHtml(ui.activeTalentPanel)} points reset`);
+  showToast(`${ui.activeTalentPanel} points reset`);
 }
 function reselectTalentTree() {
   const slot = plannerState.talents.selectedTrees.indexOf(ui.activeTalentPanel);
   ui.activeTalentSlot = slot >= 0 ? slot : 0;
   renderTalents();
-  $("#talent-panel-picker").showModal();
+  openDialog("talent-panel-picker");
 }

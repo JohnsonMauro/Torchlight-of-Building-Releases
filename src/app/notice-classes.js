@@ -1,7 +1,8 @@
-// The look of the notices the planner writes as HTML (Tailwind utility lists; Tailwind scans src/): the info
-// strip over a page (safe mode, a build that could not be calculated, builds that could not be loaded), its buttons, and
-// the toast-styled notice that stays (another tab changed the open build). Kept apart from the strings that use them
-// so a utility never sits right before a `${` (Tailwind would not see it there).
+// The look of the notices (Tailwind utility lists; Tailwind scans src/): the info strip over a page (safe mode, a build
+// that could not be calculated, builds that could not be loaded: apps/web/src/shell/PageNotices.tsx and the Recovery
+// screen's HTML, src/app/storage/recovery.js), its buttons, and the toast-styled notice that stays (another tab changed
+// the open build, apps/web/src/shell/OtherTabNotice.tsx). Shared by both, so it stays here; in a string, a utility
+// never sits right before a `${` (Tailwind would not see it there).
 
 /** The notice's strip: an info-tinted band with an info edge on the left. */
 export const NOTICE_STRIP_CLASS = "border-l-3 border-info bg-info/10 px-4 py-3 text-sm text-text";

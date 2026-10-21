@@ -13,8 +13,11 @@ test("a source reads its data once per change, and only after the planner provid
   let heard = 0;
   const unsubscribe = subscribeViewSource("configuration", () => heard++);
   provideViewSource("configuration", () => ({ reads: ++reads }));
-  // Providing does not announce (or read): the planner is still loading.
+  // Providing does not announce (or read): the planner is still loading. A view that re-renders for another reason
+  // still gets nothing until the first announcement (safe mode never calculates, so reading early would throw).
   assert.deepEqual([heard, reads], [0, 0]);
+  assert.equal(readViewSource("configuration"), null);
+  assert.equal(reads, 0);
   viewSourceChanged("configuration");
   assert.equal(heard, 1);
   const first = readViewSource("configuration");

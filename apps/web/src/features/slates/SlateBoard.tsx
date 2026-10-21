@@ -87,7 +87,7 @@ function SlateStage({ view }: { view: SlatesView }) {
     if (!stage || !panel) return;
     const center = () => {
       const grid = boardRef.current;
-      if (!grid || !panel.clientHeight || !stage.closest("#talents-view.showing-slates")) return;
+      if (!grid || !panel.clientHeight) return;
       const panelRect = panel.getBoundingClientRect(),
         stageRect = stage.getBoundingClientRect();
       const top = panelRect.top + panelRect.height / 2 - stageRect.top - grid.offsetHeight / 2;

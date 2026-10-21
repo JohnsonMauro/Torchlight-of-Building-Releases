@@ -8,6 +8,7 @@ import { LiveNumberInput } from "../../ui/LiveNumberInput";
 import { useViewSource } from "../../ui/use-view-source";
 import { FIELD, FOOTER, FORM_HEADING, PREVIEW_CAPTION } from "../../ui/talent-slate-styles";
 import { PRISM_ICON } from "./talent-classes";
+import { registerDialog } from "../../ui/dialog-registry";
 
 const commands = plannerCommands;
 
@@ -213,6 +214,7 @@ export function PrismCrafterDialog() {
   return (
     <dialog
       id="prism-crafter-dialog"
+      ref={registerDialog}
       className="prism-crafter-dialog dialog-panel h-177.5 w-225 text-sm leading-[normal] open:flex open:flex-col"
       aria-labelledby="prism-crafter-title"
     >

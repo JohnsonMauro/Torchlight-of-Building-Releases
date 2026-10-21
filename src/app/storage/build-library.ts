@@ -521,6 +521,16 @@ function saveBuildLibrary(library: BuildLibrary, options?: WriteOptions): BuildL
   return writeBuildLibrary(normalizeBuildLibrary(library, defaultPlannerState, library.builds), options);
 }
 
+/**
+ * Writes the library when storage holds none yet: the starter library lives in memory until the first edit, and a
+ * backup (recovery-core.js createBackup) reads storage. A library that could not be read is never written over.
+ */
+export function storeLibraryIfMissing(): void {
+  const library = loadBuildLibrary();
+  if (libraryWriteBlock || globalThis.localStorage.getItem(libraryStorageKey) !== null) return;
+  saveBuildLibrary(library);
+}
+
 export function loadPlannerState(): PlannerState {
   const library = loadBuildLibrary();
   const build = library.builds.find((entry) => entry.id === library.activeBuildId);

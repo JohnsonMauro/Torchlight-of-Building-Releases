@@ -1,9 +1,10 @@
 // The Divinity Slates board, the Slate Inventory, the slate crafter and the slate editor.
 import { canPlaceSlate, slateSize, slateTransformRules } from "../../engine/talents/slate-board.js";
+import { closeDialog, dialogOpen, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { slatesView } from "../bridge/slates-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
-import { $, showToast, titleCase } from "../planner/page.js";
+import { showToast, titleCase } from "../planner/page.js";
 import { slateAffixSelectPools } from "../planner/searchable-select.js";
 import {
   equippedSlateIds,
@@ -138,7 +139,7 @@ export const slateCommands = {
   backToSlateInventory,
   openSlateInventory: () => {
     renderSlateInventory();
-    $("#slate-inventory").showModal();
+    openDialog("slate-inventory");
   },
 };
 export const slateViewSources = {
@@ -339,7 +340,7 @@ function saveSlateEditor(id, texts) {
   plannerState.slates.affixOverrides ||= {};
   plannerState.slates.affixOverrides[id] = texts.map((text) => text.trim()).filter(Boolean);
   persistPlannerState();
-  $("#slate-editor").close();
+  closeDialog("slate-editor");
   renderCandidateViews();
   showToast("Slate affixes saved");
 }
@@ -355,7 +356,7 @@ function pickUpTransformedSlate(slate, current, candidate, action) {
   setSlatePlacements({ ...slatePlacements, [slate.id]: candidate });
   selectedSlateId = null;
   slateToolsPosition = null;
-  if ($("#slate-editor").open) $("#slate-editor").close();
+  closeDialog("slate-editor");
   renderSlates();
   showToast(`Move the ${action} slate and click to place it`);
 }
@@ -495,7 +496,7 @@ function transformSlate(id, change) {
   } else if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
     setSlatePlacements({ ...slatePlacements, [slate.id]: candidate });
     persistPlannerState();
-    if (change.rotate && $("#slate-editor").open) renderSlateEditor(slate);
+    if (change.rotate && dialogOpen("slate-editor")) renderSlateEditor(slate);
   } else pickUpTransformedSlate(slate, current, candidate, change.rotate ? "Rotated" : "Flipped");
 }
 // The wheel over the board with a slate selected: down rotates clockwise (Pedigree of Gods flips horizontally), up the
@@ -578,12 +579,12 @@ function editSlate(id) {
   const crafted = (plannerState.slates.inventory || []).find((item) => item.id === id);
   if (crafted) {
     openCraftedSlateEditor(crafted);
-    if (!$("#slate-inventory").open) $("#slate-inventory").showModal();
+    openDialog("slate-inventory");
   } else {
     const slate = slatesForBoard().find((item) => item.id === id);
     if (slate) {
       renderSlateEditor(slate);
-      $("#slate-editor").showModal();
+      openDialog("slate-editor");
     }
   }
 }

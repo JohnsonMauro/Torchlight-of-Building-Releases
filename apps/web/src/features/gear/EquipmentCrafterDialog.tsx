@@ -20,6 +20,7 @@ import {
 } from "./crafter-classes";
 import { RareCraftForm } from "./RareCraftForm";
 import { useViewSource } from "../../ui/use-view-source";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 const LIMB =
   "grid min-h-19.5 cursor-pointer place-items-center gap-1 rounded border border-line bg-raised p-2 text-text hover:border-accent focus-visible:border-accent focus-visible:outline-none";
@@ -66,6 +67,7 @@ function CrafterBody({ body }: { body: EquipmentCrafterBody }) {
 export function EquipmentCrafterDialog() {
   const view = useViewSource("equipmentCrafter");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   const close = () => dialog.current?.close();
   const body = view?.body;
   const bodyKey = body ? `${view.session}:${body.kind}:${body.kind === "legendary" ? body.name : ""}` : "";

@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { useViewSource } from "../../ui/use-view-source";
 import { pickCard, pickerDialog } from "../../ui/selector-classes";
+import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 const fateOption =
   "flex min-h-14 cursor-pointer items-center justify-between rounded-sm border px-4 py-3 text-left font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
@@ -12,6 +13,7 @@ const fateOption =
 export function FateSlotSelectorDialog() {
   const view = useViewSource("fateSlotSelector");
   const dialog = useRef<HTMLDialogElement>(null);
+  useRegisteredDialog(dialog);
   return (
     <dialog
       id="fate-slot-selector"

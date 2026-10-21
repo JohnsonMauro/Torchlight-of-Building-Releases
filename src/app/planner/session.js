@@ -12,13 +12,7 @@ import { defaultPlannerState } from "../../engine/state/planner-state.ts";
 import { canPlaceSlate } from "../../engine/talents/slate-board.js";
 import { setCoverageContext } from "../../engine/text/line-coverage.js";
 import { upgradeExistingCorrodedItems } from "../gear/stored-items.js";
-import { escapeHtml } from "../html.js";
-import {
-  NOTICE_ACTIONS_CLASS,
-  NOTICE_BUTTON_CLASS,
-  NOTICE_CLASS,
-  NOTICE_SECONDARY_BUTTON_CLASS,
-} from "../notice-classes.js";
+import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { createPlannerCache } from "./planner-cache.js";
 import { craftedSlateForBoard } from "../slates/slate-shapes.js";
 import {
@@ -30,7 +24,7 @@ import {
   savePlannerState,
 } from "../storage/build-library.ts";
 import { isSafeMode, setSafeMode } from "../storage/recovery-core.js";
-import { hideOtherTabNotice, showToast, updateStorageStatus } from "./page.js";
+import { hideOtherTabNotice, otherTabNoticeShown, showToast, updateStorageStatus } from "./page.js";
 import { ui } from "./ui-state.js";
 
 for (const entry of tlidbSkillCatalogSs13) tliArt.skills[entry.name] ||= entry.icon;
@@ -123,7 +117,7 @@ export function persistPlannerState() {
   upgradeExistingCorrodedItems(plannerState);
   savePlannerState(plannerState);
   // This tab's save replaced another tab's version (last save wins): the notice is out of date.
-  if (document.getElementById("other-tab-notice") && !openBuildChangedElsewhere()) hideOtherTabNotice();
+  if (otherTabNoticeShown() && !openBuildChangedElsewhere()) hideOtherTabNotice();
   updateStorageStatus();
   renderPassPlanner = null;
   if (!pendingCandidateRender) {
@@ -289,45 +283,45 @@ export function markLoadedStateClean() {
   }
 }
 
-// A build that cannot be calculated must not stop the planner from loading: show
-// the error and offer the previous saved version or safe mode (recovery-core.js).
+// A build that cannot be calculated must not stop the planner from loading: the page shows the error and offers the
+// previous saved version or safe mode (recovery-core.js). The message, or null; React renders the notice
+// (apps/web/src/shell/PageNotices.tsx, from the "pageNotices" source).
+let calculationFailure = null;
+export const calculationFailureMessage = () => calculationFailure;
 function showCalculationFailure(error) {
   console.error(error);
-  document.querySelector(".calculation-failure")?.remove();
-  const message = escapeHtml(error?.message || String(error));
-  document
-    .querySelector("main")
-    ?.insertAdjacentHTML(
-      "afterbegin",
-      `<div class="calculation-failure ${NOTICE_CLASS}" role="alert"><span>This build couldn't be calculated: ${message}</span><span class="${NOTICE_ACTIONS_CLASS}"><button class="${NOTICE_BUTTON_CLASS}" type="button" data-calculation-undo>Undo last change</button><button class="${NOTICE_SECONDARY_BUTTON_CLASS}" type="button" data-calculation-safe-mode>Open safe mode</button></span></div>`,
-    );
-  const notice = document.querySelector(".calculation-failure");
-  notice?.querySelector("[data-calculation-undo]")?.addEventListener("click", () => {
-    let restored;
-    try {
-      const library = loadBuildLibrary(),
-        active = library.builds.find((build) => build.id === library.activeBuildId);
-      if (!active?.revisions?.length) {
-        showToast("No earlier version of this build is saved");
-        return;
-      }
-      restored = restoreLatestRevision();
-    } catch (failure) {
-      showToast(escapeHtml(failure?.message || "The earlier version could not be restored"));
-      return;
-    }
-    applyPlannerState(restored);
-    pendingCandidateRender = false;
-    renderCandidateViews();
-    if (!document.querySelector(".calculation-failure")) showToast("Last change undone");
-  });
-  notice?.querySelector("[data-calculation-safe-mode]")?.addEventListener("click", () => {
-    setSafeMode(sessionStorage, true);
-    location.reload();
-  });
+  calculationFailure = String(error?.message || error);
+  viewSourceChanged("pageNotices");
 }
 function clearCalculationFailure() {
-  document.querySelector(".calculation-failure")?.remove();
+  if (calculationFailure === null) return;
+  calculationFailure = null;
+  viewSourceChanged("pageNotices");
+}
+// The notice's Undo last change: the build's latest saved revision replaces it.
+export function undoLastChange() {
+  let restored;
+  try {
+    const library = loadBuildLibrary(),
+      active = library.builds.find((build) => build.id === library.activeBuildId);
+    if (!active?.revisions?.length) {
+      showToast("No earlier version of this build is saved");
+      return;
+    }
+    restored = restoreLatestRevision();
+  } catch (failure) {
+    showToast(failure?.message || "The earlier version could not be restored");
+    return;
+  }
+  applyPlannerState(restored);
+  pendingCandidateRender = false;
+  renderCandidateViews();
+  if (calculationFailure === null) showToast("Last change undone");
+}
+// The notice's Open safe mode: the page reloads without calculations.
+export function openSafeMode() {
+  setSafeMode(sessionStorage, true);
+  location.reload();
 }
 // Only a full successful renderCandidateViews() clears the notice.
 export function runGuardedRender(renderStep) {

@@ -1,25 +1,22 @@
 // The build library around the open build: open, rename, reset, export / import, backups and other tabs' changes.
 import { expandBuildCode } from "../../engine/state/build-code-compact.js";
 import { encodePlannerState } from "../../engine/state/planner-state.ts";
-import { isRenameKey, resolveBuildRename } from "./build-tab-rename.js";
-import { escapeHtml } from "../html.js";
-import {
-  NOTICE_ACTIONS_CLASS,
-  NOTICE_BUTTON_CLASS,
-  NOTICE_CLASS,
-  NOTICE_SECONDARY_BUTTON_CLASS,
-  STICKY_TOAST_BUTTON_CLASS,
-  STICKY_TOAST_CLASS,
-} from "../notice-classes.js";
-import { $, hideOtherTabNotice, showToast, updateStorageStatus } from "../planner/page.js";
+import { resolveBuildRename } from "./build-tab-rename.js";
+import { closeDialog } from "../bridge/dialogs.ts";
+import { viewSourceChanged } from "../bridge/view-sources.ts";
+import { hideOtherTabNotice, showOtherTabNotice, showToast, updateStorageStatus } from "../planner/page.js";
 import {
   applyPlannerState,
+  calculationFailureMessage,
+  calculationsPaused,
   cancelQueuedRender,
   capturePlannerState,
   emptyPlannerState,
+  openSafeMode,
   persistPlannerState,
   plannerState,
   renderCandidateViews,
+  undoLastChange,
 } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
 import { activateWorkspaceView } from "../planner/workspace.js";
@@ -37,50 +34,22 @@ import {
   reconcileExternalLibraryChange,
   restoreBuildsFromBackup,
   setActiveBuild,
+  startNewLibrary,
+  storeLibraryIfMissing,
   updateActiveBuildMetadata,
 } from "../storage/build-library.ts";
-import { downloadBackup } from "../storage/recovery-core.js";
+import { downloadBackup, setSafeMode } from "../storage/recovery-core.js";
 
-function startActiveBuildRename(tab) {
-  if (!tab || tab.classList.contains("renaming")) return;
+// The build strip's rename (apps/web/src/features/builds/ActiveBuildTab.tsx): a blank or unchanged name keeps the old one.
+function renameBuild(text) {
   const library = loadBuildLibrary(),
     active = library.builds.find((build) => build.id === library.activeBuildId);
-  if (!active) return;
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = "loadout-tab-rename";
-  input.value = active.name;
-  input.setAttribute("aria-label", "Build name");
-  let finished = false;
-  const finish = (save) => {
-    if (finished) return;
-    finished = true;
-    const name = save ? resolveBuildRename(input.value, active.name) : null;
-    tab.classList.remove("renaming");
-    input.remove();
-    if (name) {
-      updateActiveBuildMetadata({ name });
-      updateStorageStatus();
-      showToast("Build renamed");
-    } else updateStorageStatus();
-    tab.focus({ preventScroll: true });
-  };
-  input.addEventListener("keydown", (event) => {
-    event.stopPropagation();
-    if (event.key === "Enter") {
-      event.preventDefault();
-      finish(true);
-    } else if (event.key === "Escape") {
-      event.preventDefault();
-      finish(false);
-    }
-  });
-  input.addEventListener("blur", () => finish(true));
-  input.addEventListener("contextmenu", (event) => event.stopPropagation());
-  tab.classList.add("renaming");
-  tab.querySelector("strong").after(input);
-  input.focus();
-  input.select();
+  const name = active ? resolveBuildRename(text, active.name) : null;
+  if (name) {
+    updateActiveBuildMetadata({ name });
+    showToast("Build renamed");
+  }
+  updateStorageStatus();
 }
 
 // Build library commands (src/app/bridge/planner-commands.js). The Builds view (apps/web/src/features/builds) renders the library
@@ -95,6 +64,7 @@ function openLibraryBuild(id, view) {
 export function backupLibraryBuilds() {
   persistPlannerState();
   try {
+    storeLibraryIfMissing();
     showToast(`Backup downloaded · ${downloadBackup()}`);
   } catch {
     showToast("The backup could not be created");
@@ -143,11 +113,19 @@ export const buildLibraryCommands = {
     showToast("All builds deleted");
   },
   backupBuilds: backupLibraryBuilds,
-  restoreBuilds: () => $("#restore-builds-file").click(),
+  restoreBackup,
   // Header build actions (apps/web/src/shell/SiteHeader.tsx and its dialogs).
   resetBuild,
   exportBuild,
   importBuild,
+  renameBuild,
+  // The page's notices (apps/web/src/shell/PageNotices.tsx, OtherTabNotice.tsx).
+  reloadOtherTabBuild,
+  dismissOtherTabChange,
+  startNewLibrary: startNewBuildLibrary,
+  undoLastChange,
+  openSafeMode,
+  resumeCalculations,
 };
 
 // The header's Reset Build (confirmed in apps/web/src/features/builds/ResetBuildConfirmDialog.tsx): the open build empties.
@@ -175,26 +153,13 @@ async function importBuildText(text) {
   const imported = importBuildCode(code);
   applyPlannerState(loadPlannerState());
   renderCandidateViews();
-  $("#import-build-dialog").close();
+  closeDialog("import-build-dialog");
   activateWorkspaceView("builds", { scroll: false });
-  showToast(`${escapeHtml(imported.name)} imported and active`);
+  showToast(`${imported.name} imported and active`);
 }
 // The Import dialog's Import Code (apps/web/src/features/builds/ImportBuildDialog.tsx).
 function importBuild(text) {
   importBuildText(text).catch(() => showToast("That build code could not be read"));
-}
-// The header's build tab: a right-click or the rename key renames the open build.
-export function installBuildRenameEvents() {
-  document.querySelector(".loadout-tab")?.addEventListener("contextmenu", (event) => {
-    if (event.target.closest(".loadout-tab-rename")) return;
-    event.preventDefault();
-    startActiveBuildRename(event.currentTarget);
-  });
-  document.querySelector(".loadout-tab")?.addEventListener("keydown", (event) => {
-    if (event.target !== event.currentTarget || !isRenameKey(event)) return;
-    event.preventDefault();
-    startActiveBuildRename(event.currentTarget);
-  });
 }
 function restoreSummaryText({ added, renamed, unchanged, skipped, saved }) {
   const parts = [`Restored ${added} build${added === 1 ? "" : "s"}`];
@@ -204,50 +169,63 @@ function restoreSummaryText({ added, renamed, unchanged, skipped, saved }) {
   if (added && !saved) parts.push("not saved: browser storage is full");
   return parts.join(" · ");
 }
-// Restore builds: the backup file picked through the hidden file input.
-export function installBackupRestore() {
-  $("#restore-builds-file").addEventListener("change", async (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    let backup;
-    try {
-      backup = JSON.parse(await file.text());
-    } catch {
-      showToast("That file is not a valid backup (not JSON)");
-      return;
-    }
-    try {
-      persistPlannerState();
-      const summary = restoreBuildsFromBackup(backup);
-      updateStorageStatus();
-      showToast(restoreSummaryText(summary));
-    } catch (error) {
-      showToast(error?.message || "That backup could not be restored");
-    }
-  });
+// Restore from backup: the text of the file picked in the Builds view (apps/web/src/features/builds/backup-file.ts).
+function restoreBackup(text) {
+  let backup;
+  try {
+    backup = JSON.parse(text);
+  } catch {
+    showToast("That file is not a valid backup (not JSON)");
+    return;
+  }
+  try {
+    persistPlannerState();
+    const summary = restoreBuildsFromBackup(backup);
+    updateStorageStatus();
+    showToast(restoreSummaryText(summary));
+  } catch (error) {
+    showToast(error?.message || "That backup could not be restored");
+  }
 }
-// Stored data that could not be loaded is kept unchanged (build-library.ts); say so and offer a backup.
-export function renderLibraryNotice() {
-  document.querySelector(".library-notice")?.remove();
+// The notices over the page: stored data that could not be loaded (kept unchanged, build-library.ts; a backup is
+// offered), a build that could not be calculated (src/app/planner/session.js), and safe mode.
+export const buildLibraryViewSources = {
+  pageNotices: () => ({
+    library: libraryNotice(),
+    calculationFailure: calculationFailureMessage(),
+    calculationsPaused,
+  }),
+};
+function libraryNotice() {
   let issues;
   try {
     issues = libraryLoadIssues();
   } catch {
-    return;
+    return null;
   }
-  const backupButton = `<button class="${NOTICE_SECONDARY_BUTTON_CLASS}" type="button" data-backup-builds>Download backup</button>`;
-  let html = "";
-  if (issues.unreadable)
-    html = `<span>Your saved builds couldn't be read. They are kept unchanged in this browser, and nothing is saved until you choose.</span><span class="${NOTICE_ACTIONS_CLASS}">${backupButton}<button class="${NOTICE_BUTTON_CLASS}" type="button" data-start-new-library>Start a new library (your unreadable data stays backed up)</button></span>`;
-  else if (issues.quarantinedBuilds.length) {
-    const count = issues.quarantinedBuilds.length;
-    html = `<span>${count} build${count === 1 ? "" : "s"} couldn't be loaded and ${count === 1 ? "is" : "are"} kept unchanged: ${issues.quarantinedBuilds.map((entry) => escapeHtml(entry.name)).join(", ")}.</span><span class="${NOTICE_ACTIONS_CLASS}">${backupButton}</span>`;
+  if (issues.unreadable) return { unreadable: true, names: [] };
+  if (issues.quarantinedBuilds.length)
+    return { unreadable: false, names: issues.quarantinedBuilds.map((entry) => entry.name) };
+  return null;
+}
+export function renderLibraryNotice() {
+  viewSourceChanged("pageNotices");
+}
+function startNewBuildLibrary() {
+  try {
+    startNewLibrary();
+    applyPlannerState(loadPlannerState());
+    renderCandidateViews();
+    renderLibraryNotice();
+    updateStorageStatus();
+    showToast("New library started · Your unreadable data stays backed up");
+  } catch (error) {
+    showToast(error?.message || "A new library could not be started");
   }
-  if (html)
-    document
-      .querySelector("main")
-      ?.insertAdjacentHTML("afterbegin", `<div class="library-notice ${NOTICE_CLASS}" role="status">${html}</div>`);
+}
+function resumeCalculations() {
+  setSafeMode(sessionStorage, false);
+  location.reload();
 }
 // Another tab changed the shared build library. Policy (build-library.ts,
 // reconcileExternalLibraryChange): this tab keeps its own build and its own
@@ -265,26 +243,18 @@ function showExternalChange(change) {
   else if (!change.recalculate && ui.activeWorkspaceView === "builds") updateStorageStatus();
   if (change.message) showToast(change.message);
 }
-// Same look as the toast, but it stays (with a Reload action) until used or dismissed.
-function showOtherTabNotice() {
-  if (document.getElementById("other-tab-notice")) return;
-  document.body.insertAdjacentHTML(
-    "beforeend",
-    `<div id="other-tab-notice" class="${STICKY_TOAST_CLASS}" role="status" aria-live="polite"><span>This build was changed in another tab · </span><button type="button" class="${STICKY_TOAST_BUTTON_CLASS}" data-reload-other-tab>Reload it</button><button type="button" class="ml-1.5 cursor-pointer text-lg/none" data-dismiss-other-tab aria-label="Dismiss">×</button></div>`,
-  );
-  const notice = document.getElementById("other-tab-notice");
-  notice.querySelector("[data-reload-other-tab]").addEventListener("click", () => {
-    hideOtherTabNotice();
-    applyPlannerState(loadPlannerState());
-    cancelQueuedRender();
-    renderCandidateViews();
-    updateStorageStatus();
-    showToast("Build reloaded");
-  });
-  notice.querySelector("[data-dismiss-other-tab]").addEventListener("click", () => {
-    dismissOpenBuildChange();
-    hideOtherTabNotice();
-  });
+// The other-tab notice's actions: take the other tab's version, or keep this one (until that build changes again).
+function reloadOtherTabBuild() {
+  hideOtherTabNotice();
+  applyPlannerState(loadPlannerState());
+  cancelQueuedRender();
+  renderCandidateViews();
+  updateStorageStatus();
+  showToast("Build reloaded");
+}
+function dismissOtherTabChange() {
+  dismissOpenBuildChange();
+  hideOtherTabNotice();
 }
 // Other tabs' library changes (see showExternalChange above).
 export function installOtherTabSync() {
