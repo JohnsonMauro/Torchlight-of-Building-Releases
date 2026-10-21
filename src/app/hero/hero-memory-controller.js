@@ -26,7 +26,7 @@ import {
 import { displayTexts } from "../bridge/display-text.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { affixTierBadge } from "../gear/gear-items.js";
-import { heroMemoryIcon, heroMemoryIsRevived, memoryTypesByTier } from "../hero-memory-display.js";
+import { heroMemoryIcon, heroMemoryIsRevived, memoryTypesByTier } from "./hero-memory-display.js";
 import { escapeHtml } from "../html.js";
 import { $, showToast } from "../planner/page.js";
 import { persistPlannerState, plannerState } from "../planner/session.js";

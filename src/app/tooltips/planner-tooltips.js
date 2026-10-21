@@ -36,12 +36,12 @@ import {
   prismAffixCoverageReason,
   talentEffectCoverage,
   talentLineCoverage,
-} from "../calculation-coverage.js";
-import { followerSkillTooltipHtml, followerTooltipHtml, followerTooltipRarity } from "../follower-panel.js";
-import { EXTRA_ROW_NOTE, treeExtraRowTooltipHtml } from "../hero-trait-tree-markup.js";
+} from "../planner/calculation-coverage.js";
+import { followerSkillTooltipHtml, followerTooltipHtml, followerTooltipRarity } from "../hero/follower-panel.js";
+import { EXTRA_ROW_NOTE, treeExtraRowTooltipHtml } from "../hero/hero-trait-tree-markup.js";
 import { escapeHtml } from "../html.js";
-import { boostedKismetAffixHtml } from "../kismet-markup.js";
-import { kismetAffixCoverage, pactEffectCoverage } from "../pact-coverage.js";
+import { boostedKismetAffixHtml } from "../pacts/kismet-markup.js";
+import { kismetAffixCoverage, pactEffectCoverage } from "../pacts/pact-coverage.js";
 import { selectedPactspiritLevel } from "../pacts/pacts-controller.js";
 import { curseBadge } from "../planner/curse-notes.js";
 import { $, titleCase } from "../planner/page.js";
@@ -54,13 +54,13 @@ import {
   talentRanks,
   withRenderPass,
 } from "../planner/session.js";
-import { prismIcon, prismName } from "../prism-icons.js";
-import { qolHelpTooltipHtml } from "../qol-help.js";
+import { prismIcon, prismName } from "../talents/prism-icons.js";
+import { qolHelpTooltipHtml } from "./qol-help.js";
 import { skillRoleLabels } from "../skills/skill-board.js";
-import { effectLabel, formatEffect, nodeTitle } from "../talent-labels.js";
+import { effectLabel, formatEffect, nodeTitle } from "../talents/talent-labels.js";
 import { prismTooltipHtml } from "../talents/prism-controller.js";
 import { currentTalentPanel, talentDisplayNodes } from "../talents/talent-trees.js";
-import { traitKeywordDetailsHtml, traitKeywordTextHtml } from "../trait-keyword-markup.js";
+import { traitKeywordDetailsHtml, traitKeywordTextHtml } from "../hero/trait-keyword-markup.js";
 import { gearTooltipContent } from "./gear-tooltips.js";
 import { heroMemoryTooltipContent, heroTraitTooltipLevel, sageScentTooltipContent } from "./hero-tooltips.js";
 import { skillTooltipContent } from "./skill-tooltips.js";

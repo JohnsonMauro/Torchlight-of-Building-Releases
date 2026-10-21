@@ -11,7 +11,7 @@ import { itemCardRarity } from "../../engine/gear/graft-legendaries.js";
 import { keywordRollParts } from "../../engine/gear/legendary-placeholder-pools.js";
 import { rareBaseById, rareBaseByName, rareBaseForItem } from "../../engine/gear/rare-base-lookup.js";
 import { neutralStatuses } from "../../engine/text/line-coverage.js";
-import { beltBlendById } from "../belt-blend-options.js";
+import { beltBlendById } from "./belt-blend-options.js";
 import { displayTexts } from "../bridge/display-text.ts";
 import { modifierTextView } from "../bridge/equipment-crafter-view.ts";
 import { escapeHtml } from "../html.js";

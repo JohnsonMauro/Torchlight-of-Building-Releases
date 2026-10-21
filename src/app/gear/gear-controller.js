@@ -14,7 +14,7 @@ import {
 import { folkloreRingModifier, folkloreRingOptionFromModifiers } from "../../engine/gear/legendary-ring-options.js";
 import { rareBaseForItem } from "../../engine/gear/rare-base-lookup.js";
 import { normalizeSunsEmbraceItem } from "../../engine/state/suns-embrace-normalization.js";
-import { beltBlendById, beltBlendChoices } from "../belt-blend-options.js";
+import { beltBlendById, beltBlendChoices } from "./belt-blend-options.js";
 import { displayTexts } from "../bridge/display-text.ts";
 import { equipmentCrafterView, modifierTextView, rollViews } from "../bridge/equipment-crafter-view.ts";
 import { equipmentView } from "../bridge/equipment-view-model.ts";
@@ -27,7 +27,7 @@ import {
   legendarySourceForItem,
   legendaryTierForText,
   rollValuesFromText,
-} from "../legendary-editor-model.js";
+} from "./legendary-editor-model.js";
 import { curseItemOffReason } from "../planner/curse-notes.js";
 import { $, showToast, titleCase } from "../planner/page.js";
 import {
@@ -39,7 +39,7 @@ import {
 } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
 import { hidePlannerTooltip } from "../tooltips/tooltip-host.js";
-import { towerSequenceChoices } from "../tower-sequence-options.js";
+import { towerSequenceChoices } from "./tower-sequence-options.js";
 import {
   modifierRollRange,
   modifierRollRanges,
@@ -394,7 +394,7 @@ function editingLegendaryModifierTemplate(source, index) {
     : source.modifiers[index];
 }
 // Legendary (and captured legendary) items edit their catalog lines only; base implicits and other non-catalog lines are
-// found by text (src/app/legendary-editor-model.js), stay out of the controls and are kept as they are on save.
+// found by text (src/app/gear/legendary-editor-model.js), stay out of the controls and are kept as they are on save.
 function legendaryEditorSource(item) {
   if (!item || !["legendary", "captured"].includes(item.rarity)) return null;
   return legendarySourceForItem(item, legendaryGearSs13, legendaryCorrodedModifiersSs13);
@@ -470,7 +470,7 @@ function inventoryItemFieldsFrom(item) {
     texts: legendaryEditorSource(item) ? [] : displayTexts(modifiersWithoutSpecials(item)),
   };
 }
-// The editable catalog lines of a legendary (src/app/legendary-editor-model.js), each with its controls.
+// The editable catalog lines of a legendary (src/app/gear/legendary-editor-model.js), each with its controls.
 function editorLegendaryLines(item, source) {
   return editableLegendarySlots(inventoryLegendaryModel(item, source), source).map(({ catalogIndex: index }) => {
     const corroded = editingCorrodedModifierIndices.has(index),

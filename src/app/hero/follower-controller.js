@@ -1,7 +1,7 @@
 // The hero panel's FOLLOWER tab and the follower selector.
 import { followerById, followerRarityById } from "../../engine/followers/follower-model.js";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
-import { followerPanelView, followerPickerView, pickFollower, setFollowerSkill } from "../follower-panel.js";
+import { followerPanelView, followerPickerView, pickFollower, setFollowerSkill } from "./follower-panel.js";
 import { escapeHtml } from "../html.js";
 import { $ } from "../planner/page.js";
 import { plannerState } from "../planner/session.js";
@@ -35,7 +35,7 @@ export const followerCommands = {
   },
 };
 export const followerViewSources = {
-  // The FOLLOWER tab's data (src/app/follower-panel.js).
+  // The FOLLOWER tab's data (src/app/hero/follower-panel.js).
   follower: () => followerPanelView(plannerState),
   // The follower selector's data (apps/web/src/shell/dialogs/FollowerSelectorDialog.tsx).
   followerSelector: () => ({

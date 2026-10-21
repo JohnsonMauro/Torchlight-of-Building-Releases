@@ -1014,7 +1014,7 @@ export function followerModifierTexts(state) {
 
 // ---- Modeled buffs and debuffs ---------------------------------------------------------------------------------------
 // Each buff reads its value from the skill text (patch-note values applied by the importer), is held at its best case on the
-// dummy and has its own best-case switch (`id`, a combat condition). `engine` names what takes it (src/app/follower-panel.js badge):
+// dummy and has its own best-case switch (`id`, a combat condition). `engine` names what takes it (src/app/hero/follower-panel.js badge):
 // "dot" every damage over time, "spell" Spell hits and a Spell skill's own damage over time, "spellTaken" Spell hits only (an
 // enemy "Spell Damage taken" debuff; 2026-10-18 user-supplied: Spell Damage taken is hit-only), "steep" Steep Strike hits,
 // "affliction" damage over time with Affliction, "reaping" Reaps, "stat" a stat with no damage of its own. Stacks multiply

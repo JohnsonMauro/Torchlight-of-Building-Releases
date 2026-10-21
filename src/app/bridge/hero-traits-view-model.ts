@@ -19,8 +19,8 @@ import {
   treeBoardLayout,
   treeRowLevelKey,
 } from "../../engine/heroes/hero-trait-tree.js";
-import { heroMemoryIcon, heroMemoryIsRevived, heroTraitSupportConfig } from "../hero-memory-display.js";
-import { EXTRA_ROW_CHIP } from "../hero-trait-tree-markup.js";
+import { heroMemoryIcon, heroMemoryIsRevived, heroTraitSupportConfig } from "../hero/hero-memory-display.js";
+import { EXTRA_ROW_CHIP } from "../hero/hero-trait-tree-markup.js";
 
 export type HeroDetailTab = "traits" | "path" | "scent";
 interface Memory {

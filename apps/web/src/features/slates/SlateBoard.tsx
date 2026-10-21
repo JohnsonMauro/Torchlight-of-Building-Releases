@@ -2,7 +2,7 @@
 // statue grid, the equipped slates on it, the slates parked beside it, and the selected slate's tools. The data is the
 // planner's "slates" source (src/app/bridge/slates-view-model.ts); every edit is a planner command, and the inventory,
 // crafter and affix editor dialogs stay legacy. The legacy hover tooltip reads data-slate-id; the CSS lays the grid out
-// by data-slate-cell. Keyboard: with a slate selected, A / D rotate and W / S flip it (src/app/slate-shortcuts.js).
+// by data-slate-cell. Keyboard: with a slate selected, A / D rotate and W / S flip it (src/app/slates/slate-shortcuts.js).
 import {
   useEffect,
   useLayoutEffect,
@@ -12,7 +12,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
-import { slateShortcutAction } from "@legacy/app/slate-shortcuts.js";
+import { slateShortcutAction } from "@legacy/app/slates/slate-shortcuts.js";
 import {
   slateExtent,
   slateTiles,

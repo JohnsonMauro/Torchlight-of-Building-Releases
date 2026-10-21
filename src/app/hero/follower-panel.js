@@ -1,6 +1,6 @@
-import { escapeHtml } from "./html.js";
-import { coverageBadge } from "./calculation-coverage.js";
-import { combineStatuses, plannerEngines, refineCoverage } from "../engine/text/line-coverage.js";
+import { escapeHtml } from "../html.js";
+import { coverageBadge } from "../planner/calculation-coverage.js";
+import { combineStatuses, plannerEngines, refineCoverage } from "../../engine/text/line-coverage.js";
 import {
   followers,
   followerRarities,
@@ -27,7 +27,7 @@ import {
   followerInitialSkillRule,
   followerSlotSkills,
   staticFollowerTraitReading,
-} from "../engine/followers/follower-model.js";
+} from "../../engine/followers/follower-model.js";
 import {
   tartarusAffixById,
   tartarusAffixChoices,
@@ -35,7 +35,7 @@ import {
   tartarusAffixRanges,
   tartarusAffixSlotPool,
   tartarusAffixSlots,
-} from "../engine/followers/follower-affixes.js";
+} from "../../engine/followers/follower-affixes.js";
 
 // The Hero panel's FOLLOWER tab (2026-10-15; design: the orchestrator's brief). The panel header is a HERO | FOLLOWER tab strip
 // in the Hero Trait / Trait Path tab style; the FOLLOWER tab shows a card mirroring the hero card (portrait, name, a rarity line

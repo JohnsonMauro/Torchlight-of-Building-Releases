@@ -19,7 +19,7 @@ import { legendaryModifierSignature } from "../../engine/gear/legendary-modifier
 import { legendaryTierTemplate } from "../../engine/gear/legendary-affix-tiers.js";
 import { placeholderOption, placeholderOptionTemplate } from "../../engine/gear/legendary-placeholder-pools.js";
 import { folkloreRingModifier } from "../../engine/gear/legendary-ring-options.js";
-import { beltBlendById } from "../belt-blend-options.js";
+import { beltBlendById } from "./belt-blend-options.js";
 import { equipmentEnergyAllowed, maxEquipmentEnergy, towerSequenceById, towerSequencesForType } from "./gear-rules.js";
 import {
   interpolateCorrosionRoll,

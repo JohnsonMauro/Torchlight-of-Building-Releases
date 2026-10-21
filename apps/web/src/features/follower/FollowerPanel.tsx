@@ -1,8 +1,8 @@
 // The hero panel's FOLLOWER tab: the follower card and its Tartarus Skill slots. The data is the planner's "follower"
-// source (src/app/follower-panel.js followerPanelView); edits are planner commands. The legacy hover tooltip reads
+// source (src/app/hero/follower-panel.js followerPanelView); edits are planner commands. The legacy hover tooltip reads
 // data-follower-tooltip and data-follower-skill-tooltip, so they stay.
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
-import type { FollowerCardView, FollowerSlotView } from "@legacy/app/follower-panel.js";
+import type { FollowerCardView, FollowerSlotView } from "@legacy/app/hero/follower-panel.js";
 import { Artwork } from "../../ui/Artwork";
 import { useViewSource } from "../../ui/use-view-source";
 

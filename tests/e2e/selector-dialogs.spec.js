@@ -11,7 +11,7 @@ import { heroCatalogSs13 } from "../../src/data/heroes/hero-catalog-ss13.js";
 import { PlannerPage } from "./pages/planner-page.js";
 import { HeroPage } from "./pages/hero-page.js";
 import { FollowerPage } from "./pages/follower-page.js";
-import { followerPickerOptions } from "../../src/app/follower-panel.js";
+import { followerPickerOptions } from "../../src/app/hero/follower-panel.js";
 import { PactsPage } from "./pages/pacts-page.js";
 import { TalentsPage } from "./pages/talents-page.js";
 import { fateSlotChoices } from "../../src/engine/pacts/fate-slot-unlocks.js";

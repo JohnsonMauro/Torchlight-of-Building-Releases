@@ -1,7 +1,7 @@
 // Kismet affix markup for the planner's tooltips and the Kismet crafter preview (src/app/tooltips/planner-tooltips.js, src/app/pacts/pacts-controller.js). Kept apart from
 // src/engine/pacts/kismet-effects.js, which the calculation imports, so the calculation does not load markup.
-import { escapeHtml } from "./html.js";
-import { starTrailNote } from "../engine/pacts/kismet-effects.js";
+import { escapeHtml } from "../html.js";
+import { starTrailNote } from "../../engine/pacts/kismet-effects.js";
 
 /**
  * A kismet affix as tooltips and the crafter preview show it: with a Star Trail boost the effective value replaces the

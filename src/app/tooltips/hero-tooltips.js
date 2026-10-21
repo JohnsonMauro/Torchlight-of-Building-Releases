@@ -22,9 +22,9 @@ import {
   traitLevelBonusForEnhancement,
 } from "../../engine/heroes/hero-memory-rules.js";
 import { EXTRA_PICK_LEVEL } from "../../engine/heroes/hero-trait-tree.js";
-import { coverageBadge } from "../calculation-coverage.js";
+import { coverageBadge } from "../planner/calculation-coverage.js";
 import { affixTierBadge } from "../gear/gear-items.js";
-import { heroMemoryIcon } from "../hero-memory-display.js";
+import { heroMemoryIcon } from "../hero/hero-memory-display.js";
 import {
   baseTraitMemory,
   baseTraitReduction,

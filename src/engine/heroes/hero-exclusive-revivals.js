@@ -14,7 +14,7 @@ import { lunarPhaseRevivedAffixDetailsSs13 } from "../../data/heroes/memory-revi
 import { heroCatalogSs13 } from "../../data/heroes/hero-catalog-ss13.js";
 import { normalizeRevivedAffix } from "../../data/heroes/memory-revival-ss13.js";
 
-/** The app's revived-memory test (src/app/hero-memory-display.js heroMemoryIsRevived): a revival method, Wax and Wane, Rising Moon or a revived affix. */
+/** The app's revived-memory test (src/app/hero/hero-memory-display.js heroMemoryIsRevived): a revival method, Wax and Wane, Rising Moon or a revived affix. */
 export function memoryIsRevived(memory) {
   return Boolean(
     memory &&

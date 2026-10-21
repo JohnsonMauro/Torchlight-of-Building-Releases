@@ -1,13 +1,13 @@
-import { normalizePercentageText } from "../engine/text/percentage-text.js";
-import { nativePactspiritNodeEffect } from "../engine/pacts/pactspirit-levels.js";
-import { combineStatuses, coverageContext, refineCoverage } from "../engine/text/line-coverage.js";
+import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+import { nativePactspiritNodeEffect } from "../../engine/pacts/pactspirit-levels.js";
+import { combineStatuses, coverageContext, refineCoverage } from "../../engine/text/line-coverage.js";
 import {
   activeKismetSlotKeys,
   kismetSlotTexts,
   microFateEffectScale,
   parseKismetEffect,
-} from "../engine/pacts/kismet-effects.js";
-import { parseBlockModifier } from "../engine/defense/block-model.js";
+} from "../../engine/pacts/kismet-effects.js";
+import { parseBlockModifier } from "../../engine/defense/block-model.js";
 
 const STAR_TRAIL = /^\+?[\d.]+% for the effects of Micro Fates in the same Pact Branch$/i;
 

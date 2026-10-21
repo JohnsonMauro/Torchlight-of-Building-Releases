@@ -15,8 +15,8 @@ import {
 } from "../../engine/talents/prism-crafting.js";
 import { MAX_TALENT_POINTS, canAllocateTalent, talentPointTotals } from "../../engine/talents/talent-rules.js";
 import { godTalentTreesSs13, talentFamiliesSs13 } from "../../engine/talents/talent-selection-rules.js";
-import { prismIcon, prismName } from "../prism-icons.js";
-import { nodeIcon, nodeTitle } from "../talent-labels.js";
+import { prismIcon, prismName } from "../talents/prism-icons.js";
+import { nodeIcon, nodeTitle } from "../talents/talent-labels.js";
 
 type Coordinate = [number, number];
 /** A node of a tree's layout, or the captured node on it (with its effects). Other fields are not read here. */

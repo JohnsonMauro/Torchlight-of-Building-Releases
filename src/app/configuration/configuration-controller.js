@@ -1,7 +1,7 @@
 // The Config card.
 import { automaticCombatConditionIds } from "../../engine/combat-condition-mode.js";
 import { clampCombatNumber, combatNumberLimits } from "../../engine/state/state-validation.ts";
-import { aimUptimeAfterToggle } from "../aim-controls.js";
+import { aimUptimeAfterToggle } from "./aim-controls.js";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { conditionSourceProbe, currentPlanner, persistPlannerState, plannerState } from "../planner/session.js";
 

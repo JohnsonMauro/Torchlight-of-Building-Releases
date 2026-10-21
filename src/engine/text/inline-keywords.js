@@ -68,7 +68,7 @@ export function inlineKeywordParts(text) {
 }
 
 // Hero trait keywords: the hyperlinked terms in a hero's trait text (TLIDB's trait page links them; the game's hover text
-// defines them). The trait tooltip (src/app/tooltips/planner-tooltips.js, src/app/trait-keyword-markup.js) shows each one in the keyword style, and holding
+// defines them). The trait tooltip (src/app/tooltips/planner-tooltips.js, src/app/hero/trait-keyword-markup.js) shows each one in the keyword style, and holding
 // Alt (body.revival-alt-held) lists the definitions. The table is per hero, so these terms never match gear or talent lines
 // ("+1 Jump" on gear stays a plain line).
 // Youga – The Ultimate One: TLIDB The_Ultimate_One links 19 terms (hyperlinks 107, 109, 756, 767, 12049 and 80070–80083); the

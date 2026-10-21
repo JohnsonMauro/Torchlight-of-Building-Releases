@@ -1,15 +1,15 @@
-import { parseBlessingRecovery } from "../engine/defense/blessing-gear-effects.js";
-import { parseBlessingModifier } from "../engine/defense/blessing-model.js";
-import { parseBlockModifier } from "../engine/defense/block-model.js";
-import { namedGearAffixLines } from "../engine/text/named-gear-affixes.js";
-import { collectNormalizedGearModifiers } from "../engine/engine.js";
-import { parseReapingSource } from "../engine/ailments/reaping-sources.js";
-import { normalizePercentageText } from "../engine/text/percentage-text.js";
-import { auraGainedLineStatus } from "../engine/skills/aura-gained-effects.js";
-import { allHeroTraitsSs13 } from "../data/heroes/all-hero-traits-ss13.generated.js";
-import { baseTraitDescriptionForLevel, endsArtificialMoonSection } from "../engine/heroes/hero-memory-rules.js";
-import { artificialMoonGate } from "../engine/heroes/hero-memory-rules.js";
-import { heroTraitSlotLevel } from "../engine/character-stats.js";
+import { parseBlessingRecovery } from "../../engine/defense/blessing-gear-effects.js";
+import { parseBlessingModifier } from "../../engine/defense/blessing-model.js";
+import { parseBlockModifier } from "../../engine/defense/block-model.js";
+import { namedGearAffixLines } from "../../engine/text/named-gear-affixes.js";
+import { collectNormalizedGearModifiers } from "../../engine/engine.js";
+import { parseReapingSource } from "../../engine/ailments/reaping-sources.js";
+import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+import { auraGainedLineStatus } from "../../engine/skills/aura-gained-effects.js";
+import { allHeroTraitsSs13 } from "../../data/heroes/all-hero-traits-ss13.generated.js";
+import { baseTraitDescriptionForLevel, endsArtificialMoonSection } from "../../engine/heroes/hero-memory-rules.js";
+import { artificialMoonGate } from "../../engine/heroes/hero-memory-rules.js";
+import { heroTraitSlotLevel } from "../../engine/character-stats.js";
 import {
   refineCoverage,
   engineLineStatus,
@@ -23,14 +23,14 @@ import {
   intelligenceLineStatus,
   mainStatLineStatus,
   nameReadCoreStatus,
-} from "../engine/text/line-coverage.js";
-import { isNameReadCoreClause, nameReadCoreGrant } from "../engine/text/granted-core-lines.js";
-import { matchTalentTextClause, talentKeyRoute } from "../engine/text/talent-text-effects.js";
-import { prismMutationDownside } from "../engine/talents/prism-crafting.js";
-import { residualNonDamageStatus } from "../engine/text/line-families.js";
-import { resolveHeroModules } from "../engine/heroes/hero-trait-modules.js";
-import { weaponLocalLineKind, weaponHands, weaponTypeOf, readWeapon } from "../engine/skills/weapon-damage-model.js";
-import { TRAIT_SLOT_GRANTS, YOUGA_ULTIMATE_ONE_ID } from "../engine/heroes/trait-board-grants.js";
+} from "../../engine/text/line-coverage.js";
+import { isNameReadCoreClause, nameReadCoreGrant } from "../../engine/text/granted-core-lines.js";
+import { matchTalentTextClause, talentKeyRoute } from "../../engine/text/talent-text-effects.js";
+import { prismMutationDownside } from "../../engine/talents/prism-crafting.js";
+import { residualNonDamageStatus } from "../../engine/text/line-families.js";
+import { resolveHeroModules } from "../../engine/heroes/hero-trait-modules.js";
+import { weaponLocalLineKind, weaponHands, weaponTypeOf, readWeapon } from "../../engine/skills/weapon-damage-model.js";
+import { TRAIT_SLOT_GRANTS, YOUGA_ULTIMATE_ONE_ID } from "../../engine/heroes/trait-board-grants.js";
 
 export function coverageBadge(status, title = "") {
   const titleAttribute = title

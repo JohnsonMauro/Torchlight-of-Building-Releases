@@ -7,8 +7,8 @@ import { keywordRollParts, placeholderPool } from "../../engine/gear/legendary-p
 import { legendaryLineTiers } from "../../engine/gear/legendary-affix-tiers.js";
 import { normalizePercentageText } from "../../engine/text/percentage-text.js";
 import { baseTypesForSlot } from "../../data/gear/corrosion-implicits-ss13.js";
-import { beltBlendChoices } from "../belt-blend-options.js";
-import { towerSequenceChoices } from "../tower-sequence-options.js";
+import { beltBlendChoices } from "../gear/belt-blend-options.js";
+import { towerSequenceChoices } from "../gear/tower-sequence-options.js";
 import { modifierRollRanges, modifierRollStep, negativeRollFill } from "../gear/affix-rolls.js";
 import {
   baseAffixChoices,

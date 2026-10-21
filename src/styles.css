@@ -12171,7 +12171,7 @@ body.unified-planner #equipment-view #equipment-grid .equipment-item > .curse-of
 .skill-tooltip-head img[src=""] {
   visibility: hidden;
 }
-/* Hero trait keywords (src/app/trait-keyword-markup.js): the keyword style in the trait tooltip; holding Alt lists the definitions (as the core-slate details). */
+/* Hero trait keywords (src/app/hero/trait-keyword-markup.js): the keyword style in the trait tooltip; holding Alt lists the definitions (as the core-slate details). */
 .planner-tooltip.hero-trait-tooltip .trait-keyword-hint {
   display: block;
   margin-top: 8px;
@@ -18968,7 +18968,7 @@ body.recovery-mode main.recovery-screen {
   }
 }
 
-/* Section "?" help: hidden quality-of-life controls per section (src/app/qol-help.js). */
+/* Section "?" help: hidden quality-of-life controls per section (src/app/tooltips/qol-help.js). */
 button.qol-help {
   display: inline-grid;
   place-items: center;
@@ -19094,7 +19094,7 @@ button.qol-help:focus-visible {
   text-decoration: underline;
 }
 
-/* Hero panel HERO | FOLLOWER tabs and the FOLLOWER tab (src/app/follower-panel.js; 2026-10-15). The tabs take the Hero Trait /
+/* Hero panel HERO | FOLLOWER tabs and the FOLLOWER tab (src/app/hero/follower-panel.js; 2026-10-15). The tabs take the Hero Trait /
    Trait Path tab style (gold text, gold underline on the active tab); the card and slot rows reuse the hero card and trait rows. */
 .planner-hero-panel > .planner-section-title.hero-panel-tabs {
   gap: 8px;
@@ -19375,7 +19375,7 @@ body.unified-planner .planner-select:focus-visible {
 .planner-select option:disabled {
   color: #6f7a86;
 }
-/* Follower skill tier and support affixes (src/app/follower-panel.js, 2026-10-19 user request): edited in the skill picker's preview
+/* Follower skill tier and support affixes (src/app/hero/follower-panel.js, 2026-10-19 user request): edited in the skill picker's preview
    card (native .planner-select selects; affix label, select and effect text per slot); a slot row shows a summary. */
 .follower-skill-editor {
   display: grid;
@@ -19652,7 +19652,7 @@ body.unified-planner
 body.unified-planner .hero-portrait:not(.follower-portrait) img {
   background-color: #000;
 }
-/* Ctrl+F find bar (src/app/find-bar.js); top is set from the header's bottom edge when it opens. */
+/* Ctrl+F find bar (src/app/planner/find-bar.js); top is set from the header's bottom edge when it opens. */
 .find-bar {
   position: fixed;
   top: 74px;
@@ -19726,7 +19726,7 @@ mark.find-hit.current {
   background: var(--gold);
   color: #10141b;
 }
-/* Desktop update banner (src/app/update-banner.js): fixed at the top centre, above the header and the find bar. */
+/* Desktop update banner (src/app/planner/update-banner.js): fixed at the top centre, above the header and the find bar. */
 .update-banner {
   position: fixed;
   top: 10px;

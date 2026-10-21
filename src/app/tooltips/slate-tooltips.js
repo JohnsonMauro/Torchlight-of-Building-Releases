@@ -7,7 +7,7 @@ import {
   judgmentAffixTargetPercent,
   scaleJudgmentAffix,
 } from "../../engine/talents/slate-judgment.js";
-import { coverageBadge, slateLineCoverage } from "../calculation-coverage.js";
+import { coverageBadge, slateLineCoverage } from "../planner/calculation-coverage.js";
 import { escapeHtml } from "../html.js";
 import { currentPlanner, equippedSlateIds, parkedSlates, slatePlacements, slatesForBoard } from "../planner/session.js";
 import { legendaryTalentSlotTypes, slateCraftedAffixGroups, slateGodFamilyClass } from "../slates/slate-catalog.js";

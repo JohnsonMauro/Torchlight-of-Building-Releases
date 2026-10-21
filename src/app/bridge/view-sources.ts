@@ -5,7 +5,7 @@
 import type { PlannerResult } from "../../engine/planner-api.ts";
 import type { PlannerState } from "../../engine/state/planner-state.ts";
 import type { PactsView, PactspiritSelectorView } from "./pacts-view-model.ts";
-import type { FollowerPanelView, FollowerPickerCard } from "../follower-panel.js";
+import type { FollowerPanelView, FollowerPickerCard } from "../hero/follower-panel.js";
 import type { SkillsView } from "./skills-view-model.ts";
 import type { SlatesView } from "./slates-view-model.ts";
 import type { EquipmentView } from "./equipment-view-model.ts";
@@ -40,7 +40,7 @@ export interface ViewSources {
   configuration: ConfigurationSource;
   /** The Pactspirits section (src/app/bridge/pacts-view-model.ts). */
   pacts: PactsView;
-  /** The hero panel's FOLLOWER tab (src/app/follower-panel.js followerPanelView). */
+  /** The hero panel's FOLLOWER tab (src/app/hero/follower-panel.js followerPanelView). */
   follower: FollowerPanelView;
   /** The Skills section of the Build page (src/app/bridge/skills-view-model.ts). */
   skills: SkillsView;
@@ -56,7 +56,7 @@ export interface ViewSources {
   stats: StatsView;
   /** The hero selector: its opening (counted, so its search starts over) and the open build's hero. */
   heroSelector: DialogSession & { selectedHeroId: string };
-  /** The follower selector: its opening and its cards (src/app/follower-panel.js followerPickerView). */
+  /** The follower selector: its opening and its cards (src/app/hero/follower-panel.js followerPickerView). */
   followerSelector: DialogSession & { cards: FollowerPickerCard[] };
   /** The Pactspirit selector: its opening and every Pactspirit (src/app/bridge/pacts-view-model.ts). */
   pactspiritSelector: DialogSession & PactspiritSelectorView;
@@ -131,7 +131,7 @@ export interface ViewSources {
       icon: string;
       name: string;
       detail: string;
-      /** Each effect; with a Star Trail boost, `effective` replaces the rolled number (src/app/kismet-markup.js). */
+      /** Each effect; with a Star Trail boost, `effective` replaces the rolled number (src/app/pacts/kismet-markup.js). */
       affixes: { before: string; effective: string | null; title: string; after: string }[];
       install: string;
     } | null;

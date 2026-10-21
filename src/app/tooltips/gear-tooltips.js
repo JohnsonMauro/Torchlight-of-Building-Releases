@@ -1,6 +1,6 @@
 // The tooltip of an equipped or Inventory item.
 import { neutralStatuses } from "../../engine/text/line-coverage.js";
-import { gearLineCoverage } from "../calculation-coverage.js";
+import { gearLineCoverage } from "../planner/calculation-coverage.js";
 import {
   affixTierBadge,
   gearIcon,

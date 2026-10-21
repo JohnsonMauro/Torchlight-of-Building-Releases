@@ -53,7 +53,7 @@ export interface SpecialView {
 }
 export type SkillSelectorDetailView =
   | { kind: "empty"; message: string }
-  /** A follower skill's detail: the HTML of src/app/follower-panel.js followerSkillSelectorView. */
+  /** A follower skill's detail: the HTML of src/app/hero/follower-panel.js followerSkillSelectorView. */
   | { kind: "follower"; html: string }
   | {
       kind: "entry";

@@ -18,16 +18,16 @@ import {
   supportClauseCoverage,
   supportLineCoverage,
 } from "../../engine/skills/skill-coverage.js";
-import { coverageBadge } from "../calculation-coverage.js";
-import { heroTraitSupportConfig } from "../hero-memory-display.js";
+import { coverageBadge } from "../planner/calculation-coverage.js";
+import { heroTraitSupportConfig } from "../hero/hero-memory-display.js";
 import { escapeHtml } from "../html.js";
 import { curseLimitNoteHtml, curseLimitState, curseSkillLeftOut } from "../planner/curse-notes.js";
 import { titleCase } from "../planner/page.js";
 import { currentEditedSetups, currentPlanner, plannerState } from "../planner/session.js";
-import { highlightedAuraEffect, highlightedSkillEffect, skillDisplaySs13 } from "../skill-display-ss13.js";
+import { highlightedAuraEffect, highlightedSkillEffect, skillDisplaySs13 } from "../skills/skill-display-ss13.js";
 import { activeSkillBoardTab, skillRoleLabels } from "../skills/skill-board.js";
-import { highlightedSupportEffect, supportDisplaySs13 } from "../support-display-ss13.js";
-import { traitGrantNoteHtml } from "../trait-keyword-markup.js";
+import { highlightedSupportEffect, supportDisplaySs13 } from "../skills/support-display-ss13.js";
+import { traitGrantNoteHtml } from "../hero/trait-keyword-markup.js";
 
 function skillLevelLabel(skill) {
   const added = Number(skill.addedLevels) || 0;

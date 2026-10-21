@@ -1,10 +1,10 @@
 // Dragging a slate on the Divinity Slates board. A drag starts after 4 px and moves the piece itself. While the button is
 // held the slate can change pose: a right-click rotates it clockwise (Pedigree of Gods, which only flips, flips it
 // horizontally), the middle / back button flips it horizontally and the forward button vertically, A / D rotate and W / S
-// flip (src/app/slate-shortcuts.js), and the wheel flips it (down: horizontally). The click that follows a drop is
+// flip (src/app/slates/slate-shortcuts.js), and the wheel flips it (down: horizontally). The click that follows a drop is
 // swallowed, so it does not also select the slate.
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { slateShortcutAction } from "@legacy/app/slate-shortcuts.js";
+import { slateShortcutAction } from "@legacy/app/slates/slate-shortcuts.js";
 import type { SlatePose } from "@legacy/app/bridge/slates-view-model.ts";
 
 export interface SlateDragSource {

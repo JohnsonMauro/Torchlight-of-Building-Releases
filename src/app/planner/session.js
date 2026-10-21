@@ -13,7 +13,7 @@ import { canPlaceSlate } from "../../engine/talents/slate-board.js";
 import { setCoverageContext } from "../../engine/text/line-coverage.js";
 import { upgradeExistingCorrodedItems } from "../gear/stored-items.js";
 import { escapeHtml } from "../html.js";
-import { createPlannerCache } from "../planner-cache.js";
+import { createPlannerCache } from "./planner-cache.js";
 import { craftedSlateForBoard } from "../slates/slate-shapes.js";
 import {
   loadBuildLibrary,

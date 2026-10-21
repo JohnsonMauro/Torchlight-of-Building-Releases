@@ -1,6 +1,6 @@
 // Curse limit notes: which skill bar curses and triggered curse lines the calculation left out, and why.
 import { curseSlotSummary } from "../../engine/skills/curse-limit.js";
-import { coverageBadge } from "../calculation-coverage.js";
+import { coverageBadge } from "./calculation-coverage.js";
 import { equippedSlotForInventoryItem } from "../gear/gear-items.js";
 import { escapeHtml } from "../html.js";
 import { currentPlanner } from "./session.js";

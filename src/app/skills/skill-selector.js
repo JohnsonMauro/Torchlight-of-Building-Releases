@@ -23,8 +23,8 @@ import {
   followerSelectorInitialIndex,
   followerSkillDraft,
   setFollowerSkill,
-} from "../follower-panel.js";
-import { heroTraitSupportConfig } from "../hero-memory-display.js";
+} from "../hero/follower-panel.js";
+import { heroTraitSupportConfig } from "../hero/hero-memory-display.js";
 import { commitFollower, heroTraitSupportOptions } from "../hero/hero-controller.js";
 import { escapeHtml } from "../html.js";
 import { $, showToast } from "../planner/page.js";
@@ -68,7 +68,7 @@ export const skillSelectorCommands = {
 // The skill selector's follower skill editor: its tier, affix and roll controls edit the draft.
 export function installSkillSelectorEvents() {
   document.addEventListener("change", (event) => {
-    // Follower skill tier and support affixes (src/app/follower-panel.js followerSkillEditorMarkup, 2026-10-19 user request): the picker's
+    // Follower skill tier and support affixes (src/app/hero/follower-panel.js followerSkillEditorMarkup, 2026-10-19 user request): the picker's
     // preview card edits the highlighted skill's draft (followerSelectorDraft); Confirm saves it, Cancel drops it.
     if (event.target.matches("#skill-selector [data-follower-draft-tier]")) {
       followerSelectorDraft = followerDraftWithTier(
@@ -134,9 +134,9 @@ function openHeroTraitSupport(heroId) {
   $("#skill-selector").showModal();
   $("#skill-selector-search").focus();
 }
-// A follower skill slot opens the skill board's picker (#skill-selector) as selectorKind "follower-skill" (src/app/follower-panel.js followerSkillSelectorView; 2026-10-15 user request).
+// A follower skill slot opens the skill board's picker (#skill-selector) as selectorKind "follower-skill" (src/app/hero/follower-panel.js followerSkillSelectorView; 2026-10-15 user request).
 export let followerSelectorSlot = 0;
-// The picker's editor draft { name, tier, affixes } of the highlighted skill (src/app/follower-panel.js followerSkillDraft): it opens on the
+// The picker's editor draft { name, tier, affixes } of the highlighted skill (src/app/hero/follower-panel.js followerSkillDraft): it opens on the
 // slot's own skill, tier and affixes and resets to a newly highlighted skill's (the slot's values when it is the slot's skill).
 export let followerSelectorDraft = null;
 export function openFollowerSkillSelector(slot) {

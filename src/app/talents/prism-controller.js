@@ -13,12 +13,12 @@ import {
 } from "../../engine/talents/prism-crafting.js";
 import { displayTexts } from "../bridge/display-text.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
-import { coverageBadge, prismAffixCoverage, prismAffixCoverageReason } from "../calculation-coverage.js";
+import { coverageBadge, prismAffixCoverage, prismAffixCoverageReason } from "../planner/calculation-coverage.js";
 import { escapeHtml } from "../html.js";
 import { $, showToast } from "../planner/page.js";
 import { persistPlannerState, plannerState, renderCandidateViews, talentRanks } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
-import { prismIcon, prismName } from "../prism-icons.js";
+import { prismIcon, prismName } from "./prism-icons.js";
 import {
   clearInverseReflectedRanks,
   professionTreeLayoutsAllSs13,

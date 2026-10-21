@@ -4,7 +4,7 @@ import { openDialog } from "../ui/dialog-registry";
 
 // The page header: the brand, the workspace views and the open build's actions. The view tabs keep the "view-tab"
 // class and data-view (src/app/planner/workspace.js marks the active one); `site-header` is the find bar's anchor
-// (src/app/find-bar.js). Narrow screens wrap the actions onto their own row and show their icons only.
+// (src/app/planner/find-bar.js). Narrow screens wrap the actions onto their own row and show their icons only.
 
 interface ViewTabProps {
   view: string;

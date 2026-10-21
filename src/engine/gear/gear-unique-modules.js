@@ -12,7 +12,7 @@ import { legendaryCorrodedModifiersSs13 as CORRODED_ROWS } from "../../data/gear
 // (src/engine/text/line-conditions.js); added flat per Blessing stack (src/engine/text/line-effects.js scales both ends).
 // GEAR_MODULES is the status table these modules are documented and tested by (tests/gear-pact-chunk4.test.js,
 // tests/gear-uniques-round2.test.js). No badge reads it: the badges come from each line's own reader (src/engine/text/line-coverage.js,
-// src/app/calculation-coverage.js). The per-item lookup (gearModulesFor) had no callers and was removed (survey 2026-10-13 §4.6).
+// src/app/planner/calculation-coverage.js). The per-item lookup (gearModulesFor) had no callers and was removed (survey 2026-10-13 §4.6).
 export const GEAR_MODULES = Object.freeze([
   {
     key: "lonesome",

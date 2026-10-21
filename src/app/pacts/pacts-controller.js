@@ -16,7 +16,7 @@ import { activeCapturedPactspirits, selectPactspirit } from "../../engine/pacts/
 import { displayTexts } from "../bridge/display-text.ts";
 import { pactsView, pactspiritSelectorView } from "../bridge/pacts-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
-import { boostedKismetAffixParts } from "../kismet-markup.js";
+import { boostedKismetAffixParts } from "./kismet-markup.js";
 import { $, showToast } from "../planner/page.js";
 import { persistPlannerState, plannerState, refreshPactCandidate } from "../planner/session.js";
 import { hidePlannerTooltip } from "../tooltips/tooltip-host.js";

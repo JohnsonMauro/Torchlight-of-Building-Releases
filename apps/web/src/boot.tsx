@@ -64,13 +64,13 @@ async function boot(): Promise<void> {
     await showRecovery({ reason: "error", error });
     return;
   }
-  // Ctrl+F find bar (src/app/find-bar.js); the desktop build has no browser find.
-  import("@legacy/app/find-bar.js")
+  // Ctrl+F find bar (src/app/planner/find-bar.js); the desktop build has no browser find.
+  import("@legacy/app/planner/find-bar.js")
     .then(({ installFindBar }) => installFindBar(document))
     .catch((error: unknown) => console.error(error));
-  // Desktop update banner (src/app/update-banner.js); only the Electron preload provides the bridge.
+  // Desktop update banner (src/app/planner/update-banner.js); only the Electron preload provides the bridge.
   if ((globalThis as { tliDesktop?: { updates?: unknown } }).tliDesktop?.updates) {
-    import("@legacy/app/update-banner.js")
+    import("@legacy/app/planner/update-banner.js")
       .then(({ installUpdateBanner }) => installUpdateBanner(document))
       .catch((error: unknown) => console.error(error));
   }

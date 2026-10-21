@@ -1,5 +1,5 @@
 {
-  "src/app/follower-panel.js": {
+  "src/app/hero/follower-panel.js": {
     "no-empty": {
       "count": 1
     },

@@ -1,8 +1,8 @@
 // Hero trait keyword markup for the trait tooltip (src/app/tooltips/planner-tooltips.js): the hero's linked terms (src/engine/text/inline-keywords.js
 // heroTraitKeywords) in the keyword style, and a definitions block that holding Alt reveals (body.revival-alt-held, the same
 // key as the revived-memory and core-slate details).
-import { escapeHtml } from "./html.js";
-import { heroTraitKeyword, heroTraitKeywordSegments, heroTraitKeywordsIn } from "../engine/text/inline-keywords.js";
+import { escapeHtml } from "../html.js";
+import { heroTraitKeyword, heroTraitKeywordSegments, heroTraitKeywordsIn } from "../../engine/text/inline-keywords.js";
 
 /** A stretch of trait text as HTML, with the hero's keywords in the keyword style. */
 export function traitKeywordTextHtml(heroId, text) {

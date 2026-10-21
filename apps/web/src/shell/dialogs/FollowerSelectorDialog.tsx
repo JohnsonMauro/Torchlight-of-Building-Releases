@@ -1,6 +1,6 @@
 // The follower selector (the FOLLOWER tab's Change / Choose Follower): one card per follower and rarity, the open build's
 // follower pressed, a search over name, species, title, trait and rarity. The planner opens it (openFollowerSelector)
-// and announces the "followerSelector" source (src/app/follower-panel.js followerPickerView); picking a card is the
+// and announces the "followerSelector" source (src/app/hero/follower-panel.js followerPickerView); picking a card is the
 // selectFollower command. The legacy hover tooltip reads data-follower-tooltip and data-follower-tooltip-rarity, and is
 // moved into this dialog while it shows a card's tooltip.
 import { useRef } from "react";

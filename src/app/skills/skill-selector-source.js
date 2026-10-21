@@ -12,13 +12,13 @@ import {
 } from "../../data/skills/special-support-tiers-ss13.js";
 import { isSpiritMagusSkill } from "../../engine/skills/magus-active-slot.js";
 import { displayTexts, htmlTextSegments } from "../bridge/display-text.ts";
-import { followerSkillSelectorList, followerSkillSelectorView } from "../follower-panel.js";
-import { heroTraitSupportConfig } from "../hero-memory-display.js";
+import { followerSkillSelectorList, followerSkillSelectorView } from "../hero/follower-panel.js";
+import { heroTraitSupportConfig } from "../hero/hero-memory-display.js";
 import { artwork } from "../planner/page.js";
 import { currentEditedSetups, plannerState, setupStateKey } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
-import { highlightedAuraEffect, highlightedSkillEffect, skillDisplaySs13 } from "../skill-display-ss13.js";
-import { highlightedSupportEffect, supportDisplaySs13 } from "../support-display-ss13.js";
+import { highlightedAuraEffect, highlightedSkillEffect, skillDisplaySs13 } from "./skill-display-ss13.js";
+import { highlightedSupportEffect, supportDisplaySs13 } from "./support-display-ss13.js";
 import { activeSkillBoardTab } from "./skill-board.js";
 import {
   auraFamilyName,
@@ -84,7 +84,7 @@ function skillSelectorSource() {
 const rangeText = ({ min, max }) => (min === max ? min : `${min}–${max}`);
 const rollControl = (range, value, index = 0) => ({ index, min: range.min, max: range.max, step: range.step, value });
 // The skill selector's detail (apps/web/src/shell/dialogs/SkillSelectorDetail.tsx) for the highlighted choice, and its
-// Confirm button. A follower skill's detail is still the HTML of src/app/follower-panel.js followerSkillSelectorView.
+// Confirm button. A follower skill's detail is still the HTML of src/app/hero/follower-panel.js followerSkillSelectorView.
 function skillSelectorDetail() {
   if (selectorKind === "follower-skill") {
     const view = followerSkillSelectorView({

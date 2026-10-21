@@ -11,7 +11,7 @@ import {
 import { gameLogImportCommands, gameLogImportViewSources } from "./builds/game-log-import-controller.js";
 import { configurationCommands, configurationViewSources } from "./configuration/configuration-controller.js";
 import { feedbackViewSources, installFeedbackEvents } from "./feedback/feedback-controller.js";
-import { writeHeroPanelTab } from "./follower-panel.js";
+import { writeHeroPanelTab } from "./hero/follower-panel.js";
 import { gearCommands, gearViewSources } from "./gear/gear-controller.js";
 import { followerCommands, followerViewSources } from "./hero/follower-controller.js";
 import { heroCommands, heroViewSources, renderHeroPanel } from "./hero/hero-controller.js";

@@ -5,7 +5,7 @@
 //
 // Each rule: `pattern` (anchored, on a normalized clause), `keys` ([key, value(match)] pairs), `scope` ("both",
 // "talent" or "slate": which parser reads it), and `route`: the engine family that consumes the key, used by the
-// engine-aware coverage badges (src/app/calculation-coverage.js):
+// engine-aware coverage badges (src/app/planner/calculation-coverage.js):
 //   hit      Scorching Beam hit ledger and every hit engine (increased / area damage, life damage)
 //   dot      the DoT ledgers (Ignite ledger, skill DoTs, generic ailments)
 //   damage   both hits and DoTs (plain "+X% damage")

@@ -8,7 +8,7 @@ import { carinoAmmoSelectorView, sageScentSelectorView } from "../bridge/hero-di
 import { heroTraitsView } from "../bridge/hero-traits-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { renderConfiguration } from "../configuration/configuration-controller.js";
-import { readHeroPanelTab } from "../follower-panel.js";
+import { readHeroPanelTab } from "./follower-panel.js";
 import { escapeHtml } from "../html.js";
 import { $, activeBuildViewId, showToast } from "../planner/page.js";
 import { currentEditedSetups, persistPlannerState, plannerState, renderCandidateViews } from "../planner/session.js";

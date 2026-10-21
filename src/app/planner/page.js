@@ -49,7 +49,7 @@ export function showToast(message) {
   toastTimer = setTimeout(() => $("#toast").classList.remove("visible"), 2200);
 }
 
-// Hero panel HERO | FOLLOWER tabs (src/app/follower-panel.js; 2026-10-15): the tab is remembered per build view (localStorage, UI
+// Hero panel HERO | FOLLOWER tabs (src/app/hero/follower-panel.js; 2026-10-15): the tab is remembered per build view (localStorage, UI
 // only); the header "?" shows the open tab's controls. The FOLLOWER tab renders the follower card and its skill slots.
 export function activeBuildViewId() {
   try {
