@@ -360,7 +360,7 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
   // Buff lines take origin "buff" (every engine reads them as plain lines); enemy damage-taken lines take origin "derived"
   // (the hit engine reads derived "damage taken" lines as the target's; the ailment engines read typed ones).
   // A best-case assumption is on unless its condition is switched off (state flag or the requested conditions; Config tab
-  // "Best-case assumptions" list, src/app/app.js).
+  // "Best-case assumptions" list, apps/web/src/features/configuration).
   const conditionOn = (id) => state[id] !== false && state.requestedConditions?.[id] !== false;
   const derive = (text, source, conditionText, provisional = false) =>
     derived.push({

@@ -230,7 +230,7 @@ export function normalizePlannerState(input: unknown = {}): PlannerState {
     slates: {
       ...defaults.slates,
       ...(value.slates || {}),
-      // A save without a geometry version predates the current slate board (4): src/app/app.js then ignores its placements
+      // A save without a geometry version predates the current slate board (4): src/app/planner/session.js then ignores its placements
       // and lays out the captured slates.
       geometryVersion: Number(value.slates?.geometryVersion || 0),
       placements:

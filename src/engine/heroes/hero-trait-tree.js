@@ -24,7 +24,7 @@ export const EXTRA_ROW_NAME = "the fourth trait row";
 export const SELENA_DANCE_HERO_ID = "selena-dance-of-the-deep";
 const EXTRA_PICK_HEROES = new Set(["youga-the-ultimate-one"]);
 
-// Board coordinates (the Trait Path tab, src/app/app.js): x across 0–400 (x / 4 = % of the board), y in px; the base trait on
+// Board coordinates (the Trait Path tab, apps/web/src/features/hero): x across 0–400 (x / 4 = % of the board), y in px; the base trait on
 // the first row, then one row per tree depth.
 const BOARD_ROWS = [46, 105, 175, 235];
 const BOARD_LEFT = 45,

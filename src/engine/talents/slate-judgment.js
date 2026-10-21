@@ -1,6 +1,6 @@
 import { slateCells } from "./slate-board.js";
 
-// Same cells as src/app/app.js godSlateCapturedShapes (the board draws those; pinned in tests/slate-shape-import.test.js).
+// Same cells as src/app/slates/slate-shapes.js godSlateCapturedShapes (the board draws those; pinned in tests/slate-shape-import.test.js).
 const godShapes = {
   deception: [
     null,

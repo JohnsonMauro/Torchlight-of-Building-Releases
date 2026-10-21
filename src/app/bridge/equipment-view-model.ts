@@ -1,6 +1,6 @@
 // What the Gear section of the Build page shows: the ten equipped slots (the item in each, or an empty slot) and the
 // Inventory cards, with what a drag needs (which item a slot or card carries, which slots take it). Pure; the React view
-// (apps/web/src/features/gear) renders it and src/app/app.js publishes it (src/app/bridge/view-sources.ts "equipment").
+// (apps/web/src/features/gear) renders it and src/app/gear/gear-controller.js publishes it (src/app/bridge/view-sources.ts "equipment").
 // How an item looks (its rarity classes, icon) and whether the curse limit leaves it out depend on the open build, so
 // the planner passes them in.
 import { canDropGearInSlot } from "../../engine/gear/gear-drag.js";

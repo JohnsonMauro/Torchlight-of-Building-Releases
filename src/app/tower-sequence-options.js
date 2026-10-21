@@ -1,4 +1,4 @@
-// TOWER Sequence picker options for the shared searchable dropdown (src/app/app.js openSearchableSelect). The catalog has no
+// TOWER Sequence picker options for the shared searchable dropdown (src/app/planner/searchable-select.js openSearchableSelect). The catalog has no
 // sequence names, so the first effect line is the option's name; any further effect lines are its description, and the slot
 // pattern ("3|4|7") is small secondary text ("Slots 3 · 4 · 7").
 export function towerSequenceSlots(entry) {

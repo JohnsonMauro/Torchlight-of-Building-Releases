@@ -1,7 +1,7 @@
 // The skill selector's detail for the highlighted choice: the skill level, a support's tier controls (an Activation
 // Medium's affix lines; a progression support's tiers and rolls; a star support's main affix), and the preview with its
 // tags, facts, highlighted effects and TLIDB link. A follower skill's detail is the planner's HTML (its tier and affix
-// selects are handled by src/app/app.js). Every control is a planner command.
+// selects are handled by src/app/skills/skill-selector.js). Every control is a planner command.
 import { Fragment, type CSSProperties } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type {
@@ -15,7 +15,7 @@ import { Artwork } from "../../ui/Artwork";
 
 const tierButtonsClass = (count: number) => `special-tier-buttons ${count === 4 ? "four-tiers" : ""}`;
 const signed = (value: number) => `${value >= 0 ? "+" : ""}${value}`;
-// The planner refreshes a range's fill on input/change events and on added range nodes (updateRangeFill in app.js); a
+// The planner refreshes a range's fill on input/change events and on added range nodes (src/app/planner/range-fill.js updateRangeFill); a
 // tier change here keeps the same input and only moves its min, max and value, so the fill is set from them.
 const rangeFill = ({ min, max, value }: RollControlView) => {
   const percent = max > min ? Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100)) : 0;

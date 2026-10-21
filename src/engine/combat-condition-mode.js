@@ -22,7 +22,7 @@ export const automaticCombatConditionIds = Object.freeze([
 export function requestedCombatConditions(combat = {}) {
   const conditions = { ...(combat.conditions || {}) };
   // Own buffs built before the fight (2026-10-14): a stored conditions.prebuiltSelfBuffs false no longer counts, because the
-  // blank build behind new and imported builds (src/app/app.js) stored it false without the user choosing it, so it cannot be
+  // blank build behind new and imported builds (src/app/planner/session.js emptyPlannerState) stored it false without the user choosing it, so it cannot be
   // told apart from that bug. The user's choice lives in combat.bestCaseOverrides.prebuiltSelfBuffs (applied below).
   conditions.prebuiltSelfBuffs = true;
   if (combat.conditionMode !== "manual") {

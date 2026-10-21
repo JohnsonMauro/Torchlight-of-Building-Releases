@@ -1,7 +1,7 @@
 // What the talent trees of the Build page show: the four tree tabs (and the Slates tab), the open tree's heading, its
 // core talents, and its nodes on the stage with their connections, ranks, availability and the installed prism (its
 // area, an Inverse Image's reflected area). Pure; the React view (apps/web/src/features/talents) renders it and
-// src/app/app.js publishes it (src/app/bridge/view-sources.ts "talents"). The open tree, the Slates tab and a prism
+// src/app/talents/talents-controller.js publishes it (src/app/bridge/view-sources.ts "talents"). The open tree, the Slates tab and a prism
 // waiting to be placed stay planner state (the prism dialogs change them too).
 import { tliArt } from "../../data/assets/tli-art.js";
 import { allProfessionTalentCatalogueSs13 } from "../../data/talents/all-profession-trees-ss13.generated.js";
@@ -42,7 +42,7 @@ export interface CoreTalent {
   description?: string;
   icon?: string;
 }
-/** A talent tree as the planner lists it (src/app/app.js allTalentPanelsSs13). */
+/** A talent tree as the planner lists it (src/app/talents/talent-trees.js allTalentPanelsSs13). */
 export interface TalentPanel {
   name: string;
   coreTalents: CoreTalent[];

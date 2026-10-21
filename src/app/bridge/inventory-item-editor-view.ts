@@ -1,6 +1,6 @@
 // What the item editor shows (Edit on a legendary or captured item in the Inventory item dialog;
 // apps/web/src/features/gear/InventoryItemEditor.tsx): its fields as typed, each catalog line of a legendary with its
-// controls, or each line of another item as a text field, and the preview. src/app/app.js inventoryItemEditorView builds
+// controls, or each line of another item as a text field, and the preview. src/app/gear/gear-controller.js inventoryItemEditorView builds
 // it. Types only.
 import type { ItemPreviewView, LegendaryLineView, OptionView, SelectChoice } from "./equipment-crafter-view.ts";
 
@@ -44,7 +44,7 @@ export interface InventoryItemEditorView {
   corrosionLines: string[];
   preview: ItemPreviewView;
 }
-/** A change in the item editor (src/app/app.js changeInventoryItemEditor). */
+/** A change in the item editor (src/app/gear/gear-controller.js changeInventoryItemEditor). */
 export type InventoryItemEditorChange =
   | { kind: "field"; field: Exclude<keyof InventoryItemFields, "texts">; value: string }
   | { kind: "text"; index: number; value: string }

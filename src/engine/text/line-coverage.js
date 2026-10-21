@@ -468,7 +468,7 @@ function aimLineMoves(value, kind, planner) {
 /**
  * Badge of a core clause the planner applies by the core's name (src/engine/text/granted-core-lines.js NAME_READ_CORE_CLAUSES) when the
  * core comes from a Pedigree of Gods slate or a "[Core]" gear grant (core audit batch B1): the core tooltip's rule
- * (src/app/app.js .core-talent). Subtle Impact needs Blur active; the others read In calc like the panel's name-modeled cores.
+ * (the talent tree's .core-talent). Subtle Impact needs Blur active; the others read In calc like the panel's name-modeled cores.
  */
 export function nameReadCoreStatus(name, planner = context) {
   if (name === "Subtle Impact" && planner?.conditions && !planner.conditions.blur)

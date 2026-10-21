@@ -354,7 +354,7 @@ export function heroTraitLevelBonus(modifierTexts = []) {
 
 // Selena traits batch (2026-10-13, research/selena-traits-2026-10-13.md):
 // - A slot memory's trait level is stored under the tier key the UI writes: "level45" for Selena (Sing with the Tide),
-//   "<heroId>:level45" for every other hero (src/app/app.js heroMemoryTierForType). The prefixed key is read first; before
+//   "<heroId>:level45" for every other hero (src/app/hero/hero-memory-controller.js heroMemoryTierForType). The prefixed key is read first; before
 //   2026-10-13 only the bare key was read, so other heroes' slot memories never raised their trait levels here.
 // - Trait-tree heroes (Selena – Dance of the Deep; since 2026-10-15 also Thea – Wisdom of The Gods and Youga – The Ultimate
 //   One) keep their path in `hero.treeTraits[heroId]` (src/engine/heroes/hero-trait-tree.js; Selena's earlier `hero.selenaDanceTraits` is

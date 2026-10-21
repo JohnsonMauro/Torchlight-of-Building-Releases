@@ -2,7 +2,7 @@
 // src/data/heroes/memory-revival-details-ss13.js). Hero trait audit batch B1 (2026-10-19, research/hero-traits-audit-2026-10-19.md
 // F3), open question Q-H11 (recommended reading, provisional):
 //   - an exclusive revival's lines apply only while the selected loadout is the one its "Hero Trait Exclusive" line names;
-//   - only one revived memory counts (the app's rule, src/app/app.js otherEquippedRevivedMemory: "Only one revived memory can be
+//   - only one revived memory counts (the app's rule, src/app/hero/hero-memory-controller.js otherEquippedRevivedMemory: "Only one revived memory can be
 //     equipped"): the first revived memory in slot order (Lv45, Lv60, Lv75). An Artificial Moon memory and an exclusive revival
 //     therefore exclude each other; a state that holds more than one (an import, an old save) keeps only the first.
 // Before 2026-10-19 every exclusive revival except Ceaseless Tide, Cat's Night Safari and "+1 Max Youga Count in the Universe"
@@ -14,7 +14,7 @@ import { lunarPhaseRevivedAffixDetailsSs13 } from "../../data/heroes/memory-revi
 import { heroCatalogSs13 } from "../../data/heroes/hero-catalog-ss13.js";
 import { normalizeRevivedAffix } from "../../data/heroes/memory-revival-ss13.js";
 
-/** The app's revived-memory test (src/app/app.js heroMemoryIsRevived): a revival method, Wax and Wane, Rising Moon or a revived affix. */
+/** The app's revived-memory test (src/app/hero-memory-display.js heroMemoryIsRevived): a revival method, Wax and Wane, Rising Moon or a revived affix. */
 export function memoryIsRevived(memory) {
   return Boolean(
     memory &&

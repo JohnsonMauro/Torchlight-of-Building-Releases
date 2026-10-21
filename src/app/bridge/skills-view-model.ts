@@ -1,6 +1,6 @@
 // What the Skills section of the Build page shows, read from a calculated build: the skill board of the open tab (Skills:
 // five active skill rows, Auras: four) with each row's supports and Energy, the Energy total, and the Mana and Life the
-// auras seal. Pure; the React view (apps/web/src/features/skills) renders it and src/app/app.js publishes it
+// auras seal. Pure; the React view (apps/web/src/features/skills) renders it and src/app/skills/skill-board.js publishes it
 // (src/app/bridge/view-sources.ts "skills"), so the game data stays in the planner's bundle.
 import { tliArt } from "../../data/assets/tli-art.js";
 import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
@@ -84,7 +84,7 @@ export interface SkillsView {
 const SUPPORT_SOCKETS = 5;
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const format = (value: number) => number.format(value);
-// The planner's art, else the catalog icon (src/app/app.js fills tliArt the same way when it loads).
+// The planner's art, else the catalog icon (src/app/planner/session.js fills tliArt the same way when it loads).
 const artFor = (art: Record<string, string | undefined>, catalog: readonly { name: string; icon?: string }[]) => {
   const icons = new Map(catalog.map((entry) => [entry.name, entry.icon]));
   return (name: string) => art[name] || icons.get(name) || null;

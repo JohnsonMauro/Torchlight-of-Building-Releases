@@ -5215,7 +5215,7 @@ body.unified-planner .change-hero-button:focus-visible {
 body.revival-alt-held .memory-revived-detail {
   display: block;
 }
-/* Keyword rolls on gear (Pantheon's Elegy's Dirges, src/app/app.js modifierTextMarkup): the revived-memory keyword style; Alt expands. */
+/* Keyword rolls on gear (Pantheon's Elegy's Dirges, src/app/gear/gear-items.js modifierTextMarkup): the revived-memory keyword style; Alt expands. */
 .keyword-roll-name {
   color: #75d8f6;
   font-weight: 700;
@@ -20290,7 +20290,7 @@ body.recovery-mode main.recovery-screen {
   outline: 2px solid #74c8ed;
   outline-offset: 3px;
 }
-/* Config "Best-case assumptions (N)" (src/app/app.js): a gold chevron on the summary, pointing right when closed and
+/* Config "Best-case assumptions (N)" (apps/web/src/features/configuration): a gold chevron on the summary, pointing right when closed and
    down when open (the .stat-section summary chevron), and the reset link as a small gold text button. */
 .best-case-assumptions > summary::-webkit-details-marker {
   display: none;

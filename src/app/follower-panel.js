@@ -41,7 +41,7 @@ import {
 // in the Hero Trait / Trait Path tab style; the FOLLOWER tab shows a card mirroring the hero card (portrait, name, a rarity line
 // in rarity colour, "Change Follower" opening a picker styled like the hero picker) and one row per skill slot like the trait
 // rows (icon, name, no coverage badge (user request 2026-10-19; the tooltips keep it); only the follower's own slots render, no locked rows). A slot opens the skill board's skill picker
-// (#skill-selector, src/app/app.js selectorKind "follower-skill"; followerSkillSelectorView below fills it with the follower's
+// (#skill-selector, src/app/skills/skill-selector.js selectorKind "follower-skill"; followerSkillSelectorView below fills it with the follower's
 // Tartarus / Origin Tartarus Skills, 2026-10-15 user request); right-click clears it. Tooltips use the planner tooltip's
 // hero-trait layout tinted with the follower's rarity (followerTooltipRarity; the hero-memory rarity colours), and the card
 // portrait and the picker cards take the gear-tile rarity tint (follower-tint-<rarity>). The active tab is remembered per build
@@ -184,7 +184,7 @@ export function followerSkillSummary(entry) {
 // ---- Skill editor (picker preview card) -------------------------------------------------------------------------------
 // 2026-10-19 user request ("put the skill editor for followers in the panel like other skills"): the Tier select sits in the
 // preview card's "Tier:" fact row (2026-10-19 user decision) and the support affix selects below it, in the support picker's
-// style (2026-10-19 design: .planner-select, a muted uppercase label above each select, the effect text below). They edit a draft { name, tier, affixes } of the highlighted skill (src/app/app.js
+// style (2026-10-19 design: .planner-select, a muted uppercase label above each select, the effect text below). They edit a draft { name, tier, affixes } of the highlighted skill (src/app/skills/skill-selector.js
 // followerSelectorDraft); Confirm saves the skill, tier and affixes together (applyFollowerSkillDraft), Cancel drops the draft.
 // The selects are native (data-native-select: no type-to-search popup) with dark options.
 const draftOf = (entry) => {
@@ -700,7 +700,7 @@ export function followerSkillSelectorView({ state, slot, choiceIndex = -1, draft
     entry.kind === "origin" &&
     chosen.some((name, index) => index !== slot && tartarusSkillByName(name)?.kind === "origin");
   const effects = entry.lines.filter((line) => !/:$/.test(line));
-  // The editor works on the highlighted skill's draft (src/app/app.js); without one, the slot's own values or the skill's defaults.
+  // The editor works on the highlighted skill's draft (src/app/skills/skill-selector.js); without one, the slot's own values or the skill's defaults.
   const editorDraft = draft?.name === entry.name ? draft : followerSkillDraft(state, slot, entry.name);
   const editor = followerSkillEditorMarkup(editorDraft);
   // The "Tier:" row holds the Tier select (2026-10-19 user decision); the header names the draft's tier ("Black Hole II").

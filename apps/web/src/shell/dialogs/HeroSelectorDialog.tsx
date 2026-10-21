@@ -1,5 +1,5 @@
 // The hero selector (the HERO tab's Change Hero): every hero with its portrait and trait, the current one marked, a
-// search by name or trait. The planner opens it (src/app/app.js openHeroSelector) and announces the "heroSelector"
+// search by name or trait. The planner opens it (src/app/hero/hero-controller.js openHeroSelector) and announces the "heroSelector"
 // source; picking a hero is the selectHero command.
 import { useRef } from "react";
 import { heroCatalogSs13 } from "@legacy/data/heroes/hero-catalog-ss13.js";

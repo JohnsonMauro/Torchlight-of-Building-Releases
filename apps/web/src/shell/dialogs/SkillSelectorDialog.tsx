@@ -95,7 +95,7 @@ export function SkillSelectorDialog() {
           </div>
         </section>
         {detail?.kind === "follower" ? (
-          // The follower's tier and affix selects in it are handled by src/app/app.js (document change listener).
+          // The follower's tier and affix selects in it are handled by src/app/skills/skill-selector.js (installSkillSelectorEvents).
           <section
             key="follower"
             id="skill-selector-detail"

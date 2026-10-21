@@ -1,4 +1,4 @@
-// What the hero memory dialog shows (src/app/app.js heroMemorySource; apps/web/src/shell/dialogs/
+// What the hero memory dialog shows (src/app/hero/hero-memory-controller.js heroMemorySource; apps/web/src/shell/dialogs/
 // HeroMemorySelectorDialog.tsx and HeroMemoryCrafter.tsx): the inventory of crafted memories, or the crafter.
 // Types only.
 

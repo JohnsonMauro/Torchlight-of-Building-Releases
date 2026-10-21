@@ -1,4 +1,5 @@
-// Data the legacy planner (src/app/app.js) publishes for the React views while it still owns the open build. Each source is a
+// Data the planner (each section's controller in src/app/<section>/*, registered by src/app/app.js) publishes for the
+// React views while it owns the open build. Each source is a
 // reader of the current data; the planner calls viewSourceChanged where it used to re-render its own markup, so a source
 // is read again only then (and only while a view subscribes). Edits go the other way, through src/app/bridge/planner-commands.js.
 import type { PlannerResult } from "../../engine/planner-api.ts";

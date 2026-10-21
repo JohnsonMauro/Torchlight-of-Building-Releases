@@ -1,7 +1,7 @@
 // The talent trees of the Build page: the tree tabs (with the Slates tab and the total), the open tree's heading and
 // actions, the prism placement prompt, the core talents and the stage of nodes with the installed prism. The data is
 // the planner's "talents" source (src/app/bridge/talents-view-model.ts); every edit is a planner command, and the tree,
-// core and prism dialogs stay legacy, as does the swap of the tree for the slate board (src/app/app.js
+// core and prism dialogs stay legacy, as does the swap of the tree for the slate board (src/app/talents/talent-trees.js
 // setTalentSlateMode, which moves .slate-layout into .talent-layout and hides .talent-tree-panel). The legacy hover
 // tooltip reads .talent-node with data-coordinate (and its .talent-node-art), .core-talent with data-core-slot, and
 // .prism-affected-node, so they stay.

@@ -7,7 +7,7 @@
 // Unsigned positive rolls (research/unique-item-coverage-2026-10-13.md §4.5): a clause-leading roll range that spans zero
 // ("(-1–1) Main Skill Level", "(0–10) % additional Attack and Cast Speed") carries no sign in the template, and the editor
 // used to save a positive roll without "+" ("1 Main Skill Level"), which the "+"-anchored readers skip. The editor now
-// writes the sign (src/app/app.js resolveModifierRolls); saved lines that match such a template are given their "+" on read.
+// writes the sign (src/app/gear/affix-rolls.js resolveModifierRolls); saved lines that match such a template are given their "+" on read.
 import { legendaryPlaceholderPoolsSs13 } from "../../data/gear/legendary-placeholder-pools-ss13.generated.js";
 import { legendaryGearSs13 } from "../../data/gear/legendary-gear-ss13.generated.js";
 import { legendaryCorrodedModifiersSs13 } from "../../data/gear/legendary-corroded-modifiers-ss13.generated.js";

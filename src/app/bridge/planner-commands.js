@@ -1,7 +1,8 @@
-// Commands the legacy planner (src/app/app.js) carries out for the React UI (apps/web) while it still owns the open
-// build's state: anything that loads a different build, changes the library or edits the open build goes through here,
-// so the planner can save the open build, recalculate and re-render its own views (React views re-read their
-// src/app/bridge/view-sources.ts source). src/app/app.js provides them when it loads.
+// Commands the planner carries out for the React UI (apps/web) while it owns the open build's state: anything that
+// loads a different build, changes the library or edits the open build goes through here, so the planner can save the
+// open build, recalculate and re-render its own views (React views re-read their src/app/bridge/view-sources.ts
+// source). Each section's controller (src/app/<section>/*) defines its commands; src/app/app.js provides them all when
+// it loads.
 
 /**
  * @typedef {object} PlannerCommands

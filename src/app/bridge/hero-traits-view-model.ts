@@ -1,7 +1,7 @@
 // What the HERO tab of the Build page's hero panel shows: the selected hero, the Hero Trait / Trait Path (or Scent Bottle)
 // tabs, and the open tab's content: the trait tiers with their memory sockets and the base trait's support slots, a tree
 // hero's Trait Path board, or Sage's Scent Bottle. Pure; the React view (apps/web/src/features/hero) renders it and
-// src/app/app.js publishes it (src/app/bridge/view-sources.ts "heroTraits"). The open tab stays planner state.
+// src/app/hero/hero-controller.js publishes it (src/app/bridge/view-sources.ts "heroTraits"). The open tab stays planner state.
 import { tliArt } from "../../data/assets/tli-art.js";
 import { tlidbSupportCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
 import { allHeroTraitsSs13 } from "../../data/heroes/all-hero-traits-ss13.generated.js";

@@ -1,7 +1,7 @@
 // What the Divinity Slates board shows: the statue grid's cells, each equipped slate on it and each slate parked beside it,
 // with the geometry the CSS lays them out by, the Judgment and copy links, and the board's interaction state (the selected
 // slate and its tools, Move mode, a transformed slate waiting to be placed). Pure; the React board
-// (apps/web/src/features/slates) renders it and src/app/app.js publishes it (src/app/bridge/view-sources.ts "slates").
+// (apps/web/src/features/slates) renders it and src/app/slates/slates-controller.js publishes it (src/app/bridge/view-sources.ts "slates").
 import {
   SLATE_BOARD_ROWS,
   adjacentSlateIds,
@@ -11,7 +11,7 @@ import {
 } from "../../engine/talents/slate-board.js";
 import { judgmentAffectedSlateIds } from "../../engine/talents/slate-judgment.js";
 
-/** A slate as the planner lists it for the board (src/app/app.js slatesForBoard). Other fields are not read here. */
+/** A slate as the planner lists it for the board (src/app/planner/session.js slatesForBoard). Other fields are not read here. */
 export interface BoardSlate {
   id: string;
   name: string;

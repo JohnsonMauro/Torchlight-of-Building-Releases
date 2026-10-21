@@ -1,15 +1,4 @@
 {
-  "src/app/app.js": {
-    "no-empty": {
-      "count": 3
-    },
-    "no-unused-vars": {
-      "count": 30
-    },
-    "no-useless-assignment": {
-      "count": 1
-    }
-  },
   "src/app/follower-panel.js": {
     "no-empty": {
       "count": 1

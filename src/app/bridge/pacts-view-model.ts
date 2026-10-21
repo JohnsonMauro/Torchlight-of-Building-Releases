@@ -1,6 +1,6 @@
 // What the Pactspirits section shows, read from the build's pact settings: the three pact slots, each Pactspirit's tree
 // with its Kismet and Fate slots, and the equipped Kismet counts. Pure; the React view (apps/web/src/features/pacts) renders
-// it and src/app/app.js publishes it (src/app/bridge/view-sources.ts "pacts"), so the game data stays in the planner's bundle.
+// it and src/app/pacts/pacts-controller.js publishes it (src/app/bridge/view-sources.ts "pacts"), so the game data stays in the planner's bundle.
 import { pactspiritCatalogSs13 } from "../../data/pacts/pactspirit-catalog-ss13.js";
 import { pactspiritTreesSs13 } from "../../data/pacts/pactspirit-trees-ss13.js";
 import { kismetCatalogSs13 } from "../../data/pacts/kismet-catalog-ss13.js";

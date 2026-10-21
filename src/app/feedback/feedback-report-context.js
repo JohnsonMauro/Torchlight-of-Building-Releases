@@ -3,7 +3,7 @@ import { summarizeRecount } from "../../engine/combat/dummy-recount.js";
 import { RECOUNT_SPAN_SECONDS } from "../stats/dummy-recount-panel.js";
 import { heroById } from "../../data/heroes/hero-catalog-ss13.js";
 
-// "Report calculation" (src/app/app.js → src/app/feedback/feedback-links.js calculationReportUrl): the active skill, hero and the planner's
+// "Report calculation" (src/app/stats/stats-controller.js → src/app/feedback/feedback-links.js calculationReportUrl): the active skill, hero and the planner's
 // figures for that skill, read from the same stat-sheet model and recount timeline the Character panel shows. The figures
 // ignore the recount card's click-to-exclude toggles, so a report always carries every modeled source. Reads only.
 

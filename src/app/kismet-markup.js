@@ -1,4 +1,4 @@
-// Kismet affix markup for the planner's tooltips and the Kismet crafter preview (src/app/app.js). Kept apart from
+// Kismet affix markup for the planner's tooltips and the Kismet crafter preview (src/app/tooltips/planner-tooltips.js, src/app/pacts/pacts-controller.js). Kept apart from
 // src/engine/pacts/kismet-effects.js, which the calculation imports, so the calculation does not load markup.
 import { escapeHtml } from "./html.js";
 import { starTrailNote } from "../engine/pacts/kismet-effects.js";

@@ -1,6 +1,6 @@
 // The equipment crafter's draft (the Gear section's Craft Rare Item, Craft Vorax Item and Craft Legendary, or Edit on a
 // crafted rare or Vorax item): what each control holds, what a control's change does to the rest, and the item the draft
-// crafts. Pure: the planner (src/app/app.js) keeps the draft, applies each change with changeEquipmentCraft, and
+// crafts. Pure: the planner (src/app/gear/gear-controller.js) keeps the draft, applies each change with changeEquipmentCraft, and
 // publishes the view (src/app/bridge/equipment-crafter-view.ts). Typed numbers stay text, as their fields hold them.
 //
 // The rules are the legacy crafter's, which kept this state in its controls (a roll snaps as a range input does), except

@@ -1,6 +1,6 @@
 // What the equipment crafter shows (apps/web/src/shell/dialogs/EquipmentCrafterDialog.tsx), read from its draft
 // (src/app/gear/equipment-craft.ts): the Vorax limb picker, the legendary list, a legendary's configuration, or the rare
-// and Vorax form, each with its preview. Pure; the planner (src/app/app.js) publishes it as the "equipmentCrafter"
+// and Vorax form, each with its preview. Pure; the planner (src/app/gear/gear-controller.js) publishes it as the "equipmentCrafter"
 // source and passes in how an item's preview looks, which depends on the open build. Texts are as the legacy markup
 // printed them (src/app/bridge/display-text.ts).
 import { keywordRollParts, placeholderPool } from "../../engine/gear/legendary-placeholder-pools.js";
@@ -38,7 +38,7 @@ import {
 } from "../gear/equipment-craft.ts";
 import { displayTexts } from "./display-text.ts";
 
-/** A modifier line as the legacy markup printed it: plain text, or a keyword roll (src/app/app.js modifierTextMarkup). */
+/** A modifier line as the legacy markup printed it: plain text, or a keyword roll (src/app/gear/gear-items.js modifierTextMarkup). */
 export type ModifierTextView =
   | { kind: "plain"; text: string }
   | {

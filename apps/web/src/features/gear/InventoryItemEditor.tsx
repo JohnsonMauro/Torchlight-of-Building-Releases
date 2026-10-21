@@ -1,7 +1,7 @@
 // The item editor (Edit on a legendary or captured item, in the Inventory item dialog): name, Item level, Equipment
 // Energy, base, Belt Blend, TOWER Sequence, corrosion implicit, then a legendary's catalog lines with their controls, or
 // another item's lines as text fields, and the preview. Fields and controls are changes to the planner's editor state
-// (src/app/app.js changeInventoryItemEditor); the dialog's Save Changes saves them.
+// (src/app/gear/gear-controller.js changeInventoryItemEditor); the dialog's Save Changes saves them.
 import { useState } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type {

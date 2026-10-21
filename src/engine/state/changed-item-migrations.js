@@ -16,7 +16,7 @@ function migrateTowerSequence(item) {
   const old = towerSequenceSs13Texts[item.towerSequenceId];
   if (!old || !Array.isArray(item.modifiers)) return item;
   const current = towerSequencesSs13.find((entry) => entry.id === item.towerSequenceId)?.modifier;
-  // The sequence line is appended after the item's own lines (src/app/app.js craft / legendary save, src/game-log/game-log-import.js).
+  // The sequence line is appended after the item's own lines (src/app/gear/gear-controller.js craft / legendary save, src/game-log/game-log-import.js).
   const index = item.modifiers.lastIndexOf(old);
   if (!current || current === old || index < 0) return item;
   const modifiers = [...item.modifiers];

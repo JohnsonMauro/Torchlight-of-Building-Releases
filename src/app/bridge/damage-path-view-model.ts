@@ -2,7 +2,7 @@
 // as tabs (in per-skill groups when several skills deal damage), each path's summary card (hero figure, chain of stage
 // chips, windows, assumptions, the Ill Omen card), its stages with the sources feeding each, its extra sections and
 // notes, and the open questions that apply to the build. The path models are src/app/stats/damage-path-panel.js
-// damagePathModels; this arranges them as the view draws them. src/app/app.js publishes it inside the "stats" source
+// damagePathModels; this arranges them as the view draws them. src/app/stats/stats-controller.js publishes it inside the "stats" source
 // (src/app/bridge/stats-view-model.ts). Every text is as the legacy markup printed it (displayTexts). Pure.
 import { damagePathModels, sourceNames } from "../stats/damage-path-panel.js";
 import {

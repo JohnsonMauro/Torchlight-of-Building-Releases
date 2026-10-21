@@ -80,7 +80,7 @@ test("the Auras tab: four rows and the Mana and Life the auras seal", () => {
 
 test("empty rows are named by tab and row, and their sockets wait for a skill", () => {
   const state = structuredClone(defaultPlannerState);
-  // What "Reset Skills" leaves (src/app/app.js emptyPlannerState does the same): every captured setup off.
+  // What "Reset Skills" leaves (src/app/planner/session.js emptyPlannerState does the same): every captured setup off.
   state.skills.setupEnabled = Object.fromEntries(
     selenaCompleteSkillLoadoutSs13.setups.map((setup) => [setup.name, false]),
   );

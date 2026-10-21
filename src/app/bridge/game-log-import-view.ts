@@ -1,4 +1,4 @@
-// What the "Import from game" dialog shows (src/app/app.js gameLogImportSource; apps/web/src/shell/dialogs/
+// What the "Import from game" dialog shows (src/app/builds/game-log-import-controller.js gameLogImportSource; apps/web/src/shell/dialogs/
 // ImportGameLogDialog.tsx). Pure: logins and reports come from src/game-log/game-log-import.js and carry no account
 // data. Texts go through displayTexts at the source, as the legacy markup printed them.
 

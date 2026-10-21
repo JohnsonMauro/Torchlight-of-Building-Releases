@@ -1,6 +1,6 @@
 // The hero memory crafter (Craft Memory, or Edit on a memory): the memory type, rarity, base stat and enhancement level,
 // the revival (Wax and Wane, Rising Moon, a revived affix with its tier and roll), two fixed and two random affix lines
-// with their tiers and rolls, and the preview. Every control is a planner command on the draft (src/app/app.js);
+// with their tiers and rolls, and the preview. Every control is a planner command on the draft (src/app/hero/hero-memory-controller.js);
 // the revived affix's select keeps data-memory-field="revivedAffix", which the planner's select search popover reads.
 import { useLayoutEffect, useRef, useState } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";

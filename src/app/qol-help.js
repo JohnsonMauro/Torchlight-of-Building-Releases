@@ -2,7 +2,7 @@ import { escapeHtml } from "./html.js";
 
 // Hidden quality-of-life controls per planner section, shown by the small "?" button in each
 // section header (hover, keyboard focus or a click / tap). All help text lives in this file;
-// each line was checked against the handler that implements it (src/app/app.js contextmenu,
+// each line was checked against the handler that implements it (the section controllers in src/app/*/ contextmenu,
 // pointerdown / drop, slate keys and wheel; src/app/slate-shortcuts.js; src/app/stats/dummy-recount-panel.js;
 // apps/web/src/features/stats; src/app/build-tab-rename.js).
 export const SECTION_HELP = {
@@ -16,7 +16,7 @@ export const SECTION_HELP = {
       { action: "Alt", text: "held over a memory tooltip shows its full revived and keyword effects." },
     ],
   },
-  // The Hero panel's FOLLOWER tab (src/app/follower-panel.js; src/app/app.js swaps the header "?" to this key while the tab is open).
+  // The Hero panel's FOLLOWER tab (src/app/follower-panel.js; src/app/hero/hero-controller.js renderHeroPanel swaps the header "?" to this key while the tab is open).
   follower: {
     title: "Follower",
     items: [

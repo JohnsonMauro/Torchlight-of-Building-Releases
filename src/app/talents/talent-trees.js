@@ -1,0 +1,125 @@
+// The talent trees: layouts (an installed Inverse Image reflects nodes), the open tree, ranks a prism change clears.
+import { allProfessionTalentCatalogueSs13 } from "../../data/talents/all-profession-trees-ss13.generated.js";
+import { selenaScorchingBeamTalentSetupSs13 } from "../../data/talents/selena-scorching-beam-ss13.js";
+import {
+  inverseImageReflectedCoordinates,
+  inverseImageReflectionMap,
+  inverseImageTalentNodes,
+} from "../../engine/talents/prism-crafting.js";
+import { pruneInvalidTalentRanks } from "../../engine/talents/talent-rules.js";
+import { talentDisplayNodes as talentNodesOnBoard } from "../bridge/talents-view-model.ts";
+import { viewSourceChanged } from "../bridge/view-sources.ts";
+import { renderHeroPanel, renderHeroTraitTree } from "../hero/hero-controller.js";
+import { $ } from "../planner/page.js";
+import { plannerState, talentRanks } from "../planner/session.js";
+import { ui } from "../planner/ui-state.js";
+
+const capturedTalentPanels = new Map(selenaScorchingBeamTalentSetupSs13.panels.map((panel) => [panel.name, panel]));
+export const professionTreeLayoutsAllSs13 = Object.fromEntries(
+  Object.entries(allProfessionTalentCatalogueSs13).map(([name, panel]) => [
+    name,
+    {
+      nodes: panel.nodes,
+      edges: panel.edges.filter(([x1, y1, x2, y2]) => Math.abs(x1 - x2) <= 1 && Math.abs(y1 - y2) <= 1),
+    },
+  ]),
+);
+const allTalentPanelsSs13 = Object.values(allProfessionTalentCatalogueSs13).map((panel) => ({
+  ...panel,
+  ...(capturedTalentPanels.get(panel.name) || {}),
+  coreTalents: panel.coreTalents,
+  allocatedNodes: capturedTalentPanels.get(panel.name)?.allocatedNodes || [],
+}));
+
+export function currentTalentPanel() {
+  return allTalentPanelsSs13.find((panel) => panel.name === ui.activeTalentPanel);
+}
+
+export function setTalentSlateMode(enabled) {
+  ui.talentSlateMode = enabled;
+  const talentView = $("#talents-view"),
+    talentLayout = talentView.querySelector(":scope > .talent-layout");
+  const slateLayout = document.querySelector(".slate-layout");
+  const treePanel = talentLayout.querySelector(".talent-tree-panel");
+  if (enabled && !talentView.classList.contains("showing-slates")) {
+    const height = Math.max(650, Math.ceil(talentLayout.getBoundingClientRect().height));
+    talentLayout.style.setProperty("--slate-panel-height", `${height}px`);
+  }
+  talentView.classList.toggle("showing-slates", enabled);
+  if (enabled) {
+    treePanel.hidden = true;
+    if (slateLayout.parentElement !== talentLayout) talentLayout.append(slateLayout);
+  } else {
+    talentLayout.style.removeProperty("--slate-panel-height");
+    treePanel.hidden = false;
+    const slateView = $("#slates-view");
+    if (slateLayout.parentElement !== slateView) slateView.append(slateLayout);
+  }
+}
+
+export function activeTalentLayouts() {
+  const layouts = { ...professionTreeLayoutsAllSs13 };
+  for (const [name, id] of Object.entries(plannerState.talents.installedPrisms || {})) {
+    const graph = layouts[name],
+      coordinate = plannerState.talents.installedPrismNodes?.[name];
+    const prism = (plannerState.talents.prismInventory || []).find((item) => item.id === id);
+    if (!graph || !coordinate || prism?.type !== "inverse") continue;
+    layouts[name] = { ...graph, nodes: inverseImageTalentNodes(graph.nodes, prism, coordinate) };
+  }
+  return layouts;
+}
+
+export function talentDisplayNodes(panel = currentTalentPanel()) {
+  const prism = (plannerState.talents.prismInventory || []).find(
+    (item) => item.id === plannerState.talents.installedPrisms?.[panel.name],
+  );
+  return talentNodesOnBoard(
+    panel,
+    professionTreeLayoutsAllSs13[panel.name],
+    prism,
+    plannerState.talents.installedPrismNodes?.[panel.name],
+  );
+}
+
+// The talent trees are React (apps/web/src/features/talents): they re-read their source. The hero panel beside them and
+// the tree picker dialog are still drawn here.
+export function renderTalents() {
+  renderHeroTraitTree();
+  renderHeroPanel();
+  viewSourceChanged("talentPicker");
+  viewSourceChanged("talents");
+  setTalentSlateMode(ui.talentSlateMode);
+}
+export function clearInverseReflectedRanks(panel, item, coordinate) {
+  for (const target of inverseImageReflectionMap(
+    professionTreeLayoutsAllSs13[panel]?.nodes || [],
+    item,
+    coordinate,
+  ).keys())
+    talentRanks.set(`${panel}:${target}`, 0);
+}
+export function reconcileTalentRanksAfterPrismChange(panel) {
+  const layouts = activeTalentLayouts(),
+    graph = layouts[panel];
+  if (!graph) return;
+  const prism = (plannerState.talents.prismInventory || []).find(
+    (item) => item.id === plannerState.talents.installedPrisms?.[panel],
+  );
+  const prismCoordinate = plannerState.talents.installedPrismNodes?.[panel];
+  const result = pruneInvalidTalentRanks({
+    panel,
+    graph,
+    layouts,
+    ranks: Object.fromEntries(talentRanks),
+    prismCoordinate,
+    prerequisiteFreeCoordinates: inverseImageReflectedCoordinates(prism, prismCoordinate),
+  });
+  for (const key of result.removed) talentRanks.set(key, 0);
+}
+
+export function clearTalentTreeState(name) {
+  if (!name) return;
+  for (const key of [...talentRanks.keys()]) if (key.startsWith(name + ":")) talentRanks.set(key, 0);
+  for (const key of Object.keys(plannerState.talents.coreSelections))
+    if (key.startsWith(name + ":")) delete plannerState.talents.coreSelections[key];
+}

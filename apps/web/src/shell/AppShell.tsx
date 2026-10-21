@@ -35,7 +35,7 @@ import { Toast } from "./Toast";
 import { RestoreBuildsFileInput } from "./RestoreBuildsFileInput";
 
 /**
- * The planner's static page structure, rendered once before the legacy planner (src/app/app.js) starts. The legacy code
+ * The planner's static page structure, rendered once before the planner (src/app/app.js and its controllers) starts. The legacy code
  * finds these elements by id and changes them in place, so this tree must never re-render.
  */
 export function AppShell() {

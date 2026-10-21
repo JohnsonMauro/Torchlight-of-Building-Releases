@@ -17,7 +17,7 @@ export function beltBlendDescription(entry) {
 }
 
 /**
- * The Belt Blend picker's groups, each option with its description (src/app/app.js openSearchableSelect searches it).
+ * The Belt Blend picker's groups, each option with its description (src/app/planner/searchable-select.js openSearchableSelect searches it).
  * @returns {{ group: string, options: { value: string, label: string, data: Record<string, string> }[] }[]}
  */
 export function beltBlendChoices() {

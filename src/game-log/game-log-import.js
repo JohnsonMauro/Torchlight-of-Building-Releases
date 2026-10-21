@@ -706,7 +706,7 @@ const filledFrom = (report, section, stamp) => {
 
 // ---------------------------------------------------------------- blank state
 
-/** The New Build template (src/app/app.js emptyPlannerState) with the planner's default combat settings. */
+/** The New Build template (src/app/planner/session.js emptyPlannerState) with the planner's default combat settings. */
 export function blankPlannerState() {
   const state = structuredClone(defaultPlannerState);
   state.disabledEquipmentSlots = equipmentSlots.map(([slot]) => slot);
@@ -1803,7 +1803,7 @@ function plannerOrientation(shape, offsets) {
   return null;
 }
 
-// The crafter's art for a god's planner shape (src/app/app.js craftedSlateIcon / the crafter's shape buttons).
+// The crafter's art for a god's planner shape (src/app/slates/slate-shapes.js craftedSlateIcon / the crafter's shape buttons).
 const GOD_SLATE_CAPTURES = {
   hunting: "goddess-of-hunting",
   knowledge: "goddess-of-knowledge",

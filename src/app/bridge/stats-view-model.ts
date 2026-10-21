@@ -1,7 +1,7 @@
 // What the Stats view shows (apps/web/src/features/stats): the build status, which of the Stat sheet / Damage path
 // panels is open, the stat sheet (the active skill picker, the skill's damage banner: the training dummy recount, or
 // the older 5 s / 20 s tiles, or "Damage not modeled"; the Effective HP banner and the Character stats tabs) and the
-// damage path (src/app/bridge/damage-path-view-model.ts). src/app/app.js publishes it (src/app/bridge/view-sources.ts
+// damage path (src/app/bridge/damage-path-view-model.ts). src/app/stats/stats-controller.js publishes it (src/app/bridge/view-sources.ts
 // "stats"). prepareStatSheet and prepareDamagePath do the work that depends on the calculated build (and the picked
 // skill); statsView adds what changes without a recalculation (the open panel and path, the recount sources left out
 // of the view). Every text is as the legacy

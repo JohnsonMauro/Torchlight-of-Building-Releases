@@ -1,5 +1,5 @@
 // Read-time migration for saved supports (src/engine/state/planner-state.ts normalizePlannerState), like src/engine/state/changed-item-migrations.js.
-// A support installed from the catalog is saved with a copy of the catalog's effect text (src/app/app.js, src/game-log/game-log-import.js),
+// A support installed from the catalog is saved with a copy of the catalog's effect text (src/app/skills/skill-selector.js, src/game-log/game-log-import.js),
 // so a support whose text the catalog has since changed (scripts/import-tlidb-skill-catalog.mjs rebuilds a support text
 // when TLIDB changes it) would keep the old copy. User rule 2026-10-15: old builds change with the data. A saved support
 // named after a catalog support reads the catalog's current effect text; one the catalog does not hold keeps its own.

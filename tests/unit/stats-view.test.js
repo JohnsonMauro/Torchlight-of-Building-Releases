@@ -13,7 +13,7 @@ import { numberText } from "../../src/app/stats/number-text.ts";
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const format = (value) => number.format(value);
 const state = (id) => goldenInputs().find((input) => input.id === id).state;
-// The damage path also reads the build at 30% target Fire Resistance (src/app/app.js statsSource).
+// The damage path also reads the build at 30% target Fire Resistance (src/app/stats/stats-controller.js statsSource).
 const calculated = (id) => {
   const input = state(id);
   const theoretical = calculateGoldenCase({

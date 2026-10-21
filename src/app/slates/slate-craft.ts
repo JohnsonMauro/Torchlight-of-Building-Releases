@@ -1,6 +1,6 @@
 // The slate crafter's draft (the Slate Inventory's Craft Slate, or Edit on a slate) and what it shows: the tab (Craft
 // Slate, Craft Legendary Slate, Nether King), the god, Nether King type or legendary template, and the form those draw
-// (name, shape and orientation, affix slots, copy rule). Pure: the planner (src/app/app.js) keeps the draft and turns a
+// (name, shape and orientation, affix slots, copy rule). Pure: the planner (src/app/slates/slates-controller.js) keeps the draft and turns a
 // change into a new one; apps/web/src/shell/dialogs/SlateCrafter.tsx renders slateCrafterView.
 //
 // The rules are the legacy crafter's: choosing a tab, god, Nether King type or template draws the form anew (name,

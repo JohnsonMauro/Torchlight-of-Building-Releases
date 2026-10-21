@@ -1,7 +1,7 @@
 import { SlateBoard } from "../../features/slates/SlateBoard";
 
 // Holder of the Divinity Slates board while the talent tree is shown: the Slates button of the talent column moves
-// .slate-layout into the talents view (src/app/app.js setTalentSlateMode), and back here, hidden, when the tree returns.
+// .slate-layout into the talents view (src/app/talents/talent-trees.js setTalentSlateMode), and back here, hidden, when the tree returns.
 export function SlatesView() {
   return (
     <section id="slates-view" className="app-view" hidden>
