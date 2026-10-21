@@ -1,0 +1,27 @@
+/*
+ * The page's stylesheet. Cascade layers, lowest first: Tailwind's theme, base, the legacy stylesheet (src/styles.css,
+ * which only shrinks as screens move to the new layout), components, Tailwind's utilities. CSS outside a layer beats
+ * every layer, so the legacy sheet sits in a layer of its own for the utilities to win over it. Tailwind's Preflight
+ * (the base layer) stays out while the legacy rules still style most of the page: it would reset what they leave to
+ * the browser.
+ */
+@layer theme, base, legacy, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "../../../../src/styles.css" layer(legacy);
+
+/* Design tokens: the planner's dark material with an ember accent and a frost secondary. */
+@theme {
+  --color-ink: #080b10;
+  --color-surface: #101720;
+  --color-raised: #171f2a;
+  --color-line: #384250;
+  --color-text: #f2f0ec;
+  --color-muted: #99a4b0;
+  --color-ember: #f09a42;
+  --color-frost: #61cddd;
+  --color-ok: #62d99f;
+  --color-danger: #ff7a6b;
+  --font-display: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+}

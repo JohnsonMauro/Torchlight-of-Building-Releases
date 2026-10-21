@@ -43,7 +43,7 @@ export function AppShell() {
     <>
       <SiteHeader />
       <LoadoutStrip />
-      <main>
+      <main className="mx-auto w-full max-w-[1720px] px-3 pt-4 pb-16 md:px-5">
         <BuildsView />
         <CharacterView />
         <SkillsView />

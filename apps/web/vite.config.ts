@@ -5,6 +5,7 @@ import { cpSync, createReadStream, existsSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { extname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Connect, type Plugin } from "vite";
 
@@ -66,7 +67,7 @@ function plannerAssets(): Plugin {
 export default defineConfig({
   root: appRoot,
   base: "./",
-  plugins: [react(), plannerAssets()],
+  plugins: [react(), tailwindcss(), plannerAssets()],
   // The legacy planner sources (repository src/) until they move into packages; mirrored in tsconfig.json "paths".
   resolve: { alias: { "@legacy": resolve(repoRoot, "src") } },
   server: { host: "127.0.0.1", port: 4173, strictPort: true, fs: { allow: [repoRoot] } },

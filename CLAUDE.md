@@ -70,6 +70,20 @@ to the component for real drawing (backgrounds and frames that replace layout PN
 frames, wordmarks) may go once nothing uses them; every content image (items, heroes, skills, pacts, slates) stays,
 also unreferenced ones (`tests/unit/asset-references.test.js` guards the references).
 
+## Styling (Tailwind 4 beside the legacy sheet)
+
+- `apps/web/src/styles/app.css` is the page's stylesheet: layers `theme, base, legacy, components, utilities`;
+  `src/styles.css` is imported into `legacy`, so utilities win over it. Tokens (`bg-surface`, `text-ember`,
+  `font-display`…) are its `@theme`. Preflight is off while legacy rules still style most of the page.
+- A legacy `!important` beats any utility (important declarations reverse the layer order): delete that legacy
+  declaration instead of fighting it.
+- No Preflight means buttons keep the browser's border and background: a new button sets them (`border-0
+  bg-transparent`, or its own border).
+- Tailwind writes a utility for every source word that is a utility name (`hidden`, `grid`, `fixed`…). Never give
+  legacy markup such a class name; it would get the utility.
+- A screen moving to the new layout drops its legacy rules (every selector that names the component's classes goes)
+  and keeps the class names JS or tests still look up (`site-header`, `view-tab`, `loadout-tab`, `loadout-status`).
+
 ## Porting upstream
 
 Upstream (`upstream` remote) is reference only: read `git diff <last-ported>..upstream/main` and port by hand. His
