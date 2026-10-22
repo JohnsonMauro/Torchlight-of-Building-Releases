@@ -16,6 +16,22 @@ export const VIEWS = [
   "builds",
 ];
 
+const BUILD_VIEWS = new Set(["hero", "follower", "skills", "equipment", "pacts", "talents"]);
+
+/**
+ * Opens a view as a user would: a focused view (character, configuration, builds) from the rail; a build section from
+ * the build tabs of the section on screen, through the rail's Build first when a focused view is open.
+ */
+export async function openView(page, name) {
+  if (!BUILD_VIEWS.has(name)) {
+    await page.locator(`button.view-tab[data-view="${name}"]`).click();
+    return;
+  }
+  const visibleTabs = page.locator('nav[aria-label="Build tabs"]:visible');
+  if (!(await visibleTabs.count())) await page.locator('button.view-tab[data-view="hero"]').click();
+  await visibleTabs.locator(`[data-view="${name}"]`).click();
+}
+
 export class PlannerPage {
   constructor(page) {
     this.page = page;
@@ -85,16 +101,33 @@ export class PlannerPage {
   selectedHeroTrait() {
     return this.page.locator("#selected-hero-trait");
   }
-  /** A view's tab: the rail's or the build strip's ("hero" has both, the rail's Build and Hero Trait; the first is taken). */
-  viewTab(name) {
-    return this.page.locator(`button.view-tab[data-view="${name}"]`).first();
+  /** The build tabs at the top of a build section (`view` its section): each tab with its "?", in the user's order. */
+  buildTabs(view) {
+    return this.view(view).getByRole("navigation", { name: "Build tabs" });
+  }
+  buildTab(view, label) {
+    return this.buildTabs(view).getByRole("button", { name: label, exact: true });
+  }
+  /** The labels of a section's build tabs, in order. */
+  buildTabLabels(view) {
+    return this.buildTabs(view).locator("[data-view]");
+  }
+  /** Drags a build tab (its label) onto another, as a user would. */
+  async dragBuildTab(view, label, ontoLabel) {
+    const start = await this.buildTab(view, label).boundingBox();
+    const end = await this.buildTab(view, ontoLabel).boundingBox();
+    await this.page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+    await this.page.mouse.down();
+    await this.page.mouse.move(start.x + start.width / 2 + 20, start.y + start.height / 2, { steps: 4 });
+    await this.page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 8 });
+    await this.page.mouse.up();
   }
   statsPanelTab(name) {
     return this.page.locator(`[role="tab"][data-stats-panel="${name}"]`);
   }
 
   async showView(name) {
-    await this.viewTab(name).click();
+    await openView(this.page, name);
     await expect(this.view(name)).toBeVisible();
   }
 

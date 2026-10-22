@@ -1,5 +1,5 @@
-// The Skills section of the Build page: the heading's Energy total and Reset Skills, and the skill board (Skills and Auras
-// tabs, each row's skill, supports and Energy, the aura reservation). The data is the planner's "skills" source
+// The Skills section of the Build page: the skill board (Skills and Auras tabs with the Energy total and Reset Skills
+// beside them, each row's skill, supports and Energy, the aura reservation). The data is the planner's "skills" source
 // (src/app/bridge/skills-view-model.ts); every edit is a planner command. A support drop finds its socket by
 // data-selector-row and data-selector-support-slot inside #skill-groups.
 import type { MouseEvent } from "react";
@@ -24,14 +24,14 @@ const TABS: { tab: SkillBoardTab; label: string }[] = [
 ];
 
 /**
- * The heading's right side: the Energy sources "i", the Energy icon and Energy used over available (danger when overused),
+ * Beside the board's tabs: the Energy sources "i", the Energy icon and Energy used over available (danger when overused),
  * and Reset Skills.
  */
-export function SkillsHeadingActions() {
+function BoardActions() {
   const energy = useViewSource("skills")?.energy;
   const overused = energy ? energy.used > energy.available : false;
   return (
-    <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
+    <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2 pb-2">
       <div className="flex items-center gap-2.5">
         <EnergySources energy={energy} />
         <img
@@ -65,18 +65,21 @@ export function SkillBoard() {
   const tab = view?.tab ?? "skills";
   return (
     <section className="panel m-3 p-3 leading-[normal]">
-      <div className="compendium-tabs mb-2 flex gap-4 border-b border-line">
-        {TABS.map((entry) => (
-          <button
-            key={entry.tab}
-            type="button"
-            className={`tab px-4 py-2.5 text-xs font-bold tracking-wider uppercase ${entry.tab === tab ? "active" : ""}`}
-            aria-pressed={entry.tab === tab}
-            onClick={() => plannerCommands().setSkillBoardTab(entry.tab)}
-          >
-            {entry.label}
-          </button>
-        ))}
+      <div className="mb-2 flex flex-wrap items-end justify-between gap-x-4 border-b border-line">
+        <div className="compendium-tabs flex gap-4">
+          {TABS.map((entry) => (
+            <button
+              key={entry.tab}
+              type="button"
+              className={`tab px-4 py-2.5 text-xs font-bold tracking-wider uppercase ${entry.tab === tab ? "active" : ""}`}
+              aria-pressed={entry.tab === tab}
+              onClick={() => plannerCommands().setSkillBoardTab(entry.tab)}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+        <BoardActions />
       </div>
       <div className="grid grid-cols-[77px_76px_repeat(5,minmax(0,1fr))_58px] items-center px-3 pb-2 text-center text-xs text-muted max-[720px]:hidden">
         <span />

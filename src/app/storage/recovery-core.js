@@ -26,8 +26,10 @@ export const VIEW_SETTING_SESSION_KEYS = Object.freeze([
   "tli-builder:tab-active-build:v1", // this tab's open build (falls back to the library's last-used build)
   SAFE_MODE_KEY,
 ]);
-// No UI-only settings live in localStorage today; listed so additions are explicit.
-export const VIEW_SETTING_LOCAL_KEYS = Object.freeze([]);
+// UI-only settings in localStorage, listed so additions are explicit.
+export const VIEW_SETTING_LOCAL_KEYS = Object.freeze([
+  "tli-builder:build-tab-order:v1", // the build tabs' order (apps/web/src/ui/build-tabs.ts)
+]);
 
 export const BACKUP_FORMAT = "tli-builder-backup";
 export const BACKUP_VERSION = 1;

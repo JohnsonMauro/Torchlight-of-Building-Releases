@@ -10,5 +10,5 @@ export const buildSectionPlace = "col-start-2 row-start-1 max-[900px]:col-start-
 
 export const sectionCardClass = "app-view panel relative min-w-0 scroll-mt-[82px]";
 
-/** The title of a build tab's content (Hero Trait, Skills, Gear…), its "?" right beside it. */
-export const sectionTitleClass = "text-base font-bold tracking-wider text-accent uppercase";
+/** The type of a build tab's label (Hero Trait, Skills, Gear…) and of a dialog's title; the colour is the caller's. */
+export const sectionTitleClass = "text-base font-bold tracking-wider uppercase";

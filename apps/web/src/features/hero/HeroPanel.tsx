@@ -1,25 +1,23 @@
 import type { ReactNode } from "react";
-import { SectionHeading } from "../../ui/SectionHeading";
+import { BuildTabs } from "../../ui/BuildTabs";
 import { FollowerPanel } from "../follower/FollowerPanel";
 import { DamageSummary } from "../stats/DamageSummary";
 import { HeroDetailTabs, HeroShowcase, HeroTraitTree } from "./HeroTab";
 
-// The character column and the Hero Trait and Follower tabs' panels: a panel under its heading strip (the one Skills,
-// Gear and Pactspirits use), with its help button when it has one. The width and placement are the caller's.
+// The character column and the Hero Trait and Follower tabs' panels: a panel, a tab's under the build tabs (the strip
+// Skills, Gear, Pacts and Talent open with). The width and placement are the caller's.
 function CharacterPanel({
-  title,
-  help,
+  tabs = false,
   className,
   children,
 }: {
-  title?: string;
-  help?: "hero" | "follower";
+  tabs?: boolean;
   className?: string;
   children: ReactNode;
 }) {
   return (
     <aside className={`panel relative overflow-hidden leading-[normal] ${className ?? ""}`}>
-      {title ? <SectionHeading title={title} help={help} /> : null}
+      {tabs ? <BuildTabs /> : null}
       {children}
     </aside>
   );
@@ -41,7 +39,7 @@ export function CharacterColumn({ className }: { className?: string }) {
 /** The Hero Trait tab: the hero's trait tabs over the open one (trait tiers, Trait Path or Scent Bottle). */
 export function HeroPanel({ className }: { className?: string }) {
   return (
-    <CharacterPanel title="Hero Trait" help="hero" className={`planner-hero-panel ${className ?? ""}`}>
+    <CharacterPanel tabs className={`planner-hero-panel ${className ?? ""}`}>
       <div id="hero-panel-hero">
         <HeroDetailTabs />
         <HeroTraitTree />
@@ -53,7 +51,7 @@ export function HeroPanel({ className }: { className?: string }) {
 /** The Follower tab: the follower card and its Tartarus Skill slots. */
 export function FollowerColumn({ className }: { className?: string }) {
   return (
-    <CharacterPanel title="Follower" help="follower" className={className}>
+    <CharacterPanel tabs className={className}>
       <div id="follower-panel" className="follower-panel">
         <FollowerPanel />
       </div>

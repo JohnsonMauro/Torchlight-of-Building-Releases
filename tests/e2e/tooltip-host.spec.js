@@ -99,10 +99,7 @@ test("Alt shows a named affix's effect while held", async ({ page }) => {
 
 test("a section's ? help shows on focus and toggles with Enter", async ({ page }) => {
   const { planner } = await openGear(page);
-  const help = page
-    .locator("#equipment-view")
-    .getByRole("button", { name: /controls$/ })
-    .first();
+  const help = planner.buildTabs("equipment").getByRole("button", { name: "Gear controls", exact: true });
   await help.focus();
   await expect(tooltip(page)).toBeVisible();
   await expect(tooltip(page)).toContainText("Controls · Gear");

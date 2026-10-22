@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { buildSectionPlace, sectionCardClass } from "../../ui/section-card";
-import { SectionHeading } from "../../ui/SectionHeading";
+import { BuildTabs } from "../../ui/BuildTabs";
 import { SlatePanel } from "../../features/slates/SlatePanel";
 import {
   PrismPlacementPrompt,
@@ -43,11 +43,11 @@ export function TalentsView() {
     ? { height: `${Math.max(MIN_SLATE_HEIGHT, treeHeight)}px` }
     : undefined;
   return (
-    // The Talent tab (src/app/planner/workspace.js "talents"): the heading over the whole section, then the talent
+    // The Talent tab (src/app/planner/workspace.js "talents"): the build tabs over the whole section, then the talent
     // trees beside the open tree's panel; under 760px they stack. The Slates tab shows the slate board in place of the
     // open tree.
     <section id="talents-view" hidden={!open} className={`${sectionCardClass} ${buildSectionPlace}`}>
-      <SectionHeading title="Talent trees" help="talents" />
+      <BuildTabs />
       <div className="grid grid-cols-[230px_minmax(0,1fr)] items-start gap-3 p-3 max-[1100px]:grid-cols-[205px_minmax(0,1fr)] max-[760px]:block min-[1500px]:grid-cols-[minmax(230px,13fr)_minmax(700px,63fr)]">
         <div
           id="talent-board-tabs"

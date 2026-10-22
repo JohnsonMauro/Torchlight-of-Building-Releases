@@ -1,5 +1,5 @@
-// The Gear section of the Build page: the ten equipped slots with Reset Gear, the Inventory with its Sort order, and the
-// section heading's Craft.
+// The Gear section of the Build page: the ten equipped slots with Reset Gear, and the Inventory with its Sort order and
+// Craft.
 // The data is the planner's "equipment" source (src/app/bridge/equipment-view-model.ts); every edit is a planner command,
 // and the item dialog and the crafter stay legacy. Drags go both ways: a card onto a slot equips it there, an equipped
 // slot onto another slot moves it, onto the Inventory unequips it. An equipped slot and an Inventory card show the
@@ -120,13 +120,16 @@ export function GearWorkbench() {
       </aside>
       <section className="min-w-0 border-l border-line pl-4.5 max-[1250px]:border-t max-[1250px]:border-l-0 max-[1250px]:pt-4 max-[1250px]:pl-0">
         <header className="flex items-center justify-between gap-3 border-b border-line pb-3">
-          <h2 className="text-xs font-bold tracking-wider text-accent uppercase">
+          <h2 className="text-xs font-bold tracking-wider whitespace-nowrap text-accent uppercase">
             {"Inventory "}
             <span id="inventory-count" className="text-muted">
               {view ? `(${view.inventory.length})` : ""}
             </span>
           </h2>
-          <SortButton />
+          <div className="flex items-center gap-2">
+            <SortButton />
+            <CraftButton />
+          </div>
         </header>
         <div
           id="equipment-inventory"
@@ -172,7 +175,8 @@ export function GearWorkbench() {
 }
 
 /** The Gear section's Craft, its main action (accent, with a hammer): the crafter on its first step. */
-export function CraftButton() {
+/** Craft: opens the equipment crafter (its pick of rarity first). */
+function CraftButton() {
   return (
     <button
       className="btn-primary gap-2 px-4 py-2 text-xs font-bold tracking-wide uppercase"

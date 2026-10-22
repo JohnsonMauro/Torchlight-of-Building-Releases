@@ -1,6 +1,6 @@
-import { CraftButton, GearWorkbench } from "../../features/gear/GearWorkbench";
+import { GearWorkbench } from "../../features/gear/GearWorkbench";
 import { buildSectionPlace, sectionCardClass } from "../../ui/section-card";
-import { SectionHeading } from "../../ui/SectionHeading";
+import { BuildTabs } from "../../ui/BuildTabs";
 import { useViewOpen } from "../../ui/use-workspace";
 
 export function EquipmentView() {
@@ -11,7 +11,7 @@ export function EquipmentView() {
       className={`${sectionCardClass} ${buildSectionPlace} min-[901px]:flex min-[901px]:flex-col`}
       hidden={!open}
     >
-      <SectionHeading title="Gear" help="gear" actions={<CraftButton />} />
+      <BuildTabs />
       <GearWorkbench />
     </section>
   );
