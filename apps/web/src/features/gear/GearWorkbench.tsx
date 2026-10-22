@@ -1,4 +1,5 @@
-// The Gear section of the Build page: the ten equipped slots with Reset Gear, and the Inventory with the craft buttons.
+// The Gear section of the Build page: the ten equipped slots with Reset Gear, the Inventory with its Sort order, and the
+// section heading's Craft.
 // The data is the planner's "equipment" source (src/app/bridge/equipment-view-model.ts); every edit is a planner command,
 // and the item dialog and the crafter stay legacy. Drags go both ways: a card onto a slot equips it there, an equipped
 // slot onto another slot moves it, onto the Inventory unequips it. An equipped slot and an Inventory card show the
@@ -13,9 +14,13 @@ import {
   type EquipmentView,
   type InventoryCardView,
 } from "@legacy/app/bridge/equipment-view-model.ts";
+import { slotIconKind } from "@legacy/app/bridge/gear-slot-icon.ts";
+import { GearSlotIcon } from "../../ui/GearSlotIcon";
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";
 import { hideTooltip } from "../../ui/tooltip/tooltip-store";
+import { Tooltip } from "../../ui/tooltip/Tooltip";
+import { StrokeIcon } from "../../ui/StrokeIcon";
 import {
   CARD_TOOL,
   CURSE_BADGE,
@@ -25,7 +30,6 @@ import {
   DROP_ELIGIBLE,
   DROP_TARGET,
   EMPTY_SLOT,
-  EQUIPPED_BADGE,
   SECTION_BUTTON,
   SELECTED_BORDER,
   SELECTED_RING,
@@ -33,11 +37,6 @@ import {
   inventoryIconShift,
 } from "./gear-classes";
 
-const CRAFT_MODES = [
-  { mode: "rare", label: "Craft Rare Item" },
-  { mode: "legendary", label: "Craft Legendary" },
-  { mode: "vorax", label: "Craft Vorax Item" },
-] as const;
 /** The drop target of the Inventory (slots are their own slot key). */
 const INVENTORY = "inventory";
 // The legacy ghost sat 14 px below and right of the pointer; the drag places it at the pointer.
@@ -54,11 +53,6 @@ interface GearDragSource {
 }
 const slotKey = (slot: string) => `slot:${slot}`;
 const cardKey = (id: string) => `card:${id}`;
-
-export function EquippedCount() {
-  const view = useViewSource("equipment");
-  return <>{view ? `${view.equippedCount}/${view.slotCount}` : "—"}</>;
-}
 
 export function GearWorkbench() {
   const view = useViewSource("equipment");
@@ -126,26 +120,13 @@ export function GearWorkbench() {
       </aside>
       <section className="min-w-0 border-l border-line pl-4.5 max-[1250px]:border-t max-[1250px]:border-l-0 max-[1250px]:pt-4 max-[1250px]:pl-0">
         <header className="flex items-center justify-between gap-3 border-b border-line pb-3">
-          <div>
-            <p className="mb-1.75 text-xs font-bold tracking-wider text-accent uppercase">Inventory</p>
-            <h2 className="my-0.5 font-display text-lg font-semibold">
-              {"Items "}
-              <span id="inventory-count">{view ? `(${view.inventory.length})` : ""}</span>
-            </h2>
-          </div>
-          <div className="flex flex-wrap justify-end gap-1.75">
-            {CRAFT_MODES.map(({ mode, label }) => (
-              <button
-                key={mode}
-                className={SECTION_BUTTON}
-                type="button"
-                data-open-equipment-craft={mode}
-                onClick={() => plannerCommands().openEquipmentCrafter(mode)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <h2 className="text-xs font-bold tracking-wider text-accent uppercase">
+            {"Inventory "}
+            <span id="inventory-count" className="text-muted">
+              {view ? `(${view.inventory.length})` : ""}
+            </span>
+          </h2>
+          <SortButton />
         </header>
         <div
           id="equipment-inventory"
@@ -179,14 +160,50 @@ export function GearWorkbench() {
               </div>
             ) : (
               <div className="grid min-h-70 place-items-center text-muted">
-                <strong>No items crafted yet</strong>
-                <span className="-mt-27.5">Use a crafting button above to add an item.</span>
+                <strong>No items in the Inventory</strong>
+                <span className="-mt-27.5">Craft an item, or unequip one to keep it here.</span>
               </div>
             )
           ) : null}
         </div>
       </section>
     </div>
+  );
+}
+
+/** The Gear section's Craft, its main action (accent, with a hammer): the crafter on its first step. */
+export function CraftButton() {
+  return (
+    <button
+      className="btn-primary gap-2 px-4 py-2 text-xs font-bold tracking-wide uppercase"
+      type="button"
+      data-open-equipment-craft=""
+      onClick={() => plannerCommands().openEquipmentCrafter()}
+    >
+      <StrokeIcon className="size-4">
+        <path d="M13.5 10.5 4 20M11 7l4-4 6 6-4 4zM14 4l6 6" />
+      </StrokeIcon>
+      Craft
+    </button>
+  );
+}
+
+/** The Inventory's Sort order: the game's bag order, from the weapons to the rings. */
+function SortButton() {
+  return (
+    <Tooltip content={() => ({ body: "Sort order" })}>
+      <button
+        type="button"
+        className={`${SECTION_BUTTON} px-2.5`}
+        aria-label="Sort order"
+        data-sort-inventory=""
+        onClick={() => plannerCommands().sortInventory()}
+      >
+        <StrokeIcon className="size-4">
+          <path d="M6 20V5M3 8l3-3 3 3M12 6h9M12 12h9M12 18h9" />
+        </StrokeIcon>
+      </button>
+    </Tooltip>
   );
 }
 
@@ -218,6 +235,12 @@ function ghost(source: GearDragSource | null): HTMLElement {
   name.textContent = source?.name ?? "";
   element.append(image, name);
   return element;
+}
+
+/** An empty slot's mark: the silhouette of what it takes. */
+function SlotSilhouette({ slot }: { slot: string }) {
+  const kind = slotIconKind(slot);
+  return kind ? <GearSlotIcon kind={kind} className="mx-auto my-1.75 size-10.75 text-dim" /> : null;
 }
 
 function SlotButton(props: {
@@ -284,9 +307,7 @@ function SlotButton(props: {
           />
         </b>
       ) : (
-        <b className="mx-auto my-1.75 grid size-10.75 place-items-center overflow-hidden rounded border border-line-strong font-bold text-dim">
-          +
-        </b>
+        <SlotSilhouette slot={slot.slot} />
       )}
       <strong className={item ? "hidden" : "my-1.25 line-clamp-2 text-xs font-bold"}>
         {item ? item.name : "Empty"}
@@ -336,7 +357,6 @@ function InventoryCard(props: {
           </strong>
           <small className="hidden">{card.detail}</small>
         </button>
-        {card.equipped ? <em className={EQUIPPED_BADGE}>Equipped</em> : null}
         <span className="inventory-item-tools absolute top-1.25 right-1.25 z-3 grid gap-0.75">
           <button
             type="button"

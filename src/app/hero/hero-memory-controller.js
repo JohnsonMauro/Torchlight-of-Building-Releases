@@ -237,13 +237,19 @@ function renderHeroMemoryInventory() {
 function heroMemorySource() {
   return heroMemoryMode === "craft" && memoryDraft ? heroMemoryCrafterView() : heroMemoryInventoryView();
 }
+// A level socket lists the memories of its type only (Origin at 45, Discipline at 60, Progress at 75); the base trait
+// slot lists every memory, the ones that do not fit it disabled.
 function heroMemoryInventoryView() {
-  const inventory = plannerState.hero.memoryInventory || [];
   const equipped = plannerState.hero.equippedMemoryIds || {};
   const baseMode = activeHeroMemoryTier === "base";
+  const socketType = baseMode ? null : heroMemoryTypeForTier(activeHeroMemoryTier);
+  const inventory = (plannerState.hero.memoryInventory || []).filter(
+    (memory) => !socketType || memory.type === socketType,
+  );
   return {
     mode: "inventory",
-    title: baseMode ? "Hero Memories · Base Trait Slot" : "Hero Memories",
+    title: baseMode ? "Hero Memories · Base Trait Slot" : `Hero Memories · ${socketType || "All"}`,
+    empty: socketType ? `No ${socketType} crafted yet` : "No memories crafted yet",
     baseType: baseMode
       ? displayTexts(equippedBaseTraitSlot(plannerState.hero)?.memoryType?.replace(/^Memory of /, "") || "")
       : null,

@@ -155,7 +155,7 @@ export function InventoryItemEditor({ editor }: { editor: InventoryItemEditorVie
           </label>
           {fields.energy !== null ? (
             <label className={FIELD}>
-              Equipment Energy
+              Energy
               <input
                 className={CONTROL}
                 type="number"

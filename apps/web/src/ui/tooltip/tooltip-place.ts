@@ -1,13 +1,12 @@
 // Where the tooltip sits, kept inside the window: below and right of the point it opened at (or the pointer it follows),
-// or beside its element (left of it when it fits, else right), level with its top.
+// left of it when its width does not fit on the right; or beside its element (left of it when it fits, else right),
+// level with its top.
 import type { TooltipRequest } from "./tooltip-store";
 
 const POINTER_GAP = 18,
   BESIDE_GAP = 12,
   MARGIN = 10,
-  BOTTOM_MARGIN = 12,
-  /** The frame's widest size plus its margin: a tooltip by the pointer never starts closer than this to the right edge. */
-  RIGHT_RESERVE = 370;
+  BOTTOM_MARGIN = 12;
 
 /** Places `tooltip` for `request`, the pointer being at (x, y). */
 export function placeTooltip(tooltip: HTMLElement, request: TooltipRequest, x: number, y: number): void {
@@ -17,7 +16,12 @@ export function placeTooltip(tooltip: HTMLElement, request: TooltipRequest, x: n
 }
 
 function byPointer(tooltip: HTMLElement, x: number, y: number): [number, number] {
-  const left = Math.min(window.innerWidth - RIGHT_RESERVE, x + POINTER_GAP);
+  // Its own width (each kind has its own): right of the pointer when it fits, else left of it.
+  const width = tooltip.offsetWidth;
+  const left =
+    x + POINTER_GAP + width <= window.innerWidth - MARGIN
+      ? x + POINTER_GAP
+      : Math.min(x - POINTER_GAP - width, window.innerWidth - width - MARGIN);
   const top = Math.min(window.innerHeight - tooltip.offsetHeight - BOTTOM_MARGIN, y + POINTER_GAP);
   return [Math.max(MARGIN, left), Math.max(MARGIN, top)];
 }

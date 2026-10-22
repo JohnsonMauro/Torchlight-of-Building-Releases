@@ -6,12 +6,13 @@
 // The rules are the legacy crafter's, which kept this state in its controls (a roll snaps as a range input does), except
 // that a change keeps what it does not touch: the legacy re-render also put every other roll back at its best value.
 import { craftItemTypes, voraxItemTypes } from "../../data/gear/crafting-catalog-ss13.js";
-import { gearGroupOfType } from "../../data/gear/gear-groups-ss13.js";
+import { gearGroupOfType, gearGroupsSs13 } from "../../data/gear/gear-groups-ss13.js";
 import { rareBaseItemsSs13 } from "../../data/gear/rare-base-items-ss13.generated.js";
 import { baseAffixesSs13, baseAffixTiersSs13 } from "../../data/gear/base-affixes-ss13.generated.js";
 import { craftAffixesSs13 } from "../../data/gear/craft-affixes-ss13.generated.js";
 import { voraxCraftingSs13 } from "../../data/gear/vorax-crafting-ss13.generated.js";
 import { legendaryGearSs13 } from "../../data/gear/legendary-gear-ss13.generated.js";
+import { legendaryGearTypesSs13 } from "../../data/gear/legendary-gear-types-ss13.js";
 import { legendaryCorrodedModifiersSs13 } from "../../data/gear/legendary-corroded-modifiers-ss13.generated.js";
 import { corrosionImplicitsForBase, defaultBaseForItem } from "../../data/gear/corrosion-implicits-ss13.js";
 import { isLegacyRareBase } from "../../engine/gear/rare-base-lookup.js";
@@ -84,7 +85,7 @@ interface CorrosionEntry {
   max: string;
 }
 
-/** A prefix or suffix slot. `tier` is what its tier select holds ("" without one); `rolls` its roll controls. */
+/** A prefix or suffix slot. `tier` is its chosen tier ("" without one); `rolls` its roll controls. */
 export interface CraftAffixDraft {
   familyId: string;
   tier: string;
@@ -100,7 +101,7 @@ export interface RareDraft {
   name: string;
   level: string;
   type: string;
-  /** The Base Item select: a rare base's id, a Vorax limb's type, or "" when the item's base is not offered. */
+  /** A rare base's id, a Vorax limb's type, or "" when the item's base is not offered. */
   baseId: string;
   energy: string;
   beltBlendId: string;
@@ -130,6 +131,8 @@ export interface LegendaryDraft {
 }
 export interface EquipmentCraft {
   mode: CraftMode;
+  /** The crafter's first step: which kind of item to craft (rare, legendary or Vorax); `mode` is not chosen yet. */
+  choosing: boolean;
   /** The Inventory item being edited (Save Changes), or null (Add to Inventory). */
   editingId: string | null;
   editingName: string;
@@ -137,21 +140,26 @@ export interface EquipmentCraft {
   voraxBase: string;
   /** Legendary: the list's search, kept while a legendary is configured. */
   search: string;
+  /** Legendary: the group's types its list keeps (its filter chips); none keeps them all. */
+  legendaryTypes: string[];
   rare: RareDraft | null;
   legendary: LegendaryDraft | null;
   /**
-   * Rare: where the item picker stands (src/data/gear/gear-groups-ss13.js: a group, then its entry's type, then a
-   * base); null while the form shows. Back in the picker from the form, `rare` keeps the draft until a base is picked.
+   * Where the item picker stands (src/data/gear/gear-groups-ss13.js: a group, then its entry's type, then a base; a
+   * Vorax item: a group, then a limb; a legendary: a group, whose legendaries the list shows); null while a
+   * rare or Vorax form shows. Back in the picker from the form, `rare` keeps the draft until a base or limb is picked.
    */
   pick: CraftPick | null;
 }
 export interface CraftPick {
   /** The group's id; "" to pick one. */
   group: string;
-  /** The entry's item type; "" to pick one. */
+  /** The entry's item type; "" to pick one. A Vorax pick never holds one: its limb opens the form. */
   type: string;
 }
-export type CraftPickStep = "group" | "type" | "base";
+/** A step of the item picker; "mode" is the crafter's first step, the kind of item. */
+export type CraftPickStep = "mode" | "group" | "type" | "base";
+export const CRAFT_MODES: readonly CraftMode[] = ["rare", "legendary", "vorax"];
 export const craftPickStep = (pick: CraftPick): CraftPickStep => (!pick.group ? "group" : !pick.type ? "type" : "base");
 
 const craftAffixes = craftAffixesSs13 as Record<string, { prefix?: CraftFamily[]; suffix?: CraftFamily[] }>;
@@ -169,11 +177,88 @@ const AFFIX_SLOTS = [0, 1, 2, 3, 4, 5];
 const EMPTY_AFFIX: CraftAffixDraft = { familyId: "", tier: "", rolls: [], legendary: false };
 
 export const voraxBases = (): VoraxBase[] => vorax.bases;
+export interface VoraxGroup {
+  id: string;
+  label: string;
+  /** The limbs' types, in the catalogue's order. */
+  limbs: string[];
+}
+/** The gear groups a Vorax limb belongs to (a limb sits in the group whose types share its slot), each with its limbs. */
+export function voraxGroups(): VoraxGroup[] {
+  const typeSlots = new Map(craftItemTypes as [string, string][]);
+  return (gearGroupsSs13 as { id: string; label: string; entries: { type: string }[] }[])
+    .map((group) => {
+      const slots = new Set(group.entries.map((entry) => typeSlots.get(entry.type)));
+      return {
+        id: group.id,
+        label: group.label,
+        limbs: (voraxItemTypes as [string, string][]).filter(([, slot]) => slots.has(slot)).map(([name]) => name),
+      };
+    })
+    .filter((group) => group.limbs.length);
+}
+export const voraxGroupOfLimb = (type: string): VoraxGroup | undefined =>
+  voraxGroups().find((group) => group.limbs.includes(type));
 export const legendaryById = (id: string): LegendaryEntry | undefined => legendaries.find((entry) => entry.id === id);
+
+/** The item type a legendary drops as (legendary-gear-types-ss13.js); undefined for one without an attribute. */
+function legendaryType(id: string): string | undefined {
+  return Object.entries(legendaryGearTypesSs13 as Record<string, string[]>).find(([, ids]) => ids.includes(id))?.[0];
+}
+/**
+ * The base a crafted legendary starts on: the type it drops as; else (a legendary without an attribute) the catalogue's
+ * guess, which reads the icon or takes the slot's first base.
+ */
+export const legendaryDefaultBase = (entry: LegendaryEntry): string =>
+  legendaryType(entry.id) || defaultBaseForItem(entry);
+
+/** The group a legendary is listed in. */
+export const legendaryGroupOf = (id: string): LegendaryGroup | undefined =>
+  legendaryGroups().find((group) => group.entries.some((entry) => entry.legendaries.some((item) => item.id === id)));
+
+/** The Legendary crafter's Special entry of a group: its legendaries without an attribute. */
+export const SPECIAL_TYPE = "Special";
+export interface LegendaryGroup {
+  id: string;
+  label: string;
+  /** Each type that has legendaries, with them; an attribute group's Special entry last, when it has any. */
+  entries: { label: string; type: string; legendaries: LegendaryEntry[] }[];
+}
+let legendaryGroupList: LegendaryGroup[] | null = null;
+/**
+ * The legendaries by gear group and item type (src/data/gear/legendary-gear-types-ss13.js). A legendary no type lists has
+ * no attribute: it is the Special entry of the attribute group (STR/DEX/INT types) whose types share its slot.
+ */
+export function legendaryGroups(): LegendaryGroup[] {
+  if (legendaryGroupList) return legendaryGroupList;
+  const types = legendaryGearTypesSs13 as Record<string, string[]>,
+    typeSlots = new Map(craftItemTypes as [string, string][]),
+    listed = new Set(Object.values(types).flat()),
+    unlisted = legendaries.filter((entry) => !listed.has(entry.id));
+  // An id can repeat in the catalogue (Unholy Prayer): every entry it names.
+  const byId = (ids: string[]) => ids.flatMap((id) => legendaries.filter((entry) => entry.id === id));
+  legendaryGroupList = (gearGroupsSs13 as { id: string; label: string; entries: { label: string; type: string }[] }[])
+    .map((group) => {
+      const entries = group.entries.map((entry) => ({ ...entry, legendaries: byId(types[entry.type] || []) }));
+      const attributes = group.entries.every((entry) => /^(STR|DEX|INT) /.test(entry.type)),
+        slots = new Set(group.entries.map((entry) => typeSlots.get(entry.type))),
+        special = attributes ? unlisted.filter((entry) => slots.has(entry.slot)) : [];
+      return {
+        id: group.id,
+        label: group.label,
+        entries: [
+          ...entries,
+          ...(special.length ? [{ label: SPECIAL_TYPE, type: SPECIAL_TYPE, legendaries: special }] : []),
+        ].filter((entry) => entry.legendaries.length),
+      };
+    })
+    .filter((group) => group.entries.length);
+  return legendaryGroupList;
+}
 export const legendaryCorrodedLine = (id: string, index: number): string | undefined => corrodedLines[id]?.[index];
 export const corrosionPool = (base: string): CorrosionEntry[] => corrosionImplicitsForBase(base);
 
-/** The Item Type select's choices: [type, slot]. A Vorax form offers only its limb. */
+/** The types the form crafts: [type, slot]. A Vorax form crafts only its limb. */
 export function craftTypes(craft: EquipmentCraft): [string, string][] {
   return craft.mode === "vorax"
     ? (voraxItemTypes as [string, string][]).filter(([name]) => name === craft.voraxBase)
@@ -186,10 +271,10 @@ export function rareBasesForType(type: string): RareBase[] {
     .filter((entry) => entry.type === type && !isLegacyRareBase(entry))
     .sort((a, b) => b.level - a.level || a.name.localeCompare(b.name));
 }
-/** The Base Item select's values for the type. */
+/** The type's bases (a Vorax limb is its own). */
 export const baseChoices = (craft: EquipmentCraft, type: string): string[] =>
   craft.mode === "rare" ? rareBasesForType(type).map((entry) => entry.id) : [type];
-/** A Base Affix select's choices: the template and its tier. */
+/** The base affixes the type offers: the template and its tier. */
 export function baseAffixChoices(
   craft: EquipmentCraft,
   type: string,
@@ -209,15 +294,36 @@ export function voraxModifierLabel(template: string): string {
     )
     .replace(/(-?)\d+(?:\.\d+)?/g, "$1#");
 }
-function voraxLegendaryAffixPool(type: string): CraftFamily[] {
-  return (vorax.legendaryDonors[type] || []).flatMap((donor) =>
-    donor.modifiers.map((template, modifierIndex) => ({
-      id: `${donor.id}-mod-${modifierIndex}`,
-      label: `[${donor.name}] ${voraxModifierLabel(template)}`,
-      tiers: [{ tier: "L", level: donor.level || 1, template }],
-    })),
-  );
+export interface VoraxDonor {
+  id: string;
+  name: string;
+  icon: string;
+  level: number;
+  /** Its modifiers, each a family with one tier ("L"). */
+  families: CraftFamily[];
 }
+const donorsByType = new Map<string, VoraxDonor[]>();
+/** The legendaries a Vorax limb inherits a Legendary affix from (the icon is the legendary's own, a local image). */
+export function voraxLegendaryDonors(type: string): VoraxDonor[] {
+  let donors = donorsByType.get(type);
+  if (!donors) {
+    donors = (vorax.legendaryDonors[type] || []).map((donor) => ({
+      id: donor.id,
+      name: donor.name,
+      icon: legendaries.find((entry) => entry.name === donor.name)?.icon || "",
+      level: donor.level || 1,
+      families: donor.modifiers.map((template, modifierIndex) => ({
+        id: `${donor.id}-mod-${modifierIndex}`,
+        label: `[${donor.name}] ${voraxModifierLabel(template)}`,
+        tiers: [{ tier: "L", level: donor.level || 1, template }],
+      })),
+    }));
+    donorsByType.set(type, donors);
+  }
+  return donors;
+}
+const voraxLegendaryAffixPool = (type: string): CraftFamily[] =>
+  voraxLegendaryDonors(type).flatMap((donor) => donor.families);
 /** The families a prefix (0–2) or suffix (3–5) slot can take. */
 export function craftAffixPool(mode: CraftMode, type: string, index: number, legendary: boolean): CraftFamily[] {
   if (mode === "vorax" && legendary) return voraxLegendaryAffixPool(type);
@@ -267,7 +373,7 @@ function configuredAffix(
     rolls: selected === shown ? affix.rolls : preferredRolls(selected.template),
   };
 }
-/** The tier a slot's rolls belong to: its select's tier, or a Legendary affix's only one. */
+/** The tier a slot's rolls belong to: its chosen tier, or a Legendary affix's only one. */
 export function selectedCraftTier(craft: EquipmentCraft, draft: RareDraft, index: number): CraftTier | undefined {
   const affix = draft.affixes[index],
     family = craftFamily(craft, draft, index),
@@ -312,16 +418,20 @@ function withType(craft: EquipmentCraft, draft: RareDraft, type: string): RareDr
 export function newEquipmentCraft(mode: CraftMode): EquipmentCraft {
   const craft: EquipmentCraft = {
     mode,
+    choosing: false,
     editingId: null,
     editingName: "",
     voraxBase: "",
     search: "",
+    legendaryTypes: [],
     rare: null,
     legendary: null,
     pick: null,
   };
-  return mode === "rare" ? { ...craft, pick: { group: "", type: "" } } : craft;
+  return { ...craft, pick: { group: "", type: "" } };
 }
+/** The crafter opened on its first step: the kind of item to craft. */
+export const newCraftChoice = (): EquipmentCraft => ({ ...newEquipmentCraft("rare"), choosing: true });
 
 /** Edit on a crafted rare or Vorax item: the form filled from it. */
 export function equipmentCraftFromItem(item: CraftedItem, weaponType: string): EquipmentCraft {
@@ -436,7 +546,7 @@ function rerolledLines(entry: LegendaryEntry, before: LegendaryDraft, after: Leg
     }),
   };
 }
-/** On a new base: the energy at the base's cap and no corrosion implicit (the base's own pool). */
+/** On its base: the energy at the base's cap and no corrosion implicit (the base's own pool). */
 function legendaryOnBase(entry: LegendaryEntry, draft: LegendaryDraft): LegendaryDraft {
   return {
     ...draft,
@@ -448,7 +558,7 @@ function legendaryOnBase(entry: LegendaryEntry, draft: LegendaryDraft): Legendar
 function newLegendaryDraft(entry: LegendaryEntry): LegendaryDraft {
   const draft: LegendaryDraft = {
     id: entry.id,
-    base: defaultBaseForItem(entry),
+    base: legendaryDefaultBase(entry),
     beltBlendId: "",
     sequenceId: "",
     corrosionIndex: -1,
@@ -482,27 +592,32 @@ export interface RollTarget {
   rangeIndex: number;
 }
 export type CraftChange =
-  | { kind: "name" | "level" | "type" | "base" | "energy" | "beltBlend" | "sequence"; value: string }
+  | { kind: "name" | "level" | "energy" | "beltBlend" | "sequence"; value: string }
   | { kind: "baseAffix" | "affixFamily" | "affixTier"; index: number; value: string }
-  | { kind: "voraxLegendary"; index: number }
-  | { kind: "voraxBase"; value: string }
   /**
-   * A rare's affix list: a family checked takes the side's first free slot (refused past three, or without a tier at the
-   * item level); unchecked, it leaves its slot and the ones below move up.
+   * An affix list: a family checked takes the side's first free slot (refused past three, or without a tier at the item
+   * level); unchecked, it leaves its slot and the ones below move up. `legendary`: a Vorax item's Legendary affix (a
+   * donor's modifier), up to two on the item.
    */
-  | { kind: "toggleAffix"; side: AffixSide; familyId: string }
-  /** A rare's base affix list: checked, a base affix takes the free slot (refused past two); unchecked, the other moves up. */
+  | { kind: "toggleAffix"; side: AffixSide; familyId: string; legendary?: boolean }
+  /** The base affix list: checked, a base affix takes the free slot (refused past two); unchecked, the other moves up. */
   | { kind: "toggleBaseAffix"; template: string }
   /** A rare's Priceless check: level 100, or back to the highest typed level. */
   | { kind: "priceless"; value: boolean }
   | { kind: "corroded"; value: boolean }
-  /** The rare item picker: a group, its entry's type, a base (the form shows); back to a step from the form. */
+  /**
+   * The item picker: a group, its entry's type, a base (the form shows); back to a step from the form. A Vorax item's
+   * pickType is its limb, which opens the form.
+   */
   | { kind: "pickGroup" | "pickType" | "pickBase"; value: string }
   | { kind: "repick"; step: CraftPickStep }
   | { kind: "search"; value: string }
+  /** The crafter's first step: the kind of item ("rare", "legendary", "vorax"), whose picker opens. */
+  | { kind: "craftMode"; value: string }
+  /** The legendary list's filter chip of a type of its group: on, its legendaries are kept (with the other chips on). */
+  | { kind: "toggleLegendaryType"; value: string }
   | { kind: "legendary"; id: string }
-  | { kind: "changeLegendary" }
-  | { kind: "legendaryBase" | "legendaryBeltBlend" | "legendarySequence" | "legendaryEnergy"; value: string }
+  | { kind: "legendaryBeltBlend" | "legendarySequence" | "legendaryEnergy"; value: string }
   | { kind: "legendaryRing"; value: "left" | "right" }
   | { kind: "legendaryCorrosion"; value: number }
   | { kind: "corrosionRoll"; value: number }
@@ -581,17 +696,15 @@ function changedRare(craft: EquipmentCraft, draft: RareDraft, change: CraftChang
     draft.affixes.map((entry, position) => (position === index ? affix : entry));
   switch (change.kind) {
     case "name":
-    case "base":
     case "energy":
     case "beltBlend":
     case "sequence": {
       const field = {
         name: "name",
-        base: "baseId",
         energy: "energy",
         beltBlend: "beltBlendId",
         sequence: "sequenceId",
-      }[change.kind] as "name" | "baseId" | "energy" | "beltBlendId" | "sequenceId";
+      }[change.kind] as "name" | "energy" | "beltBlendId" | "sequenceId";
       return { ...draft, [field]: change.value };
     }
     case "level":
@@ -604,8 +717,6 @@ function changedRare(craft: EquipmentCraft, draft: RareDraft, change: CraftChang
       return { ...draft, corroded: change.value };
     case "priceless":
       return withLevel(craft, draft, change.value ? PRICELESS_LEVEL : String(MAX_TYPED_LEVEL));
-    case "type":
-      return withType(craft, draft, change.value);
     case "baseAffix":
       return {
         ...draft,
@@ -622,21 +733,33 @@ function changedRare(craft: EquipmentCraft, draft: RareDraft, change: CraftChang
         ),
       };
     case "toggleAffix": {
-      const offset = affixSideOffset(change.side),
+      const legendary = Boolean(change.legendary),
+        offset = affixSideOffset(change.side),
         slots = draft.affixes.slice(offset, offset + 3),
-        at = slots.findIndex((affix) => affix.familyId === change.familyId);
+        at = slots.findIndex((affix) => affix.familyId === change.familyId && affix.legendary === legendary);
       if (at >= 0) {
         const moved = [...slots.slice(0, at), ...slots.slice(at + 1), EMPTY_AFFIX];
         return { ...draft, affixes: draft.affixes.map((affix, index) => moved[index - offset] ?? affix) };
       }
+      // A donor's modifier is one affix: the other side cannot take it too.
+      if (legendary && draft.affixes.some((affix) => affix.legendary && affix.familyId === change.familyId))
+        return draft;
+      if (legendary && draft.affixes.filter((affix) => affix.legendary).length >= 2)
+        return { notice: "A Vorax item can inherit up to two Legendary affixes" };
       const free = slots.findIndex((affix) => !affix.familyId);
       if (free < 0) return { notice: `An item takes up to three ${change.side}es` };
       const index = offset + free,
-        family = craftAffixPool(craft.mode, draft.type, index, false).find((entry) => entry.id === change.familyId);
+        family = craftAffixPool(craft.mode, draft.type, index, legendary).find((entry) => entry.id === change.familyId);
       if (!family) return draft;
       if (!eligibleCraftTiers(draft, family).length)
         return { notice: `${family.label.replace(/^\[[^\]]+\]\s*/, "")} needs a higher item level` };
-      return changedRare(craft, draft, { kind: "affixFamily", index, value: change.familyId });
+      return {
+        ...draft,
+        affixes: setAffix(
+          index,
+          configuredAffix(craft, draft, index, { ...EMPTY_AFFIX, familyId: family.id, legendary }),
+        ),
+      };
     }
     case "toggleBaseAffix": {
       const at = draft.baseAffixes.findIndex((affix) => affix.template === change.template);
@@ -659,27 +782,12 @@ function changedRare(craft: EquipmentCraft, draft: RareDraft, change: CraftChang
         affixes: setAffix(change.index, { ...affix, tier: change.value, rolls: preferredRolls(tier?.template || "") }),
       };
     }
-    case "voraxLegendary": {
-      const affix = draft.affixes[change.index];
-      if (!affix.legendary && draft.affixes.filter((entry) => entry.legendary).length >= 2)
-        return { notice: "A Vorax item can inherit up to two Legendary affixes" };
-      return {
-        ...draft,
-        affixes: setAffix(change.index, { familyId: "", tier: "", rolls: [], legendary: !affix.legendary }),
-      };
-    }
     default:
       return draft;
   }
 }
 function changedLegendary(entry: LegendaryEntry, draft: LegendaryDraft, change: CraftChange): LegendaryDraft {
   switch (change.kind) {
-    case "legendaryBase":
-      return legendaryOnBase(entry, {
-        ...draft,
-        base: change.value,
-        sequenceId: towerSequenceById(draft.sequenceId)?.weaponType === change.value ? draft.sequenceId : "",
-      });
     case "legendaryBeltBlend":
       return { ...draft, beltBlendId: change.value };
     case "legendarySequence":
@@ -722,10 +830,26 @@ function pickedBase(craft: EquipmentCraft, baseId: string): EquipmentCraft {
       : withType(craft, craft.rare, base.type);
   return { ...craft, pick: null, rare: { ...draft, baseId } };
 }
+/**
+ * Back from a legendary's configuration (or the list) to a step of the list: the groups, or the group the legendary
+ * belongs to, its search cleared.
+ */
+function legendaryRepicked(craft: EquipmentCraft, step: CraftPickStep): EquipmentCraft {
+  const group = step === "group" ? "" : (legendaryGroupOf(craft.legendary?.id ?? "")?.id ?? craft.pick?.group ?? "");
+  return { ...craft, legendary: null, search: "", pick: { group, type: "" } };
+}
+/** A Vorax limb picked: the form shows it, keeping the draft when it is the limb the draft holds. */
+function pickedLimb(craft: EquipmentCraft, type: string): EquipmentCraft {
+  if (!voraxBases().some((limb) => limb.name === type)) return craft;
+  const next = { ...craft, voraxBase: type, pick: null };
+  return { ...next, rare: craft.rare?.type === type ? craft.rare : newRareDraft(next) };
+}
 /** Back to a picker step, from the picker or from the form (its draft's type tells where it stands). */
 function repicked(craft: EquipmentCraft, step: CraftPickStep): CraftPick {
   const type = craft.pick ? craft.pick.type : craft.rare?.type || "";
-  const group = craft.pick ? craft.pick.group : gearGroupOfType(type)?.group.id || "";
+  const group = craft.pick
+    ? craft.pick.group
+    : (craft.mode === "vorax" ? voraxGroupOfLimb(type)?.id : gearGroupOfType(type)?.group.id) || "";
   if (step === "group" || !group) return { group: "", type: "" };
   return { group, type: step === "base" ? type : "" };
 }
@@ -735,28 +859,43 @@ export function changeEquipmentCraft(
   change: CraftChange,
 ): { craft: EquipmentCraft; notice?: string } {
   if (change.kind === "roll") return { craft: changedRoll(craft, change) };
-  if (change.kind === "voraxBase") {
-    const next = { ...craft, voraxBase: change.value };
-    return { craft: { ...next, rare: newRareDraft(next) } };
+  if (change.kind === "craftMode") {
+    const mode = CRAFT_MODES.find((entry) => entry === change.value);
+    return { craft: mode ? newEquipmentCraft(mode) : craft };
   }
-  if (change.kind === "pickGroup") return { craft: { ...craft, pick: { group: change.value, type: "" } } };
+  if (change.kind === "repick" && change.step === "mode") return { craft: craft.editingId ? craft : newCraftChoice() };
+  if (change.kind === "pickGroup")
+    return { craft: { ...craft, pick: { group: change.value, type: "" }, legendaryTypes: [] } };
+  if (change.kind === "pickType" && craft.mode === "vorax") return { craft: pickedLimb(craft, change.value) };
   if (change.kind === "pickType")
     return { craft: craft.pick ? { ...craft, pick: { ...craft.pick, type: change.value } } : craft };
   if (change.kind === "pickBase") return { craft: pickedBase(craft, change.value) };
+  if (change.kind === "repick" && craft.mode === "legendary") return { craft: legendaryRepicked(craft, change.step) };
   if (change.kind === "repick") return { craft: { ...craft, pick: repicked(craft, change.step) } };
   if (change.kind === "search") return { craft: { ...craft, search: change.value } };
+  if (change.kind === "toggleLegendaryType") {
+    const on = craft.legendaryTypes.includes(change.value);
+    return {
+      craft: {
+        ...craft,
+        legendaryTypes: on
+          ? craft.legendaryTypes.filter((type) => type !== change.value)
+          : [...craft.legendaryTypes, change.value],
+      },
+    };
+  }
   if (change.kind === "legendary") {
     const entry = legendaryById(change.id);
     return { craft: { ...craft, legendary: entry ? newLegendaryDraft(entry) : null } };
   }
-  if (change.kind === "changeLegendary") return { craft: { ...craft, legendary: null } };
   if (craft.legendary) {
     const entry = legendaryById(craft.legendary.id);
     return { craft: entry ? { ...craft, legendary: changedLegendary(entry, craft.legendary, change) } : craft };
   }
   if (!craft.rare) return { craft };
   const result = changedRare(craft, craft.rare, change);
-  return "notice" in result ? { craft, notice: result.notice } : { craft: { ...craft, rare: result } };
+  if ("notice" in result) return { craft, notice: result.notice };
+  return { craft: result === craft.rare ? craft : { ...craft, rare: result } };
 }
 
 // ---- The crafted item.
@@ -869,6 +1008,7 @@ export function legendaryPreviewItem(craft: EquipmentCraft): CraftedItem | null 
   return {
     ...entry,
     base: draft.base,
+    energy: equipmentEnergyAllowed(entry.slot) ? Number(draft.energy) || 0 : 0,
     corrodedModifierIndices: [...draft.corroded],
     modifiers: [
       ...entry.modifiers.map((_, index) => legendaryLineText(entry, draft, index)),
@@ -898,7 +1038,7 @@ export function craftedLegendaryItem(craft: EquipmentCraft): CraftedItem | null 
     energy: equipmentEnergyAllowed(entry.slot) ? Number(draft.energy) || 0 : 0,
     modifiers: [...legendaryModifiers, ...(blend ? [blend.modifier] : []), ...(sequence ? [sequence.modifier] : [])],
     corrodedModifierIndices: [...draft.corroded],
-    base: draft.base || defaultBaseForItem(entry),
+    base: draft.base || legendaryDefaultBase(entry),
     rarity: "legendary",
   };
   if (corrosion) item.corrosionModifiers = [corrosion];

@@ -6,16 +6,18 @@
 // (src/app/bridge/hero-traits-view-model.ts); every edit is a planner command, and the hero, memory, scent, ammo and
 // support dialogs stay legacy. Traits, the extra row, memories, scents and supports show their tooltips (TraitTooltip,
 // MemoryTooltip, ScentTooltip, SkillTooltip).
-import { useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { HeroTraitTooltip, TreeExtraRowTooltip } from "./TraitTooltip";
-import { MemoryTooltip, ScentTooltip } from "./MemoryTooltip";
+import { ScentTooltip } from "./MemoryTooltip";
+import { MemorySocket } from "./MemorySocket";
+import { HERO_STAGES, stageFits } from "./hero-stages";
+import { TraitStage } from "./TraitStage";
 import { SkillTooltip } from "../skills/SkillTooltip";
 import type { TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import type {
   ChoiceGroupView,
   HeroTraitsView,
-  MemorySocketView,
   ScentBottleView,
   SupportSlotsView,
   TraitPathView,
@@ -23,6 +25,7 @@ import type {
   TraitView,
 } from "@legacy/app/bridge/hero-traits-view-model.ts";
 import { Artwork } from "../../ui/Artwork";
+import { CommitNumberInput } from "../../ui/CommitNumberInput";
 import { StrokeIcon } from "../../ui/StrokeIcon";
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";
@@ -44,10 +47,7 @@ import {
   heroPortrait,
   heroTrait,
   identityName,
-  memoryArt,
-  memoryEmpty,
   memoryOnlyRow,
-  memorySocket,
   pathNodeArt,
   pendingClass,
   supportArt,
@@ -59,10 +59,6 @@ import {
 } from "./hero-classes";
 
 /** A right-click that acted (the command says so) keeps the browser's menu closed. */
-const rightClick = (event: MouseEvent, act: () => boolean) => {
-  if (act()) event.preventDefault();
-};
-
 /**
  * The hero at the head of the character column: the portrait, which is the Change Hero control (a button laid over the
  * picture, so the picture stays an image to assistive tech), beside the hero's name and main trait.
@@ -101,6 +97,22 @@ export function HeroShowcase() {
         <strong id="selected-hero-trait" className={heroTrait}>
           {view ? (hero?.trait ?? "Choose a hero trait") : "Sing with the Tide"}
         </strong>
+        {view ? (
+          <label className="mt-1.5 flex items-center gap-1.5 text-xs text-muted">
+            Level
+            <CommitNumberInput
+              key={view.characterLevel}
+              className="field w-16 px-2 py-1 text-sm tabular-nums"
+              min={1}
+              max={100}
+              step={1}
+              placeholder="100"
+              value={view.characterLevel}
+              data-character-level=""
+              onCommit={(value) => plannerCommands().setCharacterLevel(value)}
+            />
+          </label>
+        ) : null}
       </div>
     </div>
   );
@@ -179,6 +191,8 @@ function TreeContent({ view, drag }: { view: HeroTraitsView; drag: PickDrag }) {
     );
   if (content.kind === "scent") return <ScentBottle scent={content} />;
   if (content.kind === "path") return <TraitPath path={content} />;
+  const stage = view.hero ? HERO_STAGES[view.hero.id] : undefined;
+  if (stage && stageFits(stage, content)) return <TraitStage stage={stage} tiers={content} />;
   return <TraitTiers tiers={content} drag={drag} />;
 }
 
@@ -489,53 +503,6 @@ function Choices({ group, dual = false }: { group: ChoiceGroupView; dual?: boole
   ));
 }
 
-function MemorySocket({ socket }: { socket: MemorySocketView }) {
-  const memory = socket.memory;
-  return (
-    <OptionalMemoryTooltip tier={memory ? socket.tier : null}>
-      <button
-        type="button"
-        className={`hero-memory-socket ${memory ? "filled " : ""}${memorySocket}`}
-        data-memory-tier={socket.tier}
-        aria-label={socket.label}
-        onClick={() => plannerCommands().openMemorySocket(socket.tier)}
-        onContextMenu={(event) => rightClick(event, () => plannerCommands().removeMemory(socket.tier))}
-      >
-        {memory ? (
-          <>
-            <Artwork src={memory.art} alt={memory.name} className={memoryArt(memory.rarity)} />
-            {memory.revivedId ? <RevivalBadge id={memory.revivedId} /> : null}
-          </>
-        ) : (
-          <b className={memoryEmpty}>+</b>
-        )}
-      </button>
-    </OptionalMemoryTooltip>
-  );
-}
-
-// The moon on a revived memory's socket.
-function RevivalBadge({ id }: { id: string }) {
-  const symbol = `memory-moon-${id.replace(/[^a-z0-9_-]/gi, "")}`;
-  return (
-    <span
-      className="pointer-events-none absolute -top-1.25 -left-1 z-2 grid size-[23px] place-items-center rounded-full border border-info bg-surface"
-      aria-hidden="true"
-    >
-      <svg className="block size-5" viewBox="0 0 24 24" focusable="false">
-        <defs>
-          {/* The mask's white keeps, its black cuts the crescent: luminance, not colour. */}
-          <mask id={`${symbol}-cut`} maskUnits="userSpaceOnUse">
-            <rect className="fill-white" width="24" height="24" />
-            <circle className="fill-black" cx="14.9" cy="9" r="5.9" />
-          </mask>
-        </defs>
-        <circle className="fill-info" cx="12" cy="12" r="6.7" mask={`url(#${symbol}-cut)`} />
-      </svg>
-    </span>
-  );
-}
-
 function SupportSlots({ slots }: { slots: SupportSlotsView }) {
   const carino = slots.kind === "carino";
   return (
@@ -596,9 +563,4 @@ function OptionalSupportTooltip({
 /** A filled scent slot's tooltip; an empty one has none. */
 function OptionalScentTooltip({ kind, children }: { kind: string | null; children: TooltipAnchor }) {
   return kind ? <ScentTooltip kind={kind}>{children}</ScentTooltip> : children;
-}
-
-/** A filled memory socket's tooltip; an empty one has none. */
-function OptionalMemoryTooltip({ tier, children }: { tier: string | null; children: TooltipAnchor }) {
-  return tier ? <MemoryTooltip target={{ tier }}>{children}</MemoryTooltip> : children;
 }

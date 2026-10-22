@@ -79,7 +79,7 @@ function Inventory({ view }: { view: MemoryInventoryView }) {
           ))
         ) : (
           <div className="hero-memory-empty px-2.5 py-14 text-center text-muted">
-            No memories crafted yet
+            {view.empty}
             <br />
             <button
               type="button"

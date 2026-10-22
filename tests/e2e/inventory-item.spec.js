@@ -12,12 +12,21 @@ const youga = JSON.parse(
 );
 test.use({ viewport: { width: 1440, height: 1000 } });
 
+// The Youga build's items are all equipped (an equipped item is in its slot, not in the Inventory list): each opens from
+// its slot.
+const SLOT_OF = {
+  "Ice Pulse": "gloves",
+  "Blind Vision": "helmet",
+  "Old Grudge": "necklace",
+  "Arcanist Girdle": "belt",
+  "Blade-dancer's Steps": "boots",
+};
 async function openItem(page, name) {
   const planner = new PlannerPage(page);
   await planner.open(youga);
   await planner.showView("equipment");
   const gear = new GearPage(page);
-  await gear.cardButton(name).click();
+  await gear.slot(SLOT_OF[name]).click();
   await expect(gear.itemDialog()).toBeVisible();
   return { planner, gear };
 }
@@ -55,9 +64,9 @@ test("Delete removes the item from the Inventory and empties its slot", async ({
   await quick(gear).getByRole("button", { name: "Delete", exact: true }).click();
   await expect(gear.toast()).toHaveText("Item deleted from Inventory");
   await expect(gear.itemDialog()).toBeHidden();
-  await expect(gear.inventoryCount()).toHaveText("(9)");
   await expect(gear.slot("necklace")).toHaveClass(/\bdisabled\b/);
   const stored = await gear.stored();
+  expect(stored.inventory).toHaveLength(9);
   expect(stored.inventory.map((item) => item.name)).not.toContain("Old Grudge");
   await planner.expectNoErrors();
 });
@@ -75,16 +84,14 @@ test("Edit opens a legendary's editor in the dialog; its controls work and Save 
   const name = gear.itemDialog().getByRole("textbox", { name: "Name", exact: true });
   await expect(name).toHaveValue("Ice Pulse");
 
-  // A control of the editor: a line that can be corroded switches to Corroded.
-  const corrosion = gear
-    .itemDialog()
-    .locator(".legendary-mod-control button[data-toggle-edit-corrosion]:not([disabled])");
-  await expect(corrosion.first()).toHaveText("Normal");
+  // A control of the editor: a line that can be corroded switches to its corroded form (its T0 chip).
+  const corrosion = gear.itemDialog().locator(".legendary-mod-control button[data-toggle-edit-corrosion]");
+  await expect(corrosion.first()).toHaveAttribute("aria-pressed", "false");
   await corrosion.first().click();
   await expect(gear.itemDialog().locator(".legendary-mod-control.corrosion-affix")).toHaveCount(1);
   await expect(
     gear.itemDialog().locator(".legendary-mod-control.corrosion-affix button[data-toggle-edit-corrosion]"),
-  ).toHaveText("Corroded");
+  ).toHaveAttribute("aria-pressed", "true");
 
   await name.fill("Ice Pulse Mk II");
   await footer.getByRole("button", { name: "Save Changes", exact: true }).click();
@@ -94,7 +101,7 @@ test("Edit opens a legendary's editor in the dialog; its controls work and Save 
   await expect(footer).toBeHidden();
   await expect(gear.itemDialogTitle()).toHaveText("Ice Pulse Mk II");
   await expect(quick(gear).locator("strong")).toHaveText("Ice Pulse Mk II");
-  await expect(gear.card("Ice Pulse Mk II")).toBeVisible();
+  await expect(gear.slot("gloves")).toContainText("Ice Pulse Mk II");
   const stored = await gear.stored();
   expect(stored.inventory.find((item) => item.id === "gear-game-log-gloves").name).toBe("Ice Pulse Mk II");
 
@@ -103,7 +110,7 @@ test("Edit opens a legendary's editor in the dialog; its controls work and Save 
   await name.fill("Not kept");
   await footer.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(gear.itemDialog()).toBeHidden();
-  await expect(gear.card("Ice Pulse Mk II")).toBeVisible();
+  await expect(gear.slot("gloves")).toContainText("Ice Pulse Mk II");
   await planner.expectNoErrors();
 });
 
@@ -113,8 +120,11 @@ test("the legendary editor: a tier and a roll change their line; the fields and 
   const editor = gear.itemDialog().locator("#inventory-item-body");
   const lineText = (index) => editor.locator(`[data-edit-modifier-text="${index}"]`);
   await expect(lineText(1)).toHaveText("+64% Spell Damage");
-  await expect(editor.locator('[data-edit-legendary-tier="1"]')).toHaveValue("1");
-  await editor.locator('[data-edit-legendary-tier="1"]').selectOption("2");
+  await expect(editor.locator('[data-edit-legendary-tier="1"] [aria-pressed="true"]')).toHaveAttribute(
+    "data-tier-option",
+    "1",
+  );
+  await editor.locator('[data-edit-legendary-tier="1"] [data-tier-option="2"]').click();
   await expect(lineText(1)).toHaveText("+29% Spell Damage");
   await expect(editor.locator('[data-edit-legendary-roll="1"]')).toHaveAttribute("max", "29");
   await expect(editor.locator("aside")).toContainText("+29% Spell Damage");
@@ -122,13 +132,13 @@ test("the legendary editor: a tier and a roll change their line; the fields and 
   const roll = editor.locator('[data-edit-legendary-roll="0"]');
   await roll.fill("6");
   await expect(lineText(0)).toHaveText("+6 to Max Frostbite Rating");
-  await expect(editor.locator(".legendary-mod-control").first().locator("em")).toHaveText("6");
+  await expect(editor.locator(".legendary-mod-control").first().locator("em")).toHaveText("5 – 8");
   await expect(editor.locator(".legendary-mod-control").first().locator("[data-affix-roll-number]")).toHaveValue("6");
   await editor.locator(".legendary-mod-control").nth(1).locator("[data-affix-roll-number]").fill("25");
   await expect(lineText(1)).toHaveText("+25% Spell Damage");
 
   await gear.itemDialog().getByRole("spinbutton", { name: "Item level", exact: true }).fill("90");
-  await gear.itemDialog().getByRole("spinbutton", { name: "Equipment Energy", exact: true }).fill("40");
+  await gear.itemDialog().getByRole("spinbutton", { name: "Energy", exact: true }).fill("40");
   await gear.itemDialog().locator("footer").getByRole("button", { name: "Save Changes", exact: true }).click();
   await expect(gear.toast()).toHaveText("Inventory item updated");
   const saved = (await gear.stored()).inventory.find((item) => item.id === "gear-game-log-gloves");
@@ -138,7 +148,10 @@ test("the legendary editor: a tier and a roll change their line; the fields and 
 
   // Edit again: the editor opens on the saved tier and rolls.
   await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
-  await expect(editor.locator('[data-edit-legendary-tier="1"]')).toHaveValue("2");
+  await expect(editor.locator('[data-edit-legendary-tier="1"] [aria-pressed="true"]')).toHaveAttribute(
+    "data-tier-option",
+    "2",
+  );
   await expect(lineText(1)).toHaveText("+25% Spell Damage");
   await expect(roll).toHaveValue("6");
   await planner.expectNoErrors();
@@ -152,7 +165,7 @@ test("the legendary editor keeps the typed fields through a tier or corroded-lin
   const level = gear.itemDialog().getByRole("spinbutton", { name: "Item level", exact: true });
   await name.fill("Kept Pulse");
   await level.fill("91");
-  await editor.locator('[data-edit-legendary-tier="1"]').selectOption("2");
+  await editor.locator('[data-edit-legendary-tier="1"] [data-tier-option="2"]').click();
   await editor.locator(".legendary-mod-control").nth(2).locator("[data-toggle-edit-corrosion]").click();
   await expect(name).toHaveValue("Kept Pulse");
   await expect(level).toHaveValue("91");
@@ -171,9 +184,9 @@ test("the editor opens on the stored corrosion: a corroded line and a corrosion 
   await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
   const first = editor.locator(".legendary-mod-control").first();
   await expect(first).toHaveClass(/\bcorrosion-affix\b/);
-  await expect(first.locator("[data-toggle-edit-corrosion]")).toHaveText("Corroded");
+  await expect(first.locator("[data-toggle-edit-corrosion]")).toHaveAttribute("aria-pressed", "true");
   await expect(editor.locator("aside li.corrosion-affix")).toHaveCount(1);
-  await first.locator("[data-toggle-edit-corrosion]").click();
+  await first.locator('[data-tier-option="1"]').click();
   await expect(editor.locator(".legendary-mod-control").first()).not.toHaveClass(/\bcorrosion-affix\b/);
   await footer.getByRole("button", { name: "Save Changes", exact: true }).click();
   await expect(gear.toast()).toHaveText("Inventory item updated");
@@ -181,7 +194,7 @@ test("the editor opens on the stored corrosion: a corroded line and a corrosion 
   expect(helmet.corrodedModifierIndices).toEqual([]);
   await gear.itemDialog().getByRole("button", { name: "Close", exact: true }).click();
 
-  await gear.cardButton("Blade-dancer's Steps").click();
+  await gear.slot("boots").click();
   await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
   const corrosion = gear.itemDialog().getByRole("combobox", { name: "Corrosion Implicit", exact: true });
   await expect(corrosion).toHaveValue("+51% damage");
@@ -204,8 +217,8 @@ test("a captured item (the default build's): its lines are text fields, saved as
   await planner.open();
   await planner.showView("equipment");
   const gear = new GearPage(page);
-  const name = "Long Night Sorcerer's Robe - Priceless";
-  await gear.cardButton(name).click();
+  // Equipped, so it opens from its slot.
+  await gear.slot("chest").click();
   await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
   const editor = gear.itemDialog().locator("#inventory-item-body");
   await expect(editor.locator("h3").first()).toHaveText("Prefixes and Suffixes");
@@ -229,11 +242,11 @@ test("the editor's Belt Blend and fields of a captured belt are saved", async ({
   await planner.open();
   await planner.showView("equipment");
   const gear = new GearPage(page);
-  await gear.cardButton("Elder Sage Girdle - Priceless").click();
+  await gear.slot("belt").click();
   await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
   const blend = gear.itemDialog().getByRole("combobox", { name: "Belt Blend", exact: true });
   await expect(blend).toHaveValue("");
-  await expect(gear.itemDialog().getByRole("spinbutton", { name: "Equipment Energy", exact: true })).toHaveCount(0);
+  await expect(gear.itemDialog().getByRole("spinbutton", { name: "Energy", exact: true })).toHaveCount(0);
   await blend.selectOption("belt-blend-005");
   await gear.itemDialog().getByRole("textbox", { name: "Base item", exact: true }).fill("Belt");
   await gear.itemDialog().getByRole("spinbutton", { name: "Item level", exact: true }).fill("95");

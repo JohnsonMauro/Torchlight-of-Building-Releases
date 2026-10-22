@@ -45,7 +45,11 @@ test("the tooltip follows the pointer, and a scroll hides it", async ({ page }) 
 });
 
 test("an Inventory card's tooltip sits beside the card", async ({ page }) => {
-  const { planner, gear } = await openGear(page);
+  // Old Grudge unequipped: an equipped item has no Inventory card.
+  const { planner, gear } = await openGear(page, {
+    ...youga,
+    disabledEquipmentSlots: [...(youga.disabledEquipmentSlots ?? []), "necklace"],
+  });
   await hoverUntilShown(page, gear.cardButton("Old Grudge"));
   await expect(tooltip(page)).toContainText("Old Grudge");
   const card = await gear.card("Old Grudge").boundingBox();

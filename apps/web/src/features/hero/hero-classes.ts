@@ -69,7 +69,7 @@ export const tierDivider = "h-13 bg-line";
 export const choicesClass = "flex min-w-0 items-center gap-1.75 @min-[391px]:gap-3.5";
 
 /** Game art in its frame (ui/Artwork): the image fills the frame; the ◆ shows only without one. */
-const artFrame =
+export const artFrame =
   "relative grid place-items-center overflow-hidden [&>img]:absolute [&>img]:inset-0 [&>img]:z-1 [&>img]:size-full [&>img]:max-w-none [&>img]:object-cover [&>img+span]:invisible";
 /** A trait's (or follower skill's) round art; accent ring when picked. A dual row's art is a little smaller. */
 export function choiceArt(picked: boolean, dual = false): string {

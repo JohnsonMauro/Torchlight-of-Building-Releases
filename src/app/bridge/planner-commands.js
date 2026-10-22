@@ -189,7 +189,9 @@
  * @property {(id: string) => void} editInventoryItem Opens an Inventory item's editor.
  * @property {(id: string) => void} duplicateInventoryItem Adds a copy of an Inventory item ("<name> Copy").
  * @property {() => void} resetEquipment Unequips every slot (the Inventory stays).
- * @property {(mode: "rare" | "legendary" | "vorax") => void} openEquipmentCrafter Opens the crafter in that mode.
+ * @property {() => void} sortInventory Sorts the Inventory in the game's bag order (src/app/gear/inventory-sort.ts).
+ * @property {(mode?: "rare" | "legendary" | "vorax") => void} openEquipmentCrafter Opens the crafter on its first step
+ *   (the kind of item), or in that mode.
  * @property {(change: import("../gear/equipment-craft.ts").CraftChange) => void} changeEquipmentCraft Equipment
  *   crafter: a control's change to the draft (a toast when it is refused).
  * @property {() => void} addCraftedEquipment Equipment crafter: Add to Inventory, or Save Changes on the edited item;
@@ -219,6 +221,7 @@
  * @property {() => void} cancelPrismPlacement Drops the prism waiting for its node.
  * @property {(coordinate: string | null) => void} dropPrism The end of a drag of the installed prism: on a node
  *   ("column,row"), or null away from the nodes.
+ * @property {(value: string) => void} setCharacterLevel The character level as typed (1–100; empty stores none).
  * @property {(tab: "traits" | "path" | "scent") => void} setHeroDetailTab HERO tab: Hero Trait, Trait Path or Scent Bottle.
  * @property {() => void} openHeroSelector Opens the hero selector.
  * @property {(id: string) => void} selectHero Hero selector: switches the open build to that hero (its own loadout).
@@ -226,7 +229,7 @@
  *   "<hero>:level45" …).
  * @property {(tier: string) => boolean} removeMemory Right-click: takes a socket's memory off; false when it holds none.
  * @property {(selectionKey: string, name: string) => void} pickHeroTrait Picks a trait for a level (or Bing's upper /
- *   lower choice).
+ *   lower choice), or unselects it when picked.
  * @property {(name: string) => void} toggleTraitPathNode Trait Path: picks a trait, or takes the path back from it.
  * @property {(from: number, to: number | null) => void} moveTraitPick The end of a drag of a tree hero's pick: onto
  *   another row (0–3), or null off the rows.

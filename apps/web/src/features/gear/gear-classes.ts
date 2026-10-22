@@ -100,4 +100,3 @@ export const CARD_TOOL = "btn size-5.5 p-0 text-xs";
 const BADGE =
   "rounded-sm border bg-surface px-1.5 py-0.5 text-[10px] leading-none font-bold tracking-wide whitespace-nowrap uppercase not-italic";
 export const CURSE_BADGE = `curse-off-badge absolute bottom-1.5 left-1/2 z-4 -translate-x-1/2 border-danger text-danger ${BADGE}`;
-export const EQUIPPED_BADGE = `pointer-events-none absolute top-1.25 left-1.25 z-2 border-accent text-accent ${BADGE}`;

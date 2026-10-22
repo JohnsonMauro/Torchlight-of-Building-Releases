@@ -18,6 +18,8 @@ export interface MemoryItemView {
 export interface MemoryInventoryView {
   mode: "inventory";
   title: string;
+  /** "No Memory of Origin crafted yet" for a level socket; "No memories crafted yet" for the base trait slot. */
+  empty: string;
   /** The base trait slot's mode: the memory type it accepts. */
   baseType: string | null;
   items: MemoryItemView[];

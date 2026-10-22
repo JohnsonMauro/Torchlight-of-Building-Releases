@@ -19,7 +19,17 @@ let sageScentSelectorKind = "elixir";
 let sageScentSelectorSession = 0; // its openings (apps/web/src/features/hero/SageScentSelectorDialog.tsx)
 let activeCarinoAmmoSlot = 0;
 let carinoAmmoSelectorSession = 0; // its openings (apps/web/src/features/hero/CarinoAmmoSelectorDialog.tsx)
+// The character level, typed: a whole level kept within 1–100; an empty field stores none (the calculation assumes 100).
+function setCharacterLevel(value) {
+  const level = Math.round(Number(value));
+  if (String(value).trim() === "") delete plannerState.hero.characterLevel;
+  else if (Number.isFinite(level)) plannerState.hero.characterLevel = Math.min(100, Math.max(1, level));
+  else return;
+  persistPlannerState();
+}
 export const heroCommands = {
+  // The character column (apps/web/src/features/hero HeroShowcase).
+  setCharacterLevel,
   // HERO tab (apps/web/src/features/hero).
   setHeroDetailTab: (tab) => {
     activeHeroDetailTab = tab;
@@ -113,12 +123,15 @@ function selectHero(id) {
   renderCandidateViews();
   showToast(`${hero.name} · ${hero.trait} selected`);
 }
+// A trait choice: picks it for its level, or, already picked, unselects it (the level holds no trait then).
 function pickHeroTrait(selectionKey, name) {
-  plannerState.hero.selectedTraits[selectionKey] = name;
+  const picked = plannerState.hero.selectedTraits[selectionKey] === name;
+  if (picked) delete plannerState.hero.selectedTraits[selectionKey];
+  else plannerState.hero.selectedTraits[selectionKey] = name;
   persistPlannerState();
   renderHeroTraitTree();
   renderConfiguration();
-  showToast(`${name} selected`);
+  showToast(picked ? `${name} unselected` : `${name} selected`);
 }
 // Trait Path: picks a trait under the next free row, or takes the path back from a picked one.
 function toggleTraitPathNode(name) {

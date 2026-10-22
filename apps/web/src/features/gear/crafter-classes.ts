@@ -20,6 +20,8 @@ export const CRAFT_FORM =
 export const CRAFT_ASIDE = "min-h-0 overflow-auto p-4 max-[800px]:shrink-0 max-[800px]:overflow-visible";
 export const CRAFT_ASIDE_LABEL = "mb-2 block text-xs text-muted";
 export const CRAFT_HEADING = "mt-2 border-t border-line pt-3 text-sm font-bold";
+/** The item picker's page: its path, heading and cards across the dialog (no preview until an item is picked). */
+export const PICK_COLUMN = "grid min-h-0 flex-1 content-start gap-3 overflow-auto p-4";
 /** The cards of a pick (an item group, type or base; a Vorax limb). */
 export const PICK_CARDS = "grid grid-cols-4 gap-2.25 max-[800px]:grid-cols-2";
 export const PICK_CARD =
@@ -40,18 +42,32 @@ export const ROLL_ROW = "grid grid-cols-[minmax(0,1fr)_64px] items-center gap-2.
 export const ROLL_NUMBER = "field h-7.5 w-16 px-1 text-center text-xs";
 export const ROLL_VALUE = "block text-right text-xs text-info not-italic";
 
-/** A modifier line's box (a legendary line, a fixed or corroded line), and its Normal / Corroded tag. */
+/**
+ * A row of an affix list (AffixList.tsx) or a legendary line (crafter-parts.tsx LegendaryModControl), one pattern for
+ * both: its text on the left, its tier chips on the right (TIER_CHIPS), its rolls under them. The row's colours are one
+ * of the AFFIX_ROW_* looks.
+ */
+export const AFFIX_ROW = "grid gap-2 rounded border px-2.5 py-2 text-sm text-text";
+export const AFFIX_ROW_HEAD = "flex items-center gap-2.5";
+export const AFFIX_ROW_PLAIN = "border-line bg-raised";
+export const AFFIX_ROW_OPEN = "border-line bg-raised hover:border-accent";
+export const AFFIX_ROW_BLOCKED = "border-line bg-raised opacity-50";
+export const AFFIX_ROW_CHECKED = "border-accent/60 bg-raised";
+export const AFFIX_ROW_LEGENDARY = "border-grade-legendary/60 bg-grade-legendary/10";
+export const AFFIX_ROW_CORRODED = "border-violet/60 bg-violet/10";
+/** A row's tier chips, lowest tier first, the one it holds lit (each a tier badge, tier-badge.ts). */
+export const TIER_CHIPS = "flex shrink-0 flex-wrap justify-end gap-1";
+export const TIER_CHIP = "cursor-pointer";
+export const TIER_CHIP_OTHER = "opacity-40 hover:opacity-100";
+
+/** A modifier line's box (a fixed or corroded line of the item editor), and its Normal / Corroded tag. */
 const MOD_BOX_BASE = "grid gap-2 rounded border px-3 py-2.5 text-xs";
 export const MOD_BOX = `${MOD_BOX_BASE} border-line bg-raised`;
 export const MOD_BOX_CORRODED = `${MOD_BOX_BASE} border-violet/60 bg-violet/10`;
-/** A Vorax affix slot that inherits a Legendary affix. */
-export const MOD_BOX_LEGENDARY = `${MOD_BOX_BASE} border-grade-legendary/60 bg-grade-legendary/10`;
 const MOD_TAG_BASE = "shrink-0 rounded-sm border px-1.5 py-1 text-[10px] font-bold";
 export const MOD_TAG = `${MOD_TAG_BASE} border-line-strong bg-sunken text-muted`;
 export const MOD_TAG_CORRODED = `${MOD_TAG_BASE} border-violet bg-violet/15 text-violet`;
-/** A line's text beside its tag. */
-export const MOD_HEAD = "flex items-start gap-2.5";
-/** A line's labelled select (ring effect, random roll, tier): label on the left, select on the right. */
+/** A line's labelled choice (the ring effect): label on the left, its chips on the right. */
 export const MOD_CHOICE = "grid grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)] items-center gap-3 text-xs text-muted";
 
 /** The selected legendary's card above the editor fields, with its name, detail and Change button. */

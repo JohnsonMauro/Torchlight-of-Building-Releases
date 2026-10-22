@@ -1,4 +1,4 @@
-import { EquippedCount, GearWorkbench } from "../../features/gear/GearWorkbench";
+import { CraftButton, GearWorkbench } from "../../features/gear/GearWorkbench";
 import { buildSectionPlace, sectionCardClass } from "../../ui/section-card";
 import { SectionHeading } from "../../ui/SectionHeading";
 import { useViewOpen } from "../../ui/use-workspace";
@@ -11,11 +11,7 @@ export function EquipmentView() {
       className={`${sectionCardClass} ${buildSectionPlace} min-[901px]:flex min-[901px]:flex-col`}
       hidden={!open}
     >
-      <SectionHeading
-        title="Gear"
-        help="gear"
-        total={{ label: "Equipped slots", id: "equipment-count", value: <EquippedCount /> }}
-      />
+      <SectionHeading title="Gear" help="gear" actions={<CraftButton />} />
       <GearWorkbench />
     </section>
   );

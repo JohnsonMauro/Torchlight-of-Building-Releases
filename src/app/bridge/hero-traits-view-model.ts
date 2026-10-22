@@ -19,7 +19,12 @@ import {
   treeBoardLayout,
   treeRowLevelKey,
 } from "../../engine/heroes/hero-trait-tree.js";
-import { heroMemoryIcon, heroMemoryIsRevived, heroTraitSupportConfig } from "../hero/hero-memory-display.js";
+import {
+  heroMemoryIcon,
+  heroMemoryIsRevived,
+  heroTraitSupportConfig,
+  memoryTypesByTier,
+} from "../hero/hero-memory-display.js";
 import { EXTRA_ROW_CHIP } from "./trait-tooltip-view.ts";
 
 export type HeroDetailTab = "traits" | "path" | "scent";
@@ -36,6 +41,8 @@ interface Memory {
 /** The stored hero settings (src/engine/state/planner-state.ts PlannerState["hero"]); other fields are not read here. */
 export interface HeroState {
   selectedHeroId: string;
+  /** The character level (1–100); none stored, the calculation assumes 100. */
+  characterLevel?: number;
   selectedTraits: Record<string, string>;
   memories: Record<string, string>;
   memoryInventory?: Memory[];
@@ -70,6 +77,8 @@ export interface TraitView {
 export interface MemorySocketView {
   tier: string;
   label: string;
+  /** The icon of the memory type the socket takes (Origin at level 45, Discipline 60, Progress 75): an empty socket's mark. */
+  typeIcon: string;
   /** The memory in it; null when empty. */
   memory: { name: string; art: string | null; rarity: string | null; revivedId: string | null } | null;
 }
@@ -160,6 +169,8 @@ export interface ScentBottleView {
 export interface HeroTraitsView {
   /** null: no hero selected. */
   hero: { id: string; name: string; trait: string; image: string | null } | null;
+  /** The character level the build stores ("92"); "" when it stores none (the calculation assumes 100). */
+  characterLevel: string;
   /** The two tabs over the tree (Sage and the tree heroes); null when the hero has only its traits. */
   tabs: { id: HeroDetailTab; label: string }[] | null;
   activeTab: HeroDetailTab;
@@ -281,6 +292,7 @@ function traitTiers(heroId: string, hero: HeroState, traits: Trait[], treeHero: 
       memory = crafted(hero.equippedMemoryIds?.[slotKey]);
     const socket: MemorySocketView = {
       tier: slotKey,
+      typeIcon: heroMemoryIcon(memoryTypesByTier[`level${level}` as keyof typeof memoryTypesByTier]),
       label: name
         ? `Manage ${name}${heroMemoryIsRevived(memory) ? ", revived" : ""}`
         : `Add level ${level} hero memory`,
@@ -367,6 +379,7 @@ function traitTiers(heroId: string, hero: HeroState, traits: Trait[], treeHero: 
       memory: baseSlot
         ? {
             tier: "base",
+            typeIcon: heroMemoryIcon(baseSlot.memoryType),
             label: baseMemory
               ? `Manage base trait ${baseMemory.name}${heroMemoryIsRevived(baseMemory) ? ", revived" : ""}`
               : "Add base trait memory",
@@ -464,12 +477,14 @@ function scentBottle(hero: HeroState): ScentBottleView {
 export function heroTraitsView(hero: HeroState, activeTab: HeroDetailTab): HeroTraitsView {
   const selected = heroById(hero.selectedHeroId) as
     { id: string; name: string; trait: string; image?: string } | undefined;
-  if (!selected) return { hero: null, tabs: null, activeTab, label: "No hero selected", content: null };
+  const characterLevel = hero.characterLevel ? String(hero.characterLevel) : "";
+  if (!selected) return { hero: null, characterLevel, tabs: null, activeTab, label: "No hero selected", content: null };
   const sage = selected.id === SAGE,
     treeHero = Boolean(heroTraitTree(selected.id));
   const traits = traitsOf(selected.id);
   const view = {
     hero: { id: selected.id, name: selected.name, trait: selected.trait, image: selected.image ?? null },
+    characterLevel,
     tabs:
       sage || treeHero
         ? [

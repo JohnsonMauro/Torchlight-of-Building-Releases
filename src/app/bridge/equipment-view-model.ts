@@ -1,5 +1,5 @@
 // What the Gear section of the Build page shows: the ten equipped slots (the item in each, or an empty slot) and the
-// Inventory cards, with what a drag needs (which item a slot or card carries, which slots take it). Pure; the React view
+// Inventory cards of the items not equipped (an equipped item sits in its slot only), with what a drag needs (which item a slot or card carries, which slots take it). Pure; the React view
 // (apps/web/src/features/gear) renders it and src/app/gear/gear-controller.js publishes it (src/app/bridge/view-sources.ts "equipment").
 // How an item looks (its rarity classes, icon) and whether the curse limit leaves it out depend on the open build, so
 // the planner passes them in.
@@ -62,12 +62,8 @@ export interface InventoryCardView {
   rarityClass: string;
   /** The slot the item is made for. */
   itemSlot: string;
-  equipped: boolean;
 }
 export interface EquipmentView {
-  /** Items equipped (not in an unequipped slot). */
-  equippedCount: number;
-  slotCount: number;
   slots: EquipmentSlotView[];
   inventory: InventoryCardView[];
 }
@@ -102,20 +98,19 @@ export function equipmentView(input: EquipmentInput): EquipmentView {
     };
   });
   return {
-    equippedCount: input.items.filter((item) => !input.disabled.has(item.slot)).length,
-    slotCount: input.slots.length,
     slots,
-    inventory: input.inventory.map((item) => {
-      const look = input.look(item);
-      return {
-        id: item.id,
-        name: item.name,
-        detail: `${item.base || titleCase(item.slot)} · ${itemLevel(item)}`,
-        icon: look.icon,
-        rarityClass: look.rarityClass,
-        itemSlot: item.slot,
-        equipped: input.isEquipped(item),
-      };
-    }),
+    inventory: input.inventory
+      .filter((item) => !input.isEquipped(item))
+      .map((item) => {
+        const look = input.look(item);
+        return {
+          id: item.id,
+          name: item.name,
+          detail: `${item.base || titleCase(item.slot)} · ${itemLevel(item)}`,
+          icon: look.icon,
+          rarityClass: look.rarityClass,
+          itemSlot: item.slot,
+        };
+      }),
   };
 }

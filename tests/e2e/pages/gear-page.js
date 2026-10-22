@@ -14,9 +14,6 @@ export class GearPage {
   view() {
     return this.page.locator("#equipment-view");
   }
-  equippedCount() {
-    return this.page.locator("#equipment-count");
-  }
   inventoryCount() {
     return this.page.locator("#inventory-count");
   }
@@ -49,6 +46,18 @@ export class GearPage {
   }
   button(name) {
     return this.view().getByRole("button", { name, exact: true });
+  }
+  /** The Gear heading's Craft, which opens the crafter on the kind of item. */
+  craftButton() {
+    return this.view().locator("[data-open-equipment-craft]");
+  }
+  /** Opens the crafter on a kind of item: "Craft Rare Item", "Craft Legendary" or "Craft Vorax Item" (its title then). */
+  async startCraft(title) {
+    const kind = { "Craft Rare Item": "rare", "Craft Legendary": "legendary", "Craft Vorax Item": "vorax" }[title];
+    await this.craftButton().click();
+    await expect(this.crafterTitle()).toHaveText("Craft Item");
+    await this.crafter().locator(`[data-craft-pick="${kind}"]`).click();
+    await expect(this.crafterTitle()).toHaveText(title);
   }
   itemDialog() {
     return this.page.locator("#inventory-item-dialog");

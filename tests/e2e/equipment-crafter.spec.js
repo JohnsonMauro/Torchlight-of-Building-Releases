@@ -1,7 +1,8 @@
 // The equipment crafter (the Gear section's Craft Rare Item, Craft Vorax Item and Craft Legendary, or Edit on a crafted
-// rare): the rare item picker (group, type, base) and its path back, the rare form (the fields that depend on the slot,
-// base affixes, prefixes and suffixes with their tiers and rolls) and its preview; the Vorax limbs and their Legendary affix toggles; the legendary list with its search
-// and a legendary's configuration (base, corrosion, its mods' tiers and rolls); Add to Inventory and Save Changes.
+// rare or Vorax item): the rare item picker (group, type, base) and its path back, the rare form (the fields that depend
+// on the slot, base affixes, prefixes and suffixes with their tiers and rolls) and its preview; the Vorax picker (group,
+// limb), its lists and their Legendary affixes; the legendary list with its search and a legendary's configuration
+// (base, corrosion, its mods' tiers and rolls); Add to Inventory and Save Changes.
 // Written against the legacy crafter before it moves to React, so both must pass it unchanged.
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -18,7 +19,7 @@ async function openCrafter(page, mode) {
   await planner.open(youga);
   await planner.showView("equipment");
   const gear = new GearPage(page);
-  await gear.button(mode).click();
+  await gear.startCraft(mode);
   await expect(gear.crafter()).toBeVisible();
   return { planner, gear, body: gear.crafter().locator("#equipment-crafter-body") };
 }
@@ -26,6 +27,22 @@ const preview = (body) => body.locator("aside");
 /** The preview's lines of one kind ("Prefix", "Base Affix"…); each reads its tier marker's text, then the line. */
 const lines = (body, kind) => preview(body).locator(`[data-preview-line="${kind}"]`);
 const field = (body, attribute) => body.locator(`[${attribute}]`);
+/** Picks an option of a list of choices (a radio row), its folded section opened first. */
+async function choose(body, attribute, value) {
+  const list = field(body, attribute);
+  // The inner locator of `has` is matched inside each details: it may not start from the dialog.
+  const section = body.locator("details", { has: body.page().locator(`[${attribute}]`) });
+  if ((await section.count()) && !(await section.evaluate((details) => details.open))) {
+    await section.locator("summary").click();
+    await expect(section).toHaveJSProperty("open", true);
+  }
+  await list.locator(`[data-choice-value="${value}"]`).check();
+}
+/** The option a list of choices holds. */
+const chosen = (body, attribute) => field(body, attribute).locator("input:checked");
+/** A legendary line's tier chip. */
+const tierChip = (body, index, tier) =>
+  field(body, `data-legendary-tier="${index}"`).locator(`[data-tier-option="${tier}"]`);
 const path = (body) => body.getByRole("navigation", { name: "Item" });
 /** A rare's affix in its side's list ("prefix", "suffix"), on the tab it sits in ("Basic", "Advanced", "Ultimate"). */
 function affixOption(body, side, label, tab = "Basic") {
@@ -84,11 +101,11 @@ test("the rare picker drills down to a base; the form shows the fields its slot 
   await field(body, 'data-craft-pick="STR Helmet"').click();
   await expect(field(body, "data-craft-pick").first()).toHaveText("Ranger's Broken MaskLv 82");
   await field(body, "data-craft-pick").first().click();
-  await expect(path(body)).toHaveText("Item groups›Helmet›STR›Lv 82 · Ranger's Broken Mask");
+  await expect(path(body)).toHaveText("Craft›Item groups›Helmet›STR›Lv 82 · Ranger's Broken Mask");
   await expect(field(body, "data-craft-level")).toHaveValue("100");
   await expect(field(body, "data-craft-energy")).toHaveValue("61");
-  await expect(field(body, "data-belt-blend-field")).toBeHidden();
-  await expect(field(body, "data-tower-sequence-field")).toBeHidden();
+  await expect(field(body, "data-craft-belt-blend")).toHaveCount(0);
+  await expect(field(body, "data-craft-sequence")).toHaveCount(0);
   await expect(body.locator("h3")).toHaveText([
     "Base affixes (0/2)",
     "Prefixes (0/3)",
@@ -103,10 +120,10 @@ test("the rare picker drills down to a base; the form shows the fields its slot 
 
   await path(body).getByRole("button", { name: "Item groups" }).click();
   await pickRare(body, "trinket", "Belt");
-  await expect(field(body, "data-belt-blend-field")).toBeVisible();
+  await expect(field(body, "data-craft-belt-blend")).toHaveCount(1);
   await path(body).getByRole("button", { name: "Item groups" }).click();
   await pickRare(body, "two-handed", "Bow");
-  await expect(field(body, "data-belt-blend-field")).toBeHidden();
+  await expect(field(body, "data-craft-belt-blend")).toHaveCount(0);
   await expect(path(body)).toContainText("Two-Handed›Bow›");
   await expect(preview(body)).toContainText("Bow");
   await gear.crafter().getByRole("button", { name: "Cancel", exact: true }).click();
@@ -212,7 +229,7 @@ test("a base affix's roll, the Belt Blend and the TOWER Sequence: in the preview
   await baseRoll.fill("45");
   await expect(body.locator('[data-base-affix-slot="0"] [data-affix-roll-number]')).toHaveValue("45");
   await expect(lines(body, "Base Affix")).toHaveText("T2+45 Max Mana");
-  await field(body, "data-craft-belt-blend").selectOption("belt-blend-005");
+  await choose(body, "data-craft-belt-blend", "belt-blend-005");
   await expect(lines(body, "Belt Blend")).toHaveAttribute("title", "Belt Blend · Immune to Ignite");
   await expect(lines(body, "Belt Blend")).toContainText("Immune to Ignite");
   await gear.crafter().getByRole("button", { name: "Add to Inventory", exact: true }).click();
@@ -222,11 +239,11 @@ test("a base affix's roll, the Belt Blend and the TOWER Sequence: in the preview
   expect(belt.modifiers).toContain("+45 Max Mana");
   expect(belt.modifiers.at(-1)).toBe("Immune to Ignite\nMinions are immune to Fire Damage");
 
-  await gear.button("Craft Rare Item").click();
+  await gear.startCraft("Craft Rare Item");
   await pickRare(body, "one-handed", "Wand");
-  await expect(field(body, "data-tower-sequence-field")).toBeVisible();
-  await expect(field(body, "data-belt-blend-field")).toBeHidden();
-  await field(body, "data-craft-sequence").selectOption("tower-sequence-160423032");
+  await expect(field(body, "data-craft-sequence")).toHaveCount(1);
+  await expect(field(body, "data-craft-belt-blend")).toHaveCount(0);
+  await choose(body, "data-craft-sequence", "tower-sequence-160423032");
   await expect(lines(body, "TOWER Sequence")).toHaveCount(1);
   await expect(preview(body)).toContainText("+8% Fire Penetration");
   await gear.crafter().getByRole("button", { name: "Add to Inventory", exact: true }).click();
@@ -236,49 +253,99 @@ test("a base affix's roll, the Belt Blend and the TOWER Sequence: in the preview
   await planner.expectNoErrors();
 });
 
-test("Vorax: a limb opens its form; at most two organ affixes inherit a Legendary affix", async ({ page }) => {
+/** A Vorax item's Legendary tab on a side, its search and a donor's section (its modifiers' checkboxes). */
+function legendaryTab(body, side) {
+  const list = body.locator(`[data-affix-list="${side}"]`);
+  return {
+    tab: list.getByRole("tab", { name: /^Legendary/ }),
+    search: list.locator("[data-vorax-legendary-search]"),
+    donors: list.locator("[data-vorax-donor]"),
+    boxes: (donor) => list.locator(`[data-vorax-donor="${donor}"]`).getByRole("checkbox"),
+  };
+}
+const GLORIOUS_JOURNEY = "vorax-chest-donor-0";
+
+test("Vorax: the picker drills down to a limb; the form lists base affixes, organ affixes and suffixes", async ({
+  page,
+}) => {
   const { planner, gear, body } = await openCrafter(page, "Craft Vorax Item");
   await expect(gear.crafterTitle()).toHaveText("Craft Vorax Item");
-  await expect(body.locator("[data-select-vorax-base]")).toHaveCount(10);
-  await expect(preview(body)).toContainText("Select options to preview item");
-  await body.locator('[data-select-vorax-base="Vorax Limb: Chest"]').click();
-  await expect(field(body, "data-craft-type")).toHaveValue("Vorax Limb: Chest");
-  await expect(body.locator("h3").first()).toHaveText("Organ affixes");
-  const toggles = body.locator("[data-toggle-vorax-legendary]");
-  await expect(toggles).toHaveCount(6);
-  const before = await field(body, 'data-craft-affix-family="0"').locator("option").count();
-  await toggles.nth(0).click();
-  await expect(toggles.nth(0)).toHaveAttribute("aria-pressed", "true");
-  await expect(body.locator(".craft-affix-control").nth(0)).toHaveClass(/\blegendary-affix-active\b/);
-  await expect(field(body, 'data-craft-affix-family="0"').locator("option")).not.toHaveCount(before);
-  await toggles.nth(1).click();
-  await toggles.nth(2).click();
-  await expect(gear.toast()).toHaveText("A Vorax item can inherit up to two Legendary affixes");
-  await expect(toggles.nth(2)).toHaveAttribute("aria-pressed", "false");
-  await toggles.nth(0).click();
-  await expect(toggles.nth(0)).toHaveAttribute("aria-pressed", "false");
+  await expect(body.locator("h3")).toHaveText("Select an item group");
+  await expect(field(body, "data-craft-pick")).toHaveText(
+    ["Helmet", "Chest Armor", "Gloves", "Boots", "Trinket"].map((label) => new RegExp(`^${label}`)),
+  );
+  await expect(preview(body)).toHaveCount(0);
+  await field(body, 'data-craft-pick="boots"').click();
+  await expect(body.locator("h3")).toHaveText("Select a limb");
+  await expect(field(body, "data-craft-pick")).toHaveText(["Limb: Legs", "Aberrant Limb: Legs"]);
+  await path(body).getByRole("button", { name: "Item groups" }).click();
+  await field(body, 'data-craft-pick="chest-armor"').click();
+  await field(body, 'data-craft-pick="Vorax Limb: Chest"').click();
+  await expect(path(body)).toContainText("Chest Armor›Limb: Chest");
+  await expect(field(body, "data-craft-priceless")).toHaveCount(0);
+  await expect(body.locator("[data-craft-section] h3")).toHaveText([
+    "Base affixes (0/2)",
+    "Organ affixes (0/3)",
+    "Suffixes (0/3)",
+  ]);
+  await expect(body.locator('[data-affix-list="prefix"]').getByRole("tab")).toHaveText([
+    /^Basic/,
+    /^Advanced/,
+    /^Ultimate/,
+    /^Legendary/,
+  ]);
+  await baseAffix(body, "+15 Strength").check();
+  await expect(lines(body, "Base Affix")).toHaveText("T2+15 Strength");
+  await checkAffix(body, "prefix", MAX_LIFE);
+  await expect(tierChips(body, 0).last()).toHaveText("T0+");
+  await expect(currentTier(body, 0)).toHaveText("T1");
+  await expect(lines(body, "Prefix")).toHaveCount(1);
+  await expect(body.locator("[data-craft-section] h3").nth(1)).toHaveText("Organ affixes (1/3)");
   await planner.expectNoErrors();
 });
 
-test("Vorax: a Legendary affix slot lists the donors' affixes and is saved as one", async ({ page }) => {
+test("Vorax: up to two Legendary affixes from the donors' list, one side each; saved, and back on Edit", async ({
+  page,
+}) => {
   const { planner, gear, body } = await openCrafter(page, "Craft Vorax Item");
-  await body.locator('[data-select-vorax-base="Vorax Limb: Chest"]').click();
-  await body.locator("[data-toggle-vorax-legendary]").first().click();
-  const family = field(body, 'data-craft-affix-family="0"');
-  await expect(family.locator("option").nth(1)).toHaveText("[Glorious Journey] +# to All Stats");
-  await family.selectOption("vorax-chest-donor-0-mod-0");
-  await expect(field(body, 'data-craft-affix-tier="0"')).toHaveCount(0);
-  await expect(field(body, 'data-craft-affix-roll="0"').first()).toBeVisible();
+  await field(body, 'data-craft-pick="chest-armor"').click();
+  await field(body, 'data-craft-pick="Vorax Limb: Chest"').click();
+  const prefixes = legendaryTab(body, "prefix"),
+    suffixes = legendaryTab(body, "suffix");
+  await prefixes.tab.click();
+  await prefixes.search.fill("glorious journey");
+  await expect(prefixes.donors).toHaveCount(1);
+  await expect(prefixes.donors).toContainText("Glorious Journey");
+  await prefixes.boxes(GLORIOUS_JOURNEY).nth(0).check();
+  await expect(prefixes.tab).toHaveText("Legendary (1)");
+  await expect(slot(body, 0).locator("[data-craft-affix-roll]").first()).toBeVisible();
+  await expect(slot(body, 0).locator("[data-craft-affix-tier-option]")).toHaveCount(0);
   await expect(preview(body).locator("li.legendary-affix")).toHaveCount(1);
   await expect(preview(body).locator("li.legendary-affix .affix-tier-badge")).toHaveText("L");
+
+  await suffixes.tab.click();
+  await suffixes.search.fill("glorious journey");
+  await expect(suffixes.boxes(GLORIOUS_JOURNEY).nth(0)).toBeDisabled();
+  await suffixes.boxes(GLORIOUS_JOURNEY).nth(1).check();
+  await expect(suffixes.boxes(GLORIOUS_JOURNEY).nth(2)).toBeDisabled();
+  await expect(body.locator('[data-affix-list="suffix"]')).toContainText("Two Legendary affixes chosen");
+
+  await field(body, "data-craft-name").fill("Test Vorax");
   await gear.crafter().getByRole("button", { name: "Add to Inventory", exact: true }).click();
   const saved = (await gear.stored()).inventory.at(-1);
   expect(saved).toMatchObject({ rarity: "vorax", base: "Vorax Limb: Chest", slot: "chest" });
-  expect(saved.craftAffixFamilyIds[0]).toBe("vorax-chest-donor-0-mod-0");
-  expect(saved.craftAffixTierIds[0]).toBe("L");
-  expect(saved.craftAffixLegendary).toEqual([true, false, false, false, false, false]);
-  expect(saved.prefixModifiers).toHaveLength(1);
+  expect(saved.craftAffixFamilyIds[0]).toBe(`${GLORIOUS_JOURNEY}-mod-0`);
+  expect(saved.craftAffixFamilyIds[3]).toBe(`${GLORIOUS_JOURNEY}-mod-1`);
+  expect(saved.craftAffixTierIds).toEqual(["L", "", "", "L", "", ""]);
+  expect(saved.craftAffixLegendary).toEqual([true, false, false, true, false, false]);
   expect(saved.prefixModifiers[0]).toMatch(/^\+\d+ to All Stats$/);
+
+  await gear.cardTool("Test Vorax", "Edit item").click();
+  await expect(gear.crafterTitle()).toHaveText("Edit Test Vorax");
+  await expect(path(body)).toContainText("Chest Armor›Limb: Chest");
+  await expect(prefixes.tab).toHaveText("Legendary (1)");
+  await expect(suffixes.tab).toHaveText("Legendary (1)");
+  await expect(preview(body).locator("li.legendary-affix")).toHaveCount(2);
   await planner.expectNoErrors();
 });
 
@@ -289,13 +356,14 @@ test("legendary lines: a corroded line, a corrosion implicit's roll, the energy;
   const line = body.locator(".legendary-mod-control").nth(2);
   await line.locator("[data-toggle-legendary-corrosion]").click();
   await expect(line).toHaveClass(/\bcorrosion-affix\b/);
-  await expect(line.locator("[data-toggle-legendary-corrosion]")).toHaveText("Corroded");
+  await expect(line.locator("[data-toggle-legendary-corrosion]")).toHaveAttribute("aria-pressed", "true");
+  await expect(line.locator('[data-tier-option="1"]')).toHaveAttribute("aria-pressed", "false");
   await expect(preview(body).locator("li.corrosion-affix")).toHaveCount(1);
 
-  await field(body, "data-legendary-corrosion").selectOption("1");
+  await choose(body, "data-legendary-corrosion", "1");
   await expect(body.locator("[data-corrosion-text]")).toHaveText("+15% Attack Speed");
   await expect(lines(body, "Implicit")).toHaveText("+15% Attack Speed");
-  await expect(lines(body, "Implicit")).toHaveAttribute("title", "Implicit · Corroded · STR Gloves");
+  await expect(lines(body, "Implicit")).toHaveAttribute("title", "Implicit · Corroded · INT Gloves");
   await field(body, "data-corrosion-roll").fill("0");
   await expect(body.locator("[data-corrosion-text]")).toHaveText("+12% Attack Speed");
   await expect(preview(body)).toContainText("+12% Attack Speed");
@@ -315,7 +383,7 @@ test("legendary: a line's tier, random roll or corroded form leaves the other li
   await body.locator('[data-legendary-id="Ice_Pulse"]').click();
   await field(body, 'data-legendary-roll="0"').fill("6");
   await field(body, "data-legendary-energy").fill("30");
-  await field(body, 'data-legendary-tier="1"').selectOption("2");
+  await tierChip(body, 1, 2).click();
   await body.locator(".legendary-mod-control").nth(2).locator("[data-toggle-legendary-corrosion]").click();
   await expect(field(body, 'data-legendary-roll="0"')).toHaveValue("6");
   await expect(body.locator('[data-legendary-mod="0"]')).toHaveText("+6 to Max Frostbite Rating");
@@ -349,7 +417,9 @@ test("legendary choices: a random roll's option and Folklore's ring effect, in t
   await body.locator('[data-legendary-id="Enamor"]').click();
   const line = body.locator(".legendary-mod-control").nth(1);
   await expect(line.locator("[data-legendary-mod]")).toHaveText("<Random skill slot-related affix>");
-  await field(body, 'data-legendary-placeholder="1"').selectOption(
+  await choose(
+    body,
+    'data-legendary-placeholder="1"',
     "when-an-attack-skill-is-equipped-in-the-third-slot-50-150-damage",
   );
   await expect(line.locator("[data-legendary-mod]")).toHaveText(
@@ -364,10 +434,10 @@ test("legendary choices: a random roll's option and Folklore's ring effect, in t
   const enamor = (await gear.stored()).inventory.at(-1);
   expect(enamor.legendaryModifiers[1]).toBe("When an Attack Skill is equipped in the third slot, +100% damage");
 
-  await gear.button("Craft Legendary").click();
+  await gear.startCraft("Craft Legendary");
   await field(body, "data-legendary-search").fill("locking fingers");
   await body.locator('[data-legendary-id="Folklore_of_Locking_Fingers"]').click();
-  await field(body, "data-legendary-ring-option").selectOption("right");
+  await field(body, "data-legendary-ring-option").locator('[data-ring-effect="right"]').click();
   await expect(body.locator('[data-legendary-mod="2"]')).toContainText("right Ring");
   await expect(preview(body)).toContainText("right Ring");
   await gear.crafter().getByRole("button", { name: "Add to Inventory", exact: true }).click();
@@ -376,10 +446,44 @@ test("legendary choices: a random roll's option and Folklore's ring effect, in t
   await planner.expectNoErrors();
 });
 
+test("legendary: a group lists all its legendaries, its type chips keep theirs; the search reads text or /regex/", async ({
+  page,
+}) => {
+  const { planner, body } = await openCrafter(page, "Craft Legendary");
+  const chip = (type) => field(body, `data-legendary-type="${type}"`);
+  const found = body.locator("[data-legendary-id]");
+  await expect(body.locator("h3")).toHaveText("Select an item group");
+  await expect(field(body, "data-craft-pick")).toHaveCount(8);
+  await expect(field(body, "data-legendary-type")).toHaveCount(0);
+  await field(body, 'data-craft-pick="chest-armor"').click();
+  await expect(field(body, "data-legendary-type")).toHaveText([/^STR/, /^DEX/, /^INT/, /^Special/]);
+  await expect(found).toHaveCount(49);
+  await chip("Special").click();
+  await expect(chip("Special")).toHaveAttribute("aria-pressed", "true");
+  await expect(found).toHaveCount(1);
+  await expect(found).toContainText("Omniscient Prototype");
+  await chip("INT Chest Armor").click();
+  await expect(found).toHaveCount(22);
+  await expect(body).toContainText("22 legendaries");
+  await chip("Special").click();
+  await field(body, "data-legendary-search").fill("/^genius/");
+  await expect(found.first()).toBeVisible();
+  for (const name of await found.locator("strong").allTextContents()) expect(name).toMatch(/^Genius/i);
+  await field(body, "data-legendary-search").fill("/(/");
+  await expect(found).toHaveCount(0);
+  await expect(body).toContainText("Invalid regular expression");
+  await field(body, "data-legendary-search").fill("");
+  await path(body).getByRole("button", { name: "Item groups" }).click();
+  await field(body, "data-legendary-search").fill("ice pulse");
+  await expect(found).toHaveCount(1);
+  await planner.expectNoErrors();
+});
+
 test("legendary: the search, a legendary's base, corrosion, mod tiers and rolls, and Add to Inventory", async ({
   page,
 }) => {
   const { planner, gear, body } = await openCrafter(page, "Craft Legendary");
+  await field(body, "data-legendary-search").fill("e");
   await expect(body).toContainText("refine the search to see more");
   await field(body, "data-legendary-search").fill("ice pulse");
   await expect(body.locator("[data-legendary-id]")).toHaveCount(1);
@@ -387,10 +491,11 @@ test("legendary: the search, a legendary's base, corrosion, mod tiers and rolls,
   await expect(field(body, "data-legendary-search")).toBeFocused();
   await body.locator('[data-legendary-id="Ice_Pulse"]').click();
 
-  await expect(field(body, "data-legendary-base")).toHaveValue("STR Gloves");
+  await expect(field(body, "data-legendary-base")).toHaveCount(0);
   await expect(field(body, "data-legendary-energy")).toHaveValue("61");
+  await expect(preview(body).locator("header")).toContainText("Energy 61");
   await expect(preview(body).locator("header")).toContainText("Ice Pulse");
-  await expect(preview(body).locator("header")).toContainText("STR Gloves(Gloves)Require lv 14");
+  await expect(preview(body).locator("header")).toContainText("INT Gloves(Gloves)Require lv 14");
   await expect(preview(body)).toContainText("+8 to Max Frostbite Rating+80% Spell Damage");
   const mods = body.locator(".legendary-mod-control");
   await expect(mods.first().locator("[data-legendary-mod]")).toHaveText("+8 to Max Frostbite Rating");
@@ -398,24 +503,27 @@ test("legendary: the search, a legendary's base, corrosion, mod tiers and rolls,
   await expect(mods.first().locator("[data-legendary-mod]")).toHaveText("+6 to Max Frostbite Rating");
   await expect(preview(body)).toContainText("+6 to Max Frostbite Rating");
 
-  const tier = field(body, 'data-legendary-tier="1"');
-  await expect(tier.locator("option")).toHaveText(["T1 · +(60–80)% Spell Damage", "T2 · +(22–29)% Spell Damage"]);
-  await tier.selectOption("2");
+  const tiers = field(body, 'data-legendary-tier="1"').locator("[data-tier-option]");
+  // T0 is its corroded form.
+  await expect(tiers).toHaveText(["T2", "T1", "T0"]);
+  await expect(tierChip(body, 1, 1)).toHaveAttribute("title", "T1 · +(60–80)% Spell Damage");
+  await expect(tierChip(body, 1, 1)).toHaveAttribute("aria-pressed", "true");
+  await tierChip(body, 1, 2).click();
   await expect(field(body, 'data-legendary-roll="1"')).toHaveValue("29");
   await expect(preview(body)).toContainText("+29% Spell Damage");
 
-  await field(body, "data-legendary-base").selectOption("INT Gloves");
-  await expect(preview(body).locator("header")).toContainText("INT Gloves(Gloves)Require lv 14");
-  await field(body, "data-legendary-corrosion").selectOption({ index: 1 });
-  await expect(preview(body)).toContainText("+1 to Max Tenacity Blessing Stacks");
+  await choose(body, "data-legendary-corrosion", "1");
+  await expect(preview(body)).toContainText("+15% Attack Speed");
 
-  await body.getByRole("button", { name: "Change", exact: true }).click();
-  await expect(field(body, "data-legendary-search")).toBeVisible();
+  await expect(path(body)).toContainText("Item groups›Gloves›Ice Pulse");
+  await path(body).getByRole("button", { name: "Gloves" }).click();
+  await expect(field(body, "data-legendary-search")).toHaveValue("");
+  await expect(field(body, "data-legendary-type")).toHaveText([/^STR/, /^DEX/, /^INT/]);
   await body.locator('[data-legendary-id="Ice_Pulse"]').click();
   await gear.crafter().getByRole("button", { name: "Add to Inventory", exact: true }).click();
   await expect(gear.toast()).toHaveText("Ice Pulse added to Inventory");
   const saved = (await gear.stored()).inventory.at(-1);
-  expect(saved).toMatchObject({ name: "Ice Pulse", rarity: "legendary", base: "STR Gloves", itemLevel: 100 });
+  expect(saved).toMatchObject({ name: "Ice Pulse", rarity: "legendary", base: "INT Gloves", itemLevel: 100 });
   expect(saved.legendaryModifiers.slice(0, 2)).toEqual(["+8 to Max Frostbite Rating", "+80% Spell Damage"]);
   await planner.expectNoErrors();
 });
@@ -425,13 +533,15 @@ test("Edit on a crafted rare fills the form from the item; Save Changes updates 
   await planner.open(youga);
   await planner.showView("equipment");
   const gear = new GearPage(page);
-  await gear.cardTool("Arcanist Girdle", "Edit item").click();
+  // Equipped, so it opens from its slot; the dialog's Edit opens the crafter on it.
+  await gear.slot("belt").click();
+  await gear.itemDialog().getByRole("button", { name: "Edit", exact: true }).click();
   await expect(gear.crafter()).toBeVisible();
   await expect(gear.crafterTitle()).toHaveText("Edit Arcanist Girdle");
   const body = gear.crafter().locator("#equipment-crafter-body");
   await expect(gear.crafter().getByRole("button", { name: "Save Changes", exact: true })).toBeVisible();
   await expect(path(body)).toContainText("Trinket›Belt›");
-  await expect(field(body, "data-belt-blend-field")).toBeVisible();
+  await expect(field(body, "data-craft-belt-blend")).toHaveCount(1);
   await expect(preview(body)).toContainText("Arcanist Girdle");
   await field(body, "data-craft-name").fill("Renamed Girdle");
   await gear.crafter().getByRole("button", { name: "Save Changes", exact: true }).click();
@@ -451,12 +561,14 @@ test("Edit fills every field from the item: level, base, Belt Blend, each affix'
   await planner.showView("equipment");
   const gear = new GearPage(page);
   const before = (await gear.stored()).inventory.find((entry) => entry.id === "gear-game-log-belt");
-  await gear.cardTool("Arcanist Girdle", "Edit item").click();
+  // Equipped, so it opens from its slot; the dialog's Edit opens the crafter on it.
+  await gear.slot("belt").click();
+  await gear.itemDialog().getByRole("button", { name: "Edit", exact: true }).click();
   const body = gear.crafter().locator("#equipment-crafter-body");
   await expect(field(body, "data-craft-name")).toHaveValue("Arcanist Girdle");
   await expect(field(body, "data-craft-level")).toHaveValue("83");
   await expect(path(body)).toHaveText("Item groups›Trinket›Belt›Lv 76 · Arcanist Girdle");
-  await expect(field(body, "data-craft-belt-blend")).toHaveValue("belt-blend-014");
+  await expect(chosen(body, "data-craft-belt-blend")).toHaveAttribute("data-choice-value", "belt-blend-014");
   const families = [
     "prefix-1402303",
     "prefix-1092302",
@@ -498,7 +610,7 @@ test("rare: back from the form to the type's bases, another base keeps what the 
   await field(body, "data-craft-name").fill("Kept Helm");
   await path(body).getByRole("button", { name: "DEX" }).click();
   await expect(body.locator("h3")).toHaveText("Select a base");
-  await expect(path(body)).toHaveText("Item groups›Helmet›DEX");
+  await expect(path(body)).toHaveText("Craft›Item groups›Helmet›DEX");
   await field(body, "data-craft-pick").nth(1).click();
   await expect(field(body, "data-craft-name")).toHaveValue("Kept Helm");
   await path(body).getByRole("button", { name: "Helmet" }).click();

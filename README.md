@@ -60,3 +60,5 @@ A few heuristic engines can flag unsigned Electron apps, so an occasional detect
 Torchlight of Building is an unofficial fan-made planner. It is not affiliated with, endorsed by, or connected to XD Inc. or the Torchlight: Infinite developers. Torchlight: Infinite and its names, art and data are the property of their respective owners. Game data via TLIDB (tlidb.com).
 
 Source code is in this repository. Code is MIT-licensed; game assets and data belong to their respective owners.
+
+Gear slot icons by [Lorc](http://lorcblog.blogspot.com) and [Delapouite](https://delapouite.com) from [game-icons.net](https://game-icons.net), licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).

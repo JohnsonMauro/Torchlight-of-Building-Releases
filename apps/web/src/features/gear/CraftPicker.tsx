@@ -1,11 +1,15 @@
-// The rare item picker (Craft Rare Item): the item groups, then a group's types, then a type's bases, as cards; a base
-// opens the form. Its path, also at the top of the form, opens any step taken again.
+// The item picker: first the kind of item (rare, legendary, Vorax); then, for a rare item, the item groups, a group's
+// types and a type's bases, as cards across the dialog (the preview comes with the form); a base opens the form. A Vorax
+// item: the groups that hold limbs, then a group's limbs; a limb opens the form. Its path, also at the top of the form,
+// opens any step taken again. The legendary list browses with its cards and path.
 import { useEffect, useRef } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { CraftCrumbView, CraftPickView } from "@legacy/app/bridge/equipment-crafter-view.ts";
-import { CRAFT_ASIDE, CRAFT_ASIDE_LABEL, CRAFT_FORM, CRAFT_LAYOUT, PICK_CARD, PICK_CARDS } from "./crafter-classes";
+import { GearSlotIcon } from "../../ui/GearSlotIcon";
+import { PICK_CARD, PICK_CARDS, PICK_COLUMN } from "./crafter-classes";
 
 const CHANGE = {
+  mode: "craftMode",
   group: "pickGroup",
   type: "pickType",
   base: "pickBase",
@@ -17,34 +21,39 @@ export function CraftPicker({ pick }: { pick: CraftPickView }) {
   // A card picked leaves the page: the next step's heading takes the focus.
   useEffect(() => heading.current?.focus(), [where]);
   return (
-    <div className={CRAFT_LAYOUT}>
-      <section className={CRAFT_FORM}>
+    <div className="flex min-h-0 flex-1">
+      <section className={PICK_COLUMN}>
         <CraftPath path={pick.path} />
         <h3 ref={heading} tabIndex={-1} className="text-sm font-bold outline-none">
           {pick.heading}
         </h3>
-        <div className={PICK_CARDS}>
-          {pick.cards.map((card) => (
-            <button
-              key={card.value}
-              type="button"
-              className={PICK_CARD}
-              data-craft-pick={card.value}
-              onClick={() => plannerCommands().changeEquipmentCraft({ kind: CHANGE[pick.step], value: card.value })}
-            >
-              {card.icon ? <img src={card.icon} alt="" className="size-12 object-contain" /> : null}
-              <span className="text-sm font-bold">{card.label}</span>
-              <small className="text-xs text-muted">{card.detail}</small>
-            </button>
-          ))}
-        </div>
+        <PickCards step={pick.step} cards={pick.cards} />
       </section>
-      <aside className={CRAFT_ASIDE}>
-        <small className={CRAFT_ASIDE_LABEL}>Preview</small>
-        <div className="grid min-h-50 place-items-center rounded-md border border-dashed border-line-strong text-center text-dim">
-          Select a base to preview item
-        </div>
-      </aside>
+    </div>
+  );
+}
+
+/** A step's cards: picking one takes the next step. */
+export function PickCards({ step, cards }: Pick<CraftPickView, "step" | "cards">) {
+  return (
+    <div className={PICK_CARDS}>
+      {cards.map((card) => (
+        <button
+          key={card.value}
+          type="button"
+          className={PICK_CARD}
+          data-craft-pick={card.value}
+          onClick={() => plannerCommands().changeEquipmentCraft({ kind: CHANGE[step], value: card.value })}
+        >
+          {card.slotIcon ? (
+            <GearSlotIcon kind={card.slotIcon} className="size-12 text-dim" />
+          ) : card.icon ? (
+            <img src={card.icon} alt="" className="size-12 object-contain" />
+          ) : null}
+          <span className="text-sm font-bold">{card.label}</span>
+          {card.detail ? <small className="text-xs text-muted">{card.detail}</small> : null}
+        </button>
+      ))}
     </div>
   );
 }

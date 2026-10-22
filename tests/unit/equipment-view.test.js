@@ -32,8 +32,6 @@ function view(overrides = {}) {
 
 test("a slot shows its item, or is empty when nothing is there or it is unequipped", () => {
   const result = view();
-  assert.equal(result.equippedCount, 2);
-  assert.equal(result.slotCount, 4);
   assert.deepEqual(
     result.slots.map((slot) => [slot.slot, slot.label, slot.selected, slot.item?.name ?? null]),
     [
@@ -70,16 +68,13 @@ test("a slot's drag carries its Inventory entry, made for its own slot", () => {
   assert.equal(result.slots[3].item.drag, null);
 });
 
-test("the Inventory cards show base and level, or the slot's name, and whether they are equipped", () => {
+test("the Inventory cards are the items not equipped, each with its base and level, or its slot's name", () => {
   assert.deepEqual(
-    view().inventory.map((card) => [card.id, card.detail, card.itemSlot, card.equipped, card.rarityClass]),
-    [
-      ["gear-helm", "Helmet · Lv.94", "helmet", true, "rarity-gear-helm"],
-      ["gear-ring", "Ring · Lv.100", "leftRing", true, "rarity-gear-ring"],
-      ["gear-wand", "Cleric Wand · Lv.100", "mainHand", false, "rarity-gear-wand"],
-    ],
+    view().inventory.map((card) => [card.id, card.detail, card.itemSlot, card.rarityClass]),
+    [["gear-wand", "Cleric Wand · Lv.100", "mainHand", "rarity-gear-wand"]],
   );
-  assert.equal(view({ inventory: [{ ...ring, base: undefined }] }).inventory[0].detail, "Left Ring · Lv.100");
+  const loose = view({ inventory: [{ ...ring, base: undefined }], isEquipped: () => false });
+  assert.equal(loose.inventory[0].detail, "Left Ring · Lv.100");
 });
 
 test("rings go in either ring slot, weapons in either weapon slot, the rest only in their own", () => {

@@ -9,8 +9,14 @@ import {
   craftedLegendaryItem,
   craftedRareItem,
   equipmentCraftFromItem,
+  legendaryById,
+  legendaryDefaultBase,
+  legendaryPreviewItem,
+  legendaryGroups,
+  newCraftChoice,
   newEquipmentCraft,
   rareBasesForType,
+  voraxLegendaryDonors,
 } from "../../src/app/gear/equipment-craft.ts";
 import { equipmentCrafterView } from "../../src/app/bridge/equipment-crafter-view.ts";
 import { modifierTextView } from "../../src/app/bridge/gear-item-view.ts";
@@ -32,6 +38,9 @@ const picked = (craft, group, type) =>
     { kind: "pickBase", value: rareBasesForType(type)[0].id },
   );
 const rareCraft = (group = "helmet", type = "STR Helmet") => picked(newEquipmentCraft("rare"), group, type);
+/** A Vorax craft past the picker: the group, then the limb. */
+const voraxCraft = (group = "chest-armor", limb = "Vorax Limb: Chest") =>
+  apply(newEquipmentCraft("vorax"), { kind: "pickGroup", value: group }, { kind: "pickType", value: limb });
 
 test("a roll snaps as a range input does: clamped, then to the nearest step from the minimum", () => {
   assert.equal(snappedModifierRoll({ min: 40, max: 60 }, 45.5), 46);
@@ -67,9 +76,13 @@ test("rare: an Item Level change caps the energy and re-picks each affix's tier 
   );
 });
 
+/** A rare prefix family's id by its label in the catalogue ("[Basic Affix] +# Max Life": its tab, then its label). */
 function craftedFamily(label) {
-  const view = equipmentCrafterView(rareCraft(), 1, preview);
-  return view.body.affixes[0].families.find((family) => family.label === label).value;
+  const [, category, name] = label.match(/^\[([^\]]+)\] (.*)$/);
+  const tab = equipmentCrafterView(rareCraft(), 1, preview).body.affixLists[0].tabs.find(
+    (entry) => entry.id === category,
+  );
+  return tab.options.find((option) => option.label === name).value;
 }
 
 test("rare: a typed roll outside its range is ignored, a committed one is clamped", () => {
@@ -102,13 +115,77 @@ test("rare: a type picked again resets its base, base affixes, families and TOWE
   );
 });
 
-test("Vorax: at most two slots inherit a Legendary affix; the third is refused with a notice", () => {
-  let craft = apply(newEquipmentCraft("vorax"), { kind: "voraxBase", value: "Vorax Limb: Chest" });
-  craft = apply(craft, { kind: "voraxLegendary", index: 0 }, { kind: "voraxLegendary", index: 4 });
-  const refused = changeEquipmentCraft(craft, { kind: "voraxLegendary", index: 1 });
+test("Vorax: the picker offers the groups that hold limbs, then a group's limbs; a limb opens the form", () => {
+  let craft = newEquipmentCraft("vorax");
+  let view = equipmentCrafterView(craft, 1, preview);
+  assert.equal(view.body.kind, "craftPick");
+  assert.deepEqual(
+    view.body.cards.map((card) => [card.label, card.detail]),
+    [
+      ["Helmet", "1 limb"],
+      ["Chest Armor", "1 limb"],
+      ["Gloves", "1 limb"],
+      ["Boots", "2 limbs"],
+      ["Trinket", "5 limbs"],
+    ],
+  );
+  craft = apply(craft, { kind: "pickGroup", value: "trinket" });
+  view = equipmentCrafterView(craft, 1, preview);
+  assert.equal(view.body.heading, "Select a limb");
+  assert.deepEqual(
+    view.body.cards.map((card) => card.label),
+    ["Limb: Neck", "Limb: Digits", "Aberrant Limb: Digits", "Limb: Waist", "Aberrant Limb: Waist"],
+  );
+  craft = apply(craft, { kind: "pickType", value: "Vorax Limb: Waist" });
+  view = equipmentCrafterView(craft, 1, preview);
+  assert.equal(view.body.kind, "form");
+  assert.deepEqual(view.body.path, [
+    { label: "Craft", step: "mode" },
+    { label: "Item groups", step: "group" },
+    { label: "Trinket", step: "type" },
+    { label: "Limb: Waist", step: null },
+  ]);
+  assert.deepEqual([view.body.beltBlendShown, view.body.levelMax, view.body.priceless], [true, 100, null]);
+  craft = apply(craft, { kind: "name", value: "Kept" }, { kind: "repick", step: "type" });
+  assert.deepEqual(craft.pick, { group: "trinket", type: "" });
+  assert.equal(apply(craft, { kind: "pickType", value: "Vorax Limb: Waist" }).rare.name, "Kept", "the same limb");
+  assert.equal(apply(craft, { kind: "pickType", value: "Vorax Limb: Neck" }).rare.name, "", "another limb");
+});
+
+test("Vorax: a Legendary affix takes a slot of its side, up to two on the item, and only one side", () => {
+  let craft = voraxCraft();
+  const [first, second, third] = voraxLegendaryDonors("Vorax Limb: Chest")[0].families;
+  const toggle = (side, family) => ({ kind: "toggleAffix", side, familyId: family.id, legendary: true });
+  craft = apply(craft, toggle("prefix", first), toggle("suffix", second));
+  const refused = changeEquipmentCraft(craft, toggle("prefix", third));
   assert.equal(refused.notice, "A Vorax item can inherit up to two Legendary affixes");
   assert.equal(refused.craft, craft);
-  assert.deepEqual(craftedRareItem(craft).craftAffixTierIds, ["L", "", "", "", "L", ""]);
+  assert.equal(changeEquipmentCraft(craft, toggle("prefix", second)).craft, craft, "a suffix already");
+  assert.deepEqual(craftedRareItem(craft).craftAffixTierIds, ["L", "", "", "L", "", ""]);
+  assert.match(craftedRareItem(craft).prefixModifiers[0], /^\+\d+ to All Stats$/);
+  const [prefixes] = equipmentCrafterView(craft, 1, preview).body.affixLists;
+  assert.deepEqual(
+    prefixes.tabs.map((tab) => tab.label),
+    ["Basic", "Advanced", "Ultimate"],
+  );
+  assert.equal(prefixes.count, "1/3");
+  assert.equal(prefixes.legendary.count, "2/2");
+  const options = prefixes.legendary.donors[0].options;
+  assert.deepEqual(prefixes.legendary.donors[0].name, "Glorious Journey");
+  assert.deepEqual(
+    options.slice(0, 3).map((option) => [option.label, option.checked, option.blocked]),
+    [
+      ["+(15–20) to All Stats", true, ""],
+      ["+(60–80) Fire Damage Reflection", false, "Chosen as a suffix"],
+      ["+(60–80) Lightning Damage Reflection", false, "Two Legendary affixes chosen"],
+    ],
+  );
+  assert.deepEqual([options[0].config.slot, options[0].config.tiers, options[0].config.rolls.length], [0, [], 1]);
+  craft = apply(craft, toggle("prefix", first));
+  assert.deepEqual(
+    craft.rare.affixes.map((affix) => affix.legendary),
+    [false, false, false, true, false, false],
+  );
 });
 
 test("Edit on each crafted item of the Youga build: the form crafts its affixes back", () => {
@@ -126,8 +203,12 @@ test("Edit on each crafted item of the Youga build: the form crafts its affixes 
   }
 });
 
-test("legendary: a tier change rolls only its own line again; a new base caps the energy and drops the corrosion", () => {
+test("legendary: it starts at its base's energy cap; a tier change rolls only its own line again", () => {
   let craft = apply(newEquipmentCraft("legendary"), { kind: "legendary", id: "Ice_Pulse" });
+  assert.deepEqual(
+    [craft.legendary.base, craft.legendary.energy, craft.legendary.corrosionIndex],
+    ["INT Gloves", "61", -1],
+  );
   craft = apply(
     craft,
     { kind: "roll", group: "legendary", index: 0, rangeIndex: 0, value: 6 },
@@ -140,12 +221,10 @@ test("legendary: a tier change rolls only its own line again; a new base caps th
   assert.equal(item.energy, 30);
   craft = apply(craft, { kind: "legendaryCorrosion", value: 1 }, { kind: "corrosionRoll", value: 0 });
   assert.deepEqual(craftedLegendaryItem(craft).corrosionModifiers, ["+12% Attack Speed"]);
-  craft = apply(craft, { kind: "legendaryBase", value: "INT Gloves" });
-  assert.deepEqual([craft.legendary.energy, craft.legendary.corrosionIndex], ["61", -1]);
-  assert.equal(craftedLegendaryItem(craft).legendaryModifiers[0], "+6 to Max Frostbite Rating");
+  assert.equal(legendaryPreviewItem(craft).energy, 30, "the preview shows the energy");
 });
 
-test("the views: the legendary list's count and the Vorax limbs; a keyword line keeps its keyword apart", () => {
+test("the views: the legendary list's count and the Vorax groups; a keyword line keeps its keyword apart", () => {
   const list = equipmentCrafterView(
     apply(newEquipmentCraft("legendary"), { kind: "search", value: "ice pulse" }),
     3,
@@ -156,9 +235,70 @@ test("the views: the legendary list's count and the Vorax limbs; a keyword line 
     [3, "Craft Legendary", "legendaryList", "1 legendary gear available"],
   );
   const vorax = equipmentCrafterView(newEquipmentCraft("vorax"), 1, preview);
-  assert.equal(vorax.body.limbs.length, 10);
+  assert.equal(vorax.body.cards.length, 5);
   assert.deepEqual(modifierTextView("+26 % damage"), { kind: "plain", text: "+26% damage" });
   assert.equal(modifierTextView("Wield My Sword").kind, "keyword");
+});
+
+test("legendary: every legendary sits in a group's type, the ones without an attribute in Special; its type is its base", () => {
+  const groups = legendaryGroups();
+  const entries = groups.flatMap((group) => group.entries);
+  assert.equal(
+    entries.reduce((count, entry) => count + entry.legendaries.length, 0),
+    339,
+  );
+  const chest = groups.find((group) => group.id === "chest-armor");
+  assert.deepEqual(
+    chest.entries.map((entry) => [entry.label, entry.legendaries.length]),
+    [
+      ["STR", 18],
+      ["DEX", 9],
+      ["INT", 21],
+      ["Special", 1],
+    ],
+  );
+  assert.equal(chest.entries[3].legendaries[0].id, "Omniscient_Prototype");
+  assert.ok(!groups.find((group) => group.id === "helmet").entries.some((entry) => entry.type === "Special"));
+  assert.equal(legendaryDefaultBase(legendaryById("Ice_Pulse")), "INT Gloves");
+  assert.equal(
+    apply(newEquipmentCraft("legendary"), { kind: "legendary", id: "Ice_Pulse" }).legendary.base,
+    "INT Gloves",
+  );
+});
+
+test("legendary list: a group lists all its legendaries, its type chips keep theirs; the search reads text or /regex/", () => {
+  const list = (craft) => equipmentCrafterView(craft, 1, preview).body;
+  let craft = apply(newEquipmentCraft("legendary"), { kind: "pickGroup", value: "gloves" });
+  assert.deepEqual(
+    list(craft).chips.map((chip) => [chip.label, chip.count, chip.on]),
+    [
+      ["STR", 15, false],
+      ["DEX", 15, false],
+      ["INT", 13, false],
+    ],
+  );
+  assert.equal(list(craft).results.length, 43);
+  assert.equal(list(craft).browse.cards.length, 0);
+  craft = apply(craft, { kind: "toggleLegendaryType", value: "INT Gloves" });
+  assert.equal(list(craft).count, "13 legendaries");
+  assert.ok(list(craft).results.some((entry) => entry.id === "Ice_Pulse"));
+  craft = apply(craft, { kind: "search", value: "/^ice pul/" });
+  assert.deepEqual(
+    list(craft).results.map((entry) => entry.id),
+    ["Ice_Pulse"],
+  );
+  craft = apply(craft, { kind: "search", value: "/frostbite rating$/" });
+  assert.ok(
+    list(craft).results.some((entry) => entry.id === "Ice_Pulse"),
+    "a mod, tested line by line",
+  );
+  craft = apply(craft, { kind: "search", value: "/(/" });
+  assert.deepEqual([list(craft).results.length, Boolean(list(craft).searchError)], [0, true]);
+  craft = apply(craft, { kind: "search", value: "+(60" }, { kind: "toggleLegendaryType", value: "INT Gloves" });
+  assert.equal(list(craft).searchError, "", "plain text, read as typed");
+  assert.equal(apply(craft, { kind: "pickGroup", value: "boots" }).legendaryTypes.length, 0);
+  const everywhere = list(apply(newEquipmentCraft("legendary"), { kind: "search", value: "ice pulse" }));
+  assert.deepEqual([everywhere.browse, everywhere.count], [null, "1 legendary gear available"]);
 });
 
 test("rare: the crafter opens on the item groups and drills down to a base, which opens the form", () => {
@@ -169,7 +309,10 @@ test("rare: the crafter opens on the item groups and drills down to a base, whic
     view.body.cards.map((card) => card.label),
     ["Helmet", "Chest Armor", "Gloves", "Boots", "Shield", "Trinket", "One-Handed", "Two-Handed"],
   );
-  assert.deepEqual(view.body.path, [{ label: "Item groups", step: null }]);
+  assert.deepEqual(view.body.path, [
+    { label: "Craft", step: "mode" },
+    { label: "Item groups", step: null },
+  ]);
   craft = apply(craft, { kind: "pickGroup", value: "trinket" });
   view = equipmentCrafterView(craft, 1, preview);
   assert.equal(view.body.heading, "Select a type");
@@ -186,6 +329,7 @@ test("rare: the crafter opens on the item groups and drills down to a base, whic
   view = equipmentCrafterView(craft, 1, preview);
   assert.equal(view.body.cards.length, 12);
   assert.deepEqual(view.body.path, [
+    { label: "Craft", step: "mode" },
     { label: "Item groups", step: "group" },
     { label: "Trinket", step: "type" },
     { label: "Belt", step: null },
@@ -196,7 +340,7 @@ test("rare: the crafter opens on the item groups and drills down to a base, whic
   assert.equal(craft.rare.type, "Belt");
   assert.deepEqual(
     view.body.path.map((crumb) => crumb.step),
-    ["group", "type", "base", null],
+    ["mode", "group", "type", "base", null],
   );
   assert.equal(view.body.beltBlendShown, true);
 });
@@ -225,34 +369,18 @@ test("rare: the Item Level is typed up to 89; Priceless is level 100 and offers 
   form = equipmentCrafterView(craft, 1, preview).body;
   assert.deepEqual([form.level, form.priceless], ["89", false]);
   assert.deepEqual(apply(craft, { kind: "level", value: "95" }).rare.level, "89");
-  craft = apply(craft, { kind: "affixFamily", index: 0, value: craftedFamily("[Basic Affix] +# Max Life") });
-  assert.ok(
-    !equipmentCrafterView(craft, 1, preview).body.affixes[0].config.tier.options.some((o) => /T0\+/.test(o.label)),
-  );
+  const life = craftedFamily("[Basic Affix] +# Max Life");
+  craft = apply(craft, { kind: "affixFamily", index: 0, value: life });
+  const tiers = () =>
+    equipmentCrafterView(craft, 1, preview)
+      .body.affixLists[0].tabs[0].options.find((option) => option.value === life)
+      .config.tiers.map((tier) => tier.label);
+  assert.ok(!tiers().includes("T0+"));
   craft = apply(craft, { kind: "priceless", value: true });
   assert.equal(craft.rare.level, "100");
-  assert.ok(
-    equipmentCrafterView(craft, 1, preview).body.affixes[0].config.tier.options.some((o) => /T0\+/.test(o.label)),
-  );
-  const vorax = apply(newEquipmentCraft("vorax"), { kind: "voraxBase", value: "Vorax Limb: Chest" });
-  form = equipmentCrafterView(vorax, 1, preview).body;
+  assert.ok(tiers().includes("T0+"));
+  form = equipmentCrafterView(voraxCraft(), 1, preview).body;
   assert.deepEqual([form.levelMax, form.priceless], [100, null]);
-});
-
-test("rare: a family or a base affix one slot holds is not offered to its siblings", () => {
-  const life = craftedFamily("[Basic Affix] +# Max Life");
-  const craft = apply(
-    rareCraft(),
-    { kind: "affixFamily", index: 0, value: life },
-    { kind: "baseAffix", index: 0, value: "+(54–74) Max Life" },
-  );
-  const form = equipmentCrafterView(craft, 1, preview).body;
-  const families = (index) => form.affixes[index].families.map((option) => option.value);
-  assert.ok(families(0).includes(life), "its own slot keeps it");
-  assert.ok(!families(1).includes(life) && !families(2).includes(life));
-  assert.ok(form.baseAffixes[0].options.some((option) => option.value === "+(54–74) Max Life"));
-  assert.ok(!form.baseAffixes[1].options.some((option) => option.value === "+(54–74) Max Life"));
-  assert.equal(families(3).length, equipmentCrafterView(rareCraft(), 1, preview).body.affixes[3].families.length);
 });
 
 test("rare: an affix list checks up to three a side, refuses a family without a tier, and moves the slots up", () => {
@@ -320,4 +448,30 @@ test("rare: the Corroded check is kept on the crafted item and back in the form 
   assert.equal(item.corroded, true);
   assert.equal(equipmentCraftFromItem(item, "").rare.corroded, true);
   assert.equal("corroded" in craftedRareItem(rareCraft()), false);
+});
+
+test("Craft opens on the kind of item; the chosen kind's path starts with that step, which goes back to it", () => {
+  let view = equipmentCrafterView(newCraftChoice(), 1, preview);
+  assert.equal(view.title, "Craft Item");
+  assert.deepEqual(
+    [view.body.kind, view.body.step, view.body.cards.map((card) => card.value)],
+    ["craftPick", "mode", ["rare", "legendary", "vorax"]],
+  );
+  let craft = apply(newCraftChoice(), { kind: "craftMode", value: "vorax" });
+  view = equipmentCrafterView(craft, 1, preview);
+  assert.equal(view.title, "Craft Vorax Item");
+  assert.deepEqual(view.body.path[0], { label: "Craft", step: "mode" });
+  craft = apply(craft, { kind: "repick", step: "mode" });
+  assert.equal(craft.choosing, true);
+  const legendary = equipmentCrafterView(
+    apply(newCraftChoice(), { kind: "craftMode", value: "legendary" }),
+    1,
+    preview,
+  );
+  assert.deepEqual(
+    legendary.body.browse.path.map((crumb) => crumb.label),
+    ["Craft", "Item groups"],
+  );
+  const edit = equipmentCraftFromItem(craftedRareItem(rareCraft()), "");
+  assert.notEqual(equipmentCrafterView({ ...edit, editingId: "x" }, 1, preview).body.path[0].label, "Craft");
 });

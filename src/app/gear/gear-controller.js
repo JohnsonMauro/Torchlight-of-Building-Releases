@@ -43,6 +43,7 @@ import {
 } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
 import { towerSequenceChoices } from "./tower-sequence-options.js";
+import { sortedInventory } from "./inventory-sort.ts";
 import {
   modifierRollRange,
   modifierRollRanges,
@@ -56,6 +57,7 @@ import {
   craftedLegendaryItem,
   craftedRareItem,
   equipmentCraftFromItem,
+  newCraftChoice,
   newEquipmentCraft,
 } from "./equipment-craft.ts";
 import {
@@ -110,6 +112,7 @@ export const gearCommands = {
   editInventoryItem: (id) => openInventoryItemEditor(inventoryItemById(id)),
   duplicateInventoryItem,
   resetEquipment,
+  sortInventory,
   openEquipmentCrafter,
   changeEquipmentCraft,
   addCraftedEquipment,
@@ -245,6 +248,13 @@ function saveInventoryItemEdit() {
     if (!legendarySource)
       item.affixCount =
         Math.max(0, item.modifiers.length - (base?.modifiers?.length || 0)) + item.corrosionModifiers.length;
+    // Its equipped copies follow (the calculation reads them), as Save Changes in the crafter does.
+    for (const [slot, override] of Object.entries(plannerState.equipmentOverrides || {}))
+      if (override.sourceInventoryId === item.id)
+        plannerState.equipmentOverrides[slot] = {
+          ...structuredClone(equippedOverride(item)),
+          sourceInventoryId: item.id,
+        };
     inventoryItemEditing = false;
     persistPlannerState();
     renderCandidateViews();
@@ -337,6 +347,11 @@ function duplicateInventoryItem(id) {
   showToast(`${source.name} duplicated`);
   return true;
 }
+// The Inventory's Sort order: the game's bag order (src/app/gear/inventory-sort.ts), kept in the saved build.
+function sortInventory() {
+  plannerState.equipmentInventory = sortedInventory(plannerState.equipmentInventory || []);
+  persistPlannerState();
+}
 function resetEquipment() {
   equipmentSlots.forEach(([slot]) => disabledEquipmentSlots.add(slot));
   plannerState.equipmentOverrides = {};
@@ -352,8 +367,9 @@ function showEquipmentCrafter(craft) {
   viewSourceChanged("equipmentCrafter");
   openDialog("equipment-crafter");
 }
+// The Gear section's Craft: the crafter on its first step (the kind of item); a mode opens that kind's picker.
 function openEquipmentCrafter(mode) {
-  showEquipmentCrafter(newEquipmentCraft(mode));
+  showEquipmentCrafter(mode ? newEquipmentCraft(mode) : newCraftChoice());
 }
 function equipmentCrafterSource() {
   return equipmentCrafterView(equipmentCraft, equipmentCrafterSession, equipmentPreviewView);
@@ -521,14 +537,18 @@ function editorLegendaryLines(item, source) {
       resolved = editingLegendaryLineText(source, index),
       values = rollValuesFromText(template, resolved) || ranges.map(preferredModifierRoll),
       pool = placeholderPool(source.id, index),
-      tiers = corroded ? null : legendaryLineTiers(source.id, index),
+      corrodedLine = legendaryCorrodedModifiersSs13[source.id]?.[index],
+      // Its tiers also while corroded (the chips switch back), or only T1 when it has one range but a corroded form.
+      tiers =
+        legendaryLineTiers(source.id, index) ?? (corrodedLine ? [{ tier: 1, text: source.modifiers[index] }] : null),
       tier = tiers?.some((entry) => entry.tier === Number(editingTierChoices.get(index)))
         ? Number(editingTierChoices.get(index))
         : tiers?.[0].tier;
     return {
       index,
       corroded,
-      canCorrode: Boolean(legendaryCorrodedModifiersSs13[source.id]?.[index]),
+      canCorrode: Boolean(corrodedLine),
+      corrodedText: corrodedLine ? displayTexts(`T0 · ${corrodedLine.replace(/(\d|\))\s+%/g, "$1%")}`) : null,
       text: modifierTextView(resolved),
       value: displayTexts(resolved),
       ring: source.id === "Folklore_of_Locking_Fingers" && index === 2 ? editingFolkloreRingOption : null,

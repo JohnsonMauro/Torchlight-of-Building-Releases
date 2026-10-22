@@ -1,7 +1,7 @@
 // Gear section of the Build page: the ten equipped slots, the Inventory, equipping and unequipping (right-click, the item
-// dialog, drags in both directions), the card tools, Reset Gear and the craft buttons. Written against the legacy section
-// before it moves to React, so both must pass it unchanged. The golden-master Youga build has an item in every slot, each
-// from its Inventory (two Headless Cleric Wands, Restless Glacier as Ring 2).
+// dialog, drags in both directions), the card tools, Reset Gear and Craft. The golden-master Youga build has an item in
+// every slot, each from its Inventory (two Headless Cleric Wands, Restless Glacier as Ring 2); an equipped item sits in its
+// slot only, so the Inventory shows none of them. LOOSE leaves three of them unequipped, in the Inventory.
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { PlannerPage } from "./pages/planner-page.js";
@@ -26,6 +26,12 @@ const SLOTS = [
 // the page).
 test.use({ viewport: { width: 1440, height: 1300 } });
 
+/** The Youga build with Ring 2 (Restless Glacier), the gloves (Ice Pulse) and the necklace (Old Grudge) unequipped. */
+const LOOSE = {
+  ...youga,
+  disabledEquipmentSlots: [...(youga.disabledEquipmentSlots ?? []), "rightRing", "gloves", "necklace"],
+};
+
 async function openGear(page, state = youga) {
   const planner = new PlannerPage(page);
   await planner.open(state);
@@ -34,10 +40,10 @@ async function openGear(page, state = youga) {
   return { planner, gear };
 }
 
-test("lists the equipped items and the Inventory", async ({ page }) => {
+test("lists the equipped items; the Inventory holds the items not equipped", async ({ page }) => {
   const { planner, gear } = await openGear(page);
-  await expect(gear.equippedCount()).toHaveText("10/10");
-  await expect(gear.inventoryCount()).toHaveText("(10)");
+  await expect(gear.inventoryCount()).toHaveText("(0)");
+  await expect(gear.cards()).toHaveCount(0);
   await expect(gear.slots()).toHaveCount(10);
   await expect(gear.slot("helmet")).toContainText("Helmet");
   await expect(gear.slot("helmet")).toContainText("Blind Vision");
@@ -46,8 +52,9 @@ test("lists the equipped items and the Inventory", async ({ page }) => {
   await expect(gear.slot("rightRing")).toContainText("Restless Glacier");
   await expect(gear.slot("secondaryHand")).toContainText("Headless Cleric Wand");
   await expect(gear.slot("helmet").locator("img")).toHaveAttribute("src", /\.webp$/);
-  await expect(gear.cards()).toHaveCount(10);
-  await expect(gear.inventory().getByText("Equipped", { exact: true })).toHaveCount(10);
+  await gear.slot("helmet").click({ button: "right" });
+  await expect(gear.inventoryCount()).toHaveText("(1)");
+  await expect(gear.cards()).toHaveCount(1);
   await expect(gear.card("Blind Vision")).toContainText("Lv.");
   await expect(gear.cardTool("Blind Vision", "Edit item")).toBeVisible();
   await expect(gear.cardTool("Blind Vision", "Duplicate item")).toBeVisible();
@@ -61,14 +68,13 @@ test("an empty build shows empty slots and an empty Inventory", async ({ page })
     equipmentOverrides: {},
     equipmentInventory: [],
   });
-  await expect(gear.equippedCount()).toHaveText("0/10");
   await expect(gear.inventoryCount()).toHaveText("(0)");
   for (const key of SLOTS) await expect(gear.slot(key)).toHaveClass(/\bdisabled\b/);
   await expect(gear.slot("helmet")).toContainText("Empty");
   await expect(gear.slot("helmet")).toContainText("Select slot");
   await expect(gear.slot("helmet")).toHaveAttribute("title", "Select this slot, then choose an Inventory item");
   await expect(gear.cards()).toHaveCount(0);
-  await expect(gear.inventory()).toContainText("No items crafted yet");
+  await expect(gear.inventory()).toContainText("No items in the Inventory");
   await planner.expectNoErrors();
 });
 
@@ -78,19 +84,17 @@ test("right-clicking an equipped slot unequips it; right-clicking its Inventory 
   const { planner, gear } = await openGear(page);
   await gear.slot("helmet").click({ button: "right" });
   await expect(gear.toast()).toHaveText("Helmet unequipped");
-  await expect(gear.equippedCount()).toHaveText("9/10");
   await expect(gear.slot("helmet")).toHaveClass(/\bdisabled\b/);
   await expect(gear.slot("helmet")).toContainText("Empty");
-  await expect(gear.card("Blind Vision")).not.toContainText("Equipped");
+  await expect(gear.card("Blind Vision")).toBeVisible();
   expect((await gear.stored()).disabled).toContain("helmet");
   // The context menu of the page does not open.
   await expect(gear.itemDialog()).not.toBeVisible();
 
   await gear.cardButton("Blind Vision").click({ button: "right" });
   await expect(gear.toast()).toHaveText("Blind Vision equipped");
-  await expect(gear.equippedCount()).toHaveText("10/10");
   await expect(gear.slot("helmet")).toContainText("Blind Vision");
-  await expect(gear.card("Blind Vision")).toContainText("Equipped");
+  await expect(gear.card("Blind Vision")).toHaveCount(0);
   const stored = await gear.stored();
   expect(stored.disabled).not.toContain("helmet");
   expect(stored.overrides.helmet.sourceInventoryId).toBe("gear-game-log-helmet");
@@ -127,18 +131,18 @@ test("clicking an equipped slot opens its item, whose Unequip takes it off", asy
   await expect(gear.toast()).toHaveText("Blind Vision unequipped");
   await expect(gear.itemDialog()).not.toBeVisible();
   await expect(gear.slot("helmet")).toHaveClass(/\bdisabled\b/);
-  await expect(gear.equippedCount()).toHaveText("9/10");
+  await expect(gear.card("Blind Vision")).toBeVisible();
   await planner.expectNoErrors();
 });
 
 test("clicking an Inventory card opens the item; its tools, and the dialog's Copy, edit and duplicate it", async ({
   page,
 }) => {
-  const { planner, gear } = await openGear(page);
+  const { planner, gear } = await openGear(page, LOOSE);
   await gear.cardButton("Ice Pulse").click();
   await expect(gear.itemDialog()).toBeVisible();
   await expect(gear.itemDialogTitle()).toHaveText("Ice Pulse");
-  await expect(gear.itemDialog().getByRole("button", { name: "Unequip", exact: true })).toBeVisible();
+  await expect(gear.itemDialog().getByRole("button", { name: "Equip", exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(gear.itemDialog()).not.toBeVisible();
 
@@ -151,9 +155,8 @@ test("clicking an Inventory card opens the item; its tools, and the dialog's Cop
 
   await gear.cardTool("Ice Pulse", "Duplicate item").click();
   await expect(gear.toast()).toHaveText("Ice Pulse duplicated");
-  await expect(gear.inventoryCount()).toHaveText("(11)");
+  await expect(gear.inventoryCount()).toHaveText("(4)");
   await expect(gear.card("Ice Pulse Copy")).toBeVisible();
-  await expect(gear.card("Ice Pulse Copy")).not.toContainText("Equipped");
   await expect(gear.itemDialog()).not.toBeVisible();
   const stored = await gear.stored();
   expect(stored.inventory).toHaveLength(11);
@@ -164,7 +167,7 @@ test("clicking an Inventory card opens the item; its tools, and the dialog's Cop
   await gear.itemDialog().getByRole("button", { name: "Copy", exact: true }).click();
   await expect(gear.toast()).toHaveText("Old Grudge duplicated");
   await expect(gear.itemDialog()).not.toBeVisible();
-  await expect(gear.inventoryCount()).toHaveText("(12)");
+  await expect(gear.inventoryCount()).toHaveText("(5)");
   await expect(gear.card("Old Grudge Copy")).toBeVisible();
   await planner.expectNoErrors();
 });
@@ -173,7 +176,6 @@ test("Reset Gear empties every slot and keeps the Inventory", async ({ page }) =
   const { planner, gear } = await openGear(page);
   await gear.button("Reset Gear").click();
   await expect(gear.toast()).toHaveText("Gear reset to empty");
-  await expect(gear.equippedCount()).toHaveText("0/10");
   for (const key of SLOTS) await expect(gear.slot(key)).toHaveClass(/\bdisabled\b/);
   await expect(gear.cards()).toHaveCount(10);
   await expect(gear.inventory().getByText("Equipped", { exact: true })).toHaveCount(0);
@@ -183,12 +185,11 @@ test("Reset Gear empties every slot and keeps the Inventory", async ({ page }) =
   await planner.expectNoErrors();
 });
 
-test("the craft buttons open the crafter in their mode", async ({ page }) => {
+test("Craft opens the crafter on the kind of item, each kind's picker after it", async ({ page }) => {
   const { planner, gear } = await openGear(page);
   for (const name of ["Craft Rare Item", "Craft Legendary", "Craft Vorax Item"]) {
-    await gear.button(name).click();
+    await gear.startCraft(name);
     await expect(gear.crafter()).toBeVisible();
-    await expect(gear.crafterTitle()).toHaveText(name);
     await page.keyboard.press("Escape");
     await expect(gear.crafter()).not.toBeVisible();
   }
@@ -196,7 +197,7 @@ test("the craft buttons open the crafter in their mode", async ({ page }) => {
 });
 
 test("dragging an Inventory card onto a slot equips it there", async ({ page }) => {
-  const { planner, gear } = await openGear(page);
+  const { planner, gear } = await openGear(page, LOOSE);
   // Restless Glacier is Ring 2: on Ring 1 it replaces Depicted Ward Ring, and Ring 2 is left empty.
   await gear.drag(gear.cardButton("Restless Glacier"), gear.slot("leftRing"), {
     during: async () => {
@@ -251,7 +252,7 @@ test("dragging an equipped weapon onto the other weapon slot moves it there", as
 });
 
 test("a drop on a slot the item does not fit returns it", async ({ page }) => {
-  const { planner, gear } = await openGear(page);
+  const { planner, gear } = await openGear(page, LOOSE);
   const before = await gear.stored();
   await gear.drag(gear.cardButton("Ice Pulse"), gear.slot("helmet"), {
     during: async () => {
@@ -278,7 +279,7 @@ test("an equipped item dropped on a slot it does not fit stays, and its slot ope
 });
 
 test("hovering a slot and an Inventory card shows the item's tooltip", async ({ page }) => {
-  const { planner, gear } = await openGear(page);
+  const { planner, gear } = await openGear(page, LOOSE);
   // The planner ignores hovers for a moment after a scroll, and hover() scrolls the element into view first.
   await expect(async () => {
     await page.mouse.move(0, 0);

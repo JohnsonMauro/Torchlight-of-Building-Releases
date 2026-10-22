@@ -7,10 +7,12 @@ interface SectionHeadingProps {
   help?: string;
   /** The figure on the right: a small caption over a large value. */
   total?: { label: string; id: string; value: ReactNode };
+  /** The section's buttons on the right (the Gear section's Craft). */
+  actions?: ReactNode;
 }
 
-/** A section's heading strip: the accent title and its "?", and the section's headline figure on the right. */
-export function SectionHeading({ title, help, total }: SectionHeadingProps) {
+/** A section's heading strip: the accent title and its "?", and the section's headline figure or buttons on the right. */
+export function SectionHeading({ title, help, total, actions }: SectionHeadingProps) {
   return (
     <div className="flex min-h-[50px] items-center justify-between gap-5 border-b border-line bg-raised px-4 py-3">
       <h1 className="m-0 flex items-center">
@@ -25,6 +27,7 @@ export function SectionHeading({ title, help, total }: SectionHeadingProps) {
           </strong>
         </div>
       ) : null}
+      {actions ? <div className="flex flex-wrap justify-end gap-1.75">{actions}</div> : null}
     </div>
   );
 }

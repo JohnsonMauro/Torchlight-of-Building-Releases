@@ -48,20 +48,12 @@ function withBaseSlot() {
   return state;
 }
 
-test("a socket opens the inventory: every memory with its type, rarity and slot", async ({ page }) => {
+test("a socket opens the memories of its type, each with its rarity and slot", async ({ page }) => {
   const { planner, hero } = await open(page);
   await openSocket(page, hero, "Manage Memory of Discipline");
-  await expect(title(page)).toHaveText("Hero Memories");
-  await expect(items(page).locator("strong")).toHaveText([
-    "Memory of Discipline",
-    "Memory of Progress",
-    "Memory of Origin",
-  ]);
-  await expect(items(page).locator("small")).toHaveText([
-    "Memory of Discipline · legendary · Equipped at Lv.60",
-    "Memory of Progress · legendary · Equipped at Lv.75",
-    "Memory of Origin · legendary · Equipped at Lv.45",
-  ]);
+  await expect(title(page)).toHaveText("Hero Memories · Memory of Discipline");
+  await expect(items(page).locator("strong")).toHaveText(["Memory of Discipline"]);
+  await expect(items(page).locator("small")).toHaveText(["Memory of Discipline · legendary · Equipped at Lv.60"]);
   await expect(item(page, 0).getByRole("button")).toHaveText(["Unequip", "Copy", "✎", "×"]);
   await expect(item(page, 0).getByRole("button", { name: "Edit Memory of Discipline" })).toBeVisible();
   await expect(item(page, 0).locator("img")).toHaveAttribute("src", /\S/);
@@ -99,7 +91,7 @@ test("Unequip slot empties the socket the dialog was opened for", async ({ page 
   await footer(page).getByRole("button", { name: "Unequip slot" }).click();
   await expect(hero.toast()).toHaveText("Hero memory unequipped");
   expect(equippedAt(await hero.stored(), "level75")).toBeUndefined();
-  await expect(item(page, 1).locator("small")).toHaveText("Memory of Progress · legendary");
+  await expect(item(page, 0).locator("small")).toHaveText("Memory of Progress · legendary");
   await expect(footer(page).getByRole("button")).toHaveText(["Craft Memory"]);
   await planner.expectNoErrors();
 });
@@ -107,19 +99,19 @@ test("Unequip slot empties the socket the dialog was opened for", async ({ page 
 test("Copy adds a copy at the end; equipping the copy takes the original's socket", async ({ page }) => {
   const { planner, hero } = await open(page);
   await openSocket(page, hero, "Manage Memory of Origin");
-  await item(page, 2).getByRole("button", { name: "Copy Memory of Origin" }).click();
+  await item(page, 0).getByRole("button", { name: "Copy Memory of Origin" }).click();
   await expect(hero.toast()).toHaveText("Memory of Origin copied");
-  await expect(items(page)).toHaveCount(4);
-  await expect(item(page, 3).locator("small")).toHaveText("Memory of Origin · legendary");
+  await expect(items(page)).toHaveCount(2);
+  await expect(item(page, 1).locator("small")).toHaveText("Memory of Origin · legendary");
   const stored = await hero.stored();
   expect(stored.memoryInventory).toHaveLength(4);
   const copy = stored.memoryInventory[3];
   expect(copy.id).not.toBe("game-log-memory-1");
   expect({ ...copy, id: "" }).toEqual({ ...stored.memoryInventory[2], id: "" });
 
-  await item(page, 3).getByRole("button", { name: "Equip" }).click();
-  await expect(item(page, 3).locator("small")).toHaveText("Memory of Origin · legendary · Equipped at Lv.45");
-  await expect(item(page, 2).locator("small")).toHaveText("Memory of Origin · legendary");
+  await item(page, 1).getByRole("button", { name: "Equip" }).click();
+  await expect(item(page, 1).locator("small")).toHaveText("Memory of Origin · legendary · Equipped at Lv.45");
+  await expect(item(page, 0).locator("small")).toHaveText("Memory of Origin · legendary");
   // The original was stored under the level alone (as the game-log import writes it): it leaves the socket too, so
   // only one memory counts at Lv.45.
   const after = await hero.stored();
@@ -132,10 +124,10 @@ test("Copy adds a copy at the end; equipping the copy takes the original's socke
 
 test("Delete removes a memory and empties its socket", async ({ page }) => {
   const { planner, hero } = await open(page);
-  await openSocket(page, hero, "Manage Memory of Discipline");
-  await item(page, 1).getByRole("button", { name: "Delete Memory of Progress" }).click();
+  await openSocket(page, hero, "Manage Memory of Progress");
+  await item(page, 0).getByRole("button", { name: "Delete Memory of Progress" }).click();
   await expect(hero.toast()).toHaveText("Memory deleted");
-  await expect(items(page).locator("strong")).toHaveText(["Memory of Discipline", "Memory of Origin"]);
+  await expect(items(page)).toHaveCount(0);
   const stored = await hero.stored();
   expect(stored.memoryInventory.map((memory) => memory.id)).toEqual(["game-log-memory-2", "game-log-memory-1"]);
   expect(equippedAt(stored, "level75")).toBeUndefined();
@@ -155,9 +147,9 @@ test("a right-click unequips an equipped memory, or equips one into its open soc
   expect(equippedAt(await hero.stored(), "level60")).toBe("game-log-memory-2");
   // A copy has no open socket while the original holds it.
   await item(page, 0).getByRole("button", { name: "Copy Memory of Discipline" }).click();
-  await item(page, 3).click({ button: "right" });
+  await item(page, 1).click({ button: "right" });
   await expect(hero.toast()).toHaveText("No open compatible memory slot");
-  await expect(item(page, 3)).toHaveClass(/\bincompatible\b/);
+  await expect(item(page, 1)).toHaveClass(/\bincompatible\b/);
   await expect(item(page, 0)).not.toHaveClass(/\bincompatible\b/);
   await planner.expectNoErrors();
 });
@@ -169,11 +161,11 @@ test("only one revived memory can be equipped", async ({ page }) => {
   state.hero.memoryInventory.push(revived);
   const { planner, hero } = await open(page, state);
   await openSocket(page, hero, "Manage Memory of Progress");
-  const equip = item(page, 3).getByRole("button", { name: "Equip" });
+  const equip = item(page, 1).getByRole("button", { name: "Equip" });
   await expect(equip).toBeDisabled();
   await expect(equip).toHaveAttribute("title", "Only one revived memory can be equipped");
-  await expect(item(page, 3)).toHaveClass(/\bincompatible\b/);
-  await expect(item(page, 1).getByRole("button", { name: "Unequip" })).toBeEnabled();
+  await expect(item(page, 1)).toHaveClass(/\bincompatible\b/);
+  await expect(item(page, 0).getByRole("button", { name: "Unequip" })).toBeEnabled();
   await planner.expectNoErrors();
 });
 
@@ -233,12 +225,14 @@ test("with no memories the inventory offers to craft one; the crafter's Cancel c
   });
   const { planner, hero } = await open(page, state);
   await openSocket(page, hero, "Add level 45 hero memory");
-  await expect(dialog(page).locator(".hero-memory-empty")).toHaveText("No memories crafted yetCraft your first Memory");
+  await expect(dialog(page).locator(".hero-memory-empty")).toHaveText(
+    /^No (memories|Memory of \w+) crafted yetCraft your first Memory$/,
+  );
   await dialog(page).getByRole("button", { name: "Craft your first Memory" }).click();
   await expect(title(page)).toHaveText("Craft Memory");
   await expect(dialog(page).locator(".hero-memory-craft")).toBeVisible();
   await dialog(page).getByRole("button", { name: "Cancel" }).click();
-  await expect(title(page)).toHaveText("Hero Memories");
+  await expect(title(page)).toHaveText("Hero Memories · Memory of Origin");
   await footer(page).getByRole("button", { name: "Craft Memory" }).click();
   await expect(title(page)).toHaveText("Craft Memory");
   await planner.expectNoErrors();
@@ -255,9 +249,9 @@ test("Edit opens the crafter on that memory", async ({ page }) => {
 
 test("hovering a memory shows its tooltip", async ({ page }) => {
   const { planner, hero } = await open(page);
-  await openSocket(page, hero, "Manage Memory of Discipline");
+  await openSocket(page, hero, "Manage Memory of Progress");
   await expect(async () => {
-    await item(page, 1).hover();
+    await item(page, 0).hover();
     await expect(hero.tooltip()).toBeVisible({ timeout: 1000 });
   }).toPass();
   await expect(hero.tooltip()).toContainText("Memory of Progress");
@@ -360,8 +354,9 @@ test("the crafter starts on the socket's type; Craft waits for a rarity and a ba
   await baseStat.selectOption("+90 Strength");
   await craftButton(page).click();
   await expect(hero.toast()).toHaveText("Memory of Origin saved");
-  await expect(title(page)).toHaveText("Hero Memories");
-  await expect(items(page).locator("small")).toHaveText(["Memory of Origin · epic"]);
+  // Back on the Lv.60 socket's list (Memory of Discipline): the new Memory of Origin is in the inventory, not listed here.
+  await expect(title(page)).toHaveText("Hero Memories · Memory of Discipline");
+  await expect(items(page)).toHaveCount(0);
   const [saved] = (await hero.stored()).memoryInventory;
   expect(saved).toMatchObject({
     name: "Memory of Origin",
@@ -495,13 +490,17 @@ test("Edit changes a memory in place and its socket follows; another type takes 
   stored = await hero.stored();
   expect(equippedAt(stored, "level60")).toBeUndefined();
   expect(stored.memories.level60).toBe("");
-  await expect(item(page, 0).locator("small")).toHaveText("Memory of Origin · legendary");
+  expect(stored.memoryInventory[0].type).toBe("Memory of Origin");
+  // Now a Memory of Origin, it leaves this socket's list (Memory of Discipline).
+  await expect(items(page)).toHaveCount(0);
 
   // Cancel drops the changes.
-  await item(page, 1).getByRole("button", { name: "Edit Memory of Progress" }).click();
+  await dialog(page).getByRole("button", { name: "Close hero memories" }).click();
+  await openSocket(page, hero, "Manage Memory of Progress");
+  await item(page, 0).getByRole("button", { name: "Edit Memory of Progress" }).click();
   await choice(page, "rarities", "Normal").click();
   await crafter(page).getByRole("button", { name: "Cancel" }).click();
-  await expect(item(page, 1).locator("small")).toHaveText("Memory of Progress · legendary · Equipped at Lv.75");
+  await expect(item(page, 0).locator("small")).toHaveText("Memory of Progress · legendary · Equipped at Lv.75");
   expect((await hero.stored()).memoryInventory[1].rarity).toBe("legendary");
   await planner.expectNoErrors();
 });
