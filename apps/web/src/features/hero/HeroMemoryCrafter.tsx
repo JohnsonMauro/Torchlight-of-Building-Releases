@@ -28,6 +28,7 @@ import {
 } from "./hero-memory-classes";
 import { RangeInput } from "../../ui/RangeInput";
 import { RANGE_FIELD, RANGE_NUMBER } from "../../ui/range-classes";
+import { KeywordText } from "../../ui/KeywordText";
 
 const commands = plannerCommands;
 const craftAction = "min-h-10 flex-1 text-xs font-bold tracking-wider uppercase";
@@ -149,7 +150,9 @@ function AffixRows({ heading, rows }: { heading: string; rows: MemoryPreviewView
       {rows.map((row) => (
         <div key={row.index} className={`memory-affix-row ${affixRow}`}>
           {row.tier !== null ? <i className={tierBadgeClasses(`t${row.tier}`)}>{`T${row.tier}`}</i> : null}
-          <span>{row.text}</span>
+          <span>
+            <KeywordText text={row.text} />
+          </span>
         </div>
       ))}
     </>
@@ -183,7 +186,7 @@ function Preview({ preview }: { preview: MemoryPreviewView }) {
       </p>
       <h4>Implicit</h4>
       <div className={`memory-implicit ${preview.waxAndWane ? "wax-applied font-bold text-ok" : ""}`}>
-        {preview.implicit}
+        <KeywordText text={preview.implicit} />
       </div>
       {preview.waxAndWane ? (
         <>

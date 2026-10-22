@@ -27,6 +27,7 @@ import { CraftColumn } from "../../ui/CraftColumn";
 import { CraftSection } from "../../ui/CraftSection";
 import { ItemPreview, LegendaryModControl, type LegendaryLineChange } from "./crafter-parts";
 import { CraftPath, PickCards } from "./CraftPicker";
+import { KeywordText } from "../../ui/KeywordText";
 
 // The list column: the search, the results (they scroll), the count.
 /** The search row, the path while browsing (it stays above the scrolling list), the list, the count. */
@@ -171,7 +172,9 @@ function CorrosionRoll({ corroded }: { corroded: NonNullable<LegendaryConfigView
     <div className={`fixed-mod corrosion-affix ${MOD_BOX_CORRODED}`}>
       <span className="flex items-start gap-2.5">
         <b className={MOD_TAG_CORRODED}>Corroded</b>
-        <span data-corrosion-text="">{corroded.text}</span>
+        <span data-corrosion-text="">
+          <KeywordText text={corroded.text} />
+        </span>
       </span>
       {corroded.roll !== null ? (
         <input

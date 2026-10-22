@@ -42,6 +42,7 @@ import {
   SLATE_SECTION,
   SLATE_TRANSFORM,
 } from "../../ui/talent-slate-styles";
+import { KeywordText } from "../../ui/KeywordText";
 
 const change = (craftChange: SlateCraftChange) => plannerCommands().changeSlateCrafter(craftChange);
 const TABS: [SlateTab, string][] = [
@@ -284,7 +285,9 @@ function CraftForm({ form, editing }: { form: SlateCraftFormView; editing: boole
                         className={`${item.limited ? `max-one-divinity ${SLATE_AFFIX_LIMITED}` : ""} ${SLATE_AFFIX_ITEM}`}
                       >
                         <small className={SLATE_AFFIX_TREE}>{item.tree}</small>
-                        <span className="block">{item.effect}</span>
+                        <span className="block">
+                          <KeywordText text={item.effect} />
+                        </span>
                         {limitedNote(item)}
                       </li>
                     ))}
@@ -446,7 +449,9 @@ function LegendaryForm({ form, editing }: { form: SlateLegendaryFormView; editin
                     >
                       {item.core ? <strong className={CORE_BADGE}>Core Talent</strong> : null}
                       <small className={SLATE_AFFIX_TREE}>{item.tree}</small>
-                      <span className="block">{item.effect}</span>
+                      <span className="block">
+                        <KeywordText text={item.effect} />
+                      </span>
                       {item.limited ? <strong className={MAX_DIVINITY_BADGE}>MAX ACTIVE: 1</strong> : null}
                     </li>
                   ))}

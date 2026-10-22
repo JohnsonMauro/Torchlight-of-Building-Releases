@@ -7,6 +7,7 @@ import { Artwork } from "../../ui/Artwork";
 import { useViewSource } from "../../ui/use-view-source";
 import { PICKER_CLOSE, PICKER_HEAD, PICKER_TITLE } from "../../ui/talent-slate-styles";
 import { useRegisteredDialog } from "../../ui/dialog-registry";
+import { KeywordText } from "../../ui/KeywordText";
 
 const OPTION =
   "grid cursor-pointer grid-cols-[64px_1fr] items-center gap-4 rounded-md border p-3.5 text-left text-text enabled:hover:border-accent enabled:hover:bg-accent/10 focus-visible:border-accent focus-visible:outline-none off:cursor-not-allowed off:opacity-50";
@@ -51,7 +52,9 @@ export function CoreTalentPickerDialog() {
             <Artwork src={option.art} alt={option.name} className={`core-picker-art ${ART}`} />
             <span>
               <strong className="block font-display text-base text-accent">{option.name}</strong>
-              <small className="mt-1 block text-sm leading-relaxed text-muted">{option.description}</small>
+              <small className="mt-1 block text-sm leading-relaxed text-muted">
+                <KeywordText text={option.description} />
+              </small>
             </span>
           </button>
         ))}

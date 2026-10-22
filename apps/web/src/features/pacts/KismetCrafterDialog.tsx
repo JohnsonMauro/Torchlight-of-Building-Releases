@@ -5,11 +5,13 @@
 import { useRef } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { searchMatcher } from "@legacy/app/bridge/search-match.ts";
+import { KeywordText } from "../../ui/KeywordText";
 import { RangeInput } from "../../ui/RangeInput";
 import { SearchField } from "../../ui/SearchField";
 import { useSessionState } from "../../ui/use-session-state";
 import { useViewSource } from "../../ui/use-view-source";
 import { pickCard, pickerDialog } from "../../ui/selector-classes";
+import { BoostedText } from "./BoostedText";
 import { rarityTone } from "./pact-classes";
 import { useRegisteredDialog } from "../../ui/dialog-registry";
 
@@ -98,7 +100,9 @@ export function KismetCrafterDialog() {
                     onValue={(value) => plannerCommands().setKismetRoll(roll.index, value)}
                     onCommit={(text) => plannerCommands().commitKismetRoll(roll.index, text)}
                   />
-                  <small className="text-xs text-dim">{roll.affix}</small>
+                  <small className="text-xs text-dim">
+                    <KeywordText text={roll.affix} />
+                  </small>
                 </label>
               ))
             ) : (
@@ -118,17 +122,7 @@ export function KismetCrafterDialog() {
                 <ul className="my-2 grid gap-1.5">
                   {view.preview.affixes.map((affix, index) => (
                     <li key={index} className="text-xs leading-snug text-accent-strong">
-                      {affix.effective === null ? (
-                        affix.before
-                      ) : (
-                        <>
-                          {affix.before}
-                          <span className="skill-level-bonus font-bold text-ok" title={affix.title}>
-                            {affix.effective}
-                          </span>
-                          {affix.after}
-                        </>
-                      )}
+                      <BoostedText text={affix} boostedClass="skill-level-bonus font-bold text-ok" />
                     </li>
                   ))}
                 </ul>

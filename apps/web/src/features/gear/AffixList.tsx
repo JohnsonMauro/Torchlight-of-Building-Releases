@@ -29,6 +29,7 @@ import {
   TIER_CHIP_OTHER,
   TIER_CHIPS,
 } from "./crafter-classes";
+import { KeywordText } from "../../ui/KeywordText";
 
 const change = (craftChange: CraftChange) => plannerCommands().changeEquipmentCraft(craftChange);
 
@@ -265,7 +266,7 @@ function OptionRow({
             onChange={onToggle}
           />
           <span className="min-w-0 flex-1 whitespace-pre-line">
-            {option.label}
+            <KeywordText text={option.label} />
             {option.blocked ? <small className="block text-xs text-muted">{option.blocked}</small> : null}
           </span>
         </label>

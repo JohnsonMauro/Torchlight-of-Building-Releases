@@ -1,14 +1,18 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { gameKeywordsExplained } from "@legacy/engine/text/game-keywords.js";
 import { createPortal } from "react-dom";
+import { KeywordNotes } from "../KeywordNotes";
 import { useAltHeld } from "../use-alt-held";
+import { InTooltip } from "./in-tooltip";
 import { PLANNER_TOOLTIP } from "./tooltip-classes";
 import { placeTooltip } from "./tooltip-place";
-import { cancelTooltipHide, hideTooltip, tooltipScrolled, useTooltipState } from "./tooltip-store";
+import { cancelTooltipHide, hideTooltip, tooltipScrolled, useTooltipState, type TooltipRequest } from "./tooltip-store";
 
 /**
  * The page's tooltip (what a <Tooltip> shows): placed where it opened or beside its element, following the pointer
  * (unless sticky), placed again when Alt changes its content, hidden by any scroll or press outside it. Inside a modal
- * dialog it renders in that dialog, so it shows over the modal.
+ * dialog it renders in that dialog, so it shows over the modal. The game keywords its text names (KeywordText's
+ * data-keyword) are explained under it (KeywordNotes), read from the rendered text once it is on the page.
  */
 export function TooltipHost() {
   const { request, shown } = useTooltipState();
@@ -16,6 +20,22 @@ export function TooltipHost() {
   const tooltip = useRef<HTMLDivElement>(null);
   // Where the pointer last was, so a change of content (Alt) places the tooltip there again.
   const pointer = useRef({ x: 0, y: 0 });
+  const body = useRef<HTMLDivElement>(null);
+  const [notes, setNotes] = useState<{ request: TooltipRequest | null; ids: number[] }>({ request: null, ids: [] });
+  const keywords = notes.request === request ? notes.ids : [];
+
+  // The keywords in the text as shown (Alt can change it), less the one a keyword's own tooltip is about.
+  useLayoutEffect(() => {
+    const root = body.current;
+    if (!request || !root) return;
+    const ids = (selector: string, attribute: string) =>
+      [...root.querySelectorAll<HTMLElement>(selector)].map((element) => Number(element.dataset[attribute]));
+    const title = ids("[data-keyword-title]", "keywordTitle");
+    const next = gameKeywordsExplained(ids("[data-keyword]", "keyword")).filter((id) => !title.includes(id));
+    setNotes((current) =>
+      current.request === request && current.ids.join() === next.join() ? current : { request, ids: next },
+    );
+  }, [request, altHeld]);
 
   useLayoutEffect(() => {
     if (!shown || !request || !tooltip.current) return;
@@ -26,7 +46,7 @@ export function TooltipHost() {
   useLayoutEffect(() => {
     if (shown && request && tooltip.current)
       placeTooltip(tooltip.current, request, pointer.current.x, pointer.current.y);
-  }, [altHeld, shown, request]);
+  }, [altHeld, shown, request, notes]);
 
   useEffect(() => {
     if (!shown || !request || request.sticky) return;
@@ -86,7 +106,12 @@ export function TooltipHost() {
           hideTooltip(request.anchor);
       }}
     >
-      {request?.body}
+      <InTooltip value>
+        <div ref={body} className="contents">
+          {request?.body}
+        </div>
+        {keywords.length ? <KeywordNotes ids={keywords} /> : null}
+      </InTooltip>
     </div>,
     host,
   );

@@ -3,6 +3,7 @@ import { plannerQueries } from "@legacy/app/bridge/planner-queries.js";
 import type { SkillLevelView, SkillTooltipView } from "@legacy/app/bridge/skill-tooltip-view.ts";
 import { CoverageBadge } from "../../ui/CoverageBadge";
 import { Tooltip, type TooltipAnchor } from "../../ui/tooltip/Tooltip";
+import { EffectSegments } from "./EffectSegments";
 import * as classes from "./skill-tooltip-classes";
 
 type SkillTarget = Parameters<ReturnType<typeof plannerQueries>["skillTooltip"]>[0];
@@ -77,15 +78,7 @@ export function SkillCard({ view, hint = "" }: { view: SkillTooltipView; hint?: 
             {effect.lines.map((line, position) => (
               <Fragment key={position}>
                 {position ? "\n" : null}
-                {line.segments.map((segment, part) =>
-                  segment.className ? (
-                    <span key={part} className={segment.className}>
-                      {segment.text}
-                    </span>
-                  ) : (
-                    segment.text
-                  ),
-                )}
+                <EffectSegments segments={line.segments} />
                 {line.coverage ? <CoverageBadge coverage={line.coverage} className={classes.LINE_COVERAGE} /> : null}
               </Fragment>
             ))}

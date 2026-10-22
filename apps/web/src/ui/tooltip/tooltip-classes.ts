@@ -91,6 +91,8 @@ const OTHER_KINDS = [
   // Ethereal Prism: violet.
   "[&.prism-tooltip]:w-[min(330px,calc(100vw-24px))] [&.prism-tooltip]:p-0",
   "[&.prism-tooltip]:[--tip-accent:var(--color-violet)]",
+  // A game keyword's definition: the keyword cyan.
+  "[&.keyword-tooltip]:w-[min(300px,calc(100vw-24px))] [&.keyword-tooltip]:[--tip-accent:var(--color-info)]",
   // Basic talent node: the node type's colour.
   "[&.basic-talent-tooltip]:w-[min(320px,calc(100vw-24px))] [&.basic-talent-tooltip]:p-0",
   "[&.basic-talent-tooltip]:[--tip-accent:var(--color-info)]",

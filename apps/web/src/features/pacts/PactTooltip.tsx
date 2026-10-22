@@ -1,6 +1,8 @@
-import type { BoostedTextView, PactTooltipBlock, PactTooltipView } from "@legacy/app/bridge/pact-tooltip-view.ts";
+import type { PactTooltipBlock, PactTooltipView } from "@legacy/app/bridge/pact-tooltip-view.ts";
 import { plannerQueries } from "@legacy/app/bridge/planner-queries.js";
 import { CoverageBadge } from "../../ui/CoverageBadge";
+import { KeywordText } from "../../ui/KeywordText";
+import { BoostedText } from "./BoostedText";
 import { Tooltip, type TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import * as classes from "./pact-tooltip-classes";
 import { PORTRAIT_STRIP } from "./pact-classes";
@@ -87,7 +89,7 @@ function Block({ block }: { block: PactTooltipBlock }) {
   if (block.kind === "text")
     return (
       <p className={classes.TEXT}>
-        {block.text}
+        <KeywordText text={block.text} />
         {block.coverage ? <CoverageBadge coverage={block.coverage} className={classes.INLINE_COVERAGE} /> : null}
       </p>
     );
@@ -100,18 +102,5 @@ function Block({ block }: { block: PactTooltipBlock }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-function BoostedText({ text }: { text: BoostedTextView }) {
-  if (text.effective === null) return <>{text.before}</>;
-  return (
-    <>
-      {text.before}
-      <span className={classes.BOOSTED} title={text.title}>
-        {text.effective}
-      </span>
-      {text.after}
-    </>
   );
 }

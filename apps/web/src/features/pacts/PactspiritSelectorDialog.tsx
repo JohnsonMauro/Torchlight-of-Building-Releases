@@ -15,6 +15,7 @@ import { PactspiritTooltip } from "./PactTooltip";
 import { useRegisteredDialog } from "../../ui/dialog-registry";
 import { FilterColumn } from "../../ui/FilterColumn";
 import { SearchField } from "../../ui/SearchField";
+import { KeywordText } from "../../ui/KeywordText";
 
 export function PactspiritSelectorDialog() {
   const view = useViewSource("pactspiritSelector");
@@ -47,7 +48,9 @@ export function PactspiritSelectorDialog() {
         <span className="block min-w-0 py-3 pr-3">
           <strong className="block text-sm">{entry.name}</strong>
           <small className="my-1 block text-xs text-(--pact-tone)">{entry.rarity}</small>
-          <em className="block text-xs leading-snug text-muted not-italic">{entry.description}</em>
+          <em className="block text-xs leading-snug text-muted not-italic">
+            <KeywordText text={entry.description} />
+          </em>
         </span>
       </button>
     </PactspiritTooltip>

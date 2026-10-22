@@ -9,6 +9,7 @@ import { CoverageBadge } from "../../ui/CoverageBadge";
 import { Tooltip, type TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import { PrismSections } from "./PrismSections";
 import * as classes from "./talent-tooltip-classes";
+import { KeywordText } from "../../ui/KeywordText";
 
 /** A node's tooltip (or the installed prism's, on its node): the planner's talentNodeTooltip query for this node. */
 export function TalentNodeTooltip({ node, children }: { node: TalentNodeView; children: TooltipAnchor }) {
@@ -83,7 +84,9 @@ function NodeCard({ view }: { view: TalentNodeTooltipView }) {
         ))}
         {view.description ? (
           <>
-            <p className={classes.BODY_TEXT}>{view.description.text}</p>
+            <p className={classes.BODY_TEXT}>
+              <KeywordText text={view.description.text} />
+            </p>
             <CoverageBadge coverage={view.description.coverage} className={classes.INLINE_COVERAGE} />
           </>
         ) : null}
@@ -98,7 +101,7 @@ function NodeCard({ view }: { view: TalentNodeTooltipView }) {
               <div key={index} className={`${classes.AFFIX} ${affix.active ? classes.AFFIX_ON : classes.AFFIX_OFF}`}>
                 <b className={classes.AFFIX_TIER}>{affix.tier}</b>
                 <p className={classes.AFFIX_TEXT}>
-                  {affix.text}
+                  <KeywordText text={affix.text} />
                   {affix.coverage ? (
                     <CoverageBadge coverage={affix.coverage} className={classes.INLINE_COVERAGE} />
                   ) : null}
@@ -125,7 +128,7 @@ function CoreCard({ view }: { view: CoreTalentTooltipView }) {
       <div className={classes.BODY}>
         {view.lines.map((line, index) => (
           <p key={index} className={classes.CORE_LINE}>
-            {line}
+            <KeywordText text={line} />
           </p>
         ))}
         <CoverageBadge coverage={view.coverage} className="my-0.75 inline-block px-1.5 py-0.5" />

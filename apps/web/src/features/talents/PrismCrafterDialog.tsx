@@ -20,6 +20,7 @@ import { FOOTER, FORM_HEADING } from "../../ui/talent-slate-styles";
 import { PRISM_ICON } from "./talent-classes";
 import { PrismSections } from "./PrismSections";
 import { registerDialog } from "../../ui/dialog-registry";
+import { KeywordText } from "../../ui/KeywordText";
 
 const commands = plannerCommands;
 
@@ -68,7 +69,9 @@ function InverseForm({ inverse }: { inverse: NonNullable<PrismCrafterView["inver
           <small className="mt-1 block text-xs text-grade-vorax">Ultimate</small>
         </div>
       </div>
-      <p className={`inverse-image-description ${BOX} p-3 text-sm leading-normal text-text`}>{inverse.description}</p>
+      <p className={`inverse-image-description ${BOX} p-3 text-sm leading-normal text-text`}>
+        <KeywordText text={inverse.description} />
+      </p>
       <p className={`inverse-radius my-5 ${LABEL}`}>
         Radius: <strong className="text-info">3x3</strong>
       </p>
@@ -135,7 +138,9 @@ function EtherealForm({ ethereal, query }: { ethereal: NonNullable<PrismCrafterV
         <CraftSection heading={ethereal.fixed.label} summary={ethereal.base}>
           <div className="prism-fixed grid gap-2">
             <small className={LABEL}>{ethereal.fixed.note}</small>
-            <p className={`${BOX} p-3 leading-normal`}>{ethereal.fixed.effect}</p>
+            <p className={`${BOX} p-3 leading-normal`}>
+              <KeywordText text={ethereal.fixed.effect} />
+            </p>
           </div>
         </CraftSection>
       ) : null}
@@ -206,7 +211,11 @@ function PrismPick({
               >
                 {pick.icon ? <img src={pick.icon} alt="" className="size-12 object-contain" /> : null}
                 <span className="text-sm font-bold">{pick.label}</span>
-                {line ? <small className="line-clamp-2 text-xs text-muted">{line}</small> : null}
+                {line ? (
+                  <small className="line-clamp-2 text-xs text-muted">
+                    <KeywordText text={line} />
+                  </small>
+                ) : null}
               </button>
             );
           })}

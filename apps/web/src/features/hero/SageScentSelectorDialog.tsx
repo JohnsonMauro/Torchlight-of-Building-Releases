@@ -20,6 +20,7 @@ import {
 } from "../../ui/selector-classes";
 import { useRegisteredDialog } from "../../ui/dialog-registry";
 import { SearchField } from "../../ui/SearchField";
+import { KeywordText } from "../../ui/KeywordText";
 
 export function SageScentSelectorDialog() {
   const view = useViewSource("sageScentSelector");
@@ -76,7 +77,9 @@ export function SageScentSelectorDialog() {
                     ))}
                   </small>
                 ) : (
-                  <small className={rowNote}>{entry.description}</small>
+                  <small className={rowNote}>
+                    <KeywordText text={entry.description} />
+                  </small>
                 )}
               </span>
             </button>

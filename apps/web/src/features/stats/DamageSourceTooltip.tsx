@@ -13,6 +13,7 @@ import * as slateClasses from "../slates/slate-tooltip-classes";
 import { Tooltip, type TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import type { TooltipBody } from "../../ui/tooltip/tooltip-store";
 import * as classes from "./damage-source-tooltip-classes";
+import { KeywordText } from "../../ui/KeywordText";
 
 type DamageSourceView = ReturnType<ReturnType<typeof plannerQueries>["damageSourceTooltip"]>;
 
@@ -72,7 +73,9 @@ function sourceBody(source: DamageSourceView): TooltipBody {
         body: (
           <>
             <strong className={classes.SUMMARY_TITLE}>{source.title}</strong>
-            <span className={classes.SUMMARY_BODY}>{source.body}</span>
+            <span className={classes.SUMMARY_BODY}>
+              <KeywordText text={source.body} />
+            </span>
             <small className={classes.SUMMARY_FOOT}>Source breakdown · scroll for more</small>
           </>
         ),

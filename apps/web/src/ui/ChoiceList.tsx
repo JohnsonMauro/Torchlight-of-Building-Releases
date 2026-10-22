@@ -3,6 +3,7 @@ import type { OptionView, SelectChoice } from "@legacy/app/bridge/equipment-craf
 import { searchMatcher, searchText } from "@legacy/app/bridge/search-match.ts";
 import { flatChoices } from "./choices";
 import { SearchField } from "./SearchField";
+import { KeywordText } from "./KeywordText";
 
 const CHOICE_ROW =
   "flex cursor-pointer items-start gap-2.5 rounded border border-line bg-raised px-2.5 py-2 text-sm text-text hover:border-accent";
@@ -52,7 +53,7 @@ export function ChoiceList({
             onChange={() => onChange(option.value)}
           />
           <span className="min-w-0 flex-1">
-            {option.label}
+            <KeywordText text={option.label} />
             {option.data?.optionMeta ? (
               <small className="block text-xs text-muted">{option.data.optionMeta}</small>
             ) : null}

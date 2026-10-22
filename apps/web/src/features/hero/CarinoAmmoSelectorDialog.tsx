@@ -23,6 +23,7 @@ import {
 } from "../../ui/selector-classes";
 import { useRegisteredDialog } from "../../ui/dialog-registry";
 import { SearchField } from "../../ui/SearchField";
+import { KeywordText } from "../../ui/KeywordText";
 
 export function CarinoAmmoSelectorDialog() {
   const view = useViewSource("carinoAmmoSelector");
@@ -82,7 +83,9 @@ export function CarinoAmmoSelectorDialog() {
                   <i className={rowTag}>{entry.category}</i>
                   <i className={rowTag}>{entry.exclusive}</i>
                 </small>
-                <small className={`${rowNote} line-clamp-4`}>{entry.effects}</small>
+                <small className={`${rowNote} line-clamp-4`}>
+                  <KeywordText text={entry.effects} />
+                </small>
               </span>
             </button>
           ))

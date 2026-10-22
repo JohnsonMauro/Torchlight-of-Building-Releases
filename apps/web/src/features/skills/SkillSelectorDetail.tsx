@@ -12,6 +12,8 @@ import type {
   StarsView,
 } from "@legacy/app/bridge/skill-selector-view.ts";
 import { Artwork } from "../../ui/Artwork";
+import { KeywordText } from "../../ui/KeywordText";
+import { EffectSegments } from "./EffectSegments";
 import { RangeInput } from "../../ui/RangeInput";
 import {
   CONFIG_BLOCK,
@@ -112,7 +114,9 @@ function Progression({ view }: { view: ProgressionView }) {
               <strong>{`Affix ${line.number}`}</strong>
               <span>{line.tierText}</span>
             </div>
-            <p className="text-sm">{line.text}</p>
+            <p className="text-sm">
+              <KeywordText text={line.text} />
+            </p>
             {line.choice ? (
               <label className="grid grid-cols-[auto_1fr] items-center gap-3 text-xs text-muted">
                 <span>Affix stat</span>
@@ -177,7 +181,7 @@ function Progression({ view }: { view: ProgressionView }) {
           {view.text.map((line, index) => (
             <Fragment key={index}>
               {index ? <br /> : null}
-              {line}
+              <KeywordText text={line} />
             </Fragment>
           ))}
         </p>
@@ -238,7 +242,9 @@ function Special({ view }: { view: SpecialView }) {
           ))}
         </div>
         <label className={`special-roll-label ${ROLL_LABEL}`}>
-          <span className={ROLL_LABEL_TEXT}>{view.effect}</span>
+          <span className={ROLL_LABEL_TEXT}>
+            <KeywordText text={view.effect} />
+          </span>
           <strong className={ROLL_VALUE}>{value}</strong>
         </label>
         <RollInputs roll={view.roll} output={value} onChange={(next) => plannerCommands().setSpecialRoll(next)} />
@@ -295,15 +301,7 @@ export function SkillSelectorDetail({ view }: DetailProps) {
             <h4>{`${view.name}:`}</h4>
             {view.effects.map((segments, index) => (
               <p key={index}>
-                {segments.map((segment, part) =>
-                  segment.className ? (
-                    <span key={part} className={segment.className}>
-                      {segment.text}
-                    </span>
-                  ) : (
-                    segment.text
-                  ),
-                )}
+                <EffectSegments segments={segments} />
               </p>
             ))}
           </div>

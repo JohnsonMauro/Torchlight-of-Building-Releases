@@ -5,6 +5,7 @@ import { CoverageBadge } from "../../ui/CoverageBadge";
 import { Tooltip, type TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import { RevivedEffect } from "./RevivedEffect";
 import * as classes from "./memory-tooltip-classes";
+import { KeywordText } from "../../ui/KeywordText";
 
 /** A hero memory's tooltip: one in the inventory (`inventoryId`) or the one in a slot (`tier`). */
 export function MemoryTooltip({
@@ -84,7 +85,7 @@ export function MemoryCard({ view }: { view: MemoryTooltipView }) {
               section.lines.map((line, index) =>
                 line.tier === null && section.heading === "Implicit" ? (
                   <p key={index} className={section.wax ? classes.LINE_WAX : classes.LINE}>
-                    {line.text}
+                    <KeywordText text={line.text} />
                     <CoverageBadge coverage={line.coverage} className={classes.INLINE_COVERAGE} />
                   </p>
                 ) : (
@@ -105,7 +106,9 @@ function MemoryAffix({ line }: { line: MemoryLineView }) {
   return (
     <div className={classes.AFFIX}>
       {badge ? <i className={tierBadgeClasses(tierBadgeKey(badge))}>{badge}</i> : null}
-      <span className={classes.AFFIX_TEXT}>{line.text}</span>
+      <span className={classes.AFFIX_TEXT}>
+        <KeywordText text={line.text} />
+      </span>
       <CoverageBadge coverage={line.coverage} className={classes.AFFIX_COVERAGE} />
     </div>
   );
@@ -133,7 +136,7 @@ function ScentCard({ view }: { view: ScentTooltipView }) {
       <div className={classes.SCENT_EFFECTS}>
         {view.lines.map((line, index) => (
           <p key={index} className={classes.SCENT_LINE}>
-            {line}
+            <KeywordText text={line} />
           </p>
         ))}
       </div>

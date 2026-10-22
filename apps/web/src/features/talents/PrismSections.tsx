@@ -1,6 +1,7 @@
 import type { CoverageView } from "@legacy/app/bridge/gear-item-view.ts";
 import type { PrismSectionLine, PrismSectionView } from "@legacy/app/bridge/prism-crafter-view.ts";
 import { CoverageBadge } from "../../ui/CoverageBadge";
+import { KeywordText } from "../../ui/KeywordText";
 
 /** An Inverse Image mod value's colour, by sign. */
 const SIGN_TEXT: Record<string, string> = { negative: "text-danger", positive: "text-ok" };
@@ -38,7 +39,9 @@ export function PrismSections({ sections, inverse }: { sections: Section[]; inve
               <strong className={`${line.sign} ${SIGN_TEXT[line.sign] ?? "text-muted"}`}>{line.value}</strong>{" "}
             </>
           ) : (
-            `${line.text} `
+            <>
+              <KeywordText text={line.text} />{" "}
+            </>
           )}
           {line.coverage ? <CoverageBadge coverage={line.coverage} /> : null}
         </p>

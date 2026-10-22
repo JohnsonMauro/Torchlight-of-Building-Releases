@@ -1,6 +1,7 @@
 import type { MemoryRevivedEffectView } from "@legacy/app/bridge/hero-memory-view.ts";
 import { tierBadgeClasses, tierBadgeKey } from "@legacy/app/gear/tier-badge.ts";
 import { useAltHeld } from "../../ui/use-alt-held";
+import { KeywordText } from "../../ui/KeywordText";
 
 /**
  * A memory's revived affix (the crafter's preview, the memory tooltip): its tier and effect; a Lunar Phase affix shows its
@@ -16,7 +17,7 @@ export function RevivedEffect({ effect }: { effect: MemoryRevivedEffectView }) {
       <span
         className={`memory-revived-name ${effect.special ? "font-bold text-info underline underline-offset-2" : ""}`}
       >
-        {effect.effect}
+        <KeywordText text={effect.effect} />
       </span>
       {effect.details && !altHeld ? (
         <small className="memory-revived-hint text-xs whitespace-nowrap text-muted">Hold Alt for details</small>
@@ -29,14 +30,16 @@ export function RevivedEffect({ effect }: { effect: MemoryRevivedEffectView }) {
                 key={index}
                 className="relative pl-2.5 before:absolute before:top-[0.48em] before:left-0 before:size-1 before:rounded-full before:bg-info before:content-['']"
               >
-                {line}
+                <KeywordText text={line} />
               </li>
             ))}
           </ul>
           {effect.details.exclusive !== null ? (
             <div className="memory-revived-exclusive mt-2 grid gap-0.5 border-t border-line pt-1.75 text-muted">
               <small className="text-[10px] font-bold tracking-wide text-info uppercase">Hero trait exclusive</small>
-              <span className="text-xs leading-snug">{effect.details.exclusive}</span>
+              <span className="text-xs leading-snug">
+                <KeywordText text={effect.details.exclusive} />
+              </span>
             </div>
           ) : null}
         </div>

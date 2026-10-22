@@ -4,6 +4,7 @@ import { CoverageBadge } from "../../ui/CoverageBadge";
 import { useAltHeld } from "../../ui/use-alt-held";
 import { Tooltip, type TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import * as classes from "./slate-tooltip-classes";
+import { KeywordText } from "../../ui/KeywordText";
 
 /** A slate's tooltip (`id`), on the board or in the Slate Inventory: the planner's slateTooltip query. */
 export function SlateTooltip({ id, children }: { id: string; children: TooltipAnchor }) {
@@ -122,7 +123,7 @@ function AffixText({ text }: { text: SlateAffixText }) {
   return (
     <>
       {text.tree ? <b className={`${classes.TREE} ${text.family}`}>{text.tree}</b> : null}
-      {text.rest}
+      <KeywordText text={text.rest} />
     </>
   );
 }
