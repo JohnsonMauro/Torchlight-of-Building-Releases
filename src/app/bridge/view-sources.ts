@@ -9,6 +9,7 @@ import type { FollowerPanelView, FollowerPickerCard } from "../hero/follower-pan
 import type { SkillsView } from "./skills-view-model.ts";
 import type { SlatesView } from "./slates-view-model.ts";
 import type { EquipmentView } from "./equipment-view-model.ts";
+import type { TalentPickerView } from "./talent-picker-view.ts";
 import type { TalentsView } from "./talents-view-model.ts";
 import type { HeroTraitsView } from "./hero-traits-view-model.ts";
 import type { CarinoAmmoSelectorView, SageScentSelectorView } from "./hero-dialogs-view-model.ts";
@@ -87,16 +88,10 @@ export interface ViewSources {
   sageScentSelector: DialogSession & SageScentSelectorView;
   /** Carino's Special Ammo selector: its opening, the slot and its supports. */
   carinoAmmoSelector: DialogSession & CarinoAmmoSelectorView;
-  /** The talent tree picker: the trees the open slot can take (a God tree for slot 1). */
-  talentPicker: {
-    title: string;
-    god: boolean;
-    cards: { name: string; familyClass: string; art: string; selected: boolean; points: number }[];
-  };
+  /** The talent tree picker: every god's trees, the ones the open slot can take on. */
+  talentPicker: TalentPickerView;
   /** The core talent picker: the open tree's choices for a slot, locked below the slot's points. */
   corePicker: {
-    title: string;
-    status: string;
     locked: boolean;
     options: { name: string; description: string; art: string; selected: boolean }[];
   };

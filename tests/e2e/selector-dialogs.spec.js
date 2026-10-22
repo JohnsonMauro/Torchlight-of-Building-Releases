@@ -344,28 +344,38 @@ async function openTree(page, tree) {
   return { planner, talents };
 }
 
-test("the tree picker lists the trees a slot can take with their points, the slot's tree pressed", async ({ page }) => {
+test("the tree picker shows every god's trees, the ones the slot can take on and the slot's tree pressed", async ({
+  page,
+}) => {
   const { planner, talents } = await openTree(page, "God tree");
   const picker = talents.treePicker();
-  const cards = picker.locator(".talent-picker-card");
   await talents.action("Reselect").click();
   await expect(talents.treePickerTitle()).toHaveText("Select a God tree");
-  await expect(cards.first()).toHaveClass(/\bgod-tree\b/);
+  // The game's layout: six god columns, a God tree and four class trees each.
+  await expect(talents.treePickerGods()).toHaveCount(6);
+  await expect(talents.treePickerTrees()).toHaveCount(30);
   await expect(picker.locator('.talent-picker-card[aria-pressed="true"]')).toHaveCount(1);
-  const current = picker.getByRole("button", { name: /Goddess of Knowledge/ });
+  const current = talents.treePickerTree("Goddess of Knowledge");
   await expect(current).toHaveAttribute("aria-pressed", "true");
   await expect(current).toHaveClass(/\bselected\b/);
-  await expect(current).toContainText("God tree");
-  await expect(current.locator("small")).toHaveText("28 points");
+  await expect(current).toHaveAccessibleName("Goddess of Knowledge, God tree, 28 points, in the build");
+  await expect(talents.treePickerTree("God of War")).toBeEnabled();
+  await expect(talents.treePickerTree("Ronin")).toBeDisabled();
   await picker.getByRole("button", { name: "Close talent tree selector" }).click();
   await expect(picker).toBeHidden();
 
   await talents.openTree("Class tree");
   await talents.action("Reselect").click();
   await expect(talents.treePickerTitle()).toHaveText("Select a Goddess of Knowledge class tree");
-  await expect(cards.first()).toHaveClass(/\bclass-tree\b/);
-  await expect(picker.getByRole("button", { name: /Prophet/ })).toHaveAttribute("aria-pressed", "true");
-  await expect(cards).not.toHaveCount(0);
+  await expect(talents.treePickerTree("Prophet")).toHaveAttribute("aria-pressed", "true");
+  await expect(talents.treePickerTree("Arcanist")).toBeEnabled();
+  // Another god's class tree is off, and a click on it picks nothing.
+  const other = talents.treePickerTree("Ronin");
+  await expect(other).toBeDisabled();
+  await expect(other).toHaveAccessibleName(/Tree 2 takes a Goddess of Knowledge class tree$/);
+  await other.click({ force: true });
+  await expect(picker).toBeVisible();
+  expect((await talents.stored()).selectedTrees[1]).toBe("Prophet");
   await page.keyboard.press("Escape");
   await expect(picker).toBeHidden();
   await planner.expectNoErrors();
@@ -376,8 +386,9 @@ test("the core talent picker marks the tree's choice and locks its choices below
   const picker = talents.corePicker();
   await talents.core(24).click({ button: "right" });
   await talents.core(24).click();
-  await expect(picker.locator("#core-picker-title")).toHaveText("Select 24-point core talent");
-  await expect(picker.locator("#core-picker-status")).toHaveText("Choose one core talent for Lich.");
+  await expect(picker.locator("#core-picker-title")).toHaveText("Core talent");
+  // The heading is the title alone.
+  await expect(picker.locator("#core-picker-status")).toHaveCount(0);
   const options = picker.locator(".core-picker-option");
   await expect(options).not.toHaveCount(0);
   for (const option of await options.all()) await expect(option).toBeEnabled();
@@ -385,9 +396,6 @@ test("the core talent picker marks the tree's choice and locks its choices below
   await talents.core(24).click({ button: "right" });
   await talents.action("Reset").click();
   await talents.core(24).click();
-  await expect(picker.locator("#core-picker-status")).toHaveText(
-    "0/24 points in Lich. These choices unlock at 24 points.",
-  );
   for (const option of await options.all()) await expect(option).toBeDisabled();
   await picker.getByRole("button", { name: "Close core talent selector" }).click();
   await expect(picker).toBeHidden();

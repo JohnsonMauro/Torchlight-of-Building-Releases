@@ -1,4 +1,4 @@
-// Talent trees of the Build page: the four tree tabs, the open tree's heading and actions, core talents, allocating and
+// Talent trees of the Build page: the four tree tabs, the open tree's points and actions, core talents, allocating and
 // removing points, the tree picker, and the installed prism (its dialog, removal, installation, drag). Written against
 // the legacy section before it moves to React, so both must pass it unchanged. The golden-master Youga build has
 // Goddess of Knowledge, Prophet, Marksman and Lich, with an Ethereal Prism (Haze) on Lich node 4,0.
@@ -22,21 +22,19 @@ async function openTalents(page, tree = "Tree 4", state = youga) {
   return { planner, talents };
 }
 
-test("the tabs show the build's four trees with their points; a tab opens its tree", async ({ page }) => {
+test("the tabs show the build's four trees and the total; a tab opens its tree with its points", async ({ page }) => {
   const { planner, talents } = await openTalents(page, null);
   await expect(talents.tab("God tree")).toContainText("Goddess of Knowledge");
-  await expect(talents.tab("God tree")).toContainText("28 pts");
   await expect(talents.tab("Class tree")).toContainText("Prophet");
   await expect(talents.tab("Tree 3")).toContainText("Marksman");
   await expect(talents.tab("Tree 4")).toContainText("Lich");
-  await expect(talents.tab("Tree 4")).toContainText("30 pts");
-  await expect(talents.tabs()).toContainText("109 / 115");
+  // A tab names its tree only: the points are the open tree's, beside its core talents.
+  await expect(talents.tab("God tree")).not.toContainText("pts");
+  await expect(talents.totalPoints()).toHaveText("109 / 115");
 
   await talents.openTree("Tree 4");
   await expect(talents.tab("God tree")).not.toHaveClass(/\bactive\b/);
-  await expect(talents.boardName()).toHaveText("Lich");
-  await expect(talents.boardKind()).toHaveText("Advanced panel · Prism override");
-  await expect(talents.boardPoints()).toHaveText("30 panel · 109/115 total");
+  await expect(talents.panelPoints()).toHaveText("30 Talent Points spent in current panel");
   await expect(talents.action("Install Prism")).toBeVisible();
   await expect(talents.node("1,1")).toHaveAccessibleName("Unallocated micro talent, rank 0 of 3");
   await expect(talents.node("0,0")).toHaveAccessibleName("Unallocated micro talent, rank 3 of 3, Maximum rank reached");
@@ -44,9 +42,7 @@ test("the tabs show the build's four trees with their points; a tab opens its tr
   await expect(talents.node("1,2")).toHaveClass(/\blocked\b/);
 
   await talents.openTree("God tree");
-  await expect(talents.boardName()).toHaveText("Goddess of Knowledge");
-  await expect(talents.boardKind()).toHaveText("Talent panel");
-  await expect(talents.boardPoints()).toHaveText("28 panel · 109/115 total");
+  await expect(talents.panelPoints()).toHaveText("28 Talent Points spent in current panel");
   // The God tree takes no prism.
   await expect(talents.action("Install Prism")).toBeHidden();
   await planner.expectNoErrors();
@@ -55,8 +51,7 @@ test("the tabs show the build's four trees with their points; a tab opens its tr
 test("the planner opens on the build's first tree", async ({ page }) => {
   const { planner, talents } = await openTalents(page, null);
   await expect(talents.tab("God tree")).toHaveClass(/\bactive\b/);
-  await expect(talents.boardName()).toHaveText("Goddess of Knowledge");
-  await expect(talents.boardPoints()).toHaveText("28 panel · 109/115 total");
+  await expect(talents.panelPoints()).toHaveText("28 Talent Points spent in current panel");
   await planner.expectNoErrors();
 });
 
@@ -67,17 +62,19 @@ test("a click adds a point and a right-click takes one off; a right-click on an 
   await talents.node("1,1").click();
   await expect(talents.node("1,1")).toHaveAccessibleName("Unallocated micro talent, rank 1 of 3");
   await expect(talents.node("1,1")).toHaveClass(/\ballocated\b/);
-  await expect(talents.boardPoints()).toHaveText("31 panel · 110/115 total");
+  await expect(talents.panelPoints()).toHaveText("31 Talent Points spent in current panel");
+  await expect(talents.totalPoints()).toHaveText("110 / 115");
   expect((await talents.stored()).ranks["Lich:1,1"]).toBe(1);
 
   await talents.node("1,1").click({ button: "right" });
   await expect(talents.node("1,1")).toHaveAccessibleName("Unallocated micro talent, rank 0 of 3");
-  await expect(talents.boardPoints()).toHaveText("30 panel · 109/115 total");
+  await expect(talents.panelPoints()).toHaveText("30 Talent Points spent in current panel");
+  await expect(talents.totalPoints()).toHaveText("109 / 115");
 
   await talents.node("1,1").click({ button: "right" });
   await expect(talents.node("1,1")).toHaveAccessibleName("Unallocated micro talent, rank 3 of 3, Maximum rank reached");
-  await expect(talents.boardPoints()).toHaveText("33 panel · 112/115 total");
-  await expect(talents.tab("Tree 4")).toContainText("33 pts");
+  await expect(talents.panelPoints()).toHaveText("33 Talent Points spent in current panel");
+  await expect(talents.totalPoints()).toHaveText("112 / 115");
   expect((await talents.stored()).ranks["Lich:1,1"]).toBe(3);
   await planner.expectNoErrors();
 });
@@ -90,11 +87,13 @@ test("a full node takes no more points; taking points off can take a dependent n
   await talents.node("0,0").click({ button: "right" });
   await expect(talents.node("0,0")).toHaveAccessibleName("Unallocated micro talent, rank 2 of 3");
   await expect(talents.node("1,0")).toHaveAccessibleName(/rank 0 of 3/);
-  await expect(talents.boardPoints()).toHaveText("26 panel · 105/115 total");
+  await expect(talents.panelPoints()).toHaveText("26 Talent Points spent in current panel");
+  await expect(talents.totalPoints()).toHaveText("105 / 115");
   await talents.node("0,0").click({ button: "right" });
   await talents.node("0,0").click({ button: "right" });
   await expect(talents.node("0,0")).toHaveAccessibleName("Unallocated micro talent, rank 0 of 3");
-  await expect(talents.boardPoints()).toHaveText("24 panel · 103/115 total");
+  await expect(talents.panelPoints()).toHaveText("24 Talent Points spent in current panel");
+  await expect(talents.totalPoints()).toHaveText("103 / 115");
   const ranks = (await talents.stored()).ranks;
   expect(ranks["Lich:0,0"]).toBe(0);
   expect(ranks["Lich:1,0"]).toBe(0);
@@ -116,13 +115,13 @@ test("a click on a node behind an empty one also fills the way to it", async ({ 
 
 test("a core talent slot opens its picker; a choice fills it, a right-click empties it", async ({ page }) => {
   const { planner, talents } = await openTalents(page);
-  await expect(talents.core(24)).toContainText("Off The Beaten Track");
+  await expect(talents.core(24)).toHaveAccessibleName("24 point core: Off The Beaten Track");
   await expect(talents.core(24)).toHaveClass(/\bselected\b/);
-  await expect(talents.cores().nth(1)).toContainText("Separate prism effect");
+  await expect(talents.cores().nth(1)).toHaveAccessibleName("Separate prism effect: Haze");
 
   await talents.core(24).click({ button: "right" });
   await expect(talents.toast()).toHaveText("Core talent removed");
-  await expect(talents.core(24)).toContainText("Select core talent");
+  await expect(talents.core(24)).toHaveAccessibleName("24 point core: Select core talent");
   expect((await talents.stored()).coreSelections["Lich:24"]).toBeUndefined();
 
   await talents.core(24).click();
@@ -133,7 +132,7 @@ test("a core talent slot opens its picker; a choice fills it, a right-click empt
     .click();
   await expect(talents.toast()).toHaveText("Off The Beaten Track selected");
   await expect(talents.corePicker()).not.toBeVisible();
-  await expect(talents.core(24)).toContainText("Off The Beaten Track");
+  await expect(talents.core(24)).toHaveAccessibleName("24 point core: Off The Beaten Track");
   expect((await talents.stored()).coreSelections["Lich:24"]).toBe("Off The Beaten Track");
   await planner.expectNoErrors();
 });
@@ -144,7 +143,9 @@ test("Reset empties the open tree's points and cores; Reselect opens the tree pi
   const { planner, talents } = await openTalents(page);
   await talents.action("Reset").click();
   await expect(talents.toast()).toHaveText("Lich points reset");
-  await expect(talents.boardPoints()).toHaveText("0 panel · 79/115 total");
+  await expect(talents.panelPoints()).toHaveText("0 Talent Points spent in current panel");
+  await expect(talents.totalPoints()).toHaveText("79 / 115");
+  await expect(talents.core(24)).toHaveAccessibleName("24 point core: Select core talent (locked)");
   await expect(talents.node("0,0")).toHaveAccessibleName("Unallocated micro talent, rank 0 of 3");
   const stored = await talents.stored();
   expect(stored.coreSelections["Lich:24"]).toBeUndefined();
@@ -175,14 +176,11 @@ test("a right-click on a tree tab removes it and the trees after it; an empty ta
   await talents.tab("Tree 3").click();
   await expect(talents.treePicker()).toBeVisible();
   await expect(talents.treePickerTitle()).toHaveText("Select talent tree 3");
-  await talents
-    .treePicker()
-    .getByRole("button", { name: /Marksman/ })
-    .click();
+  await talents.treePickerTree("Marksman").click();
   await expect(talents.treePicker()).not.toBeVisible();
   await expect(talents.tab("Tree 3")).toContainText("Marksman");
-  await expect(talents.tab("Tree 3")).toContainText("0 pts");
-  await expect(talents.boardName()).toHaveText("Marksman");
+  await expect(talents.tab("Tree 3")).toHaveClass(/\bactive\b/);
+  await expect(talents.panelPoints()).toHaveText("0 Talent Points spent in current panel");
   stored = await talents.stored();
   expect(stored.selectedTrees).toEqual(["Goddess of Knowledge", "Prophet", "Marksman", ""]);
   await planner.expectNoErrors();
@@ -193,6 +191,7 @@ test("the installed prism opens the prism inventory on click and comes off with 
   await expect(talents.prismNode()).toHaveAccessibleName("Ethereal Prism: Haze installed here");
   await expect(talents.node("4,0")).toHaveClass(/\bprism-covered-node\b/);
   await expect(talents.stage().locator(".prism-area-box")).toHaveCount(1);
+  await expect(talents.prismCore()).toHaveAccessibleName("Separate prism effect: Haze");
 
   await talents.prismNode().click();
   await expect(talents.prismInventory()).toBeVisible();
@@ -202,7 +201,7 @@ test("the installed prism opens the prism inventory on click and comes off with 
   await talents.prismNode().click({ button: "right" });
   await expect(talents.toast()).toHaveText("Prism removed from talent node");
   await expect(talents.prismNode()).toHaveCount(0);
-  await expect(talents.boardKind()).toHaveText("Talent panel");
+  await expect(talents.prismCore()).toHaveCount(0);
   const stored = await talents.stored();
   expect(stored.installedPrisms.Lich).toBeUndefined();
   expect(stored.installedPrismNodes.Lich).toBeUndefined();

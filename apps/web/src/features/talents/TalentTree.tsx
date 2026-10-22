@@ -1,5 +1,6 @@
-// The talent trees of the Build page: the tree tabs (with the Slates tab and the total), the open tree's heading and
-// actions, the prism placement prompt, the core talents and the stage of nodes with the installed prism. The data is
+// The talent trees of the Build page: the tree tabs (with the Slates tab and the total), the open tree's bar (its core
+// talents, its points and actions, as the game lays them out), the prism placement prompt and the stage of nodes with
+// the installed prism. The data is
 // the planner's "talents" source (src/app/bridge/talents-view-model.ts); every edit is a planner command, and the tree,
 // core and prism dialogs stay legacy (the Slates tab's board takes the tree's place in TalentsView). Nodes, cores and the
 // installed prism show their tooltips (TalentTooltip). The state-dependent looks are in talent-classes.ts.
@@ -10,44 +11,50 @@ import { Artwork } from "../../ui/Artwork";
 import { familyTint } from "../../ui/talent-slate-styles";
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";
-import { HelpButton } from "../../ui/HelpButton";
-import { sectionTitleClass } from "../../ui/section-card";
 import { CoreTalentTooltip, TalentNodeTooltip } from "./TalentTooltip";
 import { PRISM_ART, areaLook, lineLook, nodeLook, prismLook } from "./talent-classes";
 import { TalentEmblem } from "./TalentEmblem";
 import { hideTooltip } from "../../ui/tooltip/tooltip-store";
 
 // Under 1100px (max-[1100px]:) the trees column narrows to 205px: smaller slots, emblems and type.
-/** A tree slot: emblem beside the slot label, the tree name and its points chip. */
-const TREE_SLOT_CARD =
-  "cursor-pointer rounded-md border border-line bg-raised text-left text-text hover:border-line-strong on:border-accent on:bg-accent/10";
-const TREE_SLOT = `talent-tree-slot group ${TREE_SLOT_CARD} border-l-2 on:border-l-accent off:cursor-not-allowed off:opacity-40 grid h-full min-h-0 grid-cols-[66px_minmax(0,1fr)] items-center gap-3 p-3.5 max-[1100px]:h-auto max-[1100px]:min-h-18 max-[1100px]:grid-cols-[48px_minmax(0,1fr)] max-[1100px]:gap-2 max-[1100px]:p-2 max-[760px]:min-h-15.5`;
-const TREE_EMBLEM = "talent-panel-art size-15.5 max-[1100px]:size-10.5";
-const TREE_POINTS =
-  "chip mt-1 w-max px-1.5 py-0.5 text-xs leading-tight font-bold tracking-wide uppercase not-italic tabular-nums group-on:border-accent group-on:text-accent";
+/**
+ * A slot of the trees column (a tree, or the Slates tab): emblem beside the slot label and its name, an accent edge on
+ * the left while open.
+ */
+const SLOT =
+  "grid h-full min-h-0 cursor-pointer grid-cols-[66px_minmax(0,1fr)] items-center gap-3 rounded-md border border-l-2 border-line bg-raised p-3.5 text-left text-text hover:border-line-strong on:border-accent on:border-l-accent on:bg-accent/10 max-[1100px]:h-auto max-[1100px]:min-h-18 max-[1100px]:grid-cols-[48px_minmax(0,1fr)] max-[1100px]:gap-2 max-[1100px]:p-2 max-[760px]:min-h-15.5";
+const TREE_SLOT = `talent-tree-slot ${SLOT} off:cursor-not-allowed off:opacity-40`;
+/** A slot's emblem: the tree's art, or the Slates tab's statue grid. */
+const SLOT_EMBLEM = "size-15.5 max-[1100px]:size-10.5";
 /** The small caps label over a slot's name. */
-const SLOT_LABEL = "text-[10px] tracking-wider text-dim uppercase max-[1100px]:tracking-normal";
-/** The Talent trees heading strip and the open tree's kind. */
-const HEADING = "text-sm font-bold tracking-wider uppercase";
+const SLOT_LABEL = "block text-[10px] tracking-wider text-dim uppercase max-[1100px]:tracking-normal";
+const SLOT_NAME =
+  "my-1 block font-display text-sm leading-tight font-bold max-[1100px]:my-0.5 max-[1100px]:font-sans max-[1100px]:text-xs max-[1100px]:leading-[normal]";
 /** Reselect / Reset / Install Prism. */
 const TALENT_ACTION = "talent-action btn min-h-8 px-3 py-1.5 text-xs font-bold max-[760px]:px-2";
+/** Install Prism's icon, the game's: its art (white on transparent) as a mask in the button's text colour. */
+const PRISM_ACTION_ICON = "size-4 shrink-0 bg-current mask-contain mask-center mask-no-repeat";
+const PRISM_ACTION_ICON_ART = "./src/assets/tli/install-prism-icon.webp";
 /** A node and the installed prism over it share their place and size on the stage. */
 const NODE =
-  "relative col-(--column) row-(--row) grid size-12 place-items-center place-self-center rounded-full p-0 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent-strong";
+  "relative col-(--column) row-(--row) grid size-13.25 place-items-center place-self-center rounded-full p-0 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent-strong";
 const NODE_SYMBOL = "node-symbol text-xl leading-none [grid-area:1/1] max-[1100px]:min-[851px]:text-base";
-/** A core talent card (a core slot, or the prism's own effect). */
-const CORE_CARD =
-  "core-talent flex min-h-18 flex-[1_1_min(310px,100%)] items-center gap-3 rounded-md border border-l-3 px-3.5 py-2.5 text-left text-inherit";
-/** A core slot: accent-edged, the accent on hover and keyboard focus. */
-const CORE_SLOT =
-  "core-selector cursor-pointer border-line border-l-accent bg-raised hover:border-accent focus-visible:border-accent focus-visible:outline-none";
-/** A prism's own effect, in violet. */
-const CORE_PRISM = "border-violet/50 border-l-violet bg-violet/10";
+/**
+ * A core talent, as the game shows it: its round art with the points that unlock it in a badge at the lower left (a
+ * core slot), or the prism's own effect in violet. The name and state are in the accessible name and the tooltip.
+ */
+const CORE_ICON = "core-talent relative grid size-16 shrink-0 place-items-center rounded-full border-2 p-0";
+/** A core slot: the accent edge once chosen, the accent on hover and keyboard focus; dashed while empty. */
+const coreSlotLook = (selected: boolean, locked: boolean) =>
+  `core-selector cursor-pointer bg-raised hover:border-accent focus-visible:border-accent focus-visible:outline-none ${
+    selected ? "border-accent" : "border-dashed border-line-strong"
+  } ${locked ? "opacity-40 grayscale" : ""}`;
+const CORE_PRISM = "border-violet bg-violet/10";
 const CORE_ART =
-  "core-art relative size-11.5 flex-[0_0_46px] overflow-hidden rounded-md border border-line-strong [&>img]:absolute [&>img]:inset-0 [&>img]:z-1 [&>img]:size-full [&>img]:object-cover [&>img+span]:invisible";
-const CORE_CAPTION = "block text-xs tracking-wider uppercase";
-const CORE_NAME = "mt-1 block font-display text-sm font-bold text-text";
-/** The dashed "+" of an empty tree slot or core slot. */
+  "core-art relative grid size-full place-items-center overflow-hidden rounded-full text-dim [&>img]:absolute [&>img]:inset-0 [&>img]:z-1 [&>img]:size-full [&>img]:object-cover [&>img+span]:invisible";
+const CORE_BADGE =
+  "absolute -bottom-1 -left-1 z-2 grid h-6 min-w-6 place-items-center rounded-full border border-line-strong bg-sunken px-1 text-xs font-bold text-text tabular-nums";
+/** The dashed "+" of an empty tree slot. */
 const EMPTY_ART = "grid place-items-center border-2 border-dashed border-line-strong text-lg text-dim";
 
 // The cells of the Slates tab's emblem (the statue grid).
@@ -88,12 +95,6 @@ export function TalentTabs() {
   if (!view) return null;
   return (
     <>
-      <p
-        className={`eyebrow col-span-full -mx-2.5 -mt-2.5 flex items-center rounded-t-md border-b border-line bg-raised px-3 py-3 ${sectionTitleClass}`}
-      >
-        <span>Talent trees</span>
-        <HelpButton topic="talents" label="Talents" />
-      </p>
       {view.tabs.map((tab) => (
         <button
           key={tab.slot}
@@ -105,29 +106,23 @@ export function TalentTabs() {
           onContextMenu={(event) => rightClick(event, () => plannerCommands().removeTalentTree(tab.slot))}
         >
           {tab.name ? (
-            <TalentEmblem src={tab.art} alt={tab.name} className={TREE_EMBLEM} />
+            <TalentEmblem src={tab.art} alt={tab.name} className={`talent-panel-art ${SLOT_EMBLEM}`} />
           ) : (
             <span className={`empty-tree-art size-10.5 ${EMPTY_ART}`}>+</span>
           )}
           <span className="min-w-0">
-            <small className={`block ${SLOT_LABEL}`}>{tab.label}</small>
-            <strong className="my-1 block font-display text-sm leading-tight font-bold max-[1100px]:my-0.5 max-[1100px]:font-sans max-[1100px]:text-xs max-[1100px]:leading-[normal]">
-              {tab.name || (tab.disabled ? "Select previous" : "Click to select")}
-            </strong>
-            {tab.name ? <em className={TREE_POINTS}>{`${tab.points} pts`}</em> : null}
+            <small className={SLOT_LABEL}>{tab.label}</small>
+            <strong className={SLOT_NAME}>{tab.name || (tab.disabled ? "Select previous" : "Click to select")}</strong>
           </span>
         </button>
       ))}
       <button
         type="button"
-        className={`talent-divinity-link group ${TREE_SLOT_CARD} grid h-full min-h-0 grid-cols-[66px_minmax(0,1fr)] grid-rows-[auto_auto] gap-x-3 p-3.5 max-[1100px]:h-auto max-[1100px]:min-h-15.5 max-[1100px]:grid-cols-[42px_minmax(0,1fr)] max-[1100px]:gap-x-0 max-[1100px]:p-2 ${view.slateMode ? "active" : ""}`}
+        className={`talent-divinity-link ${SLOT} ${view.slateMode ? "active" : ""}`}
         data-talent-slates=""
         onClick={() => plannerCommands().openTalentSlates()}
       >
-        <span
-          className="talent-slate-emblem row-span-2 grid size-15.5 place-items-center self-center text-accent max-[1100px]:size-10.5"
-          aria-hidden="true"
-        >
+        <span className={`talent-slate-emblem grid place-items-center text-accent ${SLOT_EMBLEM}`} aria-hidden="true">
           <svg viewBox="0 0 64 64" className="block size-full overflow-visible fill-current">
             <g>
               {SLATE_EMBLEM_CELLS.map(([x, y]) => (
@@ -136,69 +131,16 @@ export function TalentTabs() {
             </g>
           </svg>
         </span>
-        <small className={SLOT_LABEL}>Divinity</small>
-        <strong className="font-display font-bold max-[1100px]:font-sans">Slates</strong>
+        <span className="min-w-0">
+          <small className={SLOT_LABEL}>Divinity</small>
+          <strong className={SLOT_NAME}>Slates</strong>
+        </span>
       </button>
-      <div className="talent-slot-total rounded-md bg-raised px-2.5 py-3.5 max-[1100px]:mt-auto">
+      <div className="talent-slot-total rounded-md bg-raised p-3.5 max-[1100px]:mt-auto max-[1100px]:p-2">
         <small className="block text-sm text-accent uppercase">Total points</small>
         <strong className="mt-1 block text-lg font-bold text-accent">{`${view.totalPoints} / ${view.maxPoints}`}</strong>
       </div>
     </>
-  );
-}
-
-export function TalentBoardHeading() {
-  const view = useViewSource("talents");
-  const heading = view?.heading;
-  return (
-    <div
-      className={`talent-board-heading relative -mx-3.5 -mt-3.5 mb-3.5 flex items-center justify-between rounded-t-md border-b border-line bg-raised px-4 py-3.5 max-[760px]:items-start max-[760px]:gap-3 ${familyTint(heading?.familyClass ?? "", false)}`}
-    >
-      <div>
-        <p className={`eyebrow mb-1 text-accent ${HEADING}`} id="talent-board-kind">
-          {heading?.kind ?? "Talent panel"}
-        </p>
-        <h2
-          id="talent-board-name"
-          className="font-display text-xl leading-tight font-bold text-(--talent-emblem,var(--color-accent))"
-        >
-          {heading ? heading.name : "—"}
-        </h2>
-      </div>
-      <div className="talent-board-header-side flex min-w-0 flex-col items-end gap-2.5 max-[760px]:gap-2">
-        <strong id="talent-board-points" className="point-total font-bold text-accent">
-          {heading?.points ?? "—"}
-        </strong>
-        <div
-          className="talent-board-actions flex flex-wrap justify-end gap-2 max-[760px]:gap-1"
-          aria-label="Talent tree actions"
-        >
-          <button
-            type="button"
-            className={`${TALENT_ACTION} talent-action-prism`}
-            hidden={heading ? !heading.canInstallPrism : false}
-            onClick={() => plannerCommands().openPrismInventory()}
-          >
-            Install Prism
-          </button>{" "}
-          <button
-            type="button"
-            className={`${TALENT_ACTION} talent-action-reselect`}
-            onClick={() => plannerCommands().reselectTalentTree()}
-          >
-            Reselect
-          </button>{" "}
-          <button
-            type="button"
-            className={`${TALENT_ACTION} talent-action-reset`}
-            title="Reset points on the open talent tree"
-            onClick={() => plannerCommands().resetTalentTree()}
-          >
-            Reset
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -213,7 +155,7 @@ export function PrismPlacementPrompt() {
   return (
     <div
       id="prism-placement-prompt"
-      className="prism-placement-prompt my-3 flex items-center justify-between gap-3.5 rounded-md border border-accent-strong bg-accent-strong/10 px-3.5 py-2.5 text-sm text-text"
+      className="prism-placement-prompt mb-3 flex items-center justify-between gap-3.5 rounded-md border border-accent-strong bg-accent-strong/10 px-3.5 py-2.5 text-sm text-text"
       hidden={!placing}
       ref={prompt}
     >
@@ -232,13 +174,59 @@ export function PrismPlacementPrompt() {
   );
 }
 
-export function CoreTalents() {
+/**
+ * The open tree's bar, after the game: its core talents, then the points spent in it with Reselect and Reset under
+ * them, and Install Prism at the far end (not on the God tree).
+ */
+export function TalentPanelBar() {
   const view = useViewSource("talents");
   return (
-    <div id="core-talents" className="core-talents my-4.5 flex flex-wrap gap-2.5">
-      {view?.cores.map((core) => (
-        <Core key={core.kind === "slot" ? core.threshold : "prism"} core={core} />
-      ))}
+    <div
+      className="talent-panel-bar mb-3 flex flex-wrap items-center gap-x-4 gap-y-3"
+      role="group"
+      aria-label="Talent tree actions"
+    >
+      <div id="core-talents" className="core-talents flex flex-wrap gap-4">
+        {view?.cores.map((core) => (
+          <Core key={core.kind === "slot" ? core.threshold : "prism"} core={core} />
+        ))}
+      </div>
+      <div className="flex flex-col gap-2">
+        <p id="talent-panel-points" className="text-sm text-muted">
+          <strong className="font-bold text-accent tabular-nums">{view?.panelPoints ?? "—"}</strong>
+          {" Talent Points spent in current panel"}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={`${TALENT_ACTION} talent-action-reselect`}
+            onClick={() => plannerCommands().reselectTalentTree()}
+          >
+            Reselect
+          </button>
+          <button
+            type="button"
+            className={`${TALENT_ACTION} talent-action-reset`}
+            title="Reset points on the open talent tree"
+            onClick={() => plannerCommands().resetTalentTree()}
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+      <button
+        type="button"
+        className={`${TALENT_ACTION} talent-action-prism ml-auto inline-flex items-center gap-1.5`}
+        hidden={view ? !view.canInstallPrism : false}
+        onClick={() => plannerCommands().openPrismInventory()}
+      >
+        <span
+          className={PRISM_ACTION_ICON}
+          style={{ maskImage: `url("${PRISM_ACTION_ICON_ART}")` }}
+          aria-hidden="true"
+        />
+        Install Prism
+      </button>
     </div>
   );
 }
@@ -247,13 +235,11 @@ function Core({ core }: { core: CoreView }) {
   if (core.kind === "prism")
     return (
       <CoreTalentTooltip target={{ prism: true }}>
-        <article className={`${CORE_CARD} ${CORE_PRISM} prism`}>
-          <Artwork src={core.art} alt={core.name} className={CORE_ART} />
-          <div className="min-w-0">
-            <span className={`${CORE_CAPTION} text-violet`}>{core.caption}</span>
-            <strong className={CORE_NAME}>{core.name}</strong>
-            <small className="hidden">{core.details}</small>
-          </div>
+        <article className={`${CORE_ICON} ${CORE_PRISM} prism`} aria-label={`${core.caption}: ${core.name}`}>
+          <Artwork src={core.art} alt="" className={CORE_ART} />
+          <span className={`${CORE_BADGE} text-violet`} aria-hidden="true">
+            ✦
+          </span>
         </article>
       </CoreTalentTooltip>
     );
@@ -261,25 +247,68 @@ function Core({ core }: { core: CoreView }) {
     <CoreTalentTooltip target={{ threshold: core.threshold, locked: core.locked }}>
       <button
         type="button"
-        className={`${CORE_CARD} ${CORE_SLOT} ${core.selected ? "selected" : ""} ${core.locked ? "locked opacity-40 grayscale" : ""}`}
+        className={`${CORE_ICON} ${coreSlotLook(core.selected, core.locked)} ${core.selected ? "selected" : ""} ${core.locked ? "locked" : ""}`}
+        aria-label={`${core.threshold} point core: ${core.name || "Select core talent"}${core.locked ? " (locked)" : ""}`}
         data-core-slot={core.threshold}
         onClick={() => plannerCommands().openCorePicker(core.threshold)}
         onContextMenu={(event) => rightClick(event, () => plannerCommands().removeCoreTalent(core.threshold))}
       >
         {core.name ? (
-          <Artwork src={core.art} alt={core.name} className={CORE_ART} />
+          <Artwork src={core.art} alt="" className={CORE_ART} />
         ) : (
-          <span className={`empty-core-art size-11.5 flex-[0_0_46px] ${EMPTY_ART}`}>+</span>
+          <span className="empty-core-art text-lg text-dim" aria-hidden="true">
+            +
+          </span>
         )}
-        <div className="min-w-0">
-          <span
-            className={`${CORE_CAPTION} text-accent`}
-          >{`${core.threshold} point core${core.locked ? " · locked" : ""}`}</span>
-          <strong className={CORE_NAME}>{core.name || "Select core talent"}</strong>
-          <small className="hidden">{core.description}</small>
-        </div>
+        <span className={CORE_BADGE} aria-hidden="true">
+          {core.threshold}
+        </span>
       </button>
     </CoreTalentTooltip>
+  );
+}
+
+/** The last column the open tree's points reach (0 when they reach only the first). */
+const frontierColumn = (view: TalentsView | null) =>
+  Math.max(0, (view?.thresholds.filter((threshold) => threshold.reached).length ?? 1) - 1);
+
+/** A column's centre on a seven-column strip, from 0 (first) to 6 (last), as a share of the strip's width. */
+const columnCentre = (column: number) => (column + 0.5) / 7;
+
+const THRESHOLD_TRACK = "absolute top-1/2 left-[calc(100%/14)] h-0.5 -translate-y-1/2";
+const THRESHOLD_MARK =
+  "relative z-1 mx-auto min-w-7 rounded-sm border px-1 py-0.5 text-center text-xs font-bold tabular-nums";
+/** The frontier: the column the points reach last, bright as in the game; others reached in the god's colour. */
+const thresholdLook = (reached: boolean, frontier: boolean) =>
+  frontier
+    ? "border-text bg-text text-bg"
+    : reached
+      ? "border-(--talent-emblem) bg-raised text-text"
+      : "border-line bg-sunken text-dim";
+
+/**
+ * The points each column needs, on a track lit in the god's colour up to the last column the open tree's points reach
+ * (the game's threshold bar).
+ */
+export function TalentThresholds() {
+  const view = useViewSource("talents");
+  const frontier = frontierColumn(view);
+  return (
+    <div className="talent-thresholds relative grid grid-cols-7 pb-2" aria-hidden="true">
+      <span className={`${THRESHOLD_TRACK} w-[calc(100%-100%/7)] bg-line-strong`} />
+      <span
+        className={`${THRESHOLD_TRACK} w-[calc((100%-100%/7)*var(--reach))] bg-(--talent-emblem)`}
+        style={{ "--reach": frontier / 6 } as CSSProperties}
+      />
+      {(view?.thresholds ?? []).map((threshold, column) => (
+        <span
+          key={threshold.points}
+          className={`${THRESHOLD_MARK} ${thresholdLook(threshold.reached, column === frontier && threshold.reached)}`}
+        >
+          {threshold.points}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -299,7 +328,7 @@ export function TalentStage() {
   return (
     <div
       id="talent-stage"
-      className="talent-stage relative grid rounded-md border border-line bg-sunken min-h-80 min-w-125 grid-cols-7 grid-rows-[repeat(5,57px)] px-1 py-2.5 max-[1100px]:min-[851px]:min-w-105 min-[1100px]:min-h-110 min-[1100px]:flex-1 min-[1100px]:grid-rows-[repeat(5,minmax(70px,1fr))]"
+      className="talent-stage relative grid rounded-md border border-line bg-sunken/50 min-h-80 min-w-125 grid-cols-7 grid-rows-[repeat(5,57px)] px-1 py-2.5 max-[1100px]:min-[851px]:min-w-105 min-[1100px]:min-h-110 min-[1100px]:flex-1 min-[1100px]:grid-rows-[repeat(5,minmax(70px,1fr))]"
       role="grid"
       aria-label="Allocated talent nodes"
       onClickCapture={(event) => {
@@ -330,6 +359,11 @@ function StageContent({ view, drag }: { view: TalentsView; drag: ReturnType<type
   });
   return (
     <>
+      <span
+        className="talent-frontier pointer-events-none absolute inset-y-0 left-[calc(4px+(100%-8px)*var(--frontier))] z-0 w-0.5 -translate-x-1/2 bg-(--talent-emblem)/60"
+        style={{ "--frontier": columnCentre(frontierColumn(view)) } as CSSProperties}
+        aria-hidden="true"
+      />
       <svg
         className="talent-connections absolute inset-x-1 inset-y-4.5 z-0 h-[calc(100%-36px)] w-[calc(100%-8px)] overflow-visible"
         viewBox="0 0 7 5"
@@ -376,7 +410,7 @@ function StageContent({ view, drag }: { view: TalentsView; drag: ReturnType<type
             >
               {node.art ? (
                 <img
-                  className={`talent-node-art block size-9.75 object-contain [grid-area:1/1] ${look.art}`}
+                  className={`talent-node-art block size-10.75 object-contain [grid-area:1/1] ${look.art}`}
                   src={node.art}
                   alt=""
                 />

@@ -18,8 +18,8 @@ const layout = {
 const panel = {
   name: "Lich",
   coreTalents: [
-    { name: "Off The Beaten Track", unlockPoints: 24, description: "+4 Support Skill Level" },
-    { name: "Other", unlockPoints: 12, description: "Something" },
+    { name: "Off The Beaten Track", unlockPoints: 24 },
+    { name: "Other", unlockPoints: 12 },
   ],
   allocatedNodes: [],
 };
@@ -38,7 +38,6 @@ function view(overrides = {}) {
       installedPrisms: {},
       installedPrismNodes: {},
     },
-    activeSlot: 3,
     slateMode: false,
     pendingPrism: null,
     ...overrides,
@@ -48,13 +47,12 @@ function view(overrides = {}) {
 test("the tabs show each slot's tree, the open one active, a slot after an empty one disabled", () => {
   const { tabs, totalPoints, maxPoints } = view();
   assert.deepEqual(
-    tabs.map((tab) => [tab.label, tab.name, tab.active, tab.disabled, tab.points]),
+    tabs.map((tab) => [tab.label, tab.name, tab.active, tab.disabled]),
     [
-      // Trees without a layout here count no points.
-      ["God tree", "Goddess of Knowledge", false, false, 0],
-      ["Class tree", "Prophet", false, false, 0],
-      ["Tree 3", null, false, false, null],
-      ["Tree 4", "Lich", true, true, 3],
+      ["God tree", "Goddess of Knowledge", false, false],
+      ["Class tree", "Prophet", false, false],
+      ["Tree 3", null, false, false],
+      ["Tree 4", "Lich", true, true],
     ],
   );
   assert.equal(totalPoints, 3);
@@ -66,17 +64,34 @@ test("the tabs show each slot's tree, the open one active, a slot after an empty
   );
 });
 
-test("the heading names the open tree and its family; an empty slot clicked leaves it blank", () => {
-  const { heading } = view();
-  assert.deepEqual(heading, {
-    familyClass: "talent-family-goddess-of-deception",
-    kind: "Talent panel",
-    name: "Lich",
-    points: "3 panel · 3/115 total",
-    canInstallPrism: true,
-  });
-  assert.equal(view({ activeSlot: 2 }).heading.name, "");
-  assert.equal(view({ activeSlot: 2 }).heading.familyClass, "");
+test("the open tree's points and whether it takes a prism; a tab carries its tree's family", () => {
+  const { panelPoints, canInstallPrism, tabs, familyClass, thresholds } = view();
+  assert.equal(panelPoints, 3);
+  assert.equal(familyClass, "talent-family-goddess-of-deception");
+  // 3 points open the columns that need 0 and 3.
+  assert.deepEqual(
+    thresholds.map((threshold) => [threshold.points, threshold.reached]),
+    [
+      [0, true],
+      [3, true],
+      [6, false],
+      [9, false],
+      [12, false],
+      [15, false],
+      [18, false],
+    ],
+  );
+  // Points in another tree count in the total only.
+  const twoTrees = view({ layouts: { Lich: layout, Prophet: layout }, ranks: { "Lich:0,0": 3, "Prophet:0,0": 2 } });
+  assert.deepEqual([twoTrees.panelPoints, twoTrees.totalPoints], [3, 5]);
+  assert.equal(canInstallPrism, true);
+  // The God tree takes no prism.
+  const god = { ...panel, name: "Goddess of Knowledge" };
+  assert.equal(
+    view({ panel: god, baseLayouts: { [god.name]: layout }, layouts: { [god.name]: layout } }).canInstallPrism,
+    false,
+  );
+  assert.equal(tabs[3].familyClass, "talent-family-goddess-of-deception");
   assert.equal(talentFamilyClass("Goddess of Knowledge"), "talent-family-goddess-of-knowledge");
   assert.equal(talentFamilyClass(""), "");
 });
@@ -131,7 +146,6 @@ test("nodes carry rank, availability and connections; the installed prism covers
     ["reachable", "locked"],
   );
   assert.equal(result.areas.length, 1);
-  assert.equal(result.heading.kind, "Advanced panel · Prism override");
 });
 
 test("a prism waiting for its node marks the tree's nodes as targets and names itself", () => {

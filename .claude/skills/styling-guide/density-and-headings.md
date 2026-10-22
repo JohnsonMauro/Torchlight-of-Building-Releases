@@ -24,12 +24,17 @@ Reference screen: the Skills tab (2026-10-22). Other tabs move to it as they are
 ## 4. The section heading pattern
 
 - Every build tab's content opens with `apps/web/src/ui/SectionHeading.tsx`: the title, its "?" (`HelpButton`) right
-  beside it, then `total` or `actions` on the right. Hero Trait and Follower use it through `CharacterPanel`.
+  beside it, then `total` or `actions` on the right, across the whole top of the section. Hero Trait and Follower use
+  it through `CharacterPanel`; the Talent tab's "Talent trees" spans both the tree tabs and the open tree's panel.
 - The title type is `sectionTitleClass` (`apps/web/src/ui/section-card.ts`): body font, bold, wide tracking,
-  uppercase, `text-base`, accent. Any other "title of a tab" (the talent column's "Talent trees") uses the same
-  constant, with its "?" beside it, never at the far end of the strip.
+  uppercase, `text-base`, accent. Any other "title of a tab" uses the same constant, with its "?" beside it, never at
+  the far end of the strip.
 - Not yet on the pattern (move them when touched, then delete the old classes): the Slates toolbar's "?" beside
-  Inventory, `panel-head` (only `ConfigurationPanel` still uses it), the talent tree's name in `font-display`.
+  Inventory, `panel-head` (only `ConfigurationPanel` still uses it).
+- The open talent tree has no heading of its own (2026-10-22, after the game): its tab on the left names it, and the
+  bar inside its panel holds the cores (round art, the unlock points in a badge at the lower left, name and state in
+  the accessible name and the tooltip), "N Talent Points spent in current panel" with Reselect and Reset, and Install
+  Prism at the far end. The tree tabs carry no points.
 - **A pattern a second place needs becomes shared the same day**: a constant or component in `apps/web/src/ui/`, and
   the copies it replaces are deleted in the same change. Three hand-written variants of one heading is how the tabs
   drifted apart. The owner's standing order (2026-10-22): componentize as soon as the chance shows, without asking

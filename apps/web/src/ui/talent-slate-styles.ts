@@ -4,7 +4,7 @@
 
 /**
  * A god family's colour, by the view model's `talent-family-<family>` class: `--talent-emblem`, which paints the tree's
- * emblem (TalentEmblem), the open tree's name and a god slate's title. A tree without a family is muted.
+ * emblem (TalentEmblem) and a god slate's title. A tree without a family is muted.
  */
 const FAMILY_TINTS: Record<string, string> = {
   "god-of-might": "[--talent-emblem:var(--color-god-might)]",
@@ -16,10 +16,10 @@ const FAMILY_TINTS: Record<string, string> = {
 };
 const NO_FAMILY_TINT = "[--talent-emblem:var(--color-muted)]";
 
-/** The family tint of a class list that may hold a `talent-family-*` class; `fallback` false leaves none untinted. */
-export function familyTint(classes: string, fallback = true): string {
+/** The family tint of a class list that may hold a `talent-family-*` class. */
+export function familyTint(classes: string): string {
   const family = /\btalent-family-([a-z-]+)/.exec(classes)?.[1] ?? "";
-  return FAMILY_TINTS[family] ?? (fallback ? NO_FAMILY_TINT : "");
+  return FAMILY_TINTS[family] ?? NO_FAMILY_TINT;
 }
 
 /** A god slate's tile colour (the cells of its shape), by god key; the gods' family colours. */

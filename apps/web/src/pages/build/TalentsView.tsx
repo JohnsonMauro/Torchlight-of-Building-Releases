@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
-import { buildSectionPlace } from "../../ui/section-card";
+import { buildSectionPlace, sectionCardClass } from "../../ui/section-card";
+import { SectionHeading } from "../../ui/SectionHeading";
 import { SlatePanel } from "../../features/slates/SlatePanel";
 import {
-  CoreTalents,
   PrismPlacementPrompt,
-  TalentBoardHeading,
+  TalentPanelBar,
   TalentStage,
   TalentTabs,
+  TalentThresholds,
 } from "../../features/talents/TalentTree";
+import { familyTint } from "../../ui/talent-slate-styles";
 import { useViewSource } from "../../ui/use-view-source";
 import { useViewOpen } from "../../ui/use-workspace";
 
@@ -34,56 +36,45 @@ function useTreeHeight(slateMode: boolean): [RefObject<HTMLDivElement | null>, n
 
 export function TalentsView() {
   const open = useViewOpen("talents");
-  const slateMode = useViewSource("talents")?.slateMode ?? false;
+  const talents = useViewSource("talents");
+  const slateMode = talents?.slateMode ?? false;
   const [treeLayout, treeHeight] = useTreeHeight(slateMode);
   const slateHeight: CSSProperties | undefined = slateMode
     ? { height: `${Math.max(MIN_SLATE_HEIGHT, treeHeight)}px` }
     : undefined;
   return (
-    // The Talent tab (src/app/planner/workspace.js "talents"): the talent trees beside the talent panel; under 760px
-    // they stack. The Slates tab shows the slate board in place of the open tree.
-    <section
-      id="talents-view"
-      hidden={!open}
-      className={`app-view ${buildSectionPlace} grid min-w-0 scroll-mt-[82px] grid-cols-[230px_minmax(0,1fr)] items-start gap-x-0 gap-y-3 max-[1100px]:grid-cols-[205px_minmax(0,1fr)] max-[1100px]:gap-3 max-[760px]:block min-[1500px]:grid-cols-[minmax(230px,13fr)_minmax(700px,63fr)] min-[1500px]:gap-y-4`}
-    >
-      <div
-        id="talent-board-tabs"
-        className="talent-board-tabs col-start-1 row-start-1 grid grid-cols-1 grid-rows-[auto_repeat(4,minmax(82px,1fr))_minmax(72px,0.8fr)_auto] gap-2.5 rounded-l-md border border-r-0 border-line bg-surface p-2.5 leading-[normal] max-[1100px]:flex max-[1100px]:flex-col max-[1100px]:gap-2 max-[1100px]:rounded-md max-[1100px]:border-r max-[760px]:mb-2.5 min-[1100px]:self-stretch"
-        role="tablist"
-        aria-label="Talent boards"
-      >
-        <TalentTabs />
-      </div>
-      <div
-        ref={treeLayout}
-        className={`talent-layout col-start-2 row-start-1 min-w-0 leading-[normal] ${slateMode ? "block overflow-hidden" : "grid min-[1100px]:self-stretch"}`}
-        style={slateHeight}
-      >
-        {slateMode && <SlatePanel />}
-        <section
-          hidden={slateMode}
-          className="panel talent-tree-panel relative min-h-127.5 min-w-0 p-3.5 max-[1100px]:overflow-x-auto max-[760px]:min-h-0 min-[1100px]:flex min-[1100px]:h-full min-[1100px]:flex-col min-[1100px]:rounded-l-none min-[1100px]:border-l-0"
+    // The Talent tab (src/app/planner/workspace.js "talents"): the heading over the whole section, then the talent
+    // trees beside the open tree's panel; under 760px they stack. The Slates tab shows the slate board in place of the
+    // open tree.
+    <section id="talents-view" hidden={!open} className={`${sectionCardClass} ${buildSectionPlace}`}>
+      <SectionHeading title="Talent trees" help="talents" />
+      <div className="grid grid-cols-[230px_minmax(0,1fr)] items-start gap-3 p-3 max-[1100px]:grid-cols-[205px_minmax(0,1fr)] max-[760px]:block min-[1500px]:grid-cols-[minmax(230px,13fr)_minmax(700px,63fr)]">
+        <div
+          id="talent-board-tabs"
+          className="talent-board-tabs grid grid-cols-1 grid-rows-[repeat(5,minmax(min-content,1fr))_auto] gap-2.5 leading-[normal] max-[1100px]:flex max-[1100px]:flex-col max-[1100px]:gap-2 max-[760px]:mb-3 min-[1100px]:self-stretch"
+          role="tablist"
+          aria-label="Talent boards"
         >
-          <TalentBoardHeading />
-          <PrismPlacementPrompt />
-          <CoreTalents />
-          <div className="talent-stage-wrap pt-2.5 min-[1100px]:flex min-[1100px]:min-h-0 min-[1100px]:flex-1 min-[1100px]:flex-col">
-            <div
-              className="talent-thresholds grid grid-cols-7 border-b border-line pb-2 text-center text-xs text-muted"
-              aria-hidden="true"
-            >
-              <span>0</span>
-              <span>3</span>
-              <span>6</span>
-              <span>9</span>
-              <span>12</span>
-              <span>15</span>
-              <span>18</span>
+          <TalentTabs />
+        </div>
+        <div
+          ref={treeLayout}
+          className={`talent-layout min-w-0 leading-[normal] ${slateMode ? "block overflow-hidden" : "grid min-[1100px]:self-stretch"}`}
+          style={slateHeight}
+        >
+          {slateMode && <SlatePanel />}
+          <section
+            hidden={slateMode}
+            className={`talent-tree-panel relative min-h-127.5 min-w-0 rounded-md border border-line bg-(--talent-emblem)/12 p-3 ${familyTint(talents?.familyClass ?? "")} max-[1100px]:overflow-x-auto max-[760px]:min-h-0 min-[1100px]:flex min-[1100px]:h-full min-[1100px]:flex-col`}
+          >
+            <TalentPanelBar />
+            <PrismPlacementPrompt />
+            <div className="talent-stage-wrap pt-2.5 min-[1100px]:flex min-[1100px]:min-h-0 min-[1100px]:flex-1 min-[1100px]:flex-col">
+              <TalentThresholds />
+              <TalentStage />
             </div>
-            <TalentStage />
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </section>
   );

@@ -1,4 +1,4 @@
-// What the talent trees of the Build page show: the four tree tabs (and the Slates tab), the open tree's heading, its
+// What the talent trees of the Build page show: the four tree tabs (and the Slates tab), the open tree's points, its
 // core talents, and its nodes on the stage with their connections, ranks, availability and the installed prism (its
 // area, an Inverse Image's reflected area). Pure; the React view (apps/web/src/features/talents) renders it and
 // src/app/talents/talents-controller.js publishes it (src/app/bridge/view-sources.ts "talents"). The open tree, the Slates tab and a prism
@@ -10,10 +10,14 @@ import {
   inverseImageReflectedCoordinates,
   inverseImageTalentNodes,
   prismAreaBounds,
-  prismBaseEffect,
   prismReplacesCore,
 } from "../../engine/talents/prism-crafting.js";
-import { MAX_TALENT_POINTS, canAllocateTalent, talentPointTotals } from "../../engine/talents/talent-rules.js";
+import {
+  MAX_TALENT_POINTS,
+  TALENT_THRESHOLDS,
+  canAllocateTalent,
+  talentPointTotals,
+} from "../../engine/talents/talent-rules.js";
 import { godTalentTreesSs13, talentFamiliesSs13 } from "../../engine/talents/talent-selection-rules.js";
 import { prismIcon, prismName } from "../talents/prism-icons.js";
 import { nodeIcon, nodeTitle } from "../talents/talent-labels.js";
@@ -39,7 +43,6 @@ export interface TalentLayout {
 export interface CoreTalent {
   name: string;
   unlockPoints: number;
-  description?: string;
   icon?: string;
 }
 /** A talent tree as the planner lists it (src/app/talents/talent-trees.js allTalentPanelsSs13). */
@@ -72,8 +75,6 @@ export interface TalentsInput {
   /** Points by "<tree>:<column>,<row>". */
   ranks: Record<string, number>;
   talents: TalentsState;
-  /** The tree slot last clicked (the open tree's, or an empty one whose picker is open). */
-  activeSlot: number;
   /** The Slates tab is open (the slate board stands in the tree's place). */
   slateMode: boolean;
   /** A prism waiting for the node it goes on. */
@@ -90,7 +91,6 @@ export interface TalentTabView {
   active: boolean;
   /** A slot after an empty one. */
   disabled: boolean;
-  points: number | null;
 }
 export type CoreView =
   | {
@@ -98,12 +98,11 @@ export type CoreView =
       threshold: number;
       name: string | null;
       art: string | null;
-      description: string;
       selected: boolean;
       locked: boolean;
     }
   /** A prism's own effect beside the cores ("Separate prism effect") or in their place ("Prism override"). */
-  | { kind: "prism"; caption: string; name: string; art: string; details: string };
+  | { kind: "prism"; caption: string; name: string; art: string };
 export interface TalentConnectionView {
   state: "active" | "reachable" | "locked";
   x1: number;
@@ -142,15 +141,14 @@ export interface TalentsView {
   slateMode: boolean;
   totalPoints: number;
   maxPoints: number;
-  heading: {
-    familyClass: string;
-    kind: string;
-    /** "" when the open tree's slot is empty. */
-    name: string;
-    points: string;
-    /** Prisms go only on the trees after the God tree. */
-    canInstallPrism: boolean;
-  };
+  /** The open tree's family class ("talent-family-goddess-of-knowledge"): its god's colour; "" for none. */
+  familyClass: string;
+  /** The points spent in the open tree (they unlock its columns and its core talents). */
+  panelPoints: number;
+  /** The points each column needs, left to right, and whether the open tree has them. */
+  thresholds: { points: number; reached: boolean }[];
+  /** Prisms go only on the trees after the God tree. */
+  canInstallPrism: boolean;
   /** The prism waiting for a node; null when none is. */
   placingPrism: string | null;
   cores: CoreView[];
@@ -221,7 +219,6 @@ export function talentsView(input: TalentsInput): TalentsView {
   const prismCoordinate = talents.installedPrismNodes?.[panel.name];
   const placing = input.pendingPrism?.panel === panel.name ? input.pendingPrism : null;
   const rankAt = (coordinate: Coordinate | string) => ranks[`${panel.name}:${coordinate}`] || 0;
-  const noTreeSelected = !selectedTrees[input.activeSlot];
 
   const tabs = TAB_LABELS.map((label, slot): TalentTabView => {
     const name = selectedTrees[slot] || null;
@@ -233,7 +230,6 @@ export function talentsView(input: TalentsInput): TalentsView {
       familyClass: talentFamilyClass(name),
       active: !input.slateMode && name === panel.name,
       disabled: slot > 0 && !selectedTrees[slot - 1],
-      points: name ? (pointTotals.panels[name] ?? 0) : null,
     };
   });
 
@@ -242,13 +238,10 @@ export function talentsView(input: TalentsInput): TalentsView {
     slateMode: input.slateMode,
     totalPoints: pointTotals.total,
     maxPoints: MAX_TALENT_POINTS,
-    heading: {
-      familyClass: noTreeSelected ? "" : talentFamilyClass(panel.name),
-      kind: installedPrism ? "Advanced panel · Prism override" : "Talent panel",
-      name: noTreeSelected ? "" : panel.name,
-      points: `${panelPoints} panel · ${pointTotals.total}/${MAX_TALENT_POINTS} total`,
-      canInstallPrism: selectedTrees.indexOf(panel.name) > 0,
-    },
+    familyClass: talentFamilyClass(panel.name),
+    panelPoints,
+    thresholds: (TALENT_THRESHOLDS as number[]).map((points) => ({ points, reached: panelPoints >= points })),
+    canInstallPrism: selectedTrees.indexOf(panel.name) > 0,
     placingPrism: placing ? prismName(prisms.find((item) => item.id === placing.id)) : null,
     cores: coreViews(panel, talents, panelPoints, installedPrism),
     ...stageView(input, installedPrism, prismCoordinate, Boolean(placing), rankAt),
@@ -261,7 +254,6 @@ function coreViews(
   panelPoints: number,
   installedPrism: Prism | undefined,
 ): CoreView[] {
-  const prismEffect = (prism: Prism) => prismBaseEffect(prism.type, prism.base, prism.legendaryAffix);
   if (installedPrism && prismReplacesCore(installedPrism))
     return [
       {
@@ -269,7 +261,6 @@ function coreViews(
         caption: "Prism override",
         name: installedPrism.base,
         art: prismIcon(installedPrism),
-        details: prismEffect(installedPrism),
       },
     ];
   const thresholds = [...new Set(panel.coreTalents.map((core) => core.unlockPoints))].sort((a, b) => a - b);
@@ -281,7 +272,6 @@ function coreViews(
       threshold,
       name: core?.name ?? null,
       art: core ? art.coreTalents[core.name] || core.icon || null : null,
-      description: core?.description || "Choose one available core talent",
       selected: Boolean(core),
       locked: panelPoints < threshold,
     };
@@ -292,7 +282,6 @@ function coreViews(
       caption: "Separate prism effect",
       name: installedPrism.base,
       art: prismIcon(installedPrism),
-      details: prismEffect(installedPrism),
     });
   return cores;
 }

@@ -1,6 +1,5 @@
 // Talent tree commands: tree picker, core talents, points on nodes.
 import { tliArt } from "../../data/assets/tli-art.js";
-import { allProfessionTalentCatalogueSs13 } from "../../data/talents/all-profession-trees-ss13.generated.js";
 import { inverseImageReflectedCoordinates } from "../../engine/talents/prism-crafting.js";
 import {
   allocateTalentToMaxWithPrerequisites,
@@ -8,11 +7,12 @@ import {
   removeTalentWithDependents,
   talentPointTotals,
 } from "../../engine/talents/talent-rules.js";
-import { talentFamiliesSs13, talentOptionsForSlot } from "../../engine/talents/talent-selection-rules.js";
+import { talentFamiliesSs13 } from "../../engine/talents/talent-selection-rules.js";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { coverageView } from "../bridge/gear-item-view.ts";
+import { talentPickerView } from "../bridge/talent-picker-view.ts";
 import { coreTalentTooltipView, talentNodeTooltipView } from "../bridge/talent-tooltip-view.ts";
-import { talentFamilyClass, talentsView } from "../bridge/talents-view-model.ts";
+import { talentsView } from "../bridge/talents-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { renderConfiguration } from "../configuration/configuration-controller.js";
 import { showToast } from "../planner/page.js";
@@ -165,31 +165,18 @@ function talentsSource() {
     layouts: activeTalentLayouts(),
     ranks: Object.fromEntries(talentRanks),
     talents: plannerState.talents,
-    activeSlot: ui.activeTalentSlot,
     slateMode: ui.talentSlateMode,
     pendingPrism: pendingPrismPlacement,
   });
 }
-// The talent tree picker's data (apps/web/src/features/talents/TalentPanelPickerDialog.tsx): the trees the open slot takes.
+// The talent tree picker's data (src/app/bridge/talent-picker-view.ts): every god's trees, the open slot's choices on.
 function talentPickerSource() {
-  const selectedTrees = plannerState.talents.selectedTrees;
   const pointTotals = talentPointTotals(activeTalentLayouts(), Object.fromEntries(talentRanks));
-  return {
-    title:
-      ui.activeTalentSlot === 0
-        ? "Select a God tree"
-        : ui.activeTalentSlot === 1
-          ? `Select a ${selectedTrees[0] || "God"} class tree`
-          : `Select talent tree ${ui.activeTalentSlot + 1}`,
-    god: ui.activeTalentSlot === 0,
-    cards: talentOptionsForSlot(ui.activeTalentSlot, selectedTrees).map((name) => ({
-      name,
-      familyClass: talentFamilyClass(name),
-      art: tliArt.talentPanels[name] || allProfessionTalentCatalogueSs13[name].emblem,
-      selected: selectedTrees[ui.activeTalentSlot] === name,
-      points: pointTotals.panels[name],
-    })),
-  };
+  return talentPickerView({
+    slot: ui.activeTalentSlot,
+    selectedTrees: plannerState.talents.selectedTrees,
+    points: pointTotals.panels,
+  });
 }
 // The tree picker's pick: the open slot takes that tree (a new God tree empties a class tree it does not lead to).
 function selectTalentTree(name) {
@@ -220,13 +207,8 @@ function corePickerSource() {
   const threshold = activeCoreThreshold,
     panel = currentTalentPanel();
   const points = talentPointTotals(activeTalentLayouts(), Object.fromEntries(talentRanks)).panels[panel.name];
-  const locked = points < threshold;
   return {
-    title: `Select ${threshold}-point core talent`,
-    status: locked
-      ? `${points}/${threshold} points in ${panel.name}. These choices unlock at ${threshold} points.`
-      : `Choose one core talent for ${panel.name}.`,
-    locked,
+    locked: points < threshold,
     options: panel.coreTalents
       .filter((core) => core.unlockPoints === threshold)
       .map((core) => ({

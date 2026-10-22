@@ -1,6 +1,6 @@
-// The talent trees of the Build page (tree tabs, the open tree's heading, core talents, nodes, the installed prism) and
-// the dialogs they open. Every selector the talents tests use lives here. Nodes are found by their accessible name
-// ("Unallocated micro talent, rank 0 of 3"), which carries rank and reason, or by their coordinate.
+// The talent trees of the Build page (tree tabs, the open tree's bar: core talents, points and actions; nodes, the
+// installed prism) and the dialogs they open. Every selector the talents tests use lives here. Nodes are found by their
+// accessible name ("Unallocated micro talent, rank 0 of 3"), which carries rank and reason, or by their coordinate.
 import { expect } from "@playwright/test";
 
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
@@ -25,17 +25,16 @@ export class TalentsPage {
   slatesTab() {
     return this.tabs().getByRole("button", { name: /Slates$/ });
   }
-  boardName() {
-    return this.page.locator("#talent-board-name");
+  /** "Total points" under the tree tabs ("109 / 115"). */
+  totalPoints() {
+    return this.tabs().locator(".talent-slot-total strong");
   }
-  boardKind() {
-    return this.page.locator("#talent-board-kind");
-  }
-  boardPoints() {
-    return this.page.locator("#talent-board-points");
+  /** The open tree's points ("30 Talent Points spent in current panel"). */
+  panelPoints() {
+    return this.page.locator("#talent-panel-points");
   }
   action(name) {
-    return this.view().locator(".talent-board-actions").getByRole("button", { name, exact: true });
+    return this.view().getByRole("group", { name: "Talent tree actions" }).getByRole("button", { name, exact: true });
   }
   stage() {
     return this.page.locator("#talent-stage");
@@ -53,8 +52,13 @@ export class TalentsPage {
   cores() {
     return this.page.locator("#core-talents > *");
   }
+  /** A core slot by its points; its accessible name says what it holds ("24 point core: Off The Beaten Track"). */
   core(threshold) {
     return this.page.locator(`#core-talents [data-core-slot="${threshold}"]`);
+  }
+  /** The installed prism's own effect among the cores ("Separate prism effect: Haze"). */
+  prismCore() {
+    return this.page.locator("#core-talents .prism");
   }
   placementPrompt() {
     return this.page.locator("#prism-placement-prompt");
@@ -64,6 +68,17 @@ export class TalentsPage {
   }
   treePickerTitle() {
     return this.page.locator("#talent-picker-title");
+  }
+  /** The tree picker's god columns, by the god's name. */
+  treePickerGods() {
+    return this.treePicker().locator(".talent-picker-god");
+  }
+  treePickerTrees() {
+    return this.treePicker().locator(".talent-picker-card");
+  }
+  /** A tree in the picker; its accessible name starts with the tree's name, then its kind and points. */
+  treePickerTree(name) {
+    return this.treePicker().getByRole("button", { name: new RegExp(`^${name},`) });
   }
   corePicker() {
     return this.page.locator("#core-talent-picker");

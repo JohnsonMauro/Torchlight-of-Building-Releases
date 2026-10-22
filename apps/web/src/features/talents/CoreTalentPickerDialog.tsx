@@ -5,7 +5,7 @@ import { useRef } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { Artwork } from "../../ui/Artwork";
 import { useViewSource } from "../../ui/use-view-source";
-import { EYEBROW, PICKER_CLOSE, PICKER_HEAD, PICKER_NOTE, PICKER_TITLE } from "../../ui/talent-slate-styles";
+import { PICKER_CLOSE, PICKER_HEAD, PICKER_TITLE } from "../../ui/talent-slate-styles";
 import { useRegisteredDialog } from "../../ui/dialog-registry";
 
 const OPTION =
@@ -27,15 +27,9 @@ export function CoreTalentPickerDialog() {
       aria-labelledby="core-picker-title"
     >
       <div className={PICKER_HEAD}>
-        <div>
-          <p className={EYEBROW}>Core talent</p>
-          <h2 id="core-picker-title" className={PICKER_TITLE}>
-            {view?.title ?? "Select a core talent"}
-          </h2>
-          <p id="core-picker-status" className={PICKER_NOTE}>
-            {view?.status}
-          </p>
-        </div>
+        <h2 id="core-picker-title" className={PICKER_TITLE}>
+          Core talent
+        </h2>
         <button
           type="button"
           className={PICKER_CLOSE}
