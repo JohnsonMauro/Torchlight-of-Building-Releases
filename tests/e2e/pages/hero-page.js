@@ -3,6 +3,7 @@
 // open build's details (Builds view) and the dialogs they open.
 // Every selector the hero tests use lives here; traits and sockets are found by role and accessible name.
 import { expect } from "@playwright/test";
+import { openView } from "./planner-page.js";
 
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
 
@@ -26,9 +27,9 @@ export class HeroPage {
   changeHero() {
     return this.page.locator("#build-editor").getByRole("button", { name: "Change Hero", exact: true });
   }
-  /** Opens the hero selector from the open build's details (the Builds view stays open under it). */
+  /** Opens the hero selector from the open build's details on the Workspace (which stays open under it). */
   async openHeroSelector() {
-    await this.page.locator('button.view-tab[data-view="builds"]').click();
+    await openView(this.page, "builds");
     await this.changeHero().click();
     await expect(this.heroSelector()).toBeVisible();
   }
@@ -85,7 +86,7 @@ export class HeroPage {
     await this.openHeroSelector();
     await this.heroSelector().locator(`[data-select-hero="${id}"]`).click();
     await expect(this.heroSelector()).not.toBeVisible();
-    await this.page.locator('button.view-tab[data-view="hero"]').first().click();
+    await openView(this.page, "hero");
     await expect(this.panel()).toBeVisible();
   }
   /** Drags with the mouse from one element to another, in steps (the planner starts a drag after 5 px). */

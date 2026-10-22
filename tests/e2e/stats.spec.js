@@ -101,6 +101,7 @@ test("the minion's damage path tab shows its path, and stays after a reload", as
   await expect(stats.pathViews()).toHaveAttribute("data-damage-path-view", "minion:thunder-magus");
   await page.reload();
   await planner.waitUntilReady();
+  await planner.enterBuild();
   await expect(stats.pathTab("Thunder Magus (Minion)")).toHaveAttribute("aria-selected", "true");
   await planner.expectNoErrors();
 });
@@ -214,6 +215,7 @@ test("the Character stats tab stays while the sheet re-renders and after a reloa
   await expect(stats.statPanel()).toHaveAttribute("id", "stat-tabpanel-defense");
   await page.reload();
   await planner.waitUntilReady();
+  await planner.enterBuild();
   await expect(stats.statTab("Defense")).toHaveAttribute("aria-selected", "true");
   await expect(stats.skillSelect()).toHaveValue("game-log-skill-3");
   await planner.expectNoErrors();

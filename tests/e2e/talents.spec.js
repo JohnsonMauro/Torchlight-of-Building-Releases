@@ -301,6 +301,7 @@ test("a reload on the slate board opens it again", async ({ page }) => {
   await expect(page.locator("#slate-board")).toBeVisible();
   await page.reload();
   await planner.waitUntilReady();
+  await planner.enterBuild();
   await expect(page.locator("#slate-board")).toBeVisible();
   await expect(talents.treePanel()).toBeHidden();
   await expect(talents.slatesTab()).toHaveClass(/\bactive\b/);

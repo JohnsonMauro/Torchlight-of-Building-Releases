@@ -2,6 +2,7 @@
 // skill, damage banner, Effective HP, the Character stats tabs and their rows) and the damage path tabs. Every selector
 // the stats tests use lives here.
 import { expect } from "@playwright/test";
+import { openView } from "./planner-page.js";
 
 export class StatsPage {
   constructor(page) {
@@ -84,7 +85,7 @@ export class StatsPage {
   }
 
   async open() {
-    await this.page.locator('button.view-tab[data-view="character"]').click();
+    await openView(this.page, "character");
     await expect(this.view()).toBeVisible();
   }
 }

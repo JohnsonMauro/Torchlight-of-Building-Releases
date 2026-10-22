@@ -15,7 +15,7 @@ import {
 } from "./build-classes";
 import { newBuildWithHero } from "./build-actions";
 
-/** The Edit / Delete buttons on a card, after `btn` or `btn-danger`. */
+/** The Delete button on a card, after `btn-danger`. */
 const CARD_BUTTON = "m-0 min-h-8 px-2.5 text-xs font-bold";
 
 interface BuildListProps {
@@ -68,8 +68,8 @@ function BuildCard({ build, active, onDelete }: BuildCardProps) {
       <button
         className="flex min-w-0 cursor-pointer items-center gap-3 px-3 py-2 text-left text-text focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
         type="button"
-        aria-label={`Select ${build.name}`}
-        onClick={() => plannerCommands().openBuild(build.id)}
+        aria-label={`Open ${build.name}`}
+        onClick={() => plannerCommands().editBuild(build.id)}
       >
         {hero?.image ? (
           <img className={BUILD_HERO_ART} src={hero.image} alt="" />
@@ -85,14 +85,6 @@ function BuildCard({ build, active, onDelete }: BuildCardProps) {
         </span>
       </button>
       <div className="flex items-center gap-2 pr-2.5 pl-1">
-        <button
-          className={`btn ${CARD_BUTTON}`}
-          type="button"
-          aria-label={`Edit ${build.name}`}
-          onClick={() => plannerCommands().editBuild(build.id)}
-        >
-          Edit
-        </button>
         <button
           className={`btn-danger ${CARD_BUTTON}`}
           type="button"

@@ -22,6 +22,8 @@ export function activateWorkspaceView(viewName, { scroll = true, remember = true
   if (calculationsPaused) viewName = "builds";
   if (!loadBuildLibrary().builds.length) viewName = "builds";
   ui.activeWorkspaceView = viewName;
+  // A build opens again on the page it was left on (build-library-controller.js editBuild).
+  if (viewName !== "builds") ui.lastBuildView = viewName;
   viewSourceChanged("workspace");
   const focused = FOCUSED_VIEWS.has(viewName);
   if (focused) {

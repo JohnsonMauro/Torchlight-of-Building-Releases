@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { StrokeIcon } from "../ui/StrokeIcon";
 import { useWorkspace } from "../ui/use-workspace";
 
-// The workspace views, as a rail of icons fixed to the page's left edge under the header; hovering a view slides its
+// The open build's views, as a rail of icons fixed to the page's left edge under the header, with the way back to the
+// Workspace (the Builds view, the home page) on top; the Workspace itself shows no rail. Hovering a view slides its
 // name out beside the rail. A tab is lit (`active`) for its focused view; Build stays lit on every build tab. The
 // "view-tab" class and data-view are what the e2e page objects click (and the planner's click handler reads).
 
@@ -13,6 +14,11 @@ interface ViewTabProps {
 }
 
 const viewTabs: ViewTabProps[] = [
+  {
+    view: "builds",
+    label: "Back to Workspace",
+    icon: <path d="M19 12H5m6-6-6 6 6 6" />,
+  },
   {
     view: "hero",
     label: "Build",
@@ -46,16 +52,6 @@ const viewTabs: ViewTabProps[] = [
       </>
     ),
   },
-  {
-    view: "builds",
-    label: "Notes",
-    icon: (
-      <>
-        <path d="M5 3h12v13M8 7h6M8 10h4M5 3v18h11" />
-        <path d="m12 17 7-7 2 2-7 7-3 1z" />
-      </>
-    ),
-  },
 ];
 
 function ViewTab({ view, label, icon }: ViewTabProps) {
@@ -80,9 +76,10 @@ function ViewTab({ view, label, icon }: ViewTabProps) {
 }
 
 export function ViewRail() {
+  if (useWorkspace().view === "builds") return null;
   return (
     <nav
-      className="fixed top-[66px] bottom-0 left-0 z-15 flex w-16 flex-col border-r border-line bg-surface max-sm:top-[108px]"
+      className="fixed top-[66px] bottom-0 left-0 z-15 flex w-16 flex-col border-r border-line bg-surface"
       aria-label="Builder sections"
     >
       {viewTabs.map((tab) => (

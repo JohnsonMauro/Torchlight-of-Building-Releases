@@ -18,11 +18,29 @@ export const VIEWS = [
 
 const BUILD_VIEWS = new Set(["hero", "follower", "skills", "equipment", "pacts", "talents"]);
 
+const rail = (page) => page.getByRole("navigation", { name: "Builder sections" });
+
 /**
- * Opens a view as a user would: a focused view (character, configuration, builds) from the rail; a build section from
- * the build tabs of the section on screen, through the rail's Build first when a focused view is open.
+ * From the Workspace (the planner's home page, the Builds view), opens the active build as a user would: its card. It
+ * opens on the page the build was last left on, Hero Trait at first; the rail shows from then on.
+ */
+export async function enterBuild(page) {
+  await page.locator('#builds-view .build-list-card.active button[aria-label^="Open "]').click();
+  await expect(rail(page)).toBeVisible();
+}
+
+/**
+ * Opens a view as a user would: the Workspace (builds) from the rail's way back; a focused view (character,
+ * configuration) from the rail; a build section from the build tabs of the section on screen, through the rail's Build
+ * first when a focused view is open. From the Workspace, which has no rail, the active build is entered first.
  */
 export async function openView(page, name) {
+  const onWorkspace = await page.locator("#builds-view").isVisible();
+  if (name === "builds") {
+    if (!onWorkspace) await page.locator('button.view-tab[data-view="builds"]').click();
+    return;
+  }
+  if (onWorkspace) await enterBuild(page);
   if (!BUILD_VIEWS.has(name)) {
     await page.locator(`button.view-tab[data-view="${name}"]`).click();
     return;
@@ -43,16 +61,22 @@ export class PlannerPage {
   }
 
   /**
-   * Opens the planner with a one-build library holding `state` (or the app's own default library when null) and waits
-   * until the planner has finished booting: the views are in the static HTML, so they are visible before any listener
-   * exists, and a click that early is lost.
+   * Opens the planner with a one-build library holding `state` (or the app's own default library when null), waits
+   * until the planner has finished booting (the views are in the static HTML, so they are visible before any listener
+   * exists, and a click that early is lost) and enters the build from the Workspace: its Hero Trait page.
    */
   async open(state = null) {
     await this.load(state);
+    await this.enterBuild();
     await expect(this.view("hero")).toBeVisible();
   }
 
-  /** Loads the planner as open() does, without expecting the Build view (a library that cannot be read opens Builds). */
+  /** From the Workspace, opens the active build (on the page it was last left on). */
+  async enterBuild() {
+    await enterBuild(this.page);
+  }
+
+  /** Loads the planner as open() does and stays on the Workspace, where it starts. */
   async load(state = null) {
     await this.page.addInitScript((key) => {
       const remove = Storage.prototype.removeItem;

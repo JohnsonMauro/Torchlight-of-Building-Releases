@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
+import { openDialog } from "../../ui/dialog-registry";
 import { activeBuild, useBuildLibrary, type LibraryBuild } from "./build-library";
 import { BuildDetails } from "./BuildDetails";
 import { BuildList } from "./BuildList";
@@ -21,7 +22,10 @@ const PANEL_TITLE = "mt-0.5 font-display text-lg/[normal] font-bold text-text";
 /** The library's toolbar buttons, after `btn` or `btn-danger`. */
 const LIBRARY_BUTTON = "min-h-9 px-3 text-xs font-bold tracking-wide uppercase";
 
-/** The Builds view ("Notes" tab): the saved-build library, the open build's details, and the delete confirmations. */
+/**
+ * The Workspace (the Builds view, the planner's home page): the saved-build library (a card opens its build), the open
+ * build's details, new and imported builds, and the delete confirmations.
+ */
 export function BuildsPage() {
   const library = useBuildLibrary();
   const active = activeBuild(library);
@@ -33,7 +37,7 @@ export function BuildsPage() {
         <div>
           <p className={EYEBROW}>Your workspace</p>
           <h1 className="mt-0.5 mb-1 font-display text-3xl/tight font-bold tracking-tight text-text">Builds</h1>
-          <p className="text-sm text-muted">Open a build or edit its details.</p>
+          <p className="text-sm text-muted">Open a build, start a new one or import one.</p>
         </div>
         <div className="flex items-center gap-4 max-[600px]:justify-between">
           <span className="grid min-w-18 justify-items-center border-r border-line pr-4">
@@ -42,9 +46,29 @@ export function BuildsPage() {
             </strong>
             <small className="mt-1 text-[10px] tracking-wider text-muted uppercase">builds</small>
           </span>
-          <button className="btn-primary h-10 px-5 text-xs font-bold" type="button" onClick={newBuildWithHero}>
-            New Build
-          </button>
+          <div className="workspace-actions flex flex-wrap gap-2">
+            <button
+              id="import-game-log"
+              className="btn h-10 px-4 text-xs font-bold"
+              type="button"
+              title="Import a build from the game log"
+              onClick={() => plannerCommands().openGameLogImport()}
+            >
+              Import from game
+            </button>
+            <button
+              id="import-build"
+              className="btn h-10 px-4 text-xs font-bold"
+              type="button"
+              title="Import a build code"
+              onClick={() => openDialog("import-build-dialog")}
+            >
+              Import
+            </button>
+            <button className="btn-primary h-10 px-5 text-xs font-bold" type="button" onClick={newBuildWithHero}>
+              New Build
+            </button>
+          </div>
         </div>
       </div>
       <div className="mb-4 grid grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] items-start gap-3 max-[900px]:grid-cols-1">

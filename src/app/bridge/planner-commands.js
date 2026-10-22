@@ -6,8 +6,7 @@
 
 /**
  * @typedef {object} PlannerCommands
- * @property {(id: string) => void} openBuild Opens a saved build and stays on the Builds view.
- * @property {(id: string) => void} editBuild Opens a saved build in the Build view.
+ * @property {(id: string) => void} editBuild Opens a saved build on the page a build was last left on (Hero Trait at first).
  * @property {() => void} newBuild Creates an empty build, opens it in the Build view.
  * @property {() => void} duplicateActiveBuild Saves the open build, then opens a copy of it.
  * @property {(details: { name: string, notes: string }) => void} saveBuildDetails Renames the open build and sets its notes.

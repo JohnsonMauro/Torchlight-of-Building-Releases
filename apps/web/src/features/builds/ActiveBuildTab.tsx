@@ -13,7 +13,8 @@ import {
 
 /**
  * The open build's name in the build strip, from the "buildStatus" source, with a pencil beside it that renames it in
- * place: Enter or leaving the field saves, Escape keeps the old name. With no build open it asks for one.
+ * place: Enter or leaving the field saves, Escape keeps the old name. Without an open build it shows nothing: the strip
+ * only shows on a build's pages, and with no build the planner stays on the Workspace.
  */
 export function ActiveBuildTab() {
   const status = useViewSource("buildStatus");
@@ -32,30 +33,29 @@ export function ActiveBuildTab() {
     setRenaming(false);
     if (text !== null) plannerCommands().renameBuild(text);
   };
+  if (name === null) return null;
   return (
     <div className={ACTIVE_BUILD_TAB}>
-      <span className={ACTIVE_BUILD_CAPTION}>{status && name === null ? "No active build" : "Active build"}</span>
+      <span className={ACTIVE_BUILD_CAPTION}>Active build</span>
       <div className={ACTIVE_BUILD_ROW}>
-        {renaming && name !== null ? (
+        {renaming ? (
           <RenameField name={name} onFinish={finishRename} />
         ) : (
           <>
-            <strong className={ACTIVE_BUILD_NAME}>{status ? (name ?? "Start a new build") : "Loading build…"}</strong>
-            {name !== null ? (
-              <button
-                ref={pencil}
-                type="button"
-                className={ACTIVE_BUILD_RENAME_BUTTON}
-                aria-label="Rename build"
-                title="Rename build"
-                onClick={() => setRenaming(true)}
-              >
-                <StrokeIcon className="size-3.5">
-                  <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" />
-                  <path d="m13.5 6.5 4 4" />
-                </StrokeIcon>
-              </button>
-            ) : null}
+            <strong className={ACTIVE_BUILD_NAME}>{name}</strong>
+            <button
+              ref={pencil}
+              type="button"
+              className={ACTIVE_BUILD_RENAME_BUTTON}
+              aria-label="Rename build"
+              title="Rename build"
+              onClick={() => setRenaming(true)}
+            >
+              <StrokeIcon className="size-3.5">
+                <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" />
+                <path d="m13.5 6.5 4 4" />
+              </StrokeIcon>
+            </button>
           </>
         )}
       </div>

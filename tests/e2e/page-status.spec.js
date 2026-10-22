@@ -90,7 +90,7 @@ test("the toast prints names as they are, apostrophes included", async ({ page }
   await planner.expectNoErrors();
 });
 
-test("with no build left, the strip asks for one and says nothing is saved", async ({ page }) => {
+test("with no build left, the Workspace asks for one and shows no build strip", async ({ page }) => {
   const planner = new PlannerPage(page);
   await planner.open();
   await planner.showView("builds");
@@ -99,10 +99,9 @@ test("with no build left, the strip asks for one and says nothing is saved", asy
     .locator("#delete-all-builds-confirm")
     .getByRole("button", { name: "Delete All Builds", exact: true })
     .click();
-  await expect(stripName(page)).toHaveText("Start a new build");
-  await expect(strip(page)).toContainText("No active build");
-  await expect(saveStatus(page)).toContainText("No build saved");
-  await expect(renameButton(page)).toHaveCount(0);
+  await expect(planner.view("builds")).toBeVisible();
+  await expect(page.locator("#builds-view")).toContainText("No saved builds");
+  await expect(strip(page)).toHaveCount(0);
   await planner.expectNoErrors();
 });
 
@@ -146,7 +145,10 @@ test("the other-tab notice can be dismissed, and stays dismissed for that versio
   await expect(notice).toHaveCount(0);
   await expect(page.locator("#selected-hero-name")).not.toHaveText("No hero selected");
   // Another tab's write of something else (a new build there) does not bring the notice back.
-  await other.locator(".header-actions").getByRole("button", { name: "Builds" }).click();
+  await other
+    .getByRole("navigation", { name: "Builder sections" })
+    .getByRole("button", { name: "Back to Workspace", exact: true })
+    .click();
   await other.locator("#builds-view").getByRole("button", { name: "New Build", exact: true }).click();
   await expect(other.locator("#toast")).toHaveText("New build ready · Rename it in Build Library");
   await expect(page.locator("#build-count")).toHaveText("2");
@@ -166,13 +168,13 @@ test("saved builds that cannot be read are kept, and a new library can be starte
   const notice = page.getByRole("status").filter({ hasText: "Your saved builds couldn't be read." });
   await expect(notice).toBeVisible();
   await expect(notice.getByRole("button", { name: "Download backup", exact: true })).toBeVisible();
-  await expect(saveStatus(page)).toContainText("Saved builds unreadable — changes not saved");
 
   await notice
     .getByRole("button", { name: "Start a new library (your unreadable data stays backed up)", exact: true })
     .click();
   await expect(toast(page)).toHaveText("New library started · Your unreadable data stays backed up");
   await expect(notice).toHaveCount(0);
+  await planner.enterBuild();
   await expect(saveStatus(page)).toContainText("Autosaved locally");
   await expect(stripName(page)).toHaveText(DEFAULT_BUILD);
   const kept = await page.evaluate(
@@ -207,6 +209,7 @@ test("a saved build that fails validation is named in a notice, and the others l
     .filter({ hasText: "1 build couldn't be loaded and is kept unchanged: Broken build." });
   await expect(notice).toBeVisible();
   await expect(notice.getByRole("button", { name: "Download backup", exact: true })).toBeVisible();
+  await planner.enterBuild();
   await expect(stripName(page)).toHaveText("E2E build");
   await expect(saveStatus(page)).toContainText("Autosaved locally");
   await planner.expectNoErrors();

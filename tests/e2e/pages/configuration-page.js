@@ -1,6 +1,7 @@
 // The Configuration view ("Config" tab). Every selector the configuration tests use lives here. Controls are found by
 // role and accessible name, as a user finds them, not by the data-* hooks of one implementation.
 import { expect } from "@playwright/test";
+import { openView } from "./planner-page.js";
 
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
 
@@ -49,7 +50,7 @@ export class ConfigurationPage {
   }
 
   async open() {
-    await this.page.locator('button.view-tab[data-view="configuration"]').click();
+    await openView(this.page, "configuration");
     await expect(this.view()).toBeVisible();
     await expect(this.card()).toBeVisible();
   }

@@ -29,9 +29,12 @@ Reference screen: the Skills tab (2026-10-22). Other tabs move to it as they are
   `aria-current`) and underlined across label and "?" by one bar that slides from tab to tab on a switch (250 ms,
   off under reduced motion), across the whole top of the section; nothing else goes in it. A label dragged onto another tab
   moves it there (`usePointerDrag`); the order is the viewer's (`ui/build-tabs.ts`, localStorage, cleared by "Reset view
-  settings"). They are the only build tabs: the strip under the header holds the open build's name, save state and
-  actions (Import from Game, Import, Export, Reset Build), the header keeps Builds and Theme. Under 520 px the tabs wrap. Hero Trait and Follower
-  show it through `CharacterPanel`; on the Talent tab it spans both the tree tabs and the open tree's panel.
+  settings"). They are the only build tabs. Under 520 px the tabs wrap. Hero Trait and Follower show it through
+  `CharacterPanel`; on the Talent tab it spans both the tree tabs and the open tree's panel.
+- The page frame (2026-10-22): the planner opens on the Workspace (the Builds view, the home page), with the header only
+  (the name, which leads back to the Workspace, and Theme); its own heading holds Import from game, Import and New Build,
+  and a card opens its build. A build's pages add the view rail (Back to Workspace on top, then Build, Stats, Config)
+  and the build strip (the name with its rename pencil, the save state, Export and Reset Build).
 - The label type is `sectionTitleClass` (`apps/web/src/ui/section-card.ts`): body font, bold, wide tracking,
   uppercase, `text-base`; the colour is `buildTabButton`'s (muted, accent when open). A dialog's title
   (`dialog-title`) has the same type.

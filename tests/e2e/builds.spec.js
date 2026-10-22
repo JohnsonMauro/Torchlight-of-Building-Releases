@@ -1,4 +1,4 @@
-// Builds view (the "Notes" tab): the build library flows a user reaches from there. Written against the legacy view
+// The Workspace (the Builds view, the home page): the build library flows a user reaches from there. Written against the legacy view
 // before it moved to React, so both implementations must pass it unchanged.
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -14,6 +14,34 @@ async function openBuilds(page) {
   await builds.open();
   return { planner, builds };
 }
+
+test("the planner opens on the Workspace; a build opens on the page it was left on; the title and the rail go back", async ({
+  page,
+}) => {
+  const planner = new PlannerPage(page);
+  await planner.load();
+  const rail = page.getByRole("navigation", { name: "Builder sections" });
+  await expect(planner.view("builds")).toBeVisible();
+  await expect(rail).toHaveCount(0);
+  await expect(page.locator(".loadout-tab")).toHaveCount(0);
+  await planner.enterBuild();
+  await expect(planner.view("hero")).toBeVisible();
+  await expect(page.locator(".loadout-tab")).toBeVisible();
+  await planner.showView("skills");
+  await page.getByRole("link", { name: "Torchlight of Building home" }).click();
+  await expect(planner.view("builds")).toBeVisible();
+  await expect(rail).toHaveCount(0);
+  await planner.enterBuild();
+  await expect(planner.view("skills")).toBeVisible();
+  await rail.getByRole("button", { name: "Back to Workspace", exact: true }).click();
+  await expect(planner.view("builds")).toBeVisible();
+  await page.reload();
+  await planner.waitUntilReady();
+  await expect(planner.view("builds")).toBeVisible();
+  await planner.enterBuild();
+  await expect(planner.view("skills")).toBeVisible();
+  await planner.expectNoErrors();
+});
 
 test("lists the default build as the active one, with its details", async ({ page }) => {
   const { planner, builds } = await openBuilds(page);
@@ -67,6 +95,7 @@ test("saving details renames the build everywhere and keeps the notes", async ({
   await builds.expectToast("Build details saved");
   await expect(builds.activeCard()).toContainText("Frost Bolt test");
   await expect(builds.editorSummaryName()).toHaveText("Frost Bolt test");
+  await planner.enterBuild();
   await expect(builds.loadoutTabName()).toHaveText("Frost Bolt test");
   await page.reload();
   await planner.waitUntilReady();
@@ -76,7 +105,7 @@ test("saving details renames the build everywhere and keeps the notes", async ({
   await planner.expectNoErrors();
 });
 
-test("duplicate, open another build, and edit it", async ({ page }) => {
+test("duplicate, then open each build from its card", async ({ page }) => {
   const { planner, builds } = await openBuilds(page);
   await builds.duplicateButton().click();
   await builds.expectToast("Build duplicated — safe to experiment");
@@ -86,13 +115,12 @@ test("duplicate, open another build, and edit it", async ({ page }) => {
   expect(copyName).not.toBe(DEFAULT_BUILD);
 
   await builds.openCard(DEFAULT_BUILD);
-  await builds.expectToast("Build selected");
-  await expect(builds.view()).toBeVisible();
-  await expect(builds.activeCard()).toContainText(DEFAULT_BUILD);
+  await expect(planner.view("hero")).toBeVisible();
   await expect(builds.loadoutTabName()).toHaveText(DEFAULT_BUILD);
+  await builds.open();
+  await expect(builds.activeCard()).toContainText(DEFAULT_BUILD);
 
-  await builds.editCard(copyName);
-  await builds.expectToast("Build opened for editing");
+  await builds.openCard(copyName);
   await expect(planner.view("hero")).toBeVisible();
   await expect(builds.loadoutTabName()).toHaveText(copyName);
   await planner.expectNoErrors();
@@ -130,7 +158,6 @@ test("deleting all builds leaves the empty state", async ({ page }) => {
   await expect(builds.count()).toHaveText("0");
   await expect(builds.duplicateButton()).toBeDisabled();
   await expect(builds.deleteAllButton()).toBeDisabled();
-  await expect(builds.loadoutTabName()).toHaveText("Start a new build");
 
   await builds.emptyStateNewBuildButton().click();
   await builds.expectToast("New build ready · Rename it in Build Library");

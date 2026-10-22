@@ -1,4 +1,4 @@
-// The header's "Import from game" dialog: the lookup through the planner's local reader (/api/game-log/snapshots,
+// The Workspace's "Import from game" dialog: the lookup through the planner's local reader (/api/game-log/snapshots,
 // answered here by the test with the reader's own output for synthetic logs), the file picker when there is no reader,
 // a chosen log's logins and its read problems, a login's summary, and Import as new build. Written against the legacy
 // dialog before it moves to React, so both must pass it unchanged. Times are UTC (the dialog shows local time).
@@ -46,8 +46,8 @@ async function readerOutput(files, modified = "2026-10-19T14:05:00Z") {
 async function openDialog(page, body = null) {
   const planner = new PlannerPage(page);
   await reader(page, body);
-  await planner.open(youga);
-  await page.locator(".build-actions").getByRole("button", { name: "Import from game" }).click();
+  await planner.load(youga);
+  await page.locator(".workspace-actions").getByRole("button", { name: "Import from game" }).click();
   await expect(dialog(page)).toBeVisible();
   return planner;
 }
@@ -60,8 +60,8 @@ test("without the local reader it says so and asks for the log file", async ({ p
     await answered;
     await route.fulfill(NOT_JSON);
   });
-  await planner.open(youga);
-  await page.locator(".build-actions").getByRole("button", { name: "Import from game" }).click();
+  await planner.load(youga);
+  await page.locator(".workspace-actions").getByRole("button", { name: "Import from game" }).click();
   await expect(status(page)).toHaveText("Looking for UE_game.log…");
   await expect(fileInput(page)).toBeHidden();
   answer();
@@ -289,7 +289,7 @@ test("Cancel closes the dialog, and the next opening starts over", async ({ page
   await expect(dialog(page)).toBeHidden();
   expect((await library(page)).builds).toHaveLength(1);
 
-  await page.locator(".build-actions").getByRole("button", { name: "Import from game" }).click();
+  await page.locator(".workspace-actions").getByRole("button", { name: "Import from game" }).click();
   await expect(dialog(page).locator(".game-log-reason")).toHaveText(NO_READER);
   await expect(logins(page)).toHaveCount(0);
   await expect(dialog(page).locator("#import-game-log-summary")).toBeEmpty();
@@ -300,7 +300,7 @@ test("Cancel closes the dialog, and the next opening starts over", async ({ page
   await expect(logins(page)).toHaveCount(2);
   await page.keyboard.press("Escape");
   await expect(dialog(page)).toBeHidden();
-  await page.locator(".build-actions").getByRole("button", { name: "Import from game" }).click();
+  await page.locator(".workspace-actions").getByRole("button", { name: "Import from game" }).click();
   await expect(logins(page)).toHaveCount(0);
   await planner.expectNoErrors();
 });

@@ -138,14 +138,15 @@ if (restoredWorkspaceLocation) {
     ui.activeTalentSlot = slot;
     ui.activeTalentPanel = restoredWorkspaceLocation.panel;
   }
-  ui.talentSlateMode = restoredWorkspaceLocation.view === "slates";
+  ui.talentSlateMode = restoredWorkspaceLocation.lastView === "slates";
 }
 installRangeFills();
 renderLibraryNotice();
 renderCandidateViews();
 scheduleRangeFillRefresh();
 updateStorageStatus();
-const restoredView = [
+// The planner opens on the Workspace (the Builds view); a build opens on the page it was last left on.
+const lastView = [
   "hero",
   "follower",
   "talents",
@@ -153,18 +154,13 @@ const restoredView = [
   "skills",
   "equipment",
   "pacts",
-  "builds",
   "character",
   "configuration",
-].includes(restoredWorkspaceLocation?.view)
-  ? restoredWorkspaceLocation.view
+].includes(restoredWorkspaceLocation?.lastView)
+  ? restoredWorkspaceLocation.lastView
   : "hero";
-runGuardedRender(() =>
-  activateWorkspaceView(restoredView === "slates" ? "talents" : restoredView, { scroll: false, remember: false }),
-);
-if (restoredView === "slates") ui.activeWorkspaceView = "talents";
-if (restoredWorkspaceLocation && Number.isFinite(restoredWorkspaceLocation.scrollY))
-  requestAnimationFrame(() => window.scrollTo(0, Math.max(0, restoredWorkspaceLocation.scrollY)));
+ui.lastBuildView = lastView === "slates" ? "talents" : lastView;
+runGuardedRender(() => activateWorkspaceView("builds", { scroll: false, remember: false }));
 window.addEventListener("pagehide", saveWorkspaceLocation);
 window.addEventListener("pagehide", flushPlannerState);
 window.addEventListener("beforeunload", flushPlannerState);

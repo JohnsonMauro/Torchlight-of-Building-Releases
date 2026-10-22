@@ -40,6 +40,7 @@ test("a tab dragged onto another takes its place, without opening it, and keeps 
 
   await page.reload();
   await planner.waitUntilReady();
+  await planner.enterBuild();
   await expect(planner.buildTabLabels("hero")).toHaveText(again);
   await planner.showView("pacts");
   await expect(planner.buildTabLabels("pacts")).toHaveText(again);

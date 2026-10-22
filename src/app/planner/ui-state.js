@@ -1,10 +1,12 @@
 // Where the planner is: the open workspace view, talent tree, stats panel and selections shared by several sections.
 
-// Where the planner is, read and changed by several sections: the workspace view, the talent tree on show and its slot,
+// Where the planner is, read and changed by several sections: the workspace view, the build page a build opens on (the
+// last one shown, src/app/planner/workspace.js), the talent tree on show and its slot,
 // the slate board shown in the tree's place, the Stats view's panel, damage path and stat sheet skill, the Gear
 // section's selected slot, and the hero trait whose support the skill selector edits.
 export const ui = {
   activeWorkspaceView: "hero",
+  lastBuildView: "hero",
   activeTalentPanel: "Goddess of Deception",
   activeTalentSlot: 0,
   talentSlateMode: false,
@@ -31,12 +33,11 @@ export function saveWorkspaceLocation() {
     sessionStorage.setItem(
       workspaceLocationKey,
       JSON.stringify({
-        view: ui.activeWorkspaceView === "talents" && ui.talentSlateMode ? "slates" : ui.activeWorkspaceView,
+        lastView: ui.lastBuildView === "talents" && ui.talentSlateMode ? "slates" : ui.lastBuildView,
         panel: ui.activeTalentPanel,
         statsPanel: ui.activeStatsPanel,
         damagePath: ui.selectedDamagePath,
         statSheetSkill: ui.selectedStatSheetSkill,
-        scrollY: window.scrollY,
       }),
     );
   } catch {

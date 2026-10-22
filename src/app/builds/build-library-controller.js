@@ -71,14 +71,8 @@ export function backupLibraryBuilds() {
   }
 }
 export const buildLibraryCommands = {
-  openBuild: (id) => {
-    openLibraryBuild(id, "builds");
-    showToast("Build selected");
-  },
-  editBuild: (id) => {
-    openLibraryBuild(id, "hero");
-    showToast("Build opened for editing");
-  },
+  // The build's page showing is the answer: no toast.
+  editBuild: (id) => openLibraryBuild(id, ui.lastBuildView),
   newBuild: () => {
     createBuild({ name: "New build", state: emptyPlannerState() });
     applyPlannerState(loadPlannerState());

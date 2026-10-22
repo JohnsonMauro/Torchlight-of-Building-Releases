@@ -1,6 +1,7 @@
-// The Builds view (the "Notes" tab) and its confirm dialogs. Every selector the builds tests use lives here.
+// The Workspace (the Builds view, the home page) and its confirm dialogs. Every selector the builds tests use lives here.
 // Buttons are found by role and accessible name, as a user finds them, not by the data-* hooks of one implementation.
 import { expect } from "@playwright/test";
+import { openView } from "./planner-page.js";
 
 export class BuildsPage {
   constructor(page) {
@@ -75,17 +76,13 @@ export class BuildsPage {
   }
 
   async open() {
-    await this.page.locator('button.view-tab[data-view="builds"]').click();
+    await openView(this.page, "builds");
     await expect(this.view()).toBeVisible();
   }
+  /** Opens a build from its card (the build's pages, on the page a build was last left on). */
   async openCard(name) {
     await this.card(name)
-      .getByRole("button", { name: `Select ${name}`, exact: true })
-      .click();
-  }
-  async editCard(name) {
-    await this.card(name)
-      .getByRole("button", { name: `Edit ${name}`, exact: true })
+      .getByRole("button", { name: `Open ${name}`, exact: true })
       .click();
   }
   async deleteCard(name) {
