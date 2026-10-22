@@ -1,8 +1,8 @@
-// The Skills section of the Build page: the setup count, the Energy allocator, and the skill board (Skills and Auras tabs,
-// each row's skill, supports and Energy, the aura reservation, Reset Skills). The data is the planner's "skills" source
+// The Skills section of the Build page: the heading's Energy total and Reset Skills, and the skill board (Skills and Auras
+// tabs, each row's skill, supports and Energy, the aura reservation). The data is the planner's "skills" source
 // (src/app/bridge/skills-view-model.ts); every edit is a planner command. A support drop finds its socket by
 // data-selector-row and data-selector-support-slot inside #skill-groups.
-import type { CSSProperties, MouseEvent } from "react";
+import type { MouseEvent } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { SkillBoardTab, SkillRowView, SkillsView } from "@legacy/app/bridge/skills-view-model.ts";
 import { Artwork } from "../../ui/Artwork";
@@ -17,44 +17,30 @@ const TABS: { tab: SkillBoardTab; label: string }[] = [
   { tab: "auras", label: "Auras" },
 ];
 
-// The two panels inside the section card.
-const PANEL = "panel m-3 leading-[normal]";
-
-export function SkillSetupCount() {
-  const view = useViewSource("skills");
-  return <>{view ? view.setupCount : "—"}</>;
-}
-
-export function EnergyPanel() {
-  const view = useViewSource("skills");
-  const energy = view?.energy;
-  const style = energy
-    ? ({ "--energy-ratio": `${Math.min(100, (energy.used / energy.available) * 100)}%` } as CSSProperties)
-    : undefined;
+/** The heading's right side: the Energy icon and Energy used over available (danger when overused), and Reset Skills. */
+export function SkillsHeadingActions() {
+  const energy = useViewSource("skills")?.energy;
+  const overused = energy ? energy.used > energy.available : false;
   return (
-    <section
-      className={`energy-panel group ${PANEL} px-4 py-4 ${energy && energy.used > energy.available ? "overused" : ""}`}
-    >
-      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line pb-2.5">
-        <div>
-          <p className="mb-1.5 text-xs font-bold tracking-wider text-accent uppercase">Activation budget</p>
-          <h2 className="font-display text-lg font-semibold">Energy allocator</h2>
-        </div>
-        <div className="flex items-baseline gap-2">
-          <strong id="energy-total" className="text-2xl text-info group-[.overused]:text-danger">
-            {energy ? `${energy.used}/${energy.available}` : "—"}
-          </strong>
-          <span className="text-sm text-muted">used / available</span>
-        </div>
+    <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
+      <div className="flex items-center gap-2.5" title="Energy used / available">
+        <img src="./src/assets/tli/energy-icon.webp" alt="Energy" className="size-9 rounded-sm" />
+        <strong
+          id="energy-total"
+          className={`block text-4xl leading-tight font-bold ${overused ? "text-danger" : "text-info"}`}
+        >
+          {energy ? `${energy.used}/${energy.available}` : "—"}
+        </strong>
       </div>
-      <div
-        id="energy-meter"
-        className="mt-2 h-2 overflow-hidden rounded-full bg-sunken group-[.overused]:bg-danger/15"
-        style={style}
+      <button
+        className="btn h-10 w-32 px-3 text-xs font-bold tracking-wide uppercase"
+        type="button"
+        data-reset-skills=""
+        onClick={() => plannerCommands().resetSkills()}
       >
-        <i className="block h-full w-(--energy-ratio) bg-info transition-[width] duration-200 group-[.overused]:bg-danger" />
-      </div>
-    </section>
+        Reset Skills
+      </button>
+    </div>
   );
 }
 
@@ -62,13 +48,13 @@ export function SkillBoard() {
   const view = useViewSource("skills");
   const tab = view?.tab ?? "skills";
   return (
-    <section className={`${PANEL} p-5 max-[520px]:p-4 min-[1101px]:flex min-[1101px]:min-h-180 min-[1101px]:flex-col`}>
-      <div className="compendium-tabs mb-3 flex gap-4 border-b border-line">
+    <section className="panel m-3 p-3 leading-[normal]">
+      <div className="compendium-tabs mb-2 flex gap-4 border-b border-line">
         {TABS.map((entry) => (
           <button
             key={entry.tab}
             type="button"
-            className={`tab px-4 py-3 text-xs font-bold tracking-wider uppercase ${entry.tab === tab ? "active" : ""}`}
+            className={`tab px-4 py-2.5 text-xs font-bold tracking-wider uppercase ${entry.tab === tab ? "active" : ""}`}
             aria-pressed={entry.tab === tab}
             onClick={() => plannerCommands().setSkillBoardTab(entry.tab)}
           >
@@ -76,7 +62,7 @@ export function SkillBoard() {
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-[64px_76px_repeat(5,minmax(0,1fr))_58px] items-center px-3 pb-2 text-center text-xs text-muted max-[720px]:hidden">
+      <div className="grid grid-cols-[77px_76px_repeat(5,minmax(0,1fr))_58px] items-center px-3 pb-2 text-center text-xs text-muted max-[720px]:hidden">
         <span />
         <span />
         <span>0</span>
@@ -90,16 +76,6 @@ export function SkillBoard() {
         {view ? <BoardRows view={view} /> : null}
       </div>
       <ReservationSummary view={view} />
-      <footer className="mt-3 flex items-center justify-end rounded-md border border-line px-3 py-2.5 min-[1101px]:mt-auto">
-        <button
-          className="btn h-10 w-32 px-3 text-xs font-bold tracking-wide uppercase"
-          type="button"
-          data-reset-skills=""
-          onClick={() => plannerCommands().resetSkills()}
-        >
-          Reset Skills
-        </button>
-      </footer>
     </section>
   );
 }
@@ -116,19 +92,19 @@ interface SupportDragSource {
 }
 const supportKey = (row: number, slot: number) => `${row}:${slot}`;
 
-// A board row: skill, name, five supports, Energy. The supports shrink when the column is too narrow for 42px sockets
-// (the legacy kept 42px and the row overflowed its board below 1100px); under 720px they drop to a second line. Every
+// A board row: skill, name, five supports, Energy. A support is 85% of the skill's art (60px to 70px; 48px to 56px under
+// 720px) and shrinks when its column is narrower; under 720px the supports drop to a second line. Every
 // state (drop target, dragging, trait-granted, curse limit, empty) is chosen here in JS: the e2e tests read the hook
 // classes (skill-drop-target, skill-dragging, support-drag-source, support-drop-target), so no utility may spell them.
 const ROW =
-  "group grid min-h-22 grid-cols-[64px_76px_minmax(0,1fr)_58px] items-center rounded-md border px-3 py-2 max-[720px]:grid-cols-[54px_minmax(0,1fr)_42px] max-[720px]:gap-y-2 max-[720px]:p-2";
+  "group grid grid-cols-[77px_76px_minmax(0,1fr)_58px] items-center rounded-md border px-3 py-2 max-[720px]:grid-cols-[62px_minmax(0,1fr)_42px] max-[720px]:gap-y-2 max-[720px]:p-2";
 // A row's frame: tinted with info while a dragged skill is over it; a danger outline when its curse cannot apply.
 function rowFrame(dropTarget: boolean, curseLimit: boolean) {
   const outline = curseLimit ? " outline-2 outline-offset-1 outline-danger" : "";
   return `${dropTarget ? "border-info bg-info/10" : "border-line bg-surface"}${outline}`;
 }
 const PRIMARY_SOCKET =
-  "relative grid size-16 place-items-center overflow-hidden rounded-full border p-0 text-muted max-[720px]:size-13";
+  "relative grid size-19.25 place-items-center overflow-hidden rounded-full border p-0 text-muted max-[720px]:size-15.5";
 // The active skill's round socket: dashed when empty, grabbed to reorder (lifted while dragged), info-tinted when a trait
 // grants the skill, ringed in danger when its curse cannot apply.
 function primarySocketState(state: { filled: boolean; granted: boolean; dragging: boolean; curseLimit: boolean }) {
@@ -144,9 +120,9 @@ const SUPPORT_LINE =
 // The art inside a frame: the image covers it, the frame's ◆ shows only when there is no image.
 const FRAMED_IMAGE =
   "[&>img]:absolute [&>img]:inset-0 [&>img]:z-1 [&>img]:size-full [&>img]:max-w-none [&>img]:object-cover [&>img+span]:invisible [&>span]:relative [&>span]:z-0";
-const SKILL_ART = `skill-glyph relative grid size-14.5 place-items-center overflow-hidden rounded-full border border-line-strong bg-raised text-accent-strong max-[720px]:size-11.5 [&>img]:rounded-full ${FRAMED_IMAGE}`;
+const SKILL_ART = `skill-glyph relative grid size-17.5 place-items-center overflow-hidden rounded-full border border-line-strong bg-raised text-accent-strong max-[720px]:size-14 [&>img]:rounded-full ${FRAMED_IMAGE}`;
 const SUPPORT_SOCKET =
-  "relative z-1 grid aspect-square w-[min(42px,100%)] place-items-center justify-self-center rounded-full border-2 p-0 text-muted max-[720px]:w-[min(34px,100%)]";
+  "relative z-1 grid aspect-square w-[min(60px,100%)] place-items-center justify-self-center rounded-full border-2 p-0 text-muted max-[720px]:w-[min(48px,100%)]";
 // A support socket: a "+" when empty (accent-strong on hover), dimmed while its support is dragged, info-tinted as a drop
 // target or when a trait grants the support.
 function supportSocketState(state: {
@@ -165,8 +141,8 @@ function supportSocketState(state: {
 }
 // The support that follows the pointer while dragged (a clone of the socket appended to <body>); "+" when copying.
 const SUPPORT_GHOST =
-  "support-drag-ghost pointer-events-none fixed z-10020 grid size-11.5 -translate-1/2 place-items-center rounded-full border-2 border-accent bg-raised shadow-lg shadow-shadow [&.copying]:after:absolute [&.copying]:after:-right-2 [&.copying]:after:-bottom-2 [&.copying]:after:grid [&.copying]:after:size-5 [&.copying]:after:place-items-center [&.copying]:after:rounded-full [&.copying]:after:bg-ok [&.copying]:after:font-bold [&.copying]:after:text-bg [&.copying]:after:content-['+']";
-const SUPPORT_ART = `lane-support-art relative block size-full overflow-hidden rounded-full max-[1100px]:size-7.25 [.support-drag-ghost_&]:size-9.5 [&>img]:scale-[1.14] ${FRAMED_IMAGE}`;
+  "support-drag-ghost pointer-events-none fixed z-10020 grid size-15 -translate-1/2 place-items-center rounded-full border-2 border-accent bg-raised shadow-lg shadow-shadow [&.copying]:after:absolute [&.copying]:after:-right-2 [&.copying]:after:-bottom-2 [&.copying]:after:grid [&.copying]:after:size-5 [&.copying]:after:place-items-center [&.copying]:after:rounded-full [&.copying]:after:bg-ok [&.copying]:after:font-bold [&.copying]:after:text-bg [&.copying]:after:content-['+']";
+const SUPPORT_ART = `lane-support-art relative block size-full overflow-hidden rounded-full [.support-drag-ghost_&]:size-14 [&>img]:scale-[1.14] ${FRAMED_IMAGE}`;
 
 function BoardRows({ view }: { view: SkillsView }) {
   const commands = plannerCommands();

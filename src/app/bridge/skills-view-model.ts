@@ -69,8 +69,6 @@ export interface SealedResourceView {
 }
 export interface SkillsView {
   tab: SkillBoardTab;
-  /** Enabled setups the user placed (trait-granted ones not counted). */
-  setupCount: number;
   energy: { used: number; available: number };
   rows: SkillRowView[];
   reservation: {
@@ -170,7 +168,6 @@ export function skillsView(planner: PlannerResult, skills: PlannerSkills, tab: S
   });
   return {
     tab,
-    setupCount: setups.filter((setup) => setup.enabled && !setup.traitGranted).length,
     energy: { used, available: energy.available },
     rows,
     reservation: reservationView(planner),

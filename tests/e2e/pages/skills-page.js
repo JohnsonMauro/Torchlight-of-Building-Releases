@@ -13,9 +13,6 @@ export class SkillsPage {
   view() {
     return this.page.locator("#skills-view");
   }
-  setupCount() {
-    return this.page.locator("#skill-setup-count");
-  }
   energyTotal() {
     return this.page.locator("#energy-total");
   }

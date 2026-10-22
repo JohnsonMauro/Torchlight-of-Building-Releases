@@ -21,7 +21,6 @@ async function openSkills(page, state = null) {
 
 test("lists the active skills with their levels, supports and Energy", async ({ page }) => {
   const { planner, skills } = await openSkills(page);
-  await expect(skills.setupCount()).toHaveText("9");
   await expect(skills.energyTotal()).toHaveText("515/518");
   await expect(skills.rows()).toHaveCount(5);
   await expect(skills.rows().first()).toContainText("Scorching Beam");
@@ -57,7 +56,6 @@ test("right-clicking a skill removes it; its empty slot opens the selector, and 
   await skills.socket("Replace Scorch").click({ button: "right" });
   await expect(skills.toast()).toHaveText("Scorch removed");
   await expect(skills.socket("Select Active 5")).toBeVisible();
-  await expect(skills.setupCount()).toHaveText("8");
   expect((await skills.stored()).setupEnabled.Scorch).toBe(false);
   await skills.socket("Select Active 5").click();
   await expect(skills.selector()).toBeVisible();
@@ -117,7 +115,7 @@ test("dragging a skill onto another row swaps them; a drop off the board puts it
     "Entangled Pain",
     "Aim",
   ]);
-  await skills.drag(skills.socket("Replace Aim"), page.locator(".energy-panel"));
+  await skills.drag(skills.socket("Replace Aim"), skills.view().locator(".compendium-tabs"));
   await expect(skills.toast()).toHaveText("Invalid drop · skill returned to its original slot");
   await expect(skills.rows().nth(4).getByRole("button", { name: "Replace Aim", exact: true })).toBeVisible();
   await expect(page.locator(".skill-dragging, .skill-drop-target")).toHaveCount(0);
@@ -167,7 +165,6 @@ test("Reset Skills empties both tabs", async ({ page }) => {
   const { planner, skills } = await openSkills(page);
   await skills.resetButton().click();
   await expect(skills.toast()).toHaveText("Skills reset to empty");
-  await expect(skills.setupCount()).toHaveText("0");
   for (const row of [1, 2, 3, 4, 5]) await expect(skills.socket(`Select Active ${row}`)).toBeVisible();
   await expect(skills.socket("Add support 1 to empty skill").first()).toBeDisabled();
   await skills.tab("Auras").click();

@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { HelpButton } from "../../ui/HelpButton";
+import { SectionHeading } from "../../ui/SectionHeading";
 import { FollowerPanel } from "../follower/FollowerPanel";
 import { DamageSummary } from "../stats/DamageSummary";
 import { HeroDetailTabs, HeroShowcase, HeroTraitTree } from "./HeroTab";
 
-// The character column and the Hero Trait and Follower tabs' panels: a panel under its heading bar, with its help
-// button when it has one. The width and placement are the caller's.
+// The character column and the Hero Trait and Follower tabs' panels: a panel under its heading strip (the one Skills,
+// Gear and Pactspirits use), with its help button when it has one. The width and placement are the caller's.
 function CharacterPanel({
   title,
   help,
@@ -19,12 +19,7 @@ function CharacterPanel({
 }) {
   return (
     <aside className={`panel relative overflow-hidden leading-[normal] ${className ?? ""}`}>
-      {title ? (
-        <div className="panel-head min-h-11 px-4 text-xs font-bold tracking-wider uppercase">
-          <h2>{title}</h2>
-          {help ? <HelpButton topic={help} label={title} /> : null}
-        </div>
-      ) : null}
+      {title ? <SectionHeading title={title} help={help} /> : null}
       {children}
     </aside>
   );

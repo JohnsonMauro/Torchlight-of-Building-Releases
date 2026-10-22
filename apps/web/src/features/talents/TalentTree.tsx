@@ -11,6 +11,7 @@ import { familyTint } from "../../ui/talent-slate-styles";
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";
 import { HelpButton } from "../../ui/HelpButton";
+import { sectionTitleClass } from "../../ui/section-card";
 import { CoreTalentTooltip, TalentNodeTooltip } from "./TalentTooltip";
 import { PRISM_ART, areaLook, lineLook, nodeLook, prismLook } from "./talent-classes";
 import { TalentEmblem } from "./TalentEmblem";
@@ -27,7 +28,7 @@ const TREE_POINTS =
 /** The small caps label over a slot's name. */
 const SLOT_LABEL = "text-[10px] tracking-wider text-dim uppercase max-[1100px]:tracking-normal";
 /** The Talent trees heading strip and the open tree's kind. */
-const HEADING = "font-display text-sm font-bold tracking-wider uppercase";
+const HEADING = "text-sm font-bold tracking-wider uppercase";
 /** Reselect / Reset / Install Prism. */
 const TALENT_ACTION = "talent-action btn min-h-8 px-3 py-1.5 text-xs font-bold max-[760px]:px-2";
 /** A node and the installed prism over it share their place and size on the stage. */
@@ -88,9 +89,10 @@ export function TalentTabs() {
   return (
     <>
       <p
-        className={`eyebrow col-span-full -mx-2.5 -mt-2.5 rounded-t-md border-b border-line bg-raised px-3 py-3 text-accent ${HEADING}`}
+        className={`eyebrow col-span-full -mx-2.5 -mt-2.5 flex items-center rounded-t-md border-b border-line bg-raised px-3 py-3 ${sectionTitleClass}`}
       >
-        <span className="text-accent">Talent trees</span>
+        <span>Talent trees</span>
+        <HelpButton topic="talents" label="Talents" />
       </p>
       {view.tabs.map((tab) => (
         <button
@@ -193,8 +195,7 @@ export function TalentBoardHeading() {
             onClick={() => plannerCommands().resetTalentTree()}
           >
             Reset
-          </button>{" "}
-          <HelpButton topic="talents" label="Talents" className="self-center" />
+          </button>
         </div>
       </div>
     </div>

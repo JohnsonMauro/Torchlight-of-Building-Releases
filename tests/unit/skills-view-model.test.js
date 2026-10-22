@@ -19,7 +19,6 @@ const view = (result, tab = "skills") => skillsView(result, result.state.skills,
 test("the default build: five skill rows with their supports, levels and Energy", () => {
   const skills = view(defaultResult);
   assert.equal(skills.tab, "skills");
-  assert.equal(skills.setupCount, 9);
   assert.deepEqual(skills.energy, { used: 515, available: 518 });
   assert.deepEqual(
     skills.rows.map((row) => row.label),
@@ -86,7 +85,6 @@ test("empty rows are named by tab and row, and their sockets wait for a skill", 
   );
   const result = calculatePlanner(state);
   const skills = view(result);
-  assert.equal(skills.setupCount, 0);
   assert.deepEqual(
     skills.rows.map((row) => [row.skill, row.emptyName, row.label]),
     [1, 2, 3, 4, 5].map((row) => [null, `Active ${row}`, `Select Active ${row}`]),
@@ -114,8 +112,6 @@ test("a support and a skill granted by the hero trait: shown with the trait, nev
   assert.equal(vendetta.skill.grantedBy, "Vendetta's Sting");
   assert.equal(vendetta.skill.grantNote, " · replaces Speed Phantom");
   assert.equal(vendetta.skill.draggable, false);
-  // The granted skill is not one of the user's setups.
-  assert.equal(erika.setupCount, 8);
 });
 
 test("Skills tab: a curse past the curse limit says why it is off; the Auras tab shows no curse note", () => {
@@ -142,7 +138,6 @@ test("a skill a board rule set aside keeps its row and says why", () => {
   const skills = view({ ...defaultResult, activation });
   assert.equal(skills.rows[1].skill.name, "Aim");
   assert.equal(skills.rows[1].skill.inactiveReason, reason);
-  assert.equal(skills.setupCount, 8);
   assert.equal(skills.energy.used, 515 - 25);
 });
 

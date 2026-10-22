@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { HelpButton } from "./HelpButton";
+import { sectionTitleClass } from "./section-card";
 
 interface SectionHeadingProps {
   title: string;
@@ -16,7 +17,7 @@ export function SectionHeading({ title, help, total, actions }: SectionHeadingPr
   return (
     <div className="flex min-h-[50px] items-center justify-between gap-5 border-b border-line bg-raised px-4 py-3">
       <h1 className="m-0 flex items-center">
-        <span className="font-display text-sm font-bold tracking-wider text-accent uppercase">{title}</span>
+        <span className={sectionTitleClass}>{title}</span>
         {help ? <HelpButton topic={help} label={title} /> : null}
       </h1>
       {total ? (
