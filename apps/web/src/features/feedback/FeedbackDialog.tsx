@@ -32,6 +32,7 @@ import {
   fieldHelpClass,
   fieldLabelClass,
   plainDialogButtonClass,
+  primaryDialogButtonClass,
   plainDialogClass,
   plainDialogTitleClass,
 } from "../../ui/dialog-classes";
@@ -413,7 +414,7 @@ function FeedbackForm({
         </button>
         <button
           type="button"
-          className={plainDialogButtonClass}
+          className={primaryDialogButtonClass}
           data-feedback-send=""
           disabled={missing.length > 0}
           onClick={send}

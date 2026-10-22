@@ -83,7 +83,7 @@ function Inventory({ view }: { view: MemoryInventoryView }) {
             <br />
             <button
               type="button"
-              className={`${memoryFooterButton} mt-5`}
+              className={`btn ${memoryFooterButton} mt-5`}
               onClick={() => commands().startMemoryCraft()}
             >
               Craft your first Memory
@@ -92,18 +92,22 @@ function Inventory({ view }: { view: MemoryInventoryView }) {
         )}
       </div>
       <div className="hero-memory-inventory-footer flex shrink-0 justify-end gap-2.25 border-t border-line px-4.5 py-3.5">
+        <button
+          type="button"
+          className={`btn-primary ${memoryFooterButton}`}
+          onClick={() => commands().startMemoryCraft()}
+        >
+          Craft Memory
+        </button>
         {view.unequipSlot ? (
           <button
             type="button"
-            className={memoryFooterButton}
+            className={`btn ${memoryFooterButton}`}
             onClick={() => (base ? commands().clearBaseMemory() : commands().clearHeroMemorySlot())}
           >
             Unequip slot
           </button>
         ) : null}
-        <button type="button" className={memoryFooterButton} onClick={() => commands().startMemoryCraft()}>
-          Craft Memory
-        </button>
       </div>
     </div>
   );

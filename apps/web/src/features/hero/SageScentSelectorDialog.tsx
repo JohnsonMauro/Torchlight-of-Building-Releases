@@ -86,11 +86,11 @@ export function SageScentSelectorDialog() {
         )}
       </div>
       <footer className={footerBar}>
-        <button type="button" className={footerButton} onClick={() => plannerCommands().clearSageScent()}>
-          Clear Slot
-        </button>
         <button type="button" className={footerButton} onClick={close}>
           Cancel
+        </button>
+        <button type="button" className={footerButton} onClick={() => plannerCommands().clearSageScent()}>
+          Clear Slot
         </button>
       </footer>
     </dialog>

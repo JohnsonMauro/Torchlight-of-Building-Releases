@@ -91,11 +91,11 @@ export function CarinoAmmoSelectorDialog() {
         )}
       </div>
       <footer className={footerBar}>
-        <button type="button" className={footerButton} onClick={() => plannerCommands().clearCarinoAmmo()}>
-          Clear Slot
-        </button>
         <button type="button" className={footerButton} onClick={close}>
           Cancel
+        </button>
+        <button type="button" className={footerButton} onClick={() => plannerCommands().clearCarinoAmmo()}>
+          Clear Slot
         </button>
       </footer>
     </dialog>

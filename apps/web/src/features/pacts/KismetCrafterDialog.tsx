@@ -139,12 +139,8 @@ export function KismetCrafterDialog() {
         </div>
       </div>
       <footer className="flex shrink-0 justify-end gap-2.5 border-t border-line px-4 py-3">
-        <button
-          type="button"
-          className={`btn ${footerButton}`}
-          onClick={() => plannerCommands().clearKismetCrafterSlot()}
-        >
-          Clear Slot
+        <button type="button" className={`btn ${footerButton}`} onClick={close}>
+          Cancel
         </button>
         <button
           type="button"
@@ -153,8 +149,12 @@ export function KismetCrafterDialog() {
         >
           Confirm
         </button>
-        <button type="button" className={`btn ${footerButton}`} onClick={close}>
-          Cancel
+        <button
+          type="button"
+          className={`btn ${footerButton}`}
+          onClick={() => plannerCommands().clearKismetCrafterSlot()}
+        >
+          Clear Slot
         </button>
       </footer>
     </dialog>

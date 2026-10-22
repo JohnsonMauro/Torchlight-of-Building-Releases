@@ -13,11 +13,14 @@ export const plainDialogTitleClass = "mb-2.5 font-display text-xl/[normal] font-
 /** A paragraph of the dialog's text. */
 export const plainDialogTextClass = "text-sm/normal";
 
-/** The row of buttons at the bottom. */
+/** The row of buttons at the bottom: Cancel, then the main action, then any other action (every dialog's order). */
 export const plainDialogActionsClass = "mt-6 flex flex-wrap justify-end gap-2";
 
 /** A button in that row (Cancel, Import Code…); `btn` fades it while disabled. */
 export const plainDialogButtonClass = "btn min-h-9 px-3 text-xs font-bold";
+
+/** The row's main action (Import Code, Send to GitHub), right of Cancel. */
+export const primaryDialogButtonClass = "btn-primary min-h-9 px-3 text-xs font-bold";
 
 /** The row's destructive button (Reset Build, Delete Build). */
 export const dangerDialogButtonClass = "btn-danger min-h-9 px-3 text-xs font-bold";

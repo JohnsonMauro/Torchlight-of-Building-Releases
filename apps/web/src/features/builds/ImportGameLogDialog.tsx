@@ -11,6 +11,7 @@ import {
   fieldLabelClass,
   plainDialogActionsClass,
   plainDialogButtonClass,
+  primaryDialogButtonClass,
   plainDialogClass,
   plainDialogTextClass,
   plainDialogTitleClass,
@@ -230,7 +231,7 @@ export function ImportGameLogDialog() {
         <button
           type="button"
           data-import-game-log-build=""
-          className={plainDialogButtonClass}
+          className={primaryDialogButtonClass}
           disabled={!view?.summary}
           onClick={() => plannerCommands().importGameLogBuild()}
         >

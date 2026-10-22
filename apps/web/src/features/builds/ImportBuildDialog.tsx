@@ -7,6 +7,7 @@ import {
   fieldLabelClass,
   plainDialogActionsClass,
   plainDialogButtonClass,
+  primaryDialogButtonClass,
   plainDialogClass,
   plainDialogTitleClass,
 } from "../../ui/dialog-classes";
@@ -37,7 +38,7 @@ export function ImportBuildDialog() {
         </button>
         <button
           type="button"
-          className={plainDialogButtonClass}
+          className={primaryDialogButtonClass}
           onClick={() => plannerCommands().importBuild(code.current?.value ?? "")}
         >
           Import Code

@@ -129,6 +129,9 @@ export function SkillSelectorDialog() {
         )}
       </div>
       <footer className="flex justify-end gap-2.5 border-t border-line bg-raised px-4 py-3">
+        <button className={`btn ${FOOTER_BUTTON}`} type="button" onClick={close}>
+          Cancel
+        </button>
         <button
           className={`btn-primary ${FOOTER_BUTTON}`}
           type="button"
@@ -136,9 +139,6 @@ export function SkillSelectorDialog() {
           onClick={() => plannerCommands().confirmSkillSelector()}
         >
           {view?.confirm.label ?? "Confirm"}
-        </button>
-        <button className={`btn ${FOOTER_BUTTON}`} type="button" onClick={close}>
-          Cancel
         </button>
       </footer>
     </dialog>

@@ -23,7 +23,7 @@ export const inventoryItem =
   "mb-2 grid grid-cols-[42px_minmax(0,1fr)_auto_auto_auto_auto] items-center gap-2 rounded-md border border-l-3 border-line border-l-(--memory-accent) bg-raised p-2.5 max-[700px]:flex max-[700px]:flex-wrap";
 export const inventoryButton = "btn px-2 py-1.5 text-xs";
 /** Unequip slot, Craft Memory: the footer's buttons. */
-export const memoryFooterButton = "btn min-h-8.5 px-3.5 text-xs font-bold tracking-wider uppercase";
+export const memoryFooterButton = "min-h-8.5 px-3.5 text-xs font-bold tracking-wider uppercase";
 
 // ---- The crafter's form ------------------------------------------------------------------------------------------
 /** The form column: labelled rows, section headings, selects. */

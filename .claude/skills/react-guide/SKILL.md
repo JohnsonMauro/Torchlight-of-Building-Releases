@@ -46,6 +46,12 @@ componentized in the change that sees it, and the report says so.
 - A list search: `SearchField` (⌕, ×, the /regex/ hint and its error) over `searchMatcher(query).matches(text)`, the
   text built with `searchText([...])` (`src/app/bridge/search-match.ts`): plain words in any order, or /pattern/flags.
 - Images: `Artwork` (the ◆ placeholder when there is no image); headings: `SectionHeading`; help: `HelpButton`.
+- Crafters (equipment, prism): `Breadcrumb` (the path back to a picker), `CraftSection` (a folding section),
+  `ChoiceList` (options as radio rows in place of a select, with a filter past 12) with `choiceLabel`, and the picker
+  cards and the "Preview" caption in `craft-classes.ts`; a column with its path fixed over the scrolling
+  content: `CraftColumn`.
+- A dialog's footer: Cancel first, then the main action (`btn-primary`), then any other action, right-aligned;
+  `primaryDialogButtonClass` in `ui/dialog-classes.ts` for the plain dialogs.
 
 ## 4. Hooks
 

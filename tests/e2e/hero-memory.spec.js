@@ -57,7 +57,7 @@ test("a socket opens the memories of its type, each with its rarity and slot", a
   await expect(item(page, 0).getByRole("button")).toHaveText(["Unequip", "Copy", "✎", "×"]);
   await expect(item(page, 0).getByRole("button", { name: "Edit Memory of Discipline" })).toBeVisible();
   await expect(item(page, 0).locator("img")).toHaveAttribute("src", /\S/);
-  await expect(footer(page).getByRole("button")).toHaveText(["Unequip slot", "Craft Memory"]);
+  await expect(footer(page).getByRole("button")).toHaveText(["Craft Memory", "Unequip slot"]);
   await dialog(page).getByRole("button", { name: "Close hero memories" }).click();
   await expect(dialog(page)).toBeHidden();
   await planner.expectNoErrors();
@@ -196,7 +196,7 @@ test("the base trait slot lists the memories that fit it, equips one at its best
   let stored = await hero.stored();
   expect(stored.baseTraitMemoryId).toBe("origin-epic");
   expect(stored.baseTraitMemoryRoll).toBe(-55);
-  await expect(footer(page).getByRole("button")).toHaveText(["Unequip slot", "Craft Memory"]);
+  await expect(footer(page).getByRole("button")).toHaveText(["Craft Memory", "Unequip slot"]);
 
   await footer(page).getByRole("button", { name: "Unequip slot" }).click();
   await expect(footer(page).getByRole("button")).toHaveText(["Craft Memory"]);

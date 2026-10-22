@@ -30,7 +30,7 @@ import { RangeInput } from "../../ui/RangeInput";
 import { RANGE_FIELD, RANGE_NUMBER } from "../../ui/range-classes";
 
 const commands = plannerCommands;
-const craftAction = "btn min-h-10 flex-1 text-xs font-bold tracking-wider uppercase";
+const craftAction = "min-h-10 flex-1 text-xs font-bold tracking-wider uppercase";
 
 function RollControls({
   roll,
@@ -377,12 +377,12 @@ export function HeroMemoryCrafter({ view }: { view: MemoryCrafterView }) {
           )}
         </div>
         <div className="hero-memory-craft-actions mt-auto flex gap-2.5 pt-3">
-          <button type="button" className={craftAction} onClick={() => commands().cancelMemoryCraft()}>
+          <button type="button" className={`btn ${craftAction}`} onClick={() => commands().cancelMemoryCraft()}>
             Cancel
           </button>
           <button
             type="button"
-            className={craftAction}
+            className={`btn-primary ${craftAction}`}
             disabled={!view.canSave}
             onClick={() => commands().saveMemoryCraft()}
           >
