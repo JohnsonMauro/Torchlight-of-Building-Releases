@@ -12,20 +12,27 @@ import { SearchField } from "../../ui/SearchField";
 import {
   CONTROL,
   CRAFT_ASIDE,
-  CRAFT_ASIDE_LABEL,
-  CRAFT_FORM,
+  CRAFT_FORM_BODY,
+  CRAFT_FORM_COLUMN,
   CRAFT_HEADING,
   CRAFT_LAYOUT,
   FIELD,
   MOD_BOX_CORRODED,
   MOD_TAG_CORRODED,
 } from "./crafter-classes";
-import { choiceLabel } from "./choices";
-import { ChoiceList, CraftSection, ItemPreview, LegendaryModControl, type LegendaryLineChange } from "./crafter-parts";
+import { PREVIEW_LABEL } from "../../ui/craft-classes";
+import { choiceLabel } from "../../ui/choices";
+import { ChoiceList } from "../../ui/ChoiceList";
+import { CraftColumn } from "../../ui/CraftColumn";
+import { CraftSection } from "../../ui/CraftSection";
+import { ItemPreview, LegendaryModControl, type LegendaryLineChange } from "./crafter-parts";
 import { CraftPath, PickCards } from "./CraftPicker";
 
 // The list column: the search, the results (they scroll), the count.
-const LIST_COLUMN = "grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)_auto] gap-3 p-4";
+/** The search row, the path while browsing (it stays above the scrolling list), the list, the count. */
+const LIST_COLUMN = "grid min-h-0 flex-1 gap-3 p-4";
+const LIST_ROWS = "grid-rows-[auto_minmax(0,1fr)_auto]";
+const LIST_ROWS_BROWSING = "grid-rows-[auto_auto_minmax(0,1fr)_auto]";
 // A legendary in the list: its art, name and slot · level.
 const CHOICE =
   "grid min-h-17.5 cursor-pointer grid-cols-[54px_minmax(0,1fr)] items-center gap-2.5 rounded border border-line bg-raised p-2 text-left text-text hover:border-accent focus-visible:border-accent focus-visible:outline-none";
@@ -65,7 +72,7 @@ export function LegendaryList({ list }: { list: LegendaryListView }) {
   const browse = list.browse;
   return (
     <div className="flex min-h-0 flex-1">
-      <section className={LIST_COLUMN}>
+      <section className={`${LIST_COLUMN} ${browse ? LIST_ROWS_BROWSING : LIST_ROWS}`}>
         <div className="grid gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <SearchField
@@ -79,10 +86,10 @@ export function LegendaryList({ list }: { list: LegendaryListView }) {
             {list.chips.length ? <TypeChips chips={list.chips} /> : null}
           </div>
         </div>
+        {browse ? <CraftPath path={browse.path} /> : null}
         <div className="grid min-h-0 content-start gap-3 overflow-auto">
           {browse ? (
             <>
-              <CraftPath path={browse.path} />
               <h3 className="text-sm font-bold">{browse.heading}</h3>
               {browse.cards.length ? <PickCards step={browse.step} cards={browse.cards} /> : null}
             </>
@@ -185,8 +192,11 @@ function CorrosionRoll({ corroded }: { corroded: NonNullable<LegendaryConfigView
 export function LegendaryConfig({ config }: { config: LegendaryConfigView }) {
   return (
     <div className={CRAFT_LAYOUT}>
-      <section className={CRAFT_FORM}>
-        <CraftPath path={config.path} />
+      <CraftColumn
+        path={<CraftPath path={config.path} />}
+        className={CRAFT_FORM_COLUMN}
+        bodyClassName={CRAFT_FORM_BODY}
+      >
         {config.energy !== null ? (
           <label className={`${FIELD} max-w-40`}>
             Energy
@@ -256,9 +266,9 @@ export function LegendaryConfig({ config }: { config: LegendaryConfigView }) {
             />
           ))}
         </div>
-      </section>
+      </CraftColumn>
       <aside id="legendary-config-preview" className={CRAFT_ASIDE}>
-        <small className={CRAFT_ASIDE_LABEL}>Preview</small>
+        <small className={PREVIEW_LABEL}>Preview</small>
         <ItemPreview preview={config.preview} />
       </aside>
     </div>

@@ -1,11 +1,9 @@
 // Pieces the equipment crafter's views share (src/app/bridge/equipment-crafter-view.ts): the item preview (its lines
 // through ModifierText), a select's options and groups (with the data-* attributes the planner's searchable select
-// reads), a list of choices in place of a select, a folding section, a roll's slider and number field, and a legendary
-// line with its controls (the crafter's and the item editor's differ by their data-* names).
-import { useState, type InputHTMLAttributes, type ReactNode } from "react";
+// reads), a roll's slider and number field, and a legendary line with its controls (the crafter's and the item editor's
+// differ by their data-* names). The folding section and the list of choices are shared (ui/CraftSection, ui/ChoiceList).
+import type { InputHTMLAttributes } from "react";
 import { tierBadgeClasses, tierBadgeKey } from "@legacy/app/gear/tier-badge.ts";
-import { searchMatcher, searchText } from "@legacy/app/bridge/search-match.ts";
-import { flatChoices } from "./choices";
 import type {
   ItemPreviewView,
   LegendaryLineView,
@@ -13,8 +11,8 @@ import type {
   RollView,
   SelectChoice,
 } from "@legacy/app/bridge/equipment-crafter-view.ts";
+import { ChoiceList } from "../../ui/ChoiceList";
 import { RangeInput } from "../../ui/RangeInput";
-import { SearchField } from "../../ui/SearchField";
 import { ModifierText } from "../../ui/ModifierText";
 import {
   AFFIX_ROW,
@@ -127,109 +125,6 @@ export function Choices({ choices }: { choices: SelectChoice[] }) {
     ) : (
       <Options key={index} options={[choice]} />
     ),
-  );
-}
-
-/** A section folded by its heading (open at first); `summary` beside the heading says what it holds. */
-export function CraftSection({
-  heading,
-  summary,
-  open = true,
-  children,
-}: {
-  heading: string;
-  summary?: string;
-  open?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <details open={open} className="group/section border-t border-line pt-3" data-craft-section="">
-      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-bold [&::-webkit-details-marker]:hidden">
-        <span aria-hidden="true" className="text-muted transition-transform group-open/section:rotate-90">
-          ›
-        </span>
-        <h3>{heading}</h3>
-        {summary ? <span className="min-w-0 truncate text-xs font-normal text-muted">{summary}</span> : null}
-      </summary>
-      <div className="mt-3 grid gap-3">{children}</div>
-    </details>
-  );
-}
-
-const CHOICE_ROW =
-  "flex cursor-pointer items-start gap-2.5 rounded border border-line bg-raised px-2.5 py-2 text-sm text-text hover:border-accent";
-const CHOICE_ROW_ON = "border-accent/60";
-/** Past this many options, a list offers a filter. */
-const FILTER_FROM = 12;
-
-/**
- * One choice among options (by group when they have one) in place of a select: a radio row each, "None" first unless
- * `none` is null, a filter over a long list, and `detail` under the chosen row (its roll).
- */
-export function ChoiceList({
-  label,
-  choices,
-  value,
-  onChange,
-  none = "None",
-  noneValue = "",
-  attributes,
-  detail,
-}: {
-  label: string;
-  choices: SelectChoice[];
-  value: string;
-  onChange: (value: string) => void;
-  none?: string | null;
-  noneValue?: string;
-  attributes?: Record<`data-${string}`, string | number>;
-  detail?: ReactNode;
-}) {
-  const [filter, setFilter] = useState("");
-  const matcher = searchMatcher(filter);
-  const keep = (option: OptionView) => matcher.matches(searchText([option.label]));
-  const row = (option: OptionView) => {
-    const on = option.value === value;
-    return (
-      <div key={option.value} className="grid gap-2">
-        <label className={`${CHOICE_ROW} ${on ? CHOICE_ROW_ON : ""}`}>
-          <input
-            type="radio"
-            className="mt-0.5 size-4 shrink-0 accent-accent"
-            checked={on}
-            data-choice-value={option.value}
-            onChange={() => onChange(option.value)}
-          />
-          <span className="min-w-0 flex-1">
-            {option.label}
-            {option.data?.optionMeta ? (
-              <small className="block text-xs text-muted">{option.data.optionMeta}</small>
-            ) : null}
-          </span>
-        </label>
-        {on && detail ? <div className="pl-7">{detail}</div> : null}
-      </div>
-    );
-  };
-  return (
-    <div className="grid gap-1.5" role="radiogroup" aria-label={label} {...attributes}>
-      {flatChoices(choices).length > FILTER_FROM ? (
-        <SearchField value={filter} onChange={setFilter} placeholder={`Filter ${label}…`} error={matcher.error} />
-      ) : null}
-      {none === null ? null : row({ value: noneValue, label: none })}
-      {choices.map((choice, index) =>
-        "group" in choice ? (
-          choice.options.some(keep) ? (
-            <div key={index} className="grid gap-1.5">
-              <small className="mt-1 text-xs font-bold tracking-wide text-muted uppercase">{choice.group}</small>
-              {choice.options.filter(keep).map(row)}
-            </div>
-          ) : null
-        ) : keep(choice) ? (
-          row(choice)
-        ) : null,
-      )}
-    </div>
   );
 }
 

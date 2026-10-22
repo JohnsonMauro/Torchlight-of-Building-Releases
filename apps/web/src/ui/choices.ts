@@ -1,4 +1,4 @@
-// A list of choices (crafter-parts.tsx ChoiceList) read as plain options: its options out of their groups, and the label
+// A list of choices (ChoiceList.tsx) read as plain options: its options out of their groups, and the label
 // of the one it holds.
 import type { OptionView, SelectChoice } from "@legacy/app/bridge/equipment-crafter-view.ts";
 

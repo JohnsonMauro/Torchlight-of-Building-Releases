@@ -31,12 +31,15 @@ import {
 let activePrismTreeSlot = 1;
 let prismDraft = null;
 let prismEditingId = null;
+// The crafter's page: "pick" (the type's bases as cards) or "form" (the picked base's affixes and the preview).
+let prismStep = "pick";
 export let pendingPrismPlacement = null;
 export const prismCommands = {
   openPrismInventory,
   openPrismCrafter: () => openPrismCrafter(),
   setPrismType,
-  setPrismBase,
+  pickPrismBase,
+  repickPrism,
   setPrismAffix,
   setInverseRoll,
   cancelPrismCraft,
@@ -174,28 +177,54 @@ function prismCrafterSource() {
     hasLegendary = prismSupportsLegendaryAffix(draft),
     replaces = prismReplacesCore(draft),
     icon = prismIcon(draft);
-  const select = (kind, label) => {
-    const value = draft[`${kind}Affix`] || "",
-      options =
-        kind === "rare"
-          ? prismRareAffixesForBase(draft.base)
-          : kind === "legendary"
-            ? prismLegendaryAffixesForBase(draft.base)
-            : prismAffixes[kind];
+  const list = (kind, label) => {
+    const options =
+      kind === "rare"
+        ? prismRareAffixesForBase(draft.base)
+        : kind === "legendary"
+          ? prismLegendaryAffixesForBase(draft.base)
+          : prismAffixes[kind];
     return {
       kind,
       label,
-      value,
-      title: options.includes(value) ? prismAffixOptionLabel(kind, value) : "",
-      options: options.map((affix) => ({ value: affix, label: prismAffixOptionLabel(kind, affix) })),
+      value: draft[`${kind}Affix`] || "",
+      choices: options.map((affix) => ({ value: affix, label: prismAffixOptionLabel(kind, affix) })),
     };
   };
+  const typeLabel = draft.type === "inverse" ? "Inverse Image" : "Ethereal Prism",
+    step = prismStep === "form" && draft.base ? "form" : "pick";
   return displayTexts({
     title: `${prismEditingId ? "Edit" : "Craft"} ${draft.type === "inverse" ? "Inverse Image" : "Prism"}`,
     editing: Boolean(prismEditingId),
     type: draft.type,
+    step,
+    picks:
+      step === "pick"
+        ? (draft.type === "inverse" ? ["Inverse Image"] : etherealPrismBases).map((base) => ({
+            value: base,
+            label: base,
+            icon: prismIcon({ type: draft.type, base }) || "",
+            // What the base holds or can roll, for the search over the cards (every base rolls the same radius affixes).
+            lines: [
+              prismBaseEffect(draft.type, base),
+              ...(draft.type === "ethereal"
+                ? [
+                    ...prismRareAffixesForBase(base),
+                    ...prismLegendaryAffixesForBase(base).map((affix) => prismAffixOptionLabel("legendary", affix)),
+                  ]
+                : []),
+            ],
+          }))
+        : [],
+    path:
+      step === "form"
+        ? [
+            { label: typeLabel, back: true },
+            { label: draft.base, back: false },
+          ]
+        : [],
     inverse:
-      draft.type === "inverse"
+      step === "form" && draft.type === "inverse"
         ? {
             icon: prismIcon(draft),
             description: prismBaseEffect(draft.type, draft.base),
@@ -218,10 +247,9 @@ function prismCrafterSource() {
           }
         : null,
     ethereal:
-      draft.type === "ethereal"
+      step === "form" && draft.type === "ethereal"
         ? {
             base: draft.base,
-            bases: [...etherealPrismBases],
             fixed: draft.base
               ? {
                   label: replaces ? "Core Talent" : "Prism Effect",
@@ -233,23 +261,24 @@ function prismCrafterSource() {
               : null,
             count: [draft.radiusAffix, draft.rareAffix, hasLegendary && draft.legendaryAffix].filter(Boolean).length,
             max: hasLegendary ? 3 : 2,
-            selects: [
-              select("radius", "Radius"),
-              select("rare", "Rare"),
-              ...(hasLegendary ? [select("legendary", "Legendary")] : []),
+            lists: [
+              list("radius", "Radius"),
+              list("rare", "Rare"),
+              ...(hasLegendary ? [list("legendary", "Legendary")] : []),
             ],
           }
         : null,
-    preview: draft.base
-      ? {
-          inverse: draft.type === "inverse",
-          icon: icon || "",
-          name: prismName(draft),
-          area: prismArea(draft),
-          sections: prismAffixSectionsView(draft),
-        }
-      : null,
-    canSave: Boolean(draft.base),
+    preview:
+      step === "form"
+        ? {
+            inverse: draft.type === "inverse",
+            icon: icon || "",
+            name: prismName(draft),
+            area: prismArea(draft),
+            sections: prismAffixSectionsView(draft),
+          }
+        : null,
+    canSave: step === "form",
     saveLabel: prismEditingId ? "Save Changes" : "Craft",
   });
 }
@@ -264,15 +293,22 @@ function setPrismType(type) {
     legendaryAffix: "",
     ...(inverse ? { inverseRolls: { micro: -100, medium: -100, legendary: -100 } } : {}),
   };
+  prismStep = "pick";
   renderPrismCrafter();
 }
-// A base keeps only the rare and legendary affixes it can roll.
-function setPrismBase(base) {
+// A base card picked: the form for that base, which keeps only the rare and legendary affixes it can roll.
+function pickPrismBase(base) {
   if (!prismDraft) return;
   prismDraft.base = base;
   if (!prismRareAffixesForBase(prismDraft.base).includes(prismDraft.rareAffix)) prismDraft.rareAffix = "";
   if (!prismLegendaryAffixesForBase(prismDraft.base).includes(prismDraft.legendaryAffix))
     prismDraft.legendaryAffix = "";
+  prismStep = "form";
+  renderPrismCrafter();
+}
+// The form's path back to the type's bases (the draft keeps its affixes for the next base).
+function repickPrism() {
+  prismStep = "pick";
   renderPrismCrafter();
 }
 function setPrismAffix(kind, value) {
@@ -296,7 +332,7 @@ function cancelPrismCraft() {
   openPrismInventory();
 }
 function confirmPrismCraft() {
-  if (!prismDraft?.base) return;
+  if (!prismDraft?.base || prismStep !== "form") return;
   const editing = Boolean(prismEditingId),
     item = {
       ...prismDraft,
@@ -321,6 +357,7 @@ function openPrismCrafter(item = null) {
   prismDraft = item
     ? { ...item, ...(item.inverseRolls ? { inverseRolls: { ...item.inverseRolls } } : {}) }
     : { type: "ethereal", base: "", radiusAffix: "", rareAffix: "", legendaryAffix: "" };
+  prismStep = item ? "form" : "pick";
   renderPrismCrafter();
   openDialog("prism-crafter-dialog");
 }

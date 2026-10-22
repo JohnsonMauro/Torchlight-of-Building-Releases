@@ -5,8 +5,10 @@
 import { useEffect, useRef } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { CraftCrumbView, CraftPickView } from "@legacy/app/bridge/equipment-crafter-view.ts";
+import { Breadcrumb } from "../../ui/Breadcrumb";
 import { GearSlotIcon } from "../../ui/GearSlotIcon";
-import { PICK_CARD, PICK_CARDS, PICK_COLUMN } from "./crafter-classes";
+import { CraftColumn } from "../../ui/CraftColumn";
+import { PICK_CARD, PICK_CARDS } from "../../ui/craft-classes";
 
 const CHANGE = {
   mode: "craftMode",
@@ -22,13 +24,12 @@ export function CraftPicker({ pick }: { pick: CraftPickView }) {
   useEffect(() => heading.current?.focus(), [where]);
   return (
     <div className="flex min-h-0 flex-1">
-      <section className={PICK_COLUMN}>
-        <CraftPath path={pick.path} />
+      <CraftColumn path={<CraftPath path={pick.path} />} className="flex-1">
         <h3 ref={heading} tabIndex={-1} className="text-sm font-bold outline-none">
           {pick.heading}
         </h3>
         <PickCards step={pick.step} cards={pick.cards} />
-      </section>
+      </CraftColumn>
     </div>
   );
 }
@@ -61,27 +62,12 @@ export function PickCards({ step, cards }: Pick<CraftPickView, "step" | "cards">
 /** Where the picker or the form stands: each step taken opens it again. */
 export function CraftPath({ path }: { path: CraftCrumbView[] }) {
   return (
-    <nav aria-label="Item" data-craft-path="">
-      <ol className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
-        {path.map(({ label, step }, index) => (
-          <li key={index} className="flex items-center gap-1.5">
-            {index ? <span aria-hidden="true">›</span> : null}
-            {step ? (
-              <button
-                type="button"
-                className="cursor-pointer rounded-sm text-info underline-offset-2 hover:underline"
-                onClick={() => plannerCommands().changeEquipmentCraft({ kind: "repick", step })}
-              >
-                {label}
-              </button>
-            ) : (
-              <span className="font-bold text-text" aria-current="step">
-                {label}
-              </span>
-            )}
-          </li>
-        ))}
-      </ol>
-    </nav>
+    <Breadcrumb
+      label="Item"
+      steps={path.map(({ label, step }) => ({
+        label,
+        onSelect: step ? () => plannerCommands().changeEquipmentCraft({ kind: "repick", step }) : undefined,
+      }))}
+    />
   );
 }

@@ -1,5 +1,6 @@
 // What the Prism crafter shows (src/app/talents/prism-controller.js prismCrafterSource; apps/web/src/features/talents/PrismCrafterDialog.tsx).
 // Types only.
+import type { OptionView } from "./equipment-crafter-view.ts";
 
 /** A line of a prism's affix section: an effect, or an Inverse Image's mod value. */
 export type PrismSectionLine =
@@ -15,6 +16,12 @@ export interface PrismCrafterView {
   /** Editing a prism: its type is fixed. */
   editing: boolean;
   type: "ethereal" | "inverse";
+  /** "pick": the type's bases as cards (no preview); "form": the picked base's affixes and the preview. */
+  step: "pick" | "form";
+  /** The pick page's cards: the type's bases (an Inverse Image has one), with what each holds or can roll. */
+  picks: { value: string; label: string; icon: string; lines: string[] }[];
+  /** The form's path: the type (back to its bases), then the base. */
+  path: { label: string; back: boolean }[];
   inverse: {
     icon: string;
     description: string;
@@ -32,18 +39,11 @@ export interface PrismCrafterView {
   } | null;
   ethereal: {
     base: string;
-    bases: string[];
     fixed: { label: string; note: string; effect: string } | null;
     count: number;
     max: number;
-    selects: {
-      kind: string;
-      label: string;
-      value: string;
-      /** The chosen affix's full text, or "". */
-      title: string;
-      options: { value: string; label: string }[];
-    }[];
+    /** Each random affix slot's choices ("" holds none). */
+    lists: { kind: string; label: string; value: string; choices: OptionView[] }[];
   } | null;
   preview: { inverse: boolean; icon: string; name: string; area: string; sections: PrismSectionView[] } | null;
   canSave: boolean;

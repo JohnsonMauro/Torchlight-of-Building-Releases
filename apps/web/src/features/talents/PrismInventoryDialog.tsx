@@ -1,6 +1,6 @@
 // The prism inventory (Install Prism, or a click on the installed prism): the crafted prisms with their type, area and
 // the tree each is installed in, and for each Edit, Install (Equipped on this tree, disabled when in another) and Delete;
-// Unequip current Prism; Craft Prism. The planner opens it for a tree slot and announces the "prismInventory" source;
+// Unequip current Prism; Craft Prism in the footer (also with none crafted yet). The planner opens it for a tree slot and announces the "prismInventory" source;
 // every button is a planner command.
 import { useRef } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
@@ -95,17 +95,7 @@ export function PrismInventoryDialog() {
             ) : null}
           </>
         ) : (
-          <div className="prism-inventory-empty flex h-full flex-col items-center gap-4.5 pt-13 text-muted">
-            <span>No prisms crafted yet</span>
-            <button
-              type="button"
-              className={`${CRAFT} px-4 py-2.5`}
-              data-open-prism-crafter=""
-              onClick={() => plannerCommands().openPrismCrafter()}
-            >
-              Craft First Prism
-            </button>
-          </div>
+          <p className="prism-inventory-empty pt-13 text-center text-muted">No prisms crafted yet</p>
         )}
       </div>
       <footer className={`${FOOTER} px-4 py-3`}>

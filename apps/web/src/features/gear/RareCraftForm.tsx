@@ -5,9 +5,13 @@
 import type { CraftChange } from "@legacy/app/gear/equipment-craft.ts";
 import type { RareFormView } from "@legacy/app/bridge/equipment-crafter-view.ts";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
-import { CONTROL, CRAFT_ASIDE, CRAFT_ASIDE_LABEL, CRAFT_FORM, CRAFT_LAYOUT, FIELD } from "./crafter-classes";
-import { choiceLabel } from "./choices";
-import { ChoiceList, CraftSection, ItemPreview } from "./crafter-parts";
+import { CONTROL, CRAFT_ASIDE, CRAFT_FORM_BODY, CRAFT_FORM_COLUMN, CRAFT_LAYOUT, FIELD } from "./crafter-classes";
+import { PREVIEW_LABEL } from "../../ui/craft-classes";
+import { CraftColumn } from "../../ui/CraftColumn";
+import { choiceLabel } from "../../ui/choices";
+import { ChoiceList } from "../../ui/ChoiceList";
+import { CraftSection } from "../../ui/CraftSection";
+import { ItemPreview } from "./crafter-parts";
 import { AffixList, BaseAffixList } from "./AffixList";
 import { CraftPath } from "./CraftPicker";
 
@@ -16,8 +20,7 @@ const change = (craftChange: CraftChange) => plannerCommands().changeEquipmentCr
 export function RareCraftForm({ form }: { form: RareFormView }) {
   return (
     <div className={CRAFT_LAYOUT}>
-      <section className={CRAFT_FORM}>
-        <CraftPath path={form.path} />
+      <CraftColumn path={<CraftPath path={form.path} />} className={CRAFT_FORM_COLUMN} bodyClassName={CRAFT_FORM_BODY}>
         {/* Level and Energy take the same width; the name takes what is left. */}
         <div
           className={`grid gap-3 max-[800px]:grid-cols-1 ${form.energyShown ? "grid-cols-[minmax(0,1fr)_96px_96px_auto_auto]" : "grid-cols-[minmax(0,1fr)_96px_auto_auto]"}`}
@@ -117,9 +120,9 @@ export function RareCraftForm({ form }: { form: RareFormView }) {
             <AffixList list={list} />
           </CraftSection>
         ))}
-      </section>
+      </CraftColumn>
       <aside id="crafted-equipment-preview" className={CRAFT_ASIDE}>
-        <small className={CRAFT_ASIDE_LABEL}>Preview</small>
+        <small className={PREVIEW_LABEL}>Preview</small>
         <ItemPreview preview={form.preview} />
       </aside>
     </div>

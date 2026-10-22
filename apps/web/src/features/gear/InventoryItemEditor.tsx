@@ -12,7 +12,6 @@ import { RangeInput } from "../../ui/RangeInput";
 import {
   CONTROL,
   CRAFT_ASIDE,
-  CRAFT_ASIDE_LABEL,
   CRAFT_FORM,
   CRAFT_HEADING,
   CRAFT_LAYOUT,
@@ -29,6 +28,7 @@ import {
   SELECTED_ICON,
   SELECTED_NAME,
 } from "./crafter-classes";
+import { PREVIEW_LABEL } from "../../ui/craft-classes";
 import { Choices, ItemPreview, LegendaryModControl } from "./crafter-parts";
 
 const change = (editorChange: InventoryItemEditorChange) => plannerCommands().changeInventoryItemEditor(editorChange);
@@ -221,7 +221,7 @@ export function InventoryItemEditor({ editor }: { editor: InventoryItemEditorVie
         </div>
       </section>
       <aside className={CRAFT_ASIDE}>
-        <small className={CRAFT_ASIDE_LABEL}>Preview</small>
+        <small className={PREVIEW_LABEL}>Preview</small>
         <ItemPreview preview={editor.preview} />
       </aside>
     </div>

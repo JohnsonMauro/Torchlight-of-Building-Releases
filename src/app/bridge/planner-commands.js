@@ -54,8 +54,11 @@
  *   slots are full) and closes.
  * @property {() => void} clearKismetCrafterSlot Kismet crafter: empties the slot and closes.
  * @property {() => void} closeKismetCrafter Kismet crafter was closed: forgets the slot it was open for.
- * @property {(type: "ethereal" | "inverse") => void} setPrismType Prism crafter: a new draft of that type.
- * @property {(base: string) => void} setPrismBase Prism crafter: the base (keeping only the affixes it can roll).
+ * @property {(type: "ethereal" | "inverse") => void} setPrismType Prism crafter: a new draft of that type, back to its
+ *   bases.
+ * @property {(base: string) => void} pickPrismBase Prism crafter: a base card picked opens its form (keeping only the
+ *   affixes it can roll).
+ * @property {() => void} repickPrism Prism crafter: the form's path back to the type's bases.
  * @property {(kind: string, value: string) => void} setPrismAffix Prism crafter: a random affix (radius, rare,
  *   legendary).
  * @property {(kind: string, value: number) => void} setInverseRoll Prism crafter: an Inverse Image's mod value

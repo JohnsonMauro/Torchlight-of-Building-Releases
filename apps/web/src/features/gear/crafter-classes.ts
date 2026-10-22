@@ -17,15 +17,11 @@ export const CRAFT_LAYOUT =
   "grid min-h-0 flex-1 grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] grid-rows-[minmax(0,1fr)] max-[800px]:flex max-[800px]:flex-col max-[800px]:overflow-auto";
 export const CRAFT_FORM =
   "grid min-h-0 content-start gap-3 overflow-auto border-r border-line p-4 max-[800px]:shrink-0 max-[800px]:overflow-visible max-[800px]:border-r-0";
+/** The same column under a path (ui/CraftColumn): the column's frame, and its scrolling content. */
+export const CRAFT_FORM_COLUMN = "border-r border-line max-[800px]:shrink-0 max-[800px]:border-r-0";
+export const CRAFT_FORM_BODY = "max-[800px]:overflow-visible";
 export const CRAFT_ASIDE = "min-h-0 overflow-auto p-4 max-[800px]:shrink-0 max-[800px]:overflow-visible";
-export const CRAFT_ASIDE_LABEL = "mb-2 block text-xs text-muted";
 export const CRAFT_HEADING = "mt-2 border-t border-line pt-3 text-sm font-bold";
-/** The item picker's page: its path, heading and cards across the dialog (no preview until an item is picked). */
-export const PICK_COLUMN = "grid min-h-0 flex-1 content-start gap-3 overflow-auto p-4";
-/** The cards of a pick (an item group, type or base; a Vorax limb). */
-export const PICK_CARDS = "grid grid-cols-4 gap-2.25 max-[800px]:grid-cols-2";
-export const PICK_CARD =
-  "grid min-h-19.5 cursor-pointer place-items-center gap-1 rounded border border-line bg-raised p-2 text-center text-text hover:border-accent focus-visible:border-accent focus-visible:outline-none";
 
 /** A labelled field and its input or select. */
 export const FIELD = "grid min-w-0 gap-1 text-xs text-muted";

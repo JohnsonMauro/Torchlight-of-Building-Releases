@@ -50,7 +50,8 @@ export function SearchField({
           {...input}
           ref={setRefs}
           type="search"
-          className="min-w-0 flex-1 placeholder:text-dim"
+          // The browser's own clear button would sit beside the field's ×: hidden.
+          className="min-w-0 flex-1 placeholder:text-dim [&::-webkit-search-cancel-button]:appearance-none"
           autoComplete="off"
           placeholder={`${placeholder} · /regex/`}
           title={HINT}

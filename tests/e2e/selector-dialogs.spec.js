@@ -466,7 +466,9 @@ test("the prism inventory lists the crafted prisms, where each is installed, and
   await row.getByRole("button", { name: "Delete Ethereal Prism: Haze" }).click();
   await expect(dialog.locator(".prism-inventory-empty")).toContainText("No prisms crafted yet");
   expect((await talents.stored()).prismInventory).toEqual([]);
-  await dialog.getByRole("button", { name: "Craft First Prism" }).click();
+  // With none crafted, the footer's Craft Prism is the only way to the crafter.
+  await expect(dialog.getByRole("button", { name: /Craft/ })).toHaveCount(1);
+  await dialog.getByRole("button", { name: "Craft Prism", exact: true }).click();
   await expect(crafter).toBeVisible();
   await crafter.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(dialog).toBeVisible();
@@ -509,45 +511,60 @@ async function openPrismCrafter(page) {
   return { planner, talents };
 }
 
-test("Craft Prism: an Ethereal Prism's base, random affixes and preview; Craft adds it", async ({ page }) => {
+/** A random affix slot's list in the crafter, and an option of it by its text. */
+const prismAffixList = (crafter, label) =>
+  crafter.getByRole("radiogroup", { name: `${label} Prism affix`, exact: true });
+const prismAffixOption = (crafter, label, option) =>
+  prismAffixList(crafter, label).getByRole("radio", { name: option, exact: true });
+
+test("Craft Prism: the bases as cards, then the base's random affixes and preview; Craft adds it", async ({ page }) => {
   const { planner, talents } = await openPrismCrafter(page);
   const crafter = prismCrafter(page);
   const preview = crafter.locator("#prism-crafter-preview");
   const craft = crafter.locator("footer").getByRole("button", { name: "Craft", exact: true });
+  const path = crafter.getByRole("navigation", { name: "Prism" });
   await expect(crafter.locator("#prism-crafter-title")).toHaveText("Craft Prism");
+  // The first page: the type's tabs and its bases as cards, no form and no preview yet.
   await expect(crafter.locator(".prism-type-tabs button")).toHaveText(["Ethereal Prism", "Inverse Image"]);
   await expect(crafter.locator(".prism-type-tabs button.active")).toHaveText("Ethereal Prism");
+  await expect(crafter.locator("[data-prism-pick]")).not.toHaveCount(0);
+  await expect(crafter.getByRole("combobox")).toHaveCount(0);
+  await expect(preview).toHaveCount(0);
   await expect(craft).toBeDisabled();
-  await expect(preview).toHaveText("Select options to preview item");
 
-  const base = crafter.getByLabel("Base Prism", { exact: true });
-  await base.selectOption("Unwavering Fortress");
-  await expect(base).toHaveAttribute("title", "Ethereal Prism: Unwavering Fortress");
-  await expect(crafter.locator(".prism-fixed label")).toHaveText("Core Talent *");
-  await expect(crafter.locator(".prism-fixed input")).toHaveValue("Unwavering Fortress");
+  await crafter.locator('[data-prism-pick="Unwavering Fortress"]').click();
+  // The form: the path back to the bases in place of the tabs, the affixes as lists, the preview beside them.
+  await expect(crafter.locator(".prism-type-tabs")).toHaveCount(0);
+  await expect(path.getByRole("button", { name: "Ethereal Prism", exact: true })).toBeVisible();
+  await expect(path.locator('[aria-current="step"]')).toHaveText("Unwavering Fortress");
   await expect(crafter.locator(".prism-fixed small")).toHaveText("This prism replaces the panel core talent");
   await expect(crafter.locator(".prism-fixed p")).toHaveText(
     "Replaces the Core Talent of the Advanced Talent Panel with Unwavering Fortress.",
   );
+  await expect(crafter.locator("[data-craft-section] h3")).toHaveText([
+    "Core Talent",
+    "Radius affix",
+    "Rare affix",
+    "Legendary affix",
+  ]);
   await expect(crafter.getByRole("heading", { name: "Random Affixes (0/3)" })).toBeVisible();
-  await expect(crafter.locator(".prism-affix-select b")).toHaveText(["Radius", "Rare", "Legendary"]);
+  await expect(prismAffixOption(crafter, "Radius", "None")).toBeChecked();
   await expect(craft).toBeEnabled();
   await expect(preview.locator("h3")).toHaveText("Ethereal Prism: Unwavering Fortress");
   await expect(preview.locator(".prism-preview-card small").first()).toHaveText("ETHEREAL PRISM");
   await expect(preview.locator(".prism-effect-area")).toHaveText("Effect Area: 1x1");
   await expect(preview.locator(".prism-affix-section h4")).toHaveText(["Base Affix"]);
 
-  const radius = crafter.getByLabel("Radius Prism affix", { exact: true });
-  await radius.selectOption("The Effect Area expands to 3x3 Rectangle");
-  await expect(radius).toHaveAttribute("title", "The Effect Area expands to 3x3 Rectangle");
+  await prismAffixOption(crafter, "Radius", "The Effect Area expands to 3x3 Rectangle").check();
   await expect(crafter.getByRole("heading", { name: "Random Affixes (1/3)" })).toBeVisible();
   await expect(preview.locator(".prism-effect-area")).toHaveText("Effect Area: 3x3");
   await expect(preview.locator(".prism-affix-section h4")).toHaveText(["Base Affix", "Radius Affix"]);
-  const rare = crafter.getByLabel("Rare Prism affix", { exact: true });
-  await rare.selectOption("All Micro Talent within the area also gain: +6% Attack Damage");
-  await crafter
-    .getByLabel("Legendary Prism affix", { exact: true })
-    .selectOption("Points can be allocated to all Micro Talent within the area 1 additional time(s)");
+  await prismAffixOption(crafter, "Rare", "All Micro Talent within the area also gain: +6% Attack Damage").check();
+  await prismAffixOption(
+    crafter,
+    "Legendary",
+    "Points can be allocated to all Micro Talent within the area 1 additional time(s)",
+  ).check();
   await expect(crafter.getByRole("heading", { name: "Random Affixes (3/3)" })).toBeVisible();
   await expect(preview.locator(".prism-affix-section h4")).toHaveText([
     "Base Affix",
@@ -556,13 +573,16 @@ test("Craft Prism: an Ethereal Prism's base, random affixes and preview; Craft a
     "Legendary Affix",
   ]);
 
-  // Another base keeps only the affixes it can roll; Haze has no legendary affix.
-  await base.selectOption("Phantasmagoria");
-  await expect(rare).toHaveValue("");
-  await expect(crafter.locator(".prism-fixed label")).toHaveText("Prism Effect *");
+  // The path goes back to the bases; another base keeps only the affixes it can roll, and Haze has no legendary one.
+  await path.getByRole("button", { name: "Ethereal Prism", exact: true }).click();
+  await expect(preview).toHaveCount(0);
+  await crafter.locator('[data-prism-pick="Phantasmagoria"]').click();
+  await expect(prismAffixOption(crafter, "Rare", "None")).toBeChecked();
+  await expect(crafter.locator("[data-craft-section] h3").first()).toHaveText("Prism Effect");
   await expect(crafter.locator(".prism-fixed small")).toHaveText("This prism does not replace the panel core talent");
-  await base.selectOption("Haze");
-  await expect(crafter.getByLabel("Legendary Prism affix", { exact: true })).toHaveCount(0);
+  await path.getByRole("button", { name: "Ethereal Prism", exact: true }).click();
+  await crafter.locator('[data-prism-pick="Haze"]').click();
+  await expect(prismAffixList(crafter, "Legendary")).toHaveCount(0);
   await expect(crafter.getByRole("heading", { name: "Random Affixes (1/2)" })).toBeVisible();
 
   await craft.click();
@@ -581,14 +601,66 @@ test("Craft Prism: an Ethereal Prism's base, random affixes and preview; Craft a
   await planner.expectNoErrors();
 });
 
+test("the prism search finds the bases by what they hold or can roll, and the card says which line matched", async ({
+  page,
+}) => {
+  const { planner } = await openPrismCrafter(page);
+  const crafter = prismCrafter(page);
+  const search = crafter.getByRole("searchbox", { name: "Search prisms" });
+  const cards = crafter.locator("[data-prism-pick]");
+  await search.fill("effects of Random Affixes");
+  await expect(cards).toHaveCount(1);
+  await expect(cards).toHaveAttribute("data-prism-pick", "Phantasmagoria");
+  await expect(cards.locator("small")).toHaveText("+75% to the effects of Random Affixes on this Prism.");
+  // A match on the name needs no line.
+  await search.fill("haze");
+  await expect(cards).toHaveCount(1);
+  await expect(cards.locator("small")).toHaveCount(0);
+  await search.fill("zzqx");
+  await expect(cards).toHaveCount(0);
+  await expect(crafter.locator(".prism-pick-empty")).toBeVisible();
+  // The search stays through a base's form and back.
+  await search.fill("haze");
+  await cards.click();
+  await crafter.getByRole("navigation", { name: "Prism" }).getByRole("button", { name: "Ethereal Prism" }).click();
+  await expect(search).toHaveValue("haze");
+  await planner.expectNoErrors();
+});
+
+test("the affix search filters every random affix list and hides the slots it finds nothing in", async ({ page }) => {
+  const { planner } = await openPrismCrafter(page);
+  const crafter = prismCrafter(page);
+  await crafter.locator('[data-prism-pick="Unwavering Fortress"]').click();
+  const search = crafter.getByRole("searchbox", { name: "Search affixes" });
+  // One field for all the lists: none offers its own.
+  await expect(crafter.locator("[data-prism-affix] input[type=search]")).toHaveCount(0);
+  await search.fill("7x1");
+  await expect(crafter.locator("[data-craft-section] h3")).toHaveText(["Core Talent", "Radius affix"]);
+  await expect(prismAffixOption(crafter, "Radius", "The Effect Area expands to 7x1 Rectangle")).toBeVisible();
+  await expect(prismAffixOption(crafter, "Radius", "The Effect Area expands to 3x3 Rectangle")).toHaveCount(0);
+  await search.fill("zzqx");
+  await expect(crafter.locator(".prism-affix-empty")).toBeVisible();
+  await search.fill("");
+  await expect(crafter.locator("[data-craft-section] h3")).toHaveText([
+    "Core Talent",
+    "Radius affix",
+    "Rare affix",
+    "Legendary affix",
+  ]);
+  await planner.expectNoErrors();
+});
+
 test("an Inverse Image's mod values: the number and slider move together, clamped, and the preview follows", async ({
   page,
 }) => {
   const { planner, talents } = await openPrismCrafter(page);
   const crafter = prismCrafter(page);
   const preview = crafter.locator("#prism-crafter-preview");
-  await crafter.getByRole("button", { name: "Inverse Image", exact: true }).click();
+  await crafter.locator(".prism-type-tabs").getByRole("button", { name: "Inverse Image", exact: true }).click();
   await expect(crafter.locator("#prism-crafter-title")).toHaveText("Craft Inverse Image");
+  // An Inverse Image has one base: its card opens the form.
+  await expect(crafter.locator("[data-prism-pick]")).toHaveCount(1);
+  await crafter.locator('[data-prism-pick="Inverse Image"]').click();
   await expect(crafter.locator(".inverse-image-heading")).toHaveText("Inverse ImageUltimate");
   await expect(crafter.locator(".inverse-radius")).toHaveText("Radius: 3x3");
   const rolls = crafter.locator(".inverse-roll");
@@ -639,16 +711,20 @@ test("Edit on a prism: the type is fixed, Save Changes updates it; Cancel and th
   const row = talents.prismInventory().locator(".prism-inventory-item");
   await row.getByRole("button", { name: "Edit Ethereal Prism: Haze" }).click();
   await expect(crafter.locator("#prism-crafter-title")).toHaveText("Edit Prism");
-  await expect(crafter.getByRole("button", { name: "Inverse Image", exact: true })).toBeDisabled();
-  await expect(crafter.getByLabel("Base Prism", { exact: true })).toHaveValue("Haze");
+  // Edit opens on the prism's form; its path back shows the bases of its type only.
+  const path = crafter.getByRole("navigation", { name: "Prism" });
+  await expect(path.locator('[aria-current="step"]')).toHaveText("Haze");
+  await path.getByRole("button", { name: "Ethereal Prism", exact: true }).click();
+  await expect(
+    crafter.locator(".prism-type-tabs").getByRole("button", { name: "Inverse Image", exact: true }),
+  ).toBeDisabled();
+  await crafter.locator('[data-prism-pick="Haze"]').click();
   await crafter.getByRole("button", { name: "Close Prism crafter" }).click();
   await expect(crafter).toBeHidden();
   await expect(talents.prismInventory()).toBeVisible();
 
   await row.getByRole("button", { name: "Edit Ethereal Prism: Haze" }).click();
-  await crafter
-    .getByLabel("Radius Prism affix", { exact: true })
-    .selectOption("The Effect Area expands to 2x2 Rectangle");
+  await prismAffixOption(crafter, "Radius", "The Effect Area expands to 2x2 Rectangle").check();
   await crafter.locator("footer").getByRole("button", { name: "Save Changes", exact: true }).click();
   await expect(page.locator("#toast")).toHaveText("Ethereal Prism: Haze updated");
   await expect(row).toHaveCount(1);
