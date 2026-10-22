@@ -38,7 +38,7 @@ export const rarityButton = `${choiceButton} border-[color-mix(in_oklab,var(--me
 /** A tier choice (T0, T1…) of an affix line or the revived affix. */
 export const tierButton =
   "flex-1 cursor-pointer rounded-sm border border-line-strong bg-raised px-1.5 py-0.75 text-muted on:border-accent on:bg-accent/15 on:text-accent";
-export const rollControls = "grid grid-cols-[minmax(0,1fr)_82px] items-center gap-2.5";
+export const rollControls = "grid grid-cols-[minmax(0,1fr)_4rem] items-center gap-2.5";
 /** Wax and Wane / Rising Moon: the label row and its switch. */
 export const switchRow =
   "flex cursor-pointer items-center justify-between rounded-md border border-line px-2.5 py-2 text-xs text-muted";

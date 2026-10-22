@@ -17,7 +17,8 @@
  * @property {(target: { spirit: string | null, key: string | null, name: string, effect: string, ring: string,
  *   icon: string, allocated: boolean, extra: boolean }) => import("./pact-tooltip-view.ts").PactTooltipView}
  *   pactNodeTooltip A Pactspirit tree node (or a Fate slot's extra Kismet slot) as the section shows it.
- * @property {(name: string) => import("./pact-tooltip-view.ts").PactTooltipView | null} pactspiritTooltip
+ * @property {(name: string, place?: "slot" | "selector") => import("./pact-tooltip-view.ts").PactTooltipView | null}
+ *   pactspiritTooltip A Pactspirit at the level this build gives it: a slot's portrait, or a choice in the selector.
  * @property {(id: string) => import("./slate-tooltip-view.ts").SlateTooltipView | null} slateTooltip A slate on the
  *   board or in the Slate Inventory.
  * @property {(target: { name: string, levelKey: string, selected: boolean }) =>

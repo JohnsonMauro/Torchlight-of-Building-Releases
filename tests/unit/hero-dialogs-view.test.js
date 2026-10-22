@@ -8,15 +8,18 @@ import { sageScentIngredientsSs13 } from "../../src/data/heroes/sage-scent-optio
 test("the scent selector lists elixirs with their tags, or one kind of ingredient with its effect", () => {
   const elixirs = sageScentSelectorView("elixir");
   assert.equal(elixirs.title, "Select Elixir Skill");
-  assert.equal(elixirs.placeholder, "Search skills...");
+  assert.equal(elixirs.placeholder, "Search skills…");
   assert.equal(elixirs.choices.length, sageElixirsSs13.length);
   assert.deepEqual(elixirs.choices[0].tags, sageElixirsSs13[0].tags);
+  // The search covers an elixir's tags and an ingredient's effect, not only the name.
+  assert.ok(elixirs.choices[0].search.includes(sageElixirsSs13[0].tags[0].toLowerCase()));
   const damage = sageScentSelectorView("damage");
   assert.equal(damage.title, "Select Damage Ingredient");
-  assert.equal(damage.placeholder, "Search ingredients...");
+  assert.equal(damage.placeholder, "Search ingredients…");
   assert.equal(damage.choices.length, sageScentIngredientsSs13.damage.length);
   assert.equal(damage.choices[0].tags, null);
   assert.doesNotMatch(JSON.stringify(damage.choices), /\d %/);
+  assert.ok(damage.choices[0].search.includes(damage.choices[0].description.split(" ")[0].toLowerCase()));
 });
 
 test("the Special Ammo selector marks supports in a slot, strips the tier suffix and says what Well Prepared unlocks", () => {

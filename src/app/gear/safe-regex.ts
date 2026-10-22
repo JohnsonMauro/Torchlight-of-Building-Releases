@@ -43,3 +43,20 @@ export function unsafePattern(pattern: string): string {
   }
   return quantifiers > MAX_QUANTIFIERS ? `At most ${MAX_QUANTIFIERS} repeats (* + ? {…}) in a pattern` : "";
 }
+
+/**
+ * A search typed as /pattern/flags (the legendary list's, the skill selector's): the expression, always ignoring case
+ * and without "g" or "y" (test() would remember where it stopped); `error` when it is refused or does not read. Null
+ * when the search is plain text.
+ */
+export function searchPattern(search: string): { pattern: RegExp | null; error: string } | null {
+  const typed = search.trim().match(/^\/(.+)\/([a-z]*)$/);
+  if (!typed) return null;
+  const refused = unsafePattern(typed[1]);
+  if (refused) return { pattern: null, error: refused };
+  try {
+    return { pattern: new RegExp(typed[1], [...new Set(`${typed[2]}i`.replace(/[gy]/g, ""))].join("")), error: "" };
+  } catch (error) {
+    return { pattern: null, error: error instanceof Error ? error.message : String(error) };
+  }
+}

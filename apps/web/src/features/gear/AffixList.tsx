@@ -6,6 +6,7 @@
 // family picks its tier among the item level's (chips in place of the tier tag).
 import { useState, type ReactNode } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import { searchMatcher, searchText } from "@legacy/app/bridge/search-match.ts";
 import type {
   AffixListView,
   AffixOptionView,
@@ -15,6 +16,7 @@ import type {
 } from "@legacy/app/bridge/equipment-crafter-view.ts";
 import type { AffixSide, CraftChange } from "@legacy/app/gear/equipment-craft.ts";
 import { tierBadgeClasses, tierBadgeKey } from "@legacy/app/gear/tier-badge.ts";
+import { SearchField } from "../../ui/SearchField";
 import { RollInputs } from "./crafter-parts";
 import {
   AFFIX_ROW,
@@ -115,30 +117,26 @@ export function AffixList({ list }: { list: AffixListView }) {
 /** A Vorax item's Legendary affixes on a side, under their donor legendary; the search keeps a donor or its modifiers. */
 function LegendaryAffixes({ side, legendary }: { side: AffixSide; legendary: LegendaryAffixesView }) {
   const [search, setSearch] = useState("");
-  const needle = search.trim().toLowerCase();
-  const donors = needle
+  const matcher = searchMatcher(search);
+  const donors = search.trim()
     ? legendary.donors
         .map((donor) =>
-          donor.name.toLowerCase().includes(needle)
+          matcher.matches(searchText([donor.name]))
             ? donor
-            : { ...donor, options: donor.options.filter((option) => option.label.toLowerCase().includes(needle)) },
+            : { ...donor, options: donor.options.filter((option) => matcher.matches(searchText([option.label]))) },
         )
         .filter((donor) => donor.options.length)
     : legendary.donors;
   return (
     <div className="grid gap-2.5">
       <p className="text-xs text-muted">{`A Vorax item inherits up to two Legendary affixes (${legendary.count}).`}</p>
-      <label className="field-search">
-        ⌕
-        <input
-          className="flex-1"
-          type="search"
-          data-vorax-legendary-search=""
-          value={search}
-          placeholder="Search legendary or mod…"
-          onChange={(event) => setSearch(event.target.value)}
-        />
-      </label>
+      <SearchField
+        value={search}
+        onChange={setSearch}
+        placeholder="Search legendary or mod…"
+        error={matcher.error}
+        input={{ "data-vorax-legendary-search": "" }}
+      />
       {donors.map((donor) => (
         <section key={donor.id} className="grid gap-1.5" data-vorax-donor={donor.id}>
           <h4 className="flex items-center gap-2 text-xs font-bold text-grade-legendary">

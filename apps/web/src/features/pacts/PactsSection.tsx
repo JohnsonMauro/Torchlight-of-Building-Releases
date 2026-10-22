@@ -1,16 +1,16 @@
-// The Pactspirits section of the Build page: the pact count, the three pact slots with their trees, and the Kismet counts.
+// The Pactspirits section of the Build page: the three pact slots (portrait; name, kind and level; the tree, which wraps
+// instead of hiding nodes) and the Kismet counts.
 // The data is the planner's "pacts" source (src/app/bridge/pacts-view-model.ts); every edit is a planner command. Slots,
 // nodes and Kismets show their tooltips (PactTooltip).
 import { useMemo, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { ExtraSlotView, PactNodeView, PactSlotView, PactsView } from "@legacy/app/bridge/pacts-view-model.ts";
+import { RangeInput } from "../../ui/RangeInput";
 import { useViewSource } from "../../ui/use-view-source";
 import {
   CARD,
   EMPTY_PORTRAIT,
   FILLED_PORTRAIT,
-  LEVEL_LABEL,
-  LEVEL_SELECT,
   extraClasses,
   nodeClasses,
   nodeImage,
@@ -24,29 +24,19 @@ import { PactNodeTooltip, PactspiritTooltip } from "./PactTooltip";
 import type { TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import { hideTooltip } from "../../ui/tooltip/tooltip-store";
 
-const LEVELS = [1, 2, 3, 4, 5, 6];
-
-// A pact slot's grid: portrait and name, LEVEL, the tree, the count; up to 1100 px the tree takes a row of its own,
-// up to 560 px the count too (the +1 px keeps the legacy max-width breakpoints inclusive). The surface (border in the
-// rarity's colour) and the nodes' drawing are in pact-classes.ts.
+// A pact slot's grid: the spirit (portrait; name, kind and level) and its tree; up to 1100 px the tree takes a row of its
+// own (the +1 px keeps the legacy max-width breakpoints inclusive). The surface (border in the rarity's colour) and the
+// nodes' drawing are in pact-classes.ts.
 const SLOT_LAYOUT =
-  "relative grid min-h-23 grid-cols-[minmax(260px,310px)_84px_minmax(0,1fr)_80px] items-center gap-x-4.5 gap-y-4 py-3 pr-11.5 pl-3.5 " +
-  "max-[1101px]:grid-cols-[minmax(0,1fr)_84px_80px] max-[1101px]:gap-y-2 max-[701px]:items-start " +
-  "max-[561px]:grid-cols-[minmax(0,1fr)_84px] max-[561px]:gap-x-2.5";
+  "relative grid min-h-23 grid-cols-[minmax(240px,300px)_minmax(0,1fr)] items-center gap-x-4.5 gap-y-2 py-3 pr-11.5 pl-3.5 " +
+  "max-[1101px]:grid-cols-1";
+const SPIRIT_LAYOUT = "grid min-w-0 grid-cols-[4rem_minmax(0,1fr)] items-center gap-x-3";
+// The tree wraps onto more rows rather than scroll out of sight. The padding holds a node's ring (3 px) and its status
+// badge (7 px above, 5 px right); the line that joins a row's first node to the previous row's last falls in the left
+// padding and is clipped.
 const TREE_LAYOUT =
-  "relative flex w-full min-w-0 items-center justify-start gap-4.5 overflow-x-auto px-1 py-1.75 [scrollbar-width:none] " +
-  "[&::-webkit-scrollbar]:hidden max-[1101px]:col-span-full max-[1101px]:row-start-2";
-const COUNT_LAYOUT =
-  "block flex-none justify-self-end text-xs font-bold whitespace-nowrap text-muted " +
-  "max-[1101px]:col-start-3 max-[1101px]:row-start-1 " +
-  "max-[561px]:col-span-full max-[561px]:row-start-3 max-[561px]:justify-self-start";
+  "relative flex w-full min-w-0 flex-wrap items-center justify-start gap-x-4.5 gap-y-3 overflow-hidden pt-2 pr-1.5 pb-1 pl-0.75";
 const REMOVE_BUTTON = "btn-danger absolute top-3 right-3 size-6 rounded-md text-lg leading-none";
-
-/** "2/3": filled pact slots. */
-export function PactspiritCount() {
-  const view = useViewSource("pacts");
-  return <>{view ? `${view.filled}/3` : "3/3"}</>;
-}
 
 export function KismetSummary() {
   const view = useViewSource("pacts");
@@ -135,56 +125,59 @@ function PactSlotList({ view }: { view: PactsView }) {
           key={slot.index}
           className={`pact-slot ${rarityTone(slot.spirit?.rarity)} ${slotSurface(Boolean(slot.spirit))} ${SLOT_LAYOUT}`}
         >
-          <PactspiritSlotTooltip name={slot.spirit ? slot.name : null}>
+          {slot.spirit ? (
+            <div className={SPIRIT_LAYOUT}>
+              <PactspiritSlotTooltip name={slot.name}>
+                <button
+                  type="button"
+                  className={`pact-slot-select grid size-16 cursor-pointer place-items-center overflow-hidden rounded-md ${FILLED_PORTRAIT}`}
+                  aria-label={`${slot.name}: change Pactspirit`}
+                  onClick={() => commands.openPactspiritSelector(slot.index)}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    commands.removePactspirit(slot.index);
+                  }}
+                >
+                  <img className="w-full" src={slot.spirit.icon} alt="" />
+                </button>
+              </PactspiritSlotTooltip>
+              <div className="grid min-w-0">
+                <strong className="truncate text-sm text-(--pact-tone)">{slot.name}</strong>
+                <small className="truncate text-xs text-muted">{`${slot.spirit.category} · ${slot.spirit.rarity}`}</small>
+                <div className="mt-1 grid max-w-56 grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5">
+                  <span className="text-xs font-bold tracking-widest text-accent uppercase" aria-hidden="true">
+                    Level
+                  </span>
+                  <RangeInput
+                    min={1}
+                    max={6}
+                    value={slot.level}
+                    field="commit"
+                    slider={{ "aria-label": "Level" }}
+                    number={{ "aria-label": "Level number" }}
+                    onValue={(level) => commands.setPactspiritLevel(slot.name, level)}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
             <button
               type="button"
               className="pact-slot-select group flex w-full min-w-0 cursor-pointer items-center gap-3 text-left text-text"
               onClick={() => commands.openPactspiritSelector(slot.index)}
-              onContextMenu={(event) => {
-                if (!slot.spirit) return;
-                event.preventDefault();
-                commands.removePactspirit(slot.index);
-              }}
             >
               <span
-                className={`grid size-16 flex-none place-items-center overflow-hidden rounded-md ${slot.spirit ? FILLED_PORTRAIT : EMPTY_PORTRAIT}`}
+                className={`grid size-16 flex-none place-items-center overflow-hidden rounded-md ${EMPTY_PORTRAIT}`}
               >
-                {slot.spirit ? (
-                  <img className="w-full" src={slot.spirit.icon} alt="" />
-                ) : (
-                  <span aria-hidden="true">+</span>
-                )}
+                <span aria-hidden="true">+</span>
               </span>
-              {slot.spirit ? (
-                <span className="min-w-0">
-                  <strong className="block max-w-42.5 truncate text-sm text-(--pact-tone)">{slot.name}</strong>
-                  <small className="block max-w-42.5 truncate text-xs text-muted">
-                    {`${slot.spirit.category} · ${slot.spirit.rarity}`}
-                  </small>
-                </span>
-              ) : (
-                <span className="pact-slot-empty min-w-0 text-xs font-bold tracking-widest text-accent uppercase">
-                  {`Select Pactspirit ${slot.index + 1}`}
-                </span>
-              )}
+              <span className="pact-slot-empty min-w-0 text-xs font-bold tracking-widest text-accent uppercase">
+                {`Select Pactspirit ${slot.index + 1}`}
+              </span>
             </button>
-          </PactspiritSlotTooltip>
+          )}
           {slot.spirit ? (
             <>
-              <label className={LEVEL_LABEL}>
-                Level
-                <select
-                  className={LEVEL_SELECT}
-                  value={slot.level}
-                  onChange={(event) => commands.setPactspiritLevel(slot.name, Number(event.currentTarget.value))}
-                >
-                  {LEVELS.map((level) => (
-                    <option key={level} value={level}>
-                      {level}
-                    </option>
-                  ))}
-                </select>
-              </label>
               {slot.nodes.length ? (
                 <>
                   <div className={`pact-tree ${TREE_LAYOUT}`} aria-label={`${slot.name} Pactspirit tree`}>
@@ -227,7 +220,6 @@ function PactSlotList({ view }: { view: PactsView }) {
                       />
                     ))}
                   </div>
-                  <small className={`pact-node-count ${COUNT_LAYOUT}`}>{`${slot.allocatedCount} allocated`}</small>
                 </>
               ) : null}
               <button

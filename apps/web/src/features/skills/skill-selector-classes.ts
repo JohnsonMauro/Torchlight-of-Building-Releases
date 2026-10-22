@@ -38,21 +38,6 @@ export const CONFIG_HEADING = "flex items-center justify-between gap-4 [&>span]:
 /** A rolled value (a roll's number, the star bonus). */
 export const ROLL_VALUE = "text-accent-strong";
 
-/** The level row's − and + buttons and its number field. */
-export const LEVEL_STEP = "btn h-8.5 w-10.5 font-bold";
-export const LEVEL_FIELD = "field h-8.5 w-10.5 text-center font-bold";
-
-/** A slider whose accent fill follows --range-fill (src/app/planner/range-fill.js keeps it up to date). */
-export const RANGE = [
-  "h-1.5 w-full min-w-0 cursor-pointer appearance-none rounded-full",
-  "bg-[linear-gradient(to_right,var(--color-accent)_var(--range-fill,0%),var(--color-line-strong)_var(--range-fill,0%))]",
-  "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent",
-  "[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-surface [&::-webkit-slider-thumb]:bg-accent",
-  "[&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-surface [&::-moz-range-thumb]:bg-accent",
-].join(" ");
-/** A small number field beside a slider. */
-export const NUMBER_FIELD = "field h-8 text-center";
-
 /**
  * The detail column and the preview card in it. The card shows its game art (a skill's, a support's, an aura's or a
  * follower skill's rarity art) under translucent surface panels, so its text reads in both themes; its accent

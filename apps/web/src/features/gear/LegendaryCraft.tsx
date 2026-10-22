@@ -7,6 +7,8 @@ import type { CraftChange } from "@legacy/app/gear/equipment-craft.ts";
 import type { LegendaryConfigView, LegendaryListView } from "@legacy/app/bridge/equipment-crafter-view.ts";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { RANGE_FIELD } from "../../ui/range-classes";
+import { SearchField } from "../../ui/SearchField";
 import {
   CONTROL,
   CRAFT_ASIDE,
@@ -17,7 +19,6 @@ import {
   FIELD,
   MOD_BOX_CORRODED,
   MOD_TAG_CORRODED,
-  RANGE,
 } from "./crafter-classes";
 import { choiceLabel } from "./choices";
 import { ChoiceList, CraftSection, ItemPreview, LegendaryModControl, type LegendaryLineChange } from "./crafter-parts";
@@ -67,22 +68,16 @@ export function LegendaryList({ list }: { list: LegendaryListView }) {
       <section className={LIST_COLUMN}>
         <div className="grid gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <label className="field-search min-w-60 flex-1">
-              ⌕
-              <input
-                className="flex-1"
-                type="search"
-                data-legendary-search=""
-                maxLength={120}
-                value={list.search}
-                placeholder="Search name or mod · /regex/"
-                aria-invalid={list.searchError ? true : undefined}
-                onChange={(event) => change({ kind: "search", value: event.target.value })}
-              />
-            </label>
+            <SearchField
+              className="min-w-60 flex-1"
+              value={list.search}
+              onChange={(value) => change({ kind: "search", value })}
+              placeholder="Search name or mod"
+              error={list.searchError}
+              input={{ "data-legendary-search": "", maxLength: 120 }}
+            />
             {list.chips.length ? <TypeChips chips={list.chips} /> : null}
           </div>
-          {list.searchError ? <small className="text-xs text-danger">{list.searchError}</small> : null}
         </div>
         <div className="grid min-h-0 content-start gap-3 overflow-auto">
           {browse ? (
@@ -177,7 +172,7 @@ function CorrosionRoll({ corroded }: { corroded: NonNullable<LegendaryConfigView
           min="0"
           max="100"
           value={corroded.roll}
-          className={RANGE}
+          className={RANGE_FIELD}
           data-corrosion-roll=""
           style={{ "--range-fill": `${corroded.roll}%` } as CSSProperties}
           onChange={(event) => change({ kind: "corrosionRoll", value: Number(event.target.value) })}

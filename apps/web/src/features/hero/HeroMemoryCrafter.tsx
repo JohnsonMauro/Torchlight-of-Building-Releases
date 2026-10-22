@@ -13,7 +13,6 @@ import type {
 } from "@legacy/app/bridge/hero-memory-view.ts";
 import { CommitNumberInput } from "../../ui/CommitNumberInput";
 import { RevivedEffect } from "./RevivedEffect";
-import { LiveNumberInput } from "../../ui/LiveNumberInput";
 import {
   affixRow,
   choiceRow,
@@ -27,7 +26,8 @@ import {
   tierButton,
   typeButton,
 } from "./hero-memory-classes";
-import { numberField, rangeField } from "../../ui/selector-classes";
+import { RangeInput } from "../../ui/RangeInput";
+import { RANGE_FIELD, RANGE_NUMBER } from "../../ui/range-classes";
 
 const commands = plannerCommands;
 const craftAction = "btn min-h-10 flex-1 text-xs font-bold tracking-wider uppercase";
@@ -42,26 +42,15 @@ function RollControls({
   onValue: (value: number) => void;
 }) {
   return (
-    <div className={`memory-roll-controls ${rollControls}`}>
-      <input
-        type="range"
-        className={rangeField}
-        min={roll.min}
-        max={roll.max}
-        value={roll.value}
-        aria-label={`${label} roll slider`}
-        onChange={(event) => onValue(Number(event.target.value))}
-      />
-      <LiveNumberInput
-        className={numberField}
-        min={roll.min}
-        max={roll.max}
-        step={1}
-        value={roll.value}
-        aria-label={`${label} roll value`}
-        onValue={onValue}
-      />
-    </div>
+    <RangeInput
+      className="memory-roll-controls"
+      min={roll.min}
+      max={roll.max}
+      value={roll.value}
+      slider={{ "aria-label": `${label} roll slider` }}
+      number={{ "aria-label": `${label} roll value` }}
+      onValue={onValue}
+    />
   );
 }
 
@@ -79,7 +68,7 @@ function TierValueControls({
     <div className={`memory-roll-controls ${rollControls}`}>
       <input
         type="range"
-        className={rangeField}
+        className={RANGE_FIELD}
         min={0}
         max={tierValue.count - 1}
         step={1}
@@ -88,7 +77,7 @@ function TierValueControls({
         onChange={(event) => commands().setMemoryTierPosition(line.group, line.index, Number(event.target.value))}
       />
       <CommitNumberInput
-        className={numberField}
+        className={RANGE_NUMBER}
         key={`${tierValue.value}:${commits}`}
         min={tierValue.min}
         max={tierValue.max}
@@ -280,26 +269,15 @@ export function HeroMemoryCrafter({ view }: { view: MemoryCrafterView }) {
         </label>
         <label>
           Enhancement Level <strong className="text-text">{`Lv.${view.enhancement.level}`}</strong>
-          <span className={`memory-roll-controls memory-enhancement-controls ${rollControls}`}>
-            <input
-              type="range"
-              className={rangeField}
-              min={1}
-              max={view.enhancement.max}
-              value={view.enhancement.level}
-              aria-label="Enhancement level slider"
-              onChange={(event) => commands().setMemoryField("enhancementLevel", Number(event.target.value))}
-            />
-            <LiveNumberInput
-              className={numberField}
-              min={1}
-              max={view.enhancement.max}
-              step={1}
-              value={view.enhancement.level}
-              aria-label="Enhancement level value"
-              onValue={(value) => commands().setMemoryField("enhancementLevel", value)}
-            />
-          </span>
+          <RangeInput
+            className="memory-roll-controls memory-enhancement-controls"
+            min={1}
+            max={view.enhancement.max}
+            value={view.enhancement.level}
+            slider={{ "aria-label": "Enhancement level slider" }}
+            number={{ "aria-label": "Enhancement level value" }}
+            onValue={(value) => commands().setMemoryField("enhancementLevel", value)}
+          />
         </label>
         <h3>Memory Revival</h3>
         <label className={`memory-wax ${switchRow}`}>
@@ -364,26 +342,15 @@ export function HeroMemoryCrafter({ view }: { view: MemoryCrafterView }) {
               ))}
             </span>
             {view.revived.roll ? (
-              <div className={`memory-roll-controls ${rollControls}`}>
-                <input
-                  type="range"
-                  className={rangeField}
-                  min={view.revived.roll.min}
-                  max={view.revived.roll.max}
-                  value={view.revived.roll.value}
-                  aria-label="Revived affix roll slider"
-                  onChange={(event) => commands().setMemoryField("revivedRoll", Number(event.target.value))}
-                />
-                <LiveNumberInput
-                  className={numberField}
-                  min={view.revived.roll.min}
-                  max={view.revived.roll.max}
-                  step={1}
-                  value={view.revived.roll.value}
-                  aria-label="Revived affix roll value"
-                  onValue={(value) => commands().setMemoryField("revivedRoll", value)}
-                />
-              </div>
+              <RangeInput
+                className="memory-roll-controls"
+                min={view.revived.roll.min}
+                max={view.revived.roll.max}
+                value={view.revived.roll.value}
+                slider={{ "aria-label": "Revived affix roll slider" }}
+                number={{ "aria-label": "Revived affix roll value" }}
+                onValue={(value) => commands().setMemoryField("revivedRoll", value)}
+              />
             ) : null}
           </div>
         ) : null}

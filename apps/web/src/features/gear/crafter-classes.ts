@@ -32,14 +32,6 @@ export const FIELD = "grid min-w-0 gap-1 text-xs text-muted";
 export const CONTROL = "field min-w-0 max-w-full px-2.5 py-2 text-sm text-ellipsis";
 export const FIELD_PAIR = "grid grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-3 max-[800px]:grid-cols-1";
 
-/** A slider whose accent fill follows --range-fill (src/app/planner/range-fill.js keeps it up to date). */
-const RANGE_BASE =
-  "h-1.5 w-full min-w-0 cursor-pointer appearance-none rounded-full border border-line-strong [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-line-strong [&::-webkit-slider-thumb]:bg-accent [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-line-strong [&::-moz-range-thumb]:bg-accent";
-export const RANGE = `${RANGE_BASE} bg-[linear-gradient(to_right,var(--color-accent)_var(--range-fill,0%),var(--color-line)_var(--range-fill,0%))]`;
-/** A range of negative values: it fills from its --roll-fill. */
-export const RANGE_NEGATIVE = `${RANGE_BASE} bg-[linear-gradient(to_right,var(--color-accent)_0_var(--roll-fill,0%),var(--color-line-strong)_var(--roll-fill,0%)_100%)]`;
-export const ROLL_ROW = "grid grid-cols-[minmax(0,1fr)_64px] items-center gap-2.5";
-export const ROLL_NUMBER = "field h-7.5 w-16 px-1 text-center text-xs";
 export const ROLL_VALUE = "block text-right text-xs text-info not-italic";
 
 /**

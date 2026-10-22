@@ -23,11 +23,11 @@ async function openPacts(page, state = youga) {
 
 test("lists the three Pactspirits with their levels, trees and Kismet counts", async ({ page }) => {
   const { planner, pacts } = await openPacts(page);
-  await expect(pacts.count()).toHaveText("3/3");
+  await expect(pacts.filledSlots()).toHaveCount(3);
   for (const name of [DREAMWEAVER, "Iron Lion", "Awooawoo - White Mist"])
     await expect(pacts.slotButton(name)).toBeVisible();
   await expect(pacts.level(DREAMWEAVER)).toHaveValue("1");
-  await expect(pacts.allocatedCount(DREAMWEAVER)).toHaveText("11 allocated");
+  await expect(pacts.allocatedNodes(DREAMWEAVER)).toHaveCount(11);
   await expect(pacts.node(DREAMWEAVER, "Elemental Mastery")).toHaveAttribute("aria-pressed", "true");
   await expect(pacts.kismetSummary()).toContainText("Micro Kismets");
   await expect(pacts.kismetSummary()).toContainText("Medium Kismets");
@@ -38,14 +38,14 @@ test("removing a Pactspirit empties its slot, and choosing one fills it again", 
   const { planner, pacts } = await openPacts(page);
   await pacts.removeButton(DREAMWEAVER).click();
   await expect(pacts.slotButton("Select Pactspirit 1")).toBeVisible();
-  await expect(pacts.count()).toHaveText("2/3");
+  await expect(pacts.filledSlots()).toHaveCount(2);
   expect((await pacts.storedPacts()).selectedSpirits).toEqual(["", "Iron Lion", "Awooawoo - White Mist"]);
   await pacts.slotButton("Select Pactspirit 1").click();
   await expect(pacts.pactspiritSelector()).toBeVisible();
   await pacts.pactspiritChoice(DREAMWEAVER).click();
   await expect(pacts.pactspiritSelector()).toBeHidden();
   await expect(pacts.slotButton(DREAMWEAVER)).toBeVisible();
-  await expect(pacts.count()).toHaveText("3/3");
+  await expect(pacts.filledSlots()).toHaveCount(3);
   expect((await pacts.storedPacts()).selectedSpirits[0]).toBe(DREAMWEAVER);
   await planner.expectNoErrors();
 });
@@ -60,7 +60,7 @@ test("right-clicking a Pactspirit removes it", async ({ page }) => {
 
 test("a Pactspirit's level is saved", async ({ page }) => {
   const { planner, pacts } = await openPacts(page);
-  await pacts.level(DREAMWEAVER).selectOption("4");
+  await pacts.level(DREAMWEAVER).fill("4");
   expect((await pacts.storedPacts()).spiritLevels[DREAMWEAVER]).toBe(4);
   await page.reload();
   await planner.waitUntilReady();
@@ -108,15 +108,33 @@ test("hovering a node shows its tooltip", async ({ page }) => {
   await planner.expectNoErrors();
 });
 
-test("hovering a Pactspirit shows its overview and level bonuses", async ({ page }) => {
+test("hovering a Pactspirit shows its overview, its effect and its upgrade rewards, as the game groups them", async ({
+  page,
+}) => {
   const { planner, pacts } = await openPacts(page);
   await expect(async () => {
     await page.mouse.move(0, 0);
     await pacts.slotButton(DREAMWEAVER).hover();
-    await expect(pacts.tooltip()).toContainText("Pactspirit overview", { timeout: 500 });
+    await expect(pacts.tooltip()).toContainText("Pactspirit Overview", { timeout: 500 });
   }).toPass();
   await expect(pacts.tooltip()).toContainText(DREAMWEAVER);
-  await expect(pacts.tooltip()).toContainText("bonuses");
+  await expect(pacts.tooltip()).toContainText("Pactspirit Effect");
+  await expect(pacts.tooltip()).toContainText("Upgrade Reward");
+  await expect(pacts.tooltip()).toContainText("Right-click to remove");
+  await planner.expectNoErrors();
+});
+
+test("hovering a choice of the Pactspirit selector shows its tooltip", async ({ page }) => {
+  const { planner, pacts } = await openPacts(page);
+  await pacts.slotButton(DREAMWEAVER).click();
+  await expect(pacts.pactspiritSelector()).toBeVisible();
+  await expect(async () => {
+    await page.mouse.move(0, 0);
+    await pacts.pactspiritChoice("Iron Lion").hover();
+    await expect(pacts.tooltip()).toContainText("Pactspirit Overview", { timeout: 500 });
+  }).toPass();
+  await expect(pacts.tooltip()).toContainText("Iron Lion");
+  await expect(pacts.tooltip()).toContainText("Click to choose");
   await planner.expectNoErrors();
 });
 
@@ -140,7 +158,7 @@ test("an equipped Kismet moves to another slot by drag, and is copied with a rig
 
 test("without slot mode, clicking a Kismet node opens the crafter", async ({ page }) => {
   const { planner, pacts } = await openPacts(page, null);
-  await expect(pacts.count()).toHaveText("3/3");
+  await expect(pacts.filledSlots()).toHaveCount(3);
   const node = pacts.slots().first().locator('.pact-tree-node[aria-label$="Click to craft a Kismet"]').first();
   await node.click();
   await expect(pacts.kismetCrafter()).toBeVisible();
@@ -195,7 +213,7 @@ test("a Kismet's values: slider and number together, out of range ignored until 
   await expect(choices(pacts).filter({ hasText: "Micro Fate: Attack Cast Speed" })).toHaveClass(/\bselected\b/);
   const rows = crafter(pacts).locator(".kismet-roll-row");
   await expect(rows).toHaveCount(2);
-  await expect(rows.locator("span")).toHaveText(["Value 1: 6", "Value 2: 6"]);
+  await expect(rows.locator(".kismet-roll-value")).toHaveText(["Value 1: 6", "Value 2: 6"]);
   await expect(rows.locator("small")).toHaveText([
     "+(4–6)% Attack and Cast Speed",
     "+(4–6)% Minion Attack and Cast Speed",

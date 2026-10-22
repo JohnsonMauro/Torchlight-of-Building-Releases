@@ -13,8 +13,9 @@ export class PactsPage {
   view() {
     return this.page.locator("#pacts-view");
   }
-  count() {
-    return this.page.locator("#pactspirit-count");
+  /** The slots holding a Pactspirit (each has its Remove button). */
+  filledSlots() {
+    return this.slots().filter({ has: this.page.getByRole("button", { name: /^Remove / }) });
   }
   slots() {
     return this.view().locator("article.pact-slot");
@@ -32,10 +33,11 @@ export class PactsPage {
     return this.view().getByRole("button", { name: `Remove ${name}`, exact: true });
   }
   level(name) {
-    return this.slot(name).getByRole("combobox", { name: "Level", exact: true });
+    return this.slot(name).getByRole("slider", { name: "Level", exact: true });
   }
-  allocatedCount(name) {
-    return this.slot(name).locator(".pact-node-count");
+  /** Slot mode: the allocated nodes of a Pactspirit's tree. */
+  allocatedNodes(name) {
+    return this.slot(name).locator('.pact-tree-node[aria-pressed="true"]');
   }
   /** The `index`-th node of a Pactspirit's tree whose accessible name starts with `nodeName:`. */
   node(spirit, nodeName, index = 0) {

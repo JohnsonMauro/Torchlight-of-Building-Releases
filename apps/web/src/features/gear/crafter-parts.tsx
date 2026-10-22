@@ -2,8 +2,9 @@
 // through ModifierText), a select's options and groups (with the data-* attributes the planner's searchable select
 // reads), a list of choices in place of a select, a folding section, a roll's slider and number field, and a legendary
 // line with its controls (the crafter's and the item editor's differ by their data-* names).
-import { useState, type CSSProperties, type InputHTMLAttributes, type ReactNode } from "react";
+import { useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { tierBadgeClasses, tierBadgeKey } from "@legacy/app/gear/tier-badge.ts";
+import { searchMatcher, searchText } from "@legacy/app/bridge/search-match.ts";
 import { flatChoices } from "./choices";
 import type {
   ItemPreviewView,
@@ -12,7 +13,8 @@ import type {
   RollView,
   SelectChoice,
 } from "@legacy/app/bridge/equipment-crafter-view.ts";
-import { LiveNumberInput } from "../../ui/LiveNumberInput";
+import { RangeInput } from "../../ui/RangeInput";
+import { SearchField } from "../../ui/SearchField";
 import { ModifierText } from "../../ui/ModifierText";
 import {
   AFFIX_ROW,
@@ -24,10 +26,6 @@ import {
   TIER_CHIP_OTHER,
   TIER_CHIPS,
   itemCardLook,
-  RANGE,
-  RANGE_NEGATIVE,
-  ROLL_NUMBER,
-  ROLL_ROW,
   ROLL_VALUE,
 } from "./crafter-classes";
 
@@ -188,8 +186,8 @@ export function ChoiceList({
   detail?: ReactNode;
 }) {
   const [filter, setFilter] = useState("");
-  const needle = filter.trim().toLowerCase();
-  const keep = (option: OptionView) => !needle || option.label.toLowerCase().includes(needle);
+  const matcher = searchMatcher(filter);
+  const keep = (option: OptionView) => matcher.matches(searchText([option.label]));
   const row = (option: OptionView) => {
     const on = option.value === value;
     return (
@@ -216,16 +214,7 @@ export function ChoiceList({
   return (
     <div className="grid gap-1.5" role="radiogroup" aria-label={label} {...attributes}>
       {flatChoices(choices).length > FILTER_FROM ? (
-        <label className="field-search">
-          ⌕
-          <input
-            className="flex-1"
-            type="search"
-            value={filter}
-            placeholder={`Filter ${label}…`}
-            onChange={(event) => setFilter(event.target.value)}
-          />
-        </label>
+        <SearchField value={filter} onChange={setFilter} placeholder={`Filter ${label}…`} error={matcher.error} />
       ) : null}
       {none === null ? null : row({ value: noneValue, label: none })}
       {choices.map((choice, index) =>
@@ -254,36 +243,20 @@ export function RollInputs({
   attributes: InputHTMLAttributes<HTMLInputElement> & Record<`data-${string}`, string | number>;
   onValue: (value: number, commit?: boolean) => void;
 }) {
-  const style = {
-    "--range-fill": `${roll.rangeFill}%`,
-    ...(roll.negative ? { "--roll-fill": `${roll.rollFill}%` } : {}),
-  } as CSSProperties;
   return (
     <>
-      <span className={ROLL_ROW}>
-        <input
-          type="range"
-          className={roll.negative ? RANGE_NEGATIVE : RANGE}
-          min={roll.min}
-          max={roll.max}
-          step={roll.step}
-          value={roll.value}
-          style={style}
-          {...attributes}
-          onChange={(event) => onValue(Number(event.target.value))}
-        />
-        <LiveNumberInput
-          className={`affix-roll-number ${ROLL_NUMBER}`}
-          min={roll.min}
-          max={roll.max}
-          step={roll.step}
-          value={roll.value}
-          data-affix-roll-number=""
-          onValue={(value) => onValue(value)}
-          // Committed, a typed value is clamped into the range (an empty field reads 0), as the planner's change did.
-          onCommit={(text) => onValue(Number(text), true)}
-        />
-      </span>
+      <RangeInput
+        min={roll.min}
+        max={roll.max}
+        step={roll.step}
+        value={roll.value}
+        negative={roll.negative ? { rollFill: roll.rollFill } : undefined}
+        slider={attributes}
+        number={{ className: "affix-roll-number", "data-affix-roll-number": "" }}
+        onValue={(value) => onValue(value)}
+        // Committed, a typed value is clamped into the range (an empty field reads 0), as the planner's change did.
+        onCommit={(text) => onValue(Number(text), true)}
+      />
       <em className={ROLL_VALUE}>{`${roll.min} – ${roll.max}`}</em>
     </>
   );

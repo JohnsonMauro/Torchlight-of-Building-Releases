@@ -163,6 +163,15 @@ export function resultShapeProblems(result) {
     equipmentEnergy: "number",
     nonEquipmentEnergy: "number",
   });
+  expect(Array.isArray(activation.energy.sources), "activation.energy.sources");
+  activation.energy.sources.forEach((source, index) =>
+    types(source, `activation.energy.sources[${index}]`, {
+      slot: "string",
+      name: "string",
+      value: "number",
+      enabled: "boolean",
+    }),
+  );
   for (const key of ["activeSlotCosts", "passiveSlotCosts"])
     expect(
       Array.isArray(activation.profile[key]) && activation.profile[key].every((cost) => typeof cost === "number"),

@@ -3,6 +3,7 @@
 // auras seal. Pure; the React view (apps/web/src/features/skills) renders it and src/app/skills/skill-board.js publishes it
 // (src/app/bridge/view-sources.ts "skills"), so the game data stays in the planner's bundle.
 import { tliArt } from "../../data/assets/tli-art.js";
+import { equipmentSlots } from "../../data/gear/crafting-catalog-ss13.js";
 import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
 import { selenaCompleteSkillLoadoutSs13 } from "../../data/skills/selena-complete-skill-loadout-ss13.js";
 import { curseSlotSummary } from "../../engine/skills/curse-limit.js";
@@ -59,17 +60,28 @@ export interface SkillRowView {
 }
 /** Mana or Life sealed by the auras on the board. */
 export interface SealedResourceView {
+  /** The share sealed: "94.22%". */
+  percent: string;
   /** "494.64 / 525" */
   sealed: string;
-  /** "94.22% sealed · 30.36 usable", or "…% requested before cap" once the auras ask for 100% or more. */
+  /** "30.36 usable", or "104.5% requested before cap" once the auras ask for 100% or more. */
   detail: string;
   /** Width of the meter, 0–100. */
   meterPercent: number;
   overCapacity: boolean;
 }
+/** The Energy total and where the available Energy comes from (the "i" beside the total). */
+export interface EnergyView {
+  used: number;
+  available: number;
+  /** Each equipped gear piece that gives Energy, weapons first; a slot switched off gives none and is left out. */
+  gear: { slot: string; item: string; value: number }[];
+  /** The character level's Energy (the energy profile's figure, read from a game sheet). */
+  fromLevel: number;
+}
 export interface SkillsView {
   tab: SkillBoardTab;
-  energy: { used: number; available: number };
+  energy: EnergyView;
   rows: SkillRowView[];
   reservation: {
     mana: SealedResourceView;
@@ -168,7 +180,15 @@ export function skillsView(planner: PlannerResult, skills: PlannerSkills, tab: S
   });
   return {
     tab,
-    energy: { used, available: energy.available },
+    energy: {
+      used,
+      available: energy.available,
+      gear: energy.sources
+        .filter((source) => source.enabled)
+        .sort((a, b) => Number(isWeapon(b.slot)) - Number(isWeapon(a.slot)))
+        .map((source) => ({ slot: slotLabel(source.slot), item: source.name, value: source.value })),
+      fromLevel: energy.nonEquipmentEnergy,
+    },
     rows,
     reservation: reservationView(planner),
   };
@@ -187,14 +207,20 @@ function curseLeftOut(planner: PlannerResult): { has: (name: string) => boolean;
   return { has: (name) => names.has(name), reason: summary.reason || "curse limit reached" };
 }
 
+const isWeapon = (slot: string) => slot === "mainHand" || slot === "secondaryHand";
+const slotLabel = (slot: string) => equipmentSlots.find(([key]) => key === slot)?.[1] ?? slot;
+
 function reservationView(planner: PlannerResult): SkillsView["reservation"] {
   const ledger = planner.aura.planned || planner.aura;
   const resource = (maximum: number, reservedPercent: number, demandPercent: number): SealedResourceView => {
     const sealed = (maximum * reservedPercent) / 100;
     const overCapacity = demandPercent >= 100;
     return {
+      percent: `${format(reservedPercent)}%`,
       sealed: `${format(sealed)} / ${format(maximum)}`,
-      detail: `${format(reservedPercent)}% sealed${overCapacity ? ` · ${format(demandPercent)}% requested before cap` : ` · ${format(Math.max(0, maximum - sealed))} usable`}`,
+      detail: overCapacity
+        ? `${format(demandPercent)}% requested before cap`
+        : `${format(Math.max(0, maximum - sealed))} usable`,
       meterPercent: Math.min(100, reservedPercent),
       overCapacity,
     };

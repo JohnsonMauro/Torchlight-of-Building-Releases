@@ -41,7 +41,8 @@ test("the Auras tab shows the four aura rows and the reservation summary", async
   await expect(skills.socket("Replace Precise: Deep Pain")).toBeVisible();
   await expect(skills.reservationSummary()).toBeVisible();
   await expect(skills.reservationSummary()).toContainText("494.64 / 525");
-  await expect(skills.reservationSummary()).toContainText("94.22% sealed · 30.36 usable");
+  await expect(skills.reservationSummary()).toContainText("94.22%");
+  await expect(skills.reservationSummary()).toContainText("30.36 usable");
   await expect(skills.reservationSummary()).toContainText("1,920.54 / 2,150");
   await skills.tab("Skills").click();
   await expect(skills.rows()).toHaveCount(5);

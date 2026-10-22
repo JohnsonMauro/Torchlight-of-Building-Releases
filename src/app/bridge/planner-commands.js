@@ -139,12 +139,10 @@
  *   the open board (supportSlot null), or the support selector for one of its sockets (0–4).
  * @property {(index: number) => void} chooseSkillSelectorEntry Skill selector: highlights a choice of its list (with its
  *   saved level and configuration when it is the slot's).
- * @property {(levelText: string) => void} confirmSkillSelector Skill selector Confirm: installs the highlighted choice in
- *   the slot it was opened for, at the level as typed (the follower picker: the skill with its draft tier and affixes).
- * @property {() => void} clearSkillSelectorSlot Skill selector Clear slot: empties the slot it was opened for.
+ * @property {() => void} confirmSkillSelector Skill selector Confirm: installs the highlighted choice in the slot it was
+ *   opened for, at the selector's level (the follower picker: the skill with its draft tier and affixes).
  * @property {(value: string) => void} setSelectorLevel Skill selector: the skill or support level (1–40; 20 when not a
  *   number).
- * @property {(delta: number) => void} stepSelectorLevel Skill selector: the level one step up or down (1–40).
  * @property {(tier: number) => void} setSpecialTier A star support's main affix tier (its roll goes to the tier's maximum).
  * @property {(value: string) => void} setSpecialRoll A star support's main affix roll (kept within the tier).
  * @property {(stars: number) => void} setSupportStars A support's star level (1–5).

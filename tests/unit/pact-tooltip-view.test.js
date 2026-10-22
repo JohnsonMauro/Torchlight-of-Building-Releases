@@ -58,17 +58,55 @@ test("a Kismet names its kind and boost, lists its affixes and the node it repla
   assert.equal(view.footer, "Click to edit · Right-click to remove · Replaces Elemental Mastery");
 });
 
-test("a Pactspirit shows its overview, its outer node and its level bonuses", () => {
+test("a Pactspirit's tooltip groups its overview, its effect at its level and what each level adds", () => {
   const view = pactspiritTooltipView({
     spirit: { name: "Dreamweaver", icon: "d.webp", category: "Spell", rarity: "Legendary", description: "Weaves." },
     level: 2,
-    rewards: [],
+    effectsByLevel: [
+      ["+14% Spell damage"],
+      ["+14% Spell damage", "+2% additional damage"],
+      ["+14% Spell damage", "+1.5% Penetration", "+2% additional damage"],
+      ["+14% Spell damage", "+1.5% Penetration", "+4% additional damage"],
+    ],
     outer: { icon: "o.webp", name: "Dream Gate" },
+    place: "selector",
   });
   assert.deepEqual(
-    view.blocks.map((block) => block.kind),
-    ["heading", "text", "text", "feature", "heading", "text"],
+    view.blocks.map((block) => (block.kind === "heading" ? block.text : block.kind)),
+    ["Pactspirit Overview", "text", "text", "feature", "Pactspirit Effect", "list", "Upgrade Reward", "list"],
   );
   assert.equal(view.blocks[2].text, "Unlock 2 Pact Nodes in advance");
-  assert.equal(view.blocks[5].text, "No level bonus listed.");
+  assert.deepEqual(
+    view.blocks[5].items.map((item) => item.text.before),
+    ["+14% Spell damage", "+2% additional damage"],
+  );
+  // Each level from the second lists the lines it adds or changes; levels above the Pactspirit's are dimmed.
+  assert.deepEqual(
+    view.blocks[7].items.map((item) => [item.text.before, item.dimmed]),
+    [
+      ["Lv.2 · +2% additional damage", false],
+      ["Lv.3 · +1.5% Penetration", true],
+      ["Lv.4 · +4% additional damage", true],
+    ],
+  );
+  assert.equal(view.footer, "Click to choose");
+  assert.equal(view.kicker, "Spell · Legendary · Level 2");
+  // Its art is a tall portrait, shown down the head's left edge (a node's or Kismet's icon is not).
+  assert.equal(view.portrait, true);
+});
+
+test("a Pactspirit without level data says so, and a slot's tooltip keeps the slot's controls", () => {
+  const view = pactspiritTooltipView({
+    spirit: { name: "Plain", icon: "p.webp", category: "Attack", rarity: "Magic", description: "Hits." },
+    level: 1,
+    effectsByLevel: [],
+    outer: null,
+    place: "slot",
+  });
+  assert.deepEqual(
+    view.blocks.map((block) => (block.kind === "heading" ? block.text : block.kind)),
+    ["Pactspirit Overview", "text", "Pactspirit Effect", "text"],
+  );
+  assert.equal(view.blocks[3].text, "No effect listed.");
+  assert.equal(view.footer, "Click to change · Right-click to remove");
 });

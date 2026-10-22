@@ -12,6 +12,7 @@ import { equippedKismetSummary } from "../../engine/pacts/pact-kismet-summary.js
 import { sortPactspirits } from "../../engine/pacts/pactspirit-selection.js";
 import type { PlannerState } from "../../engine/state/planner-state.ts";
 import { displayTexts } from "./display-text.ts";
+import { searchText } from "./search-match.ts";
 
 export type KismetKind = "micro" | "medium";
 
@@ -56,13 +57,10 @@ export interface PactSlotView {
   level: number;
   nodes: PactNodeView[];
   extras: ExtraSlotView[];
-  allocatedCount: number;
 }
 export interface PactsView {
   slotMode: boolean;
   slots: PactSlotView[];
-  /** Filled pact slots. */
-  filled: number;
   kismets: { microCount: number; microMax: number; mediumCount: number; mediumMax: number };
 }
 
@@ -74,7 +72,6 @@ interface PactTreeNode {
   icon: string;
 }
 const TREES: Readonly<Record<string, PactTreeNode[] | undefined>> = pactspiritTreesSs13;
-const ALLOCATABLE_RINGS = ["inner", "mid", "outer", "destiny"];
 
 const quantity = (pacts: Pacts, key: string): number => Number(pacts.nativeNodeQuantities[key] ?? 0);
 const equippedKismet = (pacts: Pacts, key: string, kind?: KismetKind) => {
@@ -130,9 +127,6 @@ function nodeView(pacts: Pacts, name: string, node: PactTreeNode, index: number)
 function slotView(pacts: Pacts, name: string, index: number): PactSlotView {
   const entry = pactspiritCatalogSs13.find((candidate: { name: string }) => candidate.name === name);
   const sequence: PactTreeNode[] = name ? orderedPactspiritNodes(TREES[name] || []) : [];
-  const allocatedCount = sequence.filter(
-    (node, nodeIndex) => ALLOCATABLE_RINGS.includes(node.ring) && quantity(pacts, `${name}:${nodeIndex}`) > 0,
-  ).length;
   const destinyIndex = sequence.findIndex((node) => node.ring === "destiny");
   const destinyAllocated = destinyIndex >= 0 && quantity(pacts, `${name}:${destinyIndex}`) > 0;
   const extras = fateExtraSlots(name, destinyAllocated || !pacts.kismetSlotMode ? pacts.fateUnlocks[name] : null).map(
@@ -158,7 +152,6 @@ function slotView(pacts: Pacts, name: string, index: number): PactSlotView {
     level: slotLevel(pacts, name),
     nodes: sequence.map((node, nodeIndex) => nodeView(pacts, name, node, nodeIndex)),
     extras,
-    allocatedCount,
   };
 }
 
@@ -168,7 +161,6 @@ export function pactsView(pacts: Pacts): PactsView {
   return {
     slotMode: pacts.kismetSlotMode,
     slots: names.map((name, index) => slotView(pacts, name, index)),
-    filled: names.filter(Boolean).length,
     kismets: {
       microCount: summary.microCount,
       microMax: summary.microMax,
@@ -191,30 +183,37 @@ export interface PactspiritChoiceView {
   rank: number;
 }
 export interface PactspiritSelectorView {
-  /** Every category in catalog order. */
+  /** Every listed category in catalog order. */
   categories: string[];
-  /** Every Pactspirit in catalog order. */
+  /** Every listed Pactspirit in catalog order. */
   choices: PactspiritChoiceView[];
 }
+
+/**
+ * Categories the selector leaves out: the Drop Pactspirits only change what monsters drop, and the planner calculates
+ * damage and defence. They stay in the catalog, so a saved build that holds one still loads and shows it.
+ */
+const UNLISTED_CATEGORIES = new Set(["Drop"]);
 
 let selectorView: PactspiritSelectorView | null = null;
 /** The Pactspirit selector's choices; the dialog filters them and groups them by category in catalog order. */
 export function pactspiritSelectorView(): PactspiritSelectorView {
   if (selectorView) return selectorView;
-  const categories = [...new Set(pactspiritCatalogSs13.map((entry) => entry.category))];
+  const listed = pactspiritCatalogSs13.filter((entry) => !UNLISTED_CATEGORIES.has(entry.category));
+  const categories = [...new Set(listed.map((entry) => entry.category))];
   const rank = new Map<string, number>();
   for (const category of categories)
-    sortPactspirits(pactspiritCatalogSs13.filter((entry) => entry.category === category)).forEach(
+    sortPactspirits(listed.filter((entry) => entry.category === category)).forEach(
       (entry: { name: string }, index: number) => rank.set(entry.name, index),
     );
   selectorView = {
     categories,
-    choices: pactspiritCatalogSs13.map((entry) => ({
+    choices: listed.map((entry) => ({
       ...displayTexts({ name: entry.name, description: entry.description }),
       category: entry.category,
       rarity: entry.rarity,
       icon: entry.icon,
-      search: `${entry.name} ${entry.description}`.toLowerCase(),
+      search: searchText([entry.name, entry.category, entry.description]),
       rank: rank.get(entry.name) ?? 0,
     })),
   };

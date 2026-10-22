@@ -1,8 +1,10 @@
 // The skill selector (the skill board's sockets, Rosa's and Moto's trait support slots, the follower's skill slots): its
-// title with the count of choices, the search over names, tags and effects with its clear button, the list (the
-// follower picker's in Tartarus / Origin groups), the highlighted choice's detail (SkillSelectorDetail) and Clear slot /
-// Confirm / Cancel, from the planner's "skillSelector" source (src/app/bridge/skill-selector-view.ts); every edit is a
-// planner command. The skills tests find the list by #skill-selector-results. Below 700px only the list shows.
+// title with the count of choices, the tag column (skill-selector-filter.ts), the search over names, tags and effects
+// with its clear button, the list (the follower picker's in Tartarus / Origin groups), the highlighted choice's detail
+// (SkillSelectorDetail) and Confirm / Cancel, from the planner's "skillSelector" source
+// (src/app/bridge/skill-selector-view.ts); every edit is a planner command. A slot is emptied by right-clicking it on
+// the board. The skills tests find the list by #skill-selector-results. Under 900px the tags wrap above the list;
+// below 700px the detail hides.
 import { useRef, type ReactNode } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { Artwork } from "../../ui/Artwork";
@@ -12,6 +14,10 @@ import { setAutofocusAttribute } from "../../shell/autofocus";
 import { SkillSelectorDetail } from "./SkillSelectorDetail";
 import { DETAIL, RESULT, RESULT_SELECTED, resultTint, SUPPORT_ART } from "./skill-selector-classes";
 import { useRegisteredDialog } from "../../ui/dialog-registry";
+import { FilterColumn } from "../../ui/FilterColumn";
+import { SearchField } from "../../ui/SearchField";
+import { searchMatcher } from "@legacy/app/bridge/search-match.ts";
+import { matchesFilter, tagOptions, toggleTag } from "./skill-selector-filter";
 
 const FOOTER_BUTTON = "px-3.5 py-2 text-xs font-bold tracking-wide uppercase";
 
@@ -19,25 +25,27 @@ export function SkillSelectorDialog() {
   const view = useViewSource("skillSelector");
   const dialog = useRef<HTMLDialogElement>(null);
   useRegisteredDialog(dialog);
-  const search = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useSessionState(view?.session ?? 0, "");
+  const [pickedTags, setPickedTags] = useSessionState<string[]>(view?.session ?? 0, []);
   const detail = view?.detail ?? null;
-  const level = detail?.kind === "entry" ? detail.level : null;
-  // The level field as typed; it starts over whenever the planner's level changes.
-  const [levelText, setLevelText] = useSessionState<string | null>(level ?? -1, null);
-  const typedLevel = levelText ?? (level === null ? "" : String(level));
-  const needle = query.trim().toLowerCase();
+  // Plain words each match somewhere in a choice's whole text; /pattern/flags is a regular expression.
+  const matcher = searchMatcher(query);
   const groups = (view?.groups ?? []).map((group) => ({
     ...group,
-    results: group.results.filter((item) => !needle || item.search.includes(needle)),
+    results: group.results.filter((item) => matchesFilter(item, matcher.matches, pickedTags)),
   }));
+  const tags = tagOptions(
+    (view?.groups ?? []).flatMap((group) => group.results),
+    matcher.matches,
+    pickedTags,
+  );
   const any = groups.some((group) => group.results.length);
   const close = () => dialog.current?.close();
   return (
     <dialog
       id="skill-selector"
       ref={dialog}
-      className="dialog-panel h-162.5 w-230 grid-rows-[auto_minmax(0,1fr)_auto] leading-[normal] open:grid"
+      className="dialog-panel h-162.5 w-270 grid-rows-[auto_minmax(0,1fr)_auto] leading-[normal] open:grid"
       aria-labelledby="skill-selector-title"
     >
       <header className="dialog-head">
@@ -48,34 +56,27 @@ export function SkillSelectorDialog() {
           ×
         </button>
       </header>
-      <div className="grid min-h-0 grid-cols-[1fr_1.05fr] max-[700px]:grid-cols-1">
+      <div className="grid min-h-0 grid-cols-[11.5rem_1fr_1.05fr] max-[900px]:grid-cols-[1fr_1.05fr] max-[900px]:grid-rows-[auto_minmax(0,1fr)] max-[700px]:grid-cols-1">
+        <FilterColumn
+          label="Filter by tag"
+          options={tags.map((option) => ({
+            key: option.tag,
+            label: option.tag,
+            count: option.count,
+            picked: option.picked,
+          }))}
+          onPick={(tag) => setPickedTags(toggleTag(pickedTags, tag))}
+          onAll={() => setPickedTags([])}
+        />
         <section className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border-r border-line p-4 max-[700px]:border-r-0">
-          <label className="field-search">
-            <span aria-hidden="true">⌕</span>
-            <input
-              className="flex-1"
-              id="skill-selector-search"
-              ref={(element) => {
-                search.current = element;
-                setAutofocusAttribute(element);
-              }}
-              type="search"
-              placeholder={view?.placeholder ?? "Search skills…"}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            <button
-              type="button"
-              className="cursor-pointer px-1 text-muted hover:text-accent"
-              aria-label="Clear search"
-              onClick={() => {
-                setQuery("");
-                search.current?.focus();
-              }}
-            >
-              ×
-            </button>
-          </label>
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            placeholder={view?.placeholder ?? "Search skills…"}
+            error={matcher.error}
+            input={{ id: "skill-selector-search" }}
+            inputRef={setAutofocusAttribute}
+          />
           <div id="skill-selector-results" className="mt-3 grid min-h-0 content-start gap-2 overflow-auto pr-1.5">
             {!view ? null : any ? (
               groups.map((group, groupIndex) =>
@@ -120,27 +121,19 @@ export function SkillSelectorDialog() {
         ) : (
           <section key="entry" id="skill-selector-detail" className={DETAIL}>
             {detail?.kind === "entry" ? (
-              <SkillSelectorDetail view={detail} levelText={typedLevel} onLevelText={setLevelText} />
+              <SkillSelectorDetail view={detail} />
             ) : (
               <p>{detail?.message ?? "Select a skill to configure"}</p>
             )}
           </section>
         )}
       </div>
-      <footer className="grid grid-cols-[auto_1fr_auto_auto] gap-2.5 border-t border-line bg-raised px-4 py-3">
-        <button
-          className={`btn-danger ${FOOTER_BUTTON}`}
-          type="button"
-          onClick={() => plannerCommands().clearSkillSelectorSlot()}
-        >
-          Clear slot
-        </button>
-        <span />
+      <footer className="flex justify-end gap-2.5 border-t border-line bg-raised px-4 py-3">
         <button
           className={`btn-primary ${FOOTER_BUTTON}`}
           type="button"
           disabled={view?.confirm.disabled ?? true}
-          onClick={() => plannerCommands().confirmSkillSelector(typedLevel)}
+          onClick={() => plannerCommands().confirmSkillSelector()}
         >
           {view?.confirm.label ?? "Confirm"}
         </button>

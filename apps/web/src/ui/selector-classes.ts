@@ -8,12 +8,6 @@
  * <dialog> keeps the browser's display:none.
  */
 export const pickerDialog = "dialog-panel leading-[normal] open:flex open:flex-col";
-/** The framed search label (⌕ and the input). */
-export const searchLabel = "field-search m-4 shrink-0";
-export const searchGlyph = "text-xl leading-none text-accent";
-export const searchInput = "flex-1 placeholder:text-dim";
-/** A bare search input or select (Pactspirit and Kismet filters). */
-export const fieldInput = "field p-2.5 placeholder:text-dim";
 /** "No … match": a line across the list. */
 export const emptyNote = "col-span-full p-5 text-center text-muted";
 
@@ -51,12 +45,6 @@ export const rowTag = "chip mr-1 px-1.5 py-0.5 text-[10px] text-accent not-itali
 export const ammoArt =
   "relative grid size-11 place-items-center overflow-hidden rounded-full border border-line-strong bg-sunken text-accent-strong [&>img]:absolute [&>img]:inset-0 [&>img]:size-full [&>img]:object-cover [&>img+span]:invisible";
 
-// ---- Sliders and number fields (Kismet values, the memory crafter's rolls) -------------------------------------------
-/** A slider whose accent fill follows --range-fill (src/app/planner/range-fill.js keeps it up to date), with a round knob. */
-export const rangeField =
-  "h-2 min-w-0 flex-1 cursor-pointer appearance-none rounded-full border border-line-strong bg-[linear-gradient(to_right,var(--color-accent)_var(--range-fill,0%),var(--color-sunken)_var(--range-fill,0%))] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-accent [&::-webkit-slider-thumb]:bg-surface [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-accent [&::-moz-range-thumb]:bg-surface";
-export const numberField = "field w-20.5 px-1 py-1.5 text-center tabular-nums";
-
 // ---- Pactspirit selector: a choice takes its rarity's colours ------------------------------------------------------
 // The card sets --pact-accent (caption), --pact-border, --pact-glow and --pact-dark for its children
 // (PactspiritSelectorDialog's portrait and caption read them). Spelled out in full: Tailwind only sees whole class names.
@@ -69,6 +57,6 @@ const pactRarities: Record<string, string> = {
 };
 const pactPlain =
   "[--pact-accent:var(--color-accent)] [--pact-border:var(--color-line)] [--pact-glow:var(--color-raised)] [--pact-dark:var(--color-raised)]";
-/** A Pactspirit card: border, tint and caption in its rarity's colours. */
+/** A Pactspirit card: its portrait down the whole left edge, then the text; border, tint and caption in its rarity's colours. */
 export const pactChoice = (rarity: string): string =>
-  `flex min-h-28.75 cursor-pointer items-start gap-2.75 rounded-md border border-(--pact-border) bg-(--pact-glow) p-3 text-left text-text outline-none hover:border-(--pact-accent) focus-visible:border-(--pact-accent) ${pactRarities[rarity.toLowerCase()] ?? pactPlain}`;
+  `flex cursor-pointer items-stretch gap-3 overflow-hidden rounded-md border border-(--pact-border) bg-(--pact-glow) p-0 text-left text-text outline-none hover:border-(--pact-accent) focus-visible:border-(--pact-accent) ${pactRarities[rarity.toLowerCase()] ?? pactPlain}`;

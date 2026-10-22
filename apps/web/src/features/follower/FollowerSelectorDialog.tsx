@@ -5,6 +5,7 @@
 import { useRef } from "react";
 import { FollowerTooltip } from "../hero/TraitTooltip";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import { searchMatcher } from "@legacy/app/bridge/search-match.ts";
 import { useSessionState } from "../../ui/use-session-state";
 import { useViewSource } from "../../ui/use-view-source";
 import { rarityArt, rarityText } from "../hero/hero-classes";
@@ -17,19 +18,17 @@ import {
   portraitGrid,
   portraitImage,
   portraitName,
-  searchGlyph,
-  searchInput,
-  searchLabel,
 } from "../../ui/selector-classes";
 import { useRegisteredDialog } from "../../ui/dialog-registry";
+import { SearchField } from "../../ui/SearchField";
 
 export function FollowerSelectorDialog() {
   const view = useViewSource("followerSelector");
   const dialog = useRef<HTMLDialogElement>(null);
   useRegisteredDialog(dialog);
   const [query, setQuery] = useSessionState(view?.session ?? 0, "");
-  const needle = query.trim().toLowerCase();
-  const cards = (view?.cards ?? []).filter((card) => !needle || card.search.includes(needle));
+  const matcher = searchMatcher(query);
+  const cards = (view?.cards ?? []).filter((card) => matcher.matches(card.search));
   return (
     <dialog
       id="follower-selector"
@@ -53,21 +52,14 @@ export function FollowerSelectorDialog() {
           ×
         </button>
       </header>
-      <label className={`hero-search ${searchLabel}`}>
-        <span className={searchGlyph} aria-hidden="true">
-          ⌕
-        </span>
-        <input
-          id="follower-selector-search"
-          type="search"
-          placeholder="Search followers..."
-          autoComplete="off"
-          aria-label="Search followers"
-          className={searchInput}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
+      <SearchField
+        className="hero-search m-4 shrink-0"
+        value={query}
+        onChange={setQuery}
+        placeholder="Search followers…"
+        error={matcher.error}
+        input={{ id: "follower-selector-search", "aria-label": "Search followers" }}
+      />
       <div id="follower-selector-grid" className={`hero-selector-grid follower-selector-grid ${portraitGrid}`}>
         {!view ? null : cards.length ? (
           cards.map((card) => (

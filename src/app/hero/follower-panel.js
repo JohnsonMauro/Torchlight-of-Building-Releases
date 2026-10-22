@@ -1,6 +1,7 @@
 import { escapeHtml } from "../html.js";
 import { coverageView } from "../bridge/gear-item-view.ts";
 import { paragraph, run } from "../bridge/trait-tooltip-view.ts";
+import { searchText } from "../bridge/search-match.ts";
 import { combineStatuses, plannerEngines, refineCoverage } from "../../engine/text/line-coverage.js";
 import {
   followers,
@@ -410,8 +411,7 @@ export function followerPickerView(state) {
     return {
       followerId: follower.id,
       rarityId: rarity.id,
-      search:
-        `${follower.displayName} ${follower.species} ${follower.title} ${follower.traitName} ${rarity.name}`.toLowerCase(),
+      search: searchText([follower.displayName, follower.species, follower.title, follower.traitName, rarity.name]),
       portrait: follower.portrait || null,
       initials: follower.name.slice(0, 2).toUpperCase(),
       name: follower.displayName,
@@ -672,7 +672,7 @@ export function followerSkillSelectorList(state, slot) {
           icon: entry.icon,
           tags: [...entry.tags],
           tintClass: tintClass({ id: tartarusSkillRarity(entry) }),
-          search: [entry.name, entry.shortName, ...entry.tags, ...entry.lines].join(" ").toLowerCase(),
+          search: searchText([entry.name, entry.shortName, ...entry.tags, ...entry.lines]),
         })),
     })),
   };

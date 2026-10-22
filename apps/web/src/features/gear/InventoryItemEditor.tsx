@@ -8,7 +8,7 @@ import type {
   InventoryItemEditorChange,
   InventoryItemEditorView,
 } from "@legacy/app/bridge/inventory-item-editor-view.ts";
-import { LiveNumberInput } from "../../ui/LiveNumberInput";
+import { RangeInput } from "../../ui/RangeInput";
 import {
   CONTROL,
   CRAFT_ASIDE,
@@ -22,9 +22,6 @@ import {
   MOD_BOX_CORRODED,
   MOD_TAG,
   MOD_TAG_CORRODED,
-  RANGE,
-  ROLL_NUMBER,
-  ROLL_ROW,
   ROLL_VALUE,
   SELECTED_CARD,
   SELECTED_CHANGE,
@@ -49,30 +46,19 @@ function TextLineRoll({ range }: { range: NonNullable<InventoryItemEditorView["t
   const [value, setValue] = useState(range.value);
   const clamp = (typed: number) => Math.min(range.max, Math.max(range.min, typed));
   return (
-    <span className={ROLL_ROW}>
-      <input
-        type="range"
-        className={RANGE}
-        min={range.min}
-        max={range.max}
-        step={range.step}
-        value={value}
-        data-modifier-roll=""
-        onChange={(event) => setValue(Number(event.target.value))}
-      />
-      <LiveNumberInput
-        className={`affix-roll-number ${ROLL_NUMBER}`}
-        min={range.min}
-        max={range.max}
-        step={range.step}
-        value={value}
-        data-affix-roll-number=""
-        onValue={(typed) => {
-          if (typed >= range.min && typed <= range.max) setValue(typed);
-        }}
-        onCommit={(text) => setValue(clamp(Number(text)))}
-      />
-    </span>
+    <RangeInput
+      min={range.min}
+      max={range.max}
+      step={range.step}
+      value={value}
+      slider={{ "data-modifier-roll": "" }}
+      number={{ className: "affix-roll-number", "data-affix-roll-number": "" }}
+      // A typed number outside the range waits for the commit, which clamps it.
+      onValue={(typed) => {
+        if (typed >= range.min && typed <= range.max) setValue(typed);
+      }}
+      onCommit={(text) => setValue(clamp(Number(text)))}
+    />
   );
 }
 

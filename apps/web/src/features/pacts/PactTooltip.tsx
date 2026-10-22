@@ -3,6 +3,7 @@ import { plannerQueries } from "@legacy/app/bridge/planner-queries.js";
 import { CoverageBadge } from "../../ui/CoverageBadge";
 import { Tooltip, type TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import * as classes from "./pact-tooltip-classes";
+import { PORTRAIT_STRIP } from "./pact-classes";
 
 type PactNodeTarget = Parameters<ReturnType<typeof plannerQueries>["pactNodeTooltip"]>[0];
 
@@ -17,12 +18,23 @@ export function PactNodeTooltip({ target, children }: { target: PactNodeTarget; 
   return <Tooltip content={() => body(plannerQueries().pactNodeTooltip(target))}>{children}</Tooltip>;
 }
 
-/** A Pactspirit's tooltip: its overview and level bonuses. */
-export function PactspiritTooltip({ name, children }: { name: string; children: TooltipAnchor }) {
+/**
+ * A Pactspirit's tooltip, grouped as the game's Pactspirit page (overview, effect at its level, upgrade rewards): on a
+ * pact slot's portrait, or on a choice of the Pactspirit selector (`place`).
+ */
+export function PactspiritTooltip({
+  name,
+  place = "slot",
+  children,
+}: {
+  name: string;
+  place?: "slot" | "selector";
+  children: TooltipAnchor;
+}) {
   return (
     <Tooltip
       content={() => {
-        const view = plannerQueries().pactspiritTooltip(name);
+        const view = plannerQueries().pactspiritTooltip(name, place);
         return view ? body(view) : null;
       }}
     >
@@ -35,18 +47,31 @@ export function PactspiritTooltip({ name, children }: { name: string; children: 
 export function PactCard({ view }: { view: PactTooltipView }) {
   return (
     <>
-      <div className={classes.HEAD}>
-        {view.icon ? <img className={classes.HEAD_ICON} src={view.icon} alt="" /> : null}
-        <div>
-          <strong className={classes.TITLE}>{view.title}</strong>
-          <small className={classes.KICKER}>{view.kicker}</small>
+      {view.portrait && view.icon ? (
+        <div className={classes.HEAD_PORTRAIT}>
+          <img className={`${PORTRAIT_STRIP} ${classes.HEAD_PORTRAIT_ART}`} src={view.icon} alt="" />
+          <HeadText view={view} className={classes.HEAD_PORTRAIT_TEXT} />
         </div>
-      </div>
+      ) : (
+        <div className={classes.HEAD}>
+          {view.icon ? <img className={classes.HEAD_ICON} src={view.icon} alt="" /> : null}
+          <HeadText view={view} />
+        </div>
+      )}
       {view.blocks.map((block, index) => (
         <Block key={index} block={block} />
       ))}
       <footer className={classes.FOOTER}>{view.footer}</footer>
     </>
+  );
+}
+
+function HeadText({ view, className }: { view: PactTooltipView; className?: string }) {
+  return (
+    <div className={className}>
+      <strong className={classes.TITLE}>{view.title}</strong>
+      <small className={classes.KICKER}>{view.kicker}</small>
+    </div>
   );
 }
 
@@ -69,7 +94,7 @@ function Block({ block }: { block: PactTooltipBlock }) {
   return (
     <ul className={classes.LIST}>
       {block.items.map((item, index) => (
-        <li key={index} className={classes.ITEM}>
+        <li key={index} className={item.dimmed ? classes.ITEM_DIMMED : classes.ITEM}>
           <BoostedText text={item.text} />
           {item.coverage ? <CoverageBadge coverage={item.coverage} className={classes.INLINE_COVERAGE} /> : null}
         </li>

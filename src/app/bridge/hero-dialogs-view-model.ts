@@ -4,6 +4,7 @@
 import { sageElixirsSs13 } from "../../data/heroes/sage-scent-ss13.generated.js";
 import { sageScentIngredientsSs13 } from "../../data/heroes/sage-scent-options-ss13.js";
 import { displayTexts } from "./display-text.ts";
+import { searchText } from "./search-match.ts";
 
 export type SageScentKind = "elixir" | "damage" | "defense" | "functional";
 
@@ -14,6 +15,8 @@ export interface SageScentChoiceView {
   tags: string[] | null;
   /** An ingredient's effect; "" for an elixir. */
   description: string;
+  /** What the search box matches (name, tags, effect; src/app/bridge/search-match.ts searchText). */
+  search: string;
 }
 export interface SageScentSelectorView {
   kind: SageScentKind;
@@ -34,15 +37,16 @@ export function sageScentSelectorView(kind: SageScentKind): SageScentSelectorVie
   return {
     kind,
     title: elixir ? "Select Elixir Skill" : `Select ${titleCase(kind)} Ingredient`,
-    placeholder: elixir ? "Search skills..." : "Search ingredients...",
-    choices: entries.map((entry) =>
-      displayTexts({
+    placeholder: elixir ? "Search skills…" : "Search ingredients…",
+    choices: entries.map((entry) => ({
+      ...displayTexts({
         name: entry.name,
         icon: entry.icon,
         tags: elixir ? [...(entry.tags || [])] : null,
         description: elixir ? "" : entry.description || "",
       }),
-    ),
+      search: searchText([entry.name, ...(elixir ? entry.tags || [] : []), elixir ? "" : entry.description]),
+    })),
   };
 }
 
@@ -96,7 +100,7 @@ export function carinoAmmoSelectorView(
       }),
       icon: entry.icon || "",
       installed: installed.includes(entry.name),
-      search: `${entry.name} ${entry.exclusiveFor} ${entry.category}`.toLowerCase(),
+      search: searchText([entry.name, entry.exclusiveFor, entry.category]),
     })),
   };
 }

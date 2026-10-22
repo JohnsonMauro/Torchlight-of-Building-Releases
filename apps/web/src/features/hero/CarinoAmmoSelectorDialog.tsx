@@ -5,6 +5,7 @@
 // commands. The hero tests find the choices by data-select-carino-ammo.
 import { useRef } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import { searchMatcher } from "@legacy/app/bridge/search-match.ts";
 import { Artwork } from "../../ui/Artwork";
 import { useSessionState } from "../../ui/use-session-state";
 import { useViewSource } from "../../ui/use-view-source";
@@ -19,19 +20,17 @@ import {
   rowName,
   rowNote,
   rowTag,
-  searchGlyph,
-  searchInput,
-  searchLabel,
 } from "../../ui/selector-classes";
 import { useRegisteredDialog } from "../../ui/dialog-registry";
+import { SearchField } from "../../ui/SearchField";
 
 export function CarinoAmmoSelectorDialog() {
   const view = useViewSource("carinoAmmoSelector");
   const dialog = useRef<HTMLDialogElement>(null);
   useRegisteredDialog(dialog);
   const [query, setQuery] = useSessionState(view?.session ?? 0, "");
-  const needle = query.trim().toLowerCase();
-  const choices = (view?.choices ?? []).filter((entry) => !needle || entry.search.includes(needle));
+  const matcher = searchMatcher(query);
+  const choices = (view?.choices ?? []).filter((entry) => matcher.matches(entry.search));
   const close = () => dialog.current?.close();
   return (
     <dialog
@@ -54,21 +53,14 @@ export function CarinoAmmoSelectorDialog() {
           ×
         </button>
       </header>
-      <label className={`hero-search ${searchLabel}`}>
-        <span className={searchGlyph} aria-hidden="true">
-          ⌕
-        </span>
-        <input
-          id="carino-ammo-search"
-          type="search"
-          placeholder="Search projectile supports..."
-          autoComplete="off"
-          aria-label="Search projectile supports"
-          className={searchInput}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
+      <SearchField
+        className="hero-search m-4 shrink-0"
+        value={query}
+        onChange={setQuery}
+        placeholder="Search projectile supports…"
+        error={matcher.error}
+        input={{ id: "carino-ammo-search", "aria-label": "Search projectile supports" }}
+      />
       <p className="carino-ammo-help mx-4 -mt-1 mb-3 shrink-0 text-xs text-muted">
         {view?.help ?? "Choose a support that can support a Projectile skill and is not installed on the skill panel."}
       </p>

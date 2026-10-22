@@ -1,6 +1,11 @@
-// The Pactspirits section's drawing as utility class lists: the slot card, the LEVEL select, the tree nodes' rings by
-// state, and the Kismet drag ghost. PactsSection.tsx picks them from the view's data.
+// The Pactspirits section's drawing as utility class lists: the slot card, the tree nodes' rings by state, and the
+// Kismet drag ghost (the level is apps/web/src/ui/RangeInput.tsx). PactsSection.tsx picks them from the view's data.
 import type { ExtraSlotView, PactNodeView } from "@legacy/app/bridge/pacts-view-model.ts";
+
+/** A Pactspirit's tall portrait down a card's left edge, stretched to the card's height and cropped from the top; its
+ * width is the caller's (a selector choice: PORTRAIT_STRIP_CARD; the tooltip's head keeps its own height). */
+export const PORTRAIT_STRIP = "flex-none self-stretch bg-sunken object-cover object-top";
+export const PORTRAIT_STRIP_CARD = `${PORTRAIT_STRIP} min-h-24 w-20`;
 
 // A Pactspirit's or Kismet's rarity as the --pact-tone custom property, which the classes below read.
 const RARITY_TONE: Readonly<Record<string, string>> = {
@@ -26,17 +31,6 @@ export const FILLED_PORTRAIT = "border border-(--pact-tone)/60 bg-sunken";
 export const EMPTY_PORTRAIT =
   "border-2 border-dashed border-line-strong bg-sunken text-2xl leading-none text-muted " +
   "group-hover:border-accent group-hover:text-accent group-focus-visible:border-accent group-focus-visible:text-accent";
-
-/** The LEVEL label: a chevron drawn over the select's right end (the select has no native arrow). */
-export const LEVEL_LABEL =
-  "relative grid w-21 gap-1 text-xs font-bold tracking-widest text-accent uppercase " +
-  "after:pointer-events-none after:absolute after:right-3 after:bottom-3.5 after:box-content after:size-1.5 " +
-  "after:rotate-45 after:border-r-2 after:border-b-2 after:border-accent after:content-['']";
-
-/** The LEVEL select. */
-export const LEVEL_SELECT =
-  "field h-8 w-full cursor-pointer appearance-none py-1 pr-6 pl-2.5 text-sm font-bold tracking-normal normal-case " +
-  "hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 // Every node: round, on a well, joined to the previous node by a short line.
 const NODE_BASE =

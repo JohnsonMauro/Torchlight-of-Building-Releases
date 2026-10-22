@@ -32,7 +32,7 @@ test("the skill list counts its choices, marks the row's skill, searches and cle
   await expect(skills.selectorTitle()).toHaveText(/^Select Active Skill · \d+ available$/);
   const total = await available(skills);
   await expect(skills.selectorResults()).toHaveCount(total);
-  await expect(search(skills)).toHaveAttribute("placeholder", "Search skills…");
+  await expect(search(skills)).toHaveAttribute("placeholder", "Search skills… · /regex/");
   await expect(search(skills)).toBeFocused();
   const selected = skills.selector().locator("#skill-selector-results .selector-result.selected");
   await expect(selected).toHaveCount(1);
@@ -79,7 +79,7 @@ test("the support and aura lists say what they are for", async ({ page }) => {
   await skills.support("Aim", "Add support 5 to Aim").click();
   await expect(skills.selectorTitle()).toHaveText(/^Select Support for Aim · \d+ available$/);
   await expect(skills.selectorResults()).toHaveCount(await available(skills));
-  await expect(search(skills)).toHaveAttribute("placeholder", "Search supports…");
+  await expect(search(skills)).toHaveAttribute("placeholder", "Search supports… · /regex/");
   await expect(skills.selector().locator("#skill-selector-results .selector-result.selected")).toHaveCount(0);
   await expect(skills.selector().locator("#skill-selector-detail")).toHaveText("Select a support to configure");
   await skills.selector().getByRole("button", { name: "Cancel" }).click();
@@ -128,7 +128,8 @@ test("the follower skill list groups Tartarus and Origin skills and searches the
 });
 
 const detail = (skills) => skills.selector().locator("#skill-selector-detail");
-const level = (skills) => detail(skills).locator("[data-selector-level], .selector-level input").first();
+const level = (skills) => detail(skills).getByRole("spinbutton", { name: "Skill level number", exact: true });
+const levelSlider = (skills) => detail(skills).getByRole("slider", { name: "Skill level", exact: true });
 
 test("a skill's detail: its level, preview, effects and source", async ({ page }) => {
   const { planner, skills } = await openSkills(page);
@@ -136,15 +137,16 @@ test("a skill's detail: its level, preview, effects and source", async ({ page }
   const preview = detail(skills).locator(".selector-preview");
   const start = Number(await level(skills).inputValue());
   await expect(preview.locator(".selector-preview-head small")).toHaveText(`Lv. ${start}`);
-  await detail(skills).getByRole("button", { name: "+", exact: true }).click();
+  await expect(levelSlider(skills)).toHaveValue(String(start));
+  await levelSlider(skills).fill(String(start + 1));
   await expect(level(skills)).toHaveValue(String(start + 1));
   await expect(preview.locator(".selector-preview-head small")).toHaveText(`Lv. ${start + 1}`);
-  await detail(skills).getByRole("button", { name: "−", exact: true }).click();
-  await detail(skills).getByRole("button", { name: "−", exact: true }).click();
+  await levelSlider(skills).fill(String(start - 1));
   await expect(preview.locator(".selector-preview-head small")).toHaveText(`Lv. ${start - 1}`);
   await level(skills).fill("55");
   await level(skills).press("Tab");
   await expect(level(skills)).toHaveValue("40");
+  await expect(levelSlider(skills)).toHaveValue("40");
   await expect(preview.locator(".selector-preview-head small")).toHaveText("Lv. 40");
   await expect(preview.locator("h3")).toHaveText("Scorching Beam");
   await expect(preview.locator(".selector-tags span").first()).not.toBeEmpty();

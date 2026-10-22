@@ -22,6 +22,7 @@ import {
 import { activeCapturedPactspirits, selectPactspirit } from "../../engine/pacts/pactspirit-selection.js";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
+import { searchText } from "../bridge/search-match.ts";
 import { coverageView } from "../bridge/gear-item-view.ts";
 import { kismetTooltipView, pactNodeTooltipView, pactspiritTooltipView } from "../bridge/pact-tooltip-view.ts";
 import { pactsView, pactspiritSelectorView } from "../bridge/pacts-view-model.ts";
@@ -95,7 +96,7 @@ export const pactQueries = {
   // A tree node's tooltip, or its Kismet's (apps/web/src/features/pacts/PactTooltip.tsx).
   pactNodeTooltip: (target) => withRenderPass(() => pactNodeTooltip(target)),
   // A Pactspirit's tooltip.
-  pactspiritTooltip: (name) => withRenderPass(() => pactspiritTooltip(name)),
+  pactspiritTooltip: (name, place = "slot") => withRenderPass(() => pactspiritTooltip(name, place)),
 };
 export const pactViewSources = {
   // The Pactspirits section's data (src/app/bridge/pacts-view-model.ts).
@@ -158,16 +159,18 @@ function pactNodeTooltip(target) {
     holdsKismet: Boolean(kismetKindForRing(target.ring)),
   });
 }
-function pactspiritTooltip(name) {
+// A Pactspirit at the level this build gives it (a slot's, or the one it would take when chosen).
+function pactspiritTooltip(name, place) {
   const spirit = pactspiritCatalogSs13.find((entry) => entry.name === name);
   if (!spirit) return null;
-  const level = selectedPactspiritLevel(name),
-    outer = pactspiritTreesSs13[name]?.find((node) => node.ring === "outer");
+  const outer = pactspiritTreesSs13[name]?.find((node) => node.ring === "outer");
+  const effectsByLevel = [1, 2, 3, 4, 5, 6].map((level) => pactspiritEffectsAtLevel(name, level));
   return pactspiritTooltipView({
     spirit,
-    level,
-    rewards: pactspiritEffectsAtLevel(name, level),
+    level: selectedPactspiritLevel(name),
+    effectsByLevel: effectsByLevel.some((effects) => effects.length) ? effectsByLevel : [],
     outer: outer ? { icon: outer.icon, name: outer.name } : null,
+    place,
   });
 }
 
@@ -266,7 +269,7 @@ function kismetCrafterSource() {
     selected: selectedKismetName,
     choices: kismetChoices(kismetCrafterKind).map((item) => ({
       name: item.name,
-      search: `${item.name} ${item.affixes.join(" ")}`.toLowerCase(),
+      search: searchText([item.name, item.rarity, ...item.affixes]),
       icon: item.icon,
       rarity: item.rarity,
       ...displayTexts({ label: item.name, affixes: item.affixes.join(" · ") }),

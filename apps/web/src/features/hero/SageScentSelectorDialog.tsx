@@ -4,6 +4,7 @@
 // are the selectSageScent and clearSageScent commands.
 import { useRef } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import { searchMatcher } from "@legacy/app/bridge/search-match.ts";
 import { useSessionState } from "../../ui/use-session-state";
 import { useViewSource } from "../../ui/use-view-source";
 import {
@@ -16,19 +17,17 @@ import {
   rowName,
   rowNote,
   rowTag,
-  searchGlyph,
-  searchInput,
-  searchLabel,
 } from "../../ui/selector-classes";
 import { useRegisteredDialog } from "../../ui/dialog-registry";
+import { SearchField } from "../../ui/SearchField";
 
 export function SageScentSelectorDialog() {
   const view = useViewSource("sageScentSelector");
   const dialog = useRef<HTMLDialogElement>(null);
   useRegisteredDialog(dialog);
   const [query, setQuery] = useSessionState(view?.session ?? 0, "");
-  const needle = query.trim().toLowerCase();
-  const choices = (view?.choices ?? []).filter((entry) => entry.name.toLowerCase().includes(needle));
+  const matcher = searchMatcher(query);
+  const choices = (view?.choices ?? []).filter((entry) => matcher.matches(entry.search));
   const close = () => dialog.current?.close();
   return (
     <dialog
@@ -48,21 +47,14 @@ export function SageScentSelectorDialog() {
           ×
         </button>
       </header>
-      <label className={`hero-search ${searchLabel}`}>
-        <span className={searchGlyph} aria-hidden="true">
-          ⌕
-        </span>
-        <input
-          id="sage-scent-search"
-          type="search"
-          placeholder={view?.placeholder ?? "Search skills..."}
-          autoComplete="off"
-          aria-label="Search scent choices"
-          className={searchInput}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
+      <SearchField
+        className="hero-search m-4 shrink-0"
+        value={query}
+        onChange={setQuery}
+        placeholder={view?.placeholder ?? "Search skills…"}
+        error={matcher.error}
+        input={{ id: "sage-scent-search", "aria-label": "Search scent choices" }}
+      />
       <div id="sage-scent-options" className={`sage-scent-options ${rowList}`}>
         {!view ? null : choices.length ? (
           choices.map((entry) => (

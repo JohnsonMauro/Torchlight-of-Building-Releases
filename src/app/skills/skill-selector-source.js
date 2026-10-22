@@ -12,6 +12,7 @@ import {
 } from "../../data/skills/special-support-tiers-ss13.js";
 import { isSpiritMagusSkill } from "../../engine/skills/magus-active-slot.js";
 import { displayTexts, htmlTextSegments } from "../bridge/display-text.ts";
+import { searchText } from "../bridge/search-match.ts";
 import { followerSkillSelectorList, followerSkillSelectorView } from "../hero/follower-panel.js";
 import { heroTraitSupportConfig } from "../hero/hero-memory-display.js";
 import { artwork } from "../planner/page.js";
@@ -47,7 +48,8 @@ function skillSelectorSource() {
     ...displayTexts({ name: entry.name, tags: [...(entry.tags || ["Support"])] }),
     icon: entry.icon,
     tintClass,
-    search: [entry.name, ...(entry.tags || []), ...(entry.effects || [])].join(" ").toLowerCase(),
+    // The whole text of the choice: a long effect description is where most of what a player looks for sits.
+    search: searchText([entry.name, ...(entry.tags || []), ...(entry.effects || []), ...(entry.details || []).flat()]),
   });
   if (selectorKind === "follower-skill") {
     const list = followerSkillSelectorList(plannerState, followerSelectorSlot);
@@ -105,7 +107,11 @@ function skillSelectorDetail() {
   const entry = entries[selectorChoiceIndex];
   if (!entry)
     return {
-      detail: { kind: "empty", message: `Select a ${selectorKind} to configure` },
+      // A skill has nothing to set before it is chosen; a support has its tiers and rolls.
+      detail: {
+        kind: "empty",
+        message: selectorKind === "skill" ? "Select a skill to preview" : `Select a ${selectorKind} to configure`,
+      },
       confirm: { label: "Confirm", disabled: true },
     };
   const currentSupportName = supportSelector ? selectorTargetSupport()?.name : null;

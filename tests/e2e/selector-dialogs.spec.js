@@ -150,25 +150,39 @@ async function openPactspiritSelector(page) {
   await expect(pacts.pactspiritSelector()).toBeVisible();
   return { planner, pacts, dialog: pacts.pactspiritSelector() };
 }
-const pactCategories = [...new Set(pactspiritCatalogSs13.map((entry) => entry.category))];
+// The selector lists every Pactspirit but the Drop ones (src/app/bridge/pacts-view-model.ts UNLISTED_CATEGORIES).
+const listedPacts = pactspiritCatalogSs13.filter((entry) => entry.category !== "Drop");
+const pactCategories = [...new Set(listedPacts.map((entry) => entry.category))];
+// What the selector keeps: every typed word somewhere in the name, category or description (src/app/bridge/search-match.ts).
 const pactMatches = (search, category = "All") =>
-  pactspiritCatalogSs13.filter(
+  listedPacts.filter(
     (entry) =>
       (category === "All" || entry.category === category) &&
-      `${entry.name} ${entry.description}`.toLowerCase().includes(search),
+      search
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean)
+        .every((word) => `${entry.name} ${entry.category} ${entry.description}`.toLowerCase().includes(word)),
   );
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// A category's button in the left column: its name, then the count it would leave.
+const categoryButton = (column, name) =>
+  column.getByRole("button", { name: new RegExp(`^${escapeRegExp(name)}\\s*\\d+$`) });
 
 test("the Pactspirit selector groups every Pactspirit by category and filters by search and category", async ({
   page,
 }) => {
   const { planner, dialog } = await openPactspiritSelector(page);
   const search = dialog.getByRole("searchbox", { name: "Search pactspirits" });
-  const category = dialog.getByRole("combobox", { name: "Pactspirit category" });
+  const category = dialog.getByRole("navigation", { name: "Pactspirit category" });
   await expect(search).toBeFocused();
-  await expect(category).toHaveValue("All");
-  await expect(category.locator("option")).toHaveText(["All", ...pactCategories]);
-  await expect(dialog.locator(".pactspirit-choice")).toHaveCount(pactspiritCatalogSs13.length);
-  const firstGroup = pactspiritCatalogSs13[0].category;
+  await expect(category.getByRole("button", { name: "All", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(category.getByRole("button")).toHaveText([
+    "All",
+    ...pactCategories.map((name) => new RegExp(`^${escapeRegExp(name)}${pactMatches("", name).length}$`)),
+  ]);
+  await expect(dialog.locator(".pactspirit-choice")).toHaveCount(listedPacts.length);
+  const firstGroup = listedPacts[0].category;
   await expect(dialog.locator(".pactspirit-selector-group h3").first()).toHaveText(
     `${firstGroup} (${pactMatches("", firstGroup).length})`,
   );
@@ -179,7 +193,8 @@ test("the Pactspirit selector groups every Pactspirit by category and filters by
   );
   await search.fill("  FIRE ");
   await expect(dialog.locator(".pactspirit-choice")).toHaveCount(pactMatches("fire").length);
-  await category.selectOption("Fire");
+  await categoryButton(category, "Fire").click();
+  await expect(categoryButton(category, "Fire")).toHaveAttribute("aria-pressed", "true");
   await expect(dialog.locator(".pactspirit-choice")).toHaveCount(pactMatches("fire", "Fire").length);
   await expect(dialog.locator(".pactspirit-selector-group h3")).toHaveCount(1);
   await search.fill("zzz");
@@ -190,15 +205,15 @@ test("the Pactspirit selector groups every Pactspirit by category and filters by
 test("the Pactspirit selector closes from × and Escape, and opens with its filters cleared", async ({ page }) => {
   const { planner, pacts, dialog } = await openPactspiritSelector(page);
   const search = dialog.getByRole("searchbox", { name: "Search pactspirits" });
-  const category = dialog.getByRole("combobox", { name: "Pactspirit category" });
+  const category = dialog.getByRole("navigation", { name: "Pactspirit category" });
   await search.fill("fire");
-  await category.selectOption("Spell");
+  await categoryButton(category, "Fire").click();
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   await expect(dialog).toBeHidden();
   await pacts.slotButton("Dreamweaver").click();
   await expect(search).toHaveValue("");
-  await expect(category).toHaveValue("All");
-  await expect(dialog.locator(".pactspirit-choice")).toHaveCount(pactspiritCatalogSs13.length);
+  await expect(category.getByRole("button", { name: "All", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(dialog.locator(".pactspirit-choice")).toHaveCount(listedPacts.length);
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await planner.expectNoErrors();
@@ -219,7 +234,7 @@ test("Sage's scent selector lists elixirs or one kind of ingredient, searches, p
   await hero.tree().locator(".sage-basic-scent").click();
   await expect(dialog.getByRole("heading", { name: "Select Elixir Skill" })).toBeVisible();
   await expect(search).toBeFocused();
-  await expect(search).toHaveAttribute("placeholder", "Search skills...");
+  await expect(search).toHaveAttribute("placeholder", "Search skills… · /regex/");
   await expect(options).toHaveCount(sageElixirsSs13.length);
   await expect(options.first().locator("small i").first()).toHaveText(sageElixirsSs13[0].tags[0]);
   await dialog.getByRole("button", { name: "Cancel" }).click();
@@ -230,7 +245,7 @@ test("Sage's scent selector lists elixirs or one kind of ingredient, searches, p
     .getByRole("button", { name: /Damage Ingredient/ })
     .click();
   await expect(page.locator("#sage-scent-title")).toHaveText("Select Damage Ingredient");
-  await expect(search).toHaveAttribute("placeholder", "Search ingredients...");
+  await expect(search).toHaveAttribute("placeholder", "Search ingredients… · /regex/");
   const ingredients = sageScentIngredientsSs13.damage;
   await expect(options).toHaveCount(ingredients.length);
   await expect(options.first().locator("small")).toHaveText(ingredients[0].description.replace(/(\d) %/g, "$1%"));

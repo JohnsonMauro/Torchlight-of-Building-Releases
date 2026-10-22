@@ -2,7 +2,7 @@
 // Medium's affix lines; a progression support's tiers and rolls; a star support's main affix), and the preview with its
 // tags, facts, highlighted effects and TLIDB link. A follower skill's detail is the planner's HTML (its tier and affix
 // selects are handled by src/app/skills/skill-selector.js). Every control is a planner command.
-import { Fragment, type CSSProperties } from "react";
+import { Fragment } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type {
   ProgressionView,
@@ -12,14 +12,11 @@ import type {
   StarsView,
 } from "@legacy/app/bridge/skill-selector-view.ts";
 import { Artwork } from "../../ui/Artwork";
+import { RangeInput } from "../../ui/RangeInput";
 import {
   CONFIG_BLOCK,
   CONFIG_HEADING,
   CONFIG_PANEL,
-  LEVEL_FIELD,
-  LEVEL_STEP,
-  NUMBER_FIELD,
-  RANGE,
   ROLL_VALUE,
   STAR_BUTTON,
   SUPPORT_ART,
@@ -33,13 +30,10 @@ const tierButtonClass = (active: boolean) => `${TIER_BUTTON}${active ? " active"
 // A roll's label row: what it rolls, and its value.
 const ROLL_LABEL = "flex items-center justify-between gap-4";
 const ROLL_LABEL_TEXT = "max-w-3/4 text-sm/snug text-text";
+/** The skill level's range (src/app/skills/skill-selector.js clampLevel). */
+const MIN_LEVEL = 1;
+const MAX_LEVEL = 40;
 const signed = (value: number) => `${value >= 0 ? "+" : ""}${value}`;
-// The planner refreshes a range's fill on input/change events and on added range nodes (src/app/planner/range-fill.js updateRangeFill); a
-// tier change here keeps the same input and only moves its min, max and value, so the fill is set from them.
-const rangeFill = ({ min, max, value }: RollControlView) => {
-  const percent = max > min ? Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100)) : 0;
-  return { "--range-fill": `${percent}%` } as CSSProperties;
-};
 
 function RollInputs({
   roll,
@@ -51,25 +45,14 @@ function RollInputs({
   output: string;
 }) {
   return (
-    <div className="special-roll-control grid grid-cols-[1fr_64px_46px] items-center gap-2">
-      <input
-        type="range"
-        className={RANGE}
+    // A tier change keeps the same slider and only moves its min, max and value; RangeInput sets the fill from them.
+    <div className="special-roll-control grid grid-cols-[minmax(0,1fr)_46px] items-center gap-2">
+      <RangeInput
         min={roll.min}
         max={roll.max}
         step={roll.step}
         value={roll.value}
-        style={rangeFill(roll)}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      <input
-        type="number"
-        className={NUMBER_FIELD}
-        min={roll.min}
-        max={roll.max}
-        step={roll.step}
-        value={roll.value}
-        onChange={(event) => onChange(event.target.value)}
+        onValue={(value) => onChange(String(value))}
       />
       <output className={`text-right ${ROLL_VALUE}`}>{output}</output>
     </div>
@@ -267,36 +250,23 @@ function Special({ view }: { view: SpecialView }) {
 
 interface DetailProps {
   view: Extract<SkillSelectorDetailView, { kind: "entry" }>;
-  levelText: string;
-  onLevelText: (text: string) => void;
 }
 
-export function SkillSelectorDetail({ view, levelText, onLevelText }: DetailProps) {
-  const commit = () => plannerCommands().setSelectorLevel(levelText);
+export function SkillSelectorDetail({ view }: DetailProps) {
   return (
     <>
-      <div className="selector-level mb-4 flex items-center justify-between">
+      {/* The level is committed as it is set (the slider moving, the field on Enter or when left), so Confirm reads it. */}
+      <div className="selector-level mb-4 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
         <strong className="text-xs tracking-wide text-accent uppercase">Skill Level:</strong>
-        <div className="flex items-center gap-2">
-          <button type="button" className={LEVEL_STEP} onClick={() => plannerCommands().stepSelectorLevel(-1)}>
-            −
-          </button>
-          <input
-            type="number"
-            className={LEVEL_FIELD}
-            min={1}
-            max={40}
-            value={levelText}
-            onChange={(event) => onLevelText(event.target.value)}
-            onBlur={commit}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") commit();
-            }}
-          />
-          <button type="button" className={LEVEL_STEP} onClick={() => plannerCommands().stepSelectorLevel(1)}>
-            +
-          </button>
-        </div>
+        <RangeInput
+          min={MIN_LEVEL}
+          max={MAX_LEVEL}
+          value={view.level}
+          field="commit"
+          slider={{ "aria-label": "Skill level" }}
+          number={{ "aria-label": "Skill level number" }}
+          onValue={(level) => plannerCommands().setSelectorLevel(String(level))}
+        />
       </div>
       {view.progression ? <Progression view={view.progression} /> : null}
       {view.special ? <Special view={view.special} /> : null}

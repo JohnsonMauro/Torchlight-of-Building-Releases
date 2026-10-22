@@ -61,7 +61,7 @@
   --c-dmg-lightning: #ffd84a;
   --c-dmg-erosion: #c58cff;
   --c-grade-priceless: #ff6fcf;
-  --c-life: #e0575b;
+  --c-life: #c75450; /* the game's sealed Life bar, lifted for the dark surface */
   --c-mana: #4fa8e8;
   --c-god-might: #f4bd4e;
   --c-god-hunting: #62d76e;
@@ -103,7 +103,7 @@
   --c-dmg-lightning: #a16207;
   --c-dmg-erosion: #7e22ce;
   --c-grade-priceless: #b4247f;
-  --c-life: #b8262b;
+  --c-life: #a63a36;
   --c-mana: #0b62a8;
   --c-god-might: #a16207;
   --c-god-hunting: #15803d;
@@ -401,11 +401,13 @@
 }
 
 /* A dialog's title. */
+/* A dialog's title: the same type as a build tab's title (apps/web/src/ui/section-card.ts sectionTitleClass). */
 @utility dialog-title {
   color: var(--color-accent);
-  font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   font-weight: 700;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
 }
 
 /* A dialog's × button. */

@@ -18,13 +18,16 @@ export interface BoostedTextView {
 export type PactTooltipBlock =
   | { kind: "heading"; text: string }
   | { kind: "text"; text: string; coverage: CoverageView | null }
-  | { kind: "list"; items: { text: BoostedTextView; coverage: CoverageView | null }[] }
+  /** A dimmed item is not in effect yet (a Pactspirit's upgrade above its level). */
+  | { kind: "list"; items: { text: BoostedTextView; coverage: CoverageView | null; dimmed?: boolean }[] }
   /** The spirit's outer node, pictured. */
   | { kind: "feature"; icon: string; name: string };
 export interface PactTooltipView {
   /** The frame's data-rarity; null for none. */
   rarity: string | null;
   icon: string | null;
+  /** The icon is a Pactspirit's tall portrait (shown down the head's left edge), not a node's or Kismet's icon. */
+  portrait?: boolean;
   title: string;
   kicker: string;
   blocks: PactTooltipBlock[];
@@ -110,15 +113,23 @@ export function pactNodeTooltipView(input: PactNodeTooltipInput): PactTooltipVie
 export interface PactspiritTooltipInput {
   spirit: { name: string; icon: string; category: string; rarity: string; description: string };
   level: number;
-  rewards: string[];
+  /** The spirit's effect at each level, from level 1 (TLIDB's upgrade table); empty when none is listed. */
+  effectsByLevel: readonly (readonly string[])[];
   /** The spirit's outer node; null for none. */
   outer: { icon: string; name: string } | null;
+  /** A pact slot's portrait (change, remove) or a choice in the Pactspirit selector (choose). */
+  place: "slot" | "selector";
 }
+/**
+ * A Pactspirit's tooltip, grouped as the game's Pactspirit page: Pactspirit Overview (what it does, the nodes it
+ * unlocks early, its outer node), Pactspirit Effect (its effect at its level) and Upgrade Reward (what each level from
+ * the second adds or changes; the levels above its own dimmed).
+ */
 export function pactspiritTooltipView(input: PactspiritTooltipInput): PactTooltipView {
-  const { spirit, level } = input;
+  const { spirit, level, effectsByLevel } = input;
   const advance = spirit.rarity === "Legendary" ? 2 : 1;
   const blocks: PactTooltipBlock[] = [
-    { kind: "heading", text: "Pactspirit overview" },
+    { kind: "heading", text: "Pactspirit Overview" },
     { kind: "text", text: text(spirit.description), coverage: null },
   ];
   if (spirit.rarity !== "Magic")
@@ -128,18 +139,30 @@ export function pactspiritTooltipView(input: PactspiritTooltipInput): PactToolti
       coverage: null,
     });
   if (input.outer) blocks.push({ kind: "feature", icon: input.outer.icon, name: text(input.outer.name) });
-  blocks.push({ kind: "heading", text: `Level ${level} bonuses` });
+  const effects = effectsByLevel[Math.min(level, effectsByLevel.length) - 1] ?? [];
+  blocks.push({ kind: "heading", text: "Pactspirit Effect" });
   blocks.push(
-    input.rewards.length
-      ? { kind: "list", items: input.rewards.map((reward) => ({ text: plain(reward), coverage: null })) }
-      : { kind: "text", text: "No level bonus listed.", coverage: null },
+    effects.length
+      ? { kind: "list", items: effects.map((effect) => ({ text: plain(effect), coverage: null })) }
+      : { kind: "text", text: "No effect listed.", coverage: null },
   );
+  const upgrades = effectsByLevel.slice(1).flatMap((lines, index) => {
+    const previous = new Set(effectsByLevel[index]);
+    return lines
+      .filter((line) => !previous.has(line))
+      .map((line) => ({ text: plain(`Lv.${index + 2} · ${line}`), coverage: null, dimmed: index + 2 > level }));
+  });
+  if (upgrades.length) {
+    blocks.push({ kind: "heading", text: "Upgrade Reward" });
+    blocks.push({ kind: "list", items: upgrades });
+  }
   return {
     rarity: spirit.rarity.toLowerCase(),
     icon: spirit.icon,
+    portrait: true,
     title: text(spirit.name),
     kicker: `${spirit.category} · ${spirit.rarity} · Level ${level}`,
     blocks,
-    footer: "Click to change · Right-click to remove",
+    footer: input.place === "slot" ? "Click to change · Right-click to remove" : "Click to choose",
   };
 }

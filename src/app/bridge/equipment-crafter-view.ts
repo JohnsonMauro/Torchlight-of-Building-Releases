@@ -48,7 +48,7 @@ import {
   type RareDraft,
 } from "../gear/equipment-craft.ts";
 import { displayTexts } from "./display-text.ts";
-import { unsafePattern } from "../gear/safe-regex.ts";
+import { searchPattern } from "../gear/safe-regex.ts";
 import { groupIconKind, type GearSlotIconKind } from "./gear-slot-icon.ts";
 import { modifierTextView, type ModifierTextView } from "./gear-item-view.ts";
 
@@ -73,8 +73,6 @@ export interface RollView {
   /** A range of negative values only: its slider fills from the right (--roll-fill). */
   negative: boolean;
   rollFill: number;
-  /** The slider's filled part (--range-fill, as the planner's range refresh sets it). */
-  rangeFill: number;
 }
 /** A modifier line of the item preview. */
 export interface ItemPreviewLineView {
@@ -279,8 +277,6 @@ export function rollViews(template: string, values: readonly number[]): RollView
       value,
       negative,
       rollFill: negativeRollFill(range, value),
-      rangeFill:
-        range.max > range.min ? Math.max(0, Math.min(100, ((value - range.min) / (range.max - range.min)) * 100)) : 0,
     };
   });
 }
@@ -553,21 +549,14 @@ const widestLegendaryName = () =>
  * name and on each mod; `error` when the expression does not read.
  */
 export function legendarySearch(search: string): { matches: (entry: LegendaryEntry) => boolean; error: string } {
-  const regex = search.trim().match(/^\/(.+)\/([a-z]*)$/);
-  if (regex) {
-    // A pattern that could freeze the page is refused before it runs (src/app/gear/safe-regex.ts).
-    const refused = unsafePattern(regex[1]);
-    if (refused) return { matches: () => false, error: refused };
-    try {
-      // Always ignoring case; "g" and "y" would make test() remember where it stopped.
-      const pattern = new RegExp(regex[1], [...new Set(`${regex[2]}i`.replace(/[gy]/g, ""))].join(""));
-      return { matches: (entry) => [entry.name, ...entry.modifiers].some((line) => pattern.test(line)), error: "" };
-    } catch (error) {
-      return {
-        matches: () => false,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
+  // A pattern that could freeze the page is refused before it runs (src/app/gear/safe-regex.ts).
+  const typed = searchPattern(search);
+  if (typed) {
+    const { pattern, error } = typed;
+    return {
+      matches: (entry) => pattern !== null && [entry.name, ...entry.modifiers].some((line) => pattern.test(line)),
+      error,
+    };
   }
   const needle = search.trim().toLowerCase();
   return {

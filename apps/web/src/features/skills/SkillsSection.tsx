@@ -4,12 +4,18 @@
 // data-selector-row and data-selector-support-slot inside #skill-groups.
 import type { MouseEvent } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
-import type { SkillBoardTab, SkillRowView, SkillsView } from "@legacy/app/bridge/skills-view-model.ts";
+import type {
+  SealedResourceView,
+  SkillBoardTab,
+  SkillRowView,
+  SkillsView,
+} from "@legacy/app/bridge/skills-view-model.ts";
 import { Artwork } from "../../ui/Artwork";
 import type { TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";
 import { SkillTooltip } from "./SkillTooltip";
+import { EnergySources } from "./EnergySources";
 import { hideTooltip } from "../../ui/tooltip/tooltip-store";
 
 const TABS: { tab: SkillBoardTab; label: string }[] = [
@@ -17,17 +23,27 @@ const TABS: { tab: SkillBoardTab; label: string }[] = [
   { tab: "auras", label: "Auras" },
 ];
 
-/** The heading's right side: the Energy icon and Energy used over available (danger when overused), and Reset Skills. */
+/**
+ * The heading's right side: the Energy sources "i", the Energy icon and Energy used over available (danger when overused),
+ * and Reset Skills.
+ */
 export function SkillsHeadingActions() {
   const energy = useViewSource("skills")?.energy;
   const overused = energy ? energy.used > energy.available : false;
   return (
     <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
-      <div className="flex items-center gap-2.5" title="Energy used / available">
-        <img src="./src/assets/tli/energy-icon.webp" alt="Energy" className="size-9 rounded-sm" />
+      <div className="flex items-center gap-2.5">
+        <EnergySources energy={energy} />
+        <img
+          src="./src/assets/tli/energy-icon.webp"
+          alt="Energy"
+          title="Energy used / available"
+          className="size-9 rounded-sm"
+        />
         <strong
           id="energy-total"
-          className={`block text-4xl leading-tight font-bold ${overused ? "text-danger" : "text-info"}`}
+          title="Energy used / available"
+          className={`block text-4xl leading-tight font-bold max-[520px]:text-3xl ${overused ? "text-danger" : "text-info"}`}
         >
           {energy ? `${energy.used}/${energy.available}` : "—"}
         </strong>
@@ -353,40 +369,29 @@ function OptionalSkillTooltip({
   );
 }
 
-// The Auras tab's Sealed Mana and Sealed Life cards, in danger colours when over capacity, and the warning under them (shown only when
-// the aura setup cannot be fully activated).
-const SUMMARY = "mx-2 mt-3 grid grid-cols-2 gap-2.5 max-[720px]:grid-cols-1";
+// The Auras tab's sealed resources, laid out as the game shows them: Sealed Life and Sealed Mana side by side with a rule
+// between, each with its share, a thin meter that grows away from the rule (Life to the left, Mana to the right) and
+// what is sealed of the maximum; the share in danger when the auras ask for 100% or more. Under them, the warning (shown
+// only when the aura setup cannot be fully activated). The ids are the hooks the planner tests read.
+const SUMMARY =
+  "mx-2 mt-3 grid grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] items-center gap-x-6 gap-y-3 rounded-md border border-line bg-raised px-6 py-4 text-center max-[520px]:gap-x-3 max-[520px]:px-3";
 const STATUS =
-  "col-span-full flex items-center gap-2.5 rounded-md border border-danger/60 bg-danger/10 px-3.5 py-2.5 text-muted max-[720px]:flex-col max-[720px]:items-start";
+  "col-span-full flex items-center gap-2.5 rounded-md border border-danger/60 bg-danger/10 px-3.5 py-2.5 text-left text-muted max-[720px]:flex-col max-[720px]:items-start";
+const EMPTY: SealedResourceView = { percent: "0%", sealed: "0 / 0", detail: "", meterPercent: 0, overCapacity: false };
 
 function ReservationSummary({ view }: { view: SkillsView | null }) {
-  if (!view)
-    return (
-      <section id="aura-reservation-summary" className={SUMMARY} hidden aria-live="polite">
-        <SealedCard kind="mana" label="Sealed Mana" sealed="0 / 0" detail="0% sealed" meterPercent={null} />
-        <SealedCard kind="life" label="Sealed Life" sealed="0 / 0" detail="0% sealed" meterPercent={null} />
-        <div id="aura-reservation-status" className={STATUS} hidden />
-      </section>
-    );
-  const { mana, life, problems } = view.reservation;
+  const reservation = view?.reservation;
+  const problems = reservation?.problems ?? [];
   return (
-    <section id="aura-reservation-summary" className={SUMMARY} hidden={view.tab !== "auras"} aria-live="polite">
-      <SealedCard
-        kind="mana"
-        label="Sealed Mana"
-        sealed={mana.sealed}
-        detail={mana.detail}
-        meterPercent={mana.meterPercent}
-        overCapacity={mana.overCapacity}
-      />
-      <SealedCard
-        kind="life"
-        label="Sealed Life"
-        sealed={life.sealed}
-        detail={life.detail}
-        meterPercent={life.meterPercent}
-        overCapacity={life.overCapacity}
-      />
+    <section
+      id="aura-reservation-summary"
+      className={SUMMARY}
+      hidden={!view || view.tab !== "auras"}
+      aria-live="polite"
+    >
+      <SealedResource kind="life" label="Sealed Life" view={reservation?.life ?? EMPTY} />
+      <span aria-hidden="true" className="h-16 w-px bg-line" />
+      <SealedResource kind="mana" label="Sealed Mana" view={reservation?.mana ?? EMPTY} />
       <div id="aura-reservation-status" className={STATUS} hidden={!problems.length}>
         {problems.length ? (
           <>
@@ -399,34 +404,27 @@ function ReservationSummary({ view }: { view: SkillsView | null }) {
   );
 }
 
-function SealedCard(props: {
-  kind: "mana" | "life";
-  label: string;
-  sealed: string;
-  detail: string;
-  meterPercent: number | null;
-  overCapacity?: boolean;
-}) {
-  const over = props.overCapacity === true;
-  const meter = over || props.kind === "life" ? "bg-danger" : "bg-info";
+function SealedResource({ kind, label, view }: { kind: "mana" | "life"; label: string; view: SealedResourceView }) {
   return (
-    <div
-      className={`rounded-md border px-4 py-3.5 text-muted ${over ? "border-danger/60 bg-danger/10" : "border-line bg-raised"}`}
-    >
-      <span className="block">{props.label}</span>
-      <strong id={`aura-sealed-${props.kind}`} className={`my-1 block text-xl ${over ? "text-danger" : "text-text"}`}>
-        {props.sealed}
+    <div className="grid min-w-0 gap-1">
+      <span className="text-sm font-semibold text-muted">{label}</span>
+      <strong
+        id={`aura-${kind}-percent`}
+        className={`text-2xl/tight font-bold tabular-nums ${view.overCapacity ? "text-danger" : "text-text"}`}
+      >
+        {view.percent}
       </strong>
-      <small id={`aura-${props.kind}-percent`} className="block text-sm">
-        {props.detail}
-      </small>
-      <i className="mt-2.5 block h-1.5 overflow-hidden rounded-full bg-sunken">
+      <i className={`flex h-1 overflow-hidden rounded-full bg-line-strong ${kind === "life" ? "justify-end" : ""}`}>
         <b
-          id={`aura-${props.kind}-meter`}
-          className={`block h-full ${meter}`}
-          style={props.meterPercent === null ? undefined : { width: `${props.meterPercent}%` }}
+          id={`aura-${kind}-meter`}
+          className={`block h-full rounded-full ${kind === "life" ? "bg-life" : "bg-mana"}`}
+          style={{ width: `${view.meterPercent}%` }}
         />
       </i>
+      <span id={`aura-sealed-${kind}`} className="text-sm text-text tabular-nums">
+        {view.sealed}
+      </span>
+      {view.detail ? <small className="text-xs text-muted">{view.detail}</small> : null}
     </div>
   );
 }

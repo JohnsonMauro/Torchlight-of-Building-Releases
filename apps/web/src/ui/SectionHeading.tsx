@@ -12,10 +12,13 @@ interface SectionHeadingProps {
   actions?: ReactNode;
 }
 
-/** A section's heading strip: the accent title and its "?", and the section's headline figure or buttons on the right. */
+/**
+ * A section's heading strip: the accent title and its "?", and the section's headline figure or buttons on the right
+ * (under the title when the strip is too narrow for both).
+ */
 export function SectionHeading({ title, help, total, actions }: SectionHeadingProps) {
   return (
-    <div className="flex min-h-[50px] items-center justify-between gap-5 border-b border-line bg-raised px-4 py-3">
+    <div className="flex min-h-[50px] flex-wrap items-center justify-between gap-x-5 gap-y-2 border-b border-line bg-raised px-4 py-3">
       <h1 className="m-0 flex items-center">
         <span className={sectionTitleClass}>{title}</span>
         {help ? <HelpButton topic={help} label={title} /> : null}

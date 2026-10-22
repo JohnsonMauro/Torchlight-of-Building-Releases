@@ -23,7 +23,6 @@ import {
   followerSelectorEntries,
   followerSelectorInitialIndex,
   followerSkillDraft,
-  setFollowerSkill,
 } from "../hero/follower-panel.js";
 import { heroTraitSupportConfig } from "../hero/hero-memory-display.js";
 import { commitFollower, heroTraitSupportOptions } from "../hero/hero-controller.js";
@@ -51,9 +50,7 @@ export const skillSelectorCommands = {
   openSkillSelector,
   chooseSkillSelectorEntry,
   confirmSkillSelector,
-  clearSkillSelectorSlot,
   setSelectorLevel,
-  stepSelectorLevel,
   setSpecialTier,
   setSpecialRoll,
   setSupportStars,
@@ -302,8 +299,9 @@ function renderSkillSelector() {
 }
 
 // Skill selector commands (apps/web/src/features/skills/SkillSelectorDialog.tsx and SkillSelectorDetail.tsx).
-// Confirm: `levelText` is the level field as typed (the generic modes).
-function confirmSkillSelector(levelText) {
+// Confirm: installs the highlighted choice at the selector's level (the level field commits when it is left, which a
+// press on Confirm does first).
+function confirmSkillSelector() {
   if (selectorKind === "follower-skill") {
     const entry = followerSelectorEntries(plannerState, followerSelectorSlot)[selectorChoiceIndex];
     if (!entry) return;
@@ -316,7 +314,7 @@ function confirmSkillSelector(levelText) {
     commitFollower(applyFollowerSkillDraft(plannerState, followerSelectorSlot, draft), `${entry.name} equipped`);
     return;
   }
-  selectorLevel = Math.max(1, Math.min(40, Number(levelText) || selectorLevel || 20));
+  selectorLevel = Math.max(1, Math.min(40, selectorLevel || 20));
   const entry = selectorEntries()[selectorChoiceIndex];
   if (!entry || (selectorKind === "support" && !supportFitsSlot(entry, selectorTargetSupportSlot))) return;
   const selected = selectorTargetSetup();
@@ -429,58 +427,6 @@ function confirmSkillSelector(levelText) {
   closeDialog("skill-selector");
   renderCandidateViews();
 }
-// Clear slot: empties the slot the selector was opened for.
-function clearSkillSelectorSlot() {
-  if (selectorKind === "follower-skill") {
-    closeDialog("skill-selector");
-    commitFollower(setFollowerSkill(plannerState, followerSelectorSlot, null), "Skill slot cleared");
-    return;
-  }
-  const selected = selectorTargetSetup();
-  if (selectorKind === "hero-support") {
-    delete plannerState.hero.heroTraitSupports[ui.activeHeroTraitSupportId];
-    delete plannerState.hero.heroTraitSupportLevels[ui.activeHeroTraitSupportId];
-    delete plannerState.hero.heroTraitSupportConfigs[ui.activeHeroTraitSupportId];
-  } else if (selectorKind === "skill" && (selected?.enabled || selected?.slotInactive)) {
-    plannerState.skills.boardSlots = assignSkillBoardSlot(
-      plannerState.skills.boardSlots,
-      activeSkillBoardTab,
-      selectorBoardSetups(),
-      selectorTargetRow,
-      "",
-    );
-    const selectedKey = setupStateKey(selected),
-      customIndex = plannerState.skills.customSetups.findIndex(
-        (setup) => (setup.instanceId || setup.name) === selectedKey,
-      );
-    if (customIndex >= 0) plannerState.skills.customSetups.splice(customIndex, 1);
-    else plannerState.skills.setupEnabled[selectedKey] = false;
-    delete plannerState.skills.customSupports[selectedKey];
-    delete plannerState.skills.supportOrder[selectedKey];
-  } else if (selectorKind === "support" && selected) {
-    const selectedKey = setupStateKey(selected),
-      order = [
-        ...(plannerState.skills.supportOrder[selectedKey] ||
-          userInstalledSupports(selected).map((support) => support.name)),
-      ];
-    const supportName = order[selectorTargetSupportSlot];
-    const support = selected.supports.find((item) => item.enabled && item.name === supportName);
-    if (support) {
-      if (support.custom)
-        plannerState.skills.customSupports[selectedKey] = (
-          plannerState.skills.customSupports[selectedKey] || []
-        ).filter((item) => item.name !== support.name);
-      else plannerState.skills.supportEnabled[supportStateKey(selectedKey, support.name)] = false;
-    }
-    while (order.length < 5) order.push("");
-    order[selectorTargetSupportSlot] = "";
-    plannerState.skills.supportOrder[selectedKey] = order.slice(0, 5);
-  }
-  closeDialog("skill-selector");
-  persistPlannerState();
-  renderCandidateViews();
-  showToast("Slot cleared");
-}
 function selectorEntryName() {
   return selectorEntries()[selectorChoiceIndex]?.name;
 }
@@ -495,10 +441,6 @@ function setSelectorConfig(next) {
 // Activation Medium's lines (tier, rolls, and the stat a line with a choice rolls).
 function setSelectorLevel(value) {
   selectorLevel = clampLevel(Number(value) || 20);
-  renderSkillSelector();
-}
-function stepSelectorLevel(delta) {
-  selectorLevel = clampLevel(selectorLevel + delta);
   renderSkillSelector();
 }
 function setSpecialTier(tier) {

@@ -4,6 +4,7 @@
 import { useRef } from "react";
 import { heroCatalogSs13 } from "@legacy/data/heroes/hero-catalog-ss13.js";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import { searchMatcher, searchText } from "@legacy/app/bridge/search-match.ts";
 import { useSessionState } from "../../ui/use-session-state";
 import { useViewSource } from "../../ui/use-view-source";
 import {
@@ -15,19 +16,17 @@ import {
   portraitGrid,
   portraitImage,
   portraitName,
-  searchGlyph,
-  searchInput,
-  searchLabel,
 } from "../../ui/selector-classes";
 import { useRegisteredDialog } from "../../ui/dialog-registry";
+import { SearchField } from "../../ui/SearchField";
 
 export function HeroSelectorDialog() {
   const view = useViewSource("heroSelector");
   const dialog = useRef<HTMLDialogElement>(null);
   useRegisteredDialog(dialog);
   const [query, setQuery] = useSessionState(view?.session ?? 0, "");
-  const needle = query.trim().toLowerCase();
-  const heroes = heroCatalogSs13.filter((hero) => `${hero.name} ${hero.trait}`.toLowerCase().includes(needle));
+  const matcher = searchMatcher(query);
+  const heroes = heroCatalogSs13.filter((hero) => matcher.matches(searchText([hero.name, hero.trait])));
   return (
     <dialog
       id="hero-selector"
@@ -51,21 +50,14 @@ export function HeroSelectorDialog() {
           ×
         </button>
       </header>
-      <label className={`hero-search ${searchLabel}`}>
-        <span className={searchGlyph} aria-hidden="true">
-          ⌕
-        </span>
-        <input
-          id="hero-selector-search"
-          type="search"
-          placeholder="Search heroes..."
-          autoComplete="off"
-          aria-label="Search heroes"
-          className={searchInput}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
+      <SearchField
+        className="hero-search m-4 shrink-0"
+        value={query}
+        onChange={setQuery}
+        placeholder="Search heroes…"
+        error={matcher.error}
+        input={{ id: "hero-selector-search", "aria-label": "Search heroes" }}
+      />
       <div id="hero-selector-grid" className={`hero-selector-grid ${portraitGrid}`}>
         {!view ? null : heroes.length ? (
           heroes.map((hero) => (

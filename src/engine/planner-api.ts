@@ -216,8 +216,10 @@ export interface SkillActivation {
     available: number;
     capturedMaximum: number;
     equipmentEnergy: number;
+    /** The character level's Energy: the energy profile's figure, read from a game sheet. */
     nonEquipmentEnergy: number;
-    sources: ResultSection;
+    /** Each gear piece that gives Energy (not the necklace, belt or rings); a disabled slot's is not counted. */
+    sources: readonly { slot: string; name: string; value: number; enabled: boolean }[];
   };
   allocation: ResultSection;
   /** The skills active in this build (a skill short of Energy, or disabled, is not). */

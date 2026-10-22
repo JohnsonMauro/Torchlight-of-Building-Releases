@@ -19,7 +19,19 @@ const view = (result, tab = "skills") => skillsView(result, result.state.skills,
 test("the default build: five skill rows with their supports, levels and Energy", () => {
   const skills = view(defaultResult);
   assert.equal(skills.tab, "skills");
-  assert.deepEqual(skills.energy, { used: 515, available: 518 });
+  assert.deepEqual(skills.energy, {
+    used: 515,
+    available: 518,
+    gear: [
+      { slot: "Weapon 1", item: "Dark Gaze Scepter - Priceless", value: 61 },
+      { slot: "Weapon 2", item: "Dark Gaze Scepter - Priceless", value: 59 },
+      { slot: "Helmet", item: "Sun's Embrace", value: 61 },
+      { slot: "Chest Armor", item: "Long Night Sorcerer's Robe - Priceless", value: 116 },
+      { slot: "Gloves", item: "Torturer's Touch", value: 59 },
+      { slot: "Boots", item: "Valerie's Night Stroll", value: 60 },
+    ],
+    fromLevel: 102,
+  });
   assert.deepEqual(
     skills.rows.map((row) => row.label),
     ["Replace Scorching Beam", "Replace Aim", "Replace Swiftness Dew", "Replace Entangled Pain", "Replace Scorch"],
@@ -62,19 +74,32 @@ test("the Auras tab: four rows and the Mana and Life the auras seal", () => {
   assert.equal(auras.rows[2].label, "Replace Precise: Deep Pain");
   assert.deepEqual(auras.reservation, {
     mana: {
+      percent: "94.22%",
       sealed: "494.64 / 525",
-      detail: "94.22% sealed · 30.36 usable",
+      detail: "30.36 usable",
       meterPercent: 94.2171,
       overCapacity: false,
     },
     life: {
+      percent: "89.33%",
       sealed: "1,920.54 / 2,150",
-      detail: "89.33% sealed · 229.46 usable",
+      detail: "229.46 usable",
       meterPercent: 89.3275,
       overCapacity: false,
     },
     problems: [],
   });
+});
+
+test("the Energy sources leave out a gear slot that is switched off", () => {
+  const state = structuredClone(defaultPlannerState);
+  state.disabledEquipmentSlots = ["gloves", "boots"];
+  const { energy } = view(calculatePlanner(state));
+  assert.deepEqual(
+    energy.gear.map((piece) => piece.slot),
+    ["Weapon 1", "Weapon 2", "Helmet", "Chest Armor"],
+  );
+  assert.equal(energy.available, 518 - 59 - 60);
 });
 
 test("empty rows are named by tab and row, and their sockets wait for a skill", () => {
@@ -145,8 +170,9 @@ test("auras asking for 100% or more: the request before the cap, and what stops 
   const planned = { ...defaultResult.aura.planned, manaReservedPercent: 99.99, manaDemandPercent: 104.5 };
   const { reservation } = view({ ...defaultResult, aura: { ...defaultResult.aura, planned } }, "auras");
   assert.deepEqual(reservation.mana, {
+    percent: "99.99%",
     sealed: "524.95 / 525",
-    detail: "99.99% sealed · 104.5% requested before cap",
+    detail: "104.5% requested before cap",
     meterPercent: 99.99,
     overCapacity: true,
   });
