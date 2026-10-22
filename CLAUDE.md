@@ -75,8 +75,9 @@ rows fit). Loading a skill after the code is written is too late.
 ## Design system, in one paragraph
 
 Density first: no space that holds nothing (no min-heights to fill a panel, no padding stacked on padding). Every
-build tab's content opens with `SectionHeading` (title in `sectionTitleClass` with its "?" right beside it, the tab's
-figures and buttons on the right); panels inside a section card use one rhythm (`m-3 p-3`). A pattern that a second
+build tab's content opens with `BuildTabs` (every build tab, its "?" beside its label, the open one lit; the user
+drags them into the order they want); a tab's figures and buttons sit beside what they act on (Skills: on the board's tab row; Gear: Craft beside
+the Inventory's Sort); panels inside a section card use one rhythm (`m-3 p-3`). A pattern that a second
 place needs becomes a shared constant or component in `apps/web/src/ui/` the same day, and the copies it replaces
 are deleted. Details and the reference screen: `styling-guide`.
 

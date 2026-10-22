@@ -2,6 +2,7 @@
 // and the dialogs it opens. Every selector the slates tests use lives here. Pieces are found by their slate id (two
 // pieces can share a name), tools by their title (their text is a symbol).
 import { expect } from "@playwright/test";
+import { openView } from "./planner-page.js";
 
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
 
@@ -61,7 +62,7 @@ export class SlatesPage {
   }
 
   async open() {
-    await this.page.locator('button.view-tab[data-view="talents"]').click();
+    await openView(this.page, "talents");
     await this.slatesButton().click();
     await expect(this.board()).toBeVisible();
   }

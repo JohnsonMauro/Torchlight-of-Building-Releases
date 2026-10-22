@@ -23,8 +23,7 @@ for (const [name, viewport] of [
       await expect(page.locator("#hero-selector")).toBeVisible();
       await page.keyboard.press("Escape");
       const follower = new FollowerPage(page);
-      await follower.tab().click();
-      await expect(follower.panel()).toBeVisible();
+      await follower.open();
       await expect(follower.panel()).toContainText("No follower selected");
       const box = await follower.panel().boundingBox();
       expect(box.width).toBeLessThanOrEqual(viewport.width);

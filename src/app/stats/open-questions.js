@@ -2174,6 +2174,3 @@ export function openQuestionsText(entries = []) {
     )
     .join("\n\n");
 }
-
-// "Submit an answer" (src/app/stats/open-questions-panel.js): the URL builder lives with the other report links.
-export { ANSWER_REPO, ANSWER_TEMPLATE, ANSWER_URL_MAX, answerIssueUrl } from "../feedback/feedback-links.js";

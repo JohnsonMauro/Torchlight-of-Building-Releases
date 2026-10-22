@@ -105,11 +105,6 @@
       "count": 1
     }
   },
-  "src/engine/state/build-code-compact.js": {
-    "no-useless-assignment": {
-      "count": 1
-    }
-  },
   "src/engine/text/affix-attributes.js": {
     "no-useless-assignment": {
       "count": 1

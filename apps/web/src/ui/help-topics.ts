@@ -111,13 +111,6 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
       { action: "Hover", text: "a source row in the Damage path view for its breakdown." },
     ],
   },
-  builds: {
-    title: "Builds",
-    items: [
-      { action: "Right-click", text: "the Active build tab, or focus it and press F2, to rename the build." },
-      { action: "Enter", text: "saves the new name; Esc cancels." },
-    ],
-  },
 };
 
 /** Under every topic's controls. */

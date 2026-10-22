@@ -1,5 +1,5 @@
 // What the page says about the open build and the saved library: the build strip's name (renamed in place), the
-// header's save status, the toast, and the notices (another tab changed the build, saved builds that could not be read,
+// strip's save status, the toast, and the notices (another tab changed the build, saved builds that could not be read,
 // safe mode). Written against the planner's own DOM writes before they moved to view sources, so both must pass it
 // unchanged.
 import { test, expect } from "@playwright/test";
@@ -21,25 +21,25 @@ test.use({ viewport: { width: 1440, height: 1000 } });
 const strip = (page) => page.locator(".loadout-tab");
 const stripName = (page) => strip(page).locator("strong");
 const renameInput = (page) => strip(page).getByRole("textbox", { name: "Build name", exact: true });
+const renameButton = (page) => strip(page).getByRole("button", { name: "Rename build", exact: true });
 const saveStatus = (page) => page.locator(".loadout-status");
 const toast = (page) => page.locator("#toast");
 const storedNames = (page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key))?.builds.map((build) => build.name), LIBRARY_STORAGE_KEY);
 
-test("the strip names the open build and the header says it is autosaved", async ({ page }) => {
+test("the strip names the open build and says it is autosaved", async ({ page }) => {
   const planner = new PlannerPage(page);
   await planner.open();
   await expect(strip(page)).toContainText("Active build");
   await expect(stripName(page)).toHaveText(DEFAULT_BUILD);
-  await expect(strip(page)).toHaveAttribute("title", "Right-click to rename");
   await expect(saveStatus(page)).toContainText("Autosaved locally");
   await planner.expectNoErrors();
 });
 
-test("a right-click renames the open build; Enter saves the name", async ({ page }) => {
+test("the pencil beside the name renames the open build; Enter saves the name", async ({ page }) => {
   const planner = new PlannerPage(page);
   await planner.open();
-  await strip(page).click({ button: "right" });
+  await renameButton(page).click();
   await expect(renameInput(page)).toBeFocused();
   await expect(renameInput(page)).toHaveValue(DEFAULT_BUILD);
   await expect(stripName(page)).toBeHidden();
@@ -48,28 +48,28 @@ test("a right-click renames the open build; Enter saves the name", async ({ page
   await expect(renameInput(page)).toHaveCount(0);
   await expect(stripName(page)).toHaveText("Frost Bolt");
   await expect(toast(page)).toHaveText("Build renamed");
-  await expect(strip(page)).toBeFocused();
+  await expect(renameButton(page)).toBeFocused();
   expect(await storedNames(page)).toEqual(["Frost Bolt"]);
   await planner.expectNoErrors();
 });
 
-test("F2 renames too; Escape keeps the name, a blank name keeps it, leaving the field saves", async ({ page }) => {
+test("Escape keeps the name, a blank name keeps it, leaving the field saves", async ({ page }) => {
   const planner = new PlannerPage(page);
   await planner.open(youga);
-  await strip(page).focus();
-  await page.keyboard.press("F2");
+  await renameButton(page).click();
   await renameInput(page).fill("Discarded");
   await renameInput(page).press("Escape");
   await expect(renameInput(page)).toHaveCount(0);
   await expect(stripName(page)).toHaveText("E2E build");
+  await expect(renameButton(page)).toBeFocused();
 
-  await page.keyboard.press("F2");
+  await page.keyboard.press("Enter");
   await renameInput(page).fill("   ");
   await renameInput(page).press("Enter");
   await expect(stripName(page)).toHaveText("E2E build");
   expect(await storedNames(page)).toEqual(["E2E build"]);
 
-  await page.keyboard.press("F2");
+  await renameButton(page).click();
   await renameInput(page).fill("Kept on blur");
   await page.locator(".site-header a").first().focus();
   await expect(renameInput(page)).toHaveCount(0);
@@ -90,7 +90,7 @@ test("the toast prints names as they are, apostrophes included", async ({ page }
   await planner.expectNoErrors();
 });
 
-test("with no build left, the strip asks for one and the header says nothing is saved", async ({ page }) => {
+test("with no build left, the strip asks for one and says nothing is saved", async ({ page }) => {
   const planner = new PlannerPage(page);
   await planner.open();
   await planner.showView("builds");
@@ -101,10 +101,8 @@ test("with no build left, the strip asks for one and the header says nothing is 
     .click();
   await expect(stripName(page)).toHaveText("Start a new build");
   await expect(strip(page)).toContainText("No active build");
-  await expect(strip(page)).not.toHaveAttribute("title");
   await expect(saveStatus(page)).toContainText("No build saved");
-  await strip(page).click({ button: "right" });
-  await expect(renameInput(page)).toHaveCount(0);
+  await expect(renameButton(page)).toHaveCount(0);
   await planner.expectNoErrors();
 });
 
@@ -120,7 +118,7 @@ test("another tab's change to the open build offers a reload; Reload it takes th
   const other = await context.newPage();
   const otherPlanner = new PlannerPage(other);
   await otherPlanner.open(youga);
-  await other.locator(".header-actions").getByRole("button", { name: "Reset Build" }).click();
+  await other.locator(".build-actions").getByRole("button", { name: "Reset Build" }).click();
   await other.getByRole("dialog", { name: "Reset this build?" }).getByRole("button", { name: "Reset Build" }).click();
   await expect(other.locator("#toast")).toHaveText("Build reset to empty");
 
@@ -140,7 +138,7 @@ test("the other-tab notice can be dismissed, and stays dismissed for that versio
   const notice = page.getByRole("status").filter({ hasText: "This build was changed in another tab" });
   const other = await context.newPage();
   await new PlannerPage(other).open(youga);
-  await other.locator(".header-actions").getByRole("button", { name: "Reset Build" }).click();
+  await other.locator(".build-actions").getByRole("button", { name: "Reset Build" }).click();
   await other.getByRole("dialog", { name: "Reset this build?" }).getByRole("button", { name: "Reset Build" }).click();
 
   await expect(notice).toBeVisible();

@@ -246,14 +246,12 @@
  * @property {(heroId: string) => void} removeHeroTraitSupport Empties a hero's trait support slot.
  * @property {(panel: "sheet" | "damage-path") => void} setStatsPanel Stats view: shows the Stat sheet or the Damage path.
  * @property {(key: string) => void} selectStatSheetSkill Shows the stat sheet of another skill (its setup key).
- * @property {() => void} reportCalculation Opens the calculation report form for the build and the picked skill.
  * @property {(key: string) => void} toggleRecountSource Leaves a recount source out of the view, or brings it back
  *   (view only: the build and its figures are unchanged).
  * @property {() => void} showAllRecountSources Brings every recount source back into the view.
  * @property {(key: string) => void} selectDamagePath Opens another damage path tab ("hit:<setup>", "combined" …).
  * @property {() => Promise<boolean>} copyOpenQuestions Copies the build's open questions as plain text; false when the
  *   clipboard refused (a toast says so).
- * @property {(id: string) => void} submitOpenQuestion Opens the answer form for an open question.
  */
 
 /**

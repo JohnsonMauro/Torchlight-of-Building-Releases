@@ -15,7 +15,7 @@ you; `eslint-plugin-react-hooks` recommended rules and `react-refresh/only-expor
 | the app frame (header, rail, build strip, footer, toast, tooltip host) | `apps/web/src/shell/` |
 | a page's composition (which features, in which order) | `apps/web/src/pages/<page>/` — little markup |
 | a feature's components, its dialogs, its `*-classes.ts` | `apps/web/src/features/<feature>/` |
-| a piece two or more features use (`SectionHeading`, `HelpButton`, `Artwork`, inputs, hooks, class constants) | `apps/web/src/ui/` |
+| a piece two or more features use (`BuildTabs`, `HelpButton`, `Artwork`, inputs, hooks, class constants) | `apps/web/src/ui/` |
 
 Something one feature uses stays in that feature; it moves to `ui/` when a second one needs it, and the copy it
 replaces is deleted (`styling-guide` §4). Do it without asking (owner, 2026-10-22): a repeated element is
@@ -45,7 +45,7 @@ componentized in the change that sees it, and the report says so.
   `RANGE_FIELD` (`ui/range-classes.ts`).
 - A list search: `SearchField` (⌕, ×, the /regex/ hint and its error) over `searchMatcher(query).matches(text)`, the
   text built with `searchText([...])` (`src/app/bridge/search-match.ts`): plain words in any order, or /pattern/flags.
-- Images: `Artwork` (the ◆ placeholder when there is no image); headings: `SectionHeading`; help: `HelpButton`.
+- Images: `Artwork` (the ◆ placeholder when there is no image); a build section's top: `BuildTabs`; help: `HelpButton`.
 - Crafters (equipment, prism): `Breadcrumb` (the path back to a picker), `CraftSection` (a folding section),
   `ChoiceList` (options as radio rows in place of a select, with a filter past 12) with `choiceLabel`, and the picker
   cards and the "Preview" caption in `craft-classes.ts`; a column with its path fixed over the scrolling

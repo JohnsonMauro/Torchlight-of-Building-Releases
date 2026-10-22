@@ -40,7 +40,9 @@ export function CharacterView() {
       </div>
       <div
         id="stats-panel-options"
-        className="mb-4 flex gap-2 compact:relative compact:z-1 compact:-mb-8 compact:w-max"
+        // In a short window the switch sits inside the Stat sheet's controls row, which leaves room for it; the Damage
+        // path has no such row, so there it keeps its own.
+        className={`mb-4 flex gap-2 compact:relative compact:z-1 compact:w-max ${panel === "sheet" ? "compact:-mb-8" : ""}`}
         role="tablist"
         aria-label="Stats layout"
       >

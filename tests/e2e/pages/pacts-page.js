@@ -1,6 +1,7 @@
 // The Pactspirits view ("Pacts" tab) and the dialogs it opens. Every selector the pacts tests use lives here. Controls are
 // found by role and accessible name where they have one; tree nodes by the start of their accessible name.
 import { expect } from "@playwright/test";
+import { openView } from "./planner-page.js";
 
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -67,7 +68,7 @@ export class PactsPage {
 
   /** Pacts is a section of the Build page (talents, skills, equipment and pacts on one page). */
   async open() {
-    await this.page.locator('button.view-tab[data-view="pacts"]').click();
+    await openView(this.page, "pacts");
     await expect(this.view()).toBeVisible();
     await this.view().scrollIntoViewIfNeeded();
   }

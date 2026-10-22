@@ -26,10 +26,15 @@ export const BUILD_SUMMARY_META = "truncate text-xs text-muted not-italic";
 
 /** The build strip's block with the open build's name (`loadout-tab` is the tests' hook). */
 export const ACTIVE_BUILD_TAB =
-  "loadout-tab min-w-[275px] cursor-context-menu self-center py-2 pr-3.5 focus-visible:outline-2 focus-visible:outline-accent max-sm:min-w-0 max-sm:flex-[0_1_275px]";
+  "loadout-tab min-w-[275px] self-center py-2 pr-3.5 max-sm:min-w-0 max-sm:flex-[0_1_275px]";
+/** The name (or its field) and the pencil that renames it. */
+export const ACTIVE_BUILD_ROW = "mt-0.5 flex min-w-0 items-center gap-1.5";
+/** The pencil: muted, accent on hover or focus, as small as the name's type. */
+export const ACTIVE_BUILD_RENAME_BUTTON =
+  "grid size-6 shrink-0 cursor-pointer place-items-center rounded-sm border-0 bg-transparent p-0 text-muted hover:bg-raised hover:text-accent focus-visible:bg-raised focus-visible:text-accent focus-visible:outline-none";
 export const ACTIVE_BUILD_CAPTION = "block text-[10px] font-bold tracking-widest text-muted uppercase";
 export const ACTIVE_BUILD_NAME =
-  "mt-0.5 block max-w-[245px] truncate font-display text-sm font-bold tracking-wider text-accent uppercase";
+  "block max-w-[245px] truncate font-display text-sm font-bold tracking-wider text-accent uppercase";
 /** The name's field while renaming: the name's type over a bottom line. */
 export const ACTIVE_BUILD_RENAME =
   "block w-full max-w-[245px] border-0 border-b border-line-strong bg-transparent p-0 font-display text-sm font-bold tracking-wider text-accent uppercase caret-accent outline-none focus:border-accent";

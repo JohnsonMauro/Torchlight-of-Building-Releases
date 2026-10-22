@@ -19,7 +19,6 @@ import type {
 } from "@legacy/app/bridge/damage-path-view-model.ts";
 import { DamageSourceTooltip } from "./DamageSourceTooltip";
 import { NumberToggle } from "./NumberToggle";
-import { ReportCalculationButton } from "./StatSheet";
 import { HEAD_STRIP, SECTION_COUNT, SECTION_SUMMARY, TAB, TAB_COUNT } from "./stat-sheet-classes";
 import { tabKeyTarget } from "./tab-keys";
 
@@ -430,15 +429,6 @@ function OpenQuestions({ entries }: { entries: OpenQuestionView[] }) {
               {` ${entry.test}`}
             </p>
             <p className="open-question-source text-xs text-dim">{`Source: ${entry.source}`}</p>
-            <p className="open-question-submit-row mt-0.5">
-              <button
-                type="button"
-                className={`button button-secondary open-question-submit ${SECONDARY_BUTTON}`}
-                onClick={() => plannerCommands().submitOpenQuestion(entry.id)}
-              >
-                Submit an answer
-              </button>
-            </p>
           </div>
         </details>
       ))}
@@ -503,9 +493,6 @@ function PathTabs({ view }: { view: DamagePathView }) {
 export function DamagePath({ view }: { view: DamagePathView }) {
   return (
     <>
-      <div className="stat-sheet-controls mb-5 flex items-center gap-3 text-sm leading-[normal] text-muted max-[560px]:flex-wrap compact:mb-2 compact:min-h-8 compact:pl-54.5">
-        <ReportCalculationButton />
-      </div>
       <div className="damage-path-panel grid gap-2.5 leading-[normal]">
         <PathTabs view={view} />
         {view.paths.map((path) => (

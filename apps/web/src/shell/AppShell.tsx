@@ -30,7 +30,6 @@ import { EquipmentCrafterDialog } from "../features/gear/EquipmentCrafterDialog"
 import { InventoryItemDialog } from "../features/gear/InventoryItemDialog";
 import { SkillSelectorDialog } from "../features/skills/SkillSelectorDialog";
 import { ImportBuildDialog } from "../features/builds/ImportBuildDialog";
-import { FeedbackDialog } from "../features/feedback/FeedbackDialog";
 import { ImportGameLogDialog } from "../features/builds/ImportGameLogDialog";
 import { ResetBuildConfirmDialog } from "../features/builds/ResetBuildConfirmDialog";
 import { TooltipHost } from "../ui/tooltip/TooltipHost";
@@ -78,7 +77,6 @@ export function AppShell() {
       <InventoryItemDialog />
       <SkillSelectorDialog />
       <ImportBuildDialog />
-      <FeedbackDialog />
       <ImportGameLogDialog />
       <ResetBuildConfirmDialog />
       <TooltipHost />

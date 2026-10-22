@@ -1,7 +1,7 @@
 // Stats view: the build status, the Stat sheet / Damage path switch, the active skill picker, the damage banner with its
 // recount (short / full number toggles, sources left out of the view), the Effective HP banner, the Character stats tabs
 // (click, arrow keys, kept across renders and reloads) with their rows that open to their lines, the damage path tabs,
-// a path's hero figure and stages, the open questions (copy, submit an answer), and the report buttons. Written against the legacy view before it moves to React, so both must pass it unchanged. The
+// a path's hero figure and stages, and the open questions (copy). Written against the legacy view before it moves to React, so both must pass it unchanged. The
 // golden-master Youga build has five active skills and a Thunder Magus minion.
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -102,17 +102,6 @@ test("the minion's damage path tab shows its path, and stays after a reload", as
   await page.reload();
   await planner.waitUntilReady();
   await expect(stats.pathTab("Thunder Magus (Minion)")).toHaveAttribute("aria-selected", "true");
-  await planner.expectNoErrors();
-});
-
-test("the report button opens the calculation report", async ({ page }) => {
-  const { planner, stats } = await openStats(page);
-  await stats
-    .sheet()
-    .getByRole("button", { name: /Report calculation issue/ })
-    .click();
-  await expect(stats.feedbackDialog()).toBeVisible();
-  await page.keyboard.press("Escape");
   await planner.expectNoErrors();
 });
 
@@ -265,22 +254,10 @@ test("a path's stages open and close, and list the sources that feed them", asyn
   await planner.expectNoErrors();
 });
 
-test("the damage path's report button opens the calculation report", async ({ page }) => {
-  const { planner, stats } = await openStats(page);
-  await stats.panelTab("Damage path").click();
-  await stats
-    .damagePath()
-    .getByRole("button", { name: /Report calculation issue/ })
-    .click();
-  await expect(stats.feedbackDialog()).toBeVisible();
-  await page.keyboard.press("Escape");
-  await planner.expectNoErrors();
-});
-
 test.describe("open questions", () => {
   test.use({ permissions: ["clipboard-read", "clipboard-write"] });
 
-  test("Copy questions puts them on the clipboard; Submit an answer opens the answer form", async ({ page }) => {
+  test("Copy questions puts them on the clipboard", async ({ page }) => {
     const { planner, stats } = await openStats(page);
     await stats.panelTab("Damage path").click();
     const questions = stats.openQuestions();
@@ -293,13 +270,6 @@ test.describe("open questions", () => {
     await expect(questions.locator(".open-questions-copy")).toHaveText("Copied");
     expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(title);
     await expect(questions.locator(".open-questions-copy")).toHaveText("Copy questions");
-
-    const row = questions.locator(".open-question").first();
-    await row.locator("summary").click();
-    await row.getByRole("button", { name: "Submit an answer" }).click();
-    await expect(stats.feedbackDialog()).toBeVisible();
-    await expect(stats.feedbackDialog()).toContainText(title);
-    await page.keyboard.press("Escape");
     await planner.expectNoErrors();
   });
 });

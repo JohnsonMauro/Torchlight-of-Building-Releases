@@ -158,8 +158,6 @@ export interface ViewSources {
   prismCrafter: PrismCrafterView;
   /** The equipment crafter (src/app/bridge/equipment-crafter-view.ts). */
   equipmentCrafter: EquipmentCrafterView;
-  /** The feedback dialog: its opening, the form ("calculation", "bug", "answer") and what it was opened with. */
-  feedback: DialogSession & { formKey: string; context: Record<string, unknown> & { buildCode?: string } };
   /** The hero memory dialog: the inventory, or the crafter (src/app/bridge/hero-memory-view.ts). */
   heroMemory: HeroMemoryView;
   /** The Import from game dialog: its opening and what it shows (src/app/bridge/game-log-import-view.ts). */

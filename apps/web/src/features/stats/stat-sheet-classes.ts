@@ -1,9 +1,9 @@
-// Class lists the Stats pieces share: the Stats switch and report button, the card both banners and the Character
+// Class lists the Stats pieces share: the Stats switch, the card both banners and the Character
 // stats panel sit in, the recount card the damage banner and the Effective HP banner both draw, and the tabs of the
 // Character stats and the Damage path. Each banner is a size container (`@container`), so `@max-[…]:` below reads the
 // banner's own width. "Compact" is a wide but short window: `compact:`.
 
-/** A Stats button: the Stat sheet / Damage path switch and the report button (both Stats panels show it). */
+/** A Stats button: the Stat sheet / Damage path switch. */
 export const STATS_BUTTON = "btn px-3.5 py-2 text-sm font-bold compact:px-3 compact:py-1.5 compact:text-xs";
 
 /** The card both banners and the Character stats panel sit in. */

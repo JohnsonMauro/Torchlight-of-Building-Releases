@@ -1,6 +1,7 @@
 // The Follower tab of the hero panel (Build page) and the dialogs it opens. Every selector the follower tests use lives
 // here; controls are found by role and accessible name.
 import { expect } from "@playwright/test";
+import { openView } from "./planner-page.js";
 
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
 
@@ -9,9 +10,6 @@ export class FollowerPage {
     this.page = page;
   }
 
-  tab() {
-    return this.page.locator('button.view-tab[data-view="follower"]');
-  }
   panel() {
     return this.page.locator("#follower-panel");
   }
@@ -55,7 +53,7 @@ export class FollowerPage {
   }
 
   async open() {
-    await this.tab().click();
+    await openView(this.page, "follower");
     await expect(this.panel()).toBeVisible();
   }
   /** The open build's stored follower. */

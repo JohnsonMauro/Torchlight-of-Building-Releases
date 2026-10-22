@@ -2,6 +2,7 @@
 // opens. Every selector the skills tests use lives here; sockets are found by role and accessible name, rows by the
 // socket they hold.
 import { expect } from "@playwright/test";
+import { openView } from "./planner-page.js";
 
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
 
@@ -64,7 +65,7 @@ export class SkillsPage {
 
   /** Skills is a section of the Build page (talents, skills, equipment and pacts on one page). */
   async open() {
-    await this.page.locator('button.view-tab[data-view="skills"]').click();
+    await openView(this.page, "skills");
     await expect(this.view()).toBeVisible();
     await this.view().scrollIntoViewIfNeeded();
   }

@@ -47,7 +47,7 @@ async function openDialog(page, body = null) {
   const planner = new PlannerPage(page);
   await reader(page, body);
   await planner.open(youga);
-  await page.locator(".header-actions").getByRole("button", { name: "Import from game" }).click();
+  await page.locator(".build-actions").getByRole("button", { name: "Import from game" }).click();
   await expect(dialog(page)).toBeVisible();
   return planner;
 }
@@ -61,7 +61,7 @@ test("without the local reader it says so and asks for the log file", async ({ p
     await route.fulfill(NOT_JSON);
   });
   await planner.open(youga);
-  await page.locator(".header-actions").getByRole("button", { name: "Import from game" }).click();
+  await page.locator(".build-actions").getByRole("button", { name: "Import from game" }).click();
   await expect(status(page)).toHaveText("Looking for UE_game.log…");
   await expect(fileInput(page)).toBeHidden();
   answer();
@@ -289,7 +289,7 @@ test("Cancel closes the dialog, and the next opening starts over", async ({ page
   await expect(dialog(page)).toBeHidden();
   expect((await library(page)).builds).toHaveLength(1);
 
-  await page.locator(".header-actions").getByRole("button", { name: "Import from game" }).click();
+  await page.locator(".build-actions").getByRole("button", { name: "Import from game" }).click();
   await expect(dialog(page).locator(".game-log-reason")).toHaveText(NO_READER);
   await expect(logins(page)).toHaveCount(0);
   await expect(dialog(page).locator("#import-game-log-summary")).toBeEmpty();
@@ -300,7 +300,7 @@ test("Cancel closes the dialog, and the next opening starts over", async ({ page
   await expect(logins(page)).toHaveCount(2);
   await page.keyboard.press("Escape");
   await expect(dialog(page)).toBeHidden();
-  await page.locator(".header-actions").getByRole("button", { name: "Import from game" }).click();
+  await page.locator(".build-actions").getByRole("button", { name: "Import from game" }).click();
   await expect(logins(page)).toHaveCount(0);
   await planner.expectNoErrors();
 });

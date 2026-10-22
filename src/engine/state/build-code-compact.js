@@ -1,46 +1,40 @@
-// Compact build codes, short enough to travel in a pre-filled GitHub issue URL (src/app/feedback/feedback-dialog-model.js). The
-// planner's Export keeps writing the original code (base64url of the state JSON, src/engine/state/planner-state.ts
-// encodePlannerState); Import accepts the original code and both compact versions.
-//   "TLB2:" + base64url(raw DEFLATE of the export JSON). Still decoded; no longer written.
-//   "TLB3:" + base64url(raw DEFLATE of the packed JSON). The state is packed losslessly before deflating:
-//     1. Strings: every string (value or key) that is in the frozen table src/data/build-code-dictionary-v3.js becomes
-//        "~" + its index in base 36; any other string that starts with "~" gets one more "~" in front. So "~" followed
+// Compact build codes: Import still reads them (src/app/builds/build-library-controller.js), though the planner no
+// longer writes any (they were made for the feedback dialog's GitHub issue URLs, removed 2026-10-22). Export writes the
+// original code (base64url of the state JSON, src/engine/state/planner-state.ts encodePlannerState).
+//   "TLB2:" + base64url(raw DEFLATE of the export JSON).
+//   "TLB3:" + base64url(raw DEFLATE of the packed JSON). The state was packed losslessly before deflating:
+//     1. Strings: every string (value or key) that is in the frozen table src/data/build-code-dictionary-v3.js became
+//        "~" + its index in base 36; any other string that started with "~" got one more "~" in front. So "~" followed
 //        by base-36 digits is always a table entry, "~~…" is an escaped string, and a lone "~" never comes from data.
-//     2. Equipped items: an equipmentOverrides[slot] whose sourceInventoryId names an equipmentInventory item becomes
+//     2. Equipped items: an equipmentOverrides[slot] whose sourceInventoryId named an equipmentInventory item became
 //        { "~": [inventory index, changed or added fields, removed keys, key order] } (trailing parts left out; the key
 //        order only when the fields' default order — the item's own order, then added keys — differs).
-//   Packing is verified when the code is made: unpacking must give the exact original JSON text, or the code falls back
-//   to TLB2. So expandBuildCode always returns the original Export code, byte for byte.
-//   compactBuildCode(code)   original code → compact code (async: CompressionStream "deflate-raw", zlib in old Node)
+//   Packing was verified when a code was made, so expandBuildCode returns the original Export code, byte for byte
+//   (tests/unit/build-code-compact.test.js).
 //   expandBuildCode(text)    compact code → the original code; any other text comes back trimmed
-//   expandBuildCodeSync(text, { inflateRawSync, dictionary })  the same without streams (scripts/collect-submissions.mjs
-//                            passes node:zlib inflateRawSync and BUILD_CODE_DICTIONARY_V3)
 
-export const COMPACT_BUILD_CODE_PREFIX = "TLB3:";
-export const LEGACY_COMPACT_BUILD_CODE_PREFIX = "TLB2:";
-export const COMPACT_BUILD_CODE_PREFIXES = Object.freeze([COMPACT_BUILD_CODE_PREFIX, LEGACY_COMPACT_BUILD_CODE_PREFIX]);
+const COMPACT_BUILD_CODE_PREFIX = "TLB3:";
+const LEGACY_COMPACT_BUILD_CODE_PREFIX = "TLB2:";
+const COMPACT_BUILD_CODE_PREFIXES = Object.freeze([COMPACT_BUILD_CODE_PREFIX, LEGACY_COMPACT_BUILD_CODE_PREFIX]);
 const MAX_COMPACT_LENGTH = 250000;
 const MAX_EXPANDED_BYTES = 4 * 1024 * 1024;
 const TOKEN = "~";
 const MARKER = "~";
 
 /** "TLB3", "TLB2" or "" for the (trimmed) text's compact version. */
-export function compactCodeVersion(text) {
+function compactCodeVersion(text) {
   const trimmed = typeof text === "string" ? text.trim() : "";
   const prefix = COMPACT_BUILD_CODE_PREFIXES.find((item) => trimmed.startsWith(item));
   return prefix ? prefix.slice(0, -1) : "";
 }
 
-/** Whether the text (after trimming) is a compact build code (TLB3 or TLB2). */
-export const isCompactBuildCode = (text) => Boolean(compactCodeVersion(text));
-
-export function bytesToBase64Url(bytes) {
+function bytesToBase64Url(bytes) {
   let binary = "";
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
 }
 
-export function base64UrlToBytes(text) {
+function base64UrlToBytes(text) {
   const clean = String(text).replace(/\s+/g, "");
   if (!/^[A-Za-z0-9_+/=-]*$/.test(clean)) throw new TypeError("Invalid build code characters");
   const padded = clean.replaceAll("-", "+").replaceAll("_", "/").replace(/=+$/, "");
@@ -84,11 +78,6 @@ function streamSupports(Stream) {
     return false;
   }
 }
-async function deflateRaw(bytes) {
-  if (streamSupports(globalThis.CompressionStream)) return throughStream(globalThis.CompressionStream, bytes);
-  const zlib = await import("node:zlib");
-  return new Uint8Array(zlib.deflateRawSync(bytes));
-}
 async function inflateRaw(bytes) {
   if (streamSupports(globalThis.DecompressionStream)) {
     try {
@@ -116,7 +105,7 @@ function tableFromJson(json, expectedCount) {
 
 let tablePromise = null;
 /** The TLB3 string table (inflated once). */
-export function loadBuildCodeTable() {
+function loadBuildCodeTable() {
   tablePromise ||= (async () => {
     const { BUILD_CODE_DICTIONARY_V3: dictionary } = await import("../../data/build-code-dictionary-v3.js");
     return tableFromJson(utf8Decode(await inflateRaw(base64UrlToBytes(dictionary.deflated))), dictionary.count);
@@ -125,19 +114,6 @@ export function loadBuildCodeTable() {
     throw error;
   });
   return tablePromise;
-}
-
-const syncTables = new WeakMap();
-function syncTable(dictionary, inflateRawSync) {
-  if (!syncTables.has(dictionary))
-    syncTables.set(
-      dictionary,
-      tableFromJson(
-        utf8Decode(new Uint8Array(inflateRawSync(base64UrlToBytes(dictionary.deflated)))),
-        dictionary.count,
-      ),
-    );
-  return syncTables.get(dictionary);
 }
 
 // ---- Packing (pure) ----
@@ -168,9 +144,6 @@ function mapStrings(value, map) {
   return value;
 }
 
-const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-const sameList = (a, b) => a.length === b.length && a.every((item, i) => item === b[i]);
-
 function applyItemDiff(base, set, removed, order) {
   const value = (key) => (Object.hasOwn(set, key) ? set[key] : base[key]);
   if (order) return Object.fromEntries(order.map((key) => [key, value(key)]));
@@ -182,24 +155,6 @@ function applyItemDiff(base, set, removed, order) {
   return Object.fromEntries(entries);
 }
 
-function itemReference(base, index, item) {
-  const set = {};
-  for (const key of Object.keys(item))
-    if (!Object.hasOwn(base, key) || !sameJson(item[key], base[key])) set[key] = item[key];
-  const removed = Object.keys(base).filter((key) => !Object.hasOwn(item, key));
-  const order = sameList(Object.keys(applyItemDiff(base, set, removed, null)), Object.keys(item))
-    ? null
-    : Object.keys(item);
-  const parts = [index, set, removed, order];
-  while (parts.length > 1) {
-    const last = parts[parts.length - 1];
-    if (last === null || (Array.isArray(last) && !last.length) || (isPlainObject(last) && !Object.keys(last).length))
-      parts.pop();
-    else break;
-  }
-  return { [MARKER]: parts.map((part) => part ?? null) };
-}
-
 const keysFor = (table) => ({
   overrides: packString(table, "equipmentOverrides"),
   inventory: packString(table, "equipmentInventory"),
@@ -207,26 +162,10 @@ const keysFor = (table) => ({
   id: packString(table, "id"),
 });
 
-/** The packed form of a state object (strings tabled, equipped items referenced). */
-export function packBuildState(state, table) {
-  const packed = mapStrings(state, (text) => packString(table, text));
-  const keys = keysFor(table);
-  const overrides = packed[keys.overrides];
-  const inventory = packed[keys.inventory];
-  if (!isPlainObject(overrides) || !Array.isArray(inventory)) return packed;
-  for (const slot of Object.keys(overrides)) {
-    const item = overrides[slot];
-    if (!isPlainObject(item) || typeof item[keys.source] !== "string") continue;
-    const index = inventory.findIndex((entry) => isPlainObject(entry) && entry[keys.id] === item[keys.source]);
-    if (index >= 0) overrides[slot] = itemReference(inventory[index], index, item);
-  }
-  return packed;
-}
-
 const isReference = (value) => isPlainObject(value) && Object.keys(value).length === 1 && Array.isArray(value[MARKER]);
 
-/** The state object for a packed one (the inverse of packBuildState). */
-export function unpackBuildState(packed, table) {
+/** The state object for a packed one. */
+function unpackBuildState(packed, table) {
   if (!isPlainObject(packed)) throw new TypeError("Invalid build code state");
   const keys = keysFor(table);
   const overrides = packed[keys.overrides];
@@ -249,25 +188,8 @@ export function unpackBuildState(packed, table) {
   return mapStrings(packed, (text) => unpackString(table, text));
 }
 
-/** The packed JSON for an export JSON text, or null when packing would not give that exact text back. */
-export function packBuildJson(json, table) {
-  let state;
-  try {
-    state = JSON.parse(json);
-  } catch {
-    return null;
-  }
-  if (!isPlainObject(state)) return null;
-  const packed = JSON.stringify(packBuildState(state, table));
-  try {
-    return unpackBuildJson(packed, table) === json ? packed : null;
-  } catch {
-    return null;
-  }
-}
-
 /** The export JSON text for a packed JSON text. */
-export function unpackBuildJson(packedJson, table) {
+function unpackBuildJson(packedJson, table) {
   return JSON.stringify(unpackBuildState(JSON.parse(packedJson), table));
 }
 
@@ -277,30 +199,6 @@ function compactBody(trimmed, prefix) {
   const body = trimmed.slice(prefix.length);
   if (!body || body.length > MAX_COMPACT_LENGTH) throw new TypeError("Invalid or oversized build code");
   return base64UrlToBytes(body);
-}
-
-/**
- * The compact code for an original build code (base64url JSON): TLB3 when packing round-trips exactly, else TLB2.
- * Compact input comes back unchanged.
- */
-export async function compactBuildCode(code) {
-  const text = String(code ?? "").trim();
-  if (isCompactBuildCode(text)) return text;
-  const bytes = base64UrlToBytes(text);
-  let packed = null;
-  try {
-    packed = packBuildJson(utf8Decode(bytes), await loadBuildCodeTable());
-  } catch {
-    packed = null;
-  }
-  if (packed !== null) return `${COMPACT_BUILD_CODE_PREFIX}${bytesToBase64Url(await deflateRaw(utf8Encode(packed)))}`;
-  return legacyCompactBuildCode(text);
-}
-
-/** The TLB2 code (no packing) for an original build code. */
-export async function legacyCompactBuildCode(code) {
-  const text = String(code ?? "").trim();
-  return `${LEGACY_COMPACT_BUILD_CODE_PREFIX}${bytesToBase64Url(await deflateRaw(base64UrlToBytes(text)))}`;
 }
 
 function originalCode(version, inflated, table) {
@@ -327,22 +225,4 @@ export async function expandBuildCode(text) {
   if (!version) return trimmed;
   const inflated = await inflateRaw(compactBody(trimmed, `${version}:`));
   return originalCode(version, inflated, version === "TLB3" ? await loadBuildCodeTable() : null);
-}
-
-/** expandBuildCode without streams or dynamic imports: inflateRawSync (bytes → bytes) and the dictionary module's table. */
-export function expandBuildCodeSync(text, { inflateRawSync, dictionary } = {}) {
-  const trimmed = String(text ?? "").trim();
-  const version = compactCodeVersion(trimmed);
-  if (!version) return trimmed;
-  let inflated;
-  try {
-    inflated = new Uint8Array(
-      inflateRawSync(compactBody(trimmed, `${version}:`), { maxOutputLength: MAX_EXPANDED_BYTES }),
-    );
-  } catch (error) {
-    throw error instanceof TypeError && /oversized|characters/.test(error.message)
-      ? error
-      : new TypeError("That build code could not be decompressed");
-  }
-  return originalCode(version, inflated, version === "TLB3" ? syncTable(dictionary, inflateRawSync) : null);
 }

@@ -1,24 +1,14 @@
-// The Stats view: its prepared stat sheet and damage path, open questions and the calculation report.
+// The Stats view: its prepared stat sheet and damage path, and its open questions.
 import { calculatePlanner } from "../../engine/planner.js";
-import { APP_VERSION } from "../app-version.js";
 import { EMPTY_DAMAGE_SUMMARY, damageSummaryView } from "../bridge/damage-summary-view-model.ts";
 import { prepareDamagePath } from "../bridge/damage-path-view-model.ts";
 import { prepareStatSheet, statsView } from "../bridge/stats-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
-import { currentBuildCode, openFeedback } from "../feedback/feedback-controller.js";
-import { platformName } from "../feedback/feedback-links.js";
-import { calculationReportContext } from "../feedback/feedback-report-context.js";
 import { format, showToast } from "../planner/page.js";
-import {
-  calculationsPaused,
-  capturePlannerState,
-  currentPlanner,
-  persistPlannerState,
-  plannerState,
-} from "../planner/session.js";
+import { calculationsPaused, capturePlannerState, currentPlanner, plannerState } from "../planner/session.js";
 import { DAMAGE_PATH_KEY, saveWorkspaceLocation, ui } from "../planner/ui-state.js";
 import { recountExcludedSources, setRecountSourceExcluded } from "./dummy-recount-panel.js";
-import { OPEN_QUESTIONS, openQuestionsFor, openQuestionsText } from "./open-questions.js";
+import { openQuestionsFor, openQuestionsText } from "./open-questions.js";
 
 export const statsCommands = {
   // Stats view (apps/web/src/features/stats).
@@ -32,7 +22,6 @@ export const statsCommands = {
     saveWorkspaceLocation();
     renderCharacter();
   },
-  reportCalculation,
   toggleRecountSource: (key) => {
     setRecountSourceExcluded(key);
     viewSourceChanged("stats");
@@ -49,7 +38,6 @@ export const statsCommands = {
     viewSourceChanged("stats");
   },
   copyOpenQuestions,
-  submitOpenQuestion,
 };
 export const statsViewSources = {
   // The Stats view's data (src/app/bridge/stats-view-model.ts).
@@ -104,26 +92,4 @@ async function copyOpenQuestions() {
     showToast("Clipboard access was unavailable");
     return false;
   }
-}
-// "Submit an answer" on an open question: the answer dialog for it, pre-filled.
-function submitOpenQuestion(id) {
-  const entry = OPEN_QUESTIONS.find((item) => item.id === id);
-  if (!entry) return;
-  persistPlannerState();
-  openFeedback("answer", {
-    entry,
-    version: APP_VERSION,
-    platform: platformName(window),
-    buildCode: currentBuildCode(),
-  });
-}
-function reportCalculation() {
-  persistPlannerState();
-  const context = calculationReportContext(currentPlanner(), ui.selectedStatSheetSkill);
-  openFeedback("calculation", {
-    ...context,
-    version: APP_VERSION,
-    platform: platformName(window),
-    buildCode: currentBuildCode(),
-  });
 }

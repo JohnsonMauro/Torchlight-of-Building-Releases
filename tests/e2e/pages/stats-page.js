@@ -82,9 +82,6 @@ export class StatsPage {
   openQuestions() {
     return this.damagePath().locator("details.open-questions");
   }
-  feedbackDialog() {
-    return this.page.locator("#feedback-dialog");
-  }
 
   async open() {
     await this.page.locator('button.view-tab[data-view="character"]').click();

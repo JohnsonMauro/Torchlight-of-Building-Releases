@@ -50,7 +50,6 @@ import {
   ROW_VALUE,
   SECTION_COUNT,
   SECTION_SUMMARY,
-  STATS_BUTTON,
   TAB,
   TAB_COUNT,
 } from "./stat-sheet-classes";
@@ -74,19 +73,6 @@ function activateOnKey(event: KeyboardEvent, act: () => void) {
   if (event.key !== "Enter" && event.key !== " ") return;
   event.preventDefault();
   act();
-}
-
-export function ReportCalculationButton() {
-  return (
-    <button
-      type="button"
-      className={STATS_BUTTON}
-      title="Copy the build code and open a GitHub form to report a damage figure that differs in game"
-      onClick={() => plannerCommands().reportCalculation()}
-    >
-      Report calculation issue
-    </button>
-  );
 }
 
 function RecountPanel({ recount }: { recount: RecountView }) {
@@ -496,7 +482,6 @@ export function StatSheet({ sheet }: { sheet: StatSheetView }) {
             </option>
           ))}
         </select>
-        <ReportCalculationButton />
         <span className={`ml-auto max-[560px]:ml-0 ${sheet.active ? "text-ok" : "text-warn"}`}>
           {sheet.active ? "Active" : "Inactive · insufficient Energy"}
         </span>

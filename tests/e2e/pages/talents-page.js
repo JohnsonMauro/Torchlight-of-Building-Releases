@@ -2,6 +2,7 @@
 // installed prism) and the dialogs they open. Every selector the talents tests use lives here. Nodes are found by their
 // accessible name ("Unallocated micro talent, rank 0 of 3"), which carries rank and reason, or by their coordinate.
 import { expect } from "@playwright/test";
+import { openView } from "./planner-page.js";
 
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
 
@@ -95,7 +96,7 @@ export class TalentsPage {
 
   /** The Talent tab in the build strip: the talent trees alone. */
   async open() {
-    await this.page.locator('button.view-tab[data-view="talents"]').click();
+    await openView(this.page, "talents");
     await expect(this.tabs()).toBeVisible();
   }
   async openTree(label) {

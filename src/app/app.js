@@ -9,7 +9,6 @@ import {
 } from "./builds/build-library-controller.js";
 import { gameLogImportCommands, gameLogImportViewSources } from "./builds/game-log-import-controller.js";
 import { configurationCommands, configurationViewSources } from "./configuration/configuration-controller.js";
-import { feedbackViewSources, installFeedbackEvents } from "./feedback/feedback-controller.js";
 import { gearCommands, gearQueries, gearViewSources } from "./gear/gear-controller.js";
 import { followerCommands, followerQueries, followerViewSources } from "./hero/follower-controller.js";
 import { heroCommands, heroViewSources } from "./hero/hero-controller.js";
@@ -87,7 +86,6 @@ for (const sources of [
   heroViewSources,
   heroMemoryViewSources,
   gameLogImportViewSources,
-  feedbackViewSources,
   statsViewSources,
   configurationViewSources,
 ])
@@ -98,7 +96,6 @@ setOpenViewsRenderer(renderWorkspaceViews);
 // The first calculation runs here, where a build that cannot be calculated shows the recovery banner instead of stopping
 // the planner from loading.
 if (!calculationsPaused) runGuardedRender(currentPlanner);
-installFeedbackEvents();
 installSearchableSelectEvents();
 
 document.addEventListener("click", (event) => {

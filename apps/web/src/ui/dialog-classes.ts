@@ -1,5 +1,5 @@
 /**
- * The plain dialogs' look (the yes/no confirmations, Import build, Import from game, the feedback form): the shared
+ * The plain dialogs' look (the yes/no confirmations, Import build, Import from game): the shared
  * panel with its own padding, an accent serif title, a right-aligned row of buttons, and framed fields. Utility lists
  * only; the shared panel itself is app.css's `dialog-panel`.
  */

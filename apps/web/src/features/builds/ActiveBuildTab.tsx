@@ -1,49 +1,64 @@
 import { useEffect, useRef, useState } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
-import { isRenameKey } from "@legacy/app/builds/build-tab-rename.js";
+import { StrokeIcon } from "../../ui/StrokeIcon";
 import { useViewSource } from "../../ui/use-view-source";
-import { ACTIVE_BUILD_CAPTION, ACTIVE_BUILD_NAME, ACTIVE_BUILD_RENAME, ACTIVE_BUILD_TAB } from "./build-classes";
+import {
+  ACTIVE_BUILD_CAPTION,
+  ACTIVE_BUILD_NAME,
+  ACTIVE_BUILD_RENAME,
+  ACTIVE_BUILD_RENAME_BUTTON,
+  ACTIVE_BUILD_ROW,
+  ACTIVE_BUILD_TAB,
+} from "./build-classes";
 
 /**
- * The open build's name in the build strip, from the "buildStatus" source. A right-click or the rename key (F2) renames
- * it in place: Enter or leaving the field saves, Escape keeps the old name. With no build open it asks for one.
+ * The open build's name in the build strip, from the "buildStatus" source, with a pencil beside it that renames it in
+ * place: Enter or leaving the field saves, Escape keeps the old name. With no build open it asks for one.
  */
 export function ActiveBuildTab() {
   const status = useViewSource("buildStatus");
   const name = status?.name ?? null;
   const [renaming, setRenaming] = useState(false);
-  const tab = useRef<HTMLDivElement>(null);
-  const startRename = () => {
-    if (name !== null) setRenaming(true);
-  };
+  const pencil = useRef<HTMLButtonElement>(null);
+  // The pencil comes back once the field is gone: it takes the focus then, so the keyboard stays where it was.
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (renaming || !refocus.current) return;
+    refocus.current = false;
+    pencil.current?.focus({ preventScroll: true });
+  }, [renaming]);
   const finishRename = (text: string | null) => {
+    refocus.current = true;
     setRenaming(false);
     if (text !== null) plannerCommands().renameBuild(text);
-    tab.current?.focus({ preventScroll: true });
   };
   return (
-    <div
-      ref={tab}
-      className={ACTIVE_BUILD_TAB}
-      tabIndex={0}
-      title={name === null ? undefined : "Right-click to rename"}
-      onContextMenu={(event) => {
-        if (renaming) return;
-        event.preventDefault();
-        startRename();
-      }}
-      onKeyDown={(event) => {
-        if (event.target !== event.currentTarget || !isRenameKey(event)) return;
-        event.preventDefault();
-        startRename();
-      }}
-    >
+    <div className={ACTIVE_BUILD_TAB}>
       <span className={ACTIVE_BUILD_CAPTION}>{status && name === null ? "No active build" : "Active build"}</span>
-      {renaming && name !== null ? (
-        <RenameField name={name} onFinish={finishRename} />
-      ) : (
-        <strong className={ACTIVE_BUILD_NAME}>{status ? (name ?? "Start a new build") : "Loading build…"}</strong>
-      )}
+      <div className={ACTIVE_BUILD_ROW}>
+        {renaming && name !== null ? (
+          <RenameField name={name} onFinish={finishRename} />
+        ) : (
+          <>
+            <strong className={ACTIVE_BUILD_NAME}>{status ? (name ?? "Start a new build") : "Loading build…"}</strong>
+            {name !== null ? (
+              <button
+                ref={pencil}
+                type="button"
+                className={ACTIVE_BUILD_RENAME_BUTTON}
+                aria-label="Rename build"
+                title="Rename build"
+                onClick={() => setRenaming(true)}
+              >
+                <StrokeIcon className="size-3.5">
+                  <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" />
+                  <path d="m13.5 6.5 4 4" />
+                </StrokeIcon>
+              </button>
+            ) : null}
+          </>
+        )}
+      </div>
     </div>
   );
 }

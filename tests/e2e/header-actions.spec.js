@@ -1,4 +1,4 @@
-// The header's build actions: Reset Build (with its confirmation), Export (the build code to the clipboard) and Import
+// The build strip's actions: Reset Build (with its confirmation), Export (the build code to the clipboard) and Import
 // (a pasted build code becomes a new library build). Written against the legacy header and dialogs before they move to
 // React, so both must pass it unchanged.
 import { test, expect } from "@playwright/test";
@@ -11,7 +11,7 @@ const youga = JSON.parse(
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
 test.use({ viewport: { width: 1440, height: 1000 }, permissions: ["clipboard-read", "clipboard-write"] });
 
-const header = (page) => page.locator(".header-actions");
+const header = (page) => page.locator(".build-actions");
 const toast = (page) => page.locator("#toast");
 const library = (page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key)), LIBRARY_STORAGE_KEY);
 const activeState = async (page) => {

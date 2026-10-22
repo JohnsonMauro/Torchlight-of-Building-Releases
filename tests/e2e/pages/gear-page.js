@@ -3,6 +3,7 @@
 // CURSE OFF badge when the curse limit leaves the item out), Inventory cards by their item name, card tools by title
 // (their text is a symbol).
 import { expect } from "@playwright/test";
+import { openView } from "./planner-page.js";
 
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
 
@@ -80,7 +81,7 @@ export class GearPage {
 
   /** Gear is a section of the Build page (talents, skills, equipment and pacts on one page). */
   async open() {
-    await this.page.locator('button.view-tab[data-view="equipment"]').click();
+    await openView(this.page, "equipment");
     await expect(this.view()).toBeVisible();
     await this.view().scrollIntoViewIfNeeded();
   }

@@ -40,7 +40,7 @@ A change that fits several rows reads every file in them.
 
 ## 3–4. Density, rhythm and the section heading
 
-No filler space, one padding rhythm per level, the tab's figures and actions in `SectionHeading`, icons in proportion,
+No filler space, one padding rhythm per level, the build tabs open each section and a tab's figures and actions sit beside what they act on, icons in proportion,
 a shared pattern the same day a second place needs it: **[density-and-headings.md](density-and-headings.md)**. Read
 before any spacing, size or heading change.
 

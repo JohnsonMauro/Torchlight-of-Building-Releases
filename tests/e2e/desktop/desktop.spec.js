@@ -5,7 +5,7 @@ import { test, expect, _electron as electron } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { VIEWS } from "../pages/planner-page.js";
+import { openView, VIEWS } from "../pages/planner-page.js";
 
 // Steam + Proton default on Linux; TLI_GAME_LOG_DIR overrides it (same variable the app reads).
 const gameLogDir =
@@ -35,7 +35,7 @@ test("desktop app loads the planner and reads the game log", async () => {
     );
     for (const name of VIEWS) {
       await expect(async () => {
-        await window.locator(`button.view-tab[data-view="${name}"]`).first().click();
+        await openView(window, name);
         await expect(window.locator(`#${name}-view`)).toBeVisible({ timeout: 500 });
       }).toPass({ timeout: 10_000 });
       await expect(window.locator(`#${name}-view`)).not.toBeEmpty();

@@ -82,7 +82,7 @@ function ViewTab({ view, label, icon }: ViewTabProps) {
 export function ViewRail() {
   return (
     <nav
-      className="fixed top-[66px] bottom-0 left-0 z-[6] flex w-16 flex-col border-r border-line bg-surface max-sm:top-[108px]"
+      className="fixed top-[66px] bottom-0 left-0 z-15 flex w-16 flex-col border-r border-line bg-surface max-sm:top-[108px]"
       aria-label="Builder sections"
     >
       {viewTabs.map((tab) => (
