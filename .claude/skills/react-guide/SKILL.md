@@ -18,7 +18,8 @@ you; `eslint-plugin-react-hooks` recommended rules and `react-refresh/only-expor
 | a piece two or more features use (`SectionHeading`, `HelpButton`, `Artwork`, inputs, hooks, class constants) | `apps/web/src/ui/` |
 
 Something one feature uses stays in that feature; it moves to `ui/` when a second one needs it, and the copy it
-replaces is deleted (`styling-guide` §4).
+replaces is deleted (`styling-guide` §4). Do it without asking (owner, 2026-10-22): a repeated element is
+componentized in the change that sees it, and the report says so.
 
 ## 2. Data and actions
 
@@ -40,6 +41,10 @@ replaces is deleted (`styling-guide` §4).
   that carries it: use `setAutofocusAttribute` (`shell/autofocus.ts`) as a ref.
 - Drag and drop: `usePointerDrag` (`ui/use-pointer-drag.ts`): 5 px threshold, ghost, right-click copy, swallows the
   click after a drop. Call `hideTooltip()` in `onStart`.
+- A slider with its number field: `RangeInput` (`field="live"` for rolls, `"commit"` for a level); a slider alone takes
+  `RANGE_FIELD` (`ui/range-classes.ts`).
+- A list search: `SearchField` (⌕, ×, the /regex/ hint and its error) over `searchMatcher(query).matches(text)`, the
+  text built with `searchText([...])` (`src/app/bridge/search-match.ts`): plain words in any order, or /pattern/flags.
 - Images: `Artwork` (the ◆ placeholder when there is no image); headings: `SectionHeading`; help: `HelpButton`.
 
 ## 4. Hooks

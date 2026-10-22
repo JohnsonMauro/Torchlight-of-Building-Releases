@@ -32,4 +32,6 @@ Reference screen: the Skills tab (2026-10-22). Other tabs move to it as they are
   Inventory, `panel-head` (only `ConfigurationPanel` still uses it), the talent tree's name in `font-display`.
 - **A pattern a second place needs becomes shared the same day**: a constant or component in `apps/web/src/ui/`, and
   the copies it replaces are deleted in the same change. Three hand-written variants of one heading is how the tabs
-  drifted apart.
+  drifted apart. The owner's standing order (2026-10-22): componentize as soon as the chance shows, without asking
+  first; say so in the report. Shared so far: `SectionHeading`, `sectionTitleClass` (and `dialog-title`, the same
+  type for a dialog), `HINT_BUTTON`, `RangeInput` with `range-classes.ts`, `SearchField`.
