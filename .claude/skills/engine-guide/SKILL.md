@@ -1,0 +1,44 @@
+---
+name: engine-guide
+description: Rules for the calculation engine and game data — src/engine purity, src/data kept byte for byte, TypeScript that Node runs with the types stripped, and the golden master workflow (pnpm golden:diff before pnpm golden:update). Use before changing anything under src/engine or src/data, the planner state shape or its normalization, or when the golden test goes red.
+---
+
+# Engine and game data
+
+## 1. Boundaries
+
+- `src/engine/` is the pure domain: it imports only `src/engine` and `src/data`. No DOM, no storage, no HTML helpers:
+  `tests/unit/import-graph.test.js` also checks that nothing `src/engine/planner.js` reaches loads page code.
+- The entry is `calculatePlanner(state)` (`src/engine/planner.js`); the state shape and its normalization live in
+  `src/engine/state/planner-state.ts` (`defaultPlannerState`, `normalizePlannerState`), and
+  `src/engine/state/state-validation.ts` (`validatePlannerState`) rejects unknown keys. A new state field gets a
+  default and a normalization rule, a validation entry (or every stored build carrying it is rejected), and cases in
+  `tests/unit/planner-state.test.js` and `state-validation.test.js`.
+- `src/data/` is game data, mostly `*.generated.js` from upstream's data tools: kept byte for byte (Prettier ignores
+  the folder) so a new upstream copy diffs cleanly. Never hand-edit a generated file; a correction goes in engine code
+  or a non-generated data module, with the reason in a comment.
+
+## 2. TypeScript run by Node
+
+`.ts` files under `src/` run in Node with the types stripped (the golden and unit tests import them directly), so
+`tsconfig.json` sets `erasableSyntaxOnly`: no `enum`, no `namespace`, no parameter properties. Imports name the
+`.ts` file (`allowImportingTsExtensions`); type-only imports use `import type` (`verbatimModuleSyntax`).
+
+## 3. Golden master
+
+`tests/golden/` hashes the full planner result of each case (`cases.js`: the default build, a real imported build —
+Youga The Ultimate One, L94, from a game log —, every hero with two trait picks on that build's gear, and combat
+setting variants) against `expected.json`, plus a readable summary per case.
+
+- Red golden test = the calculation changed. Run `pnpm golden:diff` (HEAD vs working tree; `pnpm golden:diff -- main
+  "youga-l94"` for one case against a ref) and read which JSON paths moved.
+- Unintended movement is a bug: fix it, do not update.
+- Intended change (a formula fix, new game data): `pnpm golden:update`, and commit `expected.json` with the change
+  that caused it, the commit body naming what moved and why.
+- A structure-only change (move, rename, split) must leave the golden master untouched: that is its proof.
+
+## 4. Testing engine code
+
+A focused rule gets a unit test next to the existing ones (`tests/unit/engine-talent-effects.test.js` style),
+written first for a bug (`verify-guide` §3). The golden master is the broad net, not a substitute for the test that
+names the rule.

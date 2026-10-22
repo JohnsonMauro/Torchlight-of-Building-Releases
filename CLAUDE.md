@@ -2,7 +2,7 @@
 
 Build planner and damage calculator for Torchlight: Infinite (SS14). Web app (Vite + React 19 + TypeScript) that
 Electron also loads. Forked from TomSelleck09's project (MIT, his copyright line stays in `LICENSE`); developed here
-independently. Code, comments and commits in English.
+independently, his repo is reference only (`upstream-port` skill). Code, comments and commits in English.
 
 ## Commands
 
@@ -18,8 +18,9 @@ pnpm test:desktop        # Electron smoke
 pnpm golden:diff         # what changed in the golden master; pnpm golden:update rewrites it (only for a wanted change)
 ```
 
-Every change: lint, typecheck, format:check and `pnpm test` green; e2e green before a commit that touches the UI or
-`src/app`.
+Before a commit: lint, typecheck, format:check and `pnpm test` green; e2e green when the commit touches the UI or
+`src/app`. While iterating, the owner decides how much runs between edits; a targeted run
+(`pnpm exec playwright test tests/e2e/skills.spec.js`, after `pnpm build:web` for the `build` project) is the default.
 
 ## Layout
 
@@ -28,120 +29,72 @@ Every change: lint, typecheck, format:check and `pnpm test` green; e2e green bef
 | `src/engine/` | the calculation (pure domain) | imports only `src/engine` and `src/data`; no DOM, no storage |
 | `src/data/` | game data, mostly `*.generated.js` from upstream's tools | kept byte for byte (Prettier ignores it) |
 | `src/game-log/` | game log reader and import | never imports `src/app` |
-| `src/app/` | the planner page: state, commands, view models | see below |
+| `src/app/` | the planner page: state, commands, view models (`planner-guide`) | |
 | `src/app/bridge/` | view models and the two channels to React (`view-sources.ts`, `planner-commands.js`) | pure view models |
-| `apps/web/src/shell/` | the app frame: `AppShell`, header, view rail, build strip (the build's tabs), footer, tooltip, toast | |
-| `apps/web/src/pages/<page>/` | a page's composition: `build/` (one view per build tab: hero, follower, skills, equipment, pacts, talents), `stats/`, `configuration/`, `builds/` | composes features; little markup |
-| `apps/web/src/features/<feature>/` | a feature's components, its dialogs and its `*-classes.ts` | renders view sources, calls commands |
-| `apps/web/src/ui/` | shared React pieces, class constants several features use, the theme switch (`theme.ts`) | |
-| `apps/web/src/styles/app.css` | the only stylesheet: Tailwind 4, tokens, shared utilities and variants | no `.css` beside components |
+| `apps/web/src/shell/` | the app frame: `AppShell`, header, view rail, build strip, footer, tooltip host, toast | |
+| `apps/web/src/pages/<page>/` | a page's composition: `build/` (one view per build tab), `stats/`, `configuration/`, `builds/` | composes features; little markup |
+| `apps/web/src/features/<feature>/` | a feature's components, dialogs and `*-classes.ts` | renders view sources, calls commands |
+| `apps/web/src/ui/` | shared React pieces and class constants several features use, the theme switch | |
+| `apps/web/src/styles/app.css` | the only stylesheet: Tailwind 4, tokens, shared utilities and variants (`styling-guide`) | no `.css` beside components |
+| `src/assets/` | images; every content image stays, also unreferenced ones | layout images go once unused |
 | `tests/unit`, `tests/golden`, `tests/e2e` | unit, engine golden master, Playwright (page objects in `tests/e2e/pages`) | |
 
-`tests/unit/import-graph.test.js` locks the import graph: no cycles anywhere in `src/`, and the folder rules above.
-
-## The planner in `src/app`
-
-- `app.js` — boot only: registers every section's commands and view sources, installs the document listeners in a
-  fixed order, restores where the user was, first render.
-- `planner/session.js` — the open build: `plannerState` (a live export; replace it only through
-  `applyPlannerState`), derived collections (`talentRanks`, `equippedSlateIds`, slate placements via setters…),
-  `capturePlannerState`, `persistPlannerState` (save + queued render), `currentPlanner` (cached calculation),
-  `renderCandidateViews` (calls the renderer `planner/workspace.js` registers).
-- `planner/ui-state.js` — `ui`: where the user is (view, open tree, stats panel, selections several sections share).
-  Section-private UI state stays a `let` in its controller.
-- `planner/page.js` — DOM helpers (`$`, `artwork`) and what the page says about the open build: the `buildStatus`,
-  `toast` and `otherTabNotice` sources (`updateStorageStatus`, `showToast`: plain text, never escaped).
-- `<section>/*-controller.js` — one per section (gear, talents + prisms, slates, skills board + selector, hero +
-  memories + follower, pacts, stats, configuration, builds + game log, feedback): its state, its commands object
-  (`gearCommands`…) and its view sources (`gearViewSources`…).
-
-An imported binding cannot be assigned: a module that must change another module's `let` calls a setter or function
-that module exports. Dependencies point down: `app.js` → controllers → `planner/session.js` → `planner/ui-state.js`.
+Dependencies point down: `apps/web` → `src/app` (bridge) → `src/engine` → `src/data`. Guards that fail the build:
+`tests/unit/import-graph.test.js` (no cycles, the folder rules above), `dom-ratchet.test.js` (the planner's DOM
+coupling only goes down), `styling-rules.test.js` (one stylesheet, no state word in a utility),
+`asset-references.test.js` (every `./src/assets/…` path exists).
 
 ## Data flow
 
-A React view reads a view source (`useViewSource("equipment")`); a user action calls a planner command; the command edits
-`plannerState`, calls `persistPlannerState()` (save, then one queued render) or `viewSourceChanged(name)`; the view
-re-reads its source.
-What is read only when the user asks (a tooltip's details) is a planner query (`plannerQueries().gearTooltip(target)`,
-`src/app/bridge/planner-queries.js`): computed on demand, never published ahead, never changing the build.
+A React view reads a view source (`useViewSource("skills")`); a user action calls a planner command
+(`plannerCommands().resetSkills()`); the command edits `plannerState` and calls `persistPlannerState()` (save, one
+queued render) or `viewSourceChanged(name)`; the view re-reads its source. What is read only on demand (a tooltip's
+details) is a planner query (`plannerQueries()…`). Page state the UI shows (the open view) is a source too, never the
+DOM. Recipes: `planner-guide`; tooltips: `tooltip-guide`.
 
-Page state the UI shows belongs in a source too, not in the DOM: the open view is the `workspace` source (each section
-hides itself with `useViewOpen`, the rail and the build strip light their tab, `PageMain` picks the layout). The
-planner still reaches into the page in many places (DOM lookups, `classList`, `style`, `hidden`, `innerHTML`, listeners,
-HTML strings); `tests/unit/dom-ratchet.test.js` counts them and they may only go down — lower its baseline when a
-change removes some.
+## Skills — which to load for which change
 
-Tooltips are components (`apps/web/src/ui/tooltip/`: `<Tooltip content>` around one element; `TooltipHost` places it,
-follows the pointer, hides it on scroll and on any press outside it, and shows it inside an open dialog). An edit or a
-drag a press does not start (the keyboard; pointer capture keeps a dragged anchor "hovered" until the drop) hides it
-with `hideTooltip()` from `tooltip-store.ts`. Each domain
-owns its tooltip, the way gear does (the guide for the others):
-- the item's display model and its pure builder in `src/app/bridge/<domain>-…-view.ts` (`gear-item-view.ts`
-  `gearTooltipView`), with a unit test; what depends on the open build is passed in;
-- a query in the domain's controller that gathers that input (`gear-controller.js` `gearTooltip`, inside
-  `withRenderPass`), provided in `app.js`;
-- a wrapper component in the feature (`features/gear/GearTooltip.tsx`: `<GearTooltip target>{element}</GearTooltip>`)
-  that reads the query when the tooltip opens and renders the content, with its classes in `*-tooltip-classes.ts`;
-  pieces several domains share sit in `ui/` (`ModifierText` with Alt via `useAltHeld`, `CoverageBadge`);
-- the card itself is exported (`GearTooltipCard`, `SkillCard`, `TraitCard`…) with its frame kind in its classes module,
-  so another tooltip can show it: a Stats damage path source (`features/stats/DamageSourceTooltip.tsx`, query
-  `damageSourceTooltip` in `src/app/stats/damage-source-tooltip.js`) shows the card of what it names.
-Tests find a tooltip by `getByRole("tooltip")` and tell kinds apart by their content: the frame's kind variants
-(`[&.skill-tooltip]:…`) spell every kind in its class list, so `toHaveClass(/skill-tooltip/)` always matches.
+Skills live in `.claude/skills/<name>/SKILL.md`; each `description` says when it applies. This table is the other
+direction: **before editing, find the rows for the change and load every skill in them** (the union when several
+rows fit). Loading a skill after the code is written is too late.
 
-## Refactor direction (2026-10-20)
+| Change | Load |
+|---|---|
+| **Any change** (always, on top of the rows below) | `verify-guide` |
+| Any UI touched: markup, classes, layout, spacing, a new screen part | `styling-guide`, `react-guide` |
+| A new React component, hook or dialog | `react-guide`, `styling-guide`, `e2e-guide` |
+| A command, a view source, a query, a controller, `plannerState` | `planner-guide` |
+| A tooltip (new kind, content, a card another tooltip shows) | `tooltip-guide`, `planner-guide`, `styling-guide` |
+| The calculation (`src/engine`), game data (`src/data`), state normalization | `engine-guide` |
+| A bug fix | `verify-guide` (regression test first) + the rows for the area |
+| An e2e test, a page object, a class or id a test reads | `e2e-guide` |
+| Deleting legacy code, moving or renaming files, a sweep | `refactor-guide` + the rows for what moves |
+| Porting a change from TomSelleck09's repo | `upstream-port` + the rows for what it touches |
+| A new or bumped dependency | run `/deps-update` (only when the owner asks) |
 
-Refactor by exclusion: delete legacy code in large blocks and write the replacement for this architecture. The safety
-net is e2e + the engine golden master + typecheck. The legacy stylesheet is gone (2026-10-21); every screen, dialog and
-tooltip is Tailwind 4. The look follows the old one loosely ("similar is enough"). Layout images (backgrounds, frames,
-wordmarks) go once nothing uses them; every content image (items, heroes, skills, pacts, slates) stays, also
-unreferenced ones (`tests/unit/asset-references.test.js` guards the references).
+## Design system, in one paragraph
 
-## Styling (Tailwind 4 only)
+Density first: no space that holds nothing (no min-heights to fill a panel, no padding stacked on padding). Every
+build tab's content opens with `SectionHeading` (title in `sectionTitleClass` with its "?" right beside it, the tab's
+figures and buttons on the right); panels inside a section card use one rhythm (`m-3 p-3`). A pattern that a second
+place needs becomes a shared constant or component in `apps/web/src/ui/` the same day, and the copies it replaces
+are deleted. Details and the reference screen: `styling-guide`.
 
-- `apps/web/src/styles/app.css` is the only stylesheet: layers `theme, base, components, utilities`, Preflight on.
-  It holds the design system: semantic colour tokens with a dark and a light value (`bg`, `surface`, `raised`,
-  `sunken`, `line`, `line-strong`, `text`, `muted`, `dim`, `accent`, `accent-strong`, `on-accent`, `info`, `ok`,
-  `warn`, `danger`, `violet`, `rarity-*`, `dmg-*`, `overlay`, `shadow`; the default Tailwind palette is off), the
-  page frame (`base`), shared utilities (`panel`, `panel-head`, `btn`, `btn-primary`, `btn-danger`, `tab`, `field`,
-  `field-search`, `chip`, `dialog-panel`, `dialog-head`, `dialog-title`, `dialog-close`) and custom variants. No
-  `.css` file beside a component: utilities in the markup; long or repeated class lists in a `.ts` module beside the
-  component (`*-classes.ts`; a `.tsx` exports only components).
-- Themes: `<html data-theme="dark|light">`, set before the first render by `apps/web/src/ui/theme.ts` (stored choice,
-  else the system's) and switched from the header. A component never writes a colour of its own: tokens and opacity
-  modifiers (`bg-accent/15`) only, so a theme changes in app.css alone. No decoration (gradients, glows, inset
-  highlights, chamfers); type, spacing and radius from Tailwind's scales.
-- Tailwind scans `apps/web` (Vite's root) plus the `@source` folders in app.css (`src/app`, `src/game-log`): markup
-  built as HTML strings there takes utilities too. A utility written right before `${` in a template literal is not
-  generated: keep a space, or use a constant.
-- **Never spell a state word inside a utility.** The e2e tests read states off class lists (`/\bactive\b/`,
-  `/\bselected\b/`, `/\bdisabled\b/`…), so `[&.active]:x`, `aria-selected:x`, `disabled:x` or `active:x` would match
-  whatever the state. Use the neutral variants in app.css: `on:` (`.active`), `group-on:`, `chosen:`
-  (`[aria-selected=true]`), `group-chosen:`, `off:` (`:disabled`), `pressed:` (`:active`), `editmode:` (inside
-  `.editing`), `compact:` (a wide, short window); or pick the classes in code from the state. The same holds for any
-  word a test reads with `toHaveClass(/…/)` (`rarity-legendary`, `tier-t1`, `follower-tint-ult`…), also inside an
-  arbitrary value, a custom property's name or a `url()`'s file name (the magic card art is the `--art-magic` token for
-  that reason): pick the classes in code (`itemCardLook`, `tierBadgeClasses`) or key a variant on a `data-*` attribute.
-  `tests/unit/styling-rules.test.js` fails on such a utility and on any stylesheet besides app.css.
-- Preflight sets `line-height: 1.5`; the screens were measured against `normal`, so their roots carry
-  `leading-[normal]`. `text-<size>` also sets a line height (`text-sm/[normal]` keeps `normal`).
-- `url()` paths in app.css (and in `bg-[url(...)]` utilities, emitted into app.css) are relative to app.css; never
-  `/src/...` (the desktop build opens `file://`).
-- Tailwind writes a utility for every source word that is a utility name (`hidden`, `grid`, `fixed`…). Never give
-  markup such a class name as a hook; it would get the utility.
-- Class names that JS or tests look up stay as hooks even when nothing styles them (`site-header`, `view-tab`,
-  `loadout-tab`, `loadout-status`, `talent-node`, `pact-slot`…): grep `src/app`, `tests`, `apps/web/src` before removing
-  one.
+## Never
 
-## Porting upstream
+- Never claim a change works without having seen it work (test output, a screenshot, a probe): `verify-guide`.
+- Never leave dead code behind a replacement: the old component, class, field, test helper and asset reference go in
+  the same change.
+- Never write a colour, a gradient or a glow in a component; never add a `.css` file; never spell a state word in a
+  utility (`styling-guide`).
+- Never touch `src/data/**/*.generated.js` by hand; never run `pnpm golden:update` to make a red test green without
+  reading `pnpm golden:diff` first.
+- Never lower a guard to make it pass (eslint-suppressions, dom-ratchet baseline up, a skipped test).
+- `package.json` `build.publish` still points at upstream's releases: electron-updater would replace our build with
+  his. Repoint or disable it before a desktop build of ours.
 
-Upstream (`upstream` remote) is reference only: read `git diff <last-ported>..upstream/main` and port by hand. His
-`src/` root modules live in folders here (`src/engine/<domain>/` for pure domain code, `src/app/` for the page,
-`src/game-log/` for the log import), and his `src/app.js` code is split into the section
-controllers above. His `src/data/**` paths are unchanged.
+## Git
 
-## Before a desktop build of ours
-
-`package.json` `build.publish` still points at upstream's releases: electron-updater would replace our build with his.
-Repoint or disable it first.
+Commit messages: one imperative sentence that says what changed for the user or the code ("Move the Skills reset into
+the section heading"), body only when the why is not obvious. Structure and behaviour in separate commits when both
+happen (`refactor-guide`). No AI attribution of any kind.
