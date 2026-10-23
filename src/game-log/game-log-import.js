@@ -54,7 +54,6 @@ import {
   progressionSupportTierData,
   rareBaseByGameId,
   rareBaseByName,
-  selenaCompleteSkillLoadout,
   selenaScorchingBeamPacts,
   slateOffsets,
   slateTransformRules,
@@ -753,7 +752,7 @@ export function blankPlannerState() {
     setupOrder: [],
     boardSlots: { skills: [], auras: [] },
     supportOrder: {},
-    setupEnabled: Object.fromEntries(selenaCompleteSkillLoadout.setups.map((setup) => [setup.name, false])),
+    setupEnabled: {},
     skillLevels: {},
     supportEnabled: {},
     supportLevels: {},
@@ -1463,7 +1462,6 @@ function resolvePrism(info, treeName, nodes, idMap, report, state) {
 
 const skillByName = new Map(tlidbSkillCatalog.map((entry) => [entry.name, entry]));
 const supportByName = new Map(tlidbSupportCatalog.map((entry) => [entry.name, entry]));
-const capturedSetups = new Map(selenaCompleteSkillLoadout.setups.map((setup) => [setup.name, setup]));
 const ACTIVE_SKILL_SLOTS = [1, 2, 3, 4, 5];
 const AURA_SLOTS = [1001, 1007, 1013, 1019];
 const levelOf = (item, fallback = 20) => Math.max(1, Math.min(40, Math.round(Number(item?.Level) || fallback)));
@@ -1663,7 +1661,6 @@ function resolveSkills(tree, others, idMap, report, state) {
     });
   for (const entry of slots.values()) filledFrom(report, "skills", entry.from);
   if (slots.size && [...slots.values()].every((entry) => entry.from)) report.replaced.skills = true;
-  const used = new Set();
   const setupFor = (slotNumber, role, index) => {
     const entry = slots.get(String(slotNumber));
     if (!entry) return null;
@@ -1687,13 +1684,7 @@ function resolveSkills(tree, others, idMap, report, state) {
       role === "skill" && Object.values(TRAIT_SLOT_GRANTS).some((grant) => grant.skill === name && grant.row === index);
     let key;
     if (granted) key = `trait:${name}`;
-    else if (capturedSetups.has(name) && !used.has(name)) {
-      key = name;
-      used.add(name);
-      skills.setupEnabled[key] = true;
-      skills.skillLevels[key] = { baseLevel: level };
-      for (const support of capturedSetups.get(name).supports) skills.supportEnabled[`${key}:${support.name}`] = false;
-    } else {
+    else {
       key = `game-log-skill-${slotNumber}`;
       skills.customSetups.push({
         instanceId: key,
@@ -1758,19 +1749,16 @@ function resolveSkills(tree, others, idMap, report, state) {
       const hasStars = Boolean(config?.stars) || starSupport;
       const supportLevel = hasStars ? supportCatalog.level || 20 : levelOf(support.item, supportCatalog.level || 20);
       const stateKey = `${key}:${supportName}`;
-      const captured = capturedSetups.get(key)?.supports.find((entry) => entry.name === supportName);
       skills.supportEnabled[stateKey] = true;
-      if (captured) skills.supportLevels[stateKey] = supportLevel;
-      else
-        (skills.customSupports[key] ||= []).push({
-          name: supportName,
-          level: supportLevel,
-          manaCostMultiplierPercent: specialSupportTierData(supportName)
-            ? 110
-            : (supportCatalog.manaCostMultiplierPercent ?? 100),
-          effects: structuredClone(supportCatalog.effects || []),
-          custom: true,
-        });
+      (skills.customSupports[key] ||= []).push({
+        name: supportName,
+        level: supportLevel,
+        manaCostMultiplierPercent: specialSupportTierData(supportName)
+          ? 110
+          : (supportCatalog.manaCostMultiplierPercent ?? 100),
+        effects: structuredClone(supportCatalog.effects || []),
+        custom: true,
+      });
       if (config) skills.specialSupportConfigs[stateKey] = config;
       order[position] = supportName;
       const configText = config?.stars

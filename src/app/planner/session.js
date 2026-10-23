@@ -3,7 +3,6 @@ import {
   calculatePlanner,
   canPlaceSlate,
   defaultPlannerState,
-  selenaCompleteSkillLoadout,
   selenaScorchingBeamPacts,
   selenaScorchingBeamTalentSetup,
   setCoverageContext,
@@ -187,7 +186,7 @@ export function emptyPlannerState() {
     setupOrder: [],
     boardSlots: { skills: [], auras: [] },
     supportOrder: {},
-    setupEnabled: Object.fromEntries(selenaCompleteSkillLoadout.setups.map((setup) => [setup.name, false])),
+    setupEnabled: {},
     skillLevels: {},
     supportEnabled: {},
     supportLevels: {},
@@ -239,10 +238,6 @@ export function applyPlannerState(next) {
   next.disabledEquipmentSlots.forEach((value) => disabledEquipmentSlots.add(value));
   disabledSupportNames.clear();
   next.disabledSupportNames.forEach((value) => disabledSupportNames.add(value));
-  for (const setup of selenaCompleteSkillLoadout.setups)
-    for (const support of setup.supports)
-      if (next.skills.supportEnabled[supportStateKey(setup.name, support.name)] === false)
-        disabledSupportNames.add(support.name);
   equippedSlateIds.clear();
   next.equippedSlateIds.forEach((value) => equippedSlateIds.add(value));
   setSlatePlacements(boardPlacements(next.slates));

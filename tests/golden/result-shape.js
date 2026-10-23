@@ -5,6 +5,7 @@ import { plannerResultKeys } from "../../packages/engine/src/planner-api.ts";
 
 const NULLABLE = new Set([
   "dummyRecount",
+  "mainSkill",
   "afflictionRating",
   "bardDelivery",
   "beamDelivery",
@@ -81,18 +82,21 @@ export function resultShapeProblems(result) {
   }
 
   result.warnings.forEach((warning, index) => expect(typeof warning === "string", `warnings[${index}]`));
-  types(result.mainSkill, "mainSkill", {
-    name: "string",
-    role: "string",
-    icon: "string",
-    setupKey: "string",
-    effectiveLevel: "number",
-    enabled: "boolean",
-  });
-  expect(
-    Array.isArray(result.mainSkill.tags) && result.mainSkill.tags.every((tag) => typeof tag === "string"),
-    "mainSkill.tags",
-  );
+  // A build without skills has no Main Skill.
+  if (result.mainSkill !== null) {
+    types(result.mainSkill, "mainSkill", {
+      name: "string",
+      role: "string",
+      icon: "string",
+      setupKey: "string",
+      effectiveLevel: "number",
+      enabled: "boolean",
+    });
+    expect(
+      Array.isArray(result.mainSkill.tags) && result.mainSkill.tags.every((tag) => typeof tag === "string"),
+      "mainSkill.tags",
+    );
+  }
   result.assumptions.forEach((choice, index) => {
     const path = `assumptions[${index}]`;
     types(choice, path, { group: "string", chosen: "string", best: "string" });

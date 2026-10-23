@@ -260,7 +260,8 @@ export interface MainSkill {
 export interface PlannerResult {
   /** The normalized input. */
   state: PlannerState;
-  mainSkill: MainSkill;
+  /** Null for a build without skills. */
+  mainSkill: MainSkill | null;
   dummyRecount: DummyRecount | null;
   assumptions: ExclusiveChoice[];
   bestCaseAssumptions: BestCaseAssumption[];

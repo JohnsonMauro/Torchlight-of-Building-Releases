@@ -2,17 +2,17 @@
   "node": "v24.22.0",
   "cases": {
     "default": {
-      "sha256": "dcadaa0b4bf462eca9939bdc7d0612e44365cd6ad949a9bd629b6669946e3c6c",
+      "sha256": "24aa7ff03648a1cb25cf08fdfcbfc5eb8e34eadd303590fddf0d22e16e133ba0",
       "summary": {
-        "mainSkill": "Scorching Beam",
-        "dps5s": 4620.06120739065,
-        "dps20s": 4830.983905404466,
-        "dpsSteady": 4867.731514418418,
+        "mainSkill": null,
+        "dps5s": null,
+        "dps20s": null,
+        "dpsSteady": null,
         "warnings": 3
       }
     },
     "youga-l94": {
-      "sha256": "dc4b9b9c92622490e01998c578c6d1d4da52ffed808660ac41c4a5ec466fdaba",
+      "sha256": "c2c94298f5acd8bc5ea21082fc160361fa888370482a8f23dfbc4a6251a5659e",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 1552288598.2775388,
@@ -22,7 +22,7 @@
       }
     },
     "youga-l94/manual-conditions": {
-      "sha256": "63af02da3d5f98657c80557ce10271bc38639e63940d10ff2d39e8322c7c53ab",
+      "sha256": "394f71927a2c278ca807161d7a81f1938a5d32104351b3c46e89ac89d88ee4df",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 1503427625.6554213,
@@ -32,7 +32,7 @@
       }
     },
     "youga-l94/fire-res-0": {
-      "sha256": "1f850750c6a7ce2d7d5025ffbfd2f17a6ac2149c01c6e83aa89b2a0a54e72388",
+      "sha256": "ef30af0395222d28874451353c0a7aa416d1ec5381548ff66abeee9e8b69a773",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 1552288598.2775388,
@@ -42,7 +42,7 @@
       }
     },
     "youga-l94/fire-res-75": {
-      "sha256": "c86db34defce72f1bf3d719ca3d9823dd8c6d84696d5f47d2e70e8e3fc4822ad",
+      "sha256": "5f24f79bbdf4d4095aa12814c8211ac23b2bef39ac321fab45f255d6dd762d61",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 1552288598.2775388,
@@ -52,7 +52,7 @@
       }
     },
     "youga-l94/affliction-0": {
-      "sha256": "933f75fb001597da8688961cfb06f64e7e148ad33f635fd711d7315bf43cb4b6",
+      "sha256": "575d7fac8f57efca97616ad4ff8145c015996186f9855512b8f89f728e389c0c",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 1552288598.2775388,
@@ -62,7 +62,7 @@
       }
     },
     "hero/rehan-anger/first": {
-      "sha256": "d931dbbe697e5f864b4adf6f0794dd98d79978c64f12d0c50c06b7619285d207",
+      "sha256": "1b6984fb0fc1ea6393341d62c5e776138eca364242ad9d170429c6fe3ef4e215",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -72,7 +72,7 @@
       }
     },
     "hero/rehan-anger/last": {
-      "sha256": "711e0c2740664abd8a22e43d0b6a62e997bb7d5917b24048cc1a04c0f9d91d83",
+      "sha256": "93b65bc78cf8c47580f90f3b611b65fd08d09cd382471d11d07d2cb021653e4d",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -82,7 +82,7 @@
       }
     },
     "hero/rehan-seething-silhouette/first": {
-      "sha256": "f21d071c54219d88bd6d4c486eebda0ff3b2a430b841c441b8a1f53f985810c3",
+      "sha256": "8bcaffca1bbf75a10d3b7e41abbfa93d6776888625857bf6f64c25ba6850c00c",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -92,7 +92,7 @@
       }
     },
     "hero/rehan-seething-silhouette/last": {
-      "sha256": "70f1eb7ce2fbb5fbd757f1fdd9ef720cccf73c75dcfb702024b6ca562228cbca",
+      "sha256": "ca74a20cce09e758dfb9177b5c5c0010302a08d56b2e865232d3c4190838038e",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -102,7 +102,7 @@
       }
     },
     "hero/carino-ranger-of-glory/first": {
-      "sha256": "1e98b766e5eb110174124d30cac432e6f63f00b8369abc8525cc1696ff10cd35",
+      "sha256": "067fe48065d6f1c0272f8d727663a444644929ea35eac66aef3693e553862d89",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 256297522.9949929,
@@ -112,7 +112,7 @@
       }
     },
     "hero/carino-ranger-of-glory/last": {
-      "sha256": "0680a6a8701e5cbd7391043c75787542df94d3700fff7273085a4fc34077899d",
+      "sha256": "e28af57d71724807b3e46822fedcad6e1f5f6a9572bc7b75180e019f0847b8ed",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 256297522.9949929,
@@ -122,7 +122,7 @@
       }
     },
     "hero/carino-lethal-flash/first": {
-      "sha256": "9a81d819295aa1f1fa7e3e37fb46a1c8e99c06a1df899108d4ad740f021e2ffe",
+      "sha256": "dba60cb3bc2ab22115c77d1ec0f103033fe115f2168bba036cd66a6e4f867f24",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 343402802.68812335,
@@ -132,7 +132,7 @@
       }
     },
     "hero/carino-lethal-flash/last": {
-      "sha256": "b506e844a6d359489b0736c989fccfdcfd3f5380c257ec04ea6c9f61d6aeee6b",
+      "sha256": "a5f9346f114539542a33235e0d91a0f00e8ee64671fdf6e8184d6b90bea23a6d",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 343402802.68812335,
@@ -142,7 +142,7 @@
       }
     },
     "hero/carino-zealot-of-war/first": {
-      "sha256": "f7f299f8f886c4bbe69d58aa1c8df3401e9ad6f678b30c8207af49a0e43b96d9",
+      "sha256": "e0716800c840126b68347c3d739a5f5242d652e879f4e0419bf89ae610b23f04",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 239126703.1528848,
@@ -152,7 +152,7 @@
       }
     },
     "hero/carino-zealot-of-war/last": {
-      "sha256": "f3b24c07eae92f8c20045ec35638d47d4233e6a561b63deec535037008ee1fa8",
+      "sha256": "aa17340e4f6546d3f54fc7960af51e3e854f71b7a7b3286e459e888c476b5aff",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 239126703.1528848,
@@ -162,7 +162,7 @@
       }
     },
     "hero/erika-wind-stalker/first": {
-      "sha256": "08a29a0a3cf53cf7f007836551494d565c1de4fa284cc80dc3288e7cff663450",
+      "sha256": "35213729305ea4a0bbd64492322ef18f5b8d775f24ba576c070130039cc9e554",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -172,7 +172,7 @@
       }
     },
     "hero/erika-wind-stalker/last": {
-      "sha256": "428c20fef720d73ca5eb8f511566d5c8ed1113010c33b23a20e3adafac99d9d8",
+      "sha256": "ab7e310ea8b15915e01a806f185983615d9987f57823ba90deb53473dd5136c4",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -182,7 +182,7 @@
       }
     },
     "hero/erika-lightning-shadow/first": {
-      "sha256": "3576da4186e108613ae29bdd34746a97729c64ab895d6622c6fe733d05fb5163",
+      "sha256": "f1f973db407ebdc0f4a4d2906b0f6f6a2aa124506eb2828eb1b4160e7331f3f1",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229087037.9229626,
@@ -192,7 +192,7 @@
       }
     },
     "hero/erika-lightning-shadow/last": {
-      "sha256": "a64569f752512aa6f940b81de561bd87b6dd4c8880a08a71ed2f7fda1bce72b2",
+      "sha256": "e6adf35ba88256e9a6c703367c727bcb40ab655896183102a250e976341f93a3",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229087037.9229626,
@@ -202,7 +202,7 @@
       }
     },
     "hero/erika-vendettas-sting/first": {
-      "sha256": "ac432211de7767a27ced46f66427c50b2c3f324c1006187e317bb5ecd13810a6",
+      "sha256": "4b754b1aaa351c70e180e12a2d13808179efe2515f2d7759dfa7d7d85ee961cc",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 140344547.5538108,
@@ -212,7 +212,7 @@
       }
     },
     "hero/erika-vendettas-sting/last": {
-      "sha256": "7187d98172bf4331b14a1b53f3607a63ab64fb2d95b0174dde7328d09c0f185a",
+      "sha256": "d978ed04c438bc64f9f41044a5d4f24e91c11a6670a3cdede73ca99874efa0e3",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 140344547.5538108,
@@ -222,7 +222,7 @@
       }
     },
     "hero/bing-blast-nova/first": {
-      "sha256": "30d6978c4f2a2181ddbdf7171e31be52b98b59e3bd17108142d5dbdcd51f5a1b",
+      "sha256": "ff10c58f69e5e17ced79b6cd13dfe495842da5590250366957305081424ebd7d",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -232,7 +232,7 @@
       }
     },
     "hero/bing-blast-nova/last": {
-      "sha256": "580096e3580e2f3f82cd95266ba0de04f0fdbc463a14cf9eb9fb7e60c8e60102",
+      "sha256": "740f8eefd9265e866fe3f87798ff740f63ccde6cf15703e9183c64ac9c6d269a",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -242,7 +242,7 @@
       }
     },
     "hero/bing-creative-genius/first": {
-      "sha256": "e617b8fc5f491659c6841500b5b183a73b3e928974e0948a366b48d1d1bf1f7a",
+      "sha256": "5c7049b9f1e8efcea0e28765f17195de9f578340e81f67e4ac1552d81e7fd0d1",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 249413486.26778403,
@@ -252,7 +252,7 @@
       }
     },
     "hero/bing-creative-genius/last": {
-      "sha256": "16a501bc42758c3aa1bf2ae78f0b9a710057a17e6d1b80c4f137130cc110ead2",
+      "sha256": "a714cecac84926ab722c3b34db8331167a255fda0a0ad8b43442af312f38b668",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 249413486.26778403,
@@ -262,7 +262,7 @@
       }
     },
     "hero/gemma-ice-fire-fusion/first": {
-      "sha256": "949e4c57e942e26a5150af1f43dccc0e16455564331774640d2bdc6e72caef2b",
+      "sha256": "b196c68f31b8d5da478c1dcbd47e09cf77fd288b2ae3f33ba430b93b9f27d2a2",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 274903004.4938323,
@@ -272,7 +272,7 @@
       }
     },
     "hero/gemma-ice-fire-fusion/last": {
-      "sha256": "c932b57a60f8fc2c84bcd7ebfe69d126e006950bc6e73d2ea994b7a3d0758156",
+      "sha256": "a5646c632ce5f7f4fc13841da9247a91bcf03389d3f41fd0616d2fd3931ccc42",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 274903004.4938323,
@@ -282,7 +282,7 @@
       }
     },
     "hero/gemma-frostbitten-heart/first": {
-      "sha256": "ee30118911a1ac0a59ffab1b1a362cac9d087c2927e7cff08bf2f5c17b46839c",
+      "sha256": "799195742f00991863ea8fca60f1b53f9012c5fce54d593dd8e65f99e9bfa6be",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 274903004.49383247,
@@ -292,7 +292,7 @@
       }
     },
     "hero/gemma-frostbitten-heart/last": {
-      "sha256": "fbdee5d0f2b2cf5a7aaf4b8515c568e5c27c0683c33f9ae07e5ee949fec6eb15",
+      "sha256": "f8c6a0c6dbb4cf0b31d451c6a47823b7ce8f607d3c99c9849892a15df825ca0f",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 274903004.49383247,
@@ -302,7 +302,7 @@
       }
     },
     "hero/gemma-flame-of-pleasure/first": {
-      "sha256": "3cd8bbdfe4b2f8663e69cd774106447d24c2a3f590ac01913a4399cec9d54883",
+      "sha256": "f73ca5d2379b75c86de5e35c8d822567489ab21c4f445b71e50bae95cea20708",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 332176021.5141698,
@@ -312,7 +312,7 @@
       }
     },
     "hero/gemma-flame-of-pleasure/last": {
-      "sha256": "86d9ef913388e7466f1decb0509bba5739432d45ae499cd3a1063ea641b8b09a",
+      "sha256": "e7fadfc5f8d2aefa1a68ffe3cb585a1c2026b822fdfb355be43dadf4bf4da655",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 332176021.5141698,
@@ -322,7 +322,7 @@
       }
     },
     "hero/thea-wisdom-of-the-gods/first": {
-      "sha256": "66068be0f1f339b389550bc1c471162311ea332dc2b617ec83e80cbf0d9b068a",
+      "sha256": "0a985a9654b5a10b1a0accaceb029402babf082e370ebb6565f32cb18226a5cc",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 274903302.8104528,
@@ -332,7 +332,7 @@
       }
     },
     "hero/thea-wisdom-of-the-gods/last": {
-      "sha256": "df91664cb89e41ac31eae6248414a05c53720d5d263894cac5d3e05785feb4d0",
+      "sha256": "0cef7ad3a780c6bdc11c7ecceea09b43e3a5e02e944cc01e6f5c2fc252f1455b",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 274903302.8104528,
@@ -342,7 +342,7 @@
       }
     },
     "hero/thea-incarnation-of-the-gods/first": {
-      "sha256": "966bbdc5bfe1039e307a7093eca5be0b5614181ad60baf0cfa5bb7ac956b5748",
+      "sha256": "8b5f1cea08df14eeb4ab672da969af0bc9ecf7ee8c128c3edfb8fe7a72b640fe",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 284066223.1147822,
@@ -352,7 +352,7 @@
       }
     },
     "hero/thea-incarnation-of-the-gods/last": {
-      "sha256": "ca20d1cd92c1d5d83b36e2f33fb5cb5585605188acce094aea5cce12c5e5546d",
+      "sha256": "3f459da3449e28776dccbb58c635d3eb1d6341d0b5f658d5370bd5c670af7161",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 284066223.1147822,
@@ -362,7 +362,7 @@
       }
     },
     "hero/thea-blasphemer/first": {
-      "sha256": "40bf06e9cf8421e3d2609822e6ff51065452983d532feca6e1ee7b0f7a8ac27a",
+      "sha256": "60d3f07926fe0293e416f2c24b9c00adc127cd85a04c2df30999df529c6a2f61",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 210760474.14718252,
@@ -372,7 +372,7 @@
       }
     },
     "hero/thea-blasphemer/last": {
-      "sha256": "b2f83490d0aee113d1c8a8cc760404d4991482abf8ba66a05871cfb5eb654b50",
+      "sha256": "8ec15cc78d47873b5beff95bc0080e4caead202d1269690b83737489c56ef26b",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 210760474.14718252,
@@ -382,7 +382,7 @@
       }
     },
     "hero/youga-spacetime-illusion/first": {
-      "sha256": "41daf52fc0b7efe7427b443b1f39dc022d1fb654919e672f878d965a6f086610",
+      "sha256": "6346696e4f9fdc9e7b54b42658e6d946fdf652915240ead528e65f19a72842d9",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 256189011.22735015,
@@ -392,7 +392,7 @@
       }
     },
     "hero/youga-spacetime-illusion/last": {
-      "sha256": "46ca00190d03958c19dfc7fed723b6341fa8ec2520c6caa83ccf6a679678bec8",
+      "sha256": "3fa6aaca63f2ff6f2ca4ec8d79acdc90674ff24988c805bb3f8bdc16c4203758",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 256189011.22735015,
@@ -402,7 +402,7 @@
       }
     },
     "hero/youga-spacetime-elapse/first": {
-      "sha256": "5e97c80efb92ea9c643a707598437a69731618c7068f93c77d04450aa0c0bae1",
+      "sha256": "f66eb2e1cdaa5de7ce3a940ae73f3ae8a469f5e53f7d866f805bbcd6f57eae72",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -412,7 +412,7 @@
       }
     },
     "hero/youga-spacetime-elapse/last": {
-      "sha256": "5867b1e402c0da1dc1b0ec0b550b26c6870fdeee50634098b2f3af112c00ae28",
+      "sha256": "fbaf624c86e6cef680ce004fdba434c40291f119cd657d0ddfd21b9652c25dae",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -422,7 +422,7 @@
       }
     },
     "hero/youga-the-ultimate-one/first": {
-      "sha256": "87a71f8b193644fb3718437089bc50639cd13a59db3c9b5ebd582b6ada95a997",
+      "sha256": "410e747b36b04c6016c8ded6c90c59dbe8a0b992c5f56e3e709a1cf4a16ca5f1",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 2944776501.102141,
@@ -432,7 +432,7 @@
       }
     },
     "hero/youga-the-ultimate-one/last": {
-      "sha256": "dcbbdbc56ebf1564b4ee2354730066d1abfa1326a2ed47d6fbf462ca80f1a48b",
+      "sha256": "b19760d8dd2eb40133f63561c6f7408769b7f295ebbe6aa93d6d60b7848ae477",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 1842920503.9263644,
@@ -442,7 +442,7 @@
       }
     },
     "hero/moto-order-calling/first": {
-      "sha256": "587f838543dd1551793ff9e0653ca878f846e7c920d0f96465be12986ee95a7b",
+      "sha256": "e57b26670ec87c220f510b94b5db14cde7feac1e427660a7a13e487603c039c7",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229090778.90828282,
@@ -452,7 +452,7 @@
       }
     },
     "hero/moto-order-calling/last": {
-      "sha256": "e469a834ce8b5abde307bdee0dc7f2dc33169e775552946461f1f5f5e3ac4b72",
+      "sha256": "35bf2823b06637deddff1bf702725864a8d083f7e0b78602a5de68e027969bac",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229090778.90828282,
@@ -462,7 +462,7 @@
       }
     },
     "hero/moto-charge-calling/first": {
-      "sha256": "72011680797d71522b494a0f71ab7d8727a5cc62bbfbd6f4a9d24cdf127a29fd",
+      "sha256": "ad476050c6399c3407d8e9d3adb24015f6ea509041895020c1ff484ddd470a2a",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -472,7 +472,7 @@
       }
     },
     "hero/moto-charge-calling/last": {
-      "sha256": "45a9bbded988d8537277385e0e86d0b59b97a885e2106897cf163eaf7f11f175",
+      "sha256": "985922e97425072c5990b6cabd40c680aef66b6e8d1d2c0abca541f67748522f",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -482,7 +482,7 @@
       }
     },
     "hero/iris-growing-breeze/first": {
-      "sha256": "d322dc266253a2e1fe9ef4357bbf47e89b69d25f66ae213c33cab3c84d451127",
+      "sha256": "95c9710b0dbbfbdb73a781f4d2c1c734acb60909bc9564108768de8a32f018b9",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229089977.88801312,
@@ -492,7 +492,7 @@
       }
     },
     "hero/iris-growing-breeze/last": {
-      "sha256": "be611935e5b9cb141b05dc0a1513c4b058f1e1d387b334431585aa970b5cc84d",
+      "sha256": "51e701470535dcc7ccd6204db638b742c068878ec626cfe6b479ebf4c7e37fca",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229089977.88801312,
@@ -502,7 +502,7 @@
       }
     },
     "hero/iris-vigilant-breeze/first": {
-      "sha256": "7ef46a9ef60febed01c615b5df35d4698ecb96461f7409812a3c28c357d8e845",
+      "sha256": "1fb95ea0ad327f5deb7c049cca8503b98cd8846b8857c2fc3ef787b7b8dcebd1",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229094057.1966413,
@@ -512,7 +512,7 @@
       }
     },
     "hero/iris-vigilant-breeze/last": {
-      "sha256": "e097afb20855afe5d894dd7ac2b2c89e77e3afdba9e015af670ccaa2eeed45e8",
+      "sha256": "4b1d7b1f608e9da88abad1bf9c87bcbd7b476faa7e5cdd6dcc80c4b6751cd840",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229094057.1966413,
@@ -522,7 +522,7 @@
       }
     },
     "hero/rosa-high-court-chariot/first": {
-      "sha256": "b0144a91cf9e939302db91d5cec72e59e1cb9a345947987357ff849b2dbc9c8b",
+      "sha256": "111fd6690a8af8d94325f0837ab5412e22939554b1e1a82bdb7b58817a8a90e2",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 274903004.49383247,
@@ -532,7 +532,7 @@
       }
     },
     "hero/rosa-high-court-chariot/last": {
-      "sha256": "583234dbbd312396e6d42fe900c183a1ebb4a6b755a90dd45195c54e7b433c11",
+      "sha256": "03f6ffd8b36d304632fc07761937e8eb10fff98ce0309b09ea8ace5aba889f48",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 274903004.49383247,
@@ -542,7 +542,7 @@
       }
     },
     "hero/rosa-unsullied-blade/first": {
-      "sha256": "4d648b750b3c41bf73a28239c58c176157f80e0fbf34ed7e8758672c29e5863d",
+      "sha256": "ba6dba5c6d134ddcb5ae968497250127eae5ef5ea335bf3eeeeaca1ac930ffd7",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -552,7 +552,7 @@
       }
     },
     "hero/rosa-unsullied-blade/last": {
-      "sha256": "821626173b7f3e787678b3be92cbf58713a691051d3737d74a848ab3c6090dbe",
+      "sha256": "e14608dc0e5f52f018bad3091c765a37d9d7b734b1879b88334c6c3e9689cbfe",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -562,7 +562,7 @@
       }
     },
     "hero/selena-sing-with-the-tide/first": {
-      "sha256": "0e0182e5d2bc6b6e6753e6bcaf4f6a53c41ad2e48173cd8e30eae3ce5b8ac76e",
+      "sha256": "ed604bd3bce8b929cef668fb261f62e39593db3d8f090cb91222c8aea687b6af",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 263448981.217645,
@@ -572,7 +572,7 @@
       }
     },
     "hero/selena-sing-with-the-tide/last": {
-      "sha256": "3bb1e783b57faa2275cbd2c310c7df91635006cb14cf5c95df528a7038bb1254",
+      "sha256": "42e525eed861fc8afe3b22111b7ec311af372407790e0487fee5afcb408f14b4",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 263448981.217645,
@@ -582,7 +582,7 @@
       }
     },
     "hero/selena-dance-of-the-deep/first": {
-      "sha256": "c8feac6c3968289593f2e667cb236a9e4a18632ebc54be5f4477ae39ec0eac59",
+      "sha256": "7d7ef7470d810709e144e5a7c714e42e363f9c95a9f0e2a1ab5dbab73854d1c5",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -592,7 +592,7 @@
       }
     },
     "hero/selena-dance-of-the-deep/last": {
-      "sha256": "6d308d732aa5aa60266f82e053eff1199dfd1b431f32667ec55db765f0a17611",
+      "sha256": "b1e6b2e355545454378d7052afb16beeef69167169dc00ba486a3509f4677697",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -602,7 +602,7 @@
       }
     },
     "hero/sage-licorice-note/first": {
-      "sha256": "d26f2d22437df0bcb78dbcbfcece68aeb7d6b5bc179436d148a951581d3920ad",
+      "sha256": "6361cb77ac2e8fb5d4e42f19db04c61b87c570308be4c6f5d8d324893ddad3d3",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -612,7 +612,7 @@
       }
     },
     "hero/sage-licorice-note/last": {
-      "sha256": "cc2fcaadeb460cfe1ef36abc4cdfdcfd9808c12a3c03d16d45d6b44583e4c7b0",
+      "sha256": "a5677ca67ea930598536422903d47ba7cd75d8006ad2612fa87de265500b83b5",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,

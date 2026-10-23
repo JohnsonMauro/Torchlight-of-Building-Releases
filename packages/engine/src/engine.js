@@ -456,21 +456,12 @@ export function calculateAvailableEnergy(items, disabledSlots = [], nonEquipment
   };
 }
 
-export function energyCostForSupportSlots(role, enabledSupportSlots, profile) {
-  const costs = role === "aura" ? profile.passiveSlotCosts : profile.activeSlotCosts;
-  if (!Number.isInteger(enabledSupportSlots) || enabledSupportSlots < 0 || enabledSupportSlots > costs.length)
-    throw new RangeError("enabledSupportSlots is outside the captured Energy table");
-  if (enabledSupportSlots === 0) return 0;
-  return costs.slice(0, enabledSupportSlots).reduce((sum, value) => sum + value, 0);
-}
-
-export function applyCapturedEnergyCosts(setups, profile) {
-  return setups.map((setup, index) => ({
-    ...setup,
-    enabledSupportSlots: profile.enabledSupportSlotsBySetup[index],
-    energyCost: energyCostForSupportSlots(setup.role, profile.enabledSupportSlotsBySetup[index], profile),
-  }));
-}
+// The Energy each support slot of a skill costs, slot by slot, for an active skill and for a passive skill (Aura), as the
+// in-game skill panel showed it (observed 2026-09-01).
+export const SUPPORT_SLOT_ENERGY = Object.freeze({
+  activeSlotCosts: Object.freeze([0, 10, 15, 50, 100]),
+  passiveSlotCosts: Object.freeze([10, 10, 15, 50, 100]),
+});
 
 export function calculateAuraReservation({
   baseSealedPercent,
@@ -513,7 +504,7 @@ export function calculateAuraReservation({
 export function energyCostForSupportPositions(role, occupiedSlots, profile) {
   const costs = role === "aura" ? profile.passiveSlotCosts : profile.activeSlotCosts;
   if (!Array.isArray(occupiedSlots) || occupiedSlots.length > costs.length)
-    throw new RangeError("occupiedSlots is outside the captured Energy table");
+    throw new RangeError("occupiedSlots is outside the support slot Energy table");
   return occupiedSlots.reduce((sum, occupied, index) => sum + (occupied ? costs[index] : 0), 0);
 }
 

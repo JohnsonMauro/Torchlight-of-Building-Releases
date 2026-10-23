@@ -96,6 +96,7 @@ import {
   characterLevelEnergy,
   allocateSkillEnergy,
   energyCostForSupportPositions,
+  SUPPORT_SLOT_ENERGY,
   skillLevelDamageMultiplier,
   effectiveGearModifierTexts,
 } from "./engine.js";
@@ -1956,8 +1957,8 @@ function calculatePlannerOnce(
         });
     }
   }
-  const profile = capturedSkills.energyProfile;
-  const setupSources = [...capturedSkills.setups, ...(state.skills.customSetups || [])];
+  const profile = SUPPORT_SLOT_ENERGY;
+  const setupSources = state.skills.customSetups || [];
   const catalogSkillsByName = new Map(tlidbSkillCatalog.map((entry) => [entry.name, entry]));
   const catalogSupportsByName = new Map(tlidbSupportCatalog.map((entry) => [entry.name, entry]));
   // Supports item lines grant to the Main Skill (packages/engine/src/gear/gear-unique-modules.js; gear-pact batch chunk 4): "The Main Skill is
@@ -2025,7 +2026,7 @@ function calculatePlannerOnce(
   // A setup's supports from the stored state (saved setup supports, customSupports, supportOrder, levels, configs, enabled flags
   // under the setup's key) with the occupied support sockets. Shared by the board setups and the trait-granted skills
   // (packages/engine/src/heroes/trait-board-grants.js: Youga's trait skills take supports under their own key `trait:<skill>`, 2026-10-15 user answer).
-  function resolveSetupSupports(setup, setupKey, ownSupports, grants = [], capturedSlotFallback = null) {
+  function resolveSetupSupports(setup, setupKey, ownSupports, grants = []) {
     const supports = [
       ...ownSupports.filter((support) => !grants.some((grant) => grant.name === support.name)),
       ...grants.map((grant) => ({
@@ -2121,15 +2122,11 @@ function calculatePlannerOnce(
         if (enabledNames.delete(name)) occupiedSlots[slot] = true;
       });
     } else {
-      const capturedSlots = Math.max(
-        0,
-        Math.min(5, capturedSlotFallback ?? setup.enabledSupportSlots ?? enabledSupports.length),
-      );
-      occupiedSlots.fill(true, 0, capturedSlots);
+      occupiedSlots.fill(true, 0, Math.max(0, Math.min(5, setup.enabledSupportSlots ?? enabledSupports.length)));
     }
     return { supports, occupiedSlots };
   }
-  const setups = setupSources.map((savedSetup, index) => {
+  const setups = setupSources.map((savedSetup) => {
     const setup = { ...(catalogSkillsByName.get(savedSetup.name) || {}), ...savedSetup };
     const setupKey = setup.instanceId || setup.name;
     const levels = state.skills.skillLevels[setupKey] || {};
@@ -2144,13 +2141,7 @@ function calculatePlannerOnce(
               !ownSupports.some((support) => support.name === grant.name && (support.level ?? 1) >= grant.level),
           )
         : [];
-    const { supports, occupiedSlots } = resolveSetupSupports(
-      setup,
-      setupKey,
-      ownSupports,
-      grants,
-      profile.enabledSupportSlotsBySetup[index],
-    );
+    const { supports, occupiedSlots } = resolveSetupSupports(setup, setupKey, ownSupports, grants);
     const slots = occupiedSlots.filter(Boolean).length;
     const baseLevel = clampBaseLevel(levels.baseLevel ?? setup.baseLevel);
     // Minion / Synthetic Troop / Spirit Magus Skill Level (talent batch chunk 4; open question Q9, provisional): read as the

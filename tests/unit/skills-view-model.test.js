@@ -8,7 +8,6 @@ import { calculatePlanner } from "../../packages/engine/src/planner.js";
 import { defaultPlannerState } from "../../packages/engine/src/state/planner-state.ts";
 import { switchHeroLoadout } from "../../packages/engine/src/heroes/hero-loadouts.js";
 import { skillsView } from "../../src/app/bridge/skills-view-model.ts";
-import { selenaCompleteSkillLoadout } from "../../packages/engine/data/skills/selena-complete-skill-loadout.js";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
@@ -109,10 +108,8 @@ test("the Energy sources leave out a gear slot that is switched off", () => {
 });
 
 test("empty rows are named by tab and row, and their sockets wait for a skill", () => {
-  const state = structuredClone(defaultPlannerState);
-  // What "Reset Skills" leaves (src/app/planner/session.js emptyPlannerState does the same): every captured setup off.
-  state.skills.setupEnabled = Object.fromEntries(selenaCompleteSkillLoadout.setups.map((setup) => [setup.name, false]));
-  const result = calculatePlanner(state);
+  // A build without skills (what "Reset Skills" leaves).
+  const result = calculatePlanner(structuredClone(defaultPlannerState));
   const skills = view(result);
   assert.deepEqual(
     skills.rows.map((row) => [row.skill, row.emptyName, row.label]),
