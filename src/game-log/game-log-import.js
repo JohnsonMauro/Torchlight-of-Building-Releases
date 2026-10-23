@@ -1888,7 +1888,11 @@ function resolveCraftedSlate({ entry, item, position, baseName, idMap, report, s
       "notes",
       `${label}: the planner draws this god's ${["Z", "L", "O", "T"][shapeInfo.plannerIndex]} shape as the mirror image of the game's ${shapeInfo.code}, so it is placed flipped`,
     );
-  const anchor = offsets?.[anchorCell(shapeInfo.cells)];
+  // The cell the game's Index names: the table's `anchor` where the shape has one, else the anchor rule.
+  const anchorIndex = shapeInfo.anchor
+    ? shapeInfo.cells.findIndex(([column, row]) => column === shapeInfo.anchor[0] && row === shapeInfo.anchor[1])
+    : anchorCell(shapeInfo.cells);
+  const anchor = offsets?.[anchorIndex];
   const placement = anchor && {
     column: Math.floor(Number(entry.Index) / 10) - anchor[0],
     row: (Number(entry.Index) % 10) - anchor[1],

@@ -1,20 +1,24 @@
 // Crafted Divinity Slate shapes for "Import from game" (research/slate-shape-import-2026-10-19.md).
 //
 // A god's crafted slate logs ShapeId 10XY. X is the shape in the order TLIDB lists each god's six slates, by their item
-// icons UI_TalantNG_<code>_0_Icon: Z1, Z2, L1, L2, O1, T1; Y differs by god (1 on Goddess of Deception's, 2 on Goddess
-// of Knowledge's) and leaves the shape as it is. The game only rotates a slate (Direction = quarter turns,
+// icons UI_TalantNG_<code>_0_Icon: Z1, Z2, L1, L2, O1, T1; Y differs by god (0 on Goddess of Hunting's, 1 on Goddess
+// of Deception's, 2 on Goddess of Knowledge's) and leaves the shape as it is. The game only rotates a slate (Direction = quarter turns,
 // clockwise on screen); it never mirrors one, so Z2 and L2 are shapes of their own, the mirror images of Z1 and L1.
 // Direction 0 is the item icon's orientation. A missing Direction is read as 0.
 //
 // Each entry holds the shape at Direction 2 (the icon turned half way round), which is the orientation the importer
 // treats as unrotated since the 2026-10-12 legendary calibration: game Direction d turns it by ((d + 2) mod 4) x 90
 // degrees clockwise. The cells are listed in reading order, so the importer's anchor rule (the first cell with the most
-// neighbours) picks the cell the game's Index names.
+// neighbours) picks the cell the game's Index names; `anchor` names that cell where the rule picks another (Z2, the
+// mirror of Z1, is anchored on the mirror of Z1's cell).
 //
 // Confirmed on the user's board (2026-10-19 log: four crafted Goddess of Deception slates and Pedigree of Gods cover 23
 // of the 24 cells in exactly one legal way): 1011 Z1, 1041 L2, 1061 T1. 1021 Z2, 1031 L1 and 1051 O1 follow TLIDB's
 // order and the same anchor rule (provisional). Goddess of Knowledge (2026-10-22 log: two crafted slates, three A Corner
 // of Divinity and Pedigree of Gods; of the 36 readings of 1012 and 1042 only one places every slate): 1012 Z1, 1042 L2.
+// A Bing login (2026-10-23 log and the owner's screenshot of its board: Goddess of Hunting's 1010 at cell 33 and Goddess
+// of Deception's 1021 at cell 34, both direction 1, beside A Corner of Divinity and Fallen Starlight): 1010 Z1 with the
+// rule's anchor; 1021 Z2 in the shape below, anchored on [1, 1] (the rule's [0, 1] puts it a column off the game's cells).
 //
 // plannerIndex is the planner's crafted shape key <god>-<index> (Z1, L1, O1, T1 in slateShapeCodes). The planner has no
 // Z2 / L2 keys: they use the Z / L key, flipped.
@@ -39,7 +43,8 @@ export const CRAFTED_SLATE_SHAPES = {
       [1, 1],
       [0, 2],
     ],
-    confirmed: false,
+    anchor: [1, 1],
+    confirmed: true,
   },
   1031: {
     code: "L1",
@@ -82,6 +87,17 @@ export const CRAFTED_SLATE_SHAPES = {
       [0, 1],
       [1, 1],
       [2, 1],
+    ],
+    confirmed: true,
+  },
+  1010: {
+    code: "Z1",
+    plannerIndex: 0,
+    cells: [
+      [0, 0],
+      [0, 1],
+      [1, 1],
+      [1, 2],
     ],
     confirmed: true,
   },
