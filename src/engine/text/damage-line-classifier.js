@@ -1,3 +1,4 @@
+import { readOnce } from "./read-once.js";
 import { normalizePercentageText } from "./percentage-text.js";
 import { collectNormalizedGearModifiers, aggregateSlateEffects } from "../engine.js";
 import { parseTalentEffects } from "../candidate-sources.js";
@@ -141,7 +142,8 @@ function parseScope(phrase) {
 // { kind: "damage", value, layer: "increased" | "additional", flow: "any" | "hit" | "dot", damageTypes, skillTags, ailments, minion }
 // { kind: "penetration", value, damageTypes, minion }
 // null when the text is not one of these templates (conditional lines, other mechanics).
-export function classifyDamageLine(text) {
+export const classifyDamageLine = readOnce(readClassifyDamageLine);
+function readClassifyDamageLine(text) {
   let clean = normalizePercentageText(String(text || ""))
     .replace(/\s+/g, " ")
     .replace(/^\+ (?=\d)/, "+")

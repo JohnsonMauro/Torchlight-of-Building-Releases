@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "./percentage-text.js";
+import { normalizePercentageText, cleanGameText } from "./percentage-text.js";
 import {
   collectAilmentTypedSources,
   collectDamagingAilmentChance,
@@ -244,9 +244,7 @@ export function engineLineStatus(text, planner = context) {
 
 /** A Regain enabler line's status (src/engine/defense/regain-model.js), or null when the text is not one. */
 export function regainEnablerStatus(text, planner = context) {
-  const clean = normalizePercentageText(String(text || ""))
-    .replace(/\s+/g, " ")
-    .trim();
+  const clean = cleanGameText(String(text || ""));
   const kind = REGAIN_ENABLERS.find((item) => new RegExp(item.pattern.source.replace(/^\^/, ""), "i").test(clean));
   if (!kind) return null;
   const regain = planner?.lineEffects?.combat?.regain;
@@ -915,10 +913,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   // Youga / Homing Frost Bolt audit (2026-10-18; research/youga-homing-frost-bolt-audit-2026-10-18.md): badges that read
   // Not modeled or No DPS effect while the planner applied them (or could not apply them for a reason it knows).
   if (planner?.activation) {
-    const clean = (value) =>
-      normalizePercentageText(String(value ?? ""))
-        .replace(/\s+/g, " ")
-        .trim();
+    const clean = (value) => cleanGameText(String(value ?? ""));
     // Gale-type conversion (src/engine/skills/skill-hit-model.js projectileSpeedState) and the "+X% Projectile Speed" lines it converts.
     const speedHits = (planner.skillHits || []).filter((hit) => hit.modeled && hit.projectileSpeed?.lines?.length);
     if (
@@ -1129,7 +1124,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   // modeled hit's component takes the line (per damage type); a Min line no modeled hit takes is Inactive.
   const minMaxParts = splitHitLineText(text)
     .map((part) => ({
-      part: normalizePercentageText(String(part)).replace(/\s+/g, " ").trim(),
+      part: cleanGameText(String(part)),
       parsed: classifyHitLine(part),
     }))
     .filter((item) => item.parsed && (item.parsed.kind === "minDamage" || item.parsed.kind === "maxDamage"));
@@ -1139,7 +1134,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
       hits.some((hit) =>
         (hit.components || []).some((component) =>
           [...(component.minOnly || []), ...(component.maxOnly || [])].some(
-            (line) => normalizePercentageText(String(line.text)).replace(/\s+/g, " ").trim() === part,
+            (line) => cleanGameText(String(line.text)) === part,
           ),
         ),
       ),
@@ -1157,7 +1152,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   // takes it (per damage type), Inactive otherwise.
   const minionRoll = planner?.activation ? classifyMinionLine(text) : null;
   if (minionRoll && (minionRoll.kind === "maxDamage" || minionRoll.kind === "minDamage")) {
-    const cleanText = (value) => normalizePercentageText(String(value)).replace(/\s+/g, " ").trim();
+    const cleanText = (value) => cleanGameText(String(value));
     const took = (planner.minions || []).some(
       (minion) =>
         minion.modeled &&
@@ -1188,7 +1183,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
       "multistrikeIncrementAdditional",
     ].includes(minionRoll.kind)
   ) {
-    const cleanText = (value) => normalizePercentageText(String(value)).replace(/\s+/g, " ").trim();
+    const cleanText = (value) => cleanGameText(String(value));
     const minions = (planner.minions || []).filter((minion) => minion.modeled);
     const listed = (keys) =>
       minions.some((minion) =>
@@ -1361,9 +1356,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     const mark = planner.mark;
     if (!mark?.active) return "Inactive";
     if (markKind === "source") return "In calc";
-    const effect = (mark.effects || []).find(
-      (line) => normalizePercentageText(String(line.text)).replace(/\s+/g, " ").trim() === text,
-    );
+    const effect = (mark.effects || []).find((line) => cleanGameText(String(line.text)) === text);
     return !effect || effect.active ? "In calc" : "Inactive";
   }
   // Pure Heart (Azure Gunslinger; src/engine/pacts/pure-heart.js): reasons in planner.pureHeart.lines.
@@ -1488,12 +1481,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
       (entry) =>
         planner.activation.activeNames?.has(entry.name) &&
         (entry.sealedManaCompensation?.sources || []).some(
-          (source) =>
-            source.tag &&
-            normalizePercentageText(String(source.text))
-              .replace(/\s+/g, " ")
-              .trim()
-              .replace(/^\[[^\]]+\]\s*/, "") === text,
+          (source) => source.tag && cleanGameText(String(source.text)).replace(/^\[[^\]]+\]\s*/, "") === text,
         ),
     );
     if (took) return "In calc";
@@ -2110,15 +2098,12 @@ function resolveOnTheSpot(text, planner) {
   const state = planner?.lineEffects?.state;
   if (!state) return null;
   const result = resolveLineEffects([{ text, source: "coverage", origin: "talent", multiplier: 1 }], { ...state });
-  return (
-    result.lines.find((entry) => entry.text === normalizePercentageText(String(text)).replace(/\s+/g, " ").trim()) ||
-    null
-  );
+  return result.lines.find((entry) => entry.text === cleanGameText(String(text))) || null;
 }
 
 /** A hero trait line's status from its hero's module (src/engine/heroes/hero-trait-modules.js), or null when no module reads it. */
 export function heroModuleLineStatus(heroId, text, planner = context) {
-  const module = heroModuleFor(heroId, normalizePercentageText(String(text)).replace(/\s+/g, " ").trim());
+  const module = heroModuleFor(heroId, cleanGameText(String(text)));
   if (!module) return null;
   if (module.status === "Not modeled" || !planner?.lineEffects?.state)
     return module.status === "Not modeled" ? "Not modeled" : "Partly modeled";

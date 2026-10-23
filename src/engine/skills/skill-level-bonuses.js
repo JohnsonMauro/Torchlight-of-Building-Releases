@@ -1,3 +1,4 @@
+import { readOnce } from "../text/read-once.js";
 import { ACTIVE_SLOT_MAGUS_LEVEL_NOTE } from "./magus-active-slot.js";
 
 const levelPattern =
@@ -9,10 +10,10 @@ const levelPattern =
 const takesActiveLevels = (skill) =>
   (skill.role !== "aura" && skill.role !== "support") || skill.activeSlotMagus === true;
 
-function matchingBonusDetail(text, skill) {
-  const tags = new Set((skill.tags || []).map((tag) => tag.toLowerCase()));
-  let total = 0,
-    activeSlot = 0;
+// The skill-level grants a line holds, read once: each one's levels and its category words ("+1 Spell Projectile Skill Level"
+// → 1, ["spell", "projectile"]). A level named as a scaling unit or under a condition grants none and is left out.
+const readLevelGrants = readOnce((text) => {
+  const grants = [];
   for (const match of String(text || "").matchAll(levelPattern)) {
     const suffix = String(text).slice(match.index + match[0].length);
     if (/^\s+(?:for each|for every|when|while|if|per)\b/i.test(suffix)) continue;
@@ -20,10 +21,19 @@ function matchingBonusDetail(text, skill) {
     const prefix = String(text).slice(0, match.index);
     if (/(?:for each|for every|per)\s*$/i.test(prefix)) continue;
     const category = match[2].toLowerCase();
+    grants.push({ levels: Number(match[1]), category, words: category.split(/\s+/) });
+  }
+  return grants;
+});
+
+function matchingBonusDetail(text, skill) {
+  const tags = new Set((skill.tags || []).map((tag) => tag.toLowerCase()));
+  let total = 0,
+    activeSlot = 0;
+  for (const { levels, category, words } of readLevelGrants(text)) {
     // A compound category names every tag the skill needs ("+1 Spell Projectile Skill Level", "+2 Attack Projectile Skill
     // Level": Spell and Projectile skills); a multi-word tag ("Spirit Magus", "Synthetic Troop") matches whole first.
     // Before 2026-10-18 a compound category matched no skill (On the Sublime's line read Inactive on Homing Frost Bolt).
-    const words = category.split(/\s+/);
     const tagged = tags.has(category) || (words.length > 1 && words.every((word) => tags.has(word)));
     // "+N <tag> Active Skill Level": the Active part is the role, the other words are tags the skill needs. Each match counts
     // once, so a line is never added twice through two categories.
@@ -40,8 +50,8 @@ function matchingBonusDetail(text, skill) {
       (category === "main" && skill.role === "main") ||
       tagged;
     if (!applies) continue;
-    total += Number(match[1]);
-    if (activeLine && !tagged && skill.role === "aura") activeSlot += Number(match[1]);
+    total += levels;
+    if (activeLine && !tagged && skill.role === "aura") activeSlot += levels;
   }
   return { total, activeSlot };
 }
@@ -56,7 +66,8 @@ export function skillLevelLineApplies(text, skill) {
 // Inverse; gear uniques round 2): N levels per empty slot of that kind. The empty slots come from the planner's skill board (5 skill
 // slots, 4 Aura slots read as the Passive Skill slots: provisional), `sources.emptySkillSlots`.
 const EMPTY_SLOT_LEVEL = /^\+(\d+) (Main|Passive|Active) Skill Levels? for each empty (Passive|Active) Skill Slot$/i;
-export function emptySlotLevelLine(text) {
+export const emptySlotLevelLine = readOnce(readEmptySlotLevelLine);
+function readEmptySlotLevelLine(text) {
   const match = String(text || "")
     .replace(/\s+/g, " ")
     .trim()

@@ -4,7 +4,7 @@ import { parseBlockModifier } from "../../engine/defense/block-model.js";
 import { namedGearAffixLines } from "../../engine/text/named-gear-affixes.js";
 import { collectNormalizedGearModifiers } from "../../engine/engine.js";
 import { parseReapingSource } from "../../engine/ailments/reaping-sources.js";
-import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+import { normalizePercentageText, cleanGameText } from "../../engine/text/percentage-text.js";
 import { auraGainedLineStatus } from "../../engine/skills/aura-gained-effects.js";
 import { allHeroTraitsSs13 } from "../../data/heroes/all-hero-traits-ss13.generated.js";
 import { baseTraitDescriptionForLevel, endsArtificialMoonSection } from "../../engine/heroes/hero-memory-rules.js";
@@ -382,10 +382,7 @@ export function prismAffixCoverageReason(prism, kind) {
 // level 5 (src/engine/heroes/hero-memory-model.js heroMemories.artificialMoon / artificialMoonGate; src/engine/character-stats.js
 // heroTraitStatLines drops them otherwise), for every hero. A badge receives one line, so the moon section is looked up in
 // the base trait's catalog and per-level texts (progression "( a / b / c )" lists match any listed or substituted value).
-const squash = (text) =>
-  normalizePercentageText(String(text || ""))
-    .replace(/\s+/g, " ")
-    .trim();
+const squash = (text) => cleanGameText(String(text || ""));
 const moonLinePatterns = new Map();
 function artificialMoonPatterns(heroId) {
   if (moonLinePatterns.has(heroId)) return moonLinePatterns.get(heroId);
@@ -630,9 +627,7 @@ export function heroTraitLineCoverage(heroId, traitName, line, selected) {
 // taken on the Tide, Wave Aria, Idyll stacks and Murmurs' Tide Effect, each In calc while its condition holds in the build.
 // Loud Song on its own is not modeled (the planner assumes Bard; Ceaseless Tide holds both).
 function selenaTideLineStatus(line, planner) {
-  const text = normalizePercentageText(String(line || ""))
-    .replace(/\s+/g, " ")
-    .trim();
+  const text = cleanGameText(String(line || ""));
   const conditions = planner?.conditions || null;
   // The Tide entries apply only with Selena (Sing with the Tide) selected (src/engine/theoretical-sources.js checks the hero id).
   const selena = !planner?.state?.hero || planner.state.hero.selectedHeroId === "selena-sing-with-the-tide";

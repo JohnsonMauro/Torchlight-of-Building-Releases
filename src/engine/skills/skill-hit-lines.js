@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { classifyDamageLine } from "../text/damage-line-classifier.js";
 import { dummyTarget, dummyTargetWord } from "../combat/dummy-target.js";
 import { gameDamageLayer } from "../text/affix-bucket.js";
@@ -34,9 +34,7 @@ const MIN_MAX_COMPOUND = new RegExp(
 
 /** One modifier text as the hit lines it holds: a compound Min / Max Damage line splits in two; anything else is itself. */
 export function splitHitLineText(text) {
-  const clean = normalizePercentageText(String(text || ""))
-    .replace(/\s+/g, " ")
-    .trim();
+  const clean = cleanGameText(String(text || ""));
   const match = clean.match(MIN_MAX_COMPOUND);
   return match ? [match[1], match[3]] : [text];
 }
@@ -117,9 +115,7 @@ function parseCondition(text, { targetCursed = false, enemyAilments = null, gene
  * @returns {null|{kind:"damage",layer,value,scope,condition}|{kind:"maxDamage",value,scope}|{kind:"minDamage",value,scope}|{kind:"taken",layer,value,scope}|{kind:"penetration",value,damageTypes}|{kind:"armourPenetration",value}|{kind:"added",min,max,type,to}|{kind:"castSpeed",value,additional}|{kind:"cooldownRecovery",value,additional}}
  */
 export function classifyHitLine(text, options = {}) {
-  const clean = normalizePercentageText(String(text || ""))
-    .replace(/\s+/g, " ")
-    .trim();
+  const clean = cleanGameText(String(text || ""));
   if (!clean) return null;
   let match = clean.match(ADDED_LINE);
   if (match) {

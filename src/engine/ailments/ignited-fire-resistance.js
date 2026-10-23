@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { MAX_RESISTANCE_DEFAULT_PERCENT } from "../game-attribute-defaults.js";
 
 // Sun's Embrace: "Additionally increases Ignited enemies' Fire Resistance by X%" (affix 11868477; research/residual-batch-2026-10-12.md
@@ -65,10 +65,7 @@ export function ignitedFireResistanceLines(modifierTexts = []) {
   const lines = [];
   for (const line of modifierTexts) {
     if (line.origin === "derived") continue;
-    const match = normalizePercentageText(String(line.text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim()
-      .match(IGNITED_FIRE_RESISTANCE_LINE);
+    const match = cleanGameText(String(line.text ?? "")).match(IGNITED_FIRE_RESISTANCE_LINE);
     if (match) lines.push({ source: line.source, text: line.text, value: Number(match[1]) * (line.multiplier ?? 1) });
   }
   return lines;

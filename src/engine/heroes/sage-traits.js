@@ -49,7 +49,7 @@
 // - Scent of Ambition: +30% additional Elixir Skill Effect for 4 s every 3 Elixir casts, time-averaged over every Elixir's casts.
 // - Everlasting Nectar: 180% of the increased Max Life and Max Mana bonuses (summed) becomes increased Elixir Skill Effect, up to +70%.
 
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { normalizePercentageText, cleanGameText } from "../text/percentage-text.js";
 import { resolveElixirs, BOTTLE_ADDITIONAL_EFFECT_LINE } from "../skills/elixir-model.js";
 import { ASSUMED_MOVEMENT_METERS_PER_SECOND } from "../combat/dummy-target.js";
 
@@ -211,9 +211,7 @@ const elixirLines = (modifierTexts) =>
     .filter((line) => line && line.origin !== "derived" && !line.lineEffect)
     .map((line) => ({
       ...line,
-      clean: normalizePercentageText(String(line.text ?? ""))
-        .replace(/\s+/g, " ")
-        .trim(),
+      clean: cleanGameText(String(line.text ?? "")),
     }));
 
 /**

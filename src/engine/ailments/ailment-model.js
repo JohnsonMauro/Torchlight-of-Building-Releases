@@ -1,3 +1,4 @@
+import { readOnce } from "../text/read-once.js";
 // Generic damaging-ailment model for Ignite, Trauma, and Wilt.
 //
 // Rules (TLIDB, 2026-10-08):
@@ -85,28 +86,13 @@ export function unscopeSkillAilmentLine(text) {
   return null;
 }
 
-// Classify every modifier line that is specific to one ailment or its damage type.
-// Lines that apply to all damage (generic increased/additional) come from the shared
-// ledger and are not repeated here.
-export function collectAilmentTypedSources(ailmentKey, modifierTexts = []) {
+const ailmentRules = new Map();
+// Each ailment's line rules, built once: [bucket, pattern, shape] in the order they are tried.
+function ailmentRulesFor(ailmentKey) {
+  if (ailmentRules.has(ailmentKey)) return ailmentRules.get(ailmentKey);
   const definition = ailmentDefinitions[ailmentKey];
   const A = escape(definition.name),
     T = escape(definition.damageType);
-  const result = {
-    base: [],
-    chance: [],
-    duration: [],
-    increased: [],
-    additional: [],
-    taken: [],
-    critOnlyAdditional: [],
-    perRecentCritAdditional: [],
-    perCritDamageAdditional: [],
-    stackLimit: [],
-    reapingDuration: [],
-    extraStacks: [],
-    unrecognized: [],
-  };
   const rules = [
     // "Base Ailment Damage" adds to every damaging ailment's base.
     [
@@ -160,27 +146,56 @@ export function collectAilmentTypedSources(ailmentKey, modifierTexts = []) {
     ["reapingDuration", new RegExp(`^\\+(\\d+(?:\\.\\d+)?)% ${A} Reaping Duration$`, "i")],
   ];
   if (definition.elemental) rules.push(["increased", /^\+(\d+(?:\.\d+)?)% Elemental Damage$/i]);
+  ailmentRules.set(ailmentKey, rules);
+  return rules;
+}
+
+// One line read for an ailment: the bucket it goes in and its numbers before the line's multiplier, or null.
+const readAilmentTypedLine = readOnce((ailmentKey, text) => {
+  for (const [bucket, pattern, shape] of ailmentRulesFor(ailmentKey)) {
+    const match = text.match(pattern);
+    if (match) return { bucket, shaped: shape ? shape(match) : { value: number(match[1]) } };
+  }
+  return null;
+});
+
+// Classify every modifier line that is specific to one ailment or its damage type.
+// Lines that apply to all damage (generic increased/additional) come from the shared
+// ledger and are not repeated here.
+export function collectAilmentTypedSources(ailmentKey, modifierTexts = []) {
+  const result = {
+    base: [],
+    chance: [],
+    duration: [],
+    increased: [],
+    additional: [],
+    taken: [],
+    critOnlyAdditional: [],
+    perRecentCritAdditional: [],
+    perCritDamageAdditional: [],
+    stackLimit: [],
+    reapingDuration: [],
+    extraStacks: [],
+    unrecognized: [],
+  };
   for (const line of modifierTexts) {
-    for (const [bucket, pattern, shape] of rules) {
-      const match = line.text.match(pattern);
-      if (!match) continue;
-      const shaped = shape ? shape(match) : { value: number(match[1]) };
-      const scale = (value) => value * (line.multiplier ?? 1);
-      const entry = {
-        ...shaped,
-        source: line.source,
-        text: line.text,
-        ...(line.scopedText ? { scopedText: line.scopedText } : {}),
-      };
-      if ("value" in entry && bucket !== "perCritDamageAdditional" && bucket !== "perRecentCritAdditional")
-        entry.value = scale(entry.value);
-      if (bucket === "base") {
-        entry.min = scale(entry.min);
-        entry.max = scale(entry.max);
-      }
-      result[bucket].push(entry);
-      break;
+    const reading = readAilmentTypedLine(ailmentKey, line.text);
+    if (!reading) continue;
+    const { bucket, shaped } = reading;
+    const scale = (value) => value * (line.multiplier ?? 1);
+    const entry = {
+      ...shaped,
+      source: line.source,
+      text: line.text,
+      ...(line.scopedText ? { scopedText: line.scopedText } : {}),
+    };
+    if ("value" in entry && bucket !== "perCritDamageAdditional" && bucket !== "perRecentCritAdditional")
+      entry.value = scale(entry.value);
+    if (bucket === "base") {
+      entry.min = scale(entry.min);
+      entry.max = scale(entry.max);
     }
+    result[bucket].push(entry);
   }
   return result;
 }

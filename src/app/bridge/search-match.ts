@@ -2,12 +2,12 @@
 // choice's text once with searchText; the dialog turns what the user typed into a matcher with searchMatcher: plain
 // words must each appear somewhere, in any order; /pattern/flags is a regular expression (src/app/gear/safe-regex.ts
 // refuses one that could freeze the page). Pure.
-import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+import { cleanGameText } from "../../engine/text/percentage-text.js";
 import { searchPattern } from "../gear/safe-regex.ts";
 
 /** What the search runs over: the parts in one line, as the page shows them ("+26 %" → "+26%"), lower case. */
 export function searchText(parts: readonly (string | null | undefined)[]): string {
-  return normalizePercentageText(parts.filter(Boolean).join(" ")).replace(/\s+/g, " ").trim().toLowerCase();
+  return cleanGameText(parts.filter(Boolean).join(" ")).toLowerCase();
 }
 
 export interface SearchMatcher {

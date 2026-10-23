@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { KEYWORD_RADII_METERS } from "./dummy-target.js";
 
 // Mark on the training dummy (2026-10-14; Ranger Legendary Medium Talent "+25% chance to Mark the enemy on Critical Strike |
@@ -32,10 +32,7 @@ export const MARK_SOURCE_LINE = new RegExp(
 );
 export const MARK_EFFECT_LINE = new RegExp(`^${NUM}% Mark Effect$`, "i");
 export const MARK_EFFECT_ELITE_LINE = new RegExp(`^${NUM}% Mark Effect when an Elite is in proximity$`, "i");
-const clean = (text) =>
-  normalizePercentageText(String(text || ""))
-    .replace(/\s+/g, " ")
-    .trim();
+const clean = (text) => cleanGameText(String(text || ""));
 const round = (value) => Math.round(value * 10000) / 10000;
 
 /** Which Mark kind a line is ("source", "effect", "effectElite"), or null. */

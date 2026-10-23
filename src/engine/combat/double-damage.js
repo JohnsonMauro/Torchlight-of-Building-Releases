@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { normalizePercentageText, cleanGameText } from "../text/percentage-text.js";
 
 // Double Damage (gear-pact batch chunk 3, Q-G2). Sources:
 //   - manual keyword text (config_multi_language_en): "There is a chance to deal Double Damage on hit according to the Double
@@ -48,9 +48,7 @@ const RULES = [
 
 /** The Double Damage rule a line follows, or null. */
 export function classifyDoubleDamageLine(text) {
-  const clean = normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+  const clean = cleanGameText(String(text ?? ""));
   for (const rule of RULES) {
     const match = clean.match(rule.pattern);
     if (!match) continue;

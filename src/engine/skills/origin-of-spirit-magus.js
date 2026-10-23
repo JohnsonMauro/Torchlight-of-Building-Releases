@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { skillProgressionSs13 } from "../../data/skills/skill-progression-ss13.generated.js";
 
 // Origin of Spirit Magus (residual batch A2-origin). Sources: each "Summon <X> Magus" skill's TLIDB text and level table
@@ -42,10 +42,7 @@ export function originGrants({ summons = [], modifierTexts = [] } = {}) {
     if (match && MAGI.includes(match[1])) add(match[1], summon.level || 20, `Skill: ${summon.name}`, null);
   }
   for (const line of modifierTexts) {
-    const match = normalizePercentageText(String(line.text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim()
-      .match(GRANT);
+    const match = cleanGameText(String(line.text ?? "")).match(GRANT);
     if (match) add(match[2], Number(match[1]), line.source, line.text);
   }
   return [...best.values()];
@@ -57,10 +54,7 @@ export function originEffectFactor(modifierTexts = []) {
     additional = 1;
   const sources = [];
   for (const line of modifierTexts) {
-    const match = normalizePercentageText(String(line.text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim()
-      .match(EFFECT);
+    const match = cleanGameText(String(line.text ?? "")).match(EFFECT);
     if (!match) continue;
     const value = Number(match[1]) * (line.multiplier ?? 1);
     if (match[2]) additional *= 1 + value / 100;
@@ -70,18 +64,8 @@ export function originEffectFactor(modifierTexts = []) {
   return { factor: Math.max(0, 1 + increased / 100) * additional, sources };
 }
 
-const isGrantLine = (text) =>
-  GRANT.test(
-    normalizePercentageText(String(text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim(),
-  );
-const isEffectLine = (text) =>
-  EFFECT.test(
-    normalizePercentageText(String(text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim(),
-  );
+const isGrantLine = (text) => GRANT.test(cleanGameText(String(text ?? "")));
+const isEffectLine = (text) => EFFECT.test(cleanGameText(String(text ?? "")));
 export const readsOriginLine = (text) => isGrantLine(text) || isEffectLine(text);
 
 const round = (value) => Math.round(value * 10000) / 10000;

@@ -1,4 +1,5 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { readOnce } from "../text/read-once.js";
+import { normalizePercentageText, cleanGameText } from "../text/percentage-text.js";
 import { DEDICATED_BRACKET_NAMES } from "../text/granted-core-lines.js";
 import { legendaryCorrodedModifiersSs13 as CORRODED_ROWS } from "../../data/gear/legendary-corroded-modifiers-ss13.generated.js";
 
@@ -380,9 +381,7 @@ const typesOf = (list) =>
 
 /** A multi-type row as one line per type, or null (gear uniques round 2). */
 export function splitMultiTypeLine(text) {
-  const clean = normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+  const clean = cleanGameText(String(text ?? ""));
   let match = clean.match(MULTI_ADDED);
   if (match) return typesOf(match[2]).map((type) => `Adds ${match[1]} ${type} Damage to ${match[3]}`);
   match = clean.match(MULTI_ADDED_AS);
@@ -513,7 +512,8 @@ const BINDING_WORDS = new Set([
 const SIGNED_START = /^[+-]\(?\d/;
 
 /** A row that holds several lines printed without a separator, as its lines ([text] when it is one line). */
-export function splitJoinedClauses(text) {
+export const splitJoinedClauses = readOnce(readSplitJoinedClauses);
+function readSplitJoinedClauses(text) {
   const tokens = tokensOf(text);
   if (tokens.length < 2) return [text];
   // "[Stealth Stab] …" and the other dedicated core grants are read whole by their own model (src/engine/text/granted-core-lines.js).
@@ -556,10 +556,9 @@ export function splitJoinedClauses(text) {
 }
 
 /** A scripted item row as the lines it holds ([text] when no module splits it). */
-export function expandScriptedItemLine(itemName, text) {
-  const clean = normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+export const expandScriptedItemLine = readOnce(readExpandScriptedItemLine);
+function readExpandScriptedItemLine(itemName, text) {
+  const clean = cleanGameText(String(text ?? ""));
   for (const split of SPLITS) {
     if (!split.items.test(String(itemName ?? ""))) continue;
     const match = clean.match(split.pattern);
@@ -581,14 +580,13 @@ const ROTATION_BUFF = /^\+(\([\d.]+–[\d.]+\)|[\d.]+)% (additional .+)$/i;
 const round4 = (value) => Math.round(value * 10000) / 10000;
 
 /** { header, seconds, buffs, averaged, uptime } for a rotating-buff row (base row on one line or corroded row), else null. */
-export function rotatingBuffRow(row) {
+export const rotatingBuffRow = readOnce(readRotatingBuffRow);
+function readRotatingBuffRow(row) {
   const raw = String(row ?? "")
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const lines = (raw.length === 1 ? splitJoinedClauses(raw[0]) : raw).map((line) =>
-    normalizePercentageText(line).replace(/\s+/g, " ").trim(),
-  );
+  const lines = (raw.length === 1 ? splitJoinedClauses(raw[0]) : raw).map((line) => cleanGameText(line));
   const header = lines[0]?.match(ROTATION_HEADER);
   if (!header || lines.length < 3) return null;
   const buffs = lines.slice(1);
@@ -602,7 +600,8 @@ export function rotatingBuffRow(row) {
 }
 
 /** The row with its rotating buffs at their time average (the same text when it is not a rotating-buff row). */
-export function averageRotatingBuffs(row) {
+export const averageRotatingBuffs = readOnce(readAverageRotatingBuffs);
+function readAverageRotatingBuffs(row) {
   const rotation = rotatingBuffRow(row);
   return rotation ? [rotation.header, ...rotation.averaged].join("\n") : row;
 }
@@ -616,9 +615,7 @@ const PRECISE_AURA_GRANT = /^You have a Lv\. (\d+) Precise:? ([A-Za-z' -]+?)\.?$
 export function grantedPreciseAuras(modifierTexts = []) {
   const out = [];
   for (const line of modifierTexts) {
-    const text = normalizePercentageText(String(line.text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim();
+    const text = cleanGameText(String(line.text ?? ""));
     const match = text.match(PRECISE_AURA_GRANT);
     if (match) out.push({ name: `Precise: ${match[2].trim()}`, level: Number(match[1]), source: line.source, text });
   }
@@ -639,9 +636,7 @@ export function grantedMainSkillSupports(modifierTexts = [], equipment = null, d
   ).length;
   const out = [];
   for (const line of modifierTexts) {
-    const text = normalizePercentageText(String(line.text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim();
+    const text = cleanGameText(String(line.text ?? ""));
     let match = text.match(SINGLE_RING_GRANT);
     if (match) {
       out.push({

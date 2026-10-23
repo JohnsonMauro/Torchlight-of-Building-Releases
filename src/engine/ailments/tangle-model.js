@@ -30,7 +30,7 @@
 //   gear "+30% Tangle Duration"): duration = 8 s × (1 + Σ increased) × Π(1 + additional). No DPS effect on the dummy: Max Tangle
 //   Quantity is held while the build recasts its Tangle Skill within the duration (best case, own buffs pre-built above), so
 //   the duration only sets how often it must be recast.
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 
 export const TANGLE_SUPPORTS = Object.freeze(["Spell Tangle", "Activation Medium: Tangle", "Manifold Entanglement"]);
 export const BASE_MAX_TANGLE_QUANTITY = 2;
@@ -42,11 +42,7 @@ const ATTACH_LINE = /^You can (?:apply|attach) (\d+(?:\.\d+)?) additional Tangle
 const DURATION_LINE = /^([+-]\d+(?:\.\d+)?)% (additional )?Tangle Duration$/i;
 const round = (value) => Math.round(value * 10000) / 10000;
 
-const clean = (text) =>
-  normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/^\[[^\]]+\]\s*/, "");
+const clean = (text) => cleanGameText(String(text ?? "")).replace(/^\[[^\]]+\]\s*/, "");
 export const isDormantEntanglementLine = (text) => /^Has Dormant Entanglement$/i.test(clean(text));
 export const isTangleAttachLine = (text) => ATTACH_LINE.test(clean(text));
 export const isTangleDurationLine = (text) => DURATION_LINE.test(clean(text));

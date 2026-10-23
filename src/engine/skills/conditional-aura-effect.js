@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { splitCondition, resolveLineCondition } from "../text/line-conditions.js";
 
 // Conditional global Aura Effect lines (gear uniques round 2, src/engine/gear/gear-unique-modules.js): "+35% Aura Effect when there are at
@@ -26,9 +26,7 @@ export function conditionalAuraEffect(modifierTexts = [], state = {}) {
     perSealedManaCompensation = 0;
   for (const line of modifierTexts) {
     if (line.origin === "derived" || line.lineEffect) continue;
-    const text = normalizePercentageText(String(line.text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim();
+    const text = cleanGameText(String(line.text ?? ""));
     const split = splitCondition(text);
     if (!split || !split.bodies.length || !split.bodies.every((body) => AURA_BODY.test(body))) continue;
     const resolved = resolveLineCondition(split.condition, state);

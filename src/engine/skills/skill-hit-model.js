@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { passiveSupportLines } from "../supports/passive-support-lines.js";
 import { critOnlyLinesFor } from "../text/crit-only-lines.js";
 import { finisherAmplificationPercent, CONSUMED_COMBO_POINTS } from "./combo-points.js";
@@ -1019,10 +1019,7 @@ export function calculateSkillHit({
   // (best case); whether it covers only the repeat attacks is not sourced (provisional).
   const multistrikeSpeedLines = canMultistrike
     ? modifierTexts.flatMap((line) => {
-        const match = normalizePercentageText(String(line.text || ""))
-          .replace(/\s+/g, " ")
-          .trim()
-          .match(MULTISTRIKE_SPEED_LINE);
+        const match = cleanGameText(String(line.text || "")).match(MULTISTRIKE_SPEED_LINE);
         return match
           ? [
               {
@@ -1305,10 +1302,7 @@ export function calculateSkillHit({
     : 1;
   const castToChargeLines = skillTags.has("Spell")
     ? modifierTexts.flatMap((line) => {
-        const match = normalizePercentageText(String(line.text ?? ""))
-          .replace(/\s+/g, " ")
-          .trim()
-          .match(CAST_SPEED_TO_CHARGE_LINE);
+        const match = cleanGameText(String(line.text ?? "")).match(CAST_SPEED_TO_CHARGE_LINE);
         if (!match) return [];
         const share = (Number(match[1]) * (line.multiplier ?? 1)) / 100;
         const increased = share * castSpeedIncreasedPercent;
@@ -1353,10 +1347,7 @@ export function calculateSkillHit({
   // stack(s) of Spell Burst Charge. Interval: 0.03s": stacks gained on that interval fill Max Spell Burst in interval × ⌈N ÷ gain⌉
   // (÷ chance), whichever of that and the charge time is shorter.
   for (const line of modifierTexts) {
-    const match = normalizePercentageText(String(line.text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim()
-      .match(SPELL_BURST_INTERVAL_GAIN);
+    const match = cleanGameText(String(line.text ?? "")).match(SPELL_BURST_INTERVAL_GAIN);
     if (!match || spellBurstStacks < 1) continue;
     const chance = Math.min(1, Number(match[1]) / 100),
       gain = Number(match[2]),
@@ -1617,10 +1608,9 @@ export function calculateSkillHit({
         String(line.text ?? "")
           .split(/\r?\n/)
           .flatMap((part) => {
-            const match = normalizePercentageText(part)
-              .replace(/\s+/g, " ")
-              .trim()
-              .match(/^(?:Max Sentry Quantity \+?(\d+)|\+?(\d+) (?:to )?Max Sentry Quantity)$/i);
+            const match = cleanGameText(part).match(
+              /^(?:Max Sentry Quantity \+?(\d+)|\+?(\d+) (?:to )?Max Sentry Quantity)$/i,
+            );
             return match
               ? [
                   {
@@ -1748,10 +1738,7 @@ export function calculateSkillHit({
   // "Projectile Quantity Upper limit: N" (Sweeping Fury; user-supplied 2026-10-19 with the ring reading): the skill fires at most
   // N projectiles, so the extra projectiles stop at N − its base count (the volley's own count, else 1).
   const projectileLimitLines = modifierTexts.flatMap((line) => {
-    const match = normalizePercentageText(String(line.text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim()
-      .match(PROJECTILE_QUANTITY_LIMIT_LINE);
+    const match = cleanGameText(String(line.text ?? "")).match(PROJECTILE_QUANTITY_LIMIT_LINE);
     return match ? [{ source: line.source, value: Number(match[1]) }] : [];
   });
   const projectileLimit =
@@ -1791,13 +1778,7 @@ export function calculateSkillHit({
   // One additional factor on the Finisher components only. Needs a Combo skill that Multistrikes.
   const unstoppableLine =
     multistrike && profile.cycle
-      ? modifierTexts.find((line) =>
-          UNSTOPPABLE_FORCE_LINE.test(
-            normalizePercentageText(String(line.text ?? ""))
-              .replace(/\s+/g, " ")
-              .trim(),
-          ),
-        )
+      ? modifierTexts.find((line) => UNSTOPPABLE_FORCE_LINE.test(cleanGameText(String(line.text ?? ""))))
       : null;
   const unstoppable = unstoppableLine
     ? (() => {
@@ -1827,10 +1808,7 @@ export function calculateSkillHit({
         String(line.text ?? "")
           .split(/;|\n/)
           .flatMap((part) => {
-            const match = normalizePercentageText(part)
-              .replace(/\s+/g, " ")
-              .trim()
-              .match(/^\+?([+-]?\d+(?:\.\d+)?)% additional Steep Strike Damage\.?$/i);
+            const match = cleanGameText(part).match(/^\+?([+-]?\d+(?:\.\d+)?)% additional Steep Strike Damage\.?$/i);
             return match
               ? [
                   {
@@ -1998,10 +1976,7 @@ export function calculateSkillHit({
   const parabolicSplits =
     profile.parabolicSplit && skillTags.has("Parabolic")
       ? modifierTexts.reduce((total, line) => {
-          const match = normalizePercentageText(String(line.text ?? ""))
-            .replace(/\s+/g, " ")
-            .trim()
-            .match(PARABOLIC_SPLIT_LINE);
+          const match = cleanGameText(String(line.text ?? "")).match(PARABOLIC_SPLIT_LINE);
           return total + (match ? Number(match[1]) * (line.multiplier ?? 1) : 0);
         }, 0)
       : 0;
@@ -2219,12 +2194,9 @@ export function calculateSkillHit({
   const projectileSpeedState = (() => {
     if (!scopeTags.has("Projectile")) return null;
     const converters = modifierTexts.flatMap((line) => {
-      const match = normalizePercentageText(String(line.text || ""))
-        .replace(/\s+/g, " ")
-        .trim()
-        .match(
-          /^(\d+(?:\.\d+)?)% of the Projectile Speed bonus is also applied to (the additional bonus for )?Projectile Damage$/i,
-        );
+      const match = cleanGameText(String(line.text || "")).match(
+        /^(\d+(?:\.\d+)?)% of the Projectile Speed bonus is also applied to (the additional bonus for )?Projectile Damage$/i,
+      );
       return match
         ? [
             {
@@ -2239,18 +2211,14 @@ export function calculateSkillHit({
     if (!converters.length) return null;
     const sources = [];
     for (const line of modifierTexts) {
-      const match = normalizePercentageText(String(line.text || ""))
-        .replace(/\s+/g, " ")
-        .trim()
-        .match(/^([+-]?\d+(?:\.\d+)?)% Projectile Speed$/i);
+      const match = cleanGameText(String(line.text || "")).match(/^([+-]?\d+(?:\.\d+)?)% Projectile Speed$/i);
       if (match)
         sources.push({ source: line.source, text: line.text, value: Number(match[1]) * (line.multiplier ?? 1) });
     }
     for (const clause of setup?.supportEffects?.clauses || []) {
-      const match = normalizePercentageText(String(clause.text || ""))
-        .replace(/\s+/g, " ")
-        .trim()
-        .match(/^([+-]?\d+(?:\.\d+)?)% Projectile Speed for the supported skill$/i);
+      const match = cleanGameText(String(clause.text || "")).match(
+        /^([+-]?\d+(?:\.\d+)?)% Projectile Speed for the supported skill$/i,
+      );
       if (match)
         sources.push({
           source: clause.source || `Support: ${clause.support}`,
@@ -2833,10 +2801,7 @@ export function calculateSkillHit({
       ? modifierTexts
           .map((line) => ({
             line,
-            match: normalizePercentageText(String(line.text ?? ""))
-              .replace(/\s+/g, " ")
-              .trim()
-              .match(SPELL_RIPPLE_LINE),
+            match: cleanGameText(String(line.text ?? "")).match(SPELL_RIPPLE_LINE),
           }))
           .find((item) => item.match)
       : null;
@@ -2882,10 +2847,7 @@ export function calculateSkillHit({
       ? modifierTexts
           .map((line) => ({
             line,
-            match: normalizePercentageText(String(line.text ?? ""))
-              .replace(/\s+/g, " ")
-              .trim()
-              .match(SWEEPING_FURY_LINE),
+            match: cleanGameText(String(line.text ?? "")).match(SWEEPING_FURY_LINE),
           }))
           .find((item) => item.match)
       : null;

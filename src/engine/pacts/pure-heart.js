@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { KEYWORD_RADII_METERS, DISTANT_STANDING_METERS } from "../combat/dummy-target.js";
 
 // Pure Heart (pactspirit Azure Gunslinger; TLIDB Pure_Heart and Azure_Gunslinger pages, fetched 2026-10-14, beta data):
@@ -27,10 +27,7 @@ const LINE_KINDS = [
   ["duration", /^[+-]?[\d.]+% Pure Heart Duration$/i],
 ];
 
-const clean = (text) =>
-  normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+const clean = (text) => cleanGameText(String(text ?? ""));
 const round = (value, digits = 4) => Math.round(value * 10 ** digits) / 10 ** digits;
 
 /** The Pure Heart line kind of a text ("gain", "extraChance", "taken", "maxStacks", "duration"), or null. */

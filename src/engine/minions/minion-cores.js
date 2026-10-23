@@ -1,15 +1,11 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { blessingBaseEffects } from "../defense/blessing-model.js";
 import { skillTimingSs13 } from "../../data/skills/skill-timing-ss13.generated.js";
 
 // Minion core mechanics the planner resolves around the Minion engine (core audit batch B7, research/core-talents-audit-2026-10-18.md
 // §5; src/engine/minions/minion-damage-model.js reads the results as Minion layers). Pure functions of the build's lines and the settled models.
 
-const norm = (text) =>
-  normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/^\[[^\]]+\]\s*/, "");
+const norm = (text) => cleanGameText(String(text ?? "")).replace(/^\[[^\]]+\]\s*/, "");
 const round = (value) => Math.round(value * 10000) / 10000;
 const sourceOf = (lines, pattern) => lines.find((line) => pattern.test(norm(line.text))) || null;
 

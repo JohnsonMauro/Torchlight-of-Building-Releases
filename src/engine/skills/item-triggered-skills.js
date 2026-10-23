@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { curseTakenEffect, DEDICATED_CURSE_MODELS, NO_DUMMY_EFFECT_CURSES } from "./curse-effects.js";
 
 // Skills that gear and pact lines trigger ("Triggers Lv. 20 Secret Origin Unleash every 6 s", "When moving, triggers a Lv. 20
@@ -28,9 +28,7 @@ const OTHER_TRIGGER = /^(?:\+?[\d.]+% chance to )?Triggers? (?:a )?Lv\. \d+ /i;
 
 /** The trigger a line describes: { name, level, event, intervalSeconds } | { unmodeled: reason } | null. */
 export function parseItemTrigger(text) {
-  const clean = normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+  const clean = cleanGameText(String(text ?? ""));
   let match = clean.match(MOVING_EVERY);
   if (match)
     return { name: match[2].trim(), level: Number(match[1]), event: "moving", intervalSeconds: Number(match[3]) };

@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "./text/percentage-text.js";
+import { normalizePercentageText, cleanGameText } from "./text/percentage-text.js";
 import { stripGrantedCore, carryNameReadBracket } from "./text/granted-core-lines.js";
 import { averageRotatingBuffs, expandScriptedItemLine } from "./gear/gear-unique-modules.js";
 import { matchTalentTextClause } from "./text/talent-text-effects.js";
@@ -853,7 +853,7 @@ export function collectNormalizedGearModifiers(items, disabledSlots = []) {
   const disabled = new Set(disabledSlots);
   return items.flatMap((item) =>
     effectiveGearModifierTexts(item).flatMap((text) => {
-      const normalizedText = stripGrantedCore(normalizePercentageText(text).replace(/\s+/g, " ").trim()); // "[Core] body" reads as its body (gear-pact batch G2)
+      const normalizedText = stripGrantedCore(cleanGameText(text)); // "[Core] body" reads as its body (gear-pact batch G2)
       const combinedResources = normalizedText.match(/^\+([\d.]+)% Max Life and Max Energy Shield$/i);
       if (combinedResources)
         return ["maxLifePercent", "maxEnergyShieldPercent"].map((stat) => ({

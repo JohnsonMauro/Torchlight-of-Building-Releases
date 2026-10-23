@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 
 // Passive (build-wide) wordings of the support families the skill-hit engine already reads from supports
 // (src/engine/supports/support-effects.js: addedAs, conversion, multistrike, projectileQuantity). Gear-pact batch §7.2 / backlog row 6:
@@ -58,9 +58,7 @@ const RULES = [
 
 /** The family entry for one passive line, or null. */
 export function classifyPassiveSupportLine(text) {
-  const clean = normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+  const clean = cleanGameText(String(text ?? ""));
   for (const rule of RULES) {
     const match = clean.match(rule.pattern);
     if (match) return { family: rule.family, ...rule.build(match) };

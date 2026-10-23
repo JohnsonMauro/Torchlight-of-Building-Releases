@@ -11,15 +11,12 @@
 // their type; Reaps settle the (now zero) DoTs. Scope, user-confirmed 2026-10-19 ("keep your decision on the extreme coldness"):
 // it restricts the player's own damage only, so Minions and the follower are unrestricted; True Damage is not restricted; a hit
 // with no Cold part left is not modeled as a hit, so it applies no ailments (src/engine/skills/skill-hit-model.js).
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 
 export const ONLY_DAMAGE_TYPE_LINE = /^You can only deal (Physical|Fire|Cold|Lightning|Erosion) Damage$/i;
 export const AILMENT_DAMAGE_TYPES = Object.freeze({ ignite: "Fire", trauma: "Physical", wilt: "Erosion" });
 const cap = (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-const clean = (text) =>
-  normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+const clean = (text) => cleanGameText(String(text ?? ""));
 const SOURCE_NOTE = "user-confirmed 2026-10-18";
 
 /**

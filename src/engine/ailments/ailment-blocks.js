@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { normalizePercentageText, cleanGameText } from "../text/percentage-text.js";
 
 // Build-wide "cannot inflict" lines (residual batch): "Cannot inflict Ignite" / "Cannot inflict Frostbite" (legendary gear) and
 // "Unable to inflict Ignite, Numbed, Wilt, and Trauma" (kismet). They name no skill, so every skill of the build is blocked
@@ -10,10 +10,7 @@ const BLOCK =
 
 /** The ailments a line blocks build-wide (capitalized names), or []. */
 export function blockedAilmentsOf(text) {
-  const match = normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim()
-    .match(BLOCK);
+  const match = cleanGameText(String(text ?? "")).match(BLOCK);
   if (!match) return [];
   return match[1]
     .split(/,\s*(?:and\s+)?|\s+and\s+/i)

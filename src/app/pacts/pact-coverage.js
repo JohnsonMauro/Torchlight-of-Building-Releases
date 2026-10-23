@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+import { normalizePercentageText, cleanGameText } from "../../engine/text/percentage-text.js";
 import { nativePactspiritNodeEffect } from "../../engine/pacts/pactspirit-levels.js";
 import { combineStatuses, coverageContext, refineCoverage } from "../../engine/text/line-coverage.js";
 import {
@@ -18,9 +18,7 @@ const STAR_TRAIL = /^\+?[\d.]+% for the effects of Micro Fates in the same Pact 
  * "No DPS effect" whatever it boosted.
  */
 export function kismetAffixCoverage(affix, { key = null, planner = coverageContext() } = {}) {
-  const text = normalizePercentageText(String(affix ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+  const text = cleanGameText(String(affix ?? ""));
   if (STAR_TRAIL.test(text) && planner?.state?.pacts) return starTrailCoverage(key, planner);
   return refineCoverage(
     parseKismetEffect(affix) || parseBlockModifier(affix) ? "In calc" : "Not modeled",
@@ -58,14 +56,7 @@ const splitJoinedClauses = (text) => String(text ?? "").replace(/;\s*(?=[+-]?\d)
 const DESTINY_SLOTS = /^\+\d+ \* \d+(?:\.\d+)?% damage \+\d+ \* \d+(?:\.\d+)?% Minion Damage$/i;
 
 export function pactEffectCoverage(text) {
-  if (
-    DESTINY_SLOTS.test(
-      normalizePercentageText(String(text ?? ""))
-        .replace(/\s+/g, " ")
-        .trim(),
-    )
-  )
-    return "In calc";
+  if (DESTINY_SLOTS.test(cleanGameText(String(text ?? "")))) return "In calc";
   const clauses = splitJoinedClauses(text);
   return refineCoverage(basePactEffectCoverage(clauses), clauses, undefined, basePactEffectCoverage);
 }

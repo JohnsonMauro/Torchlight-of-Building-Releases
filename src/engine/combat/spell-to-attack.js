@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { classifyDamageLine } from "../text/damage-line-classifier.js";
 
 // "Bonus and additional bonus to Spell Damage and also apply to Attack Damage" (Rosa – Unsullied Blade base trait; game affix
@@ -11,10 +11,7 @@ import { classifyDamageLine } from "../text/damage-line-classifier.js";
 
 export const SPELL_TO_ATTACK_LINE =
   /^Bonus and additional bonus to Spell Damage (?:and )?also apply to Attack Damage$/i;
-const clean = (text) =>
-  normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+const clean = (text) => cleanGameText(String(text ?? ""));
 
 /** { sources: the build's carrying lines, copies: derived Attack lines } from planner.modifierTexts. */
 export function spellToAttackLines(modifierTexts = []) {

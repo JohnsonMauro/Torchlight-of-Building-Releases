@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "./text/percentage-text.js";
+import { normalizePercentageText, cleanGameText } from "./text/percentage-text.js";
 import { supportProgressionSs13 } from "../data/skills/support-progression-ss13.generated.js";
 import { skillProgressionSs13 } from "../data/skills/skill-progression-ss13.generated.js";
 import { collectEnemyAilments, ailmentStateNames } from "./ailments/enemy-ailments.js";
@@ -1035,7 +1035,7 @@ export function collectBuildMechanics({
         )
           continue;
         const roll = parsed.kind === "minDamage" ? "min" : "max";
-        const lineText = normalizePercentageText(String(part)).replace(/\s+/g, " ").trim();
+        const lineText = cleanGameText(String(part));
         hit.push({
           source: line.source,
           bucket: roll,

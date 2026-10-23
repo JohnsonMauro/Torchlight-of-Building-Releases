@@ -1,5 +1,5 @@
 import { engineLineStatus, combineStatuses, neutralStatuses, coverageContext } from "../text/line-coverage.js";
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { normalizePercentageText, cleanGameText } from "../text/percentage-text.js";
 import {
   baseTraitLevelForMemory,
   memoryScaledBaseStat,
@@ -276,7 +276,7 @@ export function revivedAffixLineCoverage(planner, memory, line) {
   if (state.module) return null;
   // A line a hero module reads (Youga's Spacetime revivals, hero trait audit B4): the module's entry in the build's line effects.
   if (entry.moduleRead) {
-    const clean = normalizePercentageText(entry.intakeText).replace(/\s+/g, " ").trim();
+    const clean = cleanGameText(entry.intakeText);
     const found = (planner?.lineEffects?.lines || []).find((item) => item.module && item.text === clean);
     if (!found) return { status: "Not modeled", reason: "the hero module did not read this line in this build" };
     return {

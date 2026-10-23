@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { normalizePercentageText, cleanGameText } from "../text/percentage-text.js";
 import { auraValuesAtLevel } from "../../data/skills/aura-scaling-ss13.js";
 import { supportProgressionSs13 } from "../../data/skills/support-progression-ss13.generated.js";
 import { parseProgressionCell } from "../text/progression-cell.js";
@@ -137,12 +137,10 @@ export function auraSupportSealedManaCompensation(supports = []) {
       ? String(record.baseEffect || "").split(/\r?\n/)
       : (support.effects || []).flatMap((effect) => String(effect).split("\n"));
     for (const raw of lines) {
-      const line = normalizePercentageText(raw).replace(/\s+/g, " ").trim();
+      const line = cleanGameText(raw);
       const match = line.match(SUPPORT_SMC_LINE);
       if (!match) continue;
-      const column = record?.columns?.find(
-        (item) => normalizePercentageText(item.heading).replace(/\s+/g, " ").trim() === line,
-      );
+      const column = record?.columns?.find((item) => cleanGameText(item.heading) === line);
       const value = column ? progressionValue(column, level) : Number(match[1]);
       if (!Number.isFinite(value)) continue;
       if (match[2]) additionalPercents.push(value);

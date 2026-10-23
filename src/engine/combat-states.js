@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "./text/percentage-text.js";
+import { normalizePercentageText, cleanGameText } from "./text/percentage-text.js";
 import { explicitRadiusHolds, KEYWORD_RADII_METERS, DISTANT_STANDING_METERS } from "./combat/dummy-target.js";
 import { sustainedLevel } from "./combat/timed-effects.js";
 import { resolveRegain } from "./defense/regain-model.js";
@@ -325,9 +325,7 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
     .filter((line) => line.origin !== "derived" && !line.lineEffect)
     .map((line) => ({
       ...line,
-      clean: normalizePercentageText(String(line.text ?? ""))
-        .replace(/\s+/g, " ")
-        .trim(),
+      clean: cleanGameText(String(line.text ?? "")),
     }));
   // Sage's trait and revived lines are read and badged by its module (src/engine/heroes/sage-traits.js, hero trait audit B8); the Elixir engine
   // still reads them below (Scent of Ambition's duration, the bottle-only moon line, Omni-Elixir Side Effect's -50%).
@@ -2634,9 +2632,7 @@ export function deteriorationFrom(modifierTexts = [], state = {}, entries = []) 
     .filter((line) => line.origin !== "derived" && !line.lineEffect)
     .map((line) => ({
       ...line,
-      clean: normalizePercentageText(String(line.text ?? ""))
-        .replace(/\s+/g, " ")
-        .trim(),
+      clean: cleanGameText(String(line.text ?? "")),
     }));
   const pick = (pattern) =>
     lines
@@ -2709,10 +2705,7 @@ export function mirroredShadeTerraChargeLines(
   { mainIsTerra = false, requestedConditions = {} } = {},
 ) {
   if (!mainIsTerra || requestedConditions.mirroredShade === false) return [];
-  const clean = (line) =>
-    normalizePercentageText(String(line.text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim();
+  const clean = (line) => cleanGameText(String(line.text ?? ""));
   const gain = modifierTexts.filter((line) => line.origin !== "derived" && PATTERNS.mirroredGain.test(clean(line)));
   return gain.flatMap((line) =>
     modifierTexts

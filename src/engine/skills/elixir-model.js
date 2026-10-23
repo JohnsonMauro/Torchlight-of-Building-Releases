@@ -35,7 +35,7 @@
 //   ten skills are internal ids only and the Blessing's values are not identified).
 import { tlidbSkillCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
 import { skillTimingSs13 } from "../../data/skills/skill-timing-ss13.generated.js";
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 
 export const ELIXIR_PROGRESS_LINE = /^Elixir Skills gain (\d+(?:\.\d+)?) Charging Progress every second$/i;
 export const ELIXIR_EFFECT_LINE = /^([+-]\d+(?:\.\d+)?)% Elixir Skill Effect$/i;
@@ -52,10 +52,7 @@ export const BOTTLE_ADDITIONAL_EFFECT_LINE =
 const DEFAULT_PROGRESS_PER_CHARGE = 15;
 const DEFAULT_DURATION_SECONDS = 3;
 const round = (value) => Math.round(value * 10000) / 10000;
-const clean = (text) =>
-  normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+const clean = (text) => cleanGameText(String(text ?? ""));
 
 // Value lines an Elixir Effect carries that scale linearly (time-averaged as derived lines), each with whether it can move dummy damage.
 const VALUE_LINES = [

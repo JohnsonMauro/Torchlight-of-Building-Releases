@@ -22,7 +22,7 @@
 // - The bonus is "Attack Damage": a derived "+X% additional Attack Damage" line the hit and weapon models read like the same
 //   plain line; a build without an Attack damage source gains nothing from it.
 import { skillTimingSs13 } from "../../data/skills/skill-timing-ss13.generated.js";
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 
 export const STORM_COMMAND_LINE =
   /^\+(\d+(?:\.\d+)?)% additional Attack Damage for each different Warcry cast for (\d+(?:\.\d+)?) ?s$/i;
@@ -31,10 +31,7 @@ export const EMPOWER_DEFENSIVE_EFFECT_LINE =
 export const WARCRY_BASE_COOLDOWN_SECONDS = 8;
 const PLAIN_COOLDOWN = /^([+-]?\d+(?:\.\d+)?)% (additional )?Cooldown Recovery Speed$/i;
 const round = (value) => Math.round(value * 10000) / 10000;
-const clean = (text) =>
-  normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+const clean = (text) => cleanGameText(String(text ?? ""));
 
 /** A Warcry's base cooldown from the game skill data (8 s for every Warcry it holds; 8 s when it has none). */
 export function warcryBaseCooldown(name) {

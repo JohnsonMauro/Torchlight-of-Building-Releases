@@ -15,7 +15,7 @@
 // their own readers (src/engine/combat/blur-effects.js, src/engine/ailments/ill-omen.js, ...).
 // The Aura's effective castSpeedPercent joins the cast-rate ledger (src/engine/planner.js) and the stat sheet (src/engine/character-stats.js);
 // attackSpeedPercent reaches the stat sheet only (the weapon Attack Speed model does not read it yet).
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { auraScalingSs13 } from "../../data/skills/aura-scaling-ss13.js";
 import { bodyReaders } from "../text/line-effects.js";
 
@@ -25,10 +25,7 @@ export const AURA_GAINED_EFFECT = /^((?:Precise: )?[A-Za-z' -]+?) gains an addit
 const AURA_NAMES = new Set([...Object.keys(auraScalingSs13), "Flame Focus", "Precise: Flame Focus"]);
 export const isAuraName = (name) => AURA_NAMES.has(String(name || "").trim());
 
-const clean = (text) =>
-  normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+const clean = (text) => cleanGameText(String(text ?? ""));
 
 // Clause text → Aura buff stat key (src/engine/skills/aura-damage.js AURA_STAT_SCOPES; src/data/skills/aura-scaling-ss13.js affixStats).
 const STAT_CLAUSES = [

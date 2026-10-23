@@ -1,6 +1,6 @@
 import { classifyDoubleDamageLine } from "../combat/double-damage.js";
 import { classifyPassiveSupportLine } from "../supports/passive-support-lines.js";
-import { normalizePercentageText } from "./percentage-text.js";
+import { cleanGameText } from "./percentage-text.js";
 import { classifyDamageLine } from "./damage-line-classifier.js";
 import { classifyHitLine } from "../skills/skill-hit-lines.js";
 import { classifyWeaponAttackLine } from "../skills/weapon-damage-model.js";
@@ -148,17 +148,14 @@ export function resolveLineEffects(modifierTexts = [], state = null) {
   // Hare's Agility: the cap of the stacks gained when exiting Stand Still, for the per-stack clause (src/engine/text/line-conditions.js).
   if (state)
     state.exitStandStillMaxStacks = modifierTexts.reduce((max, line) => {
-      const match = normalizePercentageText(String(line.text ?? ""))
-        .replace(/\s+/g, " ")
-        .trim()
-        .match(/^When exiting Stand Still, gains 1 stack of buff that lasts for [\d.]+ ?s, up to (\d+) times$/i);
+      const match = cleanGameText(String(line.text ?? "")).match(
+        /^When exiting Stand Still, gains 1 stack of buff that lasts for [\d.]+ ?s, up to (\d+) times$/i,
+      );
       return match ? Math.max(max, Number(match[1])) : max;
     }, 0);
   for (const line of modifierTexts) {
     if (line.origin === "derived" || line.lineEffect) continue;
-    const text = normalizePercentageText(String(line.text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim();
+    const text = cleanGameText(String(line.text ?? ""));
     // Youga's hero-exclusive revived lines the Spacetime modules read (hero trait audit B4) are theirs too.
     if (
       !text ||
@@ -281,9 +278,7 @@ export function resolveLineEffects(modifierTexts = [], state = null) {
     }
   }
   for (const line of modifierTexts.filter((item) => readsOriginLine(item.text))) {
-    const text = normalizePercentageText(String(line.text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim();
+    const text = cleanGameText(String(line.text ?? ""));
     // Thunder / Fire reach the player's own hits only (the Magus is a Minion: manual rule 1001011821).
     const damage =
       origin.origins.some((item) => item.damage) && Boolean(originToMagi ? state?.motoIris?.hasMagus : state?.anyHit);
@@ -323,9 +318,7 @@ function resolveDamageEnhancement(modifierTexts, derivedLines) {
     ...modifierTexts.filter((item) => item.origin !== "derived" && !item.lineEffect),
     ...derivedLines,
   ]) {
-    const text = normalizePercentageText(String(line.text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim();
+    const text = cleanGameText(String(line.text ?? ""));
     const match = text.match(ENHANCEMENT);
     if (!match) continue;
     const kind = match[2][0].toUpperCase() + match[2].slice(1).toLowerCase();
@@ -369,8 +362,6 @@ function resolveDamageEnhancement(modifierTexts, derivedLines) {
 
 /** The resolved entry for a tooltip clause (badges), or null. */
 export function lineEffectFor(planner, text) {
-  const clean = normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+  const clean = cleanGameText(String(text ?? ""));
   return planner?.lineEffects?.lines?.find((entry) => entry.text === clean) || null;
 }

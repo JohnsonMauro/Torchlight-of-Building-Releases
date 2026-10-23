@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "./text/percentage-text.js";
+import { cleanGameText } from "./text/percentage-text.js";
 import { gameDamageLayer } from "./text/affix-bucket.js";
 import { auraSpeedStatLines } from "./skills/aura-gained-effects.js";
 import { heroById } from "../data/heroes/hero-catalog-ss13.js";
@@ -303,11 +303,7 @@ const stripName = (text) => {
 // Contributions for one clause (value before the source's rank multiplier), or [] when the
 // clause is not a plain character stat.
 export function parseCharacterStatClause(text) {
-  const clean = stripName(
-    normalizePercentageText(String(text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim(),
-  );
+  const clean = stripName(cleanGameText(String(text ?? "")));
   if (!clean) return [];
   const signed = /^[+-]/.test(clean);
   for (const [pattern, build] of RULES) {

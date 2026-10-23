@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { yougaClauseKey, yougaLineStatus } from "./youga-ultimate-one.js";
 import {
   coldPulseState,
@@ -639,9 +639,7 @@ export function resolveIllusionState(traitLines = [], state = {}) {
       ? traitLines
       : traitLines.map((line) => ({
           ...line,
-          clean: normalizePercentageText(String(line.text ?? ""))
-            .replace(/\s+/g, " ")
-            .trim(),
+          clean: cleanGameText(String(line.text ?? "")),
         }));
   const use = firstMatch(traits, PATTERNS.illusionUse);
   if (!use) return null;
@@ -756,9 +754,7 @@ export function resolveSpacetimeState(traitLines = [], state = {}) {
       ? traitLines
       : traitLines.map((line) => ({
           ...line,
-          clean: normalizePercentageText(String(line.text ?? ""))
-            .replace(/\s+/g, " ")
-            .trim(),
+          clean: cleanGameText(String(line.text ?? "")),
         }));
   const cast = firstMatch(traits, PATTERNS.elapseCast);
   if (!cast) return null;
@@ -1179,9 +1175,7 @@ function erikaVendettaEntry(line, module, state, { entry, derive, timedEffects, 
 
 /** Youga's hero-exclusive revived lines the Spacetime modules read (src/engine/heroes/hero-exclusive-revivals.js MODULE_LINES). */
 export function heroModuleRevivedLine(heroId, text) {
-  const clean = normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim();
+  const clean = cleanGameText(String(text ?? ""));
   if (heroId === "youga-spacetime-illusion") return PATTERNS.telepathy.test(clean);
   if (heroId === "youga-spacetime-elapse")
     return (
@@ -1227,9 +1221,7 @@ export function resolveHeroModules(modifierTexts = [], state = {}) {
     .filter((line) => line.origin === "trait" || (line.origin === "memory" && heroModuleRevivedLine(heroId, line.text)))
     .map((line) => ({
       ...line,
-      clean: normalizePercentageText(String(line.text ?? ""))
-        .replace(/\s+/g, " ")
-        .trim(),
+      clean: cleanGameText(String(line.text ?? "")),
     }));
   const entries = [],
     derived = [];

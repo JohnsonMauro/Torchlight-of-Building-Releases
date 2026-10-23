@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "./percentage-text.js";
+import { cleanGameText } from "./percentage-text.js";
 
 // "+X% additional damage on Critical Strike" (tower sequences, slates; residual batch A-2): additional damage that only the
 // critical hits get, the build-wide form of the supports' crit-only family (research/support-batch-2026-10-12.md B1). It
@@ -11,10 +11,7 @@ const CRIT_ONLY =
 
 /** The rule a line follows ({ value, tag }) or null. */
 export function classifyCritOnlyLine(text) {
-  const match = normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim()
-    .match(CRIT_ONLY);
+  const match = cleanGameText(String(text ?? "")).match(CRIT_ONLY);
   const tag = match?.[2] || match?.[3];
   return match
     ? { value: Number(match[1]), tag: tag ? tag[0].toUpperCase() + tag.slice(1).toLowerCase() : null }

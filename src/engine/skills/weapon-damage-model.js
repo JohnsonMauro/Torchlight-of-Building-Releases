@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { effectiveGearModifierTexts } from "../engine.js";
 import { rareBaseForItem } from "../gear/rare-base-lookup.js";
 import { legendaryGearSs13 } from "../../data/gear/legendary-gear-ss13.generated.js";
@@ -36,10 +36,7 @@ import { defaultBaseForItem } from "../../data/gear/corrosion-implicits-ss13.js"
 
 const NUM = "([+-]?\\d+(?:\\.\\d+)?)";
 const number = (text) => Number(String(text).replace("−", "-"));
-const clean = (text) =>
-  normalizePercentageText(String(text || ""))
-    .replace(/\s+/g, " ")
-    .trim();
+const clean = (text) => cleanGameText(String(text || ""));
 
 export const ONE_HANDED_WEAPON_TYPES = Object.freeze([
   "Claw",

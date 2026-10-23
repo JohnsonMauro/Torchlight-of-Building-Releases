@@ -1,5 +1,5 @@
 import { skillProgressionSs13 } from "../../data/skills/skill-progression-ss13.generated.js";
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { empowerAdditionalLines } from "../talents/storm-command.js";
 
 // Empower Skill effects that reach the build's other damage (frost-terra audit 2026-10-13;
@@ -115,10 +115,7 @@ export function bullsRageEuphoria({
     ...modifierTexts
       .filter((line) => line.origin !== "derived")
       .flatMap((line) => {
-        const match = normalizePercentageText(String(line.text ?? ""))
-          .replace(/\s+/g, " ")
-          .trim()
-          .match(PLAIN_COOLDOWN);
+        const match = cleanGameText(String(line.text ?? "")).match(PLAIN_COOLDOWN);
         return match
           ? [
               {
@@ -287,10 +284,7 @@ export function resolveEmpowerEffects({
   const globalSources = [];
   for (const line of modifierTexts) {
     if (line.origin === "derived") continue;
-    const match = normalizePercentageText(String(line.text ?? ""))
-      .replace(/\s+/g, " ")
-      .trim()
-      .match(GLOBAL_EMPOWER);
+    const match = cleanGameText(String(line.text ?? "")).match(GLOBAL_EMPOWER);
     if (match)
       globalSources.push({
         source: line.source,

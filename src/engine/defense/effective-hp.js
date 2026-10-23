@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { characterStatTotals } from "../character-stats.js";
 import { formatRecountInteger } from "../text/number-format.js";
 import { blockWithAegisOfFire } from "./block-model.js";
@@ -176,11 +176,7 @@ function perAttributePoolLines(modifierTexts, totals) {
   const out = { maxLife: [], maxEnergyShield: [], maxMana: [] };
   for (const line of modifierTexts) {
     if (line.origin === "derived") continue;
-    const match = stripName(
-      normalizePercentageText(String(line.text || ""))
-        .replace(/\s+/g, " ")
-        .trim(),
-    ).match(PER_ATTRIBUTE);
+    const match = stripName(cleanGameText(String(line.text || ""))).match(PER_ATTRIBUTE);
     if (!match) continue;
     const attribute = totals.byKey[match[4].toLowerCase()]?.value || 0;
     const multiplier = Number.isFinite(line.multiplier) ? line.multiplier : 1;
@@ -262,11 +258,9 @@ function barrierShieldBonus(modifierTexts) {
   const sources = [];
   for (const line of modifierTexts) {
     if (line.origin === "derived") continue;
-    const match = stripName(
-      normalizePercentageText(String(line.text || ""))
-        .replace(/\s+/g, " ")
-        .trim(),
-    ).match(/^([+-]\d+(?:\.\d+)?)% (additional )?Barrier Shield$/i);
+    const match = stripName(cleanGameText(String(line.text || ""))).match(
+      /^([+-]\d+(?:\.\d+)?)% (additional )?Barrier Shield$/i,
+    );
     if (!match) continue;
     const value = Number(match[1]) * (Number.isFinite(line.multiplier) ? line.multiplier : 1);
     if (match[2]) additional *= 1 + value / 100;
@@ -282,11 +276,9 @@ function movementBarrierSources(modifierTexts, moving) {
   const sources = [];
   for (const line of modifierTexts) {
     if (line.origin === "derived") continue;
-    const match = stripName(
-      normalizePercentageText(String(line.text || ""))
-        .replace(/\s+/g, " ")
-        .trim(),
-    ).match(/^(\d+(?:\.\d+)?)% chance to gain a Barrier for every ([\d.]+) ?m you move$/i);
+    const match = stripName(cleanGameText(String(line.text || ""))).match(
+      /^(\d+(?:\.\d+)?)% chance to gain a Barrier for every ([\d.]+) ?m you move$/i,
+    );
     if (match)
       sources.push({
         source: line.source,
@@ -339,11 +331,7 @@ export function collectDamageTakenLayers(modifierTexts = [], context = {}) {
   const layers = [];
   for (const line of modifierTexts) {
     if (line.origin === "derived") continue;
-    const clean = stripName(
-      normalizePercentageText(String(line.text || ""))
-        .replace(/\s+/g, " ")
-        .trim(),
-    );
+    const clean = stripName(cleanGameText(String(line.text || "")));
     const match = clean.match(TAKEN);
     if (!match) continue;
     // "[Stealth Stab] -15% ... while Blur is active +25% additional damage for 3 s after Blur ends": keep the first clause.
@@ -412,11 +400,7 @@ export function collectDotTakenLayers(modifierTexts = [], context = {}, pools = 
   const layers = [];
   for (const line of modifierTexts) {
     if (line.origin === "derived") continue;
-    const clean = stripName(
-      normalizePercentageText(String(line.text || ""))
-        .replace(/\s+/g, " ")
-        .trim(),
-    );
+    const clean = stripName(cleanGameText(String(line.text || "")));
     const dot = clean.match(DOT_TAKEN);
     const ailment = dot ? null : clean.match(AILMENT_TAKEN);
     if (!dot && !ailment) continue;
@@ -469,11 +453,7 @@ export function collectDamageTakenConversions(modifierTexts = [], context = {}) 
   const lines = [];
   for (const line of modifierTexts) {
     if (line.origin === "derived") continue;
-    const clean = stripName(
-      normalizePercentageText(String(line.text || ""))
-        .replace(/\s+/g, " ")
-        .trim(),
-    );
+    const clean = stripName(cleanGameText(String(line.text || "")));
     const match = clean.match(CONVERT_TAKEN);
     if (!match) continue;
     const condition = (match[4] || "").trim();
@@ -613,11 +593,7 @@ export function immunityChecklist(modifierTexts = []) {
   };
   for (const line of modifierTexts) {
     if (line.origin === "derived") continue;
-    const clean = stripName(
-      normalizePercentageText(String(line.text || ""))
-        .replace(/\s+/g, " ")
-        .trim(),
-    ).replace(/^You are /i, "");
+    const clean = stripName(cleanGameText(String(line.text || ""))).replace(/^You are /i, "");
     const entry = { source: line.source, text: line.text };
     let match = clean.match(/^Immune to (.+)$/i);
     if (match) {

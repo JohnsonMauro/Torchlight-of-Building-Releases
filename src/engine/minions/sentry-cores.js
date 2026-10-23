@@ -1,15 +1,11 @@
-import { normalizePercentageText } from "../text/percentage-text.js";
+import { cleanGameText } from "../text/percentage-text.js";
 import { skillGameTagsSs13 } from "../../data/skills/support-eligibility-ss13.generated.js";
 
 // Sentry core mechanics (core audit batch B7, research/core-talents-audit-2026-10-18.md §5). Sentry quantity is read by the hit model
 // (src/engine/skills/skill-hit-model.js sentryQuantity); Heat Up's cast-recently buff by src/engine/text/line-conditions.js (sentryCastRecently); Co-resonance's
 // Cast / Attack Speed → Cast Frequency by src/engine/skills/skill-hit-model.js.
 
-const norm = (text) =>
-  normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/^\[[^\]]+\]\s*/, "");
+const norm = (text) => cleanGameText(String(text ?? "")).replace(/^\[[^\]]+\]\s*/, "");
 const round = (value) => Math.round(value * 10000) / 10000;
 
 // ---- Overly Modified (God of Machines core) --------------------------------------------------------------------------------
