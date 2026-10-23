@@ -92,3 +92,18 @@ test("hovering the follower card shows its tooltip", async ({ page }) => {
   await expect(follower.tooltip()).toContainText("Scion of Light");
   await planner.expectNoErrors();
 });
+
+test("a build imported from the game log warns on the Follower tab until a follower is chosen", async ({ page }) => {
+  const { planner, follower } = await openFollower(page, youga);
+  await expect(follower.notice()).toBeHidden();
+  await follower.markImportedFromLog(planner);
+  await expect(follower.notice()).toBeVisible();
+  await follower.notice().hover();
+  await expect(follower.tooltip()).toContainText("does not record your active follower");
+  await page.mouse.move(0, 0);
+  await follower.button("Choose Follower").click();
+  await follower.selectorChoice("Lion Queen Normal").click();
+  await expect(follower.name()).toHaveText("Lion Queen");
+  await expect(follower.notice()).toBeHidden();
+  await planner.expectNoErrors();
+});

@@ -51,6 +51,21 @@ export class FollowerPage {
   toast() {
     return this.page.locator("#toast");
   }
+  /** The "!" beside the Follower tab's "?" (a game-log build without its follower). */
+  notice() {
+    return this.page.locator("#follower-view").getByRole("button", { name: "Follower notice", exact: true });
+  }
+  /** Marks the open build as made by Import from game, as the import stores it, and reloads into the build. */
+  async markImportedFromLog(planner) {
+    await this.page.evaluate((key) => {
+      const library = JSON.parse(localStorage.getItem(key));
+      library.builds.find((entry) => entry.id === library.activeBuildId).origin = "game-log";
+      localStorage.setItem(key, JSON.stringify(library));
+    }, LIBRARY_STORAGE_KEY);
+    await this.page.reload();
+    await planner.enterBuild();
+    await this.open();
+  }
 
   async open() {
     await openView(this.page, "follower");

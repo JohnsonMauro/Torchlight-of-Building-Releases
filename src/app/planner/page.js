@@ -1,6 +1,7 @@
 // The page shell: lookups, number format, art frames, and what the page says about the open build (save status, toast,
 // another tab's change).
 import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+import { buildTabNotices } from "../bridge/build-tab-notices.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { escapeHtml } from "../html.js";
 import {
@@ -42,6 +43,7 @@ function buildStatusView() {
           ? "Autosaved locally · older revisions removed to fit browser storage"
           : "Autosaved locally"
         : "No build saved",
+    tabNotices: buildTabNotices(active),
   };
 }
 export function updateStorageStatus() {

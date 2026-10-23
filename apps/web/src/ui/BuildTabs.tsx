@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { hideTooltip } from "./tooltip/tooltip-store";
 import { HelpButton } from "./HelpButton";
+import { NoticeButton } from "./NoticeButton";
 import { sectionTitleClass } from "./section-card";
 import { useBuildTabs, moveTab } from "./build-tabs";
 import {
@@ -12,6 +13,7 @@ import {
   buildTabButton,
 } from "./build-tab-classes";
 import { usePointerDrag } from "./use-pointer-drag";
+import { useViewSource } from "./use-view-source";
 import { useWorkspace } from "./use-workspace";
 
 interface UnderlinePlace {
@@ -75,13 +77,15 @@ function useUnderline(view: string, order: unknown) {
 
 /**
  * The strip at the top of each build section: the build's tabs in the user's order, the open one lit and underlined
- * (label and "?"), each with its "?" beside its label. A tab dragged by its label onto another takes its place. A tab
+ * (label and "?"), each with its "?" beside its label, and a "!" after it when the open build has a notice for that tab
+ * (the "buildStatus" source: a game-log build without its follower). A tab dragged by its label onto another takes its place. A tab
  * opens its section through the planner's click handler (data-view); the click that ends a drag is stopped before it
  * gets there.
  */
 export function BuildTabs() {
   const tabs = useBuildTabs();
   const open = useWorkspace();
+  const notices = useViewSource("buildStatus")?.tabNotices ?? {};
   const { strip, underline } = useUnderline(open.view, tabs);
   const drag = usePointerDrag<string>({
     targetAt: (element, view) => {
@@ -115,6 +119,7 @@ export function BuildTabs() {
               {tab.label}
             </button>
             <HelpButton topic={tab.help} label={tab.label} />
+            {notices[tab.view] ? <NoticeButton className="ml-1" text={notices[tab.view]} label={tab.label} /> : null}
           </div>
         );
       })}

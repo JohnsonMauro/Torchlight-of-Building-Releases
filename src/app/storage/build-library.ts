@@ -27,7 +27,10 @@ export interface LibraryBuild {
   revisions: BuildRevision[];
   /** The last 5 build codes shared from this build. */
   shareHistory: ShareRecord[];
+  /** "game-log": made by Import from game (what the log leaves out, such as the follower, is set by hand). */
+  origin?: BuildOrigin;
 }
+export type BuildOrigin = "game-log";
 /** The saved-build library as loadBuildLibrary returns it. activeBuildId is this tab's open build. */
 export interface BuildLibrary {
   schemaVersion: 1;
@@ -47,6 +50,7 @@ interface StoredBuildRecord {
   state?: unknown;
   revisions?: StoredRevision[];
   shareHistory?: StoredShareRecord[];
+  origin?: unknown;
 }
 interface StoredRevision {
   timestamp?: string;
@@ -85,6 +89,7 @@ export interface NewBuild {
   notes?: string;
   state?: unknown;
   activate?: boolean;
+  origin?: BuildOrigin;
 }
 export interface RestoreSummary {
   added: number;
@@ -213,6 +218,7 @@ function normalizeBuildRecord(build: StoredBuildRecord, index: number, fallbackS
     // An invalid revision sets the whole build aside (loadBuildLibrary), so nothing stored is lost.
     revisions: (Array.isArray(build.revisions) ? build.revisions : []).slice(-MAX_REVISIONS).map(normalizeRevision),
     shareHistory: normalizeShareHistory(build.shareHistory),
+    ...(build.origin === "game-log" ? { origin: build.origin } : {}),
   };
 }
 
@@ -676,6 +682,7 @@ export function createBuild({
   notes = "",
   state = defaultPlannerState,
   activate = true,
+  origin,
 }: NewBuild = {}): LibraryBuild {
   const library = loadBuildLibrary();
   const build: LibraryBuild = {
@@ -687,6 +694,7 @@ export function createBuild({
     state: ownedState(state),
     revisions: [],
     shareHistory: [],
+    ...(origin ? { origin } : {}),
   };
   library.builds.push(build);
   const opened = activate || !library.activeBuildId;
@@ -713,7 +721,12 @@ export function duplicateActiveBuild(name?: string): LibraryBuild | null {
   const library = loadBuildLibrary();
   const source = library.builds.find((build) => build.id === library.activeBuildId);
   if (!source) return null;
-  return createBuild({ name: name || `${source.name} copy`, notes: source.notes, state: source.state });
+  return createBuild({
+    name: name || `${source.name} copy`,
+    notes: source.notes,
+    state: source.state,
+    origin: source.origin,
+  });
 }
 
 export function setActiveBuild(id: string): BuildLibrary {

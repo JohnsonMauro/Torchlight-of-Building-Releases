@@ -45,7 +45,13 @@ export interface ViewSources {
    * The open build's name (null: no build is open) and whether it is saved: "unsaved" when storage refused it (full, or
    * the stored library is unreadable), with the header's text for it (src/app/planner/page.js).
    */
-  buildStatus: { name: string | null; save: "saved" | "unsaved" | "none"; text: string };
+  buildStatus: {
+    name: string | null;
+    save: "saved" | "unsaved" | "none";
+    text: string;
+    /** What a build tab warns about for the open build, by tab view (build-tab-notices.ts). */
+    tabNotices: Record<string, string>;
+  };
   /** The toast's message; `count` goes up with every message, so the same one twice shows twice. */
   toast: { message: string; count: number };
   /** Whether another tab saved a different version of the open build (until reloaded, dismissed or saved over). */
