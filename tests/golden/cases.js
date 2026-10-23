@@ -1,6 +1,8 @@
 // Golden-master cases: planner inputs covering the default build, a real imported build (Youga The Ultimate One, L94,
 // read from a game log and sanitised by src/game-log/game-log-import.js), every hero with two trait picks on that build's gear,
-// and combat-setting variants. Imports are relative to this file so tests/golden/diff.js can run the copy from an older
+// combat-setting variants, and an Ignite build on an otherwise empty character (Fire Burst with Additional Ignite, Cataclysm
+// and Control Spell, Flame Focus, Warlord with Starfire and the [5,2] Fire Infiltration node; built from the catalogs
+// 2026-10-23, so it is a ruler for the Ignite path, not a measured character). Imports are relative to this file so tests/golden/diff.js can run the copy from an older
 // git ref against its own src/.
 import { readFileSync } from "node:fs";
 import { calculatePlanner } from "../../packages/engine/src/planner.js";
@@ -12,6 +14,7 @@ import { allHeroTraits } from "../../packages/engine/data/heroes/all-hero-traits
 const TRAIT_LEVELS = [45, 60, 75];
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8"));
 const youga = fixture("youga-the-ultimate-one-l94.state.json");
+const fireBurstIgnite = fixture("fire-burst-ignite-warlord.state.json");
 
 function withHero(state, heroId, pick) {
   const next = structuredClone(state);
@@ -40,6 +43,12 @@ export function goldenInputs() {
     { id: "youga-l94/fire-res-0", state: withCombat(youga, { targetFireResistancePercent: 0 }) },
     { id: "youga-l94/fire-res-75", state: withCombat(youga, { targetFireResistancePercent: 75 }) },
     { id: "youga-l94/affliction-0", state: withCombat(youga, { afflictionAverage: 0, afflictionPeak: 0 }) },
+    { id: "fire-burst-ignite", state: structuredClone(fireBurstIgnite) },
+    { id: "fire-burst-ignite/manual-conditions", state: withCombat(fireBurstIgnite, { conditionMode: "manual" }) },
+    {
+      id: "fire-burst-ignite/cold-start",
+      state: withCombat(fireBurstIgnite, { bestCaseOverrides: { prebuiltSelfBuffs: false } }),
+    },
   ];
   for (const hero of heroCatalog) {
     for (const pick of ["first", "last"])

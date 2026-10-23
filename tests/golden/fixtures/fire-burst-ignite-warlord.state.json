@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "season": "ss14",
+  "seasonOrigin": "ss14",
+  "seasonChange": null,
+  "disabledEquipmentSlots": [],
+  "disabledSupportNames": [],
+  "equipmentOverrides": {},
+  "equipmentInventory": [],
+  "hero": {
+    "selectedHeroId": "",
+    "selectedTraits": {},
+    "memories": {},
+    "memoryTraitLevels": {},
+    "memoryInventory": [],
+    "equippedMemoryIds": {},
+    "baseTraitMemoryId": "",
+    "baseTraitMemoryRoll": null,
+    "sageScent": {
+      "elixir": "",
+      "damage": "",
+      "defense": "",
+      "functional": ""
+    },
+    "carinoSpecialAmmoSupports": [
+      "",
+      "",
+      ""
+    ],
+    "heroTraitSupports": {},
+    "heroTraitSupportLevels": {},
+    "heroTraitSupportConfigs": {},
+    "treeTraits": {
+      "thea-wisdom-of-the-gods": [],
+      "selena-dance-of-the-deep": [],
+      "youga-the-ultimate-one": []
+    },
+    "heroLoadouts": {}
+  },
+  "skills": {
+    "setupOrder": null,
+    "boardSlots": {
+      "skills": [
+        "main-1"
+      ],
+      "auras": [
+        "aura-1"
+      ]
+    },
+    "supportOrder": {
+      "main-1": [
+        "Additional Ignite",
+        "Cataclysm",
+        "Control Spell",
+        "",
+        ""
+      ],
+      "aura-1": [
+        "",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    "setupEnabled": {},
+    "skillLevels": {},
+    "supportEnabled": {
+      "main-1:Additional Ignite": true,
+      "main-1:Cataclysm": true,
+      "main-1:Control Spell": true
+    },
+    "supportLevels": {},
+    "specialSupportConfigs": {},
+    "customSupports": {
+      "main-1": [
+        {
+          "name": "Additional Ignite",
+          "level": 20,
+          "manaCostMultiplierPercent": 110,
+          "effects": [
+            "Supports skills that hit enemies. The supported skill inflicts 1 additional stack(s) of Ignite For each stack of Ignite an enemy has, the supported skill deals 5.2% additional Ignite Damage to the enemy, up to 15.6% . (Lv1:26/5) (Lv21:46/5) (Lv40:11.1) (Lv1:78/5) (Lv21:138/5) (Lv40:33.3)"
+          ],
+          "custom": true
+        },
+        {
+          "name": "Cataclysm",
+          "level": 20,
+          "manaCostMultiplierPercent": 110,
+          "effects": [
+            "Supports skills that deal Damage Over Time or inflict Ailments. When the supported skill deals Damage Over Time, it inflicts 8 Affliction When the Affliction inflicted per second is not 0, the Damage Over Time dealt will continuously inflicts Affliction on the target The target takes 1% additional Damage Over Time for every Affliction point The max Affliction is 100 Affliction on the enemy. Effect Cooldown: 1 s…"
+          ],
+          "custom": true
+        },
+        {
+          "name": "Control Spell",
+          "level": 20,
+          "manaCostMultiplierPercent": 110,
+          "effects": [
+            "Supports Spell Skills. -50% Critical Strike Rating for the supported skill 22.5% additional Hit Damage for the supported skill (Lv1:45/2) (Lv21:65/2) (Lv40:36.3)"
+          ],
+          "custom": true
+        }
+      ]
+    },
+    "customSetups": [
+      {
+        "instanceId": "main-1",
+        "role": "main",
+        "name": "Fire Burst",
+        "baseLevel": 20,
+        "addedLevels": 0,
+        "supports": [],
+        "enabledSupportSlots": 0,
+        "source": "https://tlidb.com/en/Fire_Burst",
+        "custom": true
+      },
+      {
+        "instanceId": "aura-1",
+        "role": "aura",
+        "name": "Flame Focus",
+        "baseLevel": 20,
+        "addedLevels": 0,
+        "supports": [],
+        "enabledSupportSlots": 0,
+        "source": "https://tlidb.com/en/Flame_Focus",
+        "custom": true,
+        "sealedManaPercent": 20
+      }
+    ]
+  },
+  "equippedSlateIds": [],
+  "slates": {
+    "geometryVersion": 4,
+    "placements": {},
+    "parked": {},
+    "inventory": []
+  },
+  "followers": {
+    "followerId": null,
+    "rarity": null,
+    "skills": [],
+    "rarityScheme": "letter"
+  },
+  "talentRanks": {
+    "Warlord:0,0": 3,
+    "Warlord:0,2": 3,
+    "Warlord:0,4": 3,
+    "Warlord:1,0": 3,
+    "Warlord:4,2": 3,
+    "Warlord:5,2": 1,
+    "Warlord:1,1": 3,
+    "Warlord:1,2": 3,
+    "Warlord:1,3": 3
+  },
+  "talents": {
+    "selectedTrees": [
+      "God of Might",
+      "Warlord",
+      "",
+      ""
+    ],
+    "coreSelections": {
+      "Warlord:24": "Starfire"
+    },
+    "prismInventory": [],
+    "installedPrisms": {},
+    "installedPrismNodes": {}
+  },
+  "pacts": {
+    "selectedSpirits": [
+      "",
+      "",
+      ""
+    ],
+    "spiritLevels": {},
+    "nativeNodeQuantities": {},
+    "kismetSlots": {},
+    "fateUnlocks": {}
+  },
+  "combat": {
+    "conditionMode": "auto",
+    "conditions": {
+      "prebuiltSelfBuffs": true,
+      "blurRecentlyEnded": false,
+      "nearbyElite": true,
+      "targetLife": true,
+      "blockedRecently": true,
+      "blur": true,
+      "tideContact": true,
+      "onTheTide": true,
+      "waveAria": true,
+      "idyll": true,
+      "fireInfiltration": true,
+      "entangledPain": true,
+      "scorch": true,
+      "affliction": true,
+      "aim": true
+    },
+    "afflictionAverage": 50,
+    "afflictionPeak": 100,
+    "targetFireResistancePercent": 30,
+    "aimUptimePercent": 85.71,
+    "auraAffectedAllies": 1,
+    "idyllStacks": 15,
+    "extraMaxChanneledStacks": 0,
+    "extraInitialChanneledStacks": 0
+  }
+}

@@ -61,6 +61,36 @@
         "warnings": 70
       }
     },
+    "fire-burst-ignite": {
+      "sha256": "2e4d9ac5a1c3556488f737c8e01825570946a9f099941d623725542691435ae5",
+      "summary": {
+        "mainSkill": "Fire Burst",
+        "dps5s": 1196.2087431866253,
+        "dps20s": 1351.1645680541037,
+        "dpsSteady": 1402.8269205411675,
+        "warnings": 10
+      }
+    },
+    "fire-burst-ignite/manual-conditions": {
+      "sha256": "b1b9ae996cb4db6b34dc0d910674ddaefddadda0118082a2f23d1212db8d4792",
+      "summary": {
+        "mainSkill": "Fire Burst",
+        "dps5s": 1196.2087431866253,
+        "dps20s": 1351.1645680541037,
+        "dpsSteady": 1402.8269205411675,
+        "warnings": 10
+      }
+    },
+    "fire-burst-ignite/cold-start": {
+      "sha256": "190934e137a03858729c83ff3fb91232eb62e278f15ba31661d3455d7cf08be4",
+      "summary": {
+        "mainSkill": "Fire Burst",
+        "dps5s": 1196.2087431866253,
+        "dps20s": 1351.1645680541037,
+        "dpsSteady": 1402.8269205411675,
+        "warnings": 10
+      }
+    },
     "hero/rehan-anger/first": {
       "sha256": "06f51cfbbe9682c8a9ebdb8c3b57e2a22d7557af9eb7960608c35dd800f71b1a",
       "summary": {
