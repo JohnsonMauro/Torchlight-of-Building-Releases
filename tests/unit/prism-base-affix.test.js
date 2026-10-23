@@ -4,7 +4,8 @@
 // (src/engine/text/line-conditions.js perMovementSpeed).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { prismAddedCoreEffect } from "../../src/engine/talents/prism-crafting.js";
+import { gameIdMapSs13 } from "../../src/data/game-id-map-ss13.generated.js";
+import { prismAddedCoreEffect, prismBaseAffixesForBase } from "../../src/engine/talents/prism-crafting.js";
 import { resolveLineCondition, splitCondition } from "../../src/engine/text/line-conditions.js";
 
 const HAZE = {
@@ -30,4 +31,16 @@ test("+1% additional Damage per +5% Movement Speed reads the Movement Speed tota
   assert.equal(resolveLineCondition(condition, { movementSpeedPercent: 42.7 }).factor, 8);
   assert.equal(resolveLineCondition(condition, { movementSpeedPercent: 80 }).factor, 12);
   assert.equal(resolveLineCondition(condition, { movementSpeedPercent: 3 }).active, false);
+});
+
+test("a Haze's base affix choices are the id map's added-core-effect base affixes, as the importer stores them", () => {
+  // The importer keeps the id map's text with its "\\n" read as a line break (src/game-log/game-log-import.js).
+  const imported = Object.values(gameIdMapSs13.affixes)
+    .filter(([, text]) => /^Adds an additional effect to the Core Talent/.test(text))
+    .map(([, text]) => text.replace(/\\n/g, "\n"));
+  assert.deepEqual(prismBaseAffixesForBase("Haze"), imported);
+  assert.ok(
+    prismBaseAffixesForBase("Haze").every((affix) => prismAddedCoreEffect({ type: "ethereal", baseAffix: affix })),
+  );
+  assert.deepEqual(prismBaseAffixesForBase("Phantasmagoria"), []);
 });

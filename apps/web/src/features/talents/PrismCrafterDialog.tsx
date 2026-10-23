@@ -5,6 +5,7 @@
 // "prismCrafter" source; every control is a planner command.
 import { useState, type CSSProperties } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
+import type { OptionView } from "@legacy/app/bridge/equipment-crafter-view.ts";
 import type { PrismCrafterView } from "@legacy/app/bridge/prism-crafter-view.ts";
 import { searchMatcher, searchText } from "@legacy/app/bridge/search-match.ts";
 import { Breadcrumb } from "../../ui/Breadcrumb";
@@ -125,13 +126,15 @@ function InverseForm({ inverse }: { inverse: NonNullable<PrismCrafterView["inver
 }
 
 /**
- * The fixed effect, then each random affix slot's list; a search over the lists hides the slots it finds nothing in.
+ * The fixed effect, the base affix a Haze rolls, then each random affix slot's list; a search over the lists hides the
+ * slots it finds nothing in.
  */
 function EtherealForm({ ethereal, query }: { ethereal: NonNullable<PrismCrafterView["ethereal"]>; query: string }) {
   const matcher = searchMatcher(query);
-  const lists = ethereal.lists.filter(
-    (list) => !query.trim() || list.choices.some((choice) => matcher.matches(searchText([choice.label]))),
-  );
+  const found = (choices: OptionView[]) =>
+    !query.trim() || choices.some((choice) => matcher.matches(searchText([choice.label])));
+  const lists = ethereal.lists.filter((list) => found(list.choices));
+  const baseAffix = ethereal.baseAffix && found(ethereal.baseAffix.choices) ? ethereal.baseAffix : null;
   return (
     <>
       {ethereal.fixed ? (
@@ -142,6 +145,18 @@ function EtherealForm({ ethereal, query }: { ethereal: NonNullable<PrismCrafterV
               <KeywordText text={ethereal.fixed.effect} />
             </p>
           </div>
+        </CraftSection>
+      ) : null}
+      {baseAffix ? (
+        <CraftSection heading="Base affix" summary={choiceLabel(baseAffix.choices, baseAffix.value)}>
+          <ChoiceList
+            label="Base Prism affix"
+            choices={baseAffix.choices}
+            value={baseAffix.value}
+            query={query}
+            attributes={{ "data-prism-affix": "base" }}
+            onChange={(value) => commands().setPrismAffix("base", value)}
+          />
         </CraftSection>
       ) : null}
       <h3 className={FORM_HEADING}>{`Random Affixes (${ethereal.count}/${ethereal.max})`}</h3>
@@ -157,7 +172,9 @@ function EtherealForm({ ethereal, query }: { ethereal: NonNullable<PrismCrafterV
           />
         </CraftSection>
       ))}
-      {lists.length ? null : <p className="prism-affix-empty py-6 text-center text-muted">No affix matches that.</p>}
+      {lists.length || baseAffix ? null : (
+        <p className="prism-affix-empty py-6 text-center text-muted">No affix matches that.</p>
+      )}
     </>
   );
 }

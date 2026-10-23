@@ -11,6 +11,9 @@ Part of the skill [styling-guide](SKILL.md) (§5, §7).
   `leading-[normal]`. `text-<size>` also sets a line height (`text-sm/[normal]` keeps `normal`).
 - `max-[1100px]:` is `width < 1100px`; the screens use `max-[1101px]`/`min-[1101px]` where the legacy media query
   included 1100.
+- A `truncate` text inside an item of a grid with no `grid-cols-*` (an `auto` column, as `CraftColumn`'s body) widens
+  the whole column to the full text: `min-w-0` on the span is not enough, put it on the grid item (2026-10-22:
+  `CraftSection`'s summary pushed the prism form 175 px past its column).
 
 ## 7. Tailwind scanning traps
 

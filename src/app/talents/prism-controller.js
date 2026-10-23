@@ -6,6 +6,7 @@ import {
   prismAffixes,
   prismAddedCoreEffect,
   prismArea,
+  prismBaseAffixesForBase,
   prismBaseEffect,
   prismLegendaryAffixesForBase,
   prismRareAffixesForBase,
@@ -181,8 +182,16 @@ const prismAffixOptionLabel = (kind, affix) =>
   kind === "legendary" && affix.includes("Gains a stack of Fortitude")
     ? `Fortitude — ${affix.match(/Owns (\d+) additional/)?.[1] || "?"} additional stack(s) — ${affix}`
     : affix;
+const newEtherealDraft = () => ({
+  type: "ethereal",
+  base: "",
+  radiusAffix: "",
+  rareAffix: "",
+  legendaryAffix: "",
+  baseAffix: "",
+});
 function prismCrafterSource() {
-  const draft = prismDraft || { type: "ethereal", base: "", radiusAffix: "", rareAffix: "", legendaryAffix: "" },
+  const draft = prismDraft || newEtherealDraft(),
     hasLegendary = prismSupportsLegendaryAffix(draft),
     replaces = prismReplacesCore(draft),
     icon = prismIcon(draft);
@@ -218,6 +227,7 @@ function prismCrafterSource() {
               prismBaseEffect(draft.type, base),
               ...(draft.type === "ethereal"
                 ? [
+                    ...prismBaseAffixesForBase(base),
                     ...prismRareAffixesForBase(base),
                     ...prismLegendaryAffixesForBase(base).map((affix) => prismAffixOptionLabel("legendary", affix)),
                   ]
@@ -268,6 +278,16 @@ function prismCrafterSource() {
                   effect: prismBaseEffect(draft.type, draft.base, draft.legendaryAffix),
                 }
               : null,
+            // A base that rolls its base affix (Haze): the effect it adds to the panel's core, shown without the lead line.
+            baseAffix: prismBaseAffixesForBase(draft.base).length
+              ? {
+                  value: draft.baseAffix || "",
+                  choices: prismBaseAffixesForBase(draft.base).map((affix) => ({
+                    value: affix,
+                    label: prismAddedCoreEffect({ type: "ethereal", baseAffix: affix }),
+                  })),
+                }
+              : null,
             count: [draft.radiusAffix, draft.rareAffix, hasLegendary && draft.legendaryAffix].filter(Boolean).length,
             max: hasLegendary ? 3 : 2,
             lists: [
@@ -300,15 +320,17 @@ function setPrismType(type) {
     radiusAffix: "",
     rareAffix: "",
     legendaryAffix: "",
+    baseAffix: "",
     ...(inverse ? { inverseRolls: { micro: -100, medium: -100, legendary: -100 } } : {}),
   };
   prismStep = "pick";
   renderPrismCrafter();
 }
-// A base card picked: the form for that base, which keeps only the rare and legendary affixes it can roll.
+// A base card picked: the form for that base, which keeps only the base, rare and legendary affixes it can roll.
 function pickPrismBase(base) {
   if (!prismDraft) return;
   prismDraft.base = base;
+  if (!prismBaseAffixesForBase(prismDraft.base).includes(prismDraft.baseAffix)) prismDraft.baseAffix = "";
   if (!prismRareAffixesForBase(prismDraft.base).includes(prismDraft.rareAffix)) prismDraft.rareAffix = "";
   if (!prismLegendaryAffixesForBase(prismDraft.base).includes(prismDraft.legendaryAffix))
     prismDraft.legendaryAffix = "";
@@ -365,7 +387,7 @@ function openPrismCrafter(item = null) {
   prismEditingId = item?.id || null;
   prismDraft = item
     ? { ...item, ...(item.inverseRolls ? { inverseRolls: { ...item.inverseRolls } } : {}) }
-    : { type: "ethereal", base: "", radiusAffix: "", rareAffix: "", legendaryAffix: "" };
+    : newEtherealDraft();
   prismStep = item ? "form" : "pick";
   renderPrismCrafter();
   openDialog("prism-crafter-dialog");

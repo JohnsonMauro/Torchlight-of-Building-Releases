@@ -59,7 +59,7 @@
  *   affixes it can roll).
  * @property {() => void} repickPrism Prism crafter: the form's path back to the type's bases.
  * @property {(kind: string, value: string) => void} setPrismAffix Prism crafter: a random affix (radius, rare,
- *   legendary).
+ *   legendary) or a Haze's base affix (base).
  * @property {(kind: string, value: number) => void} setInverseRoll Prism crafter: an Inverse Image's mod value
  *   (rounded, in range).
  * @property {() => void} cancelPrismCraft Prism crafter: Cancel or close, back to the prism inventory.

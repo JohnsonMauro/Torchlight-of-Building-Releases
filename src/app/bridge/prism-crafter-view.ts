@@ -40,6 +40,8 @@ export interface PrismCrafterView {
   ethereal: {
     base: string;
     fixed: { label: string; note: string; effect: string } | null;
+    /** A base that rolls its base affix (Haze): the chosen one ("" holds none) and the effects it can add to the core. */
+    baseAffix: { value: string; choices: OptionView[] } | null;
     count: number;
     max: number;
     /** Each random affix slot's choices ("" holds none). */

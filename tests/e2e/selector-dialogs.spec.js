@@ -601,6 +601,50 @@ test("Craft Prism: the bases as cards, then the base's random affixes and previe
   await planner.expectNoErrors();
 });
 
+test("a Haze rolls its base affix: the effect it adds to the core, kept only on a Haze", async ({ page }) => {
+  const { planner, talents } = await openPrismCrafter(page);
+  const crafter = prismCrafter(page);
+  const preview = crafter.locator("#prism-crafter-preview");
+  const path = crafter.getByRole("navigation", { name: "Prism" });
+  const effect = "+1% additional Damage per +5% Movement Speed, up to +12%";
+  await crafter.locator('[data-prism-pick="Haze"]').click();
+  await expect(crafter.locator("[data-craft-section] h3")).toHaveText([
+    "Prism Effect",
+    "Base affix",
+    "Radius affix",
+    "Rare affix",
+  ]);
+  // None, then the ten effects of the game's Haze base affixes.
+  await expect(prismAffixList(crafter, "Base").getByRole("radio")).toHaveCount(11);
+  await expect(prismAffixOption(crafter, "Base", "None")).toBeChecked();
+  // A long one in the section's summary is cut there: it does not widen the form past its column.
+  await prismAffixList(crafter, "Base").getByRole("radio").nth(1).check();
+  const form = crafter.locator(".prism-crafter-form > div").last();
+  expect(await form.evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0);
+  await prismAffixOption(crafter, "Base", effect).check();
+  await expect(preview.locator(".prism-affix-section").first()).toContainText(effect);
+  // The affix search reaches the base affix list too.
+  await crafter.getByRole("searchbox", { name: "Search affixes" }).fill("Spell Aggression");
+  await expect(crafter.locator("[data-craft-section] h3")).toHaveText(["Prism Effect", "Base affix"]);
+  await crafter.getByRole("searchbox", { name: "Search affixes" }).fill("");
+  // Another base has no base affix to roll and drops it; back on a Haze it starts from none.
+  await path.getByRole("button", { name: "Ethereal Prism", exact: true }).click();
+  await crafter.locator('[data-prism-pick="Phantasmagoria"]').click();
+  await expect(prismAffixList(crafter, "Base")).toHaveCount(0);
+  await path.getByRole("button", { name: "Ethereal Prism", exact: true }).click();
+  await crafter.locator('[data-prism-pick="Haze"]').click();
+  await expect(prismAffixOption(crafter, "Base", "None")).toBeChecked();
+  await prismAffixOption(crafter, "Base", effect).check();
+
+  await crafter.locator("footer").getByRole("button", { name: "Craft", exact: true }).click();
+  await expect(crafter).toBeHidden();
+  expect((await talents.stored()).prismInventory.at(-1)).toMatchObject({
+    base: "Haze",
+    baseAffix: `Adds an additional effect to the Core Talent on the Any Advanced Talent Panel:\n${effect}`,
+  });
+  await planner.expectNoErrors();
+});
+
 test("the prism search finds the bases by what they hold or can roll, and the card says which line matched", async ({
   page,
 }) => {
@@ -612,6 +656,10 @@ test("the prism search finds the bases by what they hold or can roll, and the ca
   await expect(cards).toHaveCount(1);
   await expect(cards).toHaveAttribute("data-prism-pick", "Phantasmagoria");
   await expect(cards.locator("small")).toHaveText("+75% to the effects of Random Affixes on this Prism.");
+  // A Haze is found by the effects its base affix can add.
+  await search.fill("Synthetic Troop");
+  await expect(cards).toHaveAttribute("data-prism-pick", "Haze");
+  await expect(cards.locator("small")).toContainText("Synthetic Troop Minion");
   // A match on the name needs no line.
   await search.fill("haze");
   await expect(cards).toHaveCount(1);

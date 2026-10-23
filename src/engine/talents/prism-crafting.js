@@ -237,6 +237,26 @@ export function prismBaseEffect(type, base, legendaryAffix = "") {
   return `Replaces the Core Talent of the Advanced Talent Panel with ${base}.`;
 }
 
+const addedCoreEffectPrefix = "Adds an additional effect to the Core Talent on the Any Advanced Talent Panel:";
+// The effects a Haze rolls as its base affix: the game's base affixes 1204200101–1204200114, worded as the upstream id
+// map (src/data/game-id-map-ss13.generated.js) writes them, so a prism from "Import from game" holds one of these.
+const hazeAddedCoreEffects = [
+  "+12% additional Attack Damage when holding a One-Handed Weapon\n+12% additional Base Damage for Two-Handed Weapons",
+  "While standing still, +12% additional Attack Damage and Ailment Damage dealt by attacks. -5% additional damage taken",
+  "+1% additional Damage per +5% Movement Speed, up to +12%",
+  "+12% additional Attack Damage and Ailment Damage dealt by attacks when there are Elites within 10m nearby\n+50% Skill Area when there are no Elites within 10m nearby",
+  "+30 Affliction inflicted per second\n+10% additional Damage Over Time",
+  "When channeling Harmonious Field, triggers the Sentry Main Skill if there are no Sentries within 10m. Interval: 1s\n+30% Empower Skill Effect for Harmonious Field",
+  "Blinds enemies within 15 m when casting Dazzling Bloom\n+12% additional damage for Spirit Magi against Blinded enemies",
+  "For every stack of Max Spell Burst, +4% additional Spell Damage, up to +16% additional Spell Damage",
+  "+2.5% additional Minion Damage per Synthetic Troop Minion you own",
+  "+12% additional Spell Damage when you have Spell Aggression",
+];
+// The base affixes a base can roll (only Haze has a choice; every other base's is its fixed effect).
+export function prismBaseAffixesForBase(base) {
+  return base === "Haze" ? hazeAddedCoreEffects.map((effect) => `${addedCoreEffectPrefix}\n${effect}`) : [];
+}
+
 // An Ethereal Prism base affix that adds an effect to its panel's core ("Adds an additional effect to the Core Talent on the
 // Any Advanced Talent Panel:" then the effect; TLIDB Base Affix rows 12042001xx, the game's Haze, 2026-10-22 log): the effect,
 // or "" for another base affix or none.
