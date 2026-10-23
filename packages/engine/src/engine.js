@@ -614,7 +614,7 @@ function slateNumericEffects(slate, additionalFireLines = null) {
   // One text→key table with talents (packages/engine/src/text/talent-text-effects.js, talent batch T1/T2/T6): the slate keys plus the
   // talent lines a slate copies (Cast Speed, Spell crit, Affliction wording and effect, channeled speed, Fire
   // Penetration / Infiltration vs Ignited). Read by spell-critical.js (crit, e.g. "Warrior: Micro Talent: +15%
-  // Critical Strike Rating", Judgment-scaled; Nether King "+15% Critical Strike Damage"), scorching-beam-cast-rate.js
+  // Critical Strike Rating", Judgment-scaled; Nether King "+15% Critical Strike Damage"), cast-speed.js
   // and ignite-ledger.js. Daze is a state, so it is set, not summed.
   for (const affix of [...(slate.fixed || []), ...(slate.brands || []), ...(slate.copiedTalents || [])])
     for (const clause of affix.split(/\s+\|\s+|\s+·\s+/)) {

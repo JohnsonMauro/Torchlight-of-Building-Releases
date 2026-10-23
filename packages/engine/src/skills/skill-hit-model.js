@@ -294,7 +294,7 @@ function supportLayers(setup, { dealtTypes, skillTags, profile, speedType }) {
       continue;
     }
     if ((line.kind === "attack" && !attack) || (line.kind === "cast" && attack)) continue;
-    // Quick Decision's additional speed is already in the planner's cast-speed total for spells (packages/engine/src/skills/scorching-beam-cast-rate.js
+    // Quick Decision's additional speed is already in the planner's cast-speed total for spells (packages/engine/src/skills/cast-speed.js
     // reads it per setup); attacks use the weapon's Attack Speed, which never included it (B3), so it applies here.
     if (line.kind === "both" && line.additional && line.support === "Quick Decision" && !attack) continue;
     castSpeed.push(entry);

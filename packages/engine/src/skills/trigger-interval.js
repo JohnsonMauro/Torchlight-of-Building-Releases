@@ -34,7 +34,7 @@ export function castSpeedScaledTriggerInterval(
 // Channeled skills are never triggered (the game's support filter keeps Wind Rhythm and the other mediums off them).
 /**
  * @param {object} p.setup the DoT setup (its resolved supportEffects: trigger, triggerDetail, cooldown)
- * @param {object} p.castRate packages/engine/src/skills/scorching-beam-cast-rate.js output for the setup ({ baseRate, increasedPercent, castsPerSecond })
+ * @param {object} p.castRate packages/engine/src/skills/cast-speed.js output for the setup ({ increasedPercent, factor })
  * @param {object[]} p.cooldownLines the build's "±X% [additional] Cooldown Recovery Speed" lines ({ source, text, value, additional })
  * @param {number} p.cooldownSeconds the skill's own use cooldown (0: none)
  * @param {boolean} p.channeled the skill is channeled (never triggered)
@@ -64,10 +64,7 @@ export function activationMediumDotTrigger({
   const share = castSpeedScaled ? (shareDetail.share ?? 0) : 0;
   const castIncreasedPercent = Number(castRate?.increasedPercent) || 0;
   const increasedFactor = 1 + castIncreasedPercent / 100;
-  const castAdditionalFactor =
-    castRate?.baseRate > 0 && increasedFactor > 0 && castRate.castsPerSecond > 0
-      ? castRate.castsPerSecond / castRate.baseRate / increasedFactor
-      : 1;
+  const castAdditionalFactor = increasedFactor > 0 && castRate?.factor > 0 ? castRate.factor / increasedFactor : 1;
   const cooldownSources = [
     ...cooldownLines,
     ...(effects.cooldown || []).map((line) => ({

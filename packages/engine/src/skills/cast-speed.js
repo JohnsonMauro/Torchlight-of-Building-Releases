@@ -1,9 +1,10 @@
-import { selenaScorchingBeamStrippedBaseline } from "../../data/stats/selena-scorching-beam-stripped-baseline.js";
-
 const number = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
 
-// Conditional Aim speed uses its configured uptime in the five-second forecast.
-export function scorchingBeamCastRate({
+// The character's Cast Speed for one setup, as a factor on the skill's own use rate: the increased lines in one sum, the
+// additional ones (gear "more", Quick Decision on the setup, resolved conditional lines, Ceaseless Tide's Loud Song) each
+// multiplying. Channel-only lines are in: a caller strips them for a skill that does not channel. Conditional Aim speed
+// uses its configured uptime.
+export function characterCastSpeed({
   blessings,
   ceaselessTide = false,
   main,
@@ -13,12 +14,10 @@ export function scorchingBeamCastRate({
   aimCastSpeedPercent = 0,
   lineSpeed = null,
 } = {}) {
-  const baseRate = selenaScorchingBeamStrippedBaseline.damage.castsPerSecond;
   const talent = talentSlate?.candidateTalent || {};
   const slate = talentSlate?.candidateSlate || {};
   const gear = equipment?.candidate || {};
   const spirits = pact?.totals || {};
-  // Scorching Beam is a Channeled Skill, so channel-only speed applies to it.
   const increasedPercent =
     number(blessings?.castSpeedPercent) +
     number(aimCastSpeedPercent) +
@@ -51,11 +50,10 @@ export function scorchingBeamCastRate({
     (ceaselessTide ? 0.8 : 1) *
     (lineSpeed?.additionalPercents || []).reduce((factor, value) => factor * Math.max(0, 1 + number(value) / 100), 1);
   return {
-    baseRate,
     ceaselessTideSpeedFactor: ceaselessTide ? 0.8 : 1,
     aimCastSpeedPercent: number(aimCastSpeedPercent),
     increasedPercent,
     additionalPercent,
-    castsPerSecond: baseRate * increasedFactor * additionalFactor,
+    factor: increasedFactor * additionalFactor,
   };
 }

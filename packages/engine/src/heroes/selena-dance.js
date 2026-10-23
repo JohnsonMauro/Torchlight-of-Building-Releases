@@ -329,13 +329,13 @@ export function activationMediumTerraInterval(charges) {
 // (no use time: a triggered skill acts without the casting action), every
 //   cooldown ÷ ((1 + Σ Cooldown Recovery Speed + share × Σ Cast Speed) × Π(1 + additional Cast Speed) × Π(additional CDR))
 // (packages/engine/src/skills/trigger-interval.js castSpeedScaledTriggerInterval; the build creator's calculator, DonTheCrown's "Selena DoT Stat Calc"
-// v0.3, user-provided 2026-10-13, models it so). The Cast Speed is the planner's own for the skill (packages/engine/src/skills/scorching-beam-cast-rate.js
+// v0.3, user-provided 2026-10-13, models it so). The Cast Speed is the planner's own for the skill (packages/engine/src/skills/cast-speed.js
 // with the skill's setup). Provisional: the share reading and the recast at every trigger (a cast that finds no Terra Charge still
 // recasts; terraChargesConsumed with minimum 0). Triggered only, so "-80% additional damage for manually used Supported Skill"
 // does not apply. Activation Medium: Terra (Silencing Severance) switches the Main Skill's other Activation Mediums off.
 /**
  * @param {object} p.setup the Terra setup (its resolved supportEffects)
- * @param {object} p.castRate packages/engine/src/skills/scorching-beam-cast-rate.js output for the setup ({ baseRate, increasedPercent, castsPerSecond })
+ * @param {object} p.castRate packages/engine/src/skills/cast-speed.js output for the setup ({ increasedPercent, factor })
  * @param {object[]} p.modifierTexts the build's lines ("±X% [additional] Cooldown Recovery Speed")
  * @returns {null|{ intervalSeconds, castsPerSecond, cooldownSeconds, share, castIncreasedPercent, castAdditionalFactor, cooldownRecoveryPercent, cooldownAdditionalFactor, cooldownSources, source, text }}
  */

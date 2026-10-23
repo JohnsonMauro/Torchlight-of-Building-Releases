@@ -159,7 +159,7 @@ import { skillLevelBonus } from "./skills/skill-level-bonuses.js";
 import { supportEffectsAtLevel } from "./skills/skill-effect-progression.js";
 // Saved base levels stay within the selector's 1–40 range; "+N level" sources are added on top.
 import { clampBaseLevel } from "./state/skill-level-input.js";
-import { scorchingBeamCastRate } from "./skills/scorching-beam-cast-rate.js";
+import { characterCastSpeed } from "./skills/cast-speed.js";
 import { activationMediumDotTrigger } from "./skills/trigger-interval.js";
 import { skillTiming } from "../data/skills/skill-timing.generated.js";
 import { spellCritical, versusAilmentCriticalDamageSources } from "./skills/spell-critical.js";
@@ -395,10 +395,7 @@ function buildLineConditionState({
   const attackMain = skillHitSources.find(
     (source) => source.setupKey === resolvedMain?.setupKey && source.profile.weaponScaling,
   );
-  const speedFactor = (() => {
-    const rate = scorchingBeamCastRate({ talentSlate, equipment, pact });
-    return rate.baseRate > 0 ? rate.castsPerSecond / rate.baseRate : 1;
-  })();
+  const speedFactor = characterCastSpeed({ talentSlate, equipment, pact }).factor;
   const mainUsesPerSecond = attackMain
     ? weapon.attackSpeed?.factor || 0
     : resolvedMain && activeNames.has(resolvedMain.name)
@@ -3355,15 +3352,6 @@ function calculatePlannerOnce(
   for (const line of block.ratingSources)
     memoryEquipment.candidate["spellCriticalStrikeRatingPercent:increased"] =
       (memoryEquipment.candidate["spellCriticalStrikeRatingPercent:increased"] || 0) + line.value;
-  let beamCastRate = scorchingBeamCastRate({
-    lineSpeed: lineEffects.castSpeed,
-    ceaselessTide: heroMemories.ceaselessTide,
-    main,
-    talentSlate,
-    equipment: memoryEquipment,
-    pact,
-    aimCastSpeedPercent: aim.averageCastSpeedPercent,
-  });
   // The Ignite ledger (packages/engine/src/ailments/ignite-ledger.js), compiled again below as Subtle Impact, Blur and the
   // Blessings join it.
   const compileIgnite = (late = {}) =>
@@ -3484,7 +3472,7 @@ function calculatePlannerOnce(
     igniteLedger = compileIgnite();
   }
   // Loud Song (Selena with Ceaseless Tide, deemed Loud Song while Bard): "-20% additional Attack and Cast Speed". The cast part
-  // is in the cast-rate ledger (packages/engine/src/skills/scorching-beam-cast-rate.js); the attack part reaches the weapon's attack speed here.
+  // is in the cast-rate ledger (packages/engine/src/skills/cast-speed.js); the attack part reaches the weapon's attack speed here.
   const loudSongSpeedLines = singWithTheTide.ceaselessTide
     ? [
         {
@@ -3712,16 +3700,6 @@ function calculatePlannerOnce(
     const text = `${line.text} × ${stacks} Focus Blessing stacks (blessing model)`;
     mechanics.ignite.additional.push({ source: line.source, text, value, category: "Additional damage" });
   }
-  beamCastRate = scorchingBeamCastRate({
-    lineSpeed: lineEffects.castSpeed,
-    blessings,
-    ceaselessTide: heroMemories.ceaselessTide,
-    main,
-    talentSlate,
-    equipment: memoryEquipment,
-    pact,
-    aimCastSpeedPercent: aim.averageCastSpeedPercent,
-  });
   const compileFinal = () => compileIgnite({ blurEffects, blessings });
   igniteLedger = compileFinal();
   // Blessings and Blur can change Affliction per second or Reap recovery: re-derive once with the final ledger.
@@ -4025,7 +4003,7 @@ function calculatePlannerOnce(
           candidateTalent: { ...(talentSlate.candidateTalent || {}), channeledAttackAndCastSpeedPercent: 0 },
           candidateSlate: { ...(talentSlate.candidateSlate || {}), channeledAttackAndCastSpeedPercent: 0 },
         };
-    const speed = scorchingBeamCastRate({
+    const speed = characterCastSpeed({
       lineSpeed: lineEffects.castSpeed,
       blessings,
       ceaselessTide: heroMemories.ceaselessTide,
@@ -4035,7 +4013,7 @@ function calculatePlannerOnce(
       pact,
       aimCastSpeedPercent: aim.averageCastSpeedPercent,
     });
-    const speedFactor = speed.baseRate > 0 ? speed.castsPerSecond / speed.baseRate : 1;
+    const speedFactor = speed.factor;
     // increasedPercent / additionalFactor: the two Cast Speed layers, for Play Safe's Cast Speed → Spell Burst Charge Speed (packages/engine/src/skills/skill-hit-model.js).
     const castSpeed = {
       factor: speedFactor,
@@ -4050,7 +4028,7 @@ function calculatePlannerOnce(
       ],
     };
     // The character's Cast Speed without the setup's own support lines (Quick Decision), for Play Safe (user decision 2026-10-19).
-    const characterSpeed = scorchingBeamCastRate({
+    const characterSpeed = characterCastSpeed({
       lineSpeed: lineEffects.castSpeed,
       blessings,
       ceaselessTide: heroMemories.ceaselessTide,
@@ -4060,8 +4038,7 @@ function calculatePlannerOnce(
       pact,
       aimCastSpeedPercent: aim.averageCastSpeedPercent,
     });
-    const characterSpeedFactor =
-      characterSpeed.baseRate > 0 ? characterSpeed.castsPerSecond / characterSpeed.baseRate : 1;
+    const characterSpeedFactor = characterSpeed.factor;
     castSpeed.character = {
       increasedPercent: characterSpeed.increasedPercent,
       additionalFactor: characterSpeedFactor / Math.max(1e-9, Math.max(0, 1 + characterSpeed.increasedPercent / 100)),
@@ -4607,7 +4584,7 @@ function calculatePlannerOnce(
     );
     const mainSetup = setups.find((setup) => setup.setupKey === illusionHit.setupKey);
     const characterSpeed = mainSetup
-      ? scorchingBeamCastRate({
+      ? characterCastSpeed({
           lineSpeed: lineEffects.castSpeed,
           blessings,
           ceaselessTide: heroMemories.ceaselessTide,
@@ -5031,8 +5008,12 @@ function calculatePlannerOnce(
   };
   // Cold start (prebuiltSelfBuffs off; CLAUDE.md): channeled stacks ramp from the minimum over the window, on every path.
   // The ramp multiplies the DoTs and the Reaps that settle them (1 when stacks are pre-built or without Supercharge).
-  const coldStartRamp = (seconds) =>
-    requestedConditions.prebuiltSelfBuffs !== false ? 1 : mechanics.channelRamp(seconds, beamCastRate.castsPerSecond);
+  // One stack per channel use: the main skill's uses per second (its hit, or its own channeled DoT); none, no ramp.
+  const coldStartRamp = (seconds) => {
+    if (requestedConditions.prebuiltSelfBuffs !== false) return 1;
+    const channelUsesPerSecond = mainHit ? mainHit.rate.usesPerSecond || 0 : mainDot?.applicationsPerSecond || 0;
+    return channelUsesPerSecond > 0 ? mechanics.channelRamp(seconds, channelUsesPerSecond) : 1;
+  };
   // Timed and stacking effects (packages/engine/src/combat/timed-effects.js; pact scripted-effects batch 2026-10-13): Ice Cage, Melting Flames, Witch
   // Antelope's Paralysis, Bitter Thunder, Numbed, … Every ledger holds their sustained value; the 5 s / 20 s windows and the
   // recount scale each source by the time average of its factor (a cast at t = 0; debuffs from zero on the clean dummy). On a
@@ -5063,7 +5044,7 @@ function calculatePlannerOnce(
   // ((1 + CDR + share × Cast Speed) × additional Cast Speed) with the skill's own Cast Speed (packages/engine/src/heroes/selena-dance.js
   // windRhythmTerraTrigger; the creator's calc v0.3, user-provided 2026-10-13; provisional). Activation Medium: Terra switches it off.
   const dotCastRate = (source) =>
-    scorchingBeamCastRate({
+    characterCastSpeed({
       lineSpeed: lineEffects.castSpeed,
       blessings,
       ceaselessTide: heroMemories.ceaselessTide,
@@ -5120,8 +5101,10 @@ function calculatePlannerOnce(
         : (source.profile.refreshPerSecond ??
           ((rate) =>
             source.profile.recast
-              ? source.profile.recast.perSecond(rate.baseRate > 0 ? rate.castsPerSecond / rate.baseRate : 1)
-              : (rate.castsPerSecond * 0.333) / (source.profile.castIntervalSeconds || 0.333))(dotCastRate(source)));
+              ? source.profile.recast.perSecond(rate.factor)
+              : source.profile.castIntervalSeconds > 0
+                ? rate.factor / source.profile.castIntervalSeconds
+                : 0)(dotCastRate(source)));
   const skillDots = skillDotSources.map((source) =>
     calculateSkillDot({
       setup: source.setup,
@@ -6089,7 +6072,6 @@ function calculatePlannerOnce(
     aura,
     igniteLimit,
     igniteLedger,
-    beamCastRate,
     ailmentCritical,
     conditions,
     warnings: [...new Set(warnings)],
