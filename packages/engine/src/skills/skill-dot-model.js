@@ -1,4 +1,5 @@
 import { skillLevelDamageMultiplier } from "../engine.js";
+import { mainStatParts, mainStatsOf } from "./main-stats.js";
 import { supportEffectsFor } from "../supports/support-effects.js";
 import { expectedStrongestApplication, windowAverageStrongest } from "../ailments/ailment-model.js";
 import { isMainSkillScoped } from "../ailments/ailment-shared.js";
@@ -290,6 +291,7 @@ function spellLines(profile, modifierTexts, auraEntries) {
  * @param {number} [p.sustainedWindowSeconds]
  * @param {boolean} [p.triggered] an Activation Medium triggers the skill (packages/engine/src/skills/trigger-interval.js): triggered-only lines apply
  * @param {object} [p.lucky] the build's Lucky state (packages/engine/src/combat/lucky-damage.js readLuckyDamage, via packages/engine/src/combat-states.js)
+ * @param {object} [p.mainStatPoints] the stat sheet's { strength, dexterity, intelligence } (null: the main-stat bonus is removed)
  */
 export function calculateSkillDot({
   setup,
@@ -304,6 +306,7 @@ export function calculateSkillDot({
   extraAdditional = [],
   triggered = false,
   lucky = null,
+  mainStatPoints = null,
 }) {
   // A buff for the character's "other skills" (Ice Bond's Euphoria, packages/engine/src/skills/empower-effects.js) skips the skill that grants it.
   const ownKey = setup?.setupKey || setup?.instanceId;
@@ -372,6 +375,18 @@ export function calculateSkillDot({
           },
         ]
       : [];
+  // The skill's own main stats (main-stats.js); the shared layers drop the main skill's.
+  const mainStats = mainStatParts(mainStatsOf(profile.tags || []), mainStatPoints);
+  const mainStatLine = mainStats.length
+    ? [
+        {
+          source: `${profile.name} main stats (${mainStats.map((part) => part.stat).join(" + ")}; 0.5% per point)`,
+          text: `+${round(mainStats.reduce((sum, part) => sum + part.value, 0))}% additional damage (main-stat bonuses add)`,
+          value: mainStats.reduce((sum, part) => sum + part.value, 0),
+          category: "Additional main-stat damage",
+        },
+      ]
+    : [];
 
   const increased = [...sharedIncreased, ...typed.increased, ...spell.increased, ...supports.increased];
   // Damage Enhancement (game manual 1001012926 / 1001013030: "additionally increases the damage and Ailment Damage dealt by
@@ -428,6 +443,7 @@ export function calculateSkillDot({
     ...spell.additional,
     ...supports.additional,
     ...levelLine,
+    ...mainStatLine,
     ...enhancement,
     ...extraAdditional,
     ...randomRollLine,
@@ -559,7 +575,7 @@ export function calculateSkillDot({
         chance: [],
         duration: [],
         increased: [...typed.increased, ...spell.increased, ...supports.increased],
-        additional: [...typed.additional, ...spell.additional, ...supports.additional, ...levelLine],
+        additional: [...typed.additional, ...spell.additional, ...supports.additional, ...levelLine, ...mainStatLine],
         taken: typed.taken,
         critOnlyAdditional: [],
         perRecentCritAdditional: [],

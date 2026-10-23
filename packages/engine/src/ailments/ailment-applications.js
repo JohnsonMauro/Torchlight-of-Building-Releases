@@ -213,18 +213,16 @@ export function ailmentAppliersFor({
         factor,
       });
     }
-    // Strength / Dexterity main stats (manual: "This includes … Ailment Damage dealt directly by the skill"; the bonuses of
-    // several main stats are added together): the skill's share joins the pooled Intelligence line of the shared layers.
-    const ownMainStat = (candidate.hit?.mainStatParts || [])
-      .filter((part) => part.stat !== "Intelligence")
-      .reduce((sum, part) => sum + part.value, 0);
+    // The skill's own main stats (packages/engine/src/skills/main-stats.js; manual: "This includes … Ailment Damage dealt
+    // directly by the skill"); the main skill's, which the shared layers carry, are removed below with its other lines.
+    const ownMainStatParts = candidate.hit?.mainStatParts || [];
+    const ownMainStat = ownMainStatParts.reduce((sum, part) => sum + part.value, 0);
     if (ownMainStat) {
-      const pooled = shared.intelligencePercent || 0;
-      const factor = (1 + (pooled + ownMainStat) / 100) / Math.max(1e-9, 1 + pooled / 100);
+      const factor = 1 + ownMainStat / 100;
       own *= factor;
       scaleSources.push({
         source: `${candidate.name} main stats`,
-        text: `+${Math.round(ownMainStat * 100) / 100}% Strength / Dexterity main-stat bonus added to the pooled ${Math.round(pooled * 100) / 100}% (manual: main-stat bonuses add)`,
+        text: `+${Math.round(ownMainStat * 100) / 100}% additional damage (${ownMainStatParts.map((part) => part.stat).join(" + ")}; main-stat bonuses add)`,
         factor,
       });
     }

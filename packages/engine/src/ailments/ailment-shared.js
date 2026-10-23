@@ -155,11 +155,6 @@ export function buildAilmentSharedLayers({
     targetResistancePercent,
     damageType,
     penetrationPercent: penetrationLines.reduce((sum, line) => sum + line.value, 0),
-    // The pooled Intelligence main-stat line inside `additional` (gear-pact batch chunk 4: a skill's Strength / Dexterity
-    // main-stat share is added to it before the final bonus, manual keyword text).
-    intelligencePercent: additional
-      .filter((line) => /^Total Intelligence/.test(line.source || ""))
-      .reduce((sum, line) => sum + line.value, 0),
     // Main-skill-only layers inside `additional` (as a product) and the skill-tag-gated lines, for per-skill scaling.
     mainScopedFactor: mainScoped.reduce((factor, line) => factor * (1 + line.value / 100), 1),
     mainScopedLines: mainScoped,

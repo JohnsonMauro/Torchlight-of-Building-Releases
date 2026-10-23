@@ -1,4 +1,5 @@
 import { skillHitDamage } from "../../data/skills/skill-hit-damage.generated.js";
+import { mainStatsOf } from "./main-stats.js";
 import { skillHitDamageNewSkills } from "../../data/skills/skill-hit-damage-new-skills.generated.js";
 import { finisherAmplificationPercent, CONSUMED_COMBO_POINTS } from "./combo-points.js";
 import { skillTiming } from "../../data/skills/skill-timing.generated.js";
@@ -1100,8 +1101,6 @@ function channel(
   return { kind: "channel", note };
 }
 
-const mainStats = (tags = []) => tags.filter((tag) => ["Strength", "Dexterity", "Intelligence"].includes(tag));
-
 function buildProfile(definition) {
   const entry = catalog.get(definition.name) || {};
   const table = skillHitDamage[definition.name] || skillHitDamageNewSkills[definition.name];
@@ -1138,7 +1137,7 @@ function buildProfile(definition) {
     baseTypes: dealt,
     spell: tags.includes("Spell"),
     tags,
-    mainStats: mainStats(tags),
+    mainStats: mainStatsOf(tags),
     delivery: definition.delivery,
     channeled: definition.useModel?.kind === "channel",
     beam: tags.includes("Beam"),

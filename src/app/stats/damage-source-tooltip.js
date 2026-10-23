@@ -54,12 +54,17 @@ function damageSourceTooltip({ source, category = "" }) {
 function namedCard(source) {
   const queries = plannerQueries();
   const planner = currentPlanner();
-  if (source === "Total Intelligence (0.5% per point)") {
-    const memory = planner.heroMemories?.totals?.["intelligence:flat"] || 0;
-    const gear = planner.equipment?.candidate?.["intelligence:flat"] || 0;
+  // A skill's main-stat line ("Main stats (…)" on a hit, "<skill> main stats (…)" in the Ignite ledger).
+  const mainStats = source.match(/main stats \(([\w +]+?);/i);
+  if (mainStats) {
+    const stats = planner.lineEffects?.state?.stats || {};
+    const lines = mainStats[1].split(" + ").map((stat) => {
+      const points = Number(stats[stat.toLowerCase()]) || 0;
+      return `${stat}: ${points} → +${points * 0.5}%`;
+    });
     return summary(
-      "Intelligence damage bonus",
-      `Hero memories: ${memory}\nEquipment: ${gear}\nModeled total: ${memory + gear} Intelligence\nOne additional damage factor: +${(memory + gear) * 0.5}%`,
+      "Main-stat damage bonus",
+      `${lines.join("\n")}\n0.5% additional damage per stat-sheet point of each main stat, added together`,
     );
   }
   if (source.startsWith("Core talent: ")) {

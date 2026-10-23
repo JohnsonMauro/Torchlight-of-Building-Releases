@@ -29,7 +29,7 @@ import { heroTraitKeywordPlainLines } from "./text/inline-keywords.js";
 // Buckets: flat, increased (%; adds), additional (%; multiplies), gearFlat / gearIncreased
 // (the item's own gear base values; the % is local to that item), base (weapon base values).
 // A final value is computed only where the planner already uses that rule:
-//   attributes = flat × (1 + increased%)   (ignite-ledger.js Intelligence pooling)
+//   attributes = flat × (1 + increased%) × additional
 //   gear Armor / Evasion / Energy Shield per item = gear flat × (1 + that item's gear%)
 // Life, Mana, Energy Shield, Armor and Evasion need character base values and the scope of
 // "Defense" that are not sourced, so those show their components instead of a final value.
@@ -572,11 +572,11 @@ function finalize(total, planner) {
     // Character base attributes are 0 (the SS21 panel's Strength -10 = +20 gear - 30 All Stats).
     total.value = round(total.flat * (1 + total.increased / 100) * total.additional);
     total.formula = total.additional !== 1 ? "flat × (1 + increased%) × additional" : "flat × (1 + increased%)";
-    total.damagePath =
-      total.key === "intelligence" &&
-      planner?.igniteLedger?.ledger?.some((entry) => /Total Intelligence/.test(entry.source))
-        ? "Main-stat damage in calc (0.5% additional per point)"
-        : "Not used by the modeled damage path";
+    total.damagePath = (planner?.skillHits || []).some((hit) =>
+      (hit.mainStatParts || []).some((part) => part.stat.toLowerCase() === total.key),
+    )
+      ? "Main-stat damage in calc (0.5% additional per point)"
+      : "Not used by the modeled damage path";
     return;
   }
   if (["maxLife", "maxMana", "maxEnergyShield", "armor", "evasion"].includes(total.key)) {

@@ -3348,13 +3348,14 @@ function calculatePlannerOnce(
   for (const line of block.ratingSources)
     memoryEquipment.candidate["spellCriticalStrikeRatingPercent:increased"] =
       (memoryEquipment.candidate["spellCriticalStrikeRatingPercent:increased"] || 0) + line.value;
+  // The stat sheet's main stats (packages/engine/src/skills/main-stats.js); none when a line removes the main-stat bonus.
+  const mainStatPoints = mechanics.intelligence.removed ? null : lineEffects.state?.stats || null;
   // The Ignite ledger (packages/engine/src/ailments/ignite-ledger.js), compiled again below as Subtle Impact, Blur and the
   // Blessings join it.
   const compileIgnite = (late = {}) =>
     compileIgniteLedger({
       extraSources: {
         ...mechanics.ignite,
-        intelligence: mechanics.intelligence,
         fieryFantasy: coreNames.has("Fiery Fantasy"),
         chanceToDamage: modifierTexts.filter((line) => CHANCE_TO_DAMAGE.test(String(line.text).trim())),
       },
@@ -3377,6 +3378,7 @@ function calculatePlannerOnce(
       combat: damageCombat,
       conditions,
       heroId: state.hero.selectedHeroId,
+      mainStatPoints,
       ...late,
     });
   let igniteLedger = compileIgnite();
@@ -3755,18 +3757,6 @@ function calculatePlannerOnce(
       .reduce((factor, line) => factor * (1 + line.value / 100), 1),
   });
   coreTalents.lines.push(...trueFlame.lines.filter((line) => line.source === "True Flame"));
-  // Intelligence main stat on the generic hits: 0.5% additional damage per point of hero memory, gear and adjusted
-  // Intelligence (the pooled total observed on Scorching Beam's hit panel; Strength and Dexterity read the stat-sheet totals).
-  const memoryIntelligence =
-    heroMemories.totals?.["intelligence:flat"] ??
-    heroMemories.lines.filter((line) => line.stat === "intelligence").reduce((sum, line) => sum + line.value, 0);
-  const intelligenceAdditionalPercent =
-    (memoryIntelligence +
-      (Number(equipment.candidate?.["intelligence:flat"]) || 0) +
-      mechanics.intelligence.extraFlat) *
-    (1 + mechanics.intelligence.percent / 100) *
-    (mechanics.intelligence.additionalFactor ?? 1) *
-    0.5;
   const hasSealedLife =
     aura.entries.some((entry) => entry.reservation?.resource === "life") &&
     aura.entries.some((entry) => entry.reservation?.resource === "mana");
@@ -4058,12 +4048,7 @@ function calculatePlannerOnce(
       deterioration: lineEffects.combat?.deterioration || null,
       auraEntries: aura.entries.filter((entry) => activeNames.has(entry.name)),
       aim,
-      intelligenceAdditionalPercent: Number.isFinite(intelligenceAdditionalPercent) ? intelligenceAdditionalPercent : 0,
-      mainStatPoints: mechanics.intelligence?.removed ? null : lineEffects.state?.stats || null,
-      intelligenceSource:
-        Number.isFinite(intelligenceAdditionalPercent) && intelligenceAdditionalPercent !== 0
-          ? "Total Intelligence (0.5% per point)"
-          : null,
+      mainStatPoints,
       target: {
         resistancePercent: {
           Fire: damageCombat.targetFireResistancePercent,
@@ -5104,6 +5089,7 @@ function calculatePlannerOnce(
   const skillDots = skillDotSources.map((source) =>
     calculateSkillDot({
       setup: source.setup,
+      mainStatPoints,
       profile: source.profile,
       modifierTexts,
       shared: buildAilmentSharedLayers({
@@ -5164,6 +5150,7 @@ function calculatePlannerOnce(
       .map((source) =>
         calculateSkillDot({
           setup: source.setup,
+          mainStatPoints,
           profile: source.profile,
           modifierTexts,
           shared: buildAilmentSharedLayers({

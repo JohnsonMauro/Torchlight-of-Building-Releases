@@ -9,6 +9,7 @@ import { normalizePercentageText } from "../text/percentage-text.js";
 import { curseEffects } from "../skills/curse-model.js";
 import { projectTooltipAfflictionRating } from "../theoretical-damage.js";
 import { supportEffect } from "../supports/support-model.js";
+import { mainStatParts, mainStatsOf } from "../skills/main-stats.js";
 import { effectiveGearModifierTexts, skillLevelDamageMultiplier } from "../engine.js";
 import { collectReapingSources } from "./reaping-sources.js";
 import {
@@ -68,6 +69,7 @@ export function compileIgniteLedger({
   combat,
   conditions,
   heroId,
+  mainStatPoints = null,
   extraSources = {},
 }) {
   const curses = curseEffects(setups);
@@ -142,20 +144,17 @@ export function compileIgniteLedger({
   // traits batch Q2): it scales only the channeled skill's direct hit damage, never Ignite, Trauma, Wilt, a skill's own DoT or the Reaps, which all read this ledger.
   // Before 2026-10-13 it was an unscoped -20% here (Ignite and Reaps ×0.8).
   const additionalSources = [];
-  const intelligenceAdjustment = extraSources.intelligence || { extraFlat: 0, percent: 0 };
-  const totalIntelligence =
-    ((heroMemories.totals["intelligence:flat"] || 0) +
-      value(gear, "intelligence", "flat") +
-      intelligenceAdjustment.extraFlat) *
-    (1 + intelligenceAdjustment.percent / 100) *
-    (intelligenceAdjustment.additionalFactor ?? 1);
-  if (totalIntelligence)
+  // The main skill's main stats (main-stats.js; its ailments included): every inflicting skill replaces them with its own
+  // (ailment-applications.js), so the line is the main skill's.
+  const mainStats = mainStatParts(mainStatsOf(main?.tags || []), mainStatPoints);
+  if (mainStats.length)
     additionalSources.push(
       entry(
-        "Total Intelligence (0.5% per point)",
-        totalIntelligence * 0.5,
+        `${main.name} main stats (${mainStats.map((part) => part.stat).join(" + ")}; 0.5% per point)`,
+        mainStats.reduce((sum, part) => sum + part.value, 0),
         "Additional main-stat damage",
-        "pooled character attribute",
+        "stat sheet",
+        { mainSkillScoped: true },
       ),
     );
   additionalSources.push(...coreAdditionalSources);

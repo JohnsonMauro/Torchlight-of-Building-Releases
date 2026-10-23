@@ -1,4 +1,5 @@
 import { cleanGameText } from "../text/percentage-text.js";
+import { mainStatParts } from "./main-stats.js";
 import { passiveSupportLines } from "../supports/passive-support-lines.js";
 import { critOnlyLinesFor } from "../text/crit-only-lines.js";
 import { finisherAmplificationPercent, CONSUMED_COMBO_POINTS } from "./combo-points.js";
@@ -27,9 +28,8 @@ import { damageTypeRestriction, restrictionLine, removesType } from "../combat/d
 // scoped by the component's damage type and the skill's tags (packages/engine/src/skills/skill-hit-lines.js). The skill-level
 // bonus past Lv.20 is an additional-damage line (TLIDB Skill Level), the setup's supports read their
 // progression tables, Magnificent/Noble supports add their star bonus, Aim's Projectile/Beam line applies to
-// Beam / Projectile skills at its uptime, Terra skills add their Terra Charge line, and the main stat follows the
-// Scorching Beam hit ledger's observed 0.5% additional damage per Intelligence point (Intelligence skills
-// only; Strength / Dexterity have no modeled rule yet). Hits crit (expected factor from the planner's spell
+// Beam / Projectile skills at its uptime, Terra skills add their Terra Charge line, and the main stats add 0.5% additional
+// damage per stat-sheet point each (main-stats.js). Hits crit (expected factor from the planner's spell
 // crit totals).
 //
 // Use rate: game use time (speed type "cast-speed" ÷ the planner's cast-speed factor; "fixed" unscaled),
@@ -625,7 +625,7 @@ export function recalledProjectilesPerUse(component) {
  * @param {object} p.crit spellCritical(...) output for this setup (spell crit totals)
  * @param {object[]} p.auraEntries active aura entries (effectiveEffects)
  * @param {object} p.aim planner.aim
- * @param {number} p.intelligenceAdditionalPercent main-stat line (0.5% × total Intelligence) from the hit ledger
+ * @param {object} p.mainStatPoints the stat sheet's { strength, dexterity, intelligence } (null: the main-stat bonus is removed)
  * @param {object} p.target { resistancePercent: { Fire, Cold, Lightning, Erosion }, armourPercent, nonPhysicalArmourPercent }
  * @param {boolean} p.targetCursed
  * @param {object[]} p.extraTaken typed enemy damage-taken lines the planner settles ({ source, text, value, types })
@@ -646,8 +646,6 @@ export function calculateSkillHit({
   crit = {},
   auraEntries = [],
   aim = null,
-  intelligenceAdditionalPercent = 0,
-  intelligenceSource = null,
   mainStatPoints = null,
   target = {},
   targetCursed = false,
@@ -2334,28 +2332,9 @@ export function calculateSkillHit({
       });
   }
   const mainStatLines = [];
-  // Main stats (manual keyword text, config_multi_language_en: "Every point of Strength / Dexterity additionally increases
-  // the damage of skills that have Strength / Dexterity as a main stat by 0.5% … When a skill has multiple main stats, the
-  // bonuses of the main stats are added together before calculating the final damage bonus"; gear-pact batch chunk 3, Q-G8).
-  // Intelligence keeps the beam hit ledger's pooled total (observed); Strength and Dexterity read the stat-sheet totals.
-  const mainStats = profile.mainStats || [];
-  const statParts = [
-    ...(mainStats.includes("Intelligence") && intelligenceAdditionalPercent
-      ? [{ stat: "Intelligence", value: intelligenceAdditionalPercent }]
-      : []),
-    ...["Strength", "Dexterity"]
-      .filter((stat) => mainStats.includes(stat) && Number(mainStatPoints?.[stat.toLowerCase()]))
-      .map((stat) => ({ stat, value: 0.5 * Number(mainStatPoints[stat.toLowerCase()]) })),
-  ];
-  if (statParts.length === 1 && statParts[0].stat === "Intelligence")
-    mainStatLines.push({
-      source: intelligenceSource || "Total Intelligence (0.5% per point)",
-      text: `+${round(intelligenceAdditionalPercent)}% additional damage (Intelligence main stat, Scorching Beam hit-ledger rule)`,
-      value: intelligenceAdditionalPercent,
-      category: "Additional damage",
-      origin: "derived",
-    });
-  else if (statParts.length) {
+  // Main stats (packages/engine/src/skills/main-stats.js; gear-pact batch chunk 3, Q-G8): the stat-sheet points of each.
+  const statParts = mainStatParts(profile.mainStats || [], mainStatPoints);
+  if (statParts.length) {
     const value = statParts.reduce((total, part) => total + part.value, 0);
     mainStatLines.push({
       source: `Main stats (${statParts.map((part) => part.stat).join(" + ")}; 0.5% per point, added together)`,
