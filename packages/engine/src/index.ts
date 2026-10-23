@@ -259,6 +259,7 @@ export {
   talentEffectText,
   talentPointTotals,
 } from "./talents/talent-rules.js";
+export { activeTalentTreeLayouts, talentTreeLayouts } from "./talents/talent-layouts.js";
 export { godTalentTrees, talentFamilies, talentOptionsForSlot } from "./talents/talent-selection-rules.js";
 
 // Text

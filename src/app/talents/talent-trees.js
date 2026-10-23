@@ -3,9 +3,10 @@ import {
   allProfessionTalentCatalogue,
   inverseImageReflectedCoordinates,
   inverseImageReflectionMap,
-  inverseImageTalentNodes,
+  activeTalentTreeLayouts,
   pruneInvalidTalentRanks,
   selenaScorchingBeamTalentSetup,
+  talentTreeLayouts,
 } from "#engine";
 import { talentDisplayNodes as talentNodesOnBoard } from "../bridge/talents-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
@@ -14,15 +15,7 @@ import { plannerState, talentRanks } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
 
 const capturedTalentPanels = new Map(selenaScorchingBeamTalentSetup.panels.map((panel) => [panel.name, panel]));
-export const professionTreeLayoutsAll = Object.fromEntries(
-  Object.entries(allProfessionTalentCatalogue).map(([name, panel]) => [
-    name,
-    {
-      nodes: panel.nodes,
-      edges: panel.edges.filter(([x1, y1, x2, y2]) => Math.abs(x1 - x2) <= 1 && Math.abs(y1 - y2) <= 1),
-    },
-  ]),
-);
+export const professionTreeLayoutsAll = talentTreeLayouts;
 const allTalentPanels = Object.values(allProfessionTalentCatalogue).map((panel) => ({
   ...panel,
   ...(capturedTalentPanels.get(panel.name) || {}),
@@ -42,17 +35,7 @@ export function setTalentSlateMode(enabled) {
   viewSourceChanged("talents");
 }
 
-export function activeTalentLayouts() {
-  const layouts = { ...professionTreeLayoutsAll };
-  for (const [name, id] of Object.entries(plannerState.talents.installedPrisms || {})) {
-    const graph = layouts[name],
-      coordinate = plannerState.talents.installedPrismNodes?.[name];
-    const prism = (plannerState.talents.prismInventory || []).find((item) => item.id === id);
-    if (!graph || !coordinate || prism?.type !== "inverse") continue;
-    layouts[name] = { ...graph, nodes: inverseImageTalentNodes(graph.nodes, prism, coordinate) };
-  }
-  return layouts;
-}
+export const activeTalentLayouts = () => activeTalentTreeLayouts(plannerState.talents);
 
 export function talentDisplayNodes(panel = currentTalentPanel()) {
   const prism = (plannerState.talents.prismInventory || []).find(
