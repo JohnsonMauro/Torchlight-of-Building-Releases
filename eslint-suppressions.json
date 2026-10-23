@@ -34,11 +34,6 @@
       "count": 2
     }
   },
-  "packages/engine/src/engine.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "packages/engine/src/followers/follower-model.js": {
     "no-unused-vars": {
       "count": 1

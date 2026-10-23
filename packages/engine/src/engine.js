@@ -5,7 +5,7 @@ import { matchTalentTextClause } from "./text/talent-text-effects.js";
 import { activeKismetEffects, parseKismetEffect } from "./pacts/kismet-effects.js";
 import { auraBaseEffects, auraSupportEffects, auraSupportSealedManaCompensation } from "./skills/aura-effects.js";
 import { auraScaling, auraStatUsesEffectScale } from "../data/skills/aura-scaling.js";
-import { additionalIgniteMultiplier, supportEffect } from "./supports/support-model.js";
+import { additionalIgniteMultiplier } from "./supports/support-model.js";
 import {
   nativePactspiritNodeEffect,
   orderedPactspiritNodes,
@@ -14,21 +14,8 @@ import {
 } from "./pacts/pactspirit-levels.js";
 import { pactspiritTrees } from "../data/pacts/pactspirit-trees.js";
 import { pactspiritLevels } from "../data/pacts/pactspirit-levels.js";
-import { kismetCatalog } from "../data/pacts/kismet-catalog.js";
 import { equipmentSlots } from "../data/gear/crafting-catalog.js";
 const round = (value, places = 2) => Number(value.toFixed(places));
-
-export function calculateActionRate({ baseInterval, increasedPercent = 0, additionalPercent = 0 }) {
-  if (!Number.isFinite(baseInterval) || baseInterval <= 0) {
-    throw new RangeError("baseInterval must be greater than zero");
-  }
-  return round((1 / baseInterval) * (1 + increasedPercent / 100) * (1 + additionalPercent / 100));
-}
-
-export function calculateManaCost(baseCost, multiplierPercents = []) {
-  if (!Number.isFinite(baseCost) || baseCost < 0) throw new RangeError("baseCost cannot be negative");
-  return round(multiplierPercents.reduce((total, percent) => total * (percent / 100), baseCost));
-}
 
 // https://tlidb.com/en/Skill_Level
 // Past Lv.20 Base Damage is frozen and each level adds additional damage (multiplies):
@@ -40,236 +27,6 @@ export function skillLevelDamageMultiplier(level) {
   const levels21To30 = Math.min(level, 30) - 20;
   const levels31Plus = Math.max(0, level - 30);
   return 1.1 ** levels21To30 * 1.08 ** levels31Plus;
-}
-
-export function isModifierActive(modifier, conditions = {}) {
-  return !modifier.condition || conditions[modifier.condition]?.enabled === true;
-}
-
-export function modifiersFor(build, stat) {
-  return build.modifiers.filter((modifier) => modifier.stat === stat && isModifierActive(modifier, build.conditions));
-}
-
-function sumByType(modifiers, type) {
-  return modifiers.filter((modifier) => modifier.type === type).reduce((total, modifier) => total + modifier.value, 0);
-}
-
-function moreMultiplier(modifiers) {
-  return modifiers
-    .filter((modifier) => modifier.type === "more")
-    .reduce((total, modifier) => total * (1 + modifier.value / 100), 1);
-}
-
-export function calculateStat(build, stat, intrinsicBase = 0) {
-  const modifiers = modifiersFor(build, stat);
-  const base = intrinsicBase + sumByType(modifiers, "base") + sumByType(modifiers, "flat");
-  const increased = sumByType(modifiers, "increased");
-  const multiplier = moreMultiplier(modifiers);
-  return round(base * (1 + increased / 100) * multiplier);
-}
-
-export function calculateBuild(build) {
-  const damageModifiers = modifiersFor(build, "damage");
-  const baseAverage = (build.skill.baseDamage.min + build.skill.baseDamage.max) / 2;
-  const addedDamage = sumByType(damageModifiers, "flat");
-  const increasedDamage = sumByType(damageModifiers, "increased");
-  const damageMoreMultiplier = moreMultiplier(damageModifiers);
-  const nonCritHit = (baseAverage + addedDamage) * (1 + increasedDamage / 100) * damageMoreMultiplier;
-
-  const attackRate = calculateStat(build, "attackRate", build.skill.baseAttackRate);
-  const critChance = Math.min(100, calculateStat(build, "critChance", build.skill.baseCritChance));
-  const critMultiplier = calculateStat(build, "critMultiplier", build.skill.baseCritMultiplier);
-  const critFactor = 1 + (critChance / 100) * (critMultiplier / 100 - 1);
-  const averageHit = nonCritHit * critFactor;
-  const dps = averageHit * attackRate;
-
-  return {
-    offense: {
-      baseAverage: round(baseAverage),
-      addedDamage: round(addedDamage),
-      increasedDamage: round(increasedDamage),
-      moreMultiplier: round(damageMoreMultiplier, 4),
-      nonCritHit: round(nonCritHit),
-      critChance: round(critChance),
-      critMultiplier: round(critMultiplier),
-      critFactor: round(critFactor, 4),
-      averageHit: round(averageHit),
-      attackRate: round(attackRate),
-      dps: round(dps),
-    },
-    defense: { life: calculateStat(build, "life"), armor: calculateStat(build, "armor") },
-    trace: [
-      {
-        label: "Average base damage",
-        formula: `(${build.skill.baseDamage.min} + ${build.skill.baseDamage.max}) ÷ 2`,
-        value: baseAverage,
-      },
-      {
-        label: "After added damage",
-        formula: `${round(baseAverage)} + ${round(addedDamage)}`,
-        value: baseAverage + addedDamage,
-      },
-      {
-        label: "After increased damage",
-        formula: `× (1 + ${round(increasedDamage)}%)`,
-        value: (baseAverage + addedDamage) * (1 + increasedDamage / 100),
-      },
-      { label: "After more multipliers", formula: `× ${round(damageMoreMultiplier, 4)}`, value: nonCritHit },
-      { label: "Average hit with crits", formula: `× ${round(critFactor, 4)} crit factor`, value: averageHit },
-      { label: "Full DPS", formula: `× ${round(attackRate)} attacks per second`, value: dps },
-    ].map((step) => ({ ...step, value: round(step.value) })),
-  };
-}
-
-export function calculateSelenaTownBaseline(snapshot, noTorturersTouchSnapshot, calibration) {
-  const damage = snapshot.damage;
-  const mechanics = snapshot.buffsAndMechanics;
-  const averageSpellDamage = (damage.totalSpellDamage[0] + damage.totalSpellDamage[1]) / 2;
-  const castThroughput = averageSpellDamage * damage.castsPerSecond;
-  const critFactor =
-    1 + (damage.spellCriticalStrikeChancePercent / 100) * (damage.spellCriticalStrikeDamagePercent / 100 - 1);
-  const critAdjustedSpellDps = castThroughput * critFactor;
-  const beamAverageAtLevel20 = (156 + 289) / 2;
-  const explosionAverageAtLevel20 = (467 + 867) / 2;
-  const explosionContributionFactor = 1 + ((explosionAverageAtLevel20 / beamAverageAtLevel20) * 0.7) / 5;
-  const modeledSpellDps = critAdjustedSpellDps * explosionContributionFactor;
-  const spellDisplayRoundingFactor = calibration?.spellFactor ?? damage.spellDps / modeledSpellDps;
-  const increasedDamageFactor = 1 + damage.damageBonusPercent / 100;
-  const additionalDamageFactor = 1 + damage.additionalDamageBonusPercent / 100;
-  const additionalFireFactor = 1 + damage.additionalFireDamageBonusPercent / 100;
-  const igniteLimit = 1 + 1 + 2 + 1 + 1 + 4;
-  const igniteDpsPerStack =
-    mechanics.baseIgniteDamage * increasedDamageFactor * additionalDamageFactor * additionalFireFactor;
-  const intrinsicIgniteAfflictionEffectFactor = 1.3;
-  const afflictionDamageFactor =
-    1 +
-    ((mechanics.afflictionPerSecond * mechanics.igniteDamagePerAfflictionPercent) / 100) *
-      intrinsicIgniteAfflictionEffectFactor;
-  const characterSheetRoundingFactor = 1;
-  const beforeTorturersTouchReap =
-    igniteDpsPerStack * igniteLimit * afflictionDamageFactor * characterSheetRoundingFactor;
-  // The captured baseline's Lv30 Additional Ignite, from the support's progression table (per stack and cap).
-  const { perStack: additionalIgniteDamagePerActiveStackPercent, cap: additionalIgniteCapPercent } = supportEffect(
-    "Additional Ignite",
-    30,
-  );
-  const additionalIgniteSupportFactor = additionalIgniteMultiplier(30, igniteLimit);
-  const afterAdditionalIgniteSupport = beforeTorturersTouchReap * additionalIgniteSupportFactor;
-  const remainingDisplayAndOrderResidual =
-    calibration?.igniteResidual ?? damage.igniteDps / afterAdditionalIgniteSupport;
-  const unresolvedAilmentAndSupportFactor = additionalIgniteSupportFactor * remainingDisplayAndOrderResidual;
-  const modeledIgniteSubtotal = afterAdditionalIgniteSupport * remainingDisplayAndOrderResidual;
-  const r4 = (value) => round(value, 4);
-  return {
-    mode: calibration ? "prediction" : "calibration",
-    calibration: { spellFactor: spellDisplayRoundingFactor, igniteResidual: remainingDisplayAndOrderResidual },
-    spell: {
-      targetDps: damage.spellDps,
-      averageSpellDamage: round(averageSpellDamage),
-      castThroughput: round(castThroughput),
-      critFactor: r4(critFactor),
-      critAdjustedDps: round(critAdjustedSpellDps),
-      explosionContributionFactor: r4(explosionContributionFactor),
-      modeledDps: round(modeledSpellDps),
-      displayRoundingFactor: r4(spellDisplayRoundingFactor),
-      calculatedDps: round(modeledSpellDps * spellDisplayRoundingFactor),
-    },
-    ignite: {
-      targetDps: damage.igniteDps,
-      baseIgniteDamage: mechanics.baseIgniteDamage,
-      increasedDamageFactor: r4(increasedDamageFactor),
-      additionalDamageFactor: r4(additionalDamageFactor),
-      additionalFireFactor: r4(additionalFireFactor),
-      igniteDpsPerStack: round(igniteDpsPerStack),
-      igniteLimit,
-      intrinsicIgniteAfflictionEffectFactor,
-      afflictionDamageFactor: r4(afflictionDamageFactor),
-      beforeUnresolvedFactor: round(beforeTorturersTouchReap),
-      additionalIgniteDamagePerActiveStackPercent,
-      additionalIgniteSupportFactor: r4(additionalIgniteSupportFactor),
-      additionalIgnitePerStackPercent: additionalIgniteDamagePerActiveStackPercent,
-      additionalIgniteCapPercent,
-      remainingDisplayAndOrderResidual: r4(remainingDisplayAndOrderResidual),
-      unresolvedAilmentAndSupportFactor: r4(unresolvedAilmentAndSupportFactor),
-      modeledSubtotal: round(modeledIgniteSubtotal),
-      calculatedDps: round(modeledIgniteSubtotal),
-    },
-    trace: [
-      {
-        label: "Displayed spell average",
-        formula: `(${damage.totalSpellDamage[0]} + ${damage.totalSpellDamage[1]}) ÷ 2`,
-        value: averageSpellDamage,
-        confidence: "observed",
-      },
-      {
-        label: "Spell cast throughput",
-        formula: `× ${damage.castsPerSecond} casts/s`,
-        value: castThroughput,
-        confidence: "observed",
-      },
-      {
-        label: "Expected critical factor",
-        formula: `${damage.spellCriticalStrikeChancePercent}% chance · ${damage.spellCriticalStrikeDamagePercent}% damage`,
-        value: critAdjustedSpellDps,
-        confidence: "modeled",
-      },
-      {
-        label: "Max-stack explosion",
-        formula: `3× damage · 70% coefficient · once per 5 uses = ×${r4(explosionContributionFactor)}`,
-        value: modeledSpellDps,
-        confidence: "modeled",
-      },
-      {
-        label: "Displayed-range rounding",
-        formula: `× ${r4(spellDisplayRoundingFactor)} from rounded 11.5K–21.3K range`,
-        value: damage.spellDps,
-        confidence: "rounding",
-      },
-      {
-        label: "Base Ignite Damage",
-        formula: "captured character stat",
-        value: mechanics.baseIgniteDamage,
-        confidence: "observed",
-      },
-      {
-        label: "Ignite damage per stack",
-        formula: `× ${r4(increasedDamageFactor)} × ${r4(additionalDamageFactor)} × ${r4(additionalFireFactor)}`,
-        value: igniteDpsPerStack,
-        confidence: "modeled",
-      },
-      {
-        label: "Maximum active Ignites",
-        formula: `base 1 + Starfire 1 + gear 4 + Volcano 4 = ${igniteLimit}`,
-        value: igniteDpsPerStack * igniteLimit,
-        confidence: "modeled",
-      },
-      {
-        label: "Affliction-derived Ignite",
-        formula: `1 + ${mechanics.afflictionPerSecond} × ${mechanics.igniteDamagePerAfflictionPercent}% × 1.30 = ×${r4(afflictionDamageFactor)}`,
-        value: igniteDpsPerStack * igniteLimit * afflictionDamageFactor,
-        confidence: "modeled",
-      },
-      {
-        label: "Additional Ignite support",
-        formula: `${igniteLimit} active Ignites × ${additionalIgniteDamagePerActiveStackPercent}% (capped at ${additionalIgniteCapPercent}%) = ×${r4(additionalIgniteSupportFactor)}`,
-        value: afterAdditionalIgniteSupport,
-        confidence: "known",
-      },
-      {
-        label: "Remaining display/order residual",
-        formula: `× ${r4(remainingDisplayAndOrderResidual)} · rounding and game operation order`,
-        value: modeledIgniteSubtotal,
-        confidence: "calibration",
-      },
-    ].map((step) => ({ ...step, value: round(step.value) })),
-  };
-}
-
-// Freeze correction factors from a reference capture before evaluating another state.
-export function predictSelenaTownDamage(snapshot, calibration) {
-  if (!calibration || !Number.isFinite(calibration.spellFactor) || !Number.isFinite(calibration.igniteResidual))
-    throw new TypeError("A fixed reference calibration is required");
-  return calculateSelenaTownBaseline(snapshot, undefined, calibration);
 }
 
 export function calculateConfiguredCombatDamage(combat, configuration = {}) {
@@ -406,31 +163,6 @@ export function calculateConfiguredCombatDamage(combat, configuration = {}) {
     ],
     warning:
       "Configured estimate is anchored to the captured combat sheet. The recount's 5T ceiling is only a lower bound and cannot calibrate this result.",
-  };
-}
-
-export function compareObservedDamageStates(baseline, candidate) {
-  const compare = (baselineValue, candidateValue) => ({
-    baseline: baselineValue,
-    candidate: candidateValue,
-    delta: round(candidateValue - baselineValue),
-    percent: round((candidateValue / baselineValue - 1) * 100),
-  });
-  return {
-    spellDps: compare(baseline.damage.spellDps, candidate.damage.spellDps),
-    igniteDps: compare(baseline.damage.igniteDps, candidate.damage.igniteDps),
-    afflictionPerSecond: compare(
-      baseline.buffsAndMechanics.afflictionPerSecond,
-      candidate.buffsAndMechanics.afflictionPerSecond,
-    ),
-    additionalDamageBonusPercent: compare(
-      baseline.damage.additionalDamageBonusPercent,
-      candidate.damage.additionalDamageBonusPercent,
-    ),
-    additionalFireDamageBonusPercent: compare(
-      baseline.damage.additionalFireDamageBonusPercent,
-      candidate.damage.additionalFireDamageBonusPercent,
-    ),
   };
 }
 
