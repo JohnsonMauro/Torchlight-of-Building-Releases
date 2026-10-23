@@ -8,7 +8,7 @@ import {
   purgatoryIntervals,
   stepsOf,
 } from "./gemma-traits.js";
-import { curseEffects } from "../skills/curse-model.js";
+import { curseTakenPercentAtLevel } from "../skills/curse-model.js";
 import {
   ILLUSION_RECENT_SECONDS,
   endlessManaDamage,
@@ -18,7 +18,6 @@ import {
   stacksHeld,
   twistedSpacetime,
 } from "./youga-spacetime.js";
-import { selenaCompleteSkillLoadout } from "../../data/skills/selena-complete-skill-loadout.js";
 import {
   LIGHTNING_PATTERNS,
   VENDETTA_PATTERNS,
@@ -2061,12 +2060,10 @@ export function resolveHeroModules(modifierTexts = [], state = {}) {
         }
       } else if ((match = line.clean.match(PATTERNS.banquetScorch))) {
         // Banquet of Bliss (B3): a Lv. N Scorch on the dummy while it is in Purgatory. Scorch's "+X% additional Fire Damage taken by
-        // Cursed enemies" at that level (packages/engine/src/skills/curse-model.js: TLIDB Lv20 39%, the Lv31 capture 45%, linear between and past; only
-        // Lv20 is sourced below 20), × (1 + Curse Effect). A Scorch skill already on the dummy is the same curse (no second copy).
+        // Cursed enemies" at that level (packages/engine/src/skills/curse-model.js: the curse level curve), × (1 + Curse Effect). A Scorch skill already on the dummy is the same curse (no second copy).
         // Whether it takes a curse slot is not stated (the trait also grants +1 curse): not counted against the limit (provisional).
         const level = num(match[1]);
-        const scorchSetup = selenaCompleteSkillLoadout.setups.find((setup) => setup.name === "Scorch");
-        const scorch = curseEffects([{ ...scorchSetup, effectiveLevel: level }]).scorchDamagePercent;
+        const scorch = curseTakenPercentAtLevel(level);
         const curseEffect = Number(state.curseEffectPercent) || 0;
         const perCast = round(scorch * (1 + curseEffect / 100)),
           value = round(perCast * uptime);

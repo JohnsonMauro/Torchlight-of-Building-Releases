@@ -1,19 +1,26 @@
-// Uses the captured level endpoints until complete curse progression is available.
+// Scorch ("+X% additional Fire Damage taken by Cursed enemies", "+10% chance to be Ignited when you are hit by a Cursed
+// enemy", a player-side effect not modeled) and Entangled Pain ("+X% additional Damage Over Time taken by Cursed enemies")
+// by skill level. X follows the
+// curse level curve GetLevel {1: 20, 21: 40, 41: 50} (the Vulnerability game record, curse-effects.js): +1 per level to
+// Lv.21, +0.5 per level after. Checked on TLIDB's Scorch and Entangled Pain progression tables, all 40 levels
+// (2026-10-23).
+
+/** The curse level curve at `level` (clamped to 1–40). */
+export function curseTakenPercentAtLevel(level) {
+  const clamped = Math.max(1, Math.min(40, Math.floor(Number(level) || 1)));
+  return clamped <= 21 ? 19 + clamped : 40 + (clamped - 21) * 0.5;
+}
+
+const levelOf = (setup) => setup.effectiveLevel ?? (setup.baseLevel ?? 20) + (setup.addedLevels ?? 0);
+
+// The curses' values for the build's Scorch and Entangled Pain setups; 0 for one the build does not have.
 export function curseEffects(setups = []) {
-  const effect = (name, key, fallback) => {
+  const at = (name) => {
     const setup = setups.find((item) => item.name === name);
-    if (!setup) return fallback;
-    const at20 = setup.databaseLevel20?.[key];
-    const captured = setup.observed?.[key];
-    const level = setup.effectiveLevel ?? setup.baseLevel + setup.addedLevels;
-    const capturedLevel = setup.baseLevel + setup.addedLevels;
-    if (!Number.isFinite(at20)) return captured ?? fallback;
-    if (!Number.isFinite(captured) || level <= 20 || !(capturedLevel > 20)) return at20;
-    return at20 + ((captured - at20) * (level - 20)) / (capturedLevel - 20);
+    return setup ? curseTakenPercentAtLevel(levelOf(setup)) : 0;
   };
   return {
-    scorchDamagePercent: effect("Scorch", "cursedEnemyAdditionalFireDamageTakenPercent", 45),
-    scorchSelfIgniteChancePercent: effect("Scorch", "chanceToBeIgnitedWhenHitByCursedEnemyPercent", 10),
-    entangledPainDamagePercent: effect("Entangled Pain", "cursedEnemyAdditionalDamageOverTimeTakenPercent", 42.5),
+    scorchDamagePercent: at("Scorch"),
+    entangledPainDamagePercent: at("Entangled Pain"),
   };
 }

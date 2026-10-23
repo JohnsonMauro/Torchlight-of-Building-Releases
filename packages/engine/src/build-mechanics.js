@@ -5,7 +5,7 @@ import { collectEnemyAilments, ailmentStateNames } from "./ailments/enemy-ailmen
 import { dummyTarget, dummyTargetWord } from "./combat/dummy-target.js";
 import { allSkillEffects } from "../data/skills/all-skill-effects.generated.js";
 import { collectAilmentTypedSources, unscopeSkillAilmentLine } from "./ailments/ailment-model.js";
-import { selenaCompleteSkillLoadout } from "../data/skills/selena-complete-skill-loadout.js";
+import { curseTakenPercentAtLevel } from "./skills/curse-model.js";
 import { collectGenericDamageLines } from "./text/damage-line-classifier.js";
 import { inferDamageProfile } from "./skills/skill-damage-profiles.js";
 import { supportEffectsFor } from "./supports/support-effects.js";
@@ -44,10 +44,6 @@ const BASE_MAX_CHANNELED_STACKS = 5;
 // Stacks" at Lv10–29). Provisional for other channeled skills: no game record of the base value is extracted
 // (field 2006051 is the min-stack bonus field).
 const BASE_MIN_CHANNELED_STACKS = 1;
-// Level-20 Entangled Pain, reused from the skill record (TLIDB Lv.20 text matches: +39%).
-const ENTANGLED_PAIN_LEVEL20_DOT_TAKEN =
-  selenaCompleteSkillLoadout.setups.find((setup) => setup.name === "Entangled Pain")?.databaseLevel20
-    ?.cursedEnemyAdditionalDamageOverTimeTakenPercent ?? 39;
 // Curses whose effect on the dummy is modeled (named in the over-limit note).
 // Origins whose copies of talent / slate-total keys no total reads (gear-pact batch G8).
 // "follower" (2026-10-17): Tartarus: Black Hole's "+X% additional Affliction effect" (packages/engine/src/followers/follower-model.js).
@@ -878,12 +874,9 @@ export function collectBuildMechanics({
     );
   for (const curse of activeGearCurses) {
     if (curse.name === "Entangled Pain") {
-      // DoT-only: joins the DoT/ailment "Additional damage taken" layer (Ignite, Trauma, Wilt, reaps), not hits.
-      if (curse.level !== 20)
-        notes.push(
-          `Entangled Pain Lv.${curse.level}: only the Lv.20 value is sourced; +${ENTANGLED_PAIN_LEVEL20_DOT_TAKEN}% used.`,
-        );
-      const value = round(ENTANGLED_PAIN_LEVEL20_DOT_TAKEN * curseFactor);
+      // DoT-only: joins the DoT/ailment "Additional damage taken" layer (Ignite, Trauma, Wilt, reaps), not hits; at the
+      // item's curse level (packages/engine/src/skills/curse-model.js).
+      const value = round(curseTakenPercentAtLevel(curse.level) * curseFactor);
       combatTaken.push({
         source: `Entangled Pain curse (${curse.source})`,
         text: `+${value}% additional Damage Over Time taken`,
