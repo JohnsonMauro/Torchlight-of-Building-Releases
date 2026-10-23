@@ -22,6 +22,8 @@
  * @property {(text: string) => void} renameBuild Build strip: renames the open build (a blank or unchanged name keeps
  *   the old one).
  * @property {() => void} reloadOtherTabBuild Other-tab notice: opens the version another tab saved.
+ * @property {() => void} dismissSeasonChange Build strip: drops the list of what moving the open build into the current
+ *   season removed.
  * @property {() => void} dismissOtherTabChange Other-tab notice: keeps this tab's version (the notice comes back only
  *   when that build changes again).
  * @property {() => void} startNewLibrary Unreadable-library notice: starts a new library (the unreadable data stays

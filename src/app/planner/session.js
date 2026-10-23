@@ -89,6 +89,9 @@ for (const [panel, coordinate] of Object.entries(plannerState.talents.installedP
 export function capturePlannerState() {
   return {
     schemaVersion: 1,
+    season: plannerState.season,
+    seasonOrigin: plannerState.seasonOrigin,
+    seasonChange: plannerState.seasonChange ?? null,
     disabledEquipmentSlots: [...disabledEquipmentSlots],
     disabledSupportNames: [...disabledSupportNames],
     removedInventoryItemIds: plannerState.removedInventoryItemIds || [],

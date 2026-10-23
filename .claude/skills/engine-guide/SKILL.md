@@ -14,6 +14,14 @@ description: Rules for the calculation engine and game data — src/engine purit
   needs something new from the engine: add its name to the entry, in its domain's group. The engine never imports its own
   entry. Data loaded on demand stays on demand through a function there (`importGameIdMap`). The engine follows the
   game's seasons: this surface is what the page relies on when the engine moves to the next season.
+- Seasons: the engine calculates the last season of `src/engine/state/season.ts`. A stored build carries `season` (the
+  rules its contents follow), `seasonOrigin` (the season it was made in) and `seasonChange` (what carrying it forward
+  removed, until the user dismisses it). `normalizePlannerState` first runs `migrateBuildSeason`
+  (`src/engine/state/season-migration.js`): a build of an earlier season goes through `seasonSteps` and then
+  `removeIncompatible` (talent ranks on missing trees or nodes, ranks above a node's max, missing cores, prisms on
+  missing nodes, legendaries out of the catalog: removed and listed, talent points returned); an unknown season is
+  refused. A new season: an entry in `season.ts`, the step from the one before in `seasonSteps`, the data renamed to its
+  id, and a migration test with a build of the season before.
 - Game text is read once (`src/engine/text/read-once.js`): a reader whose result depends on the text alone is wrapped in
   `readOnce` (or uses `cleanGameText`), and what depends on the build is applied to the reading by the caller. A reading
   is frozen and shared: copy it before changing it.

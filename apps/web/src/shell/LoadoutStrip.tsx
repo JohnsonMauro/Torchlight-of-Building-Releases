@@ -6,7 +6,8 @@ import { useWorkspace } from "../ui/use-workspace";
 import { ShellAction } from "./ShellAction";
 
 // The open build under the header, beside the view rail: its name in a flat block (ActiveBuildTab: the pencil
-// beside it renames it), and on the right whether it is saved (the planner's "buildStatus" source;
+// beside it renames it), and on the right the season it was made in when that is an earlier one, whether it is saved (the
+// planner's "buildStatus" source;
 // phones keep only the dot) and its actions (Export, Reset Build). The Workspace shows no strip: importing a build is
 // its own (BuildsPage). The build's tabs open each build section (BuildTabs), not this strip.
 
@@ -17,6 +18,42 @@ function SaveStatus() {
     <div className={`loadout-status flex items-center gap-2 text-xs ${unsaved ? "text-warn" : "text-muted"}`}>
       <i className={`size-1.5 shrink-0 rounded-full ${unsaved ? "bg-warn" : "bg-ok"}`} />
       <span className="max-md:hidden">{status?.text ?? "Autosaved locally"}</span>
+    </div>
+  );
+}
+
+// A build made in an earlier season: that season, and until dismissed what carrying it into the current one removed (the
+// list opens under the summary).
+function SeasonStatus() {
+  const season = useViewSource("buildStatus")?.season;
+  if (!season) return null;
+  return (
+    <div className="build-season flex flex-wrap items-center gap-2 text-xs text-warn">
+      <span className="rounded-sm border border-warn/40 bg-warn/15 px-2 py-0.5 font-bold" title={season.detail}>
+        {season.text}
+      </span>
+      {season.change ? (
+        <div className="flex min-w-0 items-start gap-2">
+          <details className="min-w-0">
+            <summary className="cursor-pointer">{season.change.summary}</summary>
+            {season.change.removed.length ? (
+              <ul className="mt-1 list-disc pl-5 text-muted">
+                {season.change.removed.map((part, index) => (
+                  <li key={index}>{part}</li>
+                ))}
+              </ul>
+            ) : null}
+          </details>
+          <button
+            type="button"
+            className="cursor-pointer text-lg/none text-muted hover:text-text"
+            aria-label="Dismiss the season change"
+            onClick={() => plannerCommands().dismissSeasonChange()}
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -51,6 +88,7 @@ export function LoadoutStrip() {
     >
       <ActiveBuildTab />
       <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5 py-2">
+        <SeasonStatus />
         <SaveStatus />
         <BuildActions />
       </div>

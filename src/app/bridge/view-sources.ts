@@ -15,6 +15,7 @@ import type { CarinoAmmoSelectorView, SageScentSelectorView } from "./hero-dialo
 import type { StatsView } from "./stats-view-model.ts";
 import type { DamageSummaryView } from "./damage-summary-view-model.ts";
 import type { SkillSelectorView } from "./skill-selector-view.ts";
+import type { BuildSeasonView } from "./build-season-view.ts";
 import type { GameLogImportView } from "./game-log-import-view.ts";
 import type { HeroMemoryView } from "./hero-memory-view.ts";
 import type { PrismCrafterView } from "./prism-crafter-view.ts";
@@ -50,6 +51,8 @@ export interface ViewSources {
     text: string;
     /** What a build tab warns about for the open build, by tab view (build-tab-notices.ts). */
     tabNotices: Record<string, string>;
+    /** The open build's season when it was made in an earlier one (build-season-view.ts). */
+    season: BuildSeasonView | null;
   };
   /** The toast's message; `count` goes up with every message, so the same one twice shows twice. */
   toast: { message: string; count: number };

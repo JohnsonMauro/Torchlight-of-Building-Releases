@@ -11,6 +11,8 @@ import { AIM_UPTIME_AUTO_SENTINEL } from "../skills/aim-model.js";
 import { migrateLegendaryEquipment } from "./legendary-text-migrations.js";
 import { migrateChangedEquipment } from "./changed-item-migrations.js";
 import { migrateCustomSupports } from "./support-text-migrations.js";
+import { migrateBuildSeason } from "./season-migration.js";
+import { currentSeason } from "./season.ts";
 import { defaultFollowerState, normalizeFollowerState } from "../followers/follower-model.js";
 
 // ---- Types ----------------------------------------------------------------------------------------------------------
@@ -75,6 +77,9 @@ function withoutLegacyTreeFields<T extends { selenaDanceTraits?: unknown }>(hero
 
 export const defaultPlannerState = {
   schemaVersion: 1,
+  season: currentSeason.id,
+  seasonOrigin: currentSeason.id,
+  seasonChange: null,
   disabledEquipmentSlots: [],
   disabledSupportNames: [],
   removedInventoryItemIds: [],
@@ -178,7 +183,8 @@ const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 
 /** Validates a stored build (throws a TypeError naming the first invalid field) and fills in and migrates the rest. */
 export function normalizePlannerState(input: unknown = {}): PlannerState {
-  const value = validatePlannerState(input);
+  // A build from an earlier season is carried into the current one first (src/engine/state/season-migration.js).
+  const value: StoredPlannerState = migrateBuildSeason(validatePlannerState(input));
   const defaults = clone(defaultPlannerState);
   // Older New Build saves lack this flag; removed captured gear identifies
   // the blank template, whose talent ranks must start at zero.

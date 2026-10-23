@@ -308,6 +308,13 @@ export function clampCombatNumber(key: CombatNumber, value: number): number {
 
 const schema = shape({
   schemaVersion: number(1, 1, true),
+  // The season the build's contents follow, the one it was made in, and the change a move between them made until the
+  // user dismisses it (src/engine/state/season-migration.js).
+  season: text,
+  seasonOrigin: text,
+  seasonChange: nullable(
+    shape({ from: text, to: text, removed: list(text, 2000), talentPointsReturned: number(0, 100000, true) }),
+  ),
   disabledEquipmentSlots: list(text, 20),
   disabledSupportNames: list(text),
   removedInventoryItemIds: list(text, 500),

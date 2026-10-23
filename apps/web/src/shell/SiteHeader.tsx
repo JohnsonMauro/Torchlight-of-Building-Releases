@@ -1,8 +1,9 @@
+import { currentSeason } from "@legacy/engine/index.ts";
 import { toggleTheme } from "../ui/theme";
 import { ShellAction } from "./ShellAction";
 
 // The page header: the planner's name (a click goes back to the Workspace, through the planner's data-view handler,
-// without reloading the page) and the theme switch, over a bottom line. The open build's state and actions sit
+// without reloading the page) with the season the engine calculates, and the theme switch, over a bottom line. The open build's state and actions sit
 // in the build strip under it (LoadoutStrip), the views (Build, Stats, Config, and back to the Workspace) in the rail beside the page
 // (ViewRail), which starts under the header, so the header keeps a fixed height of 66px. `site-header` is the find
 // bar's anchor (src/app/planner/find-bar.js).
@@ -21,7 +22,7 @@ export function SiteHeader() {
           Torchlight of Building
         </span>
         <span className="text-xs font-semibold tracking-widest text-muted uppercase max-md:hidden">
-          SS14 · Tartarus
+          {currentSeason.name ? `${currentSeason.label} · ${currentSeason.name}` : currentSeason.label}
         </span>
       </a>
       <div className="header-actions ml-auto flex gap-1.5">

@@ -115,6 +115,7 @@ export const buildLibraryCommands = {
   // The page's notices (apps/web/src/shell/PageNotices.tsx, OtherTabNotice.tsx).
   reloadOtherTabBuild,
   dismissOtherTabChange,
+  dismissSeasonChange,
   startNewLibrary: startNewBuildLibrary,
   undoLastChange,
   openSafeMode,
@@ -244,6 +245,13 @@ function reloadOtherTabBuild() {
   renderCandidateViews();
   updateStorageStatus();
   showToast("Build reloaded");
+}
+// The build strip's season change: the list of what moving the build into the current season removed goes; the season it
+// was made in stays.
+function dismissSeasonChange() {
+  if (!plannerState.seasonChange) return;
+  plannerState.seasonChange = null;
+  persistPlannerState();
 }
 function dismissOtherTabChange() {
   dismissOpenBuildChange();

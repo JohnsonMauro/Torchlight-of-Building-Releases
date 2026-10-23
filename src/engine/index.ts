@@ -21,6 +21,9 @@ export {
   normalizePlannerState,
 } from "./state/planner-state.ts";
 export type { PlannerSkills, PlannerState } from "./state/planner-state.ts";
+export { seasonChangeSummary } from "./state/season-migration.js";
+export { currentSeason, seasonLabel } from "./state/season.ts";
+export type { Season } from "./state/season.ts";
 export { selectorBaseLevel } from "./state/skill-level-input.js";
 export { clampCombatNumber, combatNumberLimits, validatePlannerState } from "./state/state-validation.ts";
 export type { CombatNumber } from "./state/state-validation.ts";

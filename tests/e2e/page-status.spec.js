@@ -234,3 +234,61 @@ test("safe mode opens the Builds view with calculations paused until resumed", a
   await expect(notice).toHaveCount(0);
   expect(await page.evaluate((key) => sessionStorage.getItem(key), SAFE_MODE_KEY)).toBeNull();
 });
+
+// ---- Seasons ------------------------------------------------------------------------------------------------------
+
+const header = (page) => page.locator(".site-header");
+const season = (page) => page.locator(".build-season");
+const dismissSeasonChange = (page) => page.getByRole("button", { name: "Dismiss the season change", exact: true });
+const storedState = (page) =>
+  page.evaluate((key) => JSON.parse(localStorage.getItem(key))?.builds[0].state, LIBRARY_STORAGE_KEY);
+
+// The Youga build as an SS13 save: a legendary SS14 no longer has in its inventory and two ranks on a Lich node that
+// does not exist.
+const ss13Youga = () => ({
+  ...structuredClone(youga),
+  season: "ss13",
+  seasonOrigin: "ss13",
+  talentRanks: { ...youga.talentRanks, "Lich:9,9": 2 },
+  equipmentInventory: [
+    ...youga.equipmentInventory,
+    { id: "gear-gone", name: "Vanished Crown", base: "DEX Helmet", slot: "helmet", rarity: "legendary" },
+  ],
+});
+
+test("the header names the season the planner calculates; a build of that season shows no season", async ({ page }) => {
+  const planner = new PlannerPage(page);
+  await planner.open(youga);
+  await expect(header(page)).toContainText("SS14 · Tartarus");
+  await expect(season(page)).toHaveCount(0);
+  await planner.expectNoErrors();
+});
+
+test("a build from an earlier season says so and lists what moving it removed; dismissing keeps the season", async ({
+  page,
+}) => {
+  const planner = new PlannerPage(page);
+  await planner.open(ss13Youga());
+  await expect(season(page)).toContainText("SS13 build");
+  const summary = season(page).getByText(
+    "Moved from SS13 to SS14: 2 incompatible parts removed, 2 talent points returned",
+    { exact: true },
+  );
+  await summary.click();
+  await expect(season(page).getByRole("listitem")).toHaveText(["Talent Lich 9,9", "Vanished Crown (inventory)"]);
+
+  await dismissSeasonChange(page).click();
+  await expect(summary).toHaveCount(0);
+  await expect(season(page)).toHaveText("SS13 build");
+  const stored = await storedState(page);
+  expect([stored.season, stored.seasonOrigin, stored.seasonChange]).toEqual(["ss14", "ss13", null]);
+  expect(stored.talentRanks["Lich:9,9"]).toBeUndefined();
+  expect(stored.equipmentInventory.some((item) => item.id === "gear-gone")).toBe(false);
+
+  // The build keeps the season it was made in.
+  await page.reload();
+  await planner.waitUntilReady();
+  await planner.enterBuild();
+  await expect(season(page)).toHaveText("SS13 build");
+  await planner.expectNoErrors();
+});
