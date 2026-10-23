@@ -40,13 +40,15 @@ export function slateCells(slate, placement) {
     ([column, row]) => ({ column: placement.column + column, row: placement.row + row }),
   );
 }
+// Nether King's Judgment lies over the board (its three corners on top of other slates), as in the game.
+export const isJudgmentSlate = (slate) => (slate?.template || slate?.name) === "Nether King's Divinity: Judgment";
 export function canPlaceSlate(slate, placement, placements, slates) {
   const cells = slateCells(slate, placement);
   if (!cells.length || cells.some((cell) => !SLATE_BOARD_CELLS.has(key(cell.column, cell.row)))) return false;
-  if (slate.overlay) return true;
+  if (isJudgmentSlate(slate)) return true;
   const occupied = new Set();
   for (const other of slates)
-    if (other.id !== slate.id && !other.overlay && placements[other.id])
+    if (other.id !== slate.id && !isJudgmentSlate(other) && placements[other.id])
       for (const cell of slateCells(other, placements[other.id])) occupied.add(key(cell.column, cell.row));
   return cells.every((cell) => !occupied.has(key(cell.column, cell.row)));
 }

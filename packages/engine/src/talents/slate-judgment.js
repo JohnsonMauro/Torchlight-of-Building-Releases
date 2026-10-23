@@ -1,4 +1,4 @@
-import { slateCells } from "./slate-board.js";
+import { isJudgmentSlate, slateCells } from "./slate-board.js";
 
 // Same cells as src/app/slates/slate-shapes.js godSlateCapturedShapes (the board draws those; pinned in tests/slate-shape-import.test.js).
 const godShapes = {
@@ -238,9 +238,8 @@ const JUDGMENT_EXEMPT = new Set(["Space Rift"]);
 // Offspring: 70% → 40%; your own Brand Talent effects: -30%".
 export const JUDGMENT_LINK_EFFECT_PERCENT = 40;
 export const JUDGMENT_OWN_BRAND_EFFECT_PERCENT = -30;
-const isJudgment = (slate) => (slate.template || slate.name) === "Nether King's Divinity: Judgment";
 const isActive = (slate) =>
-  isJudgment(slate) &&
+  isJudgmentSlate(slate) &&
   (slate.affixGroups?.brand
     ? slate.affixGroups.brand.filter(Boolean).length === 3
     : (slate.brands || []).filter(Boolean).length === 3);

@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { slatesView, slateTiles } from "../../src/app/bridge/slates-view-model.ts";
 import { dragDrop, pendingDrop } from "../../apps/web/src/features/slates/slate-drop.ts";
+import { canPlaceSlate } from "../../packages/engine/src/talents/slate-board.js";
 
 const rect = (left, top, width, height) => ({ left, top, width, height, right: left + width, bottom: top + height });
 // A 432 px grid (72 px cells) at (300, 100) inside a 1000 x 600 stage at (0, 0).
@@ -114,4 +115,41 @@ test("a waiting slate is centred on the click", () => {
     placement: null,
     parked: { x: 6.4, y: 0, ...turned },
   });
+});
+
+test("a Judgment lies over the slates under its corners, as in the game: its placement and theirs stay valid", () => {
+  // As the crafter and the game-log import store it: no board flag, the kind is in the name.
+  const judgment = {
+    id: "judgment",
+    name: "Nether King's Divinity: Judgment",
+    god: "Nether King",
+    shape: [
+      [0, 0],
+      [3, 0],
+      [3, 3],
+    ],
+  };
+  const corner = {
+    id: "corner",
+    name: "A Corner of Divinity",
+    template: "A Corner of Divinity",
+    shape: [
+      [0, 0],
+      [0, 1],
+      [1, 1],
+    ],
+  };
+  const slates = [judgment, corner];
+  const placements = { judgment: { column: 2, row: 2, rotation: 0 }, corner: { column: 2, row: 2, rotation: 0 } };
+  assert.equal(canPlaceSlate(judgment, placements.judgment, placements, slates), true);
+  assert.equal(canPlaceSlate(corner, placements.corner, placements, slates), true);
+  const view = slatesView({
+    slates,
+    placements,
+    parked: {},
+    equipped: new Set(["judgment", "corner"]),
+    ui: { selectedId: null, toolsPosition: null, editMode: false, pendingId: null },
+  });
+  assert.equal(view.pieces.find((piece) => piece.id === "judgment").overlay, true);
+  assert.equal(view.pieces.find((piece) => piece.id === "corner").overlay, false);
 });

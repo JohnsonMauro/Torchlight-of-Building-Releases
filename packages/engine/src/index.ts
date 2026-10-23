@@ -236,6 +236,7 @@ export {
   adjacentSlateIds,
   canPlaceSlate,
   isCopySlate,
+  isJudgmentSlate,
   slateOffsets,
   slateSize,
   slateTransformRules,

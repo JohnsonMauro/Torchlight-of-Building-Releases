@@ -4,6 +4,7 @@
 // (apps/web/src/features/slates) renders it and src/app/slates/slates-controller.js publishes it (src/app/bridge/view-sources.ts "slates").
 import {
   adjacentSlateIds,
+  isJudgmentSlate,
   judgmentAffectedSlateIds,
   SLATE_BOARD_ROWS,
   slateOffsets,
@@ -16,7 +17,6 @@ export interface BoardSlate {
   id: string;
   name: string;
   template?: string;
-  overlay?: boolean;
   copyRule?: string;
   icon?: string;
   cellIcon?: string;
@@ -173,7 +173,7 @@ export function slatesView({ slates, placements, parked, equipped, ui }: SlatesV
       tiles: slateTiles(slate, pose),
       icon: slate.icon || null,
       cellIcon: slate.cellIcon || null,
-      overlay: !isParked && Boolean(slate.overlay),
+      overlay: !isParked && isJudgmentSlate(slate),
       copy: Boolean(slate.copyRule),
       adjacentCount:
         !isParked && slate.copyRule ? (adjacentSlateIds(slate, placements, slates) as string[]).length : null,

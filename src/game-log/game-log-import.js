@@ -2120,7 +2120,7 @@ function resolveSlates(tree, idMap, report, state) {
     const turned = gameDirectionTurn(item.Direction) ?? 0;
     const offsets = slateOffsets({ shape }, turned, 1, 1);
     const anchor = offsets[anchorCell(shape)];
-    const boardSlate = { ...crafted, shape, overlay: isNether && name.endsWith("Judgment") };
+    const boardSlate = { ...crafted, shape };
     const { rotation, flipX, flipY, mirrored } = gameSlateOrientation(boardSlate, shape, turned, offsets);
     const placement = {
       column: Math.floor(Number(entry.Index) / 10) - anchor[0],
