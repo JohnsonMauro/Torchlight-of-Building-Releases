@@ -84,7 +84,9 @@ export function compileIgniteLedger({
   );
   const flameFocusBase = ["Flame Focus", "Precise: Flame Focus"]
     .filter((name) => activeNames.has(name))
-    .map((name) => entry(`Aura: ${name}`, 2, "Base Ignite", "SS13 level-20 tooltip"));
+    .map((name) =>
+      entry(`Aura: ${name}`, 2, "Base Ignite", "skill text: Adds 2 - 2 Base Ignite Damage at every level"),
+    );
   const baseSources = [
     entry("Talents", talent.baseIgniteDamage || 0, "Base Ignite"),
     entry("Divinity Slates", slate.baseIgniteDamage || 0, "Base Ignite"),
