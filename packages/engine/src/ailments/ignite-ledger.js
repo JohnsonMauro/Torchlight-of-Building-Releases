@@ -839,9 +839,6 @@ export function compileIgniteLedger({
       `${equipment.unrecognized.length} equipped modifier line(s) are not translated into the theoretical calculation.`,
     );
   warnings.push(
-    "The standard Ignite path assumes equal-damage stacks. The separate target-Ignite estimate retains strongest rolls up to the stack limit and is experimental; multiple stacks from one application are assumed to share a roll.",
-  );
-  warnings.push(
     "Aura base effects use selected skill-level records; Aura Amplification and equipped Aura Effect are recalculated from selected sources.",
   );
   if (rawPassiveAfflictionPerSecond < 0)
