@@ -20,8 +20,11 @@ description: Rules for the calculation engine and game data — packages/engine/
   rules its contents follow), `seasonOrigin` (the season it was made in) and `seasonChange` (what carrying it forward
   removed, until the user dismisses it). `normalizePlannerState` first runs `migrateBuildSeason`
   (`packages/engine/src/state/season-migration.js`): a build of an earlier season goes through `seasonSteps` and then
-  `removeIncompatible` (talent ranks on missing trees or nodes, ranks above a node's max, missing cores, prisms on
-  missing nodes, legendaries out of the catalog: removed and listed, talent points returned); an unknown season is
+  `removeIncompatible` (`season-compatibility.js`, one pass per domain: talent ranks on missing trees or nodes or above a
+  node's max, missing cores, prisms on missing nodes, then the ranks whose prerequisites went; legendaries out of the
+  catalog; a missing hero, traits, loadouts; missing skills and supports; missing Pactspirits and Kismets. Each removal
+  is listed and its talent points returned. Only references by name are checked: texts copied into the build are the
+  season step's work. Every golden build must go through it untouched); an unknown season is
   refused. A new season: an entry in `season.ts`, the step from the one before in `seasonSteps`, the package's major version, the data replaced in place,
   and a migration test with a build of the season before.
 - Game text is read once (`packages/engine/src/text/read-once.js`): a reader whose result depends on the text alone is wrapped in
