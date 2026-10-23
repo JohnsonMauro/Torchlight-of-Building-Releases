@@ -1,5 +1,6 @@
 // A hero's trait stage (hero-stages.ts): the game's Hero Trait screen as a decal (StageFrame), and for a tiers stage the base
-// trait and each tier's trait choices (hexagons) above and below its memory, where the game draws them. A choice picks
+// trait and each tier's trait choices (hexagons) above and below its memory, where the game draws them; on a dual stage
+// (Bing) the hexagons show each level's upper and lower pick and every choice is a round button over them. A choice picks
 // that trait; a memory socket works as in the rows. The tree stage is TraitTreeStage.
 import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
@@ -18,6 +19,12 @@ import {
   STAGE_LEVEL,
   STAGE_MEMORY,
   STAGE_NODE,
+  STAGE_PICK_EMPTY,
+  STAGE_PICK_FRAME,
+  STAGE_TREE_ART,
+  STAGE_TREE_ART_OPEN,
+  STAGE_TREE_ART_PICKED,
+  STAGE_TREE_NODE,
   type HeroStage,
   type TierStage,
 } from "./hero-stages";
@@ -154,18 +161,77 @@ function StageNodes({
             <span className={STAGE_LEVEL} style={{ left: `${x}%`, top: `${stage.rows.level}%` }}>
               {`Lv ${tier.level}`}
             </span>
-            <Node x={x} y={stage.rows.memory} size={stage.node}>
+            <Node x={stage.memoryColumns?.[column] ?? x} y={stage.rows.memory} size={stage.memory ?? stage.node}>
               <MemorySocket socket={tier.memory} look={STAGE_MEMORY} />
             </Node>
-            {group.choices.map((choice, index) => (
-              <Node key={choice.name} x={x} y={index ? stage.rows.bottom : stage.rows.top} size={stage.node}>
-                <StageChoice choice={choice} selectionKey={group.selectionKey} />
-                {choice.selected ? <PickedCheck /> : null}
-              </Node>
-            ))}
+            {stage.dual
+              ? tier.groups.map((dualGroup) => (
+                  <DualGroup key={dualGroup.selectionKey} stage={stage} x={x} group={dualGroup} />
+                ))
+              : group.choices.map((choice, index) => (
+                  <Node key={choice.name} x={x} y={index ? stage.rows.bottom : stage.rows.top} size={stage.node}>
+                    <StageChoice choice={choice} selectionKey={group.selectionKey} />
+                    {choice.selected ? <PickedCheck /> : null}
+                  </Node>
+                ))}
           </Fragment>
         );
       })}
+    </>
+  );
+}
+
+/** Choices to a row on a dual stage: three side by side would run into the next level's. */
+const DUAL_PER_ROW = 2;
+
+/**
+ * A dual stage's group (Bing): its pick in the hexagon (the top one for the upper group, the bottom one for the lower), and
+ * every choice as a round button, two to a row, over it (above the top hexagon, below the bottom one), the pick checked.
+ */
+function DualGroup({ stage, x, group }: { stage: TierStage; x: number; group: ChoiceGroupView }) {
+  const dual = stage.dual;
+  if (!dual) return null;
+  const lower = group.position === "lower",
+    picked = group.choices.find((choice) => choice.selected) ?? null;
+  // The index-th choice's centre: rows of DUAL_PER_ROW centred on the column, away from the hexagon.
+  const place = (index: number) => {
+    const row = Math.floor(index / DUAL_PER_ROW),
+      inRow = Math.min(DUAL_PER_ROW, group.choices.length - row * DUAL_PER_ROW),
+      column = index % DUAL_PER_ROW;
+    return {
+      x: x + (column - (inRow - 1) / 2) * dual.spacing,
+      y: lower ? dual.down + row * dual.rowStep : dual.up - row * dual.rowStep,
+    };
+  };
+  return (
+    <>
+      <Node x={x} y={lower ? stage.rows.bottom : stage.rows.top} size={stage.node}>
+        <span className={`${STAGE_PICK_FRAME} ${picked ? STAGE_CHOICE_PICKED : STAGE_PICK_EMPTY}`} aria-hidden="true">
+          {picked ? <Artwork src={picked.art} alt="" className={STAGE_CHOICE_ART} /> : null}
+        </span>
+      </Node>
+      <div role="group" aria-label={group.label ?? undefined}>
+        {group.choices.map((choice, index) => (
+          <Node key={choice.name} {...place(index)} size={dual.size}>
+            <HeroTraitTooltip name={choice.name} levelKey={choice.levelKey} selected={choice.selected}>
+              <button
+                type="button"
+                className={`${choice.selected ? "selected " : ""}${STAGE_TREE_NODE}`}
+                aria-label={choice.name}
+                aria-pressed={choice.selected}
+                onClick={() => plannerCommands().pickHeroTrait(group.selectionKey, choice.name)}
+              >
+                <Artwork
+                  src={choice.art}
+                  alt={choice.name}
+                  className={`${STAGE_TREE_ART} ${choice.selected ? STAGE_TREE_ART_PICKED : STAGE_TREE_ART_OPEN}`}
+                />
+              </button>
+            </HeroTraitTooltip>
+            {choice.selected ? <PickedCheck /> : null}
+          </Node>
+        ))}
+      </div>
     </>
   );
 }

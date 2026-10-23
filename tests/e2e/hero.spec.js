@@ -132,15 +132,25 @@ test("Change Hero switches the hero; a regular hero picks one trait per level", 
   await planner.expectNoErrors();
 });
 
-test("Bing, Creative Genius picks an upper and a lower trait per level", async ({ page }) => {
+test("Bing, Creative Genius picks an upper and a lower trait per level on the game's screen, every choice shown", async ({
+  page,
+}) => {
   const { planner, hero } = await openHero(page);
   await hero.selectHero("bing-creative-genius");
+  await expect(hero.stage()).toBeVisible();
   const upper = hero.tree().getByLabel("Level 45 upper trait choice", { exact: true });
   const lower = hero.tree().getByLabel("Level 45 lower trait choice", { exact: true });
   await expect(upper.getByRole("button")).toHaveCount(1);
   await expect(lower.getByRole("button")).toHaveCount(2);
+  await expect(hero.tree().getByLabel("Level 60 lower trait choice", { exact: true }).getByRole("button")).toHaveCount(
+    3,
+  );
   await lower.getByRole("button", { name: "Over-Shield Module", exact: true }).click();
   await expect(hero.toast()).toHaveText("Over-Shield Module selected");
+  await expect(lower.getByRole("button", { name: "Over-Shield Module", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   expect((await hero.stored()).selectedTraits["bing-creative-genius:level45:lower"]).toBe("Over-Shield Module");
   await planner.expectNoErrors();
 });

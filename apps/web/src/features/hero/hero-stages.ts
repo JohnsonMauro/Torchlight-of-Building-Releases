@@ -2,9 +2,11 @@
 // memories placed where the game draws them (in percent of the decal). Each trait has its own screen, so a stage belongs
 // to one trait. Two layouts:
 // - tiers (Rehan's Seething Silhouette, 2026-10-21): the base trait, and per level a memory between two trait choices;
+//   with `dual` (Bing's Creative Genius, 2026-10-23) each level's upper and lower pick in those two places and every
+//   choice of its group as a round button over it, as the game opens them;
 // - tree (Youga's The Ultimate One, 2026-10-22): the trait tree where TLIDB's coordinates put it (they are the game
 //   screen's), the three memories under it. The decals are cut from the owner's screenshots with the icons, names and
-//   buttons painted out (Youga's: Torchlight-of-Building-Releases.local-context/tools/youga-stage-decal.py).
+//   buttons painted out (Torchlight-of-Building-Releases.local-context/tools/youga-stage-decal.py, bing-stage-decal.py).
 import { artFrame, rarityArt } from "./hero-classes";
 import type { TraitTiersView } from "@legacy/app/bridge/hero-traits-view-model.ts";
 import type { MemorySocketLook } from "./MemorySocket";
@@ -27,6 +29,17 @@ export interface TierStage extends StageArt {
   rows: { level: number; top: number; memory: number; bottom: number };
   /** A node's width (percent). */
   node: number;
+  /** The memory sockets' columns (percent across) when they are not the choices' (Bing's sit right of them). */
+  memoryColumns?: number[];
+  /** A memory socket's width (percent); the node's when absent. */
+  memory?: number;
+  /**
+   * Two choice groups per level (Bing, Creative Genius): the upper and lower pick in the top and bottom hexagons, and
+   * every choice of a group as a round button, two to a row, above the top hexagon (`up`, percent down) or below the
+   * bottom one (`down`); `size` a button's width and `spacing` between their centres (percent across), `rowStep` between
+   * rows (percent down).
+   */
+  dual?: { up: number; down: number; size: number; spacing: number; rowStep: number };
 }
 
 export interface TreeStage extends StageArt {
@@ -58,6 +71,21 @@ export const HERO_STAGES: Readonly<Record<string, HeroStage>> = {
     rows: { level: 40.5, top: 49.94, memory: 63.89, bottom: 78.83 },
     node: 5.6,
   },
+  // Decal: the screenshot's 2560 x 1280 px below the top bar, at 1400 x 700. Measured on the screenshot (px): the base trait
+  // at 1322, 723; the hexagons at x 1705 / 1995 / 2283, y 495 and 960; the memories at x 1735 / 2025 / 2313, y 715; the
+  // choices the game opens over a hexagon at y 350, 131 px apart.
+  "bing-creative-genius": {
+    kind: "tiers",
+    image: "./src/assets/tli/hero-art/bing-creative-genius-stage.webp",
+    ratio: 2,
+    base: { x: 51.64, y: 48.67, size: 6.4 },
+    columns: [66.6, 77.93, 89.18],
+    rows: { level: 11, top: 30.86, memory: 48.05, bottom: 67.19 },
+    node: 6.4,
+    memoryColumns: [67.77, 79.1, 90.35],
+    memory: 5.1,
+    dual: { up: 19.53, down: 78.5, size: 3.6, spacing: 4, rowStep: 7.8 },
+  },
   // Decal: the screenshot's 2560 x 1280 px below the top bar, at 1400 x 700. Fitted on the screenshot's 11 nodes
   // (screen px = 1.261 x TLIDB x + 777 and 1.267 x TLIDB y + 13 below the top bar, within 3 px).
   "youga-the-ultimate-one": {
@@ -79,16 +107,19 @@ export const HERO_STAGES: Readonly<Record<string, HeroStage>> = {
   },
 };
 
-/** Whether the stage can draw these tiers: plain tiers only (no dual rows, moved picks, base memory or supports). */
+/**
+ * Whether the stage can draw these tiers: one column per level, no moved picks, base memory or supports; two choices a
+ * level, or an upper and a lower group on a dual stage.
+ */
 export function stageFits(stage: TierStage, tiers: TraitTiersView): boolean {
-  return (
-    !tiers.dual &&
-    !tiers.extraRow &&
-    !tiers.base.memory &&
-    !tiers.base.supports &&
-    tiers.tiers.length === stage.columns.length &&
-    tiers.tiers.every((tier) => tier.row === null && tier.groups.length === 1 && tier.groups[0].choices.length <= 2)
-  );
+  if (tiers.extraRow || tiers.base.memory || tiers.base.supports || tiers.tiers.length !== stage.columns.length)
+    return false;
+  return tiers.dual
+    ? Boolean(stage.dual) && tiers.tiers.every((tier) => tier.row === null && tier.groups.length === 2)
+    : !stage.dual &&
+        tiers.tiers.every(
+          (tier) => tier.row === null && tier.groups.length === 1 && tier.groups[0].choices.length <= 2,
+        );
 }
 
 const HEXAGON = "[clip-path:polygon(50%_0,93%_25%,93%_75%,50%_100%,7%_75%,7%_25%)]";
@@ -117,6 +148,9 @@ export const STAGE_CHOICE = `grid size-full cursor-pointer place-items-center bo
 export const STAGE_CHOICE_PICKED = "bg-accent";
 export const STAGE_CHOICE_OTHER = "bg-line-strong opacity-60 hover:opacity-100 focus-visible:opacity-100";
 export const STAGE_CHOICE_ART = `${artFrame} size-full bg-sunken ${HEXAGON}`;
+/** A dual stage's hexagon: the group's pick (picked with the round buttons over it), or an empty frame. */
+export const STAGE_PICK_FRAME = `pointer-events-none grid size-full place-items-center p-[3px] ${HEXAGON}`;
+export const STAGE_PICK_EMPTY = "bg-line-strong opacity-40";
 /** The check under a picked trait: a small accent disc at the hexagon's foot. */
 export const STAGE_CHECK =
   "pointer-events-none absolute z-2 -bottom-[8%] left-1/2 grid aspect-square w-[34%] -translate-x-1/2 place-items-center rounded-full border border-surface bg-accent text-on-accent";
