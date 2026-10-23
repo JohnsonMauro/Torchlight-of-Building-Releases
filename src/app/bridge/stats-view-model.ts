@@ -17,7 +17,7 @@ import {
   recountTiles,
   recountTotalModeledDps,
 } from "../stats/dummy-recount-panel.js";
-import { formatRecountInteger } from "../../engine/text/number-format.js";
+import { formatRecountInteger } from "../../engine/index.ts";
 import { effectiveHpView, type EffectiveHpModel, type EffectiveHpView } from "../stats/effective-hp-view.ts";
 import { numberText, type NumberText } from "../stats/number-text.ts";
 import { displayTexts } from "./display-text.ts";

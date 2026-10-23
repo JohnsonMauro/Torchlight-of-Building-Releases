@@ -1,9 +1,11 @@
-import { blessingRecoverySources } from "../../engine/defense/blessing-gear-effects.js";
-import { curseSlotSummary } from "../../engine/skills/curse-limit.js";
-import { level85DummyDefenses } from "../../engine/combat/target-hit-mitigation.js";
-import { collectNormalizedGearModifiers } from "../../engine/engine.js";
-import { characterStatTotals } from "../../engine/character-stats.js";
-import { effectiveHpModel } from "../../engine/defense/effective-hp.js";
+import {
+  blessingRecoverySources,
+  characterStatTotals,
+  collectNormalizedGearModifiers,
+  curseSlotSummary,
+  effectiveHpModel,
+  level85DummyDefenses,
+} from "../../engine/index.ts";
 import { hasActiveReaping } from "./damage-path-views.js";
 const number = (value) => (Number.isFinite(value) ? value : null);
 

@@ -1,19 +1,21 @@
 // The Gear section, the Inventory item dialog, the item editor and the equipment crafter: their state and commands.
-import { equipmentSlots } from "../../data/gear/crafting-catalog-ss13.js";
-import { legendaryCorrodedModifiersSs13 } from "../../data/gear/legendary-corroded-modifiers-ss13.generated.js";
-import { legendaryGearSs13 } from "../../data/gear/legendary-gear-ss13.generated.js";
-import { canDropGearInSlot } from "../../engine/gear/gear-drag.js";
-import { itemCardRarity } from "../../engine/gear/graft-legendaries.js";
-import { legendaryLineTiers, legendaryTierTemplate } from "../../engine/gear/legendary-affix-tiers.js";
 import {
+  canDropGearInSlot,
+  equipmentSlots,
+  folkloreRingModifier,
+  folkloreRingOptionFromModifiers,
+  itemCardRarity,
+  legendaryCorrodedModifiersSs13,
+  legendaryGearSs13,
+  legendaryLineTiers,
+  legendaryTierTemplate,
+  normalizeSunsEmbraceItem,
   placeholderOption,
   placeholderOptionForText,
   placeholderOptionTemplate,
   placeholderPool,
-} from "../../engine/gear/legendary-placeholder-pools.js";
-import { folkloreRingModifier, folkloreRingOptionFromModifiers } from "../../engine/gear/legendary-ring-options.js";
-import { rareBaseForItem } from "../../engine/gear/rare-base-lookup.js";
-import { normalizeSunsEmbraceItem } from "../../engine/state/suns-embrace-normalization.js";
+  rareBaseForItem,
+} from "../../engine/index.ts";
 import { beltBlendById, beltBlendChoices } from "./belt-blend-options.js";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";

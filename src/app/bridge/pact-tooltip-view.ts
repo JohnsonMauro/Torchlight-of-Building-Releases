@@ -2,7 +2,7 @@
 // node) and an installed Kismet. One card: a head, blocks of text, a footer. Pure; the planner passes in what depends
 // on the open build (src/app/pacts/pacts-controller.js queries) and React renders it
 // (apps/web/src/features/pacts/PactTooltip.tsx).
-import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+import { normalizePercentageText } from "../../engine/index.ts";
 import type { CoverageView } from "./gear-item-view.ts";
 
 const text = (value: string) => normalizePercentageText(value);

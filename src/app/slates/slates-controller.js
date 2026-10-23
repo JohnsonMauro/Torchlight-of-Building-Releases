@@ -1,15 +1,17 @@
 // The Divinity Slates board, the Slate Inventory, the slate crafter and the slate editor.
-import { canPlaceSlate, slateSize, slateTransformRules } from "../../engine/talents/slate-board.js";
-import { closeDialog, dialogOpen, openDialog } from "../bridge/dialogs.ts";
-import { displayTexts } from "../bridge/display-text.ts";
-import { divinitySlateAffixesSs13 } from "../../data/divinity-slate-affixes-ss13.js";
-import { isCopySlate } from "../../engine/talents/slate-board.js";
 import {
+  canPlaceSlate,
+  divinitySlateAffixesSs13,
   isActiveJudgment,
+  isCopySlate,
   judgmentAffectedSlateIds,
   judgmentAffixTargetPercent,
   scaleJudgmentAffix,
-} from "../../engine/talents/slate-judgment.js";
+  slateSize,
+  slateTransformRules,
+} from "../../engine/index.ts";
+import { closeDialog, dialogOpen, openDialog } from "../bridge/dialogs.ts";
+import { displayTexts } from "../bridge/display-text.ts";
 import { coverageView } from "../bridge/gear-item-view.ts";
 import { slateTooltipView } from "../bridge/slate-tooltip-view.ts";
 import { slatesView } from "../bridge/slates-view-model.ts";

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { gameKeywordsExplained } from "@legacy/engine/text/game-keywords.js";
+import { gameKeywordsExplained } from "@legacy/engine/index.ts";
 import { createPortal } from "react-dom";
 import { KeywordNotes } from "../KeywordNotes";
 import { useAltHeld } from "../use-alt-held";

@@ -19,7 +19,7 @@ import {
   wholeFormat,
 } from "../stats/damage-path-views.js";
 import { openQuestionsFor } from "../stats/open-questions.js";
-import { formatShortNumber } from "../../engine/text/number-format.js";
+import { formatShortNumber } from "../../engine/index.ts";
 import { numberText, type NumberText } from "../stats/number-text.ts";
 import { displayTexts } from "./display-text.ts";
 

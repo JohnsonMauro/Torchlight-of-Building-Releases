@@ -1,13 +1,14 @@
 // The tooltips of skills and supports: the skill board's sockets and names, a hero trait's support slot and Carino's
 // Special Ammo slots (src/app/bridge/skill-tooltip-view.ts). Queries only (src/app/bridge/planner-queries.js);
 // apps/web/src/features/skills/SkillTooltip.tsx renders them.
-import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
-import { skillBoardRows } from "../../engine/skills/skill-board-slots.js";
 import {
   classifySkillCoverage,
+  skillBoardRows,
   supportClauseCoverage,
   supportLineCoverage,
-} from "../../engine/skills/skill-coverage.js";
+  tlidbSkillCatalogSs13,
+  tlidbSupportCatalogSs13,
+} from "../../engine/index.ts";
 import { coverageView } from "../bridge/gear-item-view.ts";
 import { skillTooltipView } from "../bridge/skill-tooltip-view.ts";
 import { heroTraitSupportConfig } from "../hero/hero-memory-display.js";

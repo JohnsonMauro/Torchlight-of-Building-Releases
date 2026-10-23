@@ -3,8 +3,8 @@ import {
   etherealPrismBases,
   inverseImageRoll,
   inverseImageRolls,
-  prismAffixes,
   prismAddedCoreEffect,
+  prismAffixes,
   prismArea,
   prismBaseAffixesForBase,
   prismBaseEffect,
@@ -12,7 +12,7 @@ import {
   prismRareAffixesForBase,
   prismReplacesCore,
   prismSupportsLegendaryAffix,
-} from "../../engine/talents/prism-crafting.js";
+} from "../../engine/index.ts";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";

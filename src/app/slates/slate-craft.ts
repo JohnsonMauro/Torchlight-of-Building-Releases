@@ -6,11 +6,14 @@
 // The rules are the legacy crafter's: choosing a tab, god, Nether King type or template draws the form anew (name,
 // shape, orientation and affixes start over), a new shape starts upright, and an affix select holds its placeholder, the
 // value an edited slate brought (an option of its own) and the last pick from its searchable list.
-import { divinitySlateAffixesSs13 } from "../../data/divinity-slate-affixes-ss13.js";
-import { pedigreeCoreAffixesSs13 } from "../../data/pedigree-core-affixes-ss13.js";
-import { PEDIGREE_OF_GODS, normalizePedigreeAffixes } from "../../engine/talents/pedigree-slots.js";
-import { slateTransformRules } from "../../engine/talents/slate-board.js";
-import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+import {
+  divinitySlateAffixesSs13,
+  normalizePedigreeAffixes,
+  normalizePercentageText,
+  PEDIGREE_OF_GODS,
+  pedigreeCoreAffixesSs13,
+  slateTransformRules,
+} from "../../engine/index.ts";
 import {
   LEGENDARY_SLATE_TEMPLATES,
   SLATE_GODS,

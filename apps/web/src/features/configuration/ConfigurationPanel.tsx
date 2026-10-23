@@ -3,9 +3,9 @@
 import { useState, type ReactNode } from "react";
 import { aimUptimeControl } from "@legacy/app/configuration/aim-controls.js";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
-import { combatNumberLimits, type CombatNumber } from "@legacy/engine/state/state-validation.ts";
+import { combatNumberLimits } from "@legacy/engine/index.ts";
+import type { CombatNumber, ExclusiveChoice } from "@legacy/engine/index.ts";
 import type { ConfigurationSource } from "@legacy/app/bridge/view-sources.ts";
-import type { ExclusiveChoice } from "@legacy/engine/planner-api.ts";
 import { CommitNumberInput } from "../../ui/CommitNumberInput";
 import { formatNumber } from "../../ui/format";
 import { applicableManualConditions, manualConditionRows } from "./configuration-model";

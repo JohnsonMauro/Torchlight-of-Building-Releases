@@ -2,9 +2,12 @@
 // one column per god, its portrait and name over its God tree and its four class trees. Every tree shows; the ones the
 // open slot cannot take are off, with the reason. Pure; src/app/talents/talents-controller.js publishes it
 // (src/app/bridge/view-sources.ts "talentPicker").
-import { tliArt } from "../../data/assets/tli-art.js";
-import { allProfessionTalentCatalogueSs13 } from "../../data/talents/all-profession-trees-ss13.generated.js";
-import { talentFamiliesSs13, talentOptionsForSlot } from "../../engine/talents/talent-selection-rules.js";
+import {
+  allProfessionTalentCatalogueSs13,
+  talentFamiliesSs13,
+  talentOptionsForSlot,
+  tliArt,
+} from "../../engine/index.ts";
 import { godPortraits } from "../talents/god-portraits.js";
 import { talentFamilyClass } from "./talents-view-model.ts";
 

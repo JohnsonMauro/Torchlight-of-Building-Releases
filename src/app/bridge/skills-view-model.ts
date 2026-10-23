@@ -2,15 +2,17 @@
 // five active skill rows, Auras: four) with each row's supports and Energy, the Energy total, and the Mana and Life the
 // auras seal. Pure; the React view (apps/web/src/features/skills) renders it and src/app/skills/skill-board.js publishes it
 // (src/app/bridge/view-sources.ts "skills"), so the game data stays in the planner's bundle.
-import { tliArt } from "../../data/assets/tli-art.js";
-import { equipmentSlots } from "../../data/gear/crafting-catalog-ss13.js";
-import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
-import { curseSlotSummary } from "../../engine/skills/curse-limit.js";
-import { energyCostForSupportPositions } from "../../engine/engine.js";
-import { skillBoardRows } from "../../engine/skills/skill-board-slots.js";
-import { supportSlotsForSetup } from "../../engine/supports/support-slot-transfer.js";
-import type { InstalledSupport, PlannerResult, SkillSetup } from "../../engine/planner-api.ts";
-import type { PlannerSkills } from "../../engine/state/planner-state.ts";
+import {
+  curseSlotSummary,
+  energyCostForSupportPositions,
+  equipmentSlots,
+  skillBoardRows,
+  supportSlotsForSetup,
+  tliArt,
+  tlidbSkillCatalogSs13,
+  tlidbSupportCatalogSs13,
+} from "../../engine/index.ts";
+import type { InstalledSupport, PlannerResult, PlannerSkills, SkillSetup } from "../../engine/index.ts";
 
 export type SkillBoardTab = "skills" | "auras";
 

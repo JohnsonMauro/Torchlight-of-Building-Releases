@@ -1,25 +1,27 @@
 // The Pactspirits section: spirits, Fate slots and the Kismet crafter.
-import { kismetCatalogSs13 } from "../../data/pacts/kismet-catalog-ss13.js";
-import { pactspiritCatalogSs13 } from "../../data/pacts/pactspirit-catalog-ss13.js";
-import { pactspiritTreesSs13 } from "../../data/pacts/pactspirit-trees-ss13.js";
-import { selenaScorchingBeamPactsSs13 } from "../../data/pacts/selena-scorching-beam-ss13.js";
-import { fateExtraSlots, fateSlotChoice, fateSlotChoices } from "../../engine/pacts/fate-slot-unlocks.js";
 import {
+  activeCapturedPactspirits,
+  equippedKismetSummary,
+  fateExtraSlots,
+  fateSlotChoice,
+  fateSlotChoices,
   kismetAffixesWithRolls,
+  kismetCatalogSs13,
   kismetKindForRing,
   kismetRollControls,
+  microFateEffectScale,
   normalizeKismetRolls,
-} from "../../engine/pacts/kismet-crafting.js";
-import { microFateEffectScale, starTrailNote } from "../../engine/pacts/kismet-effects.js";
-import { transferKismetSlot } from "../../engine/pacts/kismet-slot-transfer.js";
-import { equippedKismetSummary } from "../../engine/pacts/pact-kismet-summary.js";
-import {
   orderedPactspiritNodes,
+  pactspiritCatalogSs13,
   pactspiritEffectsAtLevel,
   pactspiritLevel,
+  pactspiritTreesSs13,
+  selectPactspirit,
+  selenaScorchingBeamPactsSs13,
+  starTrailNote,
   togglePactNodeChain,
-} from "../../engine/pacts/pactspirit-levels.js";
-import { activeCapturedPactspirits, selectPactspirit } from "../../engine/pacts/pactspirit-selection.js";
+  transferKismetSlot,
+} from "../../engine/index.ts";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { searchText } from "../bridge/search-match.ts";

@@ -22,6 +22,8 @@ rebase onto it and never open PRs there. We read his diff and port by hand.
   the log import in `src/game-log/`.
 - His `src/app.js` code is split into the section controllers (`planner-guide` §1): find the controller that owns the
   section his change touches.
+- His page code imports engine and data modules directly; ours imports them only from `src/engine/index.ts`
+  (`engine-guide` §1): a ported import becomes a name in the entry, added to its domain's group if it is new.
 - His `src/data/**` paths are unchanged and the files are kept byte for byte (`engine-guide` §1), so a
   `*.generated.js` can probably be copied whole. Not tried yet: on the first port, check that nothing of ours imports a
   name his new copy dropped (typecheck + `pnpm test`), then delete this note.

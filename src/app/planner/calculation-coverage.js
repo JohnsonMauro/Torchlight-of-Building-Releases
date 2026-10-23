@@ -1,36 +1,45 @@
-import { parseBlessingRecovery } from "../../engine/defense/blessing-gear-effects.js";
-import { parseBlessingModifier } from "../../engine/defense/blessing-model.js";
-import { parseBlockModifier } from "../../engine/defense/block-model.js";
-import { namedGearAffixLines } from "../../engine/text/named-gear-affixes.js";
-import { collectNormalizedGearModifiers } from "../../engine/engine.js";
-import { parseReapingSource } from "../../engine/ailments/reaping-sources.js";
-import { normalizePercentageText, cleanGameText } from "../../engine/text/percentage-text.js";
-import { auraGainedLineStatus } from "../../engine/skills/aura-gained-effects.js";
-import { allHeroTraitsSs13 } from "../../data/heroes/all-hero-traits-ss13.generated.js";
-import { baseTraitDescriptionForLevel, endsArtificialMoonSection } from "../../engine/heroes/hero-memory-rules.js";
-import { artificialMoonGate } from "../../engine/heroes/hero-memory-rules.js";
-import { heroTraitSlotLevel } from "../../engine/character-stats.js";
 import {
-  refineCoverage,
-  engineLineStatus,
-  neutralStatuses,
-  routeStatus,
-  coverageContext,
+  allHeroTraitsSs13,
+  artificialMoonGate,
+  auraGainedLineStatus,
+  baseTraitDescriptionForLevel,
+  cleanGameText,
+  collectNormalizedGearModifiers,
   combineStatuses,
+  coverageContext,
   dazeStatus,
+  endsArtificialMoonSection,
+  engineLineStatus,
   heroModuleLineStatus,
-  skillLevelLineStatus,
+  heroTraitSlotLevel,
   intelligenceLineStatus,
+  isNameReadCoreClause,
   mainStatLineStatus,
+  matchTalentTextClause,
+  namedGearAffixLines,
+  nameReadCoreGrant,
   nameReadCoreStatus,
-} from "../../engine/text/line-coverage.js";
-import { isNameReadCoreClause, nameReadCoreGrant } from "../../engine/text/granted-core-lines.js";
-import { matchTalentTextClause, talentKeyRoute } from "../../engine/text/talent-text-effects.js";
-import { prismAddedCoreEffect, prismMutationDownside } from "../../engine/talents/prism-crafting.js";
-import { residualNonDamageStatus } from "../../engine/text/line-families.js";
-import { resolveHeroModules } from "../../engine/heroes/hero-trait-modules.js";
-import { weaponLocalLineKind, weaponHands, weaponTypeOf, readWeapon } from "../../engine/skills/weapon-damage-model.js";
-import { TRAIT_SLOT_GRANTS, YOUGA_ULTIMATE_ONE_ID } from "../../engine/heroes/trait-board-grants.js";
+  neutralStatuses,
+  normalizePercentageText,
+  parseBlessingModifier,
+  parseBlessingRecovery,
+  parseBlockModifier,
+  parseReapingSource,
+  prismAddedCoreEffect,
+  prismMutationDownside,
+  readWeapon,
+  refineCoverage,
+  residualNonDamageStatus,
+  resolveHeroModules,
+  routeStatus,
+  skillLevelLineStatus,
+  talentKeyRoute,
+  TRAIT_SLOT_GRANTS,
+  weaponHands,
+  weaponLocalLineKind,
+  weaponTypeOf,
+  YOUGA_ULTIMATE_ONE_ID,
+} from "../../engine/index.ts";
 
 function baseGearLineCoverage(item, text, active, block, lowResources, blurEffects) {
   if (!active) return "Not equipped";

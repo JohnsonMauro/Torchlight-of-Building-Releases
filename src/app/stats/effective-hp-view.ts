@@ -2,8 +2,7 @@
 // src/engine/defense/effective-hp.js effectiveHpModel: the weakest-type figures, the damage type table, the ailment and
 // crowd control checklist, the layer chips and the hover texts behind each. Kept apart from the model, which the
 // calculation imports, so the calculation does not load panel code. Pure.
-import { formatRecountInteger } from "../../engine/text/number-format.js";
-import { baseLife } from "../../engine/defense/effective-hp.js";
+import { baseLife, formatRecountInteger } from "../../engine/index.ts";
 import { numberText, type NumberText } from "./number-text.ts";
 
 export interface EhpFigureView {

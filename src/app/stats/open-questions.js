@@ -15,7 +15,7 @@
 //
 // Pure module: reads the planner result and the state, never recomputes damage.
 
-import { isExclusiveRevival } from "../../engine/heroes/hero-exclusive-revivals.js";
+import { isExclusiveRevival } from "../../engine/index.ts";
 
 const names = (list, pick = (item) => item?.name) => (list || []).map(pick).filter(Boolean);
 const count = (list, name) => list.filter((item) => item === name).length;

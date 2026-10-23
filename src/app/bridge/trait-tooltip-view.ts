@@ -3,10 +3,16 @@
 // a keyword, a progression's current value or a bold label keeps its look without markup. Pure; the planner passes in
 // what depends on the open build (src/app/hero/hero-controller.js and follower-panel.js) and React renders it
 // (apps/web/src/features/hero/TraitTooltip.tsx).
-import { baseTraitDescriptionForLevel, withoutArtificialMoonLines } from "../../engine/heroes/hero-memory-rules.js";
-import { EXTRA_PICK_AFFIX, EXTRA_PICK_LEVEL } from "../../engine/heroes/hero-trait-tree.js";
-import { heroTraitKeyword, heroTraitKeywordSegments, heroTraitKeywordsIn } from "../../engine/text/inline-keywords.js";
-import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+import {
+  baseTraitDescriptionForLevel,
+  EXTRA_PICK_AFFIX,
+  EXTRA_PICK_LEVEL,
+  heroTraitKeyword,
+  heroTraitKeywordSegments,
+  heroTraitKeywordsIn,
+  normalizePercentageText,
+  withoutArtificialMoonLines,
+} from "../../engine/index.ts";
 import type { CoverageView } from "./gear-item-view.ts";
 
 const text = (value: string) => normalizePercentageText(value);

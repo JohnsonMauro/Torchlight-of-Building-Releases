@@ -1,4 +1,4 @@
-import { AIM_UPTIME_AUTO_SENTINEL } from "../../engine/skills/aim-model.js";
+import { AIM_UPTIME_AUTO_SENTINEL } from "../../engine/index.ts";
 
 const round2 = (value) => Math.round(Number(value) * 100) / 100;
 

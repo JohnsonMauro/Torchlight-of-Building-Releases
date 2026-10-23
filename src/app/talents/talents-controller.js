@@ -1,13 +1,18 @@
 // Talent tree commands: tree picker, core talents, points on nodes.
-import { tliArt } from "../../data/assets/tli-art.js";
-import { inverseImageReflectedCoordinates } from "../../engine/talents/prism-crafting.js";
 import {
   allocateTalentToMaxWithPrerequisites,
   allocateTalentWithPrerequisites,
+  dazeStatus,
+  inverseImageReflectedCoordinates,
+  modeledCoreTalents,
+  prismBaseEffect,
+  prismReplacesCore,
+  refineCoverage,
   removeTalentWithDependents,
+  talentFamiliesSs13,
   talentPointTotals,
-} from "../../engine/talents/talent-rules.js";
-import { talentFamiliesSs13 } from "../../engine/talents/talent-selection-rules.js";
+  tliArt,
+} from "../../engine/index.ts";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { coverageView } from "../bridge/gear-item-view.ts";
 import { talentPickerView } from "../bridge/talent-picker-view.ts";
@@ -16,9 +21,6 @@ import { talentsView } from "../bridge/talents-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { renderConfiguration } from "../configuration/configuration-controller.js";
 import { showToast } from "../planner/page.js";
-import { modeledCoreTalents } from "../../engine/talents/core-talent-model.js";
-import { prismReplacesCore, prismBaseEffect } from "../../engine/talents/prism-crafting.js";
-import { dazeStatus, refineCoverage } from "../../engine/text/line-coverage.js";
 import {
   prismAffixCoverage,
   prismAffixCoverageReason,

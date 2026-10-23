@@ -1,9 +1,14 @@
 // The HERO tab and its dialogs (hero, scent, Special Ammo), the HERO / FOLLOWER switch and follower edits.
-import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
-import { heroById } from "../../data/heroes/hero-catalog-ss13.js";
-import { carinoSpecialAmmoOptions } from "../../engine/heroes/carino-special-ammo.js";
-import { switchHeroLoadout } from "../../engine/heroes/hero-loadouts.js";
-import { heroTraitTree, heroTreeRules, heroTreeSelections } from "../../engine/heroes/hero-trait-tree.js";
+import {
+  carinoSpecialAmmoOptions,
+  heroById,
+  heroTraitTree,
+  heroTreeRules,
+  heroTreeSelections,
+  switchHeroLoadout,
+  tlidbSkillCatalogSs13,
+  tlidbSupportCatalogSs13,
+} from "../../engine/index.ts";
 import { carinoAmmoSelectorView, sageScentSelectorView } from "../bridge/hero-dialogs-view-model.ts";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { heroTraitsView } from "../bridge/hero-traits-view-model.ts";

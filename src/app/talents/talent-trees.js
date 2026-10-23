@@ -1,12 +1,12 @@
 // The talent trees: layouts (an installed Inverse Image reflects nodes), the open tree, ranks a prism change clears.
-import { allProfessionTalentCatalogueSs13 } from "../../data/talents/all-profession-trees-ss13.generated.js";
-import { selenaScorchingBeamTalentSetupSs13 } from "../../data/talents/selena-scorching-beam-ss13.js";
 import {
+  allProfessionTalentCatalogueSs13,
   inverseImageReflectedCoordinates,
   inverseImageReflectionMap,
   inverseImageTalentNodes,
-} from "../../engine/talents/prism-crafting.js";
-import { pruneInvalidTalentRanks } from "../../engine/talents/talent-rules.js";
+  pruneInvalidTalentRanks,
+  selenaScorchingBeamTalentSetupSs13,
+} from "../../engine/index.ts";
 import { talentDisplayNodes as talentNodesOnBoard } from "../bridge/talents-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { renderHeroPanel, renderHeroTraitTree } from "../hero/hero-controller.js";

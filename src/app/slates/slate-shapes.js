@@ -1,5 +1,5 @@
 // A slate's cells and art on the board, and the coloured tree name of its affixes.
-import { divinitySlateTreeFamiliesSs13 } from "../../data/divinity-slate-affixes-ss13.js";
+import { divinitySlateTreeFamiliesSs13 } from "../../engine/index.ts";
 import { escapeHtml } from "../html.js";
 import {
   godSlateCaptureByKey,

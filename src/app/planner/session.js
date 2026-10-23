@@ -1,16 +1,19 @@
 // The open build: its state and the collections derived from it, saving, the calculation and the render pass.
-import { tliArt } from "../../data/assets/tli-art.js";
-import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
-import { equipmentSlots } from "../../data/gear/crafting-catalog-ss13.js";
-import { selenaScorchingBeamGearSs13 } from "../../data/gear/selena-scorching-beam-ss13.js";
-import { selenaScorchingBeamPactsSs13 } from "../../data/pacts/selena-scorching-beam-ss13.js";
-import { selenaCompleteSkillLoadoutSs13 } from "../../data/skills/selena-complete-skill-loadout-ss13.js";
-import { selenaScorchingBeamSlatesSs13 } from "../../data/slates/selena-scorching-beam-ss13.js";
-import { selenaScorchingBeamTalentSetupSs13 } from "../../data/talents/selena-scorching-beam-ss13.js";
-import { calculatePlanner } from "../../engine/planner.js";
-import { defaultPlannerState } from "../../engine/state/planner-state.ts";
-import { canPlaceSlate } from "../../engine/talents/slate-board.js";
-import { setCoverageContext } from "../../engine/text/line-coverage.js";
+import {
+  calculatePlanner,
+  canPlaceSlate,
+  defaultPlannerState,
+  equipmentSlots,
+  selenaCompleteSkillLoadoutSs13,
+  selenaScorchingBeamGearSs13,
+  selenaScorchingBeamPactsSs13,
+  selenaScorchingBeamSlatesSs13,
+  selenaScorchingBeamTalentSetupSs13,
+  setCoverageContext,
+  tliArt,
+  tlidbSkillCatalogSs13,
+  tlidbSupportCatalogSs13,
+} from "../../engine/index.ts";
 import { upgradeExistingCorrodedItems } from "../gear/stored-items.js";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { createPlannerCache } from "./planner-cache.js";

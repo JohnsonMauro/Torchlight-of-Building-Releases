@@ -1,10 +1,11 @@
 import {
+  DASH,
+  excludedSteadyDps,
+  excludeRecountSources,
+  formatRecountInteger,
   summarizeRecount,
   windowTotals,
-  excludeRecountSources,
-  excludedSteadyDps,
-} from "../../engine/combat/dummy-recount.js";
-import { DASH, formatRecountInteger } from "../../engine/text/number-format.js";
+} from "../../engine/index.ts";
 
 // The training dummy recount of the stat sheet's damage banner: the in-game recount fields over a fixed 10 s span of the
 // planner's 60 s dummy timeline (planner.dummyRecount), each source's share, and the sources left out of the view. The

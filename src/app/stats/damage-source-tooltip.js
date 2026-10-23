@@ -1,15 +1,18 @@
 // The Stats damage path's source tooltips (apps/web/src/features/stats/DamageSourceTooltip.tsx): the card of the gear,
 // slate, Kismet, hero trait, memory, skill or support a source names (each domain's own query), else a breakdown of what
 // feeds the source. Query only (src/app/bridge/planner-queries.js); read from the build, never from the page.
-import { equipmentSlots } from "../../data/gear/crafting-catalog-ss13.js";
-import { kismetCatalogSs13 } from "../../data/pacts/kismet-catalog-ss13.js";
-import { pactspiritTreesSs13 } from "../../data/pacts/pactspirit-trees-ss13.js";
-import { selenaScorchingBeamPactsSs13 } from "../../data/pacts/selena-scorching-beam-ss13.js";
-import { allProfessionTalentCatalogueSs13 } from "../../data/talents/all-profession-trees-ss13.generated.js";
-import { selenaScorchingBeamTalentSetupSs13 } from "../../data/talents/selena-scorching-beam-ss13.js";
-import { resolveTalentCandidate } from "../../engine/candidate-sources.js";
-import { collectNormalizedGearModifiers } from "../../engine/engine.js";
-import { orderedPactspiritNodes, pactspiritEffectsAtLevel } from "../../engine/pacts/pactspirit-levels.js";
+import {
+  allProfessionTalentCatalogueSs13,
+  collectNormalizedGearModifiers,
+  equipmentSlots,
+  kismetCatalogSs13,
+  orderedPactspiritNodes,
+  pactspiritEffectsAtLevel,
+  pactspiritTreesSs13,
+  resolveTalentCandidate,
+  selenaScorchingBeamPactsSs13,
+  selenaScorchingBeamTalentSetupSs13,
+} from "../../engine/index.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { heroTraitTarget } from "../bridge/hero-traits-view-model.ts";
 import { pactsView } from "../bridge/pacts-view-model.ts";

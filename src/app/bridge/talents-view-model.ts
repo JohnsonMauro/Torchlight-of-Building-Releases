@@ -3,22 +3,21 @@
 // area, an Inverse Image's reflected area). Pure; the React view (apps/web/src/features/talents) renders it and
 // src/app/talents/talents-controller.js publishes it (src/app/bridge/view-sources.ts "talents"). The open tree, the Slates tab and a prism
 // waiting to be placed stay planner state (the prism dialogs change them too).
-import { tliArt } from "../../data/assets/tli-art.js";
-import { allProfessionTalentCatalogueSs13 } from "../../data/talents/all-profession-trees-ss13.generated.js";
 import {
+  allProfessionTalentCatalogueSs13,
+  canAllocateTalent,
+  godTalentTreesSs13,
   inverseImageReflectedBounds,
   inverseImageReflectedCoordinates,
   inverseImageTalentNodes,
+  MAX_TALENT_POINTS,
   prismAreaBounds,
   prismReplacesCore,
-} from "../../engine/talents/prism-crafting.js";
-import {
-  MAX_TALENT_POINTS,
   TALENT_THRESHOLDS,
-  canAllocateTalent,
+  talentFamiliesSs13,
   talentPointTotals,
-} from "../../engine/talents/talent-rules.js";
-import { godTalentTreesSs13, talentFamiliesSs13 } from "../../engine/talents/talent-selection-rules.js";
+  tliArt,
+} from "../../engine/index.ts";
 import { prismIcon, prismName } from "../talents/prism-icons.js";
 import { nodeIcon, nodeTitle } from "../talents/talent-labels.js";
 

@@ -2,7 +2,7 @@
 // the recount span and each source's share — the Stats page's recount card (src/app/bridge/stats-view-model.ts), with
 // the same sources left out, so both read the same figures — and the main skill. The recount timeline is part of every
 // calculated build (src/engine/combat/dummy-recount.js), so this is a pass over its bins. Pure.
-import type { MainSkill } from "../../engine/planner-api.ts";
+import type { MainSkill } from "../../engine/index.ts";
 import { MIX_COLORS, RECOUNT_SPAN_SECONDS, recountSourceShares, recountTiles } from "../stats/dummy-recount-panel.js";
 import { numberText, type NumberText } from "../stats/number-text.ts";
 

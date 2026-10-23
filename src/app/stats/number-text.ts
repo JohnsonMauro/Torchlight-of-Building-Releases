@@ -1,6 +1,6 @@
 // A large figure of the Stats page as the React views show it (apps/web/src/features/stats/NumberToggle.tsx): the
 // truncated text ("1.59 Billion") that a click turns into the full integer ("1,593,002,745"). Pure.
-import { formatRecountInteger, formatShortNumber } from "../../engine/text/number-format.js";
+import { formatRecountInteger, formatShortNumber } from "../../engine/index.ts";
 
 export interface NumberText {
   full: string;

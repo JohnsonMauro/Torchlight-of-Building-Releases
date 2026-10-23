@@ -1,5 +1,5 @@
 // Curse limit notes: which skill bar curses and triggered curse lines the calculation left out, and why.
-import { curseSlotSummary } from "../../engine/skills/curse-limit.js";
+import { curseSlotSummary } from "../../engine/index.ts";
 import { equippedSlotForInventoryItem } from "../gear/gear-items.js";
 import { currentPlanner } from "./session.js";
 

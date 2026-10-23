@@ -4,13 +4,13 @@ import {
   activationMediumLineConfigs,
   activationMediumSelectedLines,
   configurableSupportTierData,
+  isSpiritMagusSkill,
   progressionRangeLabels,
   progressionSupportHasStars,
   progressionSupportText,
   progressionSupportTierData,
   specialSupportStarBonus,
-} from "../../data/skills/special-support-tiers-ss13.js";
-import { isSpiritMagusSkill } from "../../engine/skills/magus-active-slot.js";
+} from "../../engine/index.ts";
 import { displayTexts, htmlTextSegments } from "../bridge/display-text.ts";
 import { searchText } from "../bridge/search-match.ts";
 import { followerSkillSelectorList, followerSkillSelectorView } from "../hero/follower-panel.js";

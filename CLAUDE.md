@@ -26,7 +26,7 @@ Before a commit: lint, typecheck, format:check and `pnpm test` green; e2e green 
 
 | Path | What | Rule |
 |---|---|---|
-| `src/engine/` | the calculation (pure domain) | imports only `src/engine` and `src/data`; no DOM, no storage |
+| `src/engine/` | the calculation (pure domain), one season of the game | imports only `src/engine` and `src/data`; no DOM, no storage; outside code uses only `src/engine/index.ts` |
 | `src/data/` | game data, mostly `*.generated.js` from upstream's tools | kept byte for byte (Prettier ignores it) |
 | `src/game-log/` | game log reader and import | never imports `src/app` |
 | `src/app/` | the planner page: state, commands, view models (`planner-guide`) | |
@@ -40,7 +40,8 @@ Before a commit: lint, typecheck, format:check and `pnpm test` green; e2e green 
 | `tests/unit`, `tests/golden`, `tests/e2e` | unit, engine golden master, Playwright (page objects in `tests/e2e/pages`) | |
 
 Dependencies point down: `apps/web` → `src/app` (bridge) → `src/engine` → `src/data`. Guards that fail the build:
-`tests/unit/import-graph.test.js` (no cycles, the folder rules above), `dom-ratchet.test.js` (the planner's DOM
+`tests/unit/import-graph.test.js` (no cycles, the folder rules above, `src/app`, `src/game-log` and `apps/web` reach the
+engine and its data only through `src/engine/index.ts`), `dom-ratchet.test.js` (the planner's DOM
 coupling only goes down), `styling-rules.test.js` (one stylesheet, no state word in a utility),
 `asset-references.test.js` (every `./src/assets/…` path exists).
 

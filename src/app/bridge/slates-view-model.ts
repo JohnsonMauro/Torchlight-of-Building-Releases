@@ -3,13 +3,13 @@
 // slate and its tools, Move mode, a transformed slate waiting to be placed). Pure; the React board
 // (apps/web/src/features/slates) renders it and src/app/slates/slates-controller.js publishes it (src/app/bridge/view-sources.ts "slates").
 import {
-  SLATE_BOARD_ROWS,
   adjacentSlateIds,
+  judgmentAffectedSlateIds,
+  SLATE_BOARD_ROWS,
   slateOffsets,
   slateSize,
   slateTransformRules,
-} from "../../engine/talents/slate-board.js";
-import { judgmentAffectedSlateIds } from "../../engine/talents/slate-judgment.js";
+} from "../../engine/index.ts";
 
 /** A slate as the planner lists it for the board (src/app/planner/session.js slatesForBoard). Other fields are not read here. */
 export interface BoardSlate {

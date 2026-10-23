@@ -2,7 +2,7 @@
 // search by name or trait. The planner opens it (src/app/hero/hero-controller.js openHeroSelector) and announces the "heroSelector"
 // source; picking a hero is the selectHero command.
 import { useRef } from "react";
-import { heroCatalogSs13 } from "@legacy/data/heroes/hero-catalog-ss13.js";
+import { heroCatalogSs13 } from "@legacy/engine/index.ts";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { searchMatcher, searchText } from "@legacy/app/bridge/search-match.ts";
 import { useSessionState } from "../../ui/use-session-state";

@@ -2,7 +2,7 @@
 // line with whether the calculation uses it) and a Sage's scent ingredient or elixir. Pure; the planner passes in what
 // depends on the open build (src/app/hero/hero-tooltip-queries.js) and React renders it
 // (apps/web/src/features/hero/MemoryTooltip.tsx).
-import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+import { normalizePercentageText } from "../../engine/index.ts";
 import type { CoverageView } from "./gear-item-view.ts";
 import type { MemoryRevivedEffectView } from "./hero-memory-view.ts";
 

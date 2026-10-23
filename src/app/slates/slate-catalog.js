@@ -1,10 +1,14 @@
 // What a Divinity Slate can be made of: the gods and their shape art, the legendary templates with their copy rules
 // and talent slots, the Nether King pools, and an affix as a searchable select's choice. Pure; used by the slate crafter
 // (src/app/slates/slate-craft.ts) and the planner's board and tooltips (src/app/slates/slates-controller.js).
-import { divinitySlateAffixesSs13, divinitySlateTreeFamiliesSs13 } from "../../data/divinity-slate-affixes-ss13.js";
-import { netherKingFixedAffixesSs13 } from "../../data/nether-king-slate-affixes-ss13.js";
-import { netherKingUltimateAffixesSs13 } from "../../data/nether-king-ultimate-affixes-ss13.js";
-import { PEDIGREE_OF_GODS, pedigreeSlotTypes } from "../../engine/talents/pedigree-slots.js";
+import {
+  divinitySlateAffixesSs13,
+  divinitySlateTreeFamiliesSs13,
+  netherKingFixedAffixesSs13,
+  netherKingUltimateAffixesSs13,
+  PEDIGREE_OF_GODS,
+  pedigreeSlotTypes,
+} from "../../engine/index.ts";
 
 export const slateAsset = (name) => `./src/assets/tli/slates/${name}`;
 export const SLATE_GODS = [

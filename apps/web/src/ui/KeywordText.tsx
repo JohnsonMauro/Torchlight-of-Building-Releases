@@ -1,4 +1,4 @@
-import { gameKeyword, gameKeywordSegments } from "@legacy/engine/text/game-keywords.js";
+import { gameKeyword, gameKeywordSegments } from "@legacy/engine/index.ts";
 import { KEYWORD, KEYWORD_DEFINITION, KEYWORD_NAME } from "./keyword-classes";
 import { Tooltip } from "./tooltip/Tooltip";
 import type { TooltipBody } from "./tooltip/tooltip-store";

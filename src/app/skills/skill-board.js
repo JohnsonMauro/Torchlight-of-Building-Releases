@@ -1,6 +1,11 @@
 // The Skills section: the open board tab, its rows, and the edits made on the board itself.
-import { assignSkillBoardSlot, moveSkillBoardSlot, skillBoardRows } from "../../engine/skills/skill-board-slots.js";
-import { transferSupportSlot, userInstalledSupports } from "../../engine/supports/support-slot-transfer.js";
+import {
+  assignSkillBoardSlot,
+  moveSkillBoardSlot,
+  skillBoardRows,
+  transferSupportSlot,
+  userInstalledSupports,
+} from "../../engine/index.ts";
 import { skillsView } from "../bridge/skills-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { showToast } from "../planner/page.js";

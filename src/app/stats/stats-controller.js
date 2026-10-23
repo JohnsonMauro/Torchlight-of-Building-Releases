@@ -1,5 +1,5 @@
 // The Stats view: its prepared stat sheet and damage path, and its open questions.
-import { calculatePlanner } from "../../engine/planner.js";
+import { calculatePlanner } from "../../engine/index.ts";
 import { EMPTY_DAMAGE_SUMMARY, damageSummaryView } from "../bridge/damage-summary-view-model.ts";
 import { prepareDamagePath } from "../bridge/damage-path-view-model.ts";
 import { prepareStatSheet, statsView } from "../bridge/stats-view-model.ts";

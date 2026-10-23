@@ -1,5 +1,5 @@
 import { escapeHtml } from "../html.js";
-import { supportProgressionSs13 } from "../../data/skills/support-progression-ss13.generated.js";
+import { supportProgressionSs13 } from "../../engine/index.ts";
 
 function levelValueInLine(line, numberIndexes, value) {
   const numbers = [...line.matchAll(/[+-]?\d+(?:\.\d+)?/g)];

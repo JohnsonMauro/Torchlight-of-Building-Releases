@@ -3,10 +3,14 @@
 // or TOWER Sequence line) that the editor must keep untouched. Lines are matched by text signature and roll range, never
 // by position, so an extra line before, between or after the legendary lines cannot shift the catalog indexes.
 // corrodedModifierIndices are positions in item.modifiers; the editor works in catalog indexes and converts both ways.
-import { legendaryModifierSignature } from "../../engine/gear/legendary-modifier-signature.js";
-import { folkloreRingModifier } from "../../engine/gear/legendary-ring-options.js";
-import { placeholderPool, placeholderTemplates } from "../../engine/gear/legendary-placeholder-pools.js";
-import { legendaryLineTiers, legendaryLowerTierTemplates } from "../../engine/gear/legendary-affix-tiers.js";
+import {
+  folkloreRingModifier,
+  legendaryLineTiers,
+  legendaryLowerTierTemplates,
+  legendaryModifierSignature,
+  placeholderPool,
+  placeholderTemplates,
+} from "../../engine/index.ts";
 
 const placeholderText = (text) => /^<[^>]+>$/.test(String(text || "").trim());
 

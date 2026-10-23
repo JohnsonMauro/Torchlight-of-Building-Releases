@@ -1,31 +1,30 @@
 // The hero panel's tooltips: a hero trait at its level in this build (src/app/bridge/trait-tooltip-view.ts), a hero
 // memory and a Sage's scent (src/app/bridge/memory-tooltip-view.ts). Queries only (src/app/bridge/planner-queries.js);
 // apps/web/src/features/hero renders them.
-import { allHeroTraitsSs13 } from "../../data/heroes/all-hero-traits-ss13.generated.js";
-import { heroMemoryFixedT0AffixesSs13 } from "../../data/heroes/hero-memory-fixed-t0-ss13.js";
-import { heroMemoryTierAffixesSs13 } from "../../data/heroes/hero-memory-tiers-ss13.js";
 import {
-  equippedBaseTraitSlot,
-  lunarPhaseRevivedAffixesSs13,
-  normalizeRevivedAffix,
-} from "../../data/heroes/memory-revival-ss13.js";
-import { sageScentIngredientsSs13 } from "../../data/heroes/sage-scent-options-ss13.js";
-import { sageElixirsSs13 } from "../../data/heroes/sage-scent-ss13.generated.js";
-import { catsNightSafariStatus } from "../../engine/heroes/erika-wind-stalker.js";
-import { heroMemoryLineCoverage, revivedAffixCoverage } from "../../engine/heroes/hero-memory-model.js";
-import { heroById } from "../../data/heroes/hero-catalog-ss13.js";
-import { heroTraitLevelBonus } from "../../engine/character-stats.js";
-import {
+  allHeroTraitsSs13,
   artificialMoonGate,
   baseTraitLevelForMemory,
+  catsNightSafariStatus,
+  equippedBaseTraitSlot,
+  EXTRA_PICK_LEVEL,
+  heroById,
+  heroMemoryFixedT0AffixesSs13,
+  heroMemoryLineCoverage,
+  heroMemoryTierAffixesSs13,
+  heroTraitLevelBonus,
+  lunarPhaseRevivedAffixesSs13,
   memoryMaxEnhancementForRarity,
   memoryScaledBaseStat,
   nonBaseTraitLevelExtras,
+  normalizeRevivedAffix,
   reduceBaseTraitMemoryStat,
+  revivedAffixCoverage,
+  sageElixirsSs13,
+  sageScentIngredientsSs13,
   slotTraitLevel,
   traitLevelBonusForEnhancement,
-} from "../../engine/heroes/hero-memory-rules.js";
-import { EXTRA_PICK_LEVEL } from "../../engine/heroes/hero-trait-tree.js";
+} from "../../engine/index.ts";
 import { coverageView } from "../bridge/gear-item-view.ts";
 import { memoryTooltipView, scentTooltipView } from "../bridge/memory-tooltip-view.ts";
 import { heroTraitTooltipView } from "../bridge/trait-tooltip-view.ts";

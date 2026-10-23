@@ -2,41 +2,41 @@ import { escapeHtml } from "../html.js";
 import { coverageView } from "../bridge/gear-item-view.ts";
 import { paragraph, run } from "../bridge/trait-tooltip-view.ts";
 import { searchText } from "../bridge/search-match.ts";
-import { combineStatuses, plannerEngines, refineCoverage } from "../../engine/text/line-coverage.js";
 import {
-  followers,
-  followerById,
-  followerRarityById,
-  followerSelection,
-  followerSkillSlots,
-  followerSkillSlotQuantity,
-  tartarusSkillByName,
-  tartarusKeyword,
-  normalizeFollowerState,
-  followerLineStatus,
-  plainFollowerLine,
-  missingFollowerEngine,
-  staticFollowerLineReading,
+  combineStatuses,
   FOLLOWER_BUFFS,
   FOLLOWER_MAX_SLOTS,
   FOLLOWER_RARITY_SCHEME,
+  followerById,
+  followerInitialSkillRule,
+  followerLineStatus,
+  followerRarityById,
+  followers,
+  followerSelection,
   followerSkillEntryName,
   followerSkillEntryTier,
-  tartarusSkillTierName,
-  staticFollowerAffixReading,
-  tartarusSkillTiers,
-  followerInitialSkillRule,
+  followerSkillSlotQuantity,
+  followerSkillSlots,
   followerSlotSkills,
+  missingFollowerEngine,
+  normalizeFollowerState,
+  plainFollowerLine,
+  plannerEngines,
+  refineCoverage,
+  staticFollowerAffixReading,
+  staticFollowerLineReading,
   staticFollowerTraitReading,
-} from "../../engine/followers/follower-model.js";
-import {
   tartarusAffixById,
   tartarusAffixChoices,
   tartarusAffixLines,
   tartarusAffixRanges,
   tartarusAffixSlotPool,
   tartarusAffixSlots,
-} from "../../engine/followers/follower-affixes.js";
+  tartarusKeyword,
+  tartarusSkillByName,
+  tartarusSkillTierName,
+  tartarusSkillTiers,
+} from "../../engine/index.ts";
 
 // The Hero panel's FOLLOWER tab (2026-10-15; design: the orchestrator's brief). The panel header is a HERO | FOLLOWER tab strip
 // in the Hero Trait / Trait Path tab style; the FOLLOWER tab shows a card mirroring the hero card (portrait, name, a rarity line

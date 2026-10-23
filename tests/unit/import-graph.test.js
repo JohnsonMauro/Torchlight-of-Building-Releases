@@ -89,3 +89,34 @@ test("src/engine imports only itself and src/data; src/game-log does not import 
   );
   assert.deepEqual(crossings, []);
 });
+
+// The engine's boundary: code outside it (the planner page, the game log import, the React app) reaches the engine and its
+// game data only through src/engine/index.ts, type imports and on-demand import() included; the engine never imports its
+// own entry.
+test("outside code reaches src/engine and src/data only through src/engine/index.ts", () => {
+  const outside = ["src/app", "src/game-log", "apps/web/src"].flatMap((area) =>
+    readdirSync(join(root, area), { recursive: true })
+      .filter((file) => /\.(js|ts|tsx)$/.test(file))
+      .map((file) => join(area, file)),
+  );
+  assert.ok(outside.length > 200, `only ${outside.length} outside files: the file walk is broken`);
+  const entry = join("src", "engine", "index.ts");
+  const resolve = (file, spec) =>
+    spec.startsWith("@legacy/")
+      ? join("src", spec.slice("@legacy/".length))
+      : spec.startsWith(".")
+        ? normalize(join(dirname(file), spec))
+        : null;
+  const pattern = /(?:\b(?:import|export)\s[^"'`;]*?\bfrom\s*|\bimport\(\s*)["']([^"']+)["']/g;
+  const reachesInside = (file) =>
+    [...readFileSync(join(root, file), "utf8").matchAll(pattern)]
+      .map((match) => resolve(file, match[1]))
+      .filter((target) => target && /^src[\\/](engine|data)[\\/]/.test(target) && target !== entry)
+      .map((target) => `${file} -> ${target}`);
+  assert.deepEqual(outside.flatMap(reachesInside), []);
+  assert.deepEqual(
+    files.filter((file) => /^src[\\/]engine[\\/]/.test(file) && file !== entry && imports.get(file).includes(entry)),
+    [],
+    "the engine imports its own entry",
+  );
+});

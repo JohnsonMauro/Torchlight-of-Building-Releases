@@ -2,18 +2,18 @@
 // effects with their values picked out, each support line with whether the calculation uses it. Pure; the planner passes
 // in what depends on the open build (src/app/skills/skill-tooltip-queries.js) and React renders it
 // (apps/web/src/features/skills/SkillTooltip.tsx).
-import { tliArt } from "../../data/assets/tli-art.js";
 import {
   activationMediumSelectedLines,
   configurableSupportTierData,
   defaultConfigurableSupportConfig,
+  normalizePercentageText,
   normalizeProgressionSupportConfig,
   progressionSupportHasStars,
   progressionSupportText,
   progressionSupportTierData,
   specialSupportStarBonus,
-} from "../../data/skills/special-support-tiers-ss13.js";
-import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+  tliArt,
+} from "../../engine/index.ts";
 import { highlightedAuraEffect, highlightedSkillEffect, skillDisplaySs13 } from "../skills/skill-display-ss13.js";
 import { highlightedSupportEffect, supportDisplaySs13 } from "../skills/support-display-ss13.js";
 import { htmlTextSegments, type TextSegment } from "./display-text.ts";

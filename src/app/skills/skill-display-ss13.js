@@ -1,6 +1,5 @@
 import { escapeHtml } from "../html.js";
-import { skillProgressionSs13 } from "../../data/skills/skill-progression-ss13.generated.js";
-import { scaledAuraEffects } from "../../data/skills/aura-scaling-ss13.js";
+import { scaledAuraEffects, skillProgressionSs13 } from "../../engine/index.ts";
 
 export function skillDisplaySs13(entry, level) {
   const record = skillProgressionSs13[entry?.name] || {};

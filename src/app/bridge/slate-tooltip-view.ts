@@ -3,7 +3,7 @@
 // a copy slate's copied affixes. Pure; the planner passes in what depends on the open build
 // (src/app/slates/slates-controller.js slateTooltip query) and React renders it
 // (apps/web/src/features/slates/SlateTooltip.tsx).
-import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+import { normalizePercentageText } from "../../engine/index.ts";
 import type { CoverageView } from "./gear-item-view.ts";
 
 const text = (value: string) => normalizePercentageText(value);

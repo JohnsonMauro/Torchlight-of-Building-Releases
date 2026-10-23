@@ -9,6 +9,14 @@ description: Rules for the calculation engine and game data — src/engine purit
 
 - `src/engine/` is the pure domain: it imports only `src/engine` and `src/data`. No DOM, no storage, no HTML helpers:
   `tests/unit/import-graph.test.js` also checks that nothing `src/engine/planner.js` reaches loads page code.
+- `src/engine/index.ts` is the engine's public entry, and the only module outside code (`src/app`, `src/game-log`,
+  `apps/web`) imports from the engine or `src/data`, type imports and `import()` included (import-graph test). The page
+  needs something new from the engine: add its name to the entry, in its domain's group. The engine never imports its own
+  entry. Data loaded on demand stays on demand through a function there (`importGameIdMap`). The engine follows the
+  game's seasons: this surface is what the page relies on when the engine moves to the next season.
+- Game text is read once (`src/engine/text/read-once.js`): a reader whose result depends on the text alone is wrapped in
+  `readOnce` (or uses `cleanGameText`), and what depends on the build is applied to the reading by the caller. A reading
+  is frozen and shared: copy it before changing it.
 - The entry is `calculatePlanner(state)` (`src/engine/planner.js`); the state shape and its normalization live in
   `src/engine/state/planner-state.ts` (`defaultPlannerState`, `normalizePlannerState`), and
   `src/engine/state/state-validation.ts` (`validatePlannerState`) rejects unknown keys. A new state field gets a

@@ -5,11 +5,11 @@
 import {
   inverseImageEffectMultiplier,
   inverseImageRoll,
+  normalizePercentageText,
   prismAreaBounds,
   prismNodeAffixes,
-} from "../../engine/talents/prism-crafting.js";
-import { talentEffectText } from "../../engine/talents/talent-rules.js";
-import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+  talentEffectText,
+} from "../../engine/index.ts";
 import { effectLabel, formatEffect, nodeTitle } from "../talents/talent-labels.js";
 import { coverageView, type CoverageView } from "./gear-item-view.ts";
 import type { PrismSectionLine, PrismSectionView } from "./prism-crafter-view.ts";

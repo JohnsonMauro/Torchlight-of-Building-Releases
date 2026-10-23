@@ -1,7 +1,7 @@
 // The legacy markup prints every text through src/app/html.js escapeHtml, which also closes the gap before a percent
 // sign ("+26 %" → "+26%", src/engine/text/percentage-text.js). React escapes on its own and skips that step, so a view
 // model passes what it shows through displayTexts first. Pure.
-import { normalizePercentageText } from "../../engine/text/percentage-text.js";
+import { normalizePercentageText } from "../../engine/index.ts";
 
 /** A copy of `value` (plain objects and arrays) with every string as the legacy markup printed it. */
 export function displayTexts<T>(value: T): T {

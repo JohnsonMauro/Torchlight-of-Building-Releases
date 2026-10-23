@@ -6,58 +6,71 @@
 // character to fill the client printer's 30-entry cuts, and resolves the game ids into a planner state.
 // Unresolved items are skipped and listed in the report, never guessed. Browser-safe: no Node APIs.
 // Design and evidence: research/game-log-import-2026-10-12.md.
-import { defaultPlannerState, normalizePlannerState } from "../engine/state/planner-state.ts";
-import { validatePlannerState } from "../engine/state/state-validation.ts";
-import { defaultFollowerState } from "../engine/followers/follower-model.js";
-import { equipmentSlots } from "../data/gear/crafting-catalog-ss13.js";
-import { rareBaseByGameId, rareBaseByName } from "../engine/gear/rare-base-lookup.js";
-import { baseAffixTiersSs13 } from "../data/gear/base-affixes-ss13.generated.js";
-import { craftAffixesSs13 } from "../data/gear/craft-affixes-ss13.generated.js";
-import { legendaryGearSs13 } from "../data/gear/legendary-gear-ss13.generated.js";
-import { legendaryCorrodedModifiersSs13 } from "../data/gear/legendary-corroded-modifiers-ss13.generated.js";
-import { beltBlendsSs13 } from "../data/gear/belt-blends-ss13.generated.js";
-import { towerSequencesSs13 } from "../data/gear/tower-sequences-ss13.generated.js";
-import { towerSequenceSs13Texts } from "../data/changed-item-ids.js";
-import { voraxCraftingSs13 } from "../data/gear/vorax-crafting-ss13.generated.js";
-import { selenaScorchingBeamGearSs13 } from "../data/gear/selena-scorching-beam-ss13.js";
-import { folkloreRingOptions } from "../engine/gear/legendary-ring-options.js";
-import { placeholderPool } from "../engine/gear/legendary-placeholder-pools.js";
-import { legendaryLowerTierTemplates, legendaryTierTextForAffixId } from "../engine/gear/legendary-affix-tiers.js";
-import { heroTraitTree, treeRules, treeMaxCapacity } from "../engine/heroes/hero-trait-tree.js";
-import { CLOCKWORK_CORE, TRAIT_SLOT_GRANTS } from "../engine/heroes/trait-board-grants.js";
-import { allProfessionTalentCatalogueSs13 } from "../data/talents/all-profession-trees-ss13.generated.js";
-import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../data/catalogs/tlidb-ss13.js";
-import { selenaCompleteSkillLoadoutSs13 } from "../data/skills/selena-complete-skill-loadout-ss13.js";
 import {
   activationMediumAffixLines,
+  activationMediumGameAffixesSs13,
   activationMediumGameLine,
   activationMediumGameRolls,
+  allHeroTraitsSs13,
+  allProfessionTalentCatalogueSs13,
+  baseAffixTiersSs13,
+  beltBlendsSs13,
+  canPlaceSlate,
+  CLOCKWORK_CORE,
+  craftAffixesSs13,
+  craftedSlateShape,
+  defaultFollowerState,
+  defaultPlannerState,
+  equipmentSlots,
+  etherealPrismBases,
+  folkloreRingOptions,
+  heroCatalogSs13,
+  heroMemoryAffixesSs13,
+  heroTraitTree,
+  importGameIdMap,
   isActivationMedium,
-  progressionSupportHasStars,
-  progressionSupportTierData,
-  specialSupportTierData,
-} from "../data/skills/special-support-tiers-ss13.js";
-import { selenaScorchingBeamPactsSs13 } from "../data/pacts/selena-scorching-beam-ss13.js";
-import { pactspiritCatalogSs13 } from "../data/pacts/pactspirit-catalog-ss13.js";
-import { pactspiritTreesSs13 } from "../data/pacts/pactspirit-trees-ss13.js";
-import { kismetCatalogSs13 } from "../data/pacts/kismet-catalog-ss13.js";
-import { orderedPactspiritNodes } from "../engine/pacts/pactspirit-levels.js";
-import { kismetRollControls } from "../engine/pacts/kismet-crafting.js";
-import { heroCatalogSs13 } from "../data/heroes/hero-catalog-ss13.js";
-import { allHeroTraitsSs13 } from "../data/heroes/all-hero-traits-ss13.generated.js";
-import { heroMemoryAffixesSs13 } from "../data/heroes/hero-memory-affixes-ss13.js";
-import { normalizeRevivedAffix } from "../data/heroes/memory-revival-ss13.js";
-import { memoryScaledBaseStat } from "../engine/heroes/hero-memory-rules.js";
-import {
+  isValidPedigreeAffix,
+  kismetCatalogSs13,
+  kismetRollControls,
+  legendaryCorrodedModifiersSs13,
+  legendaryGearSs13,
+  legendaryLowerTierTemplates,
+  legendarySlateShapes,
+  legendaryTierTextForAffixId,
   memoryAffixTiersSs13,
   memoryRevivalAffixIdsSs13,
+  memoryScaledBaseStat,
+  netherKingFixedAffixesSs13,
+  netherKingUltimateAffixesSs13,
+  normalizePlannerState,
+  normalizeRevivedAffix,
   observedGameAffixIdsSs13,
-} from "../data/game-import-tlidb-ss13.generated.js";
-import { activationMediumGameAffixesSs13 } from "../data/skills/activation-medium-game-affixes-ss13.generated.js";
-import { netherKingFixedAffixesSs13 } from "../data/nether-king-slate-affixes-ss13.js";
-import { netherKingUltimateAffixesSs13 } from "../data/nether-king-ultimate-affixes-ss13.js";
-import { craftedSlateShape, legendarySlateShapes } from "../engine/talents/slate-judgment.js";
-import { canPlaceSlate, slateOffsets, slateTransformRules } from "../engine/talents/slate-board.js";
+  orderedPactspiritNodes,
+  pactspiritCatalogSs13,
+  pactspiritTreesSs13,
+  placeholderPool,
+  prismAffixes,
+  progressionSupportHasStars,
+  progressionSupportTierData,
+  rareBaseByGameId,
+  rareBaseByName,
+  selenaCompleteSkillLoadoutSs13,
+  selenaScorchingBeamGearSs13,
+  selenaScorchingBeamPactsSs13,
+  slateOffsets,
+  slateTransformRules,
+  specialSupportTierData,
+  TLIDB_PRISM_AFFIXES,
+  tlidbSkillCatalogSs13,
+  tlidbSupportCatalogSs13,
+  towerSequenceSs13Texts,
+  towerSequencesSs13,
+  TRAIT_SLOT_GRANTS,
+  treeMaxCapacity,
+  treeRules,
+  validatePlannerState,
+  voraxCraftingSs13,
+} from "../engine/index.ts";
 import {
   DEFAULT_GAME_DIRECTION,
   craftedSlateGod,
@@ -65,9 +78,6 @@ import {
   gameDirectionTurn,
   plannerGodKey,
 } from "./slate-shape-ids.js";
-import { isValidPedigreeAffix } from "../engine/talents/pedigree-slots.js";
-import { etherealPrismBases, prismAffixes } from "../engine/talents/prism-crafting.js";
-import { TLIDB_PRISM_AFFIXES } from "../data/talents/prism-affixes-tlidb.generated.js";
 
 export const GAME_LOG_FOLDER_HINT = "<Torchlight Infinite>\\UE_game\\TorchLight\\Saved\\Logs";
 // User answer 2026-10-12, "probably": a pactspirit's planner level is its star level + 1.
@@ -76,7 +86,7 @@ export const PACTSPIRIT_LEVEL_RULE = "Pactspirit level = star level + 1 (provisi
 let idMapPromise = null;
 /** Loads the generated game id map (about 0.9 MB) on first use. */
 export function loadGameIdMap() {
-  idMapPromise ||= import("../data/game-id-map-ss13.generated.js").then((module) => module.gameIdMapSs13);
+  idMapPromise ||= importGameIdMap();
   return idMapPromise;
 }
 

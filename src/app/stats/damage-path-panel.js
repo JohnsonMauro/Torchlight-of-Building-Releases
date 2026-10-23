@@ -1,10 +1,10 @@
 import { additionalDamagePathSources } from "./damage-path-sources.js";
 import {
+  calibratedBeamTargetCycle,
   findScorchingBeamSetup,
   scorchingBeamBaseHits,
   strippedBeamHitCoefficient,
-} from "../../engine/skills/scorching-beam-base-hit.js";
-import { calibratedBeamTargetCycle } from "../../engine/combat/target-hit-mitigation.js";
+} from "../../engine/index.ts";
 import { recountSourceShares } from "./dummy-recount-panel.js";
 import { skillHitPathModel } from "./skill-hit-path.js";
 import { minionPathModel } from "./minion-path.js";

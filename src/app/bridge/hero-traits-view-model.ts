@@ -2,23 +2,23 @@
 // tabs, and the open tab's content: the trait tiers with their memory sockets and the base trait's support slots, a tree
 // hero's Trait Path board, or Sage's Scent Bottle. Pure; the React view (apps/web/src/features/hero) renders it and
 // src/app/hero/hero-controller.js publishes it (src/app/bridge/view-sources.ts "heroTraits"). The open tab stays planner state.
-import { tliArt } from "../../data/assets/tli-art.js";
-import { tlidbSupportCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
-import { allHeroTraitsSs13 } from "../../data/heroes/all-hero-traits-ss13.generated.js";
-import { heroById } from "../../data/heroes/hero-catalog-ss13.js";
-import { equippedBaseTraitSlot } from "../../data/heroes/memory-revival-ss13.js";
-import { sageElixirsSs13 } from "../../data/heroes/sage-scent-ss13.generated.js";
-import { sageScentIngredientsSs13 } from "../../data/heroes/sage-scent-options-ss13.js";
 import {
+  allHeroTraitsSs13,
+  equippedBaseTraitSlot,
   EXTRA_PICK_LEVEL,
-  TREE_ROW_LEVELS,
+  heroById,
   heroTraitTree,
   heroTreeCapacity,
   heroTreeRules,
   heroTreeSelections,
+  sageElixirsSs13,
+  sageScentIngredientsSs13,
+  tliArt,
+  tlidbSupportCatalogSs13,
+  TREE_ROW_LEVELS,
   treeBoardLayout,
   treeRowLevelKey,
-} from "../../engine/heroes/hero-trait-tree.js";
+} from "../../engine/index.ts";
 import {
   heroMemoryIcon,
   heroMemoryIsRevived,

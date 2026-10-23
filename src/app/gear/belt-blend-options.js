@@ -1,4 +1,4 @@
-import { beltBlendsSs13 } from "../../data/gear/belt-blends-ss13.generated.js";
+import { beltBlendsSs13 } from "../../engine/index.ts";
 
 export const BELT_BLEND_CATEGORIES = ["Medium Talent", "Core Talent", "Aromatic Talent"];
 

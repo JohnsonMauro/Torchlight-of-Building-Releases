@@ -2,8 +2,8 @@
 // conflicts between tabs, unreadable data kept aside, revisions, share codes and backups. The build state itself and its
 // normalization are src/engine/state/planner-state.ts.
 import { libraryFromBackup } from "./recovery-core.js";
-import { decodePlannerState, defaultPlannerState, normalizePlannerState } from "../../engine/state/planner-state.ts";
-import type { PlannerState } from "../../engine/state/planner-state.ts";
+import { decodePlannerState, defaultPlannerState, normalizePlannerState } from "../../engine/index.ts";
+import type { PlannerState } from "../../engine/index.ts";
 
 // ---- Types ----------------------------------------------------------------------------------------------------------
 

@@ -1,19 +1,23 @@
 // The skill selector dialog: skills, supports, a hero trait's support and a follower's skills.
-import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
 import {
   activationMediumAffixLines,
   activationMediumLineConfigs,
+  assignSkillBoardSlot,
   configurableSupportTierData,
   defaultConfigurableSupportConfig,
+  gameRuleDecides,
+  heroCanPlaceMagusInActiveSlot,
+  isSpiritMagusSkill,
   normalizeProgressionSupportConfig,
   progressionSupportTierData,
+  selectorBaseLevel,
   specialSupportTierData,
-} from "../../data/skills/special-support-tiers-ss13.js";
-import { heroCanPlaceMagusInActiveSlot, isSpiritMagusSkill } from "../../engine/skills/magus-active-slot.js";
-import { assignSkillBoardSlot } from "../../engine/skills/skill-board-slots.js";
-import { selectorBaseLevel } from "../../engine/state/skill-level-input.js";
-import { gameRuleDecides, supportCanSupportSkill } from "../../engine/supports/support-compatibility.js";
-import { supportFitsSlot, userInstalledSupports } from "../../engine/supports/support-slot-transfer.js";
+  supportCanSupportSkill,
+  supportFitsSlot,
+  tlidbSkillCatalogSs13,
+  tlidbSupportCatalogSs13,
+  userInstalledSupports,
+} from "../../engine/index.ts";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import {

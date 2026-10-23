@@ -1,8 +1,7 @@
 // What the HERO tab's Sage scent selector and Carino Special Ammo selector list (apps/web/src/shell/dialogs). The planner
 // passes in what depends on the open build (the slot, its supports, Well Prepared); the texts are as the legacy markup
 // printed them (src/app/bridge/display-text.ts). Pure.
-import { sageElixirsSs13 } from "../../data/heroes/sage-scent-ss13.generated.js";
-import { sageScentIngredientsSs13 } from "../../data/heroes/sage-scent-options-ss13.js";
+import { sageElixirsSs13, sageScentIngredientsSs13 } from "../../engine/index.ts";
 import { displayTexts } from "./display-text.ts";
 import { searchText } from "./search-match.ts";
 

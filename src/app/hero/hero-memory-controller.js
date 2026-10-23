@@ -1,28 +1,26 @@
 // Hero memories: the sockets, the memory inventory dialog and the memory crafter.
-import { heroMemoryAffixesSs13 } from "../../data/heroes/hero-memory-affixes-ss13.js";
-import { heroMemoryFixedT0AffixesSs13 } from "../../data/heroes/hero-memory-fixed-t0-ss13.js";
-import { heroMemoryTierAffixesSs13 } from "../../data/heroes/hero-memory-tiers-ss13.js";
-import { lunarPhaseRevivedAffixDetailsSs13 } from "../../data/heroes/memory-revival-details-ss13.js";
-import {
-  equippedBaseTraitSlot,
-  lunarPhaseRevivedAffixesSs13,
-  memoryFitsBaseTraitSlot,
-  normalizeRevivedAffix,
-  regularRevivedAffixNamesSs13,
-  regularRevivedAffixesSs13,
-  revivedAffixForMemoryType,
-  revivedAffixRollRange,
-  revivedAffixTiers,
-} from "../../data/heroes/memory-revival-ss13.js";
 import {
   clampMemoryEnhancement,
   closestMemoryTier,
+  equippedBaseTraitSlot,
+  heroMemoryAffixesSs13,
+  heroMemoryFixedT0AffixesSs13,
+  heroMemoryTierAffixesSs13,
+  lunarPhaseRevivedAffixDetailsSs13,
+  lunarPhaseRevivedAffixesSs13,
   memoryBaseStatLabel,
+  memoryFitsBaseTraitSlot,
   memoryMaxEnhancementForRarity,
   memoryScaledBaseStat,
   memoryTierNumericValue,
+  normalizeRevivedAffix,
+  regularRevivedAffixesSs13,
+  regularRevivedAffixNamesSs13,
+  revivedAffixForMemoryType,
+  revivedAffixRollRange,
+  revivedAffixTiers,
   traitLevelBonusForEnhancement,
-} from "../../engine/heroes/hero-memory-rules.js";
+} from "../../engine/index.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { openDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";

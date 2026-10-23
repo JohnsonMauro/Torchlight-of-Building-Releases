@@ -1,4 +1,4 @@
-import { characterStatRows } from "../../engine/character-stats.js";
+import { characterStatRows } from "../../engine/index.ts";
 
 // Character stats panel for the Stats page (src/app/stats/stat-sheet.js; drawn by apps/web/src/features/stats). It
 // arranges what statSheetModel already computes (the stat totals of src/engine/character-stats.js, the Effective HP

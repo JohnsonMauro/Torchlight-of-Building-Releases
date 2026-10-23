@@ -70,7 +70,9 @@ removes some lowers its baseline in the same commit; a change that adds one is r
 
 - `src/app/bridge/*-view*.ts` builders are pure: no DOM, no storage, no `plannerState` import; what depends on the
   open build is passed in. That is what makes them unit-testable.
-- `src/engine` never imports `src/app` (`engine-guide`); `src/game-log` never imports `src/app`.
+- `src/engine` never imports `src/app` (`engine-guide`); `src/game-log` never imports `src/app`. Both `src/app` and
+  `src/game-log` reach the engine and game data only through `src/engine/index.ts` (`engine-guide` §1).
 - A React component never imports a controller or `planner/session.js`: it reaches the planner through
   `@legacy/app/bridge/*` (commands, queries, view sources, view model types) and may import pure helpers from other
-  `src/app` folders (`gear/tier-badge.ts`, `stats/number-text.ts`, `notice-classes.js`…).
+  `src/app` folders (`gear/tier-badge.ts`, `stats/number-text.ts`, `notice-classes.js`…); what it needs from the engine
+  or the game data (keywords, a catalog) comes from `@legacy/engine/index.ts`.

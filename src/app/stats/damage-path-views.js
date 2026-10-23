@@ -1,4 +1,4 @@
-import { BASE_CRITICAL_DAMAGE_PERCENT } from "../../engine/game-attribute-defaults.js";
+import { BASE_CRITICAL_DAMAGE_PERCENT } from "../../engine/index.ts";
 
 // Build-driven Damage path views. The options follow what the build actually
 // deals: beam hits, Ignite when it has a base, one view per modeled ailment

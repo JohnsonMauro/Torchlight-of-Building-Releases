@@ -1,14 +1,14 @@
 // Repairs applied to stored gear when a build loads, and the legendary line signatures they compare.
-import { legendaryCorrodedModifiersSs13 } from "../../data/gear/legendary-corroded-modifiers-ss13.generated.js";
-import { legendaryGearSs13 } from "../../data/gear/legendary-gear-ss13.generated.js";
-import { selenaScorchingBeamGearSs13 } from "../../data/gear/selena-scorching-beam-ss13.js";
 import {
+  allPlaceholderTemplates,
+  folkloreRingModifier,
+  legendaryCorrodedModifiersSs13,
+  legendaryGearSs13,
   legendaryModifierSignature,
+  normalizeSunsEmbraceItem,
   reconcileLegendaryModifiers,
-} from "../../engine/gear/legendary-modifier-signature.js";
-import { allPlaceholderTemplates } from "../../engine/gear/legendary-placeholder-pools.js";
-import { folkloreRingModifier } from "../../engine/gear/legendary-ring-options.js";
-import { normalizeSunsEmbraceItem } from "../../engine/state/suns-embrace-normalization.js";
+  selenaScorchingBeamGearSs13,
+} from "../../engine/index.ts";
 
 export function upgradeExistingCorrodedItems(state) {
   const capturedById = new Map(selenaScorchingBeamGearSs13.items.map((item) => [`captured-${item.slot}`, item]));

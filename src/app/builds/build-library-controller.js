@@ -1,6 +1,5 @@
 // The build library around the open build: open, rename, reset, export / import, backups and other tabs' changes.
-import { expandBuildCode } from "../../engine/state/build-code-compact.js";
-import { encodePlannerState } from "../../engine/state/planner-state.ts";
+import { encodePlannerState, expandBuildCode } from "../../engine/index.ts";
 import { resolveBuildRename } from "./build-tab-rename.js";
 import { closeDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";

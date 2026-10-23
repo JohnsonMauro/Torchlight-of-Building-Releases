@@ -1,4 +1,4 @@
-import { heroById } from "@legacy/data/heroes/hero-catalog-ss13.js";
+import { heroById } from "@legacy/engine/index.ts";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { BuildLibrary, LibraryBuild } from "./build-library";
 import {

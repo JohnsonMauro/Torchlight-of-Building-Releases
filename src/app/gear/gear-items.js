@@ -1,15 +1,19 @@
 // Inventory and equipped gear as the planner shows it: rarity, icon, affix sections and the preview card.
-import { baseAffixTiersSs13 } from "../../data/gear/base-affixes-ss13.generated.js";
-import { craftAffixesSs13 } from "../../data/gear/craft-affixes-ss13.generated.js";
-import { craftItemTypes } from "../../data/gear/crafting-catalog-ss13.js";
-import { gearGroupOfType } from "../../data/gear/gear-groups-ss13.js";
-import { legendaryGearSs13 } from "../../data/gear/legendary-gear-ss13.generated.js";
-import { rareBaseItemsSs13 } from "../../data/gear/rare-base-items-ss13.generated.js";
-import { selenaScorchingBeamGearSs13 } from "../../data/gear/selena-scorching-beam-ss13.js";
-import { voraxCraftingSs13 } from "../../data/gear/vorax-crafting-ss13.generated.js";
-import { canDropGearInSlot } from "../../engine/gear/gear-drag.js";
-import { itemCardRarity } from "../../engine/gear/graft-legendaries.js";
-import { rareBaseById, rareBaseByName, rareBaseForItem } from "../../engine/gear/rare-base-lookup.js";
+import {
+  baseAffixTiersSs13,
+  canDropGearInSlot,
+  craftAffixesSs13,
+  craftItemTypes,
+  gearGroupOfType,
+  itemCardRarity,
+  legendaryGearSs13,
+  rareBaseById,
+  rareBaseByName,
+  rareBaseForItem,
+  rareBaseItemsSs13,
+  selenaScorchingBeamGearSs13,
+  voraxCraftingSs13,
+} from "../../engine/index.ts";
 import { beltBlendById } from "./belt-blend-options.js";
 import { displayTexts } from "../bridge/display-text.ts";
 import { modifierTextView } from "../bridge/gear-item-view.ts";

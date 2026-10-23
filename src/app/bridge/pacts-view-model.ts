@@ -1,16 +1,21 @@
 // What the Pactspirits section shows, read from the build's pact settings: the three pact slots, each Pactspirit's tree
 // with its Kismet and Fate slots, and the equipped Kismet counts. Pure; the React view (apps/web/src/features/pacts) renders
 // it and src/app/pacts/pacts-controller.js publishes it (src/app/bridge/view-sources.ts "pacts"), so the game data stays in the planner's bundle.
-import { pactspiritCatalogSs13 } from "../../data/pacts/pactspirit-catalog-ss13.js";
-import { pactspiritTreesSs13 } from "../../data/pacts/pactspirit-trees-ss13.js";
-import { kismetCatalogSs13 } from "../../data/pacts/kismet-catalog-ss13.js";
-import { selenaScorchingBeamPactsSs13 } from "../../data/pacts/selena-scorching-beam-ss13.js";
-import { orderedPactspiritNodes, pactspiritLevel } from "../../engine/pacts/pactspirit-levels.js";
-import { kismetKindForRing, kismetSlotKey } from "../../engine/pacts/kismet-crafting.js";
-import { fateExtraSlots, fateSlotChoice } from "../../engine/pacts/fate-slot-unlocks.js";
-import { equippedKismetSummary } from "../../engine/pacts/pact-kismet-summary.js";
-import { sortPactspirits } from "../../engine/pacts/pactspirit-selection.js";
-import type { PlannerState } from "../../engine/state/planner-state.ts";
+import {
+  equippedKismetSummary,
+  fateExtraSlots,
+  fateSlotChoice,
+  kismetCatalogSs13,
+  kismetKindForRing,
+  kismetSlotKey,
+  orderedPactspiritNodes,
+  pactspiritCatalogSs13,
+  pactspiritLevel,
+  pactspiritTreesSs13,
+  selenaScorchingBeamPactsSs13,
+  sortPactspirits,
+} from "../../engine/index.ts";
+import type { PlannerState } from "../../engine/index.ts";
 import { displayTexts } from "./display-text.ts";
 import { searchText } from "./search-match.ts";
 

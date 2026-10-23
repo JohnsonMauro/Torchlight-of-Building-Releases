@@ -1,5 +1,5 @@
 // The hero panel's FOLLOWER tab and the follower selector.
-import { followerById, followerRarityById } from "../../engine/followers/follower-model.js";
+import { followerById, followerRarityById } from "../../engine/index.ts";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import {

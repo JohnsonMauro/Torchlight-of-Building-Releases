@@ -5,22 +5,29 @@
 //
 // The rules are the legacy crafter's, which kept this state in its controls (a roll snaps as a range input does), except
 // that a change keeps what it does not touch: the legacy re-render also put every other roll back at its best value.
-import { craftItemTypes, voraxItemTypes } from "../../data/gear/crafting-catalog-ss13.js";
-import { gearGroupOfType, gearGroupsSs13 } from "../../data/gear/gear-groups-ss13.js";
-import { rareBaseItemsSs13 } from "../../data/gear/rare-base-items-ss13.generated.js";
-import { baseAffixesSs13, baseAffixTiersSs13 } from "../../data/gear/base-affixes-ss13.generated.js";
-import { craftAffixesSs13 } from "../../data/gear/craft-affixes-ss13.generated.js";
-import { voraxCraftingSs13 } from "../../data/gear/vorax-crafting-ss13.generated.js";
-import { legendaryGearSs13 } from "../../data/gear/legendary-gear-ss13.generated.js";
-import { legendaryGearTypesSs13 } from "../../data/gear/legendary-gear-types-ss13.js";
-import { legendaryCorrodedModifiersSs13 } from "../../data/gear/legendary-corroded-modifiers-ss13.generated.js";
-import { corrosionImplicitsForBase, defaultBaseForItem } from "../../data/gear/corrosion-implicits-ss13.js";
-import { isLegacyRareBase } from "../../engine/gear/rare-base-lookup.js";
-import { voraxBaseAffixSlotPool } from "../../engine/gear/vorax-base-affixes.js";
-import { legendaryModifierSignature } from "../../engine/gear/legendary-modifier-signature.js";
-import { legendaryTierTemplate } from "../../engine/gear/legendary-affix-tiers.js";
-import { placeholderOption, placeholderOptionTemplate } from "../../engine/gear/legendary-placeholder-pools.js";
-import { folkloreRingModifier } from "../../engine/gear/legendary-ring-options.js";
+import {
+  baseAffixesSs13,
+  baseAffixTiersSs13,
+  corrosionImplicitsForBase,
+  craftAffixesSs13,
+  craftItemTypes,
+  defaultBaseForItem,
+  folkloreRingModifier,
+  gearGroupOfType,
+  gearGroupsSs13,
+  isLegacyRareBase,
+  legendaryCorrodedModifiersSs13,
+  legendaryGearSs13,
+  legendaryGearTypesSs13,
+  legendaryModifierSignature,
+  legendaryTierTemplate,
+  placeholderOption,
+  placeholderOptionTemplate,
+  rareBaseItemsSs13,
+  voraxBaseAffixSlotPool,
+  voraxCraftingSs13,
+  voraxItemTypes,
+} from "../../engine/index.ts";
 import { beltBlendById } from "./belt-blend-options.js";
 import { equipmentEnergyAllowed, maxEquipmentEnergy, towerSequenceById, towerSequencesForType } from "./gear-rules.js";
 import {
