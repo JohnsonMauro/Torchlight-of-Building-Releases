@@ -67,6 +67,9 @@ rows fit). Loading a skill after the code is written is too late.
 | A command, a view source, a query, a controller, `plannerState` | `planner-guide` |
 | A tooltip (new kind, content, a card another tooltip shows) | `tooltip-guide`, `planner-guide`, `styling-guide` |
 | The calculation (`packages/engine/src`), game data (`packages/engine/data`), state normalization | `engine-guide` |
+| Modelling state or a view model; code that loops over, searches or aggregates a list, anywhere | `data-guide` |
+| A formula, a bonus stack, an aggregation; rounding or formatting a figure; a numeric assert | `numbers-guide` |
+| Where code lives, splitting a module, a new abstraction or pattern, restructuring inherited code | `design-guide` |
 | A bug fix | `verify-guide` (regression test first) + the rows for the area |
 | An e2e test, a page object, a class or id a test reads | `e2e-guide` |
 | Deleting legacy code, moving or renaming files, a sweep | `refactor-guide` + the rows for what moves |
