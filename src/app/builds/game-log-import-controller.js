@@ -17,6 +17,7 @@ import {
   gameLogListFailedStatus,
   gameLogLogins,
   gameLogSummary,
+  newestLoginPerCharacter,
 } from "../bridge/game-log-import-view.ts";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
@@ -176,7 +177,7 @@ async function chooseGameLogFile(file) {
       scan = read.scan;
     if (token !== gameLogReadToken) return;
     gameLogSources = new Map(scan.dumps.map((dump) => [dump.id, { scan, dumpId: dump.id }]));
-    gameLogRows = listSnapshots(scan, idMap).sort((a, b) => (a.stamp < b.stamp ? 1 : -1));
+    gameLogRows = newestLoginPerCharacter(listSnapshots(scan, idMap));
     setGameLogView({ status: gameLogFileStatus(read, file.name) });
   } catch (error) {
     if (token === gameLogReadToken) {

@@ -109,7 +109,7 @@ export function gameLogBuildName(heroName: string | null | undefined, stamp: str
   return `${heroName || "Unknown hero"} · game log ${gameLogLocalTime(stamp)}`;
 }
 
-/** A login row (listSnapshots, or gameLogAutoSnapshots' combined rows). */
+/** A login row (listSnapshots). */
 export interface GameLogRow {
   id: string;
   stamp: string;
@@ -117,15 +117,32 @@ export interface GameLogRow {
   hero?: string;
   level?: number | null;
   changesAfter?: number;
-  combined?: boolean;
+  /** The character's logins in the log (newestLoginPerCharacter). */
   logins?: number;
-  dumpId?: string;
 }
+
+/**
+ * The login to import for each character, newest character first: its newest login, which the import fills from the
+ * character's older ones (importSnapshot merges them), so an older login is never the better choice.
+ */
+export function newestLoginPerCharacter(rows: GameLogRow[]): GameLogRow[] {
+  const newestFirst = [...rows].sort((a, b) => (a.stamp < b.stamp ? 1 : -1));
+  const characterOf = (row: GameLogRow) => row.character ?? row.id;
+  const count = new Map<number | string, number>();
+  for (const row of newestFirst) count.set(characterOf(row), (count.get(characterOf(row)) ?? 0) + 1);
+  const seen = new Set<number | string>();
+  return newestFirst.flatMap((row) => {
+    if (seen.has(characterOf(row))) return [];
+    seen.add(characterOf(row));
+    return [{ ...row, logins: count.get(characterOf(row)) }];
+  });
+}
+
 /** A login as the list shows it. */
 export interface GameLogLoginView {
   id: string;
   title: string;
-  /** "Lv 60 · 2026-10-19 13:30" (a combined row: its newest login and the older ones it fills from). */
+  /** "Lv 60 · 2026-10-19 13:30", or with older logins "Lv 61 · newest login … · gaps filled from 1 older login". */
   when: string;
   /** "Build changed after this login (2 changes)", or "". */
   changed: string;
@@ -133,14 +150,13 @@ export interface GameLogLoginView {
 export function gameLogLogins(rows: GameLogRow[]): GameLogLoginView[] {
   return rows.map((row) => {
     const hero = String(row.hero || "Unknown hero").replace(/\s*\|\s*/g, " · ");
-    const older =
-      row.combined && (row.logins ?? 0) > 1
-        ? ` · gaps filled from ${(row.logins ?? 0) - 1} older login${row.logins === 2 ? "" : "s"}`
-        : "";
-    const when = row.combined ? `newest login ${gameLogLocalTime(row.stamp)}${older}` : gameLogLocalTime(row.stamp);
+    const older = (row.logins ?? 1) - 1;
+    const when = older
+      ? `newest login ${gameLogLocalTime(row.stamp)} · gaps filled from ${older} older login${older === 1 ? "" : "s"}`
+      : gameLogLocalTime(row.stamp);
     return {
       id: row.id,
-      title: row.combined ? `Best combined · ${hero}` : hero,
+      title: hero,
       when: `${row.level ? `Lv ${row.level}` : "Level unknown"} · ${when}`,
       changed: row.changesAfter
         ? `Build changed after this login (${row.changesAfter} change${row.changesAfter === 1 ? "" : "s"})`
@@ -233,11 +249,10 @@ export interface GameLogSource {
 }
 
 /**
- * Flattens the local reader's files (src/game-log/game-log-local.js: UE_game.log and backups) into picker rows, newest first,
- * and a row id -> { scan, dumpId } lookup for importSnapshot. Every row imports from one scan that holds the dumps of
- * all files (the reader numbers characters and item tokens once across files), so the chosen dump's gaps are filled
- * from the same character's dumps in any file. A "Best combined" row per character comes first: its newest dump with
- * every other dump of the character filling what that dump lacks.
+ * Flattens the local reader's files (src/game-log/game-log-local.js: UE_game.log and backups) into one row per character
+ * (newestLoginPerCharacter) and a row id -> { scan, dumpId } lookup for importSnapshot. Every row imports from one scan
+ * that holds the dumps of all files (the reader numbers characters and item tokens once across files), so the newest
+ * dump's gaps are filled from the same character's dumps in any file.
  */
 export function gameLogAutoSnapshots(files: GameLogLocalFile[] = []): {
   rows: GameLogRow[];
@@ -254,24 +269,12 @@ export function gameLogAutoSnapshots(files: GameLogLocalFile[] = []): {
       if (row) rows.push({ ...row, id });
     }
   });
-  rows.sort((a, b) => (a.stamp < b.stamp ? 1 : -1));
   const scan = { dumps };
-  const best: (GameLogRow & { dumpId: string })[] = [];
-  for (const row of rows) {
-    if (best.some((entry) => entry.character === row.character)) continue;
-    best.push({
-      ...row,
-      id: `best:${row.character}`,
-      combined: true,
-      dumpId: row.id,
-      logins: rows.filter((other) => other.character === row.character).length,
-    });
-  }
-  const sources = new Map<string, GameLogSource>([
-    ...best.map((row): [string, GameLogSource] => [row.id, { scan, dumpId: row.dumpId }]),
-    ...rows.map((row): [string, GameLogSource] => [row.id, { scan, dumpId: row.id }]),
-  ]);
-  return { rows: [...best, ...rows], sources };
+  const newest = newestLoginPerCharacter(rows);
+  return {
+    rows: newest,
+    sources: new Map(newest.map((row): [string, GameLogSource] => [row.id, { scan, dumpId: row.id }])),
+  };
 }
 
 /** The local reader's newest file: its name, when it was last written (local time) and the folder it is in. */

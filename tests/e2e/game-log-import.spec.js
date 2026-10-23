@@ -174,9 +174,10 @@ test("a login filled from an older one and changed afterwards says both", async 
     "",
   ].join("\n");
   await fileInput(page).setInputFiles(logFile(text));
-  await expect(logins(page).first()).toHaveText(
-    "Divineshot Carino · Ranger of GloryLv 60 · 2026-10-19 13:30Build changed after this login (1 change)",
-  );
+  // One row per character: its newest login, filled from the older one.
+  await expect(logins(page)).toHaveText([
+    "Divineshot Carino · Ranger of GloryLv 60 · newest login 2026-10-19 13:30 · gaps filled from 1 older loginBuild changed after this login (1 change)",
+  ]);
   await logins(page).first().click();
   const summary = dialog(page).locator("#import-game-log-summary");
   const hero = summary.locator("tr", { has: page.getByRole("rowheader", { name: "Hero traits and memories" }) });
@@ -237,7 +238,9 @@ test("a chosen file that holds no login says why, with its details", async ({ pa
   await planner.expectNoErrors();
 });
 
-test("the local reader's log: found, best combined login chosen, and a different file on request", async ({ page }) => {
+test("the local reader's log: found, each character's newest login listed and chosen, and a different file on request", async ({
+  page,
+}) => {
   const body = await readerOutput({
     "UE_game.log": gameLogText([
       ...TWO_LOGINS,
@@ -250,10 +253,7 @@ test("the local reader's log: found, best combined login chosen, and a different
   await expect(foundFolder(page).getByRole("button", { name: "Copy folder path" })).toBeVisible();
   await expect(dialog(page)).toContainText("Read from the game's log folder on this computer by the planner.");
   await expect(logins(page)).toHaveText([
-    "Best combined · Divineshot Carino · Ranger of GloryLv 61 · newest login 2026-10-19 14:00 · gaps filled from 1 older login",
-    "Best combined · Berserker Rehan · AngerLv 80 · newest login 2026-10-19 12:00",
-    "Divineshot Carino · Ranger of GloryLv 61 · 2026-10-19 14:00",
-    "Divineshot Carino · Ranger of GloryLv 60 · 2026-10-19 13:30",
+    "Divineshot Carino · Ranger of GloryLv 61 · newest login 2026-10-19 14:00 · gaps filled from 1 older login",
     "Berserker Rehan · AngerLv 80 · 2026-10-19 12:00",
   ]);
   await expect(logins(page).first()).toHaveAttribute("aria-pressed", "true");
@@ -267,17 +267,17 @@ test("the local reader's log: found, best combined login chosen, and a different
   await expect(fileInput(page)).toBeHidden();
   await expect(dialog(page).locator(".game-log-reason")).toBeHidden();
 
-  await logins(page).nth(3).click();
-  await expect(logins(page).nth(3)).toHaveAttribute("aria-pressed", "true");
+  await logins(page).nth(1).click();
+  await expect(logins(page).nth(1)).toHaveAttribute("aria-pressed", "true");
   await expect(logins(page).first()).toHaveAttribute("aria-pressed", "false");
-  await expect(dialog(page).getByText("Snapshot from 2026-10-19 13:30", { exact: true })).toBeVisible();
+  await expect(dialog(page).getByText("Snapshot from 2026-10-19 12:00", { exact: true })).toBeVisible();
 
   await dialog(page).getByRole("button", { name: "Choose a different file…" }).click();
   await expect(dialog(page).getByRole("button", { name: "Choose a different file…" })).toBeHidden();
   await expect(fileInput(page)).toBeVisible();
   await expect(fileInput(page)).toBeFocused();
   // The found file and its logins stay until a file is chosen.
-  await expect(logins(page)).toHaveCount(5);
+  await expect(logins(page)).toHaveCount(2);
   await fileInput(page).setInputFiles(logFile(gameLogText([TWO_LOGINS[0]])));
   await expect(dialog(page).locator(".game-log-found")).toBeHidden();
   await expect(logins(page)).toHaveText(["Berserker Rehan · AngerLv 80 · 2026-10-19 12:00"]);
@@ -294,7 +294,7 @@ test("a login that cannot be turned into a build says so and keeps Import off", 
   broken.snapshots = [{ ...broken.snapshots[0], stamp: "2026-10-19T15:00:00.000Z", character: 9 }];
   body.files.push(broken);
   const planner = await openDialog(page, body);
-  await expect(logins(page).first()).toContainText("newest login 2026-10-19 15:00");
+  await expect(logins(page).first()).toContainText("2026-10-19 15:00");
   await expect(status(page)).toHaveText("This snapshot could not be turned into a build.");
   await expect(dialog(page).locator("#import-game-log-summary")).toBeEmpty();
   await expect(importButton(page)).toBeDisabled();
