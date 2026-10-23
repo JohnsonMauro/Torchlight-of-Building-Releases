@@ -308,7 +308,7 @@ export function skillHitPathModel(hit, { format: rawFormat, recountDps = null } 
     stages,
     sections,
     footnotes: [
-      "Generic spell-hit engine (first batch, 2026-10-11): base rows and use times are game data; the layer order mirrors the Scorching Beam hit ledger. Not yet calibrated against an in-game dummy run for this skill.",
+      "Generic spell-hit engine (first batch, 2026-10-11): base rows and use times are game data. Not yet calibrated against an in-game dummy run for this skill.",
       ...(hit.notes || []).map((note) => note),
     ],
   };

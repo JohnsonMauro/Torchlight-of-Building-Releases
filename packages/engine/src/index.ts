@@ -34,7 +34,7 @@ export { parseReapingSource } from "./ailments/reaping-sources.js";
 
 // Combat
 export { excludeRecountSources, excludedSteadyDps, summarizeRecount, windowTotals } from "./combat/dummy-recount.js";
-export { calibratedBeamTargetCycle, level85DummyDefenses } from "./combat/target-hit-mitigation.js";
+export { level85DummyDefenses } from "./combat/target-hit-mitigation.js";
 
 // Defense
 export { blessingRecoverySources, parseBlessingRecovery } from "./defense/blessing-gear-effects.js";
@@ -183,11 +183,6 @@ export { AIM_UPTIME_AUTO_SENTINEL } from "./skills/aim-model.js";
 export { auraGainedLineStatus } from "./skills/aura-gained-effects.js";
 export { curseSlotSummary } from "./skills/curse-limit.js";
 export { heroCanPlaceMagusInActiveSlot, isSpiritMagusSkill } from "./skills/magus-active-slot.js";
-export {
-  findScorchingBeamSetup,
-  scorchingBeamBaseHits,
-  strippedBeamHitCoefficient,
-} from "./skills/scorching-beam-base-hit.js";
 export { assignSkillBoardSlot, moveSkillBoardSlot, skillBoardRows } from "./skills/skill-board-slots.js";
 export { classifySkillCoverage, supportClauseCoverage, supportLineCoverage } from "./skills/skill-coverage.js";
 export { readWeapon, weaponHands, weaponLocalLineKind, weaponTypeOf } from "./skills/weapon-damage-model.js";

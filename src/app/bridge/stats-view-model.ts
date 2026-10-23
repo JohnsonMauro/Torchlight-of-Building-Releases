@@ -1,6 +1,6 @@
 // What the Stats view shows (apps/web/src/features/stats): the build status, which of the Stat sheet / Damage path
-// panels is open, the stat sheet (the active skill picker, the skill's damage banner: the training dummy recount, or
-// the older 5 s / 20 s tiles, or "Damage not modeled"; the Effective HP banner and the Character stats tabs) and the
+// panels is open, the stat sheet (the active skill picker, the skill's damage banner: the training dummy recount or
+// "Damage not modeled"; the Effective HP banner and the Character stats tabs) and the
 // damage path (src/app/bridge/damage-path-view-model.ts). src/app/stats/stats-controller.js publishes it (src/app/bridge/view-sources.ts
 // "stats"). prepareStatSheet and prepareDamagePath do the work that depends on the calculated build (and the picked
 // skill); statsView adds what changes without a recalculation (the open panel and path, the recount sources left out
@@ -8,7 +8,6 @@
 // markup printed it (src/app/bridge/display-text.ts). Pure.
 import { statSheetModel } from "../stats/stat-sheet.js";
 import { statSheetPanelModel } from "../stats/stat-sheet-panel.js";
-import { hasActiveReaping } from "../stats/damage-path-views.js";
 import {
   MIX_COLORS,
   RECOUNT_SPAN_SECONDS,
@@ -73,14 +72,6 @@ export type StatDamageView =
       recount: RecountView;
       /** null when the build has no modeled total. */
       totalModeled: NumberText | null;
-      /** Scorching Beam's line; null for other skills. */
-      beamLine: string | null;
-    }
-  | {
-      kind: "tiles";
-      tiles: { label: string; value: string; note: string }[];
-      totalModeled: NumberText | null;
-      beamLine: string;
     };
 export interface StatDrillView {
   formula: string;
@@ -129,10 +120,6 @@ interface Planner {
   activation: { allocation: { allocations: { name: string; status: string }[] } };
   damageSources?: { name: string; status: string }[];
   dummyRecount?: { timeline?: unknown; assumptions?: ({ text?: string } | null)[] } | null;
-  nativeHitCycle?: { expectedDps: number } | null;
-  directHit?: { toTarget: number } | null;
-  firesAllure?: { active?: boolean } | null;
-  recountOpening?: { beamDps?: number; igniteDps?: number; reapingDps?: number } | null;
 }
 type Format = (value: number | undefined) => string;
 type StatSheetModel = ReturnType<typeof statSheetModel>;
@@ -143,7 +130,6 @@ export interface PreparedStatSheet {
   model: StatSheetModel;
   status: StatusView;
   sheet: Omit<StatSheetView, "damage">;
-  format: Format;
 }
 
 function buildStatus(planner: Planner): StatusView {
@@ -170,7 +156,6 @@ export function prepareStatSheet(planner: Planner, selectedKey: string, format: 
   return {
     planner,
     model,
-    format,
     status: displayTexts(buildStatus(planner)),
     sheet: displayTexts({
       options: model.options.map((option: { setupKey?: string; name: string }) => ({
@@ -223,56 +208,18 @@ interface RecountSourceShare {
   excluded?: boolean;
 }
 
-function damageView({ planner, model, format }: PreparedStatSheet, excluded: readonly string[]): StatDamageView {
+function damageView({ planner, model }: PreparedStatSheet, excluded: readonly string[]): StatDamageView {
   const recount = planner.dummyRecount;
-  // Any modeled damage source (Scorching Beam, Wilting Beam, …) shows the build-wide recount panel.
+  // Any modeled damage source (Homing Frost Bolt, Wilting Beam, a Minion …) shows the build-wide recount panel.
   const modeledSource = (planner.damageSources || []).some(
     (source) => source.status === "modeled" && source.name === model.skill?.name,
   );
-  if (!((model.beam && planner.nativeHitCycle) || (recount?.timeline && modeledSource))) return { kind: "not-modeled" };
-  const beamLine = `Beam and explosion: ${format(planner.nativeHitCycle?.expectedDps)} source DPS · ${format(planner.directHit?.toTarget)} target hit DPS.`;
-  // With a recount timeline the in-game-style panel is the focal point, with Total modeled DPS, the beam line and the
-  // details beneath it; the older 5 s / 20 s tiles remain for a build without one.
-  if (recount?.timeline)
-    return {
-      kind: "recount",
-      recount: recountView(recount, excluded),
-      totalModeled:
-        model.totalDps === null
-          ? null
-          : numberText(recountTotalModeledDps(recount, model.totalDps, { excluded, parts: model.totalParts }) ?? NaN),
-      beamLine: model.beam ? beamLine : null,
-    };
-  const uncalibrated = Boolean(model.paths || planner.firesAllure?.active);
-  const dummyNote = model.paths
-    ? `Uncalibrated model: ${format(model.paths.twentySeconds.beamDps)} beam, ${model.paths.twentySeconds.dots.map((dot: { dps: number; name: string }) => `${format(dot.dps)} ${dot.name}`).join(", ")}${hasActiveReaping(planner) ? `, ${format(model.paths.twentySeconds.reaping.reapingDps)} Reaping DPS` : ""}${model.paths.twentySeconds.illOmen?.dps ? `, ${format(model.paths.twentySeconds.illOmen.dps)} Ill Omen DPS (best case beyond the dummy)` : ""}. No dummy test exists for this build.`
-    : planner.firesAllure?.active
-      ? `Uncalibrated model: ${format(planner.recountOpening?.beamDps || 0)} beam, ${format(planner.recountOpening?.igniteDps || 0)} Scorch${hasActiveReaping(planner) ? `, ${format(planner.recountOpening?.reapingDps || 0)} Reaping DPS` : ""}. Compare with the same build and combat state in game.`
-      : "Average from an empty target and channel stack state; includes calibrated Bard delivery and Ignite buildup.";
-  const figure = (value: number | null) => (value === null ? "—" : format(value));
+  if (!recount?.timeline || !modeledSource) return { kind: "not-modeled" };
   return {
-    kind: "tiles",
-    tiles: [
-      {
-        label: uncalibrated ? "Five-second dummy damage · uncalibrated" : "Five-second dummy damage",
-        value: figure(model.dummyFiveSecondDamage),
-        note: "Estimated total damage during the first five seconds, including buildup. This is damage, not DPS.",
-      },
-      {
-        label: uncalibrated
-          ? "Five-second equivalent from 20-second DPS · uncalibrated"
-          : "Five-second equivalent from 20-second DPS",
-        value: figure(model.dummyFiveSecondEquivalentFromTwentySecondDps),
-        note: "20-second average DPS × 5 seconds. Compare this damage amount with the first five seconds above.",
-      },
-      {
-        label: uncalibrated ? "20-second Dummy DPS · uncalibrated" : "20-second Dummy DPS",
-        value: figure(model.dummyDps),
-        note: dummyNote,
-      },
-    ],
-    totalModeled: model.totalDps === null ? null : numberText(model.totalDps),
-    beamLine,
+    kind: "recount",
+    recount: recountView(recount, excluded),
+    totalModeled:
+      model.totalDps === null ? null : numberText(recountTotalModeledDps(recount, model.totalDps, { excluded }) ?? NaN),
   };
 }
 

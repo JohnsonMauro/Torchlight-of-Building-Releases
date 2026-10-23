@@ -7,31 +7,17 @@ const NULLABLE = new Set([
   "dummyRecount",
   "mainSkill",
   "afflictionRating",
-  "bardDelivery",
-  "beamDelivery",
-  "combatProjection",
   "cycleResist",
   "damagePaths",
   "damageTypeRestriction",
   "hitRateFacts",
-  "igniteIllOmen",
   "illOmen",
   "miraculousGain",
-  "nativeHitCycle",
   "pureHeart",
-  "recountFiveSeconds",
-  "recountOpening",
-  "recountVariation",
   "windStalker",
   "yougaUltimateOne",
 ]);
-const NUMBERS = [
-  "igniteAttemptsPerSecond",
-  "effectiveTargetFireResistancePercent",
-  "murmursTideEffectPercent",
-  "tideEffectFactor",
-  "igniteLimit",
-];
+const NUMBERS = ["effectiveTargetFireResistancePercent", "murmursTideEffectPercent", "tideEffectFactor", "igniteLimit"];
 const LISTS = [
   "warnings",
   "assumptions",

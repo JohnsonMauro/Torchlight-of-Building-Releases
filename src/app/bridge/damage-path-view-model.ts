@@ -321,16 +321,9 @@ function sectionView(
 const tabFigure = (model: PathModel, format: Format) =>
   model.empty ? "" : compactNumber(isRange(model.final.raw) ? model.final.raw.max : model.final.raw, format);
 
-/**
- * The Damage path panel of `planner` (a calculated build); `theoretical` is the same build's result at 30% target Fire
- * Resistance, which the Ignite and legacy Reaping paths read.
- */
-export function prepareDamagePath(
-  theoretical: unknown,
-  planner: { state?: unknown },
-  format: Format,
-): PreparedDamagePath {
-  const paths = damagePathModels(theoretical, planner, { format }) as PathOption[];
+/** The Damage path panel of `planner` (a calculated build). */
+export function prepareDamagePath(planner: { state?: unknown }, format: Format): PreparedDamagePath {
+  const paths = damagePathModels(planner, { format }) as PathOption[];
   const names = sourceNames(planner);
   const groups = [...new Set(paths.map((path) => path.group))];
   return displayTexts({

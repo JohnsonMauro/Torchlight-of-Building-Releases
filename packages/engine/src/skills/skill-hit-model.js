@@ -1821,6 +1821,15 @@ export function calculateSkillHit({
           }),
       )
     : [];
+  // Extra Beams on one target (a profile's `beamVolley`: Scorching Beam, skill text 16204 "The beams fired and explosions caused
+  // by the skill can hit the same enemy", Shotgun Effect falloff coefficient 70%): additional Beams share the original's origin
+  // and spread at an angle (game manual 1001011621); every Beam after the first hits at the coefficient, beam ticks and
+  // explosions alike (Shotgun Effect, hyperlink 642, read linearly: 1 + 0.7 × extra). The Scattershot run (2026-10-12) showed
+  // three Beams reaching the dummy.
+  const extraBeams = profile.beamVolley
+    ? Math.max(0, Math.trunc(sum(supports.effects.quantity.filter((line) => line.kind === "beams"))))
+    : 0;
+  const beamFactor = 1 + extraBeams * (profile.beamVolley?.factor ?? 0);
   const components = base.components.map((component) => {
     const projectileBoost = projectileTargets.includes(component);
     // Slash-Strike components follow the summed Steep Strike share (steepStrikeState; 2026-10-14).
@@ -1867,7 +1876,7 @@ export function calculateSkillHit({
             { nearTarget },
           )
         : null;
-    const perUse = extraVolley
+    const volleyPerUse = extraVolley
       ? {
           hits: rawPerUse.hits * extraVolley.total,
           shotgun: extraVolley,
@@ -1876,6 +1885,14 @@ export function calculateSkillHit({
       : projectileBoost
         ? { ...rawPerUse, detail: `${rawPerUse.detail} (+${extraProjectiles} projectiles from supports; provisional)` }
         : rawPerUse;
+    const perUse =
+      beamFactor !== 1
+        ? {
+            ...volleyPerUse,
+            hits: volleyPerUse.hits * beamFactor,
+            detail: `${volleyPerUse.detail} × ${round(beamFactor)} (1 + ${extraBeams} extra Beams × ${profile.beamVolley.factor} Shotgun falloff; provisional)`,
+          }
+        : volleyPerUse;
     if (component.basis === "provisional") provisionalComponents.push(component);
     const extraAdditional = [
       ...(component.extraAdditional || []),

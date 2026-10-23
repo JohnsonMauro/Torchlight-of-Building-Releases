@@ -1,11 +1,11 @@
 // Training-dummy recount timeline (spec: research/dummy-recount-spec-2026-10-09.md, §B).
 //
-// One deterministic, expected-value simulation that every damage path feeds: beam hits,
-// shared-timer and independent-stack ailments, and every Reaping source. The in-game recount
+// One deterministic, expected-value simulation that every damage path feeds: skill hits, scheduled
+// (Minion) hits, shared-timer and independent-stack ailments, and every Reaping source. The in-game recount
 // shows "Average DPS in a span of time", "Highest DPS in 5s" and "Average DPS in 5s". The in-game
 // recount caps at 5 T; the planner does not apply or show that cap (user, 2026-10-13).
 //
-// Algorithm. The simulation is event driven: beam uses (k / rate), ailment state-group
+// Algorithm. The simulation is event driven: main-skill uses (k / rate), ailment state-group
 // expiries, output bin edges, Affliction reaching 100, Reap readiness, the channel ramp
 // reaching full stacks and the first max-Affliction time. Every rate is constant (or linear,
 // integrated at the midpoint) between consecutive events, so the integration is exact; the
@@ -33,7 +33,7 @@ export const RECOUNT_STEP_SECONDS = 1 / 30;
 const EPS = 1e-9;
 
 /**
- * Largest shared-timer chain state (K × R × (N + 1) cells, two Float64Arrays each; every beam use
+ * Largest shared-timer chain state (K × R × (N + 1) cells, two Float64Arrays each; every main-skill use
  * touches every cell). 250,000 cells is 2 MB per array and stays well under a second over the 60 s
  * timeline at realistic use rates. Above it, joint Reap readiness falls back to the mean-field ready
  * share; a chain that is still too large is rejected (the planner then leaves the recount blank).
@@ -129,7 +129,6 @@ class SharedTimerChain {
     this.rate = rate;
     this.retained = ailment.retainedBase;
     this.N = Math.max(1, this.retained.length - 1);
-    this.scorch = ailment.scorchFraction || null;
     this.K = Math.max(1, Math.ceil(ailment.duration * rate + EPS)) + 1;
     this.readyUses = readyUses; // null, or (u) => uses until the joint source is ready again after firing at use u
     this.R = readyUses ? Math.max(1, readyUses.maxUses) : 1;
@@ -144,7 +143,6 @@ class SharedTimerChain {
     this.u = 0;
     this.groupBase = new Float64Array(this.K);
     this.groupActive = new Float64Array(this.K);
-    this.groupScorch = new Float64Array(this.K);
     this.groupEnd = new Float64Array(this.K).fill(-Infinity);
   }
 
@@ -152,18 +150,16 @@ class SharedTimerChain {
     return (k * this.R + r) * (this.N + 1) + n;
   }
 
-  // Expected retained base, P(active) and Scorch stack fraction at time `time` (between uses).
+  // Expected retained base and P(active) at time `time` (between uses).
   stats(time) {
     let base = 0,
-      active = 0,
-      scorch = 0;
+      active = 0;
     for (let k = 0; k < this.K; k++) {
       if (!(time < this.groupEnd[k] - EPS)) continue;
       base += this.groupBase[k];
       active += this.groupActive[k];
-      scorch += this.groupScorch[k];
     }
-    return { base, active, scorch };
+    return { base, active };
   }
 
   nextExpiryAfter(time) {
@@ -243,12 +239,11 @@ class SharedTimerChain {
   }
 
   regroup() {
-    const { N, R, retained, scorch } = this;
+    const { N, R, retained } = this;
     const maxN = Math.min(N, this.u);
     for (let k = 0; k < this.K; k++) {
       let base = 0,
-        active = 0,
-        frac = 0;
+        active = 0;
       for (let r = 0; r < R; r++) {
         const rowStart = this.index(k, r, 0);
         for (let n = 1; n <= maxN; n++) {
@@ -256,12 +251,10 @@ class SharedTimerChain {
           if (!(mass > 0)) continue;
           base += mass * retained[n];
           active += mass;
-          if (scorch) frac += mass * scorch[n];
         }
       }
       this.groupBase[k] = base;
       this.groupActive[k] = active;
-      this.groupScorch[k] = frac;
       this.groupEnd[k] = active > 0 ? this.useAt(this.u - k) + this.ailment.duration : -Infinity;
     }
   }
@@ -287,7 +280,7 @@ class IndependentStacks {
     const count = this.activeUses(time);
     const chance = this.ailment.chance;
     const stacks = Math.min(this.ailment.limit, chance * count);
-    return { base: stacks * this.ailment.averageApplication, active: count ? 1 - (1 - chance) ** count : 0, scorch: 0 };
+    return { base: stacks * this.ailment.averageApplication, active: count ? 1 - (1 - chance) ** count : 0 };
   }
   nextExpiryAfter(time) {
     for (let i = Math.max(1, this.oldest); i <= this.u; i++) {
@@ -312,7 +305,7 @@ function triggerAilmentIndex(source, ailments) {
   if (source.trigger === "inflicting Ignite") return ailments.findIndex((ailment) => ailment.key === "ignite");
   let best = -1;
   ailments.forEach((ailment, index) => {
-    if (!ailment.silent && (best < 0 || ailment.chance > ailments[best].chance)) best = index;
+    if (best < 0 || ailment.chance > ailments[best].chance) best = index;
   });
   return best;
 }
@@ -396,7 +389,7 @@ export function simulateDummyTimeline(inputs, { seconds = 60, stepSeconds = RECO
   const options = normalizeRecountOptions(inputs.options);
   const tick = options.reapTiming === "tick";
   const simulatedAffliction = options.afflictionModel === "simulated";
-  const { rate, hits = null } = inputs;
+  const { rate } = inputs;
   // Use schedule: u / rate by default; with inputs.firstUseSeconds (a skill whose opening cast completes before a
   // whole interval has passed, e.g. a Terra skill recast every 6 s) uses fall at first + (u − 1) / rate. The ailment
   // chains take the same schedule for their expiry times.
@@ -415,11 +408,10 @@ export function simulateDummyTimeline(inputs, { seconds = 60, stepSeconds = RECO
   const binAt = (time) => Math.min(bins - 1, Math.max(0, Math.floor(time / stepSeconds + EPS)));
 
   const bySource = {};
-  if (hits) bySource.beam = new Float64Array(bins);
   // Generic spell hits (packages/engine/src/skills/skill-hit-model.js): expected damage per use × own rate, as a continuous rate from the first use on.
   const skillHits = (inputs.skillHits || []).filter((hit) => hit.rate > 0);
   for (const hit of skillHits) bySource[hit.key] = new Float64Array(bins);
-  for (const ailment of ailments) if (!ailment.silent) bySource[ailment.key] = new Float64Array(bins);
+  for (const ailment of ailments) bySource[ailment.key] = new Float64Array(bins);
   for (const source of reaping) bySource[source.key] = new Float64Array(bins);
 
   // Joint readiness for the first application source triggered by a shared-timer ailment.
@@ -461,10 +453,6 @@ export function simulateDummyTimeline(inputs, { seconds = 60, stepSeconds = RECO
           useAt,
         ),
   );
-  const scorchChainIndex =
-    hits?.resistance?.kind === "scorch"
-      ? ailments.findIndex((ailment) => ailment.key === hits.resistance.chainKey)
-      : -1;
 
   const channel = channelFactorFn(inputs.channel, rate);
   const firstMaxSeconds = Math.min(...ailments.map((ailment) => ailment.maxAffliction?.firstMaxSeconds ?? Infinity));
@@ -500,18 +488,11 @@ export function simulateDummyTimeline(inputs, { seconds = 60, stepSeconds = RECO
     timed.at(ailment.key, time) *
     maxAfflictionRatio(ailment.maxAffliction, maxFraction(ailment, time, rating)) *
     (simulatedAffliction ? afflictionRelative(ailment.affliction, rating) : 1);
-  const hitResistance = (time) => {
-    const resistance = hits.resistance || { kind: "fixed", scale: 1 };
-    if (resistance.kind !== "scorch") return resistance.scale ?? 1;
-    const fraction = scorchChainIndex >= 0 ? chains[scorchChainIndex].stats(time).scorch : 0;
-    return resistance.baseScale + (resistance.activeScale - resistance.baseScale) * fraction;
-  };
-  const anyDotActive = (time) =>
-    chains.some((chain, index) => !ailments[index].silent && chain.stats(time).active > 1e-12);
+  const anyDotActive = (time) => chains.some((chain) => chain.stats(time).active > 1e-12);
   // Damage one Reap deals for each unit of expected base, per ailment, at `time`.
   const reapPerBase = (source, ailment, time, rating) => {
     const seconds = source.seconds?.[ailment.key];
-    if (!(seconds > 0) || ailment.silent) return 0;
+    if (!(seconds > 0)) return 0;
     const settle = source.settle?.[ailment.key] || {};
     const full = source.trigger === "full Affliction";
     const resistance =
@@ -561,29 +542,17 @@ export function simulateDummyTimeline(inputs, { seconds = 60, stepSeconds = RECO
       : Math.floor(rate * seconds + EPS);
   let nextUse = 1;
   let time = 0;
-  let firstDamageSeconds = hits ? useAt(1) : Infinity;
+  let firstDamageSeconds = Infinity;
   let guard = 0;
   const guardLimit = 50 * (bins + lastUse * 8 + 1000);
   for (;;) {
     if (++guard > guardLimit) throw new Error("dummy recount event loop did not terminate");
-    // 1. Events at `time`: a beam use (hit, applications, application Reaps), then due timed Reaps.
+    // 1. Events at `time`: a main-skill use (applications, application Reaps), then due timed Reaps.
     if (nextUse <= lastUse && Math.abs(useAt(nextUse) - time) <= EPS) {
       const u = nextUse++;
       const bin = binAt(time);
-      if (hits) {
-        const damage =
-          (hits.perUse + (hits.cycleUses > 0 && u % hits.cycleUses === 0 ? hits.explosion : 0)) *
-          hitResistance(time) *
-          channel.at(time) *
-          timed.at("beam", time);
-        bySource.beam[bin] += damage;
-      }
       const results = chains.map((chain) => chain.use(u));
-      if (
-        !hits &&
-        !Number.isFinite(firstDamageSeconds) &&
-        results.some((result, index) => !ailments[index].silent && result.successProb > 0)
-      )
+      if (!Number.isFinite(firstDamageSeconds) && results.some((result) => result.successProb > 0))
         firstDamageSeconds = time;
       reaping.forEach((source, index) => {
         const triggerIndex = triggers[index];
@@ -654,15 +623,12 @@ export function simulateDummyTimeline(inputs, { seconds = 60, stepSeconds = RECO
     const mid = time + dt / 2;
     const bin = binAt(mid);
     const ratingMid = isAccruing ? Math.min(100, affliction + (afflictionPerSecond * dt) / 2) : affliction;
-    if (hits && hits.residualDps)
-      bySource.beam[bin] += hits.residualDps * dt * hitResistance(mid) * channel.at(mid) * timed.at("beam", mid);
     for (const hit of skillHits) {
       const from = Math.max(time, Number.isFinite(hit.firstUseSeconds) ? hit.firstUseSeconds : 1 / hit.rate);
       if (nextTime > from)
         bySource[hit.key][bin] += hit.perUse * hit.rate * (nextTime - from) * timed.at(hit.key, (from + nextTime) / 2);
     }
     ailments.forEach((ailment, index) => {
-      if (ailment.silent) return;
       const base = chains[index].stats(mid).base;
       if (base > 0) bySource[ailment.key][bin] += base * dotFactor(ailment, mid, ratingMid) * dt;
     });
@@ -685,7 +651,7 @@ export function simulateDummyTimeline(inputs, { seconds = 60, stepSeconds = RECO
   let illOmenBuilders = [];
   if (illOmenFactor) {
     const builders = (illOmenBuilders = [
-      ...ailments.filter((ailment) => !ailment.silent).map((ailment) => ailment.key),
+      ...ailments.map((ailment) => ailment.key),
       ...reaping.map((source) => source.key),
     ]);
     const series = (bySource.illOmen = new Float64Array(bins));
@@ -697,10 +663,7 @@ export function simulateDummyTimeline(inputs, { seconds = 60, stepSeconds = RECO
     inputs.turbulence?.intervalSeconds > 0
       ? {
           ...inputs.turbulence,
-          builders: [
-            ...ailments.filter((ailment) => !ailment.silent).map((ailment) => ailment.key),
-            ...reaping.map((source) => source.key),
-          ],
+          builders: [...ailments.map((ailment) => ailment.key), ...reaping.map((source) => source.key)],
         }
       : null;
   if (turbulence) bySource.turbulence = turbulenceSeries(bySource, turbulence, bins, stepSeconds);
@@ -721,10 +684,9 @@ export function simulateDummyTimeline(inputs, { seconds = 60, stepSeconds = RECO
     ...(illOmenFactor ? { illOmen: { factor: illOmenFactor, builders: illOmenBuilders } } : {}),
     ...(turbulence ? { turbulence } : {}),
     labels: Object.fromEntries([
-      ...(hits ? [["beam", "Beam hits"]] : []),
       ...skillHits.map((hit) => [hit.key, hit.label || hit.key]),
       ...(inputs.scheduledHits || []).map((source) => [source.key, source.label || source.key]),
-      ...ailments.filter((a) => !a.silent).map((a) => [a.key, a.name || a.key]),
+      ...ailments.map((a) => [a.key, a.name || a.key]),
       ...reaping.map((s) => [s.key, `Reaping: ${s.source}`]),
       ...(illOmenFactor ? [["illOmen", inputs.illOmen.label || "Ill Omen"]] : []),
       ...(turbulence ? [["turbulence", turbulence.label || "Spacetime Turbulence"]] : []),
@@ -817,21 +779,11 @@ export function excludeRecountSources(timeline, excluded = []) {
 }
 
 /**
- * DPS that `excluded` takes away from a per-source sum, Ill Omen's share of an excluded builder included;
- * 0 when nothing present is excluded. The recount card subtracts it from Total modeled DPS.
- * `parts` is that sum by recount source key; a `reaping` entry is the total of every "reap:*" source and is
- * split over them by their steady-state DPS. Without `parts`, the steady state (recount.steady.bySource).
+ * DPS that `excluded` takes away from the steady state (recount.steady.bySource), Ill Omen's share of an excluded
+ * builder included; 0 when nothing present is excluded. The recount card subtracts it from Total modeled DPS.
  */
-export function excludedSteadyDps(recount, excluded = [], { parts } = {}) {
-  const steady = recount?.steady?.bySource || {};
-  let byKey = parts ? { ...parts } : steady;
-  if (parts && "reaping" in parts) {
-    delete byKey.reaping;
-    const reapKeys = Object.keys(recount?.timeline?.bySource || steady).filter((key) => key.startsWith("reap:"));
-    const weight = reapKeys.reduce((sum, key) => sum + (steady[key] || 0), 0);
-    for (const key of reapKeys)
-      byKey[key] = (byKey[key] || 0) + parts.reaping * (weight > 0 ? (steady[key] || 0) / weight : 1 / reapKeys.length);
-  }
+export function excludedSteadyDps(recount, excluded = []) {
+  const byKey = recount?.steady?.bySource || {};
   const skip = new Set([...excluded].filter((key) => key in byKey));
   if (!skip.size) return 0;
   const ill = recount?.timeline?.illOmen;
@@ -957,7 +909,7 @@ function stationaryIndependent(ailment, rate) {
 export function steadyState(inputs) {
   assertFiniteInputs(inputs);
   const options = normalizeRecountOptions(inputs.options);
-  const { rate, hits = null } = inputs;
+  const { rate } = inputs;
   const ailments = inputs.ailments || [];
   const tick = options.reapTiming === "tick";
   const stats = ailments.map((ailment) => {
@@ -967,29 +919,15 @@ export function steadyState(inputs) {
       perUseSuccess: chain.perUseSuccess,
       timeBase: chain.timeAverage(ailment.retainedBase, ailment.retainedLimit),
       successBase: chain.atSuccess(ailment.retainedBase, ailment.retainedLimit),
-      scorch: ailment.scorchFraction ? chain.timeAverage(ailment.scorchFraction) : 0,
     };
   });
   const steadyRatio = (ailment) =>
     ailment.maxAffliction ? maxAfflictionRatio(ailment.maxAffliction, ailment.maxAffliction.steadyFraction) : 1;
   const bySource = {};
-  if (hits) {
-    const resistance = hits.resistance || { kind: "fixed", scale: 1 };
-    const scorchIndex =
-      resistance.kind === "scorch" ? ailments.findIndex((ailment) => ailment.key === resistance.chainKey) : -1;
-    const scale =
-      resistance.kind !== "scorch"
-        ? (resistance.scale ?? 1)
-        : resistance.baseScale +
-          (resistance.activeScale - resistance.baseScale) * (scorchIndex >= 0 ? stats[scorchIndex].scorch : 0);
-    bySource.beam =
-      (rate * (hits.perUse + (hits.cycleUses > 0 ? hits.explosion / hits.cycleUses : 0)) + (hits.residualDps || 0)) *
-      scale;
-  }
   for (const hit of (inputs.skillHits || []).filter((item) => item.rate > 0)) bySource[hit.key] = hit.perUse * hit.rate;
   for (const source of inputs.scheduledHits || []) bySource[source.key] = source.steadyDps || 0;
   ailments.forEach((ailment, index) => {
-    if (!ailment.silent) bySource[ailment.key] = stats[index].timeBase * ailment.damagePerBase * steadyRatio(ailment);
+    bySource[ailment.key] = stats[index].timeBase * ailment.damagePerBase * steadyRatio(ailment);
   });
   const afflictionPerSecond = Math.max(0, inputs.afflictionPerSecond || 0);
   const quantize = (interval) =>
@@ -1000,7 +938,7 @@ export function steadyState(inputs) {
     const recovery = Math.max(source.recoverySeconds || 0, source.floorSeconds || 0, 1e-6);
     const perBase = (ailment) => {
       const seconds = source.seconds?.[ailment.key];
-      if (!(seconds > 0) || ailment.silent) return 0;
+      if (!(seconds > 0)) return 0;
       const settle = source.settle?.[ailment.key] || {};
       const full = source.trigger === "full Affliction";
       return (
@@ -1037,17 +975,11 @@ export function steadyState(inputs) {
     bySource[source.key] = Number.isFinite(interval) && interval > 0 ? value / interval : 0;
   }
   if (inputs.illOmen?.factor > 0) {
-    const builders = [
-      ...ailments.filter((ailment) => !ailment.silent).map((ailment) => ailment.key),
-      ...(inputs.reaping || []).map((source) => source.key),
-    ];
+    const builders = [...ailments.map((ailment) => ailment.key), ...(inputs.reaping || []).map((source) => source.key)];
     bySource.illOmen = builders.reduce((sum, key) => sum + (bySource[key] || 0), 0) * inputs.illOmen.factor;
   }
   if (inputs.turbulence?.intervalSeconds > 0) {
-    const builders = [
-      ...ailments.filter((ailment) => !ailment.silent).map((ailment) => ailment.key),
-      ...(inputs.reaping || []).map((source) => source.key),
-    ];
+    const builders = [...ailments.map((ailment) => ailment.key), ...(inputs.reaping || []).map((source) => source.key)];
     bySource.turbulence =
       builders.reduce((sum, key) => sum + (bySource[key] || 0), 0) * twistedSpacetime(inputs.turbulence).sustainedShare;
   }

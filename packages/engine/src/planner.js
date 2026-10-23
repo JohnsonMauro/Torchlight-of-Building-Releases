@@ -84,7 +84,6 @@ import {
   windRhythmTerraTrigger,
   buildCooldownRecoveryLines,
 } from "./heroes/selena-dance.js";
-import { modeledSupportNames } from "./supports/support-model.js";
 import {
   collectNormalizedGearModifiers,
   calculateTalentSlateCandidate,
@@ -96,7 +95,6 @@ import {
   allocateSkillEnergy,
   energyCostForSupportPositions,
   SUPPORT_SLOT_ENERGY,
-  skillLevelDamageMultiplier,
   effectiveGearModifierTexts,
 } from "./engine.js";
 import { normalizePlannerState } from "./state/planner-state.ts";
@@ -111,11 +109,7 @@ import { skillProgression } from "../data/skills/skill-progression.generated.js"
 import { calculateSkillDot, skillDotAfflictionPerSecond } from "./skills/skill-dot-model.js";
 import { calculateSkillHit } from "./skills/skill-hit-model.js";
 import { skillHitDotComponents, skillHitTiming } from "./skills/skill-hit-profiles.js";
-import {
-  resolveSupportEffects,
-  SCORCHING_BEAM_DEDICATED_SUPPORTS,
-  allElementalState,
-} from "./supports/support-effects.js";
+import { resolveSupportEffects, allElementalState } from "./supports/support-effects.js";
 import { calculateMinion, groupMinionSources, classifyMinionLine } from "./minions/minion-damage-model.js";
 import {
   commanderGambitState,
@@ -165,25 +159,10 @@ import { skillLevelBonus } from "./skills/skill-level-bonuses.js";
 import { supportEffectsAtLevel } from "./skills/skill-effect-progression.js";
 // Saved base levels stay within the selector's 1–40 range; "+N level" sources are added on top.
 import { clampBaseLevel } from "./state/skill-level-input.js";
-import { scorchingBeamHitModifiers } from "./skills/scorching-beam-hit.js";
-import { findScorchingBeamSetup, scorchingBeamSustainedHits } from "./skills/scorching-beam-base-hit.js";
 import { scorchingBeamCastRate } from "./skills/scorching-beam-cast-rate.js";
 import { activationMediumDotTrigger } from "./skills/trigger-interval.js";
 import { skillTiming } from "../data/skills/skill-timing.generated.js";
 import { spellCritical } from "./skills/spell-critical.js";
-import { scorchingBeamAddedDamage } from "./skills/scorching-beam-added-damage.js";
-import {
-  combineBeamAndIgnite,
-  estimateBardBeamDelivery,
-  estimateFiveSecondOpening,
-  estimateNeutralBeamDelivery,
-  simulateFiveSecondVariation,
-} from "./skills/scorching-beam-delivery.js";
-import {
-  calibratedBeamTargetFactors,
-  fireHitMitigation,
-  level85DummyDefenses,
-} from "./combat/target-hit-mitigation.js";
 import { ignitedFireResistance } from "./ailments/ignited-fire-resistance.js";
 import { calculateDummyRecount } from "./combat/dummy-recount.js";
 import { collectDummyRecountInputs } from "./combat/dummy-recount-inputs.js";
@@ -196,7 +175,6 @@ import {
   rotatingBuffRow,
 } from "./gear/gear-unique-modules.js";
 import { parseItemTrigger, itemTriggerEvent } from "./skills/item-triggered-skills.js";
-import { doubleDamageForSkill } from "./combat/double-damage.js";
 import { normalizePercentageText as normalizeLineText } from "./text/percentage-text.js";
 import { spellToAttackLines } from "./combat/spell-to-attack.js";
 import { WORLD_WITHIN_LINE, worldWithinChances } from "./heroes/world-within.js";
@@ -338,7 +316,7 @@ const exclusiveConditionGroups = [
 // 35% remaining after sealing); otherwise not Low, unless the Life / Mana group's best-case comparison chose Low
 // (requested lowLifeAssumed / lowManaAssumed). Full Life additionally needs at least 95% of Max Life unsealed
 // (user-confirmed 2026-10-12; Full Mana by analogy, provisional): packages/engine/src/text/line-conditions.js atFullLife / atFullMana. The early use rate for "the next Main Skill every X s" is an estimate
-// from the cast-rate ledger (beam) or the weapon's attacks per second (attacks), before Blessings and Aim.
+// from the cast-speed ledger (spells) or the weapon's attacks per second (attacks), before Blessings and Aim.
 // The Cycle I Resist Reaps on a Main Terra recast (packages/engine/src/heroes/selena-dance.js resolveCycleResist): a Reaping source for the "on Reap"
 // gain conditions (Focus Blessing when Reaping, Blur on Reap) while a Main Terra Skill is active.
 // Mobility Skills installed and enabled on the skill board (catalog Mobility tag), for "after using Mobility Skills" lines
@@ -414,7 +392,6 @@ function buildLineConditionState({
     }));
   const weapon = calculateWeaponAttack({ equipment, disabledSlots: state.disabledEquipmentSlots, modifierTexts });
   const held = [weapon.mainHand?.type, weapon.offHand?.type].filter(Boolean);
-  const beam = activeNames.has("Scorching Beam");
   const attackMain = skillHitSources.find(
     (source) => source.setupKey === resolvedMain?.setupKey && source.profile.weaponScaling,
   );
@@ -422,13 +399,11 @@ function buildLineConditionState({
     const rate = scorchingBeamCastRate({ talentSlate, equipment, pact });
     return rate.baseRate > 0 ? rate.castsPerSecond / rate.baseRate : 1;
   })();
-  const mainUsesPerSecond = beam
-    ? scorchingBeamCastRate({ talentSlate, equipment, pact }).castsPerSecond
-    : attackMain
-      ? weapon.attackSpeed?.factor || 0
-      : resolvedMain && activeNames.has(resolvedMain.name)
-        ? speedFactor
-        : 0;
+  const mainUsesPerSecond = attackMain
+    ? weapon.attackSpeed?.factor || 0
+    : resolvedMain && activeNames.has(resolvedMain.name)
+      ? speedFactor
+      : 0;
   const statTotals = characterStatTotals({ modifierTexts, state, heroMemories });
   const statsByKey = statTotals.byKey;
   // Max Mana / Max Life pools with the level base (packages/engine/src/defense/effective-hp.js rule), for "per 100 Max Mana owned" lines (chunk 3).
@@ -513,7 +488,7 @@ function buildLineConditionState({
         : manaRemaining >= 95
           ? "Full Mana"
           : `${Math.round(manaRemaining * 100) / 100}% Mana left after sealing`,
-    canCrit: beam || skillHitSources.some((source) => !source.profile.weaponScaling || weapon.crit.chancePercent > 0),
+    canCrit: skillHitSources.some((source) => !source.profile.weaponScaling || weapon.crit.chancePercent > 0),
     hasReaping:
       collectAllReapingSources(modifierTexts).length > 0 ||
       cycleResistReaps(modifierTexts, resolvedMain, activeNames) ||
@@ -547,7 +522,7 @@ function buildLineConditionState({
     mainCanSpellBurst:
       Boolean(resolvedMain && activeNames.has(resolvedMain.name) && (resolvedMain.tags || []).includes("Spell")) &&
       modifierTexts.some((line) => /^\+\d+ Max Spell Burst$/i.test(String(line.text ?? "").trim())),
-    channeledMain: beam || Boolean(resolvedMain?.tags?.includes("Channeled") && activeNames.has(resolvedMain.name)),
+    channeledMain: Boolean(resolvedMain?.tags?.includes("Channeled") && activeNames.has(resolvedMain.name)),
     prebuiltSelfBuffs: requestedConditions.prebuiltSelfBuffs !== false,
     // Hit by an enemy recently: best case by the user's decision (2026-10-12), switched with Blocked recently.
     hitRecently: requestedConditions.blockedRecently !== false,
@@ -613,15 +588,14 @@ function buildLineConditionState({
     hasHasten: modifierTexts.some((line) => /^Has Hasten$/i.test(String(line.text).trim())),
     dealtTypes: new Set(mechanics.penetration?.dealtTypes || []),
     // Damage types the build really deals, for "if you have dealt <Type> Damage recently" (Translucent; core audit batch B2).
-    // `dealtTypes` always carries Fire (the penetration ledger's beam / Ignite default), which switched Translucent's
+    // `dealtTypes` always carries Fire (the penetration ledger's Ignite default), which switched Translucent's
     // "+25% additional Lightning Damage if you have dealt Fire Damage recently" on in builds that deal no Fire (Erika). Fire here
-    // needs a Fire source: the beam, an active Fire-tagged skill or hit, added Fire to the build's attacks / spells, or a
+    // needs a Fire source: an active Fire-tagged skill or hit, added Fire to the build's attacks / spells, or a
     // conversion / gain to Fire (the other types keep the penetration ledger's reading: active skill tags and ailment bases).
     dealtDamageTypes: (() => {
       const types = new Set((mechanics.penetration?.dealtTypes || []).filter((type) => type !== "Fire"));
-      const hits = beam || skillHitSources.length > 0;
+      const hits = skillHitSources.length > 0;
       const fire =
-        beam ||
         setups.some(
           (setup) =>
             setup.enabled !== false &&
@@ -650,12 +624,11 @@ function buildLineConditionState({
       }
       return types;
     })(),
-    // Damage types the build's modeled hits deal (Scorching Beam: Fire; generic skill hits: their profile types), for "when
+    // Damage types the build's modeled hits deal (their profile types), for "when
     // hitting an enemy with <Type> Damage" stacking lines (packages/engine/src/text/line-conditions.js hitsWithType; frost-terra audit 2026-10-13).
     sealedManaCompensationPercent:
       aura.entries.find((entry) => entry.reservation)?.reservation.globalCompensationPercent ?? 0,
     hitTypes: new Set([
-      ...(beam ? ["Fire"] : []),
       ...skillHitSources.flatMap(
         (source) => source.profile?.dealtTypes || (source.profile?.damageType ? [source.profile.damageType] : []),
       ),
@@ -810,7 +783,6 @@ function buildLineConditionState({
       const match = String(line.text).match(/^\+(\d+) Max Spell Burst$/i);
       return total + (match ? Number(match[1]) * (line.multiplier ?? 1) : 0);
     }, 0),
-    beamActive: beam,
     // Grudge's Paralysis chance (packages/engine/src/supports/support-effects.js family "paralysis") on each active, modeled skill hit, with that skill's
     // measured hit rate once the planner's first pass has it (calculatePlannerOnce debuffHitRates; packages/engine/src/combat-states.js).
     chanceParalysis: setups
@@ -836,18 +808,16 @@ function buildLineConditionState({
           firstHitSeconds: debuffHitRates?.get(setup.setupKey)?.firstHitSeconds ?? null,
         })),
       ),
-    // Tags of the active damage skills the build uses on the dummy (the beam and every modeled damage source), for "if you
-    // have used a <Tag> Skill recently" (chunk 4).
+    // Tags of the active damage skills the build uses on the dummy (every modeled damage source), for "if you have used a
+    // <Tag> Skill recently" (chunk 4).
     activeDamageTags: new Set([
-      ...(beam ? setups.find((setup) => setup.name === "Scorching Beam")?.tags || [] : []),
       ...damageSources
         .filter((source) => source.status === "modeled")
         .flatMap((source) => setups.find((setup) => setup.setupKey === source.setupKey)?.tags || []),
     ]),
-    // Damage types dealt by Spell hits (the beam: Fire; spell skill hits: their dealt types), for "When a Spell hit inflicts
-    // <Type> Damage" lines (gear-pact batch chunk 3).
+    // Damage types dealt by Spell hits (spell skill hits: their dealt types), for "When a Spell hit inflicts <Type> Damage"
+    // lines (gear-pact batch chunk 3).
     spellHitTypes: new Set([
-      ...(beam ? ["Fire"] : []),
       ...skillHitSources
         .filter((source) => (source.setup?.tags || []).includes("Spell"))
         .flatMap((source) => source.profile.dealtTypes || [source.profile.damageType])
@@ -860,7 +830,6 @@ function buildLineConditionState({
       (setup) => setup.enabled !== false && activeNames.has(setup.name) && (setup.tags || []).includes("Melee"),
     ),
     dealsSpellDamage:
-      beam ||
       skillHitSources.some((source) => (source.setup?.tags || []).includes("Spell")) ||
       setups.some(
         (setup) =>
@@ -964,7 +933,7 @@ function buildLineConditionState({
     attackHits: skillHitSources.some(
       (source) => source.profile.weaponScaling || (source.setup?.tags || []).includes("Attack"),
     ),
-    anyHit: beam || skillHitSources.length > 0,
+    anyHit: skillHitSources.length > 0,
     // Active Spirit Magus summons and their levels, for Origin of Spirit Magus (packages/engine/src/skills/origin-of-spirit-magus.js).
     spiritMagusSummons: setups
       .filter(
@@ -1050,8 +1019,7 @@ function enemyDebuffCoreSummary(cores, modifierTexts) {
 }
 
 // The stat sheet's headline dummy figure: the 20-second average.
-const dummyTwentySecondDps = (planner) =>
-  planner.damagePaths ? planner.damagePaths.twentySeconds.totalDps : planner.recountOpening?.totalDpsApproximation || 0;
+const dummyTwentySecondDps = (planner) => planner.damagePaths?.twentySeconds.totalDps || 0;
 // The dummy recount records which resolved combat conditions it ran with, so the Config tab's
 // existing condition controls can flip them. It does not choose conditions itself.
 function curseSlotAssumptions(planner) {
@@ -1875,7 +1843,7 @@ function calculatePlannerOnce(
   // Hero traits (talent batch chunk 4, §6.2): the selected traits' lines join the build's lines (origin "trait"), so plain
   // clauses ("+38% additional damage", Carino: Zealot of War) reach every engine and the hero modules
   // (packages/engine/src/heroes/hero-trait-modules.js) read theirs. Selena: Sing with the Tide keeps its dedicated model (packages/engine/src/planner.js Tide
-  // conditions, packages/engine/src/skills/scorching-beam-hit.js, packages/engine/src/heroes/sea-foam-nocturne.js): none of its lines join, so nothing is counted twice.
+  // conditions, packages/engine/src/heroes/selena-tide.js hitLines, packages/engine/src/heroes/sea-foam-nocturne.js): none of its lines join, so nothing is counted twice.
   // Non-memory "+N to [Non-Base] Hero Trait Level" lines (packages/engine/src/character-stats.js heroTraitLevelBonus) raise the 45/60/75
   // trait levels, max 5; a memory's own line raises only its slot's trait (user-observed 2026-10-13).
   const traitLevelBonus = heroTraitLevelBonus(modifierTexts);
@@ -1946,7 +1914,7 @@ function calculatePlannerOnce(
   const catalogSupportsByName = new Map(tlidbSupportCatalog.map((entry) => [entry.name, entry]));
   // Supports item lines grant to the Main Skill (packages/engine/src/gear/gear-unique-modules.js; gear-pact batch chunk 4): "The Main Skill is
   // supported by Lv. N X" and Lonesome's single-Ring grant. They join the first enabled main setup at their fixed level and
-  // take no support slot. Cataclysm on Scorching Beam keeps its Ignite-ledger path (build-mechanics grantedSupports).
+  // take no support slot.
   const itemGrantedSupports = grantedMainSkillSupports(modifierTexts, equipment, state.disabledEquipmentSlots);
   const grantTargetKey = (() => {
     const target = setupSources.find(
@@ -2120,7 +2088,6 @@ function calculatePlannerOnce(
             (grant) =>
               grant.active &&
               catalogSupportsByName.has(grant.name) &&
-              !(grant.name === "Cataclysm" && setup.name === "Scorching Beam") &&
               !ownSupports.some((support) => support.name === grant.name && (support.level ?? 1) >= grant.level),
           )
         : [];
@@ -2248,7 +2215,7 @@ function calculatePlannerOnce(
   for (const setup of grantedAuraSetups) activeNames.add(setup.name);
   const activation = { profile, setups, energy, allocation, activeNames, traitBoard: traitBoard.summary };
   // Damage sources: every enabled setup that deals damage, with its profile and modeling status
-  // (packages/engine/src/skills/skill-damage-profiles.js). Scorching Beam keeps its calibrated path below; skills whose own
+  // (packages/engine/src/skills/skill-damage-profiles.js); skills whose own
   // damage is a DoT status (Wilting Beam) go through packages/engine/src/skills/skill-dot-model.js; the rest are listed as
   // "damage not modeled". The enabled main-role setup is the build's main skill.
   // A trait skill (Supreme Descent has the catalog's "main" role) is never the build's Main Skill.
@@ -2464,7 +2431,7 @@ function calculatePlannerOnce(
     const profile = inferDamageProfile(setup);
     return {
       profile,
-      engine: setup.name === "Scorching Beam" ? "scorching-beam" : (profile?.engine ?? null),
+      engine: profile?.engine ?? null,
       isMain: Boolean(resolvedMain) && setup.setupKey === resolvedMain.setupKey,
       speedType: profile?.engine === "skill-hit" ? skillHitTiming(profile)?.speedType || "cast-speed" : null,
       specialSupportConfigs: state.skills.specialSupportConfigs || {},
@@ -2704,10 +2671,9 @@ function calculatePlannerOnce(
     equipment.candidateGearIgniteLimit +
     (talentSlate.candidateTalent.igniteLimit || 0) +
     (talentSlate.candidateSlate.igniteLimit || 0);
-  // The calibrated Scorching Beam path reads its own setup (disabled or absent builds get an inert stub);
-  // build-wide mechanics (supports, channeled stacks) follow the resolved main skill. The enabled setup wins over a
-  // disabled captured one (a custom Scorching Beam beside the Selena capture).
-  const scorchingBeam = findScorchingBeamSetup(setups) || {
+  // The Ignite ledger (packages/engine/src/theoretical-sources.js) and the ailment crit still read a skill of their own: an
+  // inert Lv.20 stub with no supports, never a setup of the build.
+  const main = {
     name: "Scorching Beam",
     role: "main",
     enabled: false,
@@ -2717,7 +2683,6 @@ function calculatePlannerOnce(
     effectiveLevel: 20,
     tags: [],
   };
-  const main = scorchingBeam;
   const block = calculateBlock({
     equipment,
     talents: levelSources.talents,
@@ -2810,8 +2775,8 @@ function calculatePlannerOnce(
       collectAllReapingSources(modifierTexts).length > 0 || cycleResistReaps(modifierTexts, resolvedMain, activeNames),
     block,
     moving: conditions.moving,
-    canHit: activeNames.has("Scorching Beam") || skillHitSources.length > 0,
-    canCrit: activeNames.has("Scorching Beam") || skillHitSources.length > 0,
+    canHit: skillHitSources.length > 0,
+    canCrit: skillHitSources.length > 0,
     enemyAilments: mechanics.enemyAilments.types.map((type) => type.name),
     igniteOnTarget: mechanics.enemyAilments.types.some((type) => type.name === "Ignite"),
   });
@@ -3181,7 +3146,7 @@ function calculatePlannerOnce(
   // dedicated models. The level-20 value is used (no level table is published for these curses).
   // Both published wordings are read (packages/engine/src/skills/curse-effects.js; gear-pact batch G3): "+X% additional <Type> Damage taken by
   // Cursed enemies" (Timid: Hit, Electrocute: Lightning, Vulnerability: Physical) read nothing before 2026-10-12.
-  // Timid's "Hit Damage taken" reaches every hit (skill hits; the beam hit ledger below), never a DoT or ailment.
+  // Timid's "Hit Damage taken" reaches every hit (skill hits), never a DoT or ailment.
   for (const setup of setups) {
     if (!isCurseSkill(setup) || !activeNames.has(setup.name) || curseLimit.excluded.includes(setup.name)) continue;
     // Deepened Curse ("Enemies take X% additional damage if affected by curses inflicted by the supported skill for at least
@@ -3225,42 +3190,15 @@ function calculatePlannerOnce(
     const line = curseTakenLine(effect, mechanics.curses.effectPercent);
     const source = `${setup.name} curse (Lv.20 value × ${1 + mechanics.curses.effectPercent / 100} Curse Effect)`;
     modifierTexts.push({ text: line.text, source, origin: "derived", multiplier: 1 });
-    if (effect.type === "Hit" && activeNames.has("Scorching Beam"))
-      mechanics.hit.push({ source, bucket: "additional", percent: line.value, text: line.text });
   }
   // Item-granted supports (packages/engine/src/gear/gear-unique-modules.js): their tooltip lines read through the build-mechanics notes.
   for (const grant of itemGrantedSupports) {
-    if (grant.name === "Cataclysm" && activeNames.has("Scorching Beam")) continue;
     const note = !grant.active
       ? `Inactive: ${grant.reason}`
       : !catalogSupportsByName.has(grant.name)
         ? `Not modeled: ${grant.name} is not a known support`
         : `Granted support: ${grant.name} Lv.${grant.level} on the Main Skill (provisional)`;
     mechanics.recognized.set(normalizeLineText(grant.text), note);
-  }
-  // Per-stat Double Damage on the beam ("+1% chance to deal Double Damage per 10 Strength, up to +30%"; gear-pact batch
-  // chunk 4): build-mechanics reads the flat chances; the stat-sheet total is known here. The beam's Double Damage is one
-  // chance pool (manual: chances stack before the roll), so the flat and per-stat parts are recombined into one factor.
-  if (activeNames.has("Scorching Beam")) {
-    const beamTags = [...(setups.find((setup) => setup.name === "Scorching Beam")?.tags || []), "Channeled"];
-    const all = doubleDamageForSkill(modifierTexts, { tags: beamTags, stats: lineConditionState.stats });
-    const flat = doubleDamageForSkill(
-      modifierTexts.filter((line) => !/ per \d+ (?:Strength|Dexterity|Intelligence)/i.test(line.text)),
-      { tags: beamTags },
-    );
-    if (all.factor !== flat.factor) {
-      mechanics.hit.push({
-        source: `Double Damage per stat (${all.sources
-          .filter((line) => / per \d+ /.test(line.text))
-          .map((line) => line.source)
-          .join(", ")})`,
-        bucket: "additional",
-        percent: (all.factor / flat.factor - 1) * 100,
-        text: `${Math.round(all.chancePercent * 100) / 100}% total Double Damage chance → ×${Math.round(all.factor * 10000) / 10000} expected (the per-stat part on top of ×${Math.round(flat.factor * 10000) / 10000})`,
-      });
-      for (const line of all.sources.filter((item) => / per \d+ /.test(item.text)))
-        mechanics.recognized.set(normalizeLineText(line.text), "Double Damage chance per stat (hits)");
-    }
   }
   // Focus skills (e.g. Corrosion Focus): the activated Focus buff's "X% additional <Type> Damage" (TLIDB level
   // table) holds while the skill is active (it is reserved like an aura). Precise: Acuteness arrives through the
@@ -3454,22 +3392,9 @@ function calculatePlannerOnce(
     heroId: state.hero.selectedHeroId,
     reapingApplicationAttemptsPerSecond: beamCastRate.castsPerSecond,
   });
-  const canIgnite =
-    activeNames.has("Scorching Beam") &&
-    theoretical.totals.baseIgniteDamage.max > 0 &&
-    theoretical.totals.applicationChancePercent > 0;
-  if (!canIgnite) conditions.fireInfiltration = false;
-  // Other damaging ailments (Trauma, Wilt) can also carry Affliction.
-  const otherAilmentBase = ["trauma", "wilt"].some(
-    (key) => collectAilmentTypedSources(key, modifierTexts).base.length > 0,
-  );
+  conditions.fireInfiltration = false;
   if (
-    !(
-      canIgnite ||
-      (activeNames.has("Scorching Beam") && otherAilmentBase) ||
-      skillDotSources.length ||
-      skillHitDotSources.length
-    ) ||
+    !(skillDotSources.length || skillHitDotSources.length) ||
     theoretical.townTooltip.passiveAfflictionPerSecond + skillDotAfflictionRate <= 0
   )
     conditions.affliction = false;
@@ -3490,7 +3415,7 @@ function calculatePlannerOnce(
   const firesAllure = calculateFiresAllure({
     active: coreTalents.firesAllure,
     limit: igniteLimit,
-    canApply: canIgnite,
+    canApply: false,
     nearby: conditions.firesAllureNearby !== false,
     stacks: state.combat.firesAllureScorchStacks,
     baseResistance: state.combat.targetFireResistancePercent,
@@ -3502,7 +3427,7 @@ function calculatePlannerOnce(
   // (the dummy's 30% less Scorch and Fire's Allure) is multiplied, before the cap and before penetration (sourced order).
   const ignitedResistance = ignitedFireResistance({
     modifierTexts,
-    ignited: canIgnite || mechanics.enemyAilments.types.some((type) => type.name === "Ignite"),
+    ignited: mechanics.enemyAilments.types.some((type) => type.name === "Ignite"),
     basePercent: state.combat.targetFireResistancePercent,
     reductionPercent: firesAllure.resistanceReductionPercent,
     fixed: fixedFireResistance ?? false,
@@ -3511,7 +3436,6 @@ function calculatePlannerOnce(
   damageCombat.ignitedFireResistance = ignitedResistance;
   const hasReaping =
     Boolean(theoretical.combat.reaping?.sources.some((source) => source.minimum.triggersPerSecond > 0)) ||
-    (activeNames.has("Scorching Beam") && otherAilmentBase && collectAllReapingSources(modifierTexts).length > 0) ||
     ((skillDotSources.length > 0 || skillHitDotSources.length > 0) &&
       (collectAllReapingSources(modifierTexts).length > 0 ||
         skillDotSources.some((source) => source.profile.builtInReaping) ||
@@ -3600,20 +3524,16 @@ function calculatePlannerOnce(
     disabledSlots: state.disabledEquipmentSlots,
     modifierTexts: loudSongSpeedLines.length ? [...modifierTexts, ...loudSongSpeedLines] : modifierTexts,
   });
-  // Blessing "on hit" / "on Critical Strike" gains (talent batch T3): any modeled hitting source holds them, not only
-  // Scorching Beam: the beam, every modeled spell or attack hit (packages/engine/src/skills/skill-hit-model.js profiles). Crit from that
-  // source's own crit chance (spell crit model with the setup's supports; attacks: the weapon model's rating).
+  // Blessing "on hit" / "on Critical Strike" gains (talent batch T3): every modeled spell or attack hit
+  // (packages/engine/src/skills/skill-hit-model.js profiles) holds them. Crit from that source's own crit chance (spell crit
+  // model with the setup's supports; attacks: the weapon model's rating).
   const hittingSetups = skillHitSources.map((source) => source.setup).filter(Boolean);
-  const blessingCanHit = activeNames.has("Scorching Beam") || hittingSetups.length > 0;
-  const blessingCanCrit =
-    (activeNames.has("Scorching Beam") &&
-      spellCritical({ main, talentSlate, equipment: memoryEquipment, pact }).criticalChancePercent > 0) ||
-    skillHitSources.some((source) =>
-      source.profile.weaponScaling
-        ? weaponAttack.crit.chancePercent > 0
-        : spellCritical({ main: source.setup, talentSlate, equipment: memoryEquipment, pact }).criticalChancePercent >
-          0,
-    );
+  const blessingCanHit = hittingSetups.length > 0;
+  const blessingCanCrit = skillHitSources.some((source) =>
+    source.profile.weaponScaling
+      ? weaponAttack.crit.chancePercent > 0
+      : spellCritical({ main: source.setup, talentSlate, equipment: memoryEquipment, pact }).criticalChancePercent > 0,
+  );
   // Ethereal Prism core clauses reach the Blessing model like a panel core's text (core audit B7: Commander's Gambit's "-100% additional
   // Tenacity Blessing, Agility Blessing, and Focus Blessing Effect"; the panel cores arrive through levelSources.talents).
   const prismCoreBlessingLines = modifierTexts
@@ -3663,14 +3583,14 @@ function calculatePlannerOnce(
     canHit: blessingCanHit,
     canCrit: blessingCanCrit,
     enemyAilments: mechanics.enemyAilments.types.map((type) => type.name),
-    igniteOnTarget: canIgnite,
-    spellHitActive: activeNames.has("Scorching Beam"),
+    igniteOnTarget: false,
+    spellHitActive: false,
   });
   // Focus Blessing stacks from the blessing model: Overload's "for each stack of Focus Blessing" lines (B1) on every
-  // setup, and the main skill's pending per-stack lines on the beam hit ledger and the Ignite ledger.
+  // setup, and the main skill's pending per-stack lines on the Ignite ledger.
   const focusBlessingStacks = blessings.entries.find((entry) => entry.name === "Focus")?.stacks ?? 0;
   // Blessings on the generic hit engines (talent batch T3): the stacks a modeled hit source now gains also act on those
-  // hits, as they do on the beam: per-stack additional damage as hit-only lines (Spell-scoped ones for Spells only), and
+  // hits: per-stack additional damage as hit-only lines (Spell-scoped ones for Spells only), and
   // Agility's Attack and Cast Speed on the weapon model's attack speed (spells read it from the cast-rate ledger).
   // DoTs and ailments already take the Blessing lines through the Ignite ledger.
   const blessingHitLines = [
@@ -3687,7 +3607,7 @@ function calculatePlannerOnce(
       multiplier: 1,
     })),
     // A changed base effect "Adds Physical Damage equal to X% of Max Mana to Attacks and Spells" per stack (residual batch):
-    // added flat on skill hits and attacks (the beam's added-damage reader takes Fire / Cold / Lightning only).
+    // added flat on skill hits and attacks.
     ...(blessings.entries || [])
       .filter((entry) => entry.addedPhysicalPercentOfMaxMana > 0)
       .map((entry) => {
@@ -3791,14 +3711,12 @@ function calculatePlannerOnce(
   for (const source of skillHitSources)
     if (empowerEffects.sharedDebuffSetupKeys.has(source.setupKey))
       source.profile = { ...source.profile, selfDebuffTaken: [] };
-  // The main skill's active conditional support lines on the beam hit ledger and the Ignite ledger (the main skill's
-  // ailments), like its other "additional damage for the supported skill" lines (packages/engine/src/build-mechanics.js).
+  // The main skill's active conditional support lines on the Ignite ledger (the main skill's ailments), like its other
+  // "additional damage for the supported skill" lines (packages/engine/src/build-mechanics.js).
   for (const line of (resolvedMain?.supportEffects?.conditionalAdditional || []).filter(
     (item) => item.active && item.appliedValue && !item.triggeredOnly,
   )) {
-    if (resolvedMain.name === "Scorching Beam" && SCORCHING_BEAM_DEDICATED_SUPPORTS.has(line.support)) continue;
     const text = `${line.text} — ${line.conditionText}`;
-    mechanics.hit.push({ source: line.source, bucket: "additional", percent: line.appliedValue, text });
     mechanics.ignite.additional.push({
       source: line.source,
       text,
@@ -3807,33 +3725,15 @@ function calculatePlannerOnce(
       condition: line.conditionText,
     });
   }
-  // Juggernaut (core audit B4, packages/engine/src/combat-states.js): the enemy's Armor drop. The beam's calibrated cycle already carries the
-  // dummy's 30% non-Physical Armor (packages/engine/src/combat/target-hit-mitigation.js), so its Fire hits take the ratio of the Armor factors.
+  // Juggernaut (core audit B4, packages/engine/src/combat-states.js): the enemy's Armor drop, read by every hit's target mitigation.
   const juggernaut = lineEffects.combat?.enemyDebuffCores?.juggernaut?.active
     ? lineEffects.combat.enemyDebuffCores.juggernaut
     : null;
-  if (
-    juggernaut &&
-    activeNames.has("Scorching Beam") &&
-    juggernaut.nonPhysicalArmourPercent !== level85DummyDefenses.nonPhysicalArmourPercent
-  ) {
-    const percent =
-      ((1 - juggernaut.nonPhysicalArmourPercent / 100) / (1 - level85DummyDefenses.nonPhysicalArmourPercent / 100) -
-        1) *
-      100;
-    mechanics.hit.push({
-      source: "Juggernaut (Ethereal Prism core)",
-      bucket: "additional",
-      percent,
-      text: `Enemy Armor ×${juggernaut.armourScale} (${juggernaut.stacks} stacks): non-Physical Armor mitigation ${level85DummyDefenses.nonPhysicalArmourPercent}% → ${juggernaut.nonPhysicalArmourPercent}% (provisional)`,
-    });
-  }
   for (const line of mechanics.pendingPerStack || []) {
     const stacks = Math.min(line.cap ?? Infinity, focusBlessingStacks);
     if (!(stacks > 0)) continue;
     const value = Math.round(line.perStack * stacks * 10000) / 10000;
     const text = `${line.text} × ${stacks} Focus Blessing stacks (blessing model)`;
-    mechanics.hit.push({ source: line.source, bucket: "additional", percent: value, text });
     mechanics.ignite.additional.push({ source: line.source, text, value, category: "Additional damage" });
   }
   beamCastRate = scorchingBeamCastRate({
@@ -3935,31 +3835,18 @@ function calculatePlannerOnce(
       .reduce((factor, line) => factor * (1 + line.value / 100), 1),
   });
   coreTalents.lines.push(...trueFlame.lines.filter((line) => line.source === "True Flame"));
-  const hitModifiers = scorchingBeamHitModifiers({
-    extraSources: mechanics.hit,
-    intelligenceAdjustment: mechanics.intelligence,
-    blurEffects,
-    curses,
-    blessings,
-    aim,
-    block,
-    coreTalents,
-    enemyOnTideDamageTakenPercent,
-    tideEffectFactor,
-    waveAriaPercent,
-    idyllPerStackPercent,
-    heroMemories,
-    main,
-    talentSlate,
-    equipment,
-    pact,
-    aura,
-    heroId: state.hero.selectedHeroId,
-    conditions,
-    idyllStacks: damageCombat.idyllStacks,
-  });
-  const levelFactor =
-    main.effectiveLevel >= 20 ? skillLevelDamageMultiplier(main.effectiveLevel) / skillLevelDamageMultiplier(20) : 1;
+  // Intelligence main stat on the generic hits: 0.5% additional damage per point of hero memory, gear and adjusted
+  // Intelligence (the pooled total observed on Scorching Beam's hit panel; Strength and Dexterity read the stat-sheet totals).
+  const memoryIntelligence =
+    heroMemories.totals?.["intelligence:flat"] ??
+    heroMemories.lines.filter((line) => line.stat === "intelligence").reduce((sum, line) => sum + line.value, 0);
+  const intelligenceAdditionalPercent =
+    (memoryIntelligence +
+      (Number(equipment.candidate?.["intelligence:flat"]) || 0) +
+      mechanics.intelligence.extraFlat) *
+    (1 + mechanics.intelligence.percent / 100) *
+    (mechanics.intelligence.additionalFactor ?? 1) *
+    0.5;
   const beamCritical = spellCritical({
     main,
     talentSlate,
@@ -3986,32 +3873,11 @@ function calculatePlannerOnce(
   const enemyAilmentTypes = Math.max(
     1,
     Object.values(ailmentDraft).filter(Boolean).length +
-      (canIgnite ? 1 : 0) +
       mechanics.enemyAilments.types.filter((type) => !type.damaging).length,
   );
-  const beamAddedDamage = scorchingBeamAddedDamage({
-    main,
-    equipment,
-    slates: slate.setup,
-    equippedSlateIds: equipped,
-    talents: talent.setup,
-    pacts: state.pacts,
-  });
-  // Extra Beams (Scattershot Beam "+2 additional Beams", "+N Beams" lines): every Beam hits the dummy, after the first at
-  // the skill's 70% Shotgun falloff (packages/engine/src/skills/scorching-beam-base-hit.js scorchingBeamShotgunFactor; Iris Scattershot run B,
-  // 2026-10-12). On Selena the Bard delivery scales its measured residual with the native cycle, so with it.
-  const beamCount =
-    1 +
-    (main.supportEffects?.quantity || [])
-      .filter((item) => item.kind === "beams")
-      .reduce((total, item) => total + item.value, 0) +
-    modifierTexts.reduce((total, line) => {
-      const match = String(line.text).match(/^\+(\d+) Beams?$/i);
-      return total + (match ? Number(match[1]) * (line.multiplier ?? 1) : 0);
-    }, 0);
   // Mark on the dummy (packages/engine/src/combat/mark-effect.js; 2026-10-14): a build with a Mark source keeps the dummy Marked (best case, the
   // targetMarked switch); its "+10% additional Critical Strike Damage taken" × (1 + Mark Effect) joins every hit's crit share
-  // (Scorching Beam's beam and explosion packets too: `beamCritOnlyFactor`; settled after the hits, the beam included).
+  // (settled after the hits).
   // Erika's Artificial Moon (packages/engine/src/heroes/erika-wind-stalker.js windStalkerMoonMark; 2026-10-14): a Mark source and +30% Mark Effect while Stalker is held.
   const markState = resolveMark({
     modifierTexts,
@@ -4019,61 +3885,10 @@ function calculatePlannerOnce(
     nearTarget: conditions.nearTarget !== false,
     ...(windStalkerMoonMark(lineConditionState.windStalker) || {}),
   });
-  const beamCritOnlyFactor =
-    (beamCritical.critOnlyFactor ?? 1) * (markState.critOnlyLine ? 1 + markState.critOnlyLine.value / 100 : 1);
-  // Levels 1–20 read the game rows (config_skill_damage 461 / 462); past 20 the level factor scales the Lv.20 packets.
-  const nativeHitCycle =
-    activeNames.has("Scorching Beam") && main?.effectiveLevel >= 1
-      ? scorchingBeamSustainedHits({
-          beams: beamCount,
-          effectiveLevel: main.effectiveLevel,
-          levelFactor,
-          damageFactor: hitModifiers.damageFactor,
-          maxDamageFactor: hitModifiers.maxDamageFactor,
-          minDamageFactor: hitModifiers.minDamageFactor,
-          addedFireDamage: beamAddedDamage.raw,
-          castsPerSecond: beamCastRate.castsPerSecond,
-          criticalChancePercent: beamCritical.criticalChancePercent,
-          // Crit-only support lines (Critical Strike Damage Increase) and the Mark weight the crit hits only (B1); never Ignite.
-          criticalDamagePercent: beamCritical.criticalDamagePercent * beamCritOnlyFactor,
-        })
-      : null;
-  // Fire penetration ("+X% Fire Penetration", "+X% Elemental and Erosion Resistance Penetration"; build-mechanics.js)
-  // lowers the resistance the beam's hits meet; the Ignite ledger applies the same lines through its penetration layer.
-  const hitPenetrationPercent = mechanics.penetration?.firePercent || 0;
-  const hitTargetFireResistancePercent = ignitedResistance.hitPercent - hitPenetrationPercent;
-  // `mitigation` lists the dummy's armour and resistance factors; toTarget applies only the resistance's change from the
-  // 30% that the cycle's 49% coefficient already carries (packages/engine/src/combat/target-hit-mitigation.js calibratedBeamTargetFactors).
-  const targetMitigation = fireHitMitigation({ fireResistancePercent: hitTargetFireResistancePercent });
-  const directHit = {
-    ...hitModifiers,
-    levelFactor,
-    penetrationPercent: hitPenetrationPercent,
-    penetrationSources: mechanics.penetration?.sources || [],
-    beforeResistance: nativeHitCycle?.expectedDps || 0,
-    toTarget:
-      (nativeHitCycle?.expectedDps || 0) *
-      calibratedBeamTargetFactors({ fireResistancePercent: hitTargetFireResistancePercent }).combinedFactor,
-    mitigation: targetMitigation,
-    combatFactor: hitModifiers.ledger
-      .filter((entry) =>
-        [
-          "Tide Contact",
-          "On the Tide",
-          "Wave Aria",
-          "Idyll of the Tide",
-          "Entangled Pain",
-          "Scorch",
-          "Fire Infiltration",
-        ].includes(entry.source),
-      )
-      .reduce((factor, entry) => factor * (1 + entry.percent / 100), 1),
-  };
-  directHit.nativeCycle = nativeHitCycle;
   // Generic spell hits (packages/engine/src/skills/skill-hit-model.js): every active setup with a "skill-hit" profile. Cast speed reuses
-  // the Scorching Beam cast-rate total without its channel-only line (these skills are not channeled); crit reuses
+  // the planner's cast-rate total, without its channel-only line for skills that are not channeled; crit reuses
   // the spell crit totals with the setup's own supports (two passes: the crit rate needs the hit rate); the
-  // main-stat line is the hit ledger's Intelligence entry; target resistances follow the dummy settings.
+  // Intelligence main-stat line is the pooled total above; target resistances follow the dummy settings.
   // Weapon Attack Damage skills (packages/engine/src/skills/attack-hit-profiles.js): the equipped weapon(s), attack speed and attack crit from
   // packages/engine/src/skills/weapon-damage-model.js; crit damage reuses the spell crit model's generic Critical Strike Damage total.
   // Skills gear and pact lines trigger (packages/engine/src/skills/item-triggered-skills.js; gear-pact batch chunk 4): a skill-hit stream at the
@@ -4096,7 +3911,7 @@ function calculatePlannerOnce(
       }
       const event = itemTriggerEvent(trigger, {
         moving: conditions.moving,
-        anyHit: activeNames.has("Scorching Beam") || skillHitSources.length > 0,
+        anyHit: skillHitSources.length > 0,
         enemyAilments: mechanics.enemyAilments.types.map((type) => type.name),
         paralysis: lineEffects.combat?.debuffs?.paralysis,
         // Paralysis on its own clock (2026-10-14): Grudge's / Cripple's chance Paralysis and Witch Antelope's turns also inflict it.
@@ -4315,9 +4130,8 @@ function calculatePlannerOnce(
       increasedPercent: characterSpeed.increasedPercent,
       additionalFactor: characterSpeedFactor / Math.max(1e-9, Math.max(0, 1 + characterSpeed.increasedPercent / 100)),
     };
-    const intelligenceLine = hitModifiers.ledger.find((entry) => /^Total Intelligence/.test(entry.source));
     // Selena (Sing with the Tide): the Tide Effect buff's All Damage writes and the Bard Channeled Skill penalty reach every
-    // generic hit (packages/engine/src/heroes/selena-tide.js hitLines); Scorching Beam keeps its own hit ledger (packages/engine/src/skills/scorching-beam-hit.js).
+    // generic hit (packages/engine/src/heroes/selena-tide.js hitLines).
     const hitOnlyLines = [...blessingHitLines, ...singWithTheTide.hitLines, ...(pureHeart?.hitLines || [])];
     // A buff for the character's "other skills" (Ice Bond's Euphoria, packages/engine/src/skills/empower-effects.js) skips the skill that grants it.
     const ownLines = sourceTexts.some((line) => line.exceptSetupKey === setup.setupKey)
@@ -4335,9 +4149,12 @@ function calculatePlannerOnce(
       deterioration: lineEffects.combat?.deterioration || null,
       auraEntries: aura.entries.filter((entry) => activeNames.has(entry.name)),
       aim,
-      intelligenceAdditionalPercent: intelligenceLine?.percent || 0,
+      intelligenceAdditionalPercent: Number.isFinite(intelligenceAdditionalPercent) ? intelligenceAdditionalPercent : 0,
       mainStatPoints: mechanics.intelligence?.removed ? null : lineEffects.state?.stats || null,
-      intelligenceSource: intelligenceLine?.source || null,
+      intelligenceSource:
+        Number.isFinite(intelligenceAdditionalPercent) && intelligenceAdditionalPercent !== 0
+          ? "Total Intelligence (0.5% per point)"
+          : null,
       target: {
         resistancePercent: {
           Fire: damageCombat.targetFireResistancePercent,
@@ -4840,13 +4657,8 @@ function calculatePlannerOnce(
         `Inactive: ${source.setup.name} deals no damage here${hit?.inactiveReason ? ` (${hit.inactiveReason})` : " (no weapon damage or no hits)"}`,
       );
   }
-  // Scorching Beam's hits apply and take the Mark like the generic hits (2026-10-14); Minion hits take it once settled.
-  const mark = settleMark(markState, [
-    ...skillHits,
-    ...(nativeHitCycle
-      ? [{ modeled: true, name: "Scorching Beam", crit: { chancePercent: beamCritical.criticalChancePercent } }]
-      : []),
-  ]);
+  // Minion hits take the Mark once settled.
+  const mark = settleMark(markState, skillHits);
   let illusion = lineEffects.hero?.illusion;
   const illusionHit = illusion ? skillHits.find((hit) => hit.modeled && hit.setupKey === resolvedMain?.setupKey) : null;
   // Hero trait audit B4 (packages/engine/src/heroes/youga-spacetime.js): the Illusion state settled with this pass's Main Skill cast rate and the
@@ -4984,7 +4796,7 @@ function calculatePlannerOnce(
       .filter(Boolean);
     // Main stats of the summoning skill (manual keyword text: "+0.5% additional Skill Damage and Minion Damage" per point;
     // "This includes … the damage of Minions summoned by the skill"; several main stats add). Stat-sheet totals (provisional:
-    // the beam's pooled Intelligence ledger is not used for Minions).
+    // the pooled Intelligence total of the hits is not used for Minions).
     const summonStats = [
       ...new Set(
         minionSetups.flatMap((setup) =>
@@ -5153,17 +4965,10 @@ function calculatePlannerOnce(
   }
   const modeledMinions = minions.filter((minion) => minion.modeled);
   const mainMinion = modeledMinions.find((minion) => minion.setupKeys.includes(resolvedMain?.setupKey)) || null;
-  // Per-skill ailment application (packages/engine/src/ailments/ailment-applications.js): Scorching Beam at its cast rate and every modeled
-  // spell hit at its hit rate, each with its own chance, "cannot inflict" block and scoped layers; packages/engine/src/ailments/ailment-model.js
+  // Per-skill ailment application (packages/engine/src/ailments/ailment-applications.js): every modeled hit at its hit rate,
+  // each with its own chance, "cannot inflict" block and scoped layers; packages/engine/src/ailments/ailment-model.js
   // pools the streams per ailment on the target (strongest applications for Trauma, independent stacks for Wilt).
   const applierCandidates = collectAilmentApplierCandidates({
-    beam: activeNames.has("Scorching Beam")
-      ? {
-          setup: main,
-          castsPerSecond: beamCastRate.castsPerSecond,
-          critChancePercent: beamCritical.criticalChancePercent,
-        }
-      : null,
     skillHits: modeledSkillHits.map((hit) => ({
       hit,
       setup: allHitSources.find((source) => source.setupKey === hit.setupKey)?.setup,
@@ -5211,17 +5016,14 @@ function calculatePlannerOnce(
       ];
     }),
   );
-  // Ignite from other skills. With Scorching Beam igniting, their successes join the calibrated Ignite ledger as
-  // success-equivalent attempts at the beam's chance (their Ignites are given the beam's layers: provisional).
-  // Without it, Ignite goes through the generic ailment model with the ledger's base, duration, stack limit and
-  // stacks per application; several active stacks are the run's strongest applications (shared timer, user-confirmed 2026-10-19).
+  // Ignite from the build's hits: the generic ailment model with the Ignite ledger's base, duration, stack limit and stacks
+  // per application; several active stacks are the run's strongest applications (shared timer, user-confirmed 2026-10-19).
   const igniteShared = sharedFor("ignite", damageCombat.targetFireResistancePercent);
   // One Ignite-chance computation for every inflicting skill (packages/engine/src/ailments/ailment-applications.js skillAilmentChance):
   // the ledger's build-wide entries (Volcano Kismets, gear, talents, slates, pacts, auras) plus the skill's own
-  // scoped lines. For Scorching Beam this reproduces theoretical.totals.applicationChancePercent exactly
-  // (tests/ignite-chance-paths.test.js).
-  // User-confirmed in game (2026-10-11): Flame Jet and Fire Burst apply Ignite when the build has Ignite
-  // chance and some base Ignite, so non-beam hitting skills are Ignite appliers like the beam.
+  // scoped lines.
+  // User-confirmed in game (2026-10-11): Flame Jet and Fire Burst apply Ignite when the build has Ignite chance and some
+  // base Ignite.
   const igniteAppliers = ailmentAppliersFor({
     ailmentKey: "ignite",
     candidates: applierCandidates,
@@ -5233,34 +5035,19 @@ function calculatePlannerOnce(
   });
   const applies = (applier) =>
     !applier.blocked && applier.applicationsPerSecond > 0 && (applier.chancePercent ?? 0) > 0;
-  let igniteAttemptsPerSecond = beamCastRate.castsPerSecond;
-  let igniteChanceForRecount = null;
-  const extraIgniteAppliers = canIgnite ? igniteAppliers.filter((applier) => !applier.beam && applies(applier)) : [];
-  if (extraIgniteAppliers.length) {
-    const mainChance = theoretical.totals.applicationChancePercent;
-    igniteAttemptsPerSecond += extraIgniteAppliers.reduce(
-      (sum, applier) => sum + (applier.applicationsPerSecond * applier.chancePercent) / mainChance,
-      0,
-    );
-    theoretical = compileFinal(igniteAttemptsPerSecond);
-    if (afflictionRating) {
-      afflictionRating = resolveAfflictionRating(theoretical);
-    }
-    igniteChanceForRecount = Math.min(100, (mainChance * igniteAttemptsPerSecond) / beamCastRate.castsPerSecond);
-  }
   const igniteBaseLines = theoretical.ledger.filter((line) => line.category === "Base Ignite");
   const igniteBase = {
     min: igniteBaseLines.reduce((sum, line) => sum + (line.value || 0), 0),
     max: igniteBaseLines.reduce((sum, line) => sum + (line.max ?? line.value ?? 0), 0),
   };
-  if (!canIgnite && igniteBase.max > 0 && igniteAppliers.some((applier) => !applier.beam && applies(applier))) {
+  if (igniteBase.max > 0 && igniteAppliers.some(applies)) {
     ailments.ignite = {
       ...calculateAilment({
         ailmentKey: "ignite",
         modifierTexts,
         shared: igniteShared,
         crit: beamCritical,
-        appliers: igniteAppliers.filter((applier) => !applier.beam),
+        appliers: igniteAppliers,
         combat: damageCombat,
         auraChancePercent: ailmentChanceFromAuras,
         auraDurationPercent: ailmentDurationFromAuras,
@@ -5277,83 +5064,10 @@ function calculatePlannerOnce(
       }),
       genericIgnite: true,
       notes: [
-        "Ignite from a skill other than Scorching Beam: generic ailment model with the Ignite ledger's base, duration, stack limit and layers (provisional; no in-game run yet).",
+        "Ignite from the build's hits: generic ailment model with the Ignite ledger's base, duration, stack limit and layers (provisional; no in-game run yet).",
       ],
     };
   }
-  // The dummy starts clean: its hits meet the 30% setting until the first success, then the Scorch / Ignited resistance
-  // (Sun's Embrace alone: the Ignited state is one stack's worth; with Fire's Allure the change follows the Scorch stacks).
-  const ignitedHitChange =
-    canIgnite && ignitedResistance.applies && ignitedResistance.hitPercent !== ignitedResistance.unmultipliedPercent;
-  const beamScorch =
-    (firesAllure.active && firesAllure.resistanceReductionPercent > 0) || ignitedHitChange
-      ? {
-          active: true,
-          baseResistancePercent: state.combat.targetFireResistancePercent - hitPenetrationPercent,
-          activeResistancePercent: ignitedResistance.hitPercent - hitPenetrationPercent,
-          applicationChancePercent: theoretical.totals.applicationChancePercent,
-          durationSeconds: theoretical.totals.igniteDurationSeconds,
-          activeStacks: firesAllure.activeStacks || 1,
-          stacksPerApplication: 1 + theoretical.totals.additionalInflictedStacks,
-        }
-      : null;
-  const bardDelivery = estimateBardBeamDelivery({
-    heroId: state.hero.selectedHeroId,
-    beamActive: activeNames.has("Scorching Beam"),
-    sourceScale: nativeHitCycle
-      ? nativeHitCycle.expectedDps / scorchingBeamSustainedHits({ damageFactor: 0.8 }).expectedDps
-      : 0,
-    nativeCycle: nativeHitCycle,
-    targetFireResistancePercent: hitTargetFireResistancePercent,
-    conditions,
-    scorch: beamScorch,
-  });
-  // The beam's dummy delivery on every hero: Selena's calibrated Bard delivery, else the native cycle as delivered
-  // (no Bard residual; packages/engine/src/skills/scorching-beam-delivery.js estimateNeutralBeamDelivery). Recount, windows and projection read it.
-  const beamDelivery =
-    bardDelivery ||
-    estimateNeutralBeamDelivery({
-      heroId: state.hero.selectedHeroId,
-      beamActive: activeNames.has("Scorching Beam"),
-      nativeCycle: nativeHitCycle,
-      targetFireResistancePercent: hitTargetFireResistancePercent,
-      conditions,
-      scorch: beamScorch,
-    });
-  const combatProjection = combineBeamAndIgnite(
-    beamDelivery,
-    theoretical.combat.expectedActiveIgnite,
-    theoretical.combat.reaping,
-  );
-  const recountWindowSeconds = 20;
-  // Other skills' Ignite successes fold into the beam's per-use chance (success-equivalent; packages/engine/src/ailments/ailment-applications.js).
-  const pooledIgnite = (ignite) =>
-    igniteChanceForRecount == null || !ignite
-      ? ignite
-      : {
-          ...ignite,
-          applicationChancePercent: igniteChanceForRecount,
-          notIgnitedApplicationChancePercent: Math.min(
-            100,
-            ((ignite.notIgnitedApplicationChancePercent ?? ignite.applicationChancePercent) * igniteAttemptsPerSecond) /
-              beamCastRate.castsPerSecond,
-          ),
-        };
-  const recountIgnite = pooledIgnite(theoretical.combat.expectedActiveIgnite) || {
-    mode: "one-stack",
-    baseRange: { min: 0, max: 0 },
-    expectedBaseDamage: 0,
-    expectedDps: 0,
-    applicationChancePercent: 0,
-    durationSeconds: 4,
-    maximumActiveStacks: 1,
-  };
-  const recountInputs = {
-    delivery: beamDelivery,
-    nativeCycle: nativeHitCycle,
-    strongestOneStack: recountIgnite,
-    reaping: theoretical.combat.reaping,
-  };
   // Display-only and shadow passes must not stop the planner: a failure becomes a warning and a null figure.
   const shadowWarnings = [];
   const guarded = (label, compute) => {
@@ -5365,14 +5079,14 @@ function calculatePlannerOnce(
     }
   };
   // Cold start (prebuiltSelfBuffs off; CLAUDE.md): channeled stacks ramp from the minimum over the window, on every path.
-  // The ramp multiplies the beam, the DoTs and the Reaps that settle them (1 when stacks are pre-built or without Supercharge).
+  // The ramp multiplies the DoTs and the Reaps that settle them (1 when stacks are pre-built or without Supercharge).
   const coldStartRamp = (seconds) =>
     requestedConditions.prebuiltSelfBuffs !== false ? 1 : mechanics.channelRamp(seconds, beamCastRate.castsPerSecond);
   // Timed and stacking effects (packages/engine/src/combat/timed-effects.js; pact scripted-effects batch 2026-10-13): Ice Cage, Melting Flames, Witch
   // Antelope's Paralysis, Bitter Thunder, Numbed, … Every ledger holds their sustained value; the 5 s / 20 s windows and the
   // recount scale each source by the time average of its factor (a cast at t = 0; debuffs from zero on the clean dummy). On a
   // DoT the factor multiplies the window average (the DoT's own build-up and the effect's clock are taken as independent;
-  // provisional). The beam is a Fire hit, Ignite a Fire DoT.
+  // provisional).
   // Erika's Multistrike states over time (Stalker's build-up, Hunting Instinct's cycle) reach each multistriking hit (keyed parts).
   const timedParts = [
     ...(lineEffects.combat?.timedEffects || [])
@@ -5381,65 +5095,7 @@ function calculatePlannerOnce(
     ...(windStalker?.timedParts || []),
     ...yougaTimedParts,
   ];
-  const beamShare = { hit: true, types: { Fire: 1 } },
-    igniteShare = { hit: false, types: { Fire: 1 } };
-  const withTimedEffects = (opening) => {
-    if (!opening || !timedParts.length) return opening;
-    const beam = opening.beamDps * timedWindowFactor(timedParts, beamShare, opening.seconds),
-      ignite = opening.igniteDps * timedWindowFactor(timedParts, igniteShare, opening.seconds),
-      reap = opening.reapingDps * timedWindowFactor(timedParts, igniteShare, opening.seconds);
-    return {
-      ...opening,
-      beamDps: beam,
-      igniteDps: ignite,
-      reapingDps: reap,
-      totalDpsApproximation:
-        opening.totalDpsApproximation +
-        (beam - opening.beamDps) +
-        (ignite - opening.igniteDps) +
-        (reap - opening.reapingDps),
-    };
-  };
-  const withColdStartRamp = (opening) => {
-    const factor = opening ? coldStartRamp(opening.seconds) : 1;
-    if (!opening || factor === 1) return opening;
-    return {
-      ...opening,
-      beamDps: opening.beamDps * factor,
-      igniteDps: opening.igniteDps * factor,
-      reapingDps: opening.reapingDps * factor,
-      totalDpsApproximation: opening.totalDpsApproximation * factor,
-      channelRamp: factor,
-    };
-  };
-  const recountFiveSeconds = withTimedEffects(
-    withColdStartRamp(
-      guarded("5-second recount estimate", () => estimateFiveSecondOpening({ ...recountInputs, seconds: 5 })),
-    ),
-  );
-  const recountOpening = withTimedEffects(
-    withColdStartRamp(
-      guarded("20-second recount estimate", () =>
-        estimateFiveSecondOpening({ ...recountInputs, seconds: recountWindowSeconds }),
-      ),
-    ),
-  );
-  const recountVariation = skipVariation
-    ? null
-    : guarded("Recount variation", () =>
-        simulateFiveSecondVariation({
-          delivery: beamDelivery,
-          nativeCycle: nativeHitCycle,
-          ignite: recountIgnite,
-          reaping: theoretical.combat.reaping,
-          criticalChancePercent: beamCritical.criticalChancePercent,
-          criticalDamagePercent: beamCritical.criticalDamagePercent * beamCritOnlyFactor,
-          seconds: recountWindowSeconds,
-        }),
-      );
   // Damage paths for every modeled ailment plus independent Reaping sources.
-  // The established Ignite path (with its own Reaping) is kept unchanged when no
-  // other ailment is modeled.
   // Skill DoT sources (Wilting Beam): the skill's own damage over time, refreshed at the main-skill use rate.
   const targetResistanceFor = (type) =>
     type === "Physical"
@@ -5782,13 +5438,12 @@ function calculatePlannerOnce(
   const minionBasicRate = mainMinion
     ? mainMinion.skills.find((item) => item.role === "basic")?.steadyUsesPerSecond || 1
     : 0;
-  const mainUsesPerSecond = activeNames.has("Scorching Beam")
-    ? beamCastRate.castsPerSecond
-    : scheduleHit?.rate.usesPerSecond ||
-      mainDot?.applicationsPerSecond ||
-      skillDots.find((dot) => dot.modeled)?.applicationsPerSecond ||
-      minionBasicRate ||
-      0;
+  const mainUsesPerSecond =
+    scheduleHit?.rate.usesPerSecond ||
+    mainDot?.applicationsPerSecond ||
+    skillDots.find((dot) => dot.modeled)?.applicationsPerSecond ||
+    minionBasicRate ||
+    0;
   const otherAilments = Object.values(ailments).filter((ailment) => ailment.modeled);
   // Ill Omen (packages/engine/src/ailments/ill-omen.js; user 2026-10-13 "add Ill Omen to the main DPS stat"): with Ominous on the enemy, a best-case
   // combat condition adds True Damage = (DoT + Reaping) × the Elite-loop factor to every window and the recount. The
@@ -5826,12 +5481,6 @@ function calculatePlannerOnce(
   const damagePaths = (() => {
     if (!otherAilments.length && !modeledSkillHits.length && !modeledMinions.length && !modeledTriggers.length)
       return null;
-    const igniteDps = (seconds) =>
-      seconds === 5
-        ? recountFiveSeconds?.igniteDps || 0
-        : seconds === 20
-          ? recountOpening?.igniteDps || 0
-          : theoretical.combat.expectedActiveIgnite?.expectedDps || 0;
     const ailmentDps = (ailment, seconds) =>
       seconds === 5
         ? ailment.combat.fiveSecondAverageDps
@@ -5841,97 +5490,42 @@ function calculatePlannerOnce(
     const typedReapPercent = (ailment) =>
       ailment.sources.typed.reapingDuration.reduce((sum, line) => sum + line.value, 0);
     // Pooled over every inflicting skill (ailment-model.js combat.successesPerSecond).
-    const igniteSuccessesPerSecond = canIgnite
-      ? (theoretical.totals.applicationChancePercent / 100) * igniteAttemptsPerSecond
-      : 0;
     const successfulApplicationsPerSecond = Math.max(
       ...otherAilments.map((ailment) => ailment.combat.successesPerSecond),
-      igniteSuccessesPerSecond,
+      0,
     );
-    // "Inflicting Ignite" Reaps count Ignite successes only (a Trauma or Wilt success is not an Ignite); a generic Ignite
-    // (another skill's, ailment-model.js) is one of otherAilments.
+    // "Inflicting Ignite" Reaps count Ignite successes only (a Trauma or Wilt success is not an Ignite); Ignite is one of
+    // otherAilments (ailment-model.js).
     const successesByAilment = {
-      ignite: Math.max(
-        igniteSuccessesPerSecond,
-        ailments.ignite?.modeled && !canIgnite ? ailments.ignite.combat.successesPerSecond : 0,
-      ),
+      ignite: Math.max(0, ailments.ignite?.modeled ? ailments.ignite.combat.successesPerSecond : 0),
       trauma: ailments.trauma?.modeled ? ailments.trauma.combat?.successesPerSecond || 0 : 0,
       wilt: ailments.wilt?.modeled ? ailments.wilt.combat?.successesPerSecond || 0 : 0,
     };
-    // Parity with the Ignite path (research/damage-path-switch-2026-10-12.md §6 stage 1):
-    // (A) the per-Blessing-stack Reaping Recovery Speed (Feline Steps) the Ignite ledger counts;
-    // (B) a full-Affliction Reap settles Ignite with the max-Affliction resistance reduction in full;
-    // (C) Reaps settle the Ignite path's steady active Ignite (its basis in every window; the window-average basis is a
-    //     separate, undecided change, §6 stage 3).
+    // The per-Blessing-stack Reaping Recovery Speed (Feline Steps) the Ignite ledger counts (research/damage-path-switch-2026-10-12.md
+    // §6 stage 1).
     const extraRecoverySources = blessingRecoverySources(equipment, blessings).map((line) => ({
       source: line.source,
       text: line.text,
       value: line.value,
     }));
-    const igniteReaping = theoretical.combat.reaping;
     // A Reap is True Damage: every DoT it settles drops the build's "damage applied to Life" lines (patch notes 2026-10-15;
     // packages/engine/src/combat/true-damage.js). Each DoT ledger takes those lines from the Ignite ledger, so one scale serves them all.
     const reapTrueDamage = trueDamageSettleScale(theoretical.ledger || []);
-    const steadyReapedIgnite = igniteReaping?.activeDotDps
-      ? (igniteReaping.activeDotDps.min + igniteReaping.activeDotDps.max) / 2
-      : theoretical.combat.expectedActiveIgnite?.expectedDps || 0;
-    // (5) An application-triggered source the Ignite path times over the window (estimateApplicationReapingOpening) keeps
-    // that timing on its Ignite share: factor = timed ÷ steady of the same Ignite-path source (matched by trigger and base
-    // duration / recovery: the two parsers name a pact source differently, e.g. "Fire Swordsman" vs "Fire Swordsman: …").
-    const applicationTiming = (seconds) => {
-      const opening = seconds === 5 ? recountFiveSeconds : seconds === 20 ? recountOpening : null;
-      const factors = new Map();
-      for (const item of opening?.reapingBySource || [])
-        if (item.timed && item.steadyDps > 0)
-          factors.set(
-            `${item.trigger}|${item.baseDurationSeconds}|${item.baseRecoverySeconds}`,
-            item.dps / item.steadyDps,
-          );
-      return factors.size
-        ? (source, dot) =>
-            dot.key === "ignite"
-              ? (factors.get(`${source.trigger}|${source.baseDurationSeconds}|${source.baseRecoverySeconds}`) ?? 1)
-              : 1
-        : null;
-    };
     // Own buffs pre-built (user, 2026-10-09): channel stacks are already full when
     // the window starts; the dummy still starts clean, so DoTs build from zero.
     const prebuiltSelfBuffs = requestedConditions.prebuiltSelfBuffs !== false;
     const window = (seconds) => {
-      // The channel ramp scales the beam and every DoT; a timed DoT layer (Windwalk) scales DoTs and their Reaps only,
-      // never beam or skill hits. The recount window figures (beam, Ignite) already carry the channel ramp.
-      const channelRamp = coldStartRamp(seconds);
-      const dotRamp = channelRamp * timedDotWindowFactor(seconds);
+      // The channel ramp scales every DoT; a timed DoT layer (Windwalk) scales DoTs and their Reaps only, never skill hits.
+      const dotRamp = coldStartRamp(seconds) * timedDotWindowFactor(seconds);
       // Timed effects: the window's time average of each source's factor (1 when sustained or without one).
       const timedDot = (key) => timedWindowFactor(timedParts, dotShare(key), seconds);
-      const igniteReapDps = steadyReapedIgnite * dotRamp * timedWindowFactor(timedParts, igniteShare, seconds);
-      const dots = [
-        ...otherAilments.map((ailment) => ({
-          key: ailment.key,
-          name: ailment.name,
-          dps: ailmentDps(ailment, seconds) * dotRamp * timedDot(ailment.key),
-          fullAfflictionDps:
-            ailmentDps(ailment, seconds) * dotRamp * timedDot(ailment.key) * ailment.fullAfflictionScale,
-          typedDurationPercent: typedReapPercent(ailment),
-        })),
-        ...(canIgnite
-          ? [
-              {
-                key: "ignite",
-                name: "Ignite",
-                dps: igniteDps(seconds) * timedDotWindowFactor(seconds),
-                reapDps: igniteReapDps,
-                fullAfflictionDps:
-                  igniteReapDps *
-                  (theoretical.combat.fullAfflictionScale || 1) *
-                  (theoretical.combat.fullAfflictionResistanceScale || 1),
-                typedDurationPercent: 0,
-              },
-            ]
-          : []),
-      ].map((dot) => ({
-        ...dot,
-        skillDot: Boolean(ailments[dot.key]?.skillDot),
+      const dots = otherAilments.map((ailment) => ({
+        key: ailment.key,
+        name: ailment.name,
+        dps: ailmentDps(ailment, seconds) * dotRamp * timedDot(ailment.key),
+        fullAfflictionDps: ailmentDps(ailment, seconds) * dotRamp * timedDot(ailment.key) * ailment.fullAfflictionScale,
+        typedDurationPercent: typedReapPercent(ailment),
+        skillDot: Boolean(ailments[ailment.key]?.skillDot),
         trueDamageScale: reapTrueDamage.scale,
       }));
       // Scorching Pulse's stacks build from 0 on the clean start (packages/engine/src/followers/follower-model.js scorchingPulseStacks): the 5 s / 20 s windows
@@ -5964,14 +5558,7 @@ function calculatePlannerOnce(
         successesByAilment,
         afflictionPerSecond: afflictionPerSecondTotal,
         damagingAilmentTypes: dots.filter((dot) => dot.dps > 0 && !dot.skillDot).length,
-        sourceDotScale: canIgnite ? applicationTiming(seconds) : null,
       });
-      const beamDps =
-        seconds === 5
-          ? recountFiveSeconds?.beamDps || 0
-          : seconds === 20
-            ? recountOpening?.beamDps || 0
-            : (nativeHitCycle?.expectedDps || 0) * channelRamp;
       // Generic spell hits (packages/engine/src/skills/skill-hit-model.js): no channel ramp; a cooldown-bound skill's window counts whole uses.
       const hits = [
         ...modeledSkillHits.map((hit) => ({
@@ -6029,7 +5616,6 @@ function calculatePlannerOnce(
             }
           : null;
       const totalDps =
-        beamDps +
         hits.reduce((sum, hit) => sum + hit.dps, 0) +
         dots.reduce((sum, dot) => sum + dot.dps, 0) +
         reaping.reapingDps +
@@ -6037,7 +5623,6 @@ function calculatePlannerOnce(
         (turbulence?.dps || 0);
       return {
         seconds,
-        beamDps,
         hits,
         dots,
         reaping,
@@ -6055,29 +5640,6 @@ function calculatePlannerOnce(
       prebuiltSelfBuffs,
     };
   })();
-  // Ignite-only builds (no damagePaths): the same Ill Omen definition, factor × (DoT + Reaping), on the Ignite path's 5 s / 20 s
-  // windows, with Ignite as the DoT and the Ignite Reaps as the Reaping (packages/engine/src/ailments/ill-omen.js). The recount already adds it.
-  const igniteIllOmen =
-    !damagePaths && illOmen?.main.factor > 0
-      ? (() => {
-          const window = (opening) => {
-            if (!opening) return null;
-            const basisDps = (opening.igniteDps || 0) + (opening.reapingDps || 0);
-            return {
-              seconds: opening.seconds,
-              basisDps,
-              igniteDps: opening.igniteDps || 0,
-              reapingDps: opening.reapingDps || 0,
-              dps: illOmenDps(illOmen, basisDps),
-            };
-          };
-          return {
-            factor: illOmen.main.factor,
-            fiveSeconds: window(recountFiveSeconds),
-            twentySeconds: window(recountOpening),
-          };
-        })()
-      : null;
   // Dummy recount timeline, shadow mode (research/dummy-recount-spec-2026-10-09.md, phase 1): computed
   // beside today's figures from the same resolved conditions and read by none of them yet. The
   // exclusive-condition comparison passes skip it. The channel is passed on every path; the recount
@@ -6086,14 +5648,6 @@ function calculatePlannerOnce(
     ? null
     : guarded("Dummy recount timeline", () => {
         const inputs = collectDummyRecountInputs({
-          delivery: beamDelivery,
-          nativeCycle: nativeHitCycle,
-          // Other skills' Ignite successes fold into the beam's per-use chance (success-equivalent, ailment-applications.js).
-          ignite: canIgnite ? pooledIgnite(theoretical.combat.expectedActiveIgnite) : null,
-          igniteReaping: theoretical.combat.reaping,
-          igniteFullAfflictionScale: theoretical.combat.fullAfflictionScale,
-          igniteAfflictionRating: conditions.affliction ? damageCombat.afflictionAverage : 0,
-          igniteAfflictionPerPoint: theoretical.combat.afflictionPerPoint,
           // Hit ailments need a hitting main skill (applications > 0); skill DoTs carry their own rate.
           ailments: damagePaths ? otherAilments.filter((ailment) => ailment.applicationsPerSecond > 0) : [],
           multiReaping: damagePaths ? damagePaths.twentySeconds.reaping : null,
@@ -6141,25 +5695,20 @@ function calculatePlannerOnce(
               steadyDps: minion.combat.dps,
             };
           }),
-          // Timed effects (packages/engine/src/combat/timed-effects.js): each part's clock, and the share of each DoT (and the Reaps settling it), skill
-          // hit, the beam and its Ignite.
+          // Timed effects (packages/engine/src/combat/timed-effects.js): each part's clock, and the share of each DoT (and the Reaps settling it) and
+          // skill hit.
           timedEffects: recountTimedEffects(
             timedParts,
             Object.fromEntries([
               ...otherAilments.map((ailment) => [ailment.key, dotShare(ailment.key)]),
               ...modeledSkillHits.map((hit) => [hit.key, hitTypeShares(hit)]),
-              ["beam", beamShare],
-              ["ignite", igniteShare],
             ]),
           ),
           // A hit skill drives the use schedule: its opening cast completes after its use time (Flame Jet run 2026-10-11).
           firstUseSeconds:
-            !activeNames.has("Scorching Beam") && scheduleHit && mainUsesPerSecond === scheduleHit.rate.usesPerSecond
+            scheduleHit && mainUsesPerSecond === scheduleHit.rate.usesPerSecond
               ? scheduleHit.rate.firstUseSeconds
-              : !activeNames.has("Scorching Beam") &&
-                  !scheduleHit &&
-                  mainMinion &&
-                  mainUsesPerSecond === minionBasicRate
+              : !scheduleHit && mainMinion && mainUsesPerSecond === minionBasicRate
                 ? mainMinion.cycle.firstHitSeconds
                 : null,
           critChancePercent: beamCritical.criticalChancePercent,
@@ -6205,12 +5754,6 @@ function calculatePlannerOnce(
               text: `${line.source}: "${line.text}" applied to every Weapon Attack Damage hit (provisional, talent batch Q13).`,
             });
         for (const minion of modeledMinions) inputs.assumptions.push(...minion.assumptions);
-        if (inputs.hits && nativeHitCycle?.beams > 1)
-          inputs.assumptions.push({
-            id: "beams",
-            value: nativeHitCycle.beams,
-            text: `${nativeHitCycle.beams} Beams hit the dummy, beam ticks and explosions alike: the first at 100%, each further one at the 70% Shotgun falloff (×${Math.round(nativeHitCycle.shotgunFactor * 1000) / 1000}; skill text "beams and explosions can hit the same enemy", Shotgun Effect "subsequent on hit damage is 70%"; linear reading, provisional).`,
-          });
         if (fullLife.active && fullLife.lines.length)
           inputs.assumptions.push({
             id: "fullLife",
@@ -6235,22 +5778,6 @@ function calculatePlannerOnce(
       .filter((line) => /^Revived mechanic:/.test(line.text))
       .map((line) => `${line.source}: ${line.text} — not modeled.`),
   ];
-  if (
-    main.effectiveLevel < 1 ||
-    Object.keys(state.skills.skillLevels)
-      .map((key) => state.skills.customSetups.find((setup) => setup.instanceId === key)?.name || key)
-      .some((name) => name !== "Scorching Beam" && !auraScaling[name]) ||
-    Object.keys(state.skills.supportLevels).some(
-      (key) => !modeledSupportNames.some((name) => key === `Scorching Beam:${name}`),
-    )
-  )
-    warnings.push(
-      "Some level changes are saved but lack full damage progression data. Scorching Beam levels 1–40, the documented supports, and all Aura-tag skill levels are modeled.",
-    );
-  if (!["selena-sing-with-the-tide", "iris-growing-breeze"].includes(state.hero.selectedHeroId))
-    warnings.push(
-      "Scorching Beam hit packets can be calculated for this hero, but hero-specific damage traits are not modeled yet.",
-    );
   if (Object.values(state.skills.customSupports).some((entries) => entries.length))
     warnings.push("Custom support effects are audit text; only their Energy allocation is modeled.");
   // Bing – Blast Nova's Firepower Coverage (Q-H15, provisional): the penalty applies before the bombs that replace the Main Skill exist.
@@ -6288,14 +5815,9 @@ function calculatePlannerOnce(
     warnings.push(
       "Equipment estimate includes recognized modifiers and Energy changes; unique mechanics and level changes are not fully modeled.",
     );
-  warnings.push(
-    "Support estimates use TLIDB's multiplicative additional-damage rule and SS13 tooltip effects. Isolated town-sheet states for Guard, Refracted Prism, and some Ignite effects remain unresolved; see the support validation report.",
-  );
   warnings.push(...theoretical.warnings);
   warnings.push(...shadowWarnings);
   warnings.push(...(pact.levelAssumptions || []).map((item) => item.text));
-  for (const item of beamAddedDamage.unmodeled)
-    warnings.push(`${item.source}: ${item.text} — added Fire Damage is not included in the Scorching Beam estimate.`);
   const { channelRamp: _channelRamp, ...mechanicsSummary } = mechanics;
   // "You can only deal Cold Damage" (Extreme Coldness; packages/engine/src/combat/damage-type-restriction.js): what the restriction removed, for the badge
   // and the working. Each engine applies its own −100% line; this only lists them.
@@ -6306,9 +5828,6 @@ function calculatePlannerOnce(
         label: typeRestriction.label,
         sources: typeRestriction.sources,
         removed: [
-          ...(activeNames.has("Scorching Beam") && removesType(typeRestriction, "Fire")
-            ? [{ kind: "beam", name: "Scorching Beam hits", type: "Fire" }]
-            : []),
           ...(theoretical?.totals?.baseIgniteDamage?.max > 0 &&
           (igniteAppliers || []).some((applier) => applier.chancePercent > 0) &&
           removesType(typeRestriction, "Fire")
@@ -6371,13 +5890,10 @@ function calculatePlannerOnce(
         .filter((hit) => hit.modeled)
         .reduce((sum, hit) => sum + (hit.rate?.multistrike?.maxCountEventsPerSecond || 0), 0),
     };
-    // Juggernaut (B4): the player's crit hits per second (the beam's and every modeled skill hit's; Minion crits are not counted).
+    // Juggernaut (B4): the player's crit hits per second (every modeled skill hit's; Minion crits are not counted).
     // Open Wounds (B4): the Trauma model's steady stacks, stack rate, duration and limit.
     {
-      const beamHits = activeNames.has("Scorching Beam") ? beamCastRate.castsPerSecond || 0 : 0;
-      facts.critHitsPerSecond =
-        (beamHits * Math.max(0, Math.min(100, beamCritical?.criticalChancePercent || 0))) / 100 +
-        [...bySetup.values()].reduce((sum, item) => sum + item.critHitsPerSecond, 0);
+      facts.critHitsPerSecond = [...bySetup.values()].reduce((sum, item) => sum + item.critHitsPerSecond, 0);
       const trauma = ailments?.trauma;
       if (trauma?.modeled)
         facts.trauma = {
@@ -6387,7 +5903,7 @@ function calculatePlannerOnce(
           stackLimit: trauma.stackLimit,
         };
     }
-    // Gemma – Ice-Fire Fusion (B3): casts per second of the active Fire / Cold skills (modeled skill hits' uses, the beam's casts,
+    // Gemma – Ice-Fire Fusion (B3): casts per second of the active Fire / Cold skills (modeled skill hits' uses and
     // modeled skill DoTs' applications), for Frostfire Rampage's "after casting Fire or Cold Skills 5 time(s)".
     if (frostfireCasts) {
       const fireCold = (setupKey) =>
@@ -6395,7 +5911,7 @@ function calculatePlannerOnce(
           (tag) => tag === "Fire" || tag === "Cold",
         );
       const hitKeys = new Set();
-      let casts = activeNames.has("Scorching Beam") ? beamCastRate.castsPerSecond || 0 : 0;
+      let casts = 0;
       for (const hit of skillHits.filter((item) => item.modeled && fireCold(item.setupKey))) {
         hitKeys.add(hit.setupKey);
         casts += hit.rate?.usesPerSecond || 0;
@@ -6407,7 +5923,7 @@ function calculatePlannerOnce(
       facts.fireColdCastsPerSecond = casts;
     }
     // Youga – Spacetime Illusion (hero trait audit B4): the Main Skill's own cast rate, every cast per second (your skills' uses
-    // with the Illusion's and Spell Burst's, the beam's casts, modeled skill DoTs' applications) and the increased Cast Speed.
+    // with the Illusion's and Spell Burst's, modeled skill DoTs' applications) and the increased Cast Speed.
     // Erika (hero trait audit B5): the Main Skill's crit chance (Charging Tail, Feline Fury) and the Vendetta cycle (Incisive).
     if (erikaRates) {
       const mainHit = skillHits.find((hit) => hit.modeled && hit.setupKey === resolvedMain?.setupKey) || null;
@@ -6434,7 +5950,7 @@ function calculatePlannerOnce(
     }
     if (yougaIllusionRates && yougaIllusionFacts) {
       const hitKeys = new Set();
-      let casts = activeNames.has("Scorching Beam") ? beamCastRate.castsPerSecond || 0 : 0;
+      let casts = 0;
       for (const hit of skillHits.filter((item) => item.modeled)) {
         hitKeys.add(hit.setupKey);
         casts += hit.rate?.usesPerSecond || 0;
@@ -6454,15 +5970,14 @@ function calculatePlannerOnce(
     // and hitting use, Ranged and Attack uses with their crits, the Main Skill's uses), Burst's crit chance and the Attack Speed bonus
     // they were measured at (the Rage share of it is corrected per phase).
     if (rehanRates) {
-      const beamCasts = activeNames.has("Scorching Beam") ? beamCastRate.castsPerSecond || 0 : 0;
       const rehan = {
         meleeCasts: 0,
         channelStacks: 0,
-        skillUses: beamCasts,
+        skillUses: 0,
         rangedUses: 0,
         attackUses: 0,
         attackCritUses: 0,
-        hitUses: beamCasts,
+        hitUses: 0,
         mainUses: 0,
       };
       for (const hit of skillHits.filter((item) => item.modeled && item.setupKey !== BURST_SETUP_KEY)) {
@@ -6511,14 +6026,11 @@ function calculatePlannerOnce(
     // Consumption cores (packages/engine/src/talents/consumption-procs.js): the Main Skill's cast rate and the event rates their stack gains read.
     if (consumptionCores) {
       const modeledHits = skillHits.filter((hit) => hit.modeled);
-      const beamHits = activeNames.has("Scorching Beam") ? beamCastRate.castsPerSecond || 0 : 0;
       const reapSources = damagePaths?.sustained?.reaping?.sources || theoretical.combat.reaping?.sources || [];
       facts.consumption = {
         mainUsesPerSecond: mainUsesPerSecond || 0,
-        hitsPerSecond: beamHits + modeledHits.reduce((sum, hit) => sum + (hit.rate.hitsPerSecond || 0), 0),
-        critHitsPerSecond:
-          (beamHits * Math.max(0, Math.min(100, beamCritical?.criticalChancePercent || 0))) / 100 +
-          [...bySetup.values()].reduce((sum, item) => sum + item.critHitsPerSecond, 0),
+        hitsPerSecond: modeledHits.reduce((sum, hit) => sum + (hit.rate.hitsPerSecond || 0), 0),
+        critHitsPerSecond: [...bySetup.values()].reduce((sum, item) => sum + item.critHitsPerSecond, 0),
         reapsPerSecond: reapSources.reduce((sum, source) => sum + (source.reapsPerSecond || 0), 0),
         wiltSuccessesPerSecond: ailments.wilt?.modeled ? ailments.wilt.combat?.successesPerSecond || 0 : 0,
       };
@@ -6545,7 +6057,6 @@ function calculatePlannerOnce(
     afflictionRating,
     ailments,
     igniteAppliers,
-    igniteAttemptsPerSecond,
     skillDots,
     skillHits,
     triggerSkills,
@@ -6617,7 +6128,6 @@ function calculatePlannerOnce(
     illOmen,
     tangles,
     miraculousGain,
-    igniteIllOmen,
     windRhythmTerra: Object.fromEntries([...windRhythmTerra].filter(([, value]) => value)),
     dotTriggers: Object.fromEntries([...dotTriggers].filter(([, value]) => value)),
     empowerEffects,
@@ -6629,17 +6139,8 @@ function calculatePlannerOnce(
     aura,
     igniteLimit,
     theoretical,
-    directHit,
     beamCastRate,
     beamCritical,
-    beamAddedDamage,
-    nativeHitCycle,
-    bardDelivery,
-    beamDelivery,
-    combatProjection,
-    recountFiveSeconds,
-    recountOpening,
-    recountVariation,
     conditions,
     warnings: [...new Set(warnings)],
   };

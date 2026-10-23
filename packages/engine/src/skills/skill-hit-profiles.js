@@ -5,6 +5,7 @@ import { skillTiming } from "../../data/skills/skill-timing.generated.js";
 import { tlidbSkillCatalog } from "../../data/catalogs/tlidb.js";
 import { skillProgression } from "../../data/skills/skill-progression.generated.js";
 import { shotgunProfileNote } from "../combat/shotgun-effect.js";
+import { scorchingBeam } from "../../data/skills/scorching-beam.js";
 
 // Damage profiles for the generic spell-hit engine (packages/engine/src/skills/skill-hit-model.js, engine "skill-hit").
 // Batch 2a of research/skill-inventory-2026-10-11.md: the 24 flat-base spell hits whose TLIDB values match a
@@ -541,6 +542,33 @@ const DEFINITIONS = [
   // Stack(s)" line is `channel.perAdditionalMaxStackAdditionalPercent`. The attack channels (Charged Pummel,
   // Inexhaustible Barrage, Savage Charge, Whirlwind) deal Weapon Attack Damage and wait for the weapon model.
   {
+    name: "Scorching Beam",
+    delivery: "channel-beam",
+    useModel: channel(),
+    // Skill text 16204: the beams and the explosions can hit the same enemy; Shotgun Effect falloff coefficient 70% (TLIDB).
+    beamVolley: { factor: scorchingBeam.rules.shotgunFalloffCoefficientPercent / 100 },
+    components: [
+      {
+        key: "beam",
+        label: "Fire Beam",
+        groupId: 461,
+        group: scorchingBeamGroup(461, "beam"),
+        perUse: 1,
+        ...text("one beam hit per channel use"),
+      },
+      {
+        key: "explosion",
+        label: "Fire Explosion",
+        groupId: 462,
+        group: scorchingBeamGroup(462, "explosion"),
+        perUse: { perTick: 1, everyUses: scorchingBeam.baseMaxChanneledStacks },
+        ...provisional(
+          `TLIDB: the beam explodes at max channeled stacks; read as one explosion every ${scorchingBeam.baseMaxChanneledStacks} uses (the stacks start again after it), at the base max stacks (a raised max is not followed)`,
+        ),
+      },
+    ],
+  },
+  {
     name: "Icebound Beam",
     delivery: "channel-beam",
     useModel: channel(),
@@ -1050,6 +1078,22 @@ function sentry(
   return { kind: "terra", label: "sentry", durationSeconds, note };
 }
 
+// Scorching Beam's groups 461 (Fire Beam) and 462 (Fire Explosion) are not in skill-hit-damage.generated.js; their levels 1–20
+// come from packages/engine/data/skills/scorching-beam.js (config_skill_damage, read by upstream's tools), in the generated shape.
+function scorchingBeamGroup(id, part) {
+  const levels = Object.fromEntries(
+    Object.entries(scorchingBeam.levelRows[part]).map(([level, [min, max]]) => [
+      level,
+      {
+        kind: "hit",
+        effectiveness: scorchingBeam.addedDamageEffectivenessPercent,
+        entries: [{ type: "Fire", min, max }],
+      },
+    ]),
+  );
+  return { id, kind: "hit", levels };
+}
+
 function channel(
   note = "channel: one use per channel interval (game doSpeed, Cast Speed scaled); the channel is held at its max stacks (own buffs pre-built)",
 ) {
@@ -1136,6 +1180,8 @@ function buildProfile(definition) {
     // The skill's own projectile rule from its card (coefficient, reach, Projectile Quantity per extra projectile; read by
     // packages/engine/src/skills/skill-hit-model.js instead of the shared text rule) and "+X% additional Damage per +1 Projectile Quantity".
     projectileVolley: definition.projectileVolley || null,
+    // Extra Beams that reach the same target and the Shotgun falloff they hit at (packages/engine/src/skills/skill-hit-model.js).
+    beamVolley: definition.beamVolley || null,
     additionalPerProjectileQuantityPercent: definition.additionalPerProjectileQuantityPercent || 0,
     // Parabolic Projectile Splits (Three Birds with One Stone; user-supplied 2026-10-19): the components a split lands as again and
     // the skill's after-split damage (packages/engine/src/skills/skill-hit-model.js).

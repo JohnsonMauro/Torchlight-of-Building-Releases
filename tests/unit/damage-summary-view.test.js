@@ -12,7 +12,7 @@ const input = goldenInputs().find((entry) => entry.id === "youga-l94").state;
 const youga = calculateGoldenCase(input);
 const card = (excluded) =>
   statsView(
-    { sheet: prepareStatSheet(youga, "game-log-skill-1", format), damagePath: prepareDamagePath(youga, youga, format) },
+    { sheet: prepareStatSheet(youga, "game-log-skill-1", format), damagePath: prepareDamagePath(youga, format) },
     { panel: "sheet", path: "hit", excluded },
   ).sheet.damage.recount;
 

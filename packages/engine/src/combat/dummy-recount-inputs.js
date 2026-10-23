@@ -1,21 +1,17 @@
 // Adapter: planner internals → plain, serialisable dummy-recount inputs (packages/engine/src/combat/dummy-recount.js).
 // Spec: research/dummy-recount-spec-2026-10-09.md §B. Phase 1 (shadow mode) reads the same values
 // today's 5 s / 20 s figures use, so the option defaults reproduce them:
-// - beam: the native hit cycle's average use and explosion (with crit), the Bard residual as a
-//   constant rate, and Scorch resistance linked to the Ignite chain;
-// - Ignite: the planner's expectedActiveIgnite (base range, chance, not-Ignited chance, duration,
-//   stacks, damage per base, max-Affliction resistance);
-// - other ailments (damage-path builds): calculateAilment's chance, duration, stack limit and
-//   combat factor;
-// - Reaping: the Ignite ledger's sources (Ignite-only builds) or calculateMultiSourceReaping's
-//   20 s sources (damage-path builds), with their recovery, settled seconds and settle scales.
-import { retainedAilmentBaseSumForSuccesses } from "../theoretical-damage.js";
+// - skill hits: each modeled skill's expected damage per use at its own use rate (Scorching Beam included);
+// - scheduled hits: explicit Minion damage events;
+// - ailments (damage-path builds, Ignite included): calculateAilment's chance, duration, stack limit
+//   and combat factor;
+// - Reaping: calculateMultiSourceReaping's 20 s sources (damage-path builds), with their recovery,
+//   settled seconds and settle scales;
+// - timed DoT layers, timed effects and the channel ramp.
 import { expectedStrongestStacks } from "../ailments/ailment-model.js";
-import { averagedResistanceFactor } from "../ailments/max-affliction-resistance.js";
 import { normalizeRecountOptions, RECOUNT_STEP_SECONDS } from "./dummy-recount.js";
 
 const MAX_RETAINED_SUCCESSES = 512;
-const fireFactor = (resistancePercent) => Math.max(0, 1 - resistancePercent / 100);
 const clampChance = (percent) => Math.max(0, Math.min(1, (Number(percent) || 0) / 100));
 
 // Affliction damage taken is 1 + rating × perPoint, so the simulated-Affliction option can rescale
@@ -61,78 +57,6 @@ function strongestOfSuccesses({ min, max, critChancePercent = 0, critFactor = 1,
   return values;
 }
 
-function maxAfflictionRatios(info) {
-  if (!info || !info.reductionPercent) return null;
-  const at = (fraction) =>
-    averagedResistanceFactor({
-      resistancePercent: info.resistancePercent,
-      penetrationPercent: info.penetrationPercent,
-      reductionPercent: info.reductionPercent,
-      fraction,
-    });
-  const steady = at(info.steadyFraction);
-  if (!(steady > 0)) return null;
-  return {
-    firstMaxSeconds: info.firstMaxSeconds,
-    steadyFraction: info.steadyFraction,
-    ratioAtNone: at(0) / steady,
-    ratioAtFull: at(1) / steady,
-  };
-}
-
-function igniteAilment({
-  ignite,
-  retention,
-  count,
-  fullAfflictionScale,
-  afflictionRating,
-  afflictionPerPoint,
-  scorch,
-}) {
-  const multi = ignite.mode === "multi-stack";
-  const { min, max } = ignite.baseRange;
-  const limit = ignite.maximumActiveStacks ?? 1;
-  const stacks = ignite.stacksPerApplication ?? 1;
-  const average = (min + max) / 2;
-  const retained = Array.from({ length: count + 1 }, (_, n) => {
-    if (!n) return 0;
-    if (retention === "newest") return multi ? Math.min(limit, n * stacks) * average : average;
-    return multi
-      ? retainedAilmentBaseSumForSuccesses({
-          min,
-          max,
-          successes: n,
-          stacksPerApplication: stacks,
-          maximumActiveStacks: limit,
-        })
-      : min + ((max - min) * n) / (n + 1);
-  });
-  const retainedLimit = retention === "newest" ? (multi ? limit * average : average) : multi ? limit * max : max;
-  const scorchLimit = scorch ? Math.max(1, scorch.activeStacks || 1) : 0;
-  const scorchStacks = scorch ? Math.max(1, scorch.stacksPerApplication || 1) : 0;
-  return {
-    key: "ignite",
-    name: "Ignite",
-    stacking: "shared-timer",
-    chance: clampChance(ignite.applicationChancePercent),
-    notActiveChance: clampChance(ignite.notIgnitedApplicationChancePercent ?? ignite.applicationChancePercent),
-    duration: ignite.durationSeconds ?? 4,
-    retainedBase: retained,
-    retainedLimit,
-    damagePerBase: multi
-      ? ignite.damagePerBase
-      : ignite.expectedBaseDamage > 0
-        ? ignite.expectedDps / ignite.expectedBaseDamage
-        : 0,
-    fullAfflictionScale: fullAfflictionScale || 1,
-    affliction: afflictionLayer(afflictionRating, fullAfflictionScale, afflictionPerPoint),
-    maxAffliction: maxAfflictionRatios(ignite.maxAffliction),
-    ...(scorch
-      ? { scorchFraction: retained.map((_, n) => Math.min(scorchLimit, n * scorchStacks) / scorchLimit) }
-      : {}),
-  };
-}
-
 // Several inflicting skills (ailment-model.js `appliers`): the timeline attempts at the main-skill rate, so
 // their pooled successes per second become a success-equivalent chance per main use (capped at 100%, so a
 // faster secondary stream saturates). A single applier at the main rate keeps its chance as is.
@@ -149,7 +73,7 @@ function pooledChancePercent(ailment, rate) {
 
 // A skill DoT's Max Affliction lines (Pain Amplification, packages/engine/src/skills/skill-dot-model.js maxAfflictionAdditional) are in its steady
 // combat factor; before the dummy first reaches 100 Affliction the DoT runs at 1 / factor of it (same ratio form as the
-// max-Affliction resistance reduction above; frost-terra audit 2026-10-13). Nothing removes Affliction for a skill DoT here.
+// max-Affliction resistance reduction; frost-terra audit 2026-10-13). Nothing removes Affliction for a skill DoT here.
 function maxAfflictionAdditionalRatios(ailment, afflictionPerSecond) {
   const factor = ailment.maxAfflictionAdditional?.factor ?? 1;
   if (!(factor > 1)) return null;
@@ -192,7 +116,7 @@ function otherAilment({ ailment, retention, count, critChancePercent, rate = 0, 
   const crit = clampChance(critChancePercent);
   const averageApplication =
     ailment.combat.averageApplication ?? ((ailment.base.min + ailment.base.max) / 2) * (1 + crit * (critFactor - 1));
-  // A limit above 1 (Trauma with Open Wounds, generic Ignite): the run keeps its strongest stacks, as the beam's Ignite chain does
+  // A limit above 1 (Trauma with Open Wounds, Ignite): the run keeps its strongest stacks
   // (user-confirmed 2026-10-19: a weaker application refreshes them without overwriting them; packages/engine/src/ailments/ailment-model.js expectedStrongestStacks).
   const limit = Math.max(1, Number(ailment.stackLimit) || 1);
   const stacks = Math.max(1, Number(ailment.stacksPerApplication) || 1);
@@ -223,34 +147,20 @@ function otherAilment({ ailment, retention, count, critChancePercent, rate = 0, 
 /**
  * Collect the recount inputs. Returns null when the main skill makes no uses.
  * @param {object} p
- * @param {object|null} p.delivery bardDelivery (beam residual, resistance scale, Scorch)
- * @param {object|null} p.nativeCycle nativeHitCycle (average use, explosion, cycle uses)
- * @param {object|null} p.ignite theoretical.combat.expectedActiveIgnite
- * @param {object|null} p.igniteReaping theoretical.combat.reaping (used when multiReaping is null)
- * @param {number} [p.igniteFullAfflictionScale] theoretical.combat.fullAfflictionScale
- * @param {number} [p.igniteAfflictionRating] configured Affliction rating behind the Ignite ledger
- * @param {number} [p.igniteAfflictionPerPoint] theoretical.combat.afflictionPerPoint (damage taken per rating point)
- * @param {object[]} [p.ailments] modeled non-Ignite ailments (damage-path builds only)
+ * @param {object[]} [p.ailments] modeled ailments (damage-path builds only)
  * @param {object|null} p.multiReaping damagePaths.twentySeconds.reaping (damage-path builds)
  * @param {object|null} p.channel mechanics.channel; ramps only when prebuiltSelfBuffs is false
  * @param {number} p.castsPerSecond main-skill uses (application attempts) per second
  * @param {number} p.afflictionPerSecond the build's passive Affliction per second
- * @param {number} p.critChancePercent beam critical strike chance (ailment crit mixture)
+ * @param {number} p.critChancePercent critical strike chance of the ailment rolls (crit mixture)
  * @param {boolean} p.prebuiltSelfBuffs own buffs built before engaging
  * @param {object} [p.options] recount options (dummy-recount.js DEFAULT_RECOUNT_OPTIONS)
  * @param {number} [p.seconds] timeline length the retained tables are sized for
  * @param {object|null} [p.timedEffects] timed and stacking effects (Ice Cage ramp, periodic pact debuffs and buffs): { parts,
  *   shares } from packages/engine/src/combat/timed-effects.js recountTimedEffects; `shares` maps a source key to { hit, types } (DoTs and the Reaps
- *   settling them, skill hits, the beam); scheduled-hit events carry their own `timedShare`
+ *   settling them, skill hits); scheduled-hit events carry their own `timedShare`
  */
 export function collectDummyRecountInputs({
-  delivery = null,
-  nativeCycle = null,
-  ignite = null,
-  igniteReaping = null,
-  igniteFullAfflictionScale = 1,
-  igniteAfflictionRating = 0,
-  igniteAfflictionPerPoint,
   ailments = [],
   multiReaping = null,
   channel = null,
@@ -272,42 +182,7 @@ export function collectDummyRecountInputs({
   const count = Math.max(1, Math.min(MAX_RETAINED_SUCCESSES, Math.floor(rate * seconds + 1e-9) + 1));
   const assumptions = [];
 
-  const scorch = delivery?.scorch?.active ? delivery.scorch : null;
   const recountAilments = [];
-  const canIgnite = Boolean(ignite && ignite.baseRange?.max > 0 && ignite.applicationChancePercent > 0);
-  if (canIgnite)
-    recountAilments.push(
-      igniteAilment({
-        ignite,
-        retention: normalized.retention,
-        count,
-        fullAfflictionScale: igniteFullAfflictionScale,
-        afflictionRating: igniteAfflictionRating,
-        afflictionPerPoint: igniteAfflictionPerPoint,
-        scorch,
-      }),
-    );
-  else if (scorch) {
-    // Scorch without a modeled Ignite: a damage-free chain carries its uptime.
-    recountAilments.push({
-      key: "scorch",
-      name: "Scorch",
-      stacking: "shared-timer",
-      silent: true,
-      chance: clampChance(scorch.applicationChancePercent),
-      notActiveChance: clampChance(scorch.applicationChancePercent),
-      duration: scorch.durationSeconds,
-      retainedBase: new Array(count + 1).fill(0),
-      retainedLimit: 0,
-      damagePerBase: 0,
-      scorchFraction: Array.from(
-        { length: count + 1 },
-        (_, n) =>
-          Math.min(Math.max(1, scorch.activeStacks || 1), n * Math.max(1, scorch.stacksPerApplication || 1)) /
-          Math.max(1, scorch.activeStacks || 1),
-      ),
-    });
-  }
   for (const ailment of ailments || [])
     if (ailment?.modeled)
       recountAilments.push(
@@ -340,41 +215,11 @@ export function collectDummyRecountInputs({
     });
   }
 
-  let hits = null;
-  if (delivery?.applicable && nativeCycle && nativeCycle.castsPerSecond > 0) {
-    hits = {
-      perUse: ((nativeCycle.beam.min + nativeCycle.beam.max) / 2) * nativeCycle.criticalFactor,
-      explosion: ((nativeCycle.explosion.min + nativeCycle.explosion.max) / 2) * nativeCycle.criticalFactor,
-      cycleUses: nativeCycle.cycleUses,
-      residualDps: delivery.bardSourceDps ?? delivery.bardRelatedDps ?? 0,
-      // Same calibration as scorching-beam-delivery.js: hit damage is scaled from the 30% Fire Resistance dummy.
-      resistance: scorch
-        ? {
-            kind: "scorch",
-            chainKey: canIgnite ? "ignite" : "scorch",
-            baseScale: fireFactor(scorch.baseResistancePercent) / fireFactor(30),
-            activeScale: fireFactor(scorch.activeResistancePercent) / fireFactor(30),
-          }
-        : { kind: "fixed", scale: delivery.targetResistanceScale ?? 1 },
-    };
-  } else if (nativeCycle) {
-    assumptions.push({
-      id: "beamHits",
-      value: "none",
-      text: "Beam hits are left out: the dummy delivery calibration only covers Selena's Scorching Beam (same as today's 5 s / 20 s figures).",
-    });
-  }
-
   const reaping = [];
   if (multiReaping) {
     const settleAffliction = Object.fromEntries(
       recountAilments.map((ailment) => [ailment.key, ailment.fullAfflictionScale ?? 1]),
     );
-    // A full-Affliction Reap settles Ignite with the max-Affliction resistance reduction in full, as on the Ignite-only
-    // path (theoretical-sources.js fullAfflictionResistanceScale; research/damage-path-switch-2026-10-12.md fix B).
-    const igniteFullResistance = canIgnite
-      ? (igniteReaping?.sources?.find((source) => source.trigger === "full Affliction")?.settledResistanceScale ?? null)
-      : null;
     multiReaping.sources.forEach((source, index) => {
       const full = source.trigger === "full Affliction";
       // A max-channeled-stacks Reap (skill built-in) fires while the DoT is active at its steady interval
@@ -401,7 +246,6 @@ export function collectDummyRecountInputs({
             dot.key,
             {
               affliction: full ? (settleAffliction[dot.key] ?? 1) : null,
-              resistance: full && dot.key === "ignite" ? igniteFullResistance : null,
               trueDamage: dot.trueDamageScale ?? 1,
             },
           ]),
@@ -413,35 +257,6 @@ export function collectDummyRecountInputs({
         id: "fullAfflictionRefill",
         value: 100,
         text: "Multi-source full-Affliction Reaps wait for a full 100-point refill; the source's Affliction removal % is not used (parity with reaping-model.js).",
-      });
-  } else if (igniteReaping && canIgnite) {
-    igniteReaping.sources.forEach((source, index) => {
-      const full = source.trigger === "full Affliction";
-      reaping.push({
-        key: `reap:${index}`,
-        source: source.source,
-        trigger: source.trigger,
-        recoverySeconds: source.minimum.recoverySeconds,
-        floorSeconds: 0,
-        afflictionRemovedPercent: source.afflictionRemovedPercent ?? 100,
-        seconds: { ignite: source.minimum.effectiveDurationSeconds },
-        // A full-Affliction Reap settles at 100 rating and with the max-Affliction resistance reduction in full.
-        settle: {
-          ignite: full
-            ? {
-                affliction: source.settledAfflictionScale ?? 1,
-                resistance: source.settledResistanceScale ?? 1,
-                trueDamage: source.trueDamageScale ?? 1,
-              }
-            : { affliction: null, resistance: null, trueDamage: source.trueDamageScale ?? 1 },
-        },
-      });
-    });
-    if (igniteReaping.sources.length)
-      assumptions.push({
-        id: "reapTickFloor",
-        value: "multi-source only",
-        text: "The 1/30 s Reap floor applies to multi-source Reaping only (parity with today's Ignite Reaping).",
       });
   }
 
@@ -521,7 +336,6 @@ export function collectDummyRecountInputs({
     rate,
     // Opening cast of the use schedule (packages/engine/src/skills/skill-hit-model.js rate.firstUseSeconds); null keeps uses at u / rate.
     ...(Number.isFinite(firstUseSeconds) && firstUseSeconds >= 0 ? { firstUseSeconds } : {}),
-    hits,
     skillHits: hitSources,
     scheduledHits: scheduled,
     timedDotLayers: timed.map((layer) => ({

@@ -352,16 +352,14 @@ export function alreadyCountedBy(line, { heroMemories = { lines: [] } } = {}) {
   }
 }
 
-// Classify a build's flattened modifier lines for the Scorching Beam hit ledger and the DoT ledger.
+// Classify a build's flattened modifier lines for the DoT ledger (the skill-hit engine reads its own lines).
 // `skip(line)` excludes lines another mechanic already read (build-mechanics' recognized map).
 // Returns applied lines (with the route), lines another path counts, and parsed lines that cannot
 // reach the dummy from this build (left for the coverage layer to label).
-// `dealtTypes`: damage types the build deals (Fire always, as before: the beam and Ignite path). An applied
+// `dealtTypes`: damage types the build deals (Fire always: the Ignite ledger). An applied
 // penetration line carries `penetrationTypes`, its types among them (Erosion for Wilt / Erosion skill DoTs).
 export function collectGenericDamageLines({
   modifierTexts = [],
-  hitSkill = null,
-  hitActive = false,
   dotMain = null,
   heroMemories,
   skip = () => false,
@@ -370,8 +368,7 @@ export function collectGenericDamageLines({
   const applied = [],
     alreadyCounted = [],
     inactive = [];
-  const hitTags = new Set(hitSkill?.tags || []);
-  const dotTags = new Set(dotMain?.tags || hitSkill?.tags || []);
+  const dotTags = new Set(dotMain?.tags || []);
   for (const line of modifierTexts) {
     if (line.origin === "derived" || skip(line)) continue;
     const parsed = classifyDamageLine(line.text);
@@ -382,30 +379,28 @@ export function collectGenericDamageLines({
       continue;
     }
     const value = parsed.value * (line.multiplier ?? 1);
-    // Armour penetration is read by the skill-hit and Minion engines; the beam's dummy armour sits inside its calibrated
-    // 49% packet coefficient (packages/engine/src/combat/target-hit-mitigation.js calibratedBeamTargetFactors), which does not take it yet (open).
+    // Armour penetration is read by the skill-hit and Minion engines (the dummy has no armour against damage over time).
     if (parsed.kind === "armourPenetration") {
       inactive.push({
         origin: line.origin,
         source: line.source,
         text: line.text,
-        reason: "armour penetration is read by the skill-hit and Minion engines, not the beam / DoT ledgers",
+        reason: "armour penetration is read by the skill-hit and Minion engines, not the DoT ledgers",
       });
       continue;
     }
-    const hitRoute = routeDamageLine(parsed, { skillTags: hitTags, damageType: "Fire", hitActive });
     // The DoT ledger follows the resolved main skill's tags (Area); its Fire-only entries are
     // filtered out again for Physical / Erosion ailments by packages/engine/src/ailments/ailment-shared.js.
     const dotRoute = routeDamageLine(parsed, { skillTags: dotTags, damageType: "Fire", hitActive: false });
-    const route = { hit: hitRoute.hit, dot: dotRoute.dot, penetration: hitRoute.penetration };
+    const route = { dot: dotRoute.dot, penetration: dotRoute.penetration };
     if (parsed.kind === "penetration" && !parsed.minion)
       route.penetrationTypes = [...parsed.damageTypes].filter((type) => type === "Fire" || dealtTypes.includes(type));
-    if (!route.hit && !route.dot && !route.penetration && !route.penetrationTypes?.length) {
+    if (!route.dot && !route.penetration && !route.penetrationTypes?.length) {
       inactive.push({
         origin: line.origin,
         source: line.source,
         text: line.text,
-        reason: dotRoute.reason || hitRoute.reason,
+        reason: dotRoute.reason,
       });
       continue;
     }

@@ -70,26 +70,14 @@ const DEFENSIVE_ONLY_SKILLS = new Map([
 //   activation — an Activation Medium's selected lines (specialConfig.lines).
 //
 // Statuses ("In calc", "Not modeled", "No DPS effect", "Not on dummy", "Inactive", "Provisional") describe whether the
-// engine that computes this setup reads the clause after chunk 1. Engines: "scorching-beam" (the calibrated beam path
-// plus packages/engine/src/build-mechanics.js), "skill-hit", "skill-dot", "minion"; anything else reads no support clause.
+// engine that computes this setup reads the clause after chunk 1. Engines: "skill-hit", "skill-dot", "minion"; anything
+// else reads no support clause.
 
 const N = "([+-]?\\d+(?:\\.\\d+)?)";
 const TYPES = ["Physical", "Fire", "Cold", "Lightning", "Erosion"];
 const ELEMENTAL = ["Fire", "Cold", "Lightning"];
 const num = (value) => Number(String(value).replace("−", "-"));
 const round = (value) => Math.round(value * 10000) / 10000;
-
-// Supports the calibrated Scorching Beam path models in dedicated modules (packages/engine/src/build-mechanics.js separatelyModeledSupports).
-export const SCORCHING_BEAM_DEDICATED_SUPPORTS = new Set([
-  "Control Spell",
-  "Guard",
-  "Refracted Prism",
-  "Additional Ignite",
-  "Scorching Beam: Disintegrate (Noble)",
-  "Fire Explosion",
-  "Added Fire Damage",
-  "Cataclysm",
-]);
 
 // Critical Strike Rating Increase: "+135% Critical Strike Rating for the supported skill" at Lv.1, +5% per support level
 // with no cap (TLIDB Support_Skill: Lv1 +135%, Lv21 +235%, Lv41 +335%; the progression table's Lv.40 +330% agrees). The
@@ -1021,8 +1009,6 @@ function supportClauses(setup, support, ctx) {
 function clauseStatus(clause, support, ctx) {
   const engine = ctx.engine;
   const name = support.name;
-  const beam = engine === "scorching-beam";
-  const dedicated = beam && SCORCHING_BEAM_DEDICATED_SUPPORTS.has(name);
   const attack = ctx.speedType === "attack-speed";
   const types = ctx.dealtTypes || [];
   const tags = ctx.tags || new Set();
@@ -1058,7 +1044,7 @@ function clauseStatus(clause, support, ctx) {
           ["planner"],
         )
       : s("Inactive", "the supported skill is not a Curse");
-  if (!["scorching-beam", "skill-hit", "skill-dot", "minion"].includes(engine))
+  if (!["skill-hit", "skill-dot", "minion"].includes(engine))
     return s("Not modeled", "the setup's own damage has no engine that reads support clauses");
   // Residual (C) wordings with no dummy-damage effect (packages/engine/src/text/line-families.js; residual batch 2026-10-12 §6).
   const residual = residualNonDamageStatus(clause.text);
@@ -1080,24 +1066,6 @@ function clauseStatus(clause, support, ctx) {
   }
   switch (clause.family) {
     case "additional": {
-      if (beam) {
-        if (dedicated) return s("In calc", "dedicated Scorching Beam model", ["scorching-beam"]);
-        if (clause.typed) {
-          if (["Fire", "Elemental"].includes(clause.typed))
-            return s(
-              "In calc",
-              "Scorching Beam hits and its Ignite (typed line on the supported skill's own ailment: provisional, Q9)",
-              ["scorching-beam", "ignite"],
-            );
-          if (hitTypedApplies(clause.typed, ["Fire"], tags))
-            return s("In calc", "Scorching Beam hits (hit-scoped; never Ignite)", ["scorching-beam"]);
-          return s("Inactive", "does not reach Scorching Beam's Fire hits");
-        }
-        return s("In calc", "Scorching Beam hits and Ignite (packages/engine/src/build-mechanics.js)", [
-          "scorching-beam",
-          "ignite",
-        ]);
-      }
       if (engine === "skill-hit") {
         if (!clause.typed) return s("In calc", "skill hits", ["skill-hit"]);
         if (hitTypedApplies(clause.typed, types, tags)) return s("In calc", "skill hits", ["skill-hit"]);
@@ -1174,12 +1142,10 @@ function clauseStatus(clause, support, ctx) {
       return s("No DPS effect", "describes the buff the damage line counts");
     case "increased":
       if (engine === "skill-hit" || engine === "skill-dot") return s("In calc", "increased damage layer", [engine]);
-      return s("Not modeled", "not read on the Scorching Beam path");
+      return s("Not modeled", "read on skill hits and skill DoTs only");
     case "critOnlyAdditional":
       if (engine === "skill-dot") return s("No DPS effect", "damage over time never crits (manual: Damage Over Time)");
-      return s("In calc", beam ? "beam hit crit branch only (never Ignite)" : "crit share of the skill's hits", [
-        beam ? "scorching-beam crit" : "skill-hit crit",
-      ]);
+      return s("In calc", "crit share of the skill's hits", ["skill-hit crit"]);
     case "perStack":
       if (clause.stackSource === "focusBlessing") {
         if (engine === "minion") break;
@@ -1189,17 +1155,10 @@ function clauseStatus(clause, support, ctx) {
             ? s("In calc", `× ${clause.stacks} Focus Blessing stacks (blessing model)`, [engine])
             : s("Inactive", "the build gains no Focus Blessing stacks");
       }
-      if (clause.stackSource === "channel")
-        return beam
-          ? s("In calc", "per channeled stack at full channel (packages/engine/src/build-mechanics.js)", [
-              "scorching-beam",
-            ])
-          : s("Not modeled", "per-channeled-stack roll is read on the Scorching Beam path only");
-      if (beam && dedicated) return s("In calc", "dedicated Ignite model", ["ignite"]);
-      return s("Not modeled", "Ignite stack scaling is modeled for Scorching Beam only");
+      if (clause.stackSource === "channel") return s("Not modeled", "no per-channeled-stack roll is read yet");
+      return s("Not modeled", "Ignite stack scaling is not modeled");
     case "dotAdditional":
       if (engine === "skill-dot") return s("In calc", "the skill's damage over time", ["skill-dot"]);
-      if (beam) return s("In calc", "Scorching Beam's Ignite (and its other ailments); provisional (Q10)", ["ignite"]);
       return s(
         "In calc",
         "the skill's own ailments (packages/engine/src/ailments/ailment-applications.js); provisional",
@@ -1209,24 +1168,12 @@ function clauseStatus(clause, support, ctx) {
       if (clause.ailment === "deterioration")
         return s("Not modeled", "Deterioration (TLIDB: a debuff settled as True Damage) has no model");
       if (engine === "skill-dot") return s("No DPS effect", "the skill's own damage over time is not an ailment");
-      if (beam && dedicated) return s("In calc", "dedicated Ignite model", ["ignite"]);
-      if (beam)
-        return ["ailment", "ignite"].includes(clause.ailment)
-          ? s("In calc", "Scorching Beam's Ignite", ["ignite"])
-          : s(
-              "Not modeled",
-              `the Scorching Beam path cannot scope a ${clause.ailment} line to its own ${clause.ailment} yet`,
-            );
       return s("In calc", "the skill's own ailments (packages/engine/src/ailments/ailment-applications.js)", [
         "ailment-applications",
       ]);
     case "added":
       if (engine === "skill-dot")
         return s("No DPS effect", "added damage does not affect damage over time (manual: Damage Over Time)");
-      if (beam)
-        return dedicated
-          ? s("In calc", "Scorching Beam added Fire model", ["scorching-beam"])
-          : s("Not modeled", "added damage on the Scorching Beam path is read only for Added Fire Damage");
       return s("In calc", "added flat damage on the skill's hits", ["skill-hit"]);
     case "speed":
       if (engine === "skill-hit") {
@@ -1341,7 +1288,6 @@ function clauseStatus(clause, support, ctx) {
         "ailment-applications",
       ]);
     case "ailmentExtraStacks":
-      if (beam && dedicated) return s("In calc", "dedicated Ignite model", ["ignite"]);
       if (engine === "skill-dot") return s("Inactive", "the skill deals no hits, so it applies no hit ailment");
       if (clause.ailment === "wilt")
         return s(
@@ -1349,17 +1295,11 @@ function clauseStatus(clause, support, ctx) {
           "extra Wilt stacks on this skill's applications (packages/engine/src/ailments/ailment-applications.js)",
           ["ailment-applications"],
         );
-      return s(
-        "Not modeled",
-        "extra stacks are modeled for Wilt (independent stacks) and Scorching Beam's Additional Ignite only",
-      );
+      return s("Not modeled", "extra stacks are modeled for Wilt (independent stacks) only");
     case "ailmentBase":
       if (engine === "skill-dot") return s("Inactive", "the skill deals no hits, so it applies no hit ailment");
       if (clause.ailment === "ignite" && !ctx.isMain)
-        return s(
-          "Not modeled",
-          "a non-main skill's Ignite uses the Ignite ledger's base (success-equivalent to Scorching Beam's)",
-        );
+        return s("Not modeled", "a non-main skill's Ignite uses the Ignite ledger's base");
       return s("In calc", "base on this skill's own applications (B8)", ["ailment-applications"]);
     case "ailmentBlock":
       return s("In calc", '"cannot inflict" block (packages/engine/src/ailments/ailment-applications.js)', [
@@ -1382,17 +1322,11 @@ function clauseStatus(clause, support, ctx) {
           : s("Inactive", `does not reach this skill's ${types.join("/") || "hits"}`);
       return s("Not modeled", "read on skill hits and skill DoTs only");
     case "affliction":
-      return engine === "skill-dot" || (beam && dedicated)
+      return engine === "skill-dot"
         ? s("In calc", "Affliction", [engine])
-        : s("Not modeled", "Cataclysm is read for skill DoTs and Scorching Beam only");
+        : s("Not modeled", "Cataclysm is read for skill DoTs only");
     case "channelTransform":
-      return beam
-        ? s(
-            "Provisional",
-            "the channel is held at full stacks, so it gains no stacks and generates no explosions in the steady state",
-            ["scorching-beam"],
-          )
-        : s("Not modeled", "read on the Scorching Beam path only");
+      return s("Not modeled", "a channel transform has no model");
     case "trigger": {
       const notHit = engine !== "skill-hit";
       switch (clause.kind) {
@@ -1651,12 +1585,13 @@ function clauseStatus(clause, support, ctx) {
         ? s("Provisional", "additional Reaping Recovery Speed per added Beam on the max-stack Reap", ["reaping"])
         : s("Not modeled", "read for the main skill's built-in max-stack Reap only");
     case "beams":
-      // Scorching Beam (packages/engine/src/skills/scorching-beam-base-hit.js scorchingBeamShotgunFactor; Scattershot Beam run 2026-10-12).
-      if (beam)
+      // A profile whose Beams can hit the same enemy (Scorching Beam: packages/engine/src/skills/skill-hit-model.js beamVolley;
+      // Scattershot Beam run 2026-10-12).
+      if (engine === "skill-hit" && ctx.profile?.beamVolley)
         return s(
           "Provisional",
-          "every Beam hits the dummy, beam ticks and explosions, after the first at the skill's 70% Shotgun falloff (linear reading)",
-          ["scorching-beam"],
+          "every Beam hits the dummy, beam ticks and explosions, after the first at the skill's Shotgun falloff (linear reading)",
+          ["skill-hit"],
         );
       return s("No DPS effect", "extra Beams do not hit one dummy more than once (they count for Rapid Completion)");
     case "tags":
@@ -1780,7 +1715,7 @@ export function projectileQuantityFalloff(skillName) {
  */
 export function resolveSupportEffects(setup, ctx = {}) {
   const profile = ctx.profile || null;
-  const engine = ctx.engine ?? profile?.engine ?? (setup?.name === "Scorching Beam" ? "scorching-beam" : null);
+  const engine = ctx.engine ?? profile?.engine ?? null;
   const tags = new Set([...(ctx.tags || profile?.tags || setup?.tags || []), ...(profile?.lineScopeTags || [])]);
   const full = {
     ...ctx,
@@ -2114,17 +2049,6 @@ export function resolveSupportEffects(setup, ctx = {}) {
 
 // Census engines: one synthetic context per engine a support can be installed on (research/support-batch-2026-10-12.md §6.2).
 const CENSUS_ENGINES = [
-  [
-    "scorching-beam",
-    {
-      engine: "scorching-beam",
-      isMain: true,
-      dealtTypes: ["Fire"],
-      damageType: "Fire",
-      tags: new Set(["Spell", "Fire", "Channeled", "Beam", "Area"]),
-      channeled: true,
-    },
-  ],
   [
     "skill-hit (spell)",
     {

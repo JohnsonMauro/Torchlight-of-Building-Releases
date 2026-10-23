@@ -31,7 +31,6 @@ export function statSheetModel(planner, selectedKey) {
     options.find((setup) => modeledNames.has(setup.name)) ||
     options[0];
   const active = Boolean(skill && planner.activation.activeNames.has(skill.name));
-  const beam = active && skill?.name === "Scorching Beam";
   // A main skill whose own damage over time is modeled (packages/engine/src/skills/skill-dot-model.js, e.g. Wilting Beam).
   const skillDot = active
     ? (planner.skillDots || []).find((dot) => dot.setupKey === skill?.setupKey && dot.modeled) || null
@@ -44,32 +43,9 @@ export function statSheetModel(planner, selectedKey) {
   const minion = active
     ? (planner.minions || []).find((item) => item.modeled && item.setupKeys.includes(skill?.setupKey)) || null
     : null;
-  const cycle = beam ? planner.nativeHitCycle : null;
-  const ignite = beam ? planner.theoretical?.combat?.expectedActiveIgnite : null;
-  const reapingDps = beam ? planner.combatProjection?.reapingDps || 0 : 0;
-  // "Total modeled DPS": one definition on both paths (research/damage-path-switch-2026-10-12.md §4): the sustained hit
-  // figure plus every DoT and Reaping as dealt to the target (mitigated), as damagePaths.sustained sums it.
-  const totalDps = cycle
-    ? sustainedModeledDps({ hitDps: cycle.expectedDps, dotDps: ignite?.expectedDps || 0, reapingDps })
-    : null;
-  // The same sum by recount source key, for the recount card's click-to-exclude (src/app/stats/dummy-recount-panel.js).
-  const totalParts = cycle
-    ? { beam: cycle.expectedDps, ignite: ignite?.expectedDps || 0, reaping: reapingDps }
-    : undefined;
-  const dummyDps =
-    beam && planner.recountOpening?.seconds === 20 && (planner.beamDelivery || planner.bardDelivery)?.applicable
-      ? planner.recountOpening.totalDpsApproximation
-      : null;
-  const dummyFiveSecondDamage =
-    beam && planner.recountFiveSeconds?.seconds === 5 && (planner.beamDelivery || planner.bardDelivery)?.applicable
-      ? planner.recountFiveSeconds.totalDpsApproximation * 5
-      : null;
-  // Builds with Trauma or Wilt use the combined damage paths (all ailments and
-  // independent Reaping sources); Ignite-only builds keep the calibrated recount.
-  const paths = beam || skillDot || skillHit || minion ? planner.damagePaths : null;
-  const pathDummyDps = paths ? paths.twentySeconds.totalDps : dummyDps;
-  const pathFiveSecondDamage = paths ? paths.fiveSeconds.totalDamage : dummyFiveSecondDamage;
-  const dummyFiveSecondEquivalentFromTwentySecondDps = pathDummyDps === null ? null : pathDummyDps * 5;
+  // The build's damage paths (every modeled hit, DoT, Reaping source and Minion) back the stat sheet's figures when the
+  // picked skill is one the planner models.
+  const paths = skillDot || skillHit || minion ? planner.damagePaths : null;
   const stats = skill?.databaseLevel20 || {};
   const cards = [];
   // `tab` places the card in the Character stats panel (src/app/stats/stat-sheet-panel.js): offense (default),
@@ -134,7 +110,7 @@ export function statSheetModel(planner, selectedKey) {
       "skill",
     );
   }
-  if (beam || skillDot || skillHit) {
+  if (skillDot || skillHit) {
     if (skillHit) {
       const primary = skillHit.primary;
       card("Use rate", [
@@ -174,89 +150,10 @@ export function statSheetModel(planner, selectedKey) {
         { label: `${skillDot.name} damage per second · Lv.${skillDot.level}`, value: skillDot.base.max },
         { label: "Status duration", value: skillDot.durationSeconds, suffix: "s" },
       ]);
-    if (beam)
-      card(
-        "Hit rate",
-        [
-          ["Uses per second", number(planner.beamCastRate?.castsPerSecond)],
-          ["Explosion interval", cycle?.explosionRate ? `${(1 / cycle.explosionRate).toFixed(2)}s` : null],
-          ["Beam hits per cycle", cycle?.cycleUses],
-        ].map(([label, value]) => ({ label, value })),
-      );
-    if (beam)
-      card("Critical strikes", [
-        { label: "Crit chance", value: number(planner.beamCritical?.criticalChancePercent), suffix: "%" },
-        { label: "Crit multiplier", value: number(planner.beamCritical?.criticalDamagePercent), suffix: "%" },
-      ]);
-    if (beam)
-      card("Fire hit", [
-        { label: "Beam packet", value: cycle ? `${cycle.beam.min.toFixed(1)}–${cycle.beam.max.toFixed(1)}` : null },
-        {
-          label: "Explosion packet",
-          value: cycle ? `${cycle.explosion.min.toFixed(1)}–${cycle.explosion.max.toFixed(1)}` : null,
-        },
-        {
-          label: "Added Fire",
-          value: planner.beamAddedDamage
-            ? `${planner.beamAddedDamage.raw.min}–${planner.beamAddedDamage.raw.max}`
-            : null,
-        },
-      ]);
-    if (beam)
-      card(
-        planner.firesAllure?.active ? "Scorch · Fire's Allure" : "Ignite",
-        [
-          {
-            label: "Application chance",
-            value: number(planner.theoretical?.totals?.applicationChancePercent),
-            suffix: "%",
-          },
-          { label: "Duration", value: number(planner.theoretical?.totals?.igniteDurationSeconds), suffix: "s" },
-          { label: "Active stack limit", value: number(planner.igniteLimit) },
-          {
-            label: "Sustained DPS",
-            value: planner.theoretical?.combat?.sustained?.sustainedDps
-              ? `${planner.theoretical.combat.sustained.sustainedDps.min.toFixed(0)}–${planner.theoretical.combat.sustained.sustainedDps.max.toFixed(0)}`
-              : null,
-          },
-        ],
-        "dot",
-      );
-    if (beam)
-      card(
-        "Ignite stack limit",
-        (planner.theoretical?.ledger || [])
-          .filter((line) => line.category === "Active Ignite limit")
-          .map((line) => ({ label: line.source, value: line.value }))
-          .concat([{ label: "Maximum active Ignite stacks", value: number(planner.igniteLimit) }]),
-        "dot",
-      );
-    const additionalStacks = planner.theoretical?.totals?.additionalInflictedStacks;
-    if (beam)
-      card(
-        "Ignite stacks inflicted",
-        [
-          { label: "Base stacks per successful application", value: 1 },
-          ...(planner.theoretical?.ledger || [])
-            .filter((line) => line.category === "Additional Ignite stacks inflicted")
-            .map((line) => ({ label: line.source, value: line.value })),
-          { label: "Additional stacks inflicted", value: number(additionalStacks) },
-          {
-            label: "Total stacks per successful application",
-            value: additionalStacks == null ? null : 1 + additionalStacks,
-          },
-        ],
-        "dot",
-      );
     if (paths) {
       card(
         "Damage paths · 20-second average",
         [
-          ...(beam
-            ? [{ label: "Scorching Beam hits", value: paths.twentySeconds.beamDps }]
-            : (paths.twentySeconds.hits || []).length
-              ? []
-              : [{ label: "Hits (no hit model for this skill)", value: paths.twentySeconds.beamDps }]),
           ...(paths.twentySeconds.hits || []).map((hit) => ({ label: hit.name, value: hit.dps })),
           ...paths.twentySeconds.dots.map((dot) => ({ label: dot.name, value: dot.dps })),
           ...paths.twentySeconds.reaping.sources.map((source) => ({
@@ -330,44 +227,6 @@ export function statSheetModel(planner, selectedKey) {
           "dot",
         );
     }
-    const reaping = paths ? null : planner.theoretical?.combat?.reaping;
-    if (!paths && hasActiveReaping(planner))
-      card(
-        "Reaping",
-        [
-          { label: "Reaping source", value: Boolean(reaping), indicator: true },
-          {
-            label: "Modeled Reaping DPS",
-            value: reaping ? `${reaping.minimum.reapingDps.toFixed(0)}–${reaping.maximum.reapingDps.toFixed(0)}` : null,
-          },
-          ...(reaping?.sources.flatMap((source) => [
-            { label: `${source.source} · trigger`, value: source.trigger },
-            {
-              label: `${source.source} · successful Ignites/s`,
-              value: Number.isFinite(source.successfulApplicationsPerSecond)
-                ? source.successfulApplicationsPerSecond
-                : null,
-            },
-            {
-              label: `${source.source} · between Reaps`,
-              value: Number.isFinite(source.minimum.triggerIntervalSeconds)
-                ? `${source.minimum.triggerIntervalSeconds}s`
-                : "Depends on application rate",
-            },
-            { label: `${source.source} · recovery`, value: `${source.minimum.recoverySeconds}s` },
-            { label: `${source.source} · duration`, value: `${source.minimum.effectiveDurationSeconds}s` },
-            {
-              label: `${source.source} · DPS`,
-              value: Number.isFinite(source.minimum.triggerIntervalSeconds)
-                ? `${source.minimum.reapingDps.toFixed(0)}–${source.maximum.reapingDps.toFixed(0)}`
-                : "Not modeled",
-            },
-          ]) || []),
-          { label: "Recovery speed", value: number(reaping?.recoverySpeedPercent), suffix: "%" },
-          { label: "Duration bonus", value: number(reaping?.durationBonusPercent), suffix: "%" },
-        ],
-        "dot",
-      );
   } else if (skill) {
     card(
       "Skill effects",
@@ -742,21 +601,17 @@ export function statSheetModel(planner, selectedKey) {
     options,
     skill,
     active,
-    beam,
-    paths,
     statTotals,
     ehp,
+    // "Total modeled DPS" (research/damage-path-switch-2026-10-12.md §4): the sustained hit figure plus every DoT and
+    // Reaping as dealt to the target (mitigated), as damagePaths.sustained sums it, and Ill Omen.
     totalDps: paths
       ? sustainedModeledDps({
-          hitDps: paths.sustained.beamDps + paths.sustained.hits.reduce((sum, hit) => sum + hit.dps, 0),
+          hitDps: paths.sustained.hits.reduce((sum, hit) => sum + hit.dps, 0),
           dotDps: paths.sustained.dots.reduce((sum, dot) => sum + dot.dps, 0),
           reapingDps: paths.sustained.reaping.reapingDps,
         }) + (paths.sustained.illOmen?.dps || 0)
-      : totalDps,
-    totalParts: paths ? undefined : totalParts,
-    dummyDps: pathDummyDps,
-    dummyFiveSecondDamage: pathFiveSecondDamage,
-    dummyFiveSecondEquivalentFromTwentySecondDps,
+      : null,
     cards,
     defense,
   };

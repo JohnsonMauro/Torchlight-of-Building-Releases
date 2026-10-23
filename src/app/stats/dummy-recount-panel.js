@@ -109,14 +109,13 @@ export function recountSourceShares(recount, { excluded = [] } = {}) {
 }
 
 /**
- * Total modeled DPS less the excluded sources' part (and their Ill Omen part); null stays null. `parts` is the
- * total by recount source key (see excludedSteadyDps); without it the recount's steady state, which is the
- * same per-source sum on the damage-path builds.
+ * Total modeled DPS less the excluded sources' part (and their Ill Omen part), read from the recount's steady state,
+ * which is the same per-source sum as the damage paths; null stays null.
  * @param {object | null | undefined} recount planner.dummyRecount
  * @param {number | null} totalDps
- * @param {{ excluded?: Iterable<string>, parts?: Record<string, number> }} [options]
+ * @param {{ excluded?: Iterable<string> }} [options]
  */
-export function recountTotalModeledDps(recount, totalDps, { excluded = excludedSources, parts } = {}) {
+export function recountTotalModeledDps(recount, totalDps, { excluded = excludedSources } = {}) {
   if (!Number.isFinite(totalDps)) return totalDps ?? null;
-  return totalDps - excludedSteadyDps(recount, excluded, { parts });
+  return totalDps - excludedSteadyDps(recount, excluded);
 }

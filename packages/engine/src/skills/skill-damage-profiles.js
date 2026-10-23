@@ -1,5 +1,4 @@
 import { skillProgression } from "../../data/skills/skill-progression.generated.js";
-import { scorchingBeam } from "../../data/skills/scorching-beam.js";
 import { allSkillEffects } from "../../data/skills/all-skill-effects.generated.js";
 import { SKILL_HIT_PROFILES } from "./skill-hit-profiles.js";
 import { ATTACK_HIT_PROFILES } from "./attack-hit-profiles.js";
@@ -14,7 +13,8 @@ import { VENDETTA_PROFILES } from "../heroes/vendetta-model.js";
 //
 // Every enabled setup whose text deals damage gets a profile ({ kind, damageType, delivery,
 // engine }). `engine` names the calculation that models it:
-//   "scorching-beam" — the calibrated Scorching Beam hit / Ignite path (packages/engine/src/planner.js).
+//   "skill-hit"      — a skill's own hits (packages/engine/src/skills/skill-hit-model.js; profiles in skill-hit-profiles.js
+//                      and attack-hit-profiles.js), Scorching Beam included.
 //   "skill-dot"      — a skill whose own damage is a damage-over-time status refreshed by
 //                      each use (packages/engine/src/skills/skill-dot-model.js): Wilting Beam.
 //   null             — the planner knows the skill deals damage but has no model for it; the
@@ -105,24 +105,6 @@ const WILTING_BEAM = Object.freeze({
   },
   canInflictHitAilments: false,
   sources: { tlidb: "https://tlidb.com/en/Wilting_Beam", gameData: "config_skill_damage group 431 (levels 1–20)" },
-});
-
-const SCORCHING_BEAM = Object.freeze({
-  name: "Scorching Beam",
-  kind: "hit",
-  engine: "scorching-beam",
-  damageType: "Fire",
-  spell: true,
-  tags: scorchingBeam.tags.map((tag) => tag[0].toUpperCase() + tag.slice(1)),
-  delivery: "channel-beam",
-  castIntervalSeconds: scorchingBeam.baseCastIntervalSeconds,
-  channeled: true,
-  beam: true,
-  maxChanneledStacks: scorchingBeam.baseMaxChanneledStacks,
-  hits: scorchingBeam.hits,
-  builtInReaping: null,
-  canInflictHitAilments: true,
-  sources: { tlidb: scorchingBeam.source, gameData: "config_skill_damage groups 461/462 (levels 1–20)" },
 });
 
 // Skill-DoT profiles built from a config_skill_damage DoT row (packages/engine/data/skills/skill-hit-damage.generated.js),
@@ -325,7 +307,6 @@ export const SKILL_DAMAGE_PROFILES = Object.freeze({
   ...SKILL_DOT_PROFILES,
   ...MINION_SKILL_PROFILES,
   ...VENDETTA_PROFILES,
-  "Scorching Beam": SCORCHING_BEAM,
   "Wilting Beam": WILTING_BEAM,
 });
 

@@ -1,6 +1,5 @@
 // The Stats view's stat sheet: the active skill picker with the report button, the skill's damage banner (the training
-// dummy recount with its sources that a click leaves out of the view, or the older 5 s / 20 s tiles, or "Damage not
-// modeled"), the Effective HP banner and the Character stats tabs, whose rows open to the lines behind them. The data is
+// dummy recount with its sources that a click leaves out of the view, or "Damage not modeled"), the Effective HP banner and the Character stats tabs, whose rows open to the lines behind them. The data is
 // the planner's "stats" source (src/app/bridge/stats-view-model.ts); the skill, the report and the recount sources are
 // planner commands. The banners' shared class lists are stat-sheet-classes.ts; each banner is a size container, so
 // its inside follows its own width.
@@ -62,8 +61,6 @@ const DRILL_TEXT = "mb-1 text-xs leading-snug";
 // A recount source in the bar or the legend: a click leaves it out of the view.
 const SOURCE_TOGGLE =
   "cursor-pointer focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-accent";
-// One of the older 5 s / 20 s tiles.
-const DPS_TILE = "grid content-start gap-1 rounded border border-line bg-raised p-2.5";
 
 const INCLUDED_HINT = "Click to leave this source out of the view";
 const EXCLUDED_HINT = "Click to include it again";
@@ -231,79 +228,43 @@ function RecountDetails({ recount }: { recount: RecountView }) {
   );
 }
 
-/** The text of a "Total modeled DPS" figure: in the recount's foot, or as one of the older tiles. */
-interface FigureLook {
-  label: string;
-  value: string;
-  note: string;
-}
-
-const SECONDARY: FigureLook = {
-  label: "text-xs font-bold tracking-wider text-muted uppercase",
-  value: "text-sm text-text tabular-nums",
-  note: "basis-full text-xs leading-snug text-dim",
-};
-
-const TILE: FigureLook = {
-  label: "text-xs font-bold tracking-wide text-text uppercase",
-  value: "text-2xl text-accent-strong tabular-nums",
-  note: "text-xs leading-snug text-muted",
-};
-
-function TotalModeled({ total, look }: { total: NumberText | null; look: FigureLook }) {
+// "Total modeled DPS" in the recount's foot.
+function TotalModeled({ total }: { total: NumberText | null }) {
+  const value = "text-sm text-text tabular-nums";
   return (
     <>
-      <span className={look.label}>Total modeled DPS</span>
+      <span className="text-xs font-bold tracking-wider text-muted uppercase">Total modeled DPS</span>
       {total === null ? (
-        <strong className={look.value}>—</strong>
+        <strong className={value}>—</strong>
       ) : (
-        <NumberToggle id="stat:totalModeledDps" text={total} className={look.value} />
+        <NumberToggle id="stat:totalModeledDps" text={total} className={value} />
       )}
-      <small className={look.note}>Theoretical source damage mix; this is not the level-85 dummy estimate.</small>
+      <small className="basis-full text-xs leading-snug text-dim">
+        Theoretical source damage mix; this is not the level-85 dummy estimate.
+      </small>
     </>
   );
 }
-
-const BANNER_TEXT = "text-xs leading-snug text-muted";
 
 function Damage({ damage }: { damage: StatDamageView }) {
   if (damage.kind === "not-modeled")
     return (
       <>
         <strong className="text-lg text-accent-strong">Damage not modeled</strong>
-        <span className={BANNER_TEXT}>
+        <span className="text-xs leading-snug text-muted">
           Known mechanics for this skill are shown below; its damage is not included in the planner total.
         </span>
       </>
     );
-  if (damage.kind === "recount")
-    return (
-      <>
-        <RecountPanel recount={damage.recount} />
-        <footer className={FOOT}>
-          <div className="dummy-recount-secondary flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-            <TotalModeled total={damage.totalModeled} look={SECONDARY} />
-          </div>
-          {damage.beamLine ? <span className="text-xs leading-snug text-dim">{damage.beamLine}</span> : null}
-          <RecountDetails recount={damage.recount} />
-        </footer>
-      </>
-    );
   return (
     <>
-      <div className="grid grid-cols-2 gap-2.5 @max-[500px]:grid-cols-1">
-        {damage.tiles.map((tile) => (
-          <div key={tile.label} className={DPS_TILE}>
-            <span className={TILE.label}>{tile.label}</span>
-            <strong className={TILE.value}>{tile.value}</strong>
-            <small className={TILE.note}>{tile.note}</small>
-          </div>
-        ))}
-        <div className={DPS_TILE}>
-          <TotalModeled total={damage.totalModeled} look={TILE} />
+      <RecountPanel recount={damage.recount} />
+      <footer className={FOOT}>
+        <div className="dummy-recount-secondary flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+          <TotalModeled total={damage.totalModeled} />
         </div>
-      </div>
-      <span className={BANNER_TEXT}>{damage.beamLine}</span>
+        <RecountDetails recount={damage.recount} />
+      </footer>
     </>
   );
 }

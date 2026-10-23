@@ -664,10 +664,10 @@ function selenaTideLineStatus(line, planner) {
     /^Tide ?'s area is no longer affected by Skill Area$/i.test(text)
   )
     return "No DPS effect";
-  // Bard Song channel: the planner's Bard residual is a measured stand-in, not a model of the song (packages/engine/src/skills/scorching-beam-delivery.js).
-  // User-stated 2026-10-13 (uncertain): Bard Song turns non-channeled skills into channeled ones; its interval and max stacks
-  // are unknown, so those skills keep their normal casts (planner.singWithTheTide.bardSong lists them).
-  if (/Bard Song/i.test(text)) return "Partly modeled";
+  // Bard Song channel: not modeled. User-stated 2026-10-13 (uncertain): Bard Song turns non-channeled skills into channeled
+  // ones; its interval and max stacks are unknown, so those skills keep their normal casts (planner.singWithTheTide.bardSong
+  // lists them).
+  if (/Bard Song/i.test(text)) return "Not modeled";
   if (/^The bubble leaves a Tide/i.test(text)) return held("tideContact");
   if (/^When contacting a Tide ?, gains the following Tide Effect/i.test(text)) return held("tideContact");
   if (/additional damage taken by enemies on the Tide$/i.test(text)) return held("onTheTide");

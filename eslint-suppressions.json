@@ -1,9 +1,4 @@
 {
-  "src/app/stats/damage-path-panel.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/app/stats/skill-hit-path.js": {
     "no-unused-vars": {
       "count": 1

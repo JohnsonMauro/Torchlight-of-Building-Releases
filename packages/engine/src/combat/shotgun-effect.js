@@ -9,7 +9,7 @@
 //   23; Whirlwind Blade 25). That is one rate for every repeat hit, not a compounding c^i.
 // - Observed: Chromatic Shot Lv16 on the Lv.85 dummy (research/residual-batch-2026-10-12.md §5.3). Close, 3 projectiles:
 //   1.70 hit-equivalents per cast (1 + 0.7). Close, 5 projectiles: 2.49 (≈ 1 + 0.7 × 2). About 10 m: 1.03 (one projectile).
-//   Scorching Beam + Scattershot (packages/engine/src/skills/scorching-beam-base-hit.js) already used this form.
+//   Scorching Beam's extra Beams (packages/engine/src/skills/skill-hit-model.js beamVolley) use the same form.
 // Before 2026-10-12 the projectile profiles summed c^i (Σ 0.7^i: 2.19 for 3 hits instead of 2.4).
 
 /** Total damage of `hits` effects of one skill on one target, relative to one hit. */

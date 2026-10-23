@@ -62,11 +62,6 @@ function namedCard(source) {
       `Hero memories: ${memory}\nEquipment: ${gear}\nModeled total: ${memory + gear} Intelligence\nOne additional damage factor: +${(memory + gear) * 0.5}%`,
     );
   }
-  if (source === "Slates: additional Max Damage")
-    return summary(
-      "Additional Max Damage",
-      "Raises the upper roll of Scorching Beam hits. The lower roll is unchanged. The equipped Fallen Starlight value already includes Judgment's increase; Prairie does not copy this affix. Ignite uses a separate base-damage attribute.",
-    );
   if (source.startsWith("Core talent: ")) {
     const name = source.slice("Core talent: ".length);
     const core = Object.values(allProfessionTalentCatalogue)

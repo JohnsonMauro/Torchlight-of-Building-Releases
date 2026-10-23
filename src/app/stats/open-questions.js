@@ -719,28 +719,6 @@ export const OPEN_QUESTIONS = Object.freeze([
       ctx.heroId === "selena-sing-with-the-tide" && (ctx.planner.singWithTheTide?.bardSong?.skills || []).length > 0,
   },
   {
-    id: "scorching-beam-bard-residual",
-    title: "Scorching Beam: Bard bubble share",
-    question:
-      "The Bard bubble part of Scorching Beam comes from a no-gear calibration, scaled to this build's Fire Resistance and Scorch uptime. Does it scale that way?",
-    evidence: "provisional",
-    current:
-      "Provisional: the measured Bard residual, with Fire Resistance scaled from the level-85 dummy calibration (30%) and Scorch uptime estimated from chance and duration.",
-    alternatives: [
-      {
-        reading: "The bubble scales differently with resistance and Scorch",
-        effect: "only the Bard-related part of the beam figure moves",
-      },
-    ],
-    test: "A Scorching Beam dummy run in Bard with Scorch on and off.",
-    source: "packages/engine/src/skills/scorching-beam-delivery.js; research/dummy-54s-gap-2026-10-09.md",
-    appliesWhen: (ctx) =>
-      ctx.heroId === "selena-sing-with-the-tide" &&
-      ctx.setupNames.has("Scorching Beam") &&
-      Boolean(ctx.planner.bardDelivery?.applicable) &&
-      Boolean(ctx.planner.bardDelivery?.extrapolatedConditions),
-  },
-  {
     id: "follower-affix-third-slot",
     title: "Tartarus Skill: what can the third support slot hold?",
     question:

@@ -2,9 +2,8 @@
 // evaluated by packages/engine/src/defense/attribute-formula.js). Read-only on the planner result: nothing here feeds calculatePlanner.
 //
 // panelInputs(planner) maps the planner's computed totals to the game's attribute references, for the build's main skill:
-//   - the main skill's own ledgers (Scorching Beam: directHit / beamCritical / beamCastRate / nativeHitCycle; other skills:
-//     planner.skillHits / planner.skillDots), the ailment ledgers (planner.ailments, planner.theoretical) and the Reaping
-//     and Affliction layers, each line placed on the game attribute its text names (5719 All Damage, 5107 Fire, 5108
+//   - the main skill's own ledgers (planner.skillHits / planner.skillDots), the ailment ledgers (planner.ailments,
+//     planner.theoretical) and the Reaping and Affliction layers, each line placed on the game attribute its text names (5719 All Damage, 5107 Fire, 5108
 //     Lightning, 5109 Cold, 5002 Physical, 5402 Erosion, 5727 Elemental) and aggregated the game's way: X = 1 + Σ%,
 //     E = Π(1 + %), plain = default (config_attributes) + flat;
 //   - planner.resistances for resistances and max resistances;
@@ -189,10 +188,8 @@ export function mainSkillContext(planner) {
   const tags = main.tags || [];
   const hit = (planner?.skillHits || []).find((item) => item.setupKey === key && item.modeled !== false) ?? null;
   const dot = (planner?.skillDots || []).find((item) => item.setupKey === key && item.modeled !== false) ?? null;
-  const beam = !hit && main.name === "Scorching Beam" && planner?.directHit ? planner : null;
   const attack = tags.includes("Attack");
-  const damageType =
-    hit?.damageType ?? dot?.damageType ?? (beam ? "Fire" : (TYPES.find((type) => tags.includes(type)) ?? null));
+  const damageType = hit?.damageType ?? dot?.damageType ?? TYPES.find((type) => tags.includes(type)) ?? null;
   const crit = hit?.crit ?? dot?.crit ?? planner?.beamCritical ?? null;
   const critPath = hit ? `skillHits[${hit.name}].crit` : dot ? `skillDots[${dot.name}].crit` : "beamCritical";
   return {
@@ -203,7 +200,6 @@ export function mainSkillContext(planner) {
     damageType,
     hit,
     dot,
-    beam: Boolean(beam),
     crit,
     critPath,
   };
@@ -249,14 +245,12 @@ export function panelInputs(planner) {
   // Penetration (5104 Fire, 5105 Lightning, 5106 Cold, 5414 Erosion) and armor penetration (F2006247).
   const hitPenetration = context.hit?.primary
     ? { [context.hit.primary.type]: context.hit.primary.penetrationPercent }
-    : context.beam
-      ? { Fire: planner.directHit?.penetrationPercent ?? 0 }
-      : context.dot
-        ? {
-            [context.dot.damageType]:
-              context.dot.shared?.penetrationPercent ?? context.dot.steps?.penetrationPercent ?? 0,
-          }
-        : {};
+    : context.dot
+      ? {
+          [context.dot.damageType]:
+            context.dot.shared?.penetrationPercent ?? context.dot.steps?.penetrationPercent ?? 0,
+        }
+      : {};
   for (const type of ["Fire", "Lightning", "Cold", "Erosion"])
     set(
       `A${PENETRATION[type]}`,
@@ -320,20 +314,7 @@ export function panelInputs(planner) {
   }
 
   // ---- Speed ----
-  if (context.beam && planner.beamCastRate) {
-    const rate = planner.beamCastRate;
-    set(
-      "A6002X",
-      1 + (rate.increasedPercent ?? 0) / 100,
-      "beamCastRate.increasedPercent (Aim included: live on the logged-in character's panel)",
-    );
-    set(
-      "A6002E",
-      (rate.ceaselessTideSpeedFactor ?? 1) * (1 + (rate.additionalPercent ?? 0) / 100),
-      "beamCastRate.ceaselessTideSpeedFactor × (1 + additionalPercent)",
-    );
-    set("userdefine:7", rate.castsPerSecond, "beamCastRate.castsPerSecond (casts per second; a Lua hook in game)");
-  } else if (context.hit?.rate) {
+  if (context.hit?.rate) {
     const rate = context.hit.rate;
     if (rate.speedType === "attack-speed" && rate.attackSpeed) {
       set(
@@ -383,42 +364,7 @@ export function panelInputs(planner) {
   );
 
   // ---- Hit damage (main skill) ----
-  if (context.beam) {
-    const lines = (planner.directHit?.ledger || []).map((line) => ({ ...line, value: line.percent }));
-    const kept = lines.filter((line) => line.bucket === "increased" || line.bucket === "additional");
-    for (const line of lines.filter((item) => item.bucket !== "increased" && item.bucket !== "additional"))
-      excluded.push({
-        context: "hit",
-        source: line.source,
-        value: line.value,
-        bucket: line.bucket,
-        reason: `${line.bucket} bucket: a roll layer, not an X / E aggregate`,
-      });
-    if (Number.isFinite(planner.directHit?.levelFactor) && planner.directHit.levelFactor !== 1)
-      kept.push({
-        source: "Skill level additional damage (directHit.levelFactor; the panel's Skill category)",
-        value: (planner.directHit.levelFactor - 1) * 100,
-        bucket: "additional",
-      });
-    setDamageContext(store, aggregateDamage(kept, excluded, "hit"), "", "directHit.ledger (town lines)");
-    const packets = planner.nativeHitCycle?.packets?.beam;
-    if (packets) {
-      for (const type of TYPES)
-        for (const end of ["min", "max"])
-          set(
-            `D${TYPE_ATTRIBUTES[type]}<${end}>`,
-            type === "Fire" ? packets[end] : 0,
-            `nativeHitCycle.packets.beam.${end} (the beam's base Fire damage)`,
-          );
-      for (const type of TYPES)
-        for (const end of ["min", "max"])
-          set(
-            `A${TYPE_ATTRIBUTES[type]}B#${TAGS.SPELL}<${end}>`,
-            type === "Fire" ? (planner.beamAddedDamage?.raw?.[end] ?? 0) : 0,
-            "beamAddedDamage.raw (added flat damage to Spells)",
-          );
-    }
-  } else if (context.hit?.primary) {
+  if (context.hit?.primary) {
     const primary = context.hit.primary;
     const lines = [...valueLines(primary.increased, "increased"), ...valueLines(primary.additional, "additional")];
     setDamageContext(
@@ -697,14 +643,14 @@ export const panelResolver = (inputs) => (ref) => inputs.values.get(ref.raw);
 export const PANEL_ROW_GROUPS = Object.freeze([
   { group: "Spell crit", when: (c) => !c.attack, ids: [21300, 21301, 21210, 21212, 21400] },
   { group: "Attack crit", when: (c) => c.attack, ids: [20600, 20602, 20502, 20506, 20700] },
-  { group: "Cast speed", when: (c) => !c.attack && Boolean(c.hit || c.beam), ids: [21000, 21001, 21002] },
+  { group: "Cast speed", when: (c) => !c.attack && Boolean(c.hit), ids: [21000, 21001, 21002] },
   { group: "Attack speed", when: (c) => c.attack, ids: [20300, 20302, 20303] },
-  { group: "Spell DPS", when: (c) => !c.attack && Boolean(c.hit || c.beam), ids: [10103] },
+  { group: "Spell DPS", when: (c) => !c.attack && Boolean(c.hit), ids: [10103] },
   { group: "Attack DPS", when: (c) => c.attack && Boolean(c.hit), ids: [10101, 10100] },
-  { group: "Damage chain (hit)", when: (c) => Boolean(c.hit || c.beam), ids: ["chain:hit"] },
+  { group: "Damage chain (hit)", when: (c) => Boolean(c.hit), ids: ["chain:hit"] },
   {
     group: "Damage bonus (hit)",
-    when: (c) => Boolean(c.hit || c.beam),
+    when: (c) => Boolean(c.hit),
     ids: [20212, 20229, 20214, 20215, 20216, 20217, 20218, 20231, 20232, 20233, 20234, 20235],
   },
   { group: "Damage bonus (DoT)", ids: [20213, 20230] },
@@ -768,30 +714,17 @@ export function plannerPanelValue(planner, id, context = mainSkillContext(planne
     case 20700:
       return val(crit?.townDamagePercent ?? crit?.criticalDamagePercent, `${context.critPath}.criticalDamagePercent`);
     case 21000:
-      return context.beam
-        ? val(planner.beamCastRate?.castsPerSecond, "beamCastRate.castsPerSecond")
-        : val(rate?.usesPerSecond, `skillHits[${hit?.name}].rate.usesPerSecond`);
+      return val(rate?.usesPerSecond, `skillHits[${hit?.name}].rate.usesPerSecond`);
     case 21001:
-      return context.beam
-        ? val(planner.beamCastRate?.increasedPercent, "beamCastRate.increasedPercent")
-        : val(
-            sum((rate?.castSpeedSources || []).filter((line) => !line.additional).map((line) => line.value)),
-            "Σ rate.castSpeedSources (increased)",
-          );
+      return val(
+        sum((rate?.castSpeedSources || []).filter((line) => !line.additional).map((line) => line.value)),
+        "Σ rate.castSpeedSources (increased)",
+      );
     case 21002:
-      return context.beam
-        ? val(
-            ((planner.beamCastRate?.ceaselessTideSpeedFactor ?? 1) *
-              (1 + (planner.beamCastRate?.additionalPercent ?? 0) / 100) -
-              1) *
-              100,
-            "beamCastRate additional",
-          )
-        : val(
-            (product((rate?.castSpeedSources || []).filter((line) => line.additional).map((line) => line.value)) - 1) *
-              100,
-            "Π rate.castSpeedSources (additional)",
-          );
+      return val(
+        (product((rate?.castSpeedSources || []).filter((line) => line.additional).map((line) => line.value)) - 1) * 100,
+        "Π rate.castSpeedSources (additional)",
+      );
     case 20300:
       return val(
         rate?.attackSpeed
@@ -811,22 +744,12 @@ export function plannerPanelValue(planner, id, context = mainSkillContext(planne
     case 10103:
       if (context.attack) return none("main skill is an attack");
       if (hit?.town) return val(hit.town.dps, `skillHits[${hit.name}].town.dps`);
-      return none(
-        context.beam
-          ? "not computed: the planner has no town Spell DPS for Scorching Beam (its beam DPS is a combat figure; scripts/compare-game-log.js)"
-          : "main skill deals no hits",
-      );
+      return none("main skill deals no hits");
     case 10101:
     case 10100:
       if (!context.attack) return none("main skill is a spell");
       return val(hit?.town?.dps, `skillHits[${hit?.name}].town.dps`);
     case 20212: {
-      if (context.beam) {
-        const town = (planner.directHit?.ledger || []).filter(
-          (line) => line.bucket === "increased" && !townExclusion({ ...line, text: line.text }),
-        );
-        return val(sum(town.map((line) => line.percent)), "directHit increased lines (town)");
-      }
       if (hit?.primary)
         return val(
           (hit.primary.increasedFactor - 1) * 100 -
@@ -836,20 +759,6 @@ export function plannerPanelValue(planner, id, context = mainSkillContext(planne
       return none("no hit ledger for the main skill");
     }
     case 20229: {
-      // scripts/compare-game-log.js townAdditional convention: town lines without the element-specific ones (they form the
-      // per-type rows) and without "applied to Life", × the skill level factor.
-      if (context.beam) {
-        const town = (planner.directHit?.ledger || []).filter(
-          (line) =>
-            line.bucket === "additional" &&
-            !townExclusion(line) &&
-            !/applied to Life|\b(?:Fire|Cold|Lightning|Erosion|Physical) Damage\b/i.test(line.source),
-        );
-        return val(
-          (product(town.map((line) => line.percent)) * (planner.directHit.levelFactor ?? 1) - 1) * 100,
-          "directHit additional lines (town, no typed lines) × levelFactor (scripts/compare-game-log.js townAdditional)",
-        );
-      }
       if (hit?.primary)
         return val(
           ((hit.primary.townAdditionalFactor ?? hit.primary.additionalFactor) - 1) * 100,
@@ -1039,7 +948,7 @@ function differenceReason(id, game, planner, inputs, plannerSide, plannerResult)
       out = left(name);
     const gameFactor = 1 + game / 100,
       plannerFactor = 1 + planner / 100;
-    const typed = context.beam && id === 20229 ? 1 : split.typedAdditional;
+    const typed = split.typedAdditional;
     const rebuilt = gameFactor * typed * out.additional;
     return `planner ×${fmtNumber(plannerFactor)} = game All Damage ×${fmtNumber(gameFactor)}${typed !== 1 ? ` × typed / Elemental additional ×${fmtNumber(typed)} (the game shows them in 20231-20235)` : ""}${out.additional !== 1 ? ` × lines the town panel leaves out ×${fmtNumber(out.additional)}` : ""} = ×${fmtNumber(rebuilt)}${Math.abs(rebuilt / plannerFactor - 1) > 0.005 ? " (residual: not explained by the split)" : ""}`;
   }
@@ -1135,24 +1044,13 @@ function chainOverrides(row) {
   return Object.fromEntries(refs.map((id, index) => [id, index === 0 ? 1 : 0]));
 }
 
-function plannerChain(planner, context, kind) {
+function plannerChain(context, kind) {
   if (kind === "dot") {
     const dot = context.dot;
     if (!dot?.sources) return { value: null, reason: "no DoT ledger" };
     return {
       value: (1 + (dot.sources.increasedPercent ?? 0) / 100) * product(dot.sources.townAdditional || []),
       path: `skillDots[${dot.name}]: (1 + sources.increasedPercent) × Π sources.townAdditional`,
-    };
-  }
-  if (context.beam) {
-    const lines = planner.directHit?.ledger || [];
-    const increased = sum(lines.filter((line) => line.bucket === "increased").map((line) => line.percent));
-    const additional = lines
-      .filter((line) => line.bucket === "additional" && !townExclusion(line) && !/applied to Life/i.test(line.source))
-      .map((line) => line.percent);
-    return {
-      value: (1 + increased / 100) * product(additional) * (planner.directHit.levelFactor ?? 1),
-      path: "directHit: (1 + increasedPercent) × Π town additional lines × levelFactor",
     };
   }
   const primary = context.hit?.primary;
@@ -1230,7 +1128,7 @@ export function comparePanel(planner, { tolerance = 0.005 } = {}) {
           overrides: chainOverrides(row),
           zeroAbsorbs: true,
         }).evaluate(row.id);
-        const plannerSide = plannerChain(planner, inputs.context, kind);
+        const plannerSide = plannerChain(inputs.context, kind);
         const left = excludedFactor(inputs.excluded, kind);
         let dotPoolFactor = null;
         let reason = left.lines
@@ -1299,13 +1197,7 @@ export function comparePanel(planner, { tolerance = 0.005 } = {}) {
       name: inputs.context.name,
       attack: inputs.context.attack,
       damageType: inputs.context.damageType,
-      source: inputs.context.beam
-        ? "Scorching Beam ledgers"
-        : inputs.context.hit
-          ? "skillHits"
-          : inputs.context.dot
-            ? "skillDots"
-            : "none",
+      source: inputs.context.hit ? "skillHits" : inputs.context.dot ? "skillDots" : "none",
       critPath: inputs.context.critPath,
     },
     rows,

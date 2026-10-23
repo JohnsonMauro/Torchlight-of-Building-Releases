@@ -262,18 +262,16 @@ export function regainEnablerStatus(text, planner = context) {
 export function plannerEngines(planner = context) {
   if (!planner || typeof planner !== "object" || !planner.activation) return null;
   const active = planner.activation.activeNames || new Set();
-  const beam = active.has("Scorching Beam");
   const setupTags = (key) => new Set(planner.activation.setups?.find((setup) => setup.setupKey === key)?.tags || []);
   const hits = (planner.skillHits || []).filter((hit) => hit.modeled);
   const dots = (planner.skillDots || []).filter((dot) => dot.modeled);
   const baseIgnite = planner.theoretical?.totals?.baseIgniteDamage?.max > 0;
-  const igniteAppliers = beam || (planner.igniteAppliers || []).length > 0;
+  const igniteAppliers = (planner.igniteAppliers || []).length > 0;
   // An applier with Ignite chance (packages/engine/src/ailments/ailment-applications.js): without one a base Ignite line starts nothing.
   const igniteChance = (planner.igniteAppliers || []).some((applier) => applier.chancePercent > 0);
   const otherAilment = ["trauma", "wilt"].some((key) => planner.ailments?.[key]?.base?.max > 0);
   const ignite = baseIgnite && igniteChance;
   return {
-    beam,
     hits,
     dots,
     ignite,
@@ -293,12 +291,11 @@ export function plannerEngines(planner = context) {
       (planner.damagePaths?.twentySeconds?.reaping?.sources || []).some(
         (source) => source.triggersPerSecond > 0 || source.intervalSeconds < Infinity,
       ),
-    anyHit: beam || hits.length > 0,
+    anyHit: hits.length > 0,
     anyDot: ignite || otherAilment || dots.length > 0,
-    spellHit: beam || hits.some((hit) => setupTags(hit.setupKey).has("Spell")),
+    spellHit: hits.some((hit) => setupTags(hit.setupKey).has("Spell")),
     // Every non-attack hit takes the cast-rate ledger (a Terra's "fixed" cadence still has a cast-speed use time).
     castRate:
-      beam ||
       hits.some((hit) => hit.rate?.speedType !== "attack-speed") ||
       dots.some(
         (dot) =>
@@ -307,34 +304,31 @@ export function plannerEngines(planner = context) {
       ),
     attackRate: hits.some((hit) => hit.rate?.speedType === "attack-speed"),
     channeled:
-      beam ||
-      hits.some((hit) => /^channel/.test(hit.rate?.useModel || "")) ||
-      dots.some((dot) => dot.profile?.channeled),
+      hits.some((hit) => /^channel/.test(hit.rate?.useModel || "")) || dots.some((dot) => dot.profile?.channeled),
     affliction: planner.conditions?.affliction !== false,
     aura: (planner.aura?.entries || []).some((entry) => active.has(entry.name)),
   };
 }
 
-// build-mechanics marks the lines it put on the beam hit ledger and the Ignite / DoT ledger ("… (hits and damage over
-// time)", "Counted by the talent totals (…)"). Those ledgers only reach the dummy through the beam and the DoT engines;
-// in a build with neither (a Minion or attack-only build) the note says nothing about dummy damage (talent batch T7).
+// build-mechanics marks the lines it put on the Ignite / DoT ledger ("… (damage over time)", "Counted by the talent
+// totals (…)"). That ledger only reaches the dummy through the DoT engines (skill hits read their own lines); in a build
+// without one (a Minion or hit-only build) the note says nothing about dummy damage (talent batch T7). A "hits" half
+// of a route ("(hits and Ignite)") names no ledger of its own: only its DoT half counts.
 function recognizedOnIdleLedger(note, planner, text = "") {
   const engines = plannerEngines(planner);
   if (!engines) return false;
-  if (/^Counted by the (?:talent|slate|pact|equipment|hero memory) /i.test(note))
-    return !engines.beam && !engines.anyDot;
+  if (/^Counted by the (?:talent|slate|pact|equipment|hero memory) /i.test(note)) return !engines.anyDot;
   const route = note.match(/\((hits|hits and damage over time|hits and Ignite|damage over time|Ignite)\)$/);
   if (!route) return false;
-  const hits = /hits/.test(route[1]) && engines.beam;
   const types = classifyDamageLine(text)?.damageTypes;
   const typedDot = engines.anyDot && (!types || [...types].some((type) => engines.dotTypes.has(type)));
   const dot = /damage over time/.test(route[1]) ? typedDot : /Ignite/.test(route[1]) ? engines.ignite : false;
-  return !hits && !dot;
+  return !dot;
 }
 
 /**
  * Intelligence lines ("+X Intelligence", "+X to All Stats", "+X% Intelligence"): In calc where a ledger takes the
- * Intelligence main-stat line (the beam / Ignite ledgers, a skill hit whose main stat is Intelligence); a stat-sheet line
+ * Intelligence main-stat line (the Ignite ledger, a skill hit whose main stat is Intelligence); a stat-sheet line
  * otherwise (gear-pact batch chunk 2: "+20 to All Stats" read In calc on attack and Minion builds).
  */
 export function intelligenceLineStatus(planner = context, stats = ["Intelligence"]) {
@@ -365,14 +359,13 @@ export function mainStatLineStatus(text, planner = context) {
 }
 
 // An enemy damage-taken line ("+X% additional <Type> Damage taken", "+X% damage taken"): the skill-hit engine reads it by type
-// or skill tag, the ailment / skill-DoT engines read typed ones; "Hit Damage taken" (Timid) reaches every hit, the beam
-// included (packages/engine/src/planner.js pushes it on the beam hit ledger), and no DoT.
+// or skill tag, the ailment / skill-DoT engines read typed ones; "Hit Damage taken" (Timid) reaches every hit and no DoT.
 function takenBodyStatus(body, planner, engines = plannerEngines(planner)) {
   if (!engines) return "In calc";
   const typed = body.match(/(Physical|Fire|Cold|Lightning|Erosion|Spell|Hit) Damage taken$/i)?.[1];
   if (typed && /^Hit$/i.test(typed)) return engines.anyHit ? "In calc" : "Inactive";
   // "Hit <Type> Damage taken" (Open Wounds' derived body; core audit B4): skill hits with a part of that type (converted parts keep
-  // their original type) and Minion hits of that type; never a DoT, and the beam ledger does not read it.
+  // their original type) and Minion hits of that type; never a DoT.
   const hitTyped = body.match(/\bHit (Physical|Fire|Cold|Lightning|Erosion) Damage taken$/i)?.[1];
   if (hitTyped) {
     const type = hitTyped[0].toUpperCase() + hitTyped.slice(1).toLowerCase();
@@ -387,7 +380,7 @@ function takenBodyStatus(body, planner, engines = plannerEngines(planner)) {
     );
     return skillHit || minionHit ? "In calc" : "Inactive";
   }
-  // Untyped "additional damage taken" (an enemy debuff: build-mechanics puts it on the beam and DoT layers too).
+  // Untyped "additional damage taken" (an enemy debuff: build-mechanics puts it on the DoT layers too).
   // (Paralysis's "+X% damage taken" too: build-mechanics reads both wordings since the pact scripted-effects batch.)
   if (!typed && /(?:additional )?damage taken$/i.test(body))
     return engines.anyHit || engines.anyDot || (planner?.minions || []).some((minion) => minion.modeled)
@@ -411,9 +404,6 @@ function takenBodyStatus(body, planner, engines = plannerEngines(planner)) {
   const dotReads = typed && engines.dotTypes.has(typed);
   // "Spell Damage taken" (Frail, the follower's Lightning Beam) never reads on a DoT: dotTypes holds damage types only, so a
   // DoT-only build reads Inactive (2026-10-18 user-supplied: Spell Damage taken is hit-only; not DoT, ailments or Reaps).
-  // The beam (a Fire Spell) reads Spell Damage taken (Frail) and, with its Ignite, Fire Damage taken (Melting Flames; pact
-  // scripted-effects batch 2026-10-13) through build-mechanics.
-  const beamReads = /^(?:Spell|Fire)$/i.test(typed || "") && engines.beam;
   // Modeled Minions take enemy damage-taken lines of their hits' types (packages/engine/src/minions/minion-damage-model.js; tag scopes are not read).
   const minionReads =
     !/^(?:Spell|Hit)$/i.test(typed || "") &&
@@ -422,7 +412,7 @@ function takenBodyStatus(body, planner, engines = plannerEngines(planner)) {
         minion.modeled &&
         (!typed || (minion.skills || []).some((skill) => [skill.type, skill.baseType].includes(typed))),
     );
-  return hitReads || dotReads || beamReads || minionReads ? "In calc" : "Inactive";
+  return hitReads || dotReads || minionReads ? "In calc" : "Inactive";
 }
 
 /** Daze: In calc while the Blur model applies it and the dummy carries an ailment; Inactive otherwise. */
@@ -628,27 +618,21 @@ function copyRuleStatus(text, planner) {
 function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   if (!text) return null;
   // Escalating Affliction's reworked Affliction (core audit B4, packages/engine/src/combat-states.js): it scales Affliction, so it is In calc where a
-  // modeled DoT (an ailment, a skill DoT or the beam's Ignite) runs with an Affliction rating on the dummy; otherwise Inactive.
+  // modeled DoT (an ailment or a skill DoT) runs with an Affliction rating on the dummy; otherwise Inactive.
   if (/^Changes the effect of each point of Affliction to: /i.test(text) && planner?.activation) {
     const rated = (entry) =>
       entry &&
       entry.modeled !== false &&
       (entry.steps?.afflictionRating || 0) > 0 &&
       (entry.combat?.steadyDps || 0) > 0;
-    const ignite =
-      (planner.recountFiveSeconds?.igniteDps || 0) > 0 &&
-      planner.conditions?.affliction !== false &&
-      (planner.afflictionRating ? planner.afflictionRating.rating > 0 : true);
-    return (planner.skillDots || []).some(rated) || Object.values(planner.ailments || {}).some(rated) || ignite
+    return (planner.skillDots || []).some(rated) || Object.values(planner.ailments || {}).some(rated)
       ? "In calc"
       : "Inactive";
   }
   // Cohesion's resolved body (core audit batch B3): its own multiplier on the rating in the spell and attack crit models, so In calc
-  // where the build has a modeled player hit (the beam or a skill hit); a Minion-only build does not crit with it.
+  // where the build has a modeled player skill hit; a Minion-only build does not crit with it.
   if (/^\+[\d.]+% additional (?:Spell |Attack )?Critical Strike Rating$/i.test(text) && planner?.activation)
-    return planner.activation.activeNames?.has("Scorching Beam") || (planner.skillHits || []).some((hit) => hit.modeled)
-      ? "In calc"
-      : "Inactive";
+    return (planner.skillHits || []).some((hit) => hit.modeled) ? "In calc" : "Inactive";
   // Ill Omen (packages/engine/src/ailments/ill-omen.js): Cumulative Efficiency and Reap Purification feed the best-case Ill Omen line of the dummy
   // figures and the "Ill Omen (beyond the dummy)" card when the build applies Ominous.
   const illOmen = illOmenLineStatus(text, planner);
@@ -671,7 +655,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     : expandScriptedItemLine("", text);
   if (parts.length > 1) {
     const statuses = parts.map((part) => engineLineStatus(part, planner) ?? "Not modeled");
-    // One type the build cannot use (Physical added to Spells on the beam) does not make the row partly modeled.
+    // One type the build cannot use (an added type no modeled hit takes) does not make the row partly modeled.
     if (
       statuses.includes("In calc") &&
       statuses.every((status) => status === "In calc" || status === "Inactive" || neutralStatuses.has(status))
@@ -729,22 +713,6 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     if (/Intelligence \(main-stat damage\)$/.test(note))
       return mainStatLineStatus(text, planner) ?? intelligenceLineStatus(planner);
     if (note.startsWith("Not on dummy")) return "Not on dummy";
-    // Redundant stacks (residual batch §7 cosmetic): with own buffs pre-built the channel is held full, so a higher Max only
-    // matters through a per-stack line (Supercharge, "per additional Max Channeled Stack"); without one it changes nothing.
-    if (
-      note === "Max channeled stacks" &&
-      planner?.conditions?.prebuiltSelfBuffs !== false &&
-      plannerEngines(planner)?.beam
-    ) {
-      const perStack =
-        (planner.mechanics?.channel?.perStackSupercharge || 0) > 0 ||
-        (planner.modifierTexts || []).some((line) =>
-          /for every \+1 additional Max Channeled Stack|per channeled stack|every channeled stack|excess stacks? of Min Channeled Stacks/i.test(
-            String(line.text),
-          ),
-        );
-      if (!perStack) return "No DPS effect";
-    }
     // A typed damage-taken curse (packages/engine/src/skills/curse-effects.js): In calc where a hit or DoT of its type reads the derived line.
     const curseBody = note.match(/ curse → (.+? Damage taken)/)?.[1];
     if (curseBody) return takenBodyStatus(curseBody, planner);
@@ -775,8 +743,8 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   // preview (crafting, legendary pages, the census) reads what the reader would say once equipped (residual batch P8).
   const preview = uncarriedPreviewStatus(text, planner);
   if (preview) return preview;
-  // Double Damage chance (packages/engine/src/combat/double-damage.js): In calc where a modeled hit has the line's scope tags (the beam is marked
-  // by build-mechanics above), Inactive otherwise; a per-stat line needs the stat.
+  // Double Damage chance (packages/engine/src/combat/double-damage.js): In calc where a modeled hit has the line's scope tags, Inactive
+  // otherwise; a per-stat line needs the stat.
   const doubleDamage = classifyDoubleDamageLine(text);
   if (doubleDamage && planner?.activation) {
     const carriedSlots = (planner.modifierTexts || [])
@@ -786,18 +754,10 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     const statOk =
       !doubleDamage.perStat || (planner.lineEffects?.state?.stats?.[doubleDamage.stat] || 0) >= doubleDamage.per;
     const tagsOf = (key) => new Set(planner.activation.setups?.find((setup) => setup.setupKey === key)?.tags || []);
-    // The beam takes every Double Damage line its tags (plus Channeled) allow (packages/engine/src/build-mechanics.js, packages/engine/src/planner.js), carried
-    // or not (residual batch P2: an uncarried line read Inactive on Scorching Beam builds).
-    const beam = planner.activation.activeNames?.has("Scorching Beam")
-      ? planner.activation.setups?.find((setup) => setup.name === "Scorching Beam")
-      : null;
-    const beamTags = new Set([...(beam?.tags || []), "Channeled"]);
-    const beamTakes = Boolean(beam) && doubleDamage.tags.every((tag) => beamTags.has(tag));
     return statOk &&
-      (beamTakes ||
-        (planner.skillHits || []).some(
-          (hit) => hit.modeled && doubleDamage.tags.every((tag) => tagsOf(hit.setupKey).has(tag)),
-        ))
+      (planner.skillHits || []).some(
+        (hit) => hit.modeled && doubleDamage.tags.every((tag) => tagsOf(hit.setupKey).has(tag)),
+      )
       ? "In calc"
       : "Inactive";
   }
@@ -860,8 +820,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     return planner.danceOfTheDeep.mainIsTerra ? "In calc" : "Inactive";
   if (/^\+[\d.]+% Terra Skill Duration$/i.test(text) && planner?.cycleResist?.active) return "In calc";
   // Focus Blessing's changed base effect (packages/engine/src/defense/blessing-model.js baseChange): In calc where Focus stacks are held and a modeled
-  // skill hit takes the added Physical; Partly modeled on the beam (it loses Focus's +5% per stack, but its added-damage reader
-  // takes Fire / Cold / Lightning only); Inactive without Focus stacks.
+  // skill hit takes the added Physical; Inactive without Focus stacks or without a modeled skill hit.
   const focusChange = text.match(
     /^Changes the base effect of (Tenacity|Focus|Agility) Blessing to: Adds Physical Damage equal to [\d.]+% of Max Mana to Attacks and Spells$/i,
   );
@@ -869,38 +828,26 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     const held =
       planner.blessings.entries.find((entry) => entry.name.toLowerCase() === focusChange[1].toLowerCase())?.stacks > 0;
     if (!held) return "Inactive";
-    return (planner.skillHits || []).some((hit) => hit.modeled)
-      ? "In calc"
-      : plannerEngines(planner)?.beam
-        ? "Partly modeled"
-        : "Inactive";
+    return (planner.skillHits || []).some((hit) => hit.modeled) ? "In calc" : "Inactive";
   }
-  // Crit-only additional damage (packages/engine/src/text/crit-only-lines.js): the beam's crit branch and every modeled hit's crit share.
+  // Crit-only additional damage (packages/engine/src/text/crit-only-lines.js): every modeled hit's crit share.
   const critOnly = classifyCritOnlyLine(text);
   if (critOnly && planner?.activation) {
     const tagsOf = (key) => new Set(planner.activation.setups?.find((setup) => setup.setupKey === key)?.tags || []);
-    const beam = planner.activation.activeNames?.has("Scorching Beam")
-      ? planner.activation.setups?.find((setup) => setup.name === "Scorching Beam")
-      : null;
     const reaches = (tags) => !critOnly.tag || tags.has(critOnly.tag);
-    return (beam && reaches(new Set(beam.tags || []))) ||
-      (planner.skillHits || []).some(
-        (hit) => hit.modeled && hit.crit?.chancePercent > 0 && reaches(tagsOf(hit.setupKey)),
-      )
+    return (planner.skillHits || []).some(
+      (hit) => hit.modeled && hit.crit?.chancePercent > 0 && reaches(tagsOf(hit.setupKey)),
+    )
       ? "In calc"
       : "Inactive";
   }
-  // Tag-scoped crit rating / damage (packages/engine/src/skills/spell-critical.js classifyTaggedCritLine): In calc where a modeled hit (or the
-  // beam) carries every tag of the scope, Inactive otherwise.
+  // Tag-scoped crit rating / damage (packages/engine/src/skills/spell-critical.js classifyTaggedCritLine): In calc where a modeled hit
+  // carries every tag of the scope, Inactive otherwise.
   const taggedCrit = classifyTaggedCritLine(text);
   if (taggedCrit && planner?.activation) {
     const tagsOf = (key) => new Set(planner.activation.setups?.find((setup) => setup.setupKey === key)?.tags || []);
-    const beam = planner.activation.activeNames?.has("Scorching Beam")
-      ? planner.activation.setups?.find((setup) => setup.name === "Scorching Beam")
-      : null;
     const reaches = (tags) => taggedCrit.tags.every((tag) => tags.has(tag));
-    return (beam && reaches(new Set(beam.tags || []))) ||
-      (planner.skillHits || []).some((hit) => hit.modeled && reaches(tagsOf(hit.setupKey)))
+    return (planner.skillHits || []).some((hit) => hit.modeled && reaches(tagsOf(hit.setupKey)))
       ? "In calc"
       : "Inactive";
   }
@@ -941,13 +888,12 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
         : "Inactive";
     }
     // "You can only deal <Type> Damage" (Extreme Coldness; core audit batch B5, packages/engine/src/combat/damage-type-restriction.js): In calc where the
-    // planner removed a part of another type (a hit part, the beam, an ailment or a skill DoT); No DPS effect when every modeled
+    // planner removed a part of another type (a hit part, an ailment or a skill DoT); No DPS effect when every modeled
     // source already deals only that type. Player only (game affix 232826, target 1): Minions, followers and True Damage are not affected (user-confirmed 2026-10-19).
     if (ONLY_DAMAGE_TYPE_LINE.test(text) && planner.damageTypeRestriction !== undefined)
       return planner.damageTypeRestriction?.removed?.length ? "In calc" : "No DPS effect";
     // Towering Presence (core audit batch B5, packages/engine/src/talents/towering-presence.js): the main-hand weapon's damage reaches modeled Spell skill
-    // hits (not attacks, not the Scorching Beam ledger, which has no added Physical part: Not modeled there); its crit rating reaches
-    // every Spell skill's crit (the beam's included). Inactive without a main-hand weapon or a Spell hit.
+    // hits (not attacks); its crit rating reaches every Spell skill's crit. Inactive without a main-hand weapon or a Spell hit.
     if (
       planner.weaponToSpells !== undefined &&
       (WEAPON_TO_SPELLS_LINE.test(text) || WEAPON_CRIT_TO_SPELLS_LINE.test(text))
@@ -955,14 +901,9 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
       const spellHit = (planner.skillHits || []).some(
         (hit) => hit.modeled && !hit.profile?.weaponScaling && (hit.profile?.tags || []).includes("Spell"),
       );
-      const beam = Boolean(planner.activation.activeNames?.has("Scorching Beam"));
       if (WEAPON_TO_SPELLS_LINE.test(text))
-        return planner.weaponToSpells?.damage?.length && spellHit
-          ? "In calc"
-          : planner.weaponToSpells?.damage?.length && beam
-            ? "Not modeled"
-            : "Inactive";
-      return planner.weaponToSpells?.critRating > 0 && (spellHit || beam) ? "In calc" : "Inactive";
+        return planner.weaponToSpells?.damage?.length && spellHit ? "In calc" : "Inactive";
+      return planner.weaponToSpells?.critRating > 0 && spellHit ? "In calc" : "Inactive";
     }
     // "+N to Parabolic Projectile Splits quantity" (Three Birds with One Stone): needs a Parabolic Projectile skill on the board.
     // The splits land as area explosions that can hit the same single target (user-supplied 2026-10-19, Google AI Mode answer,
@@ -1010,13 +951,9 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
       )
         ? "In calc"
         : "Inactive";
-    // Spell Ripple: In calc where a modeled Main Spell hit spawns Pulses; Scorching Beam's own beam path does not read it yet.
-    if (SPELL_RIPPLE_LINE.test(text)) {
-      if ((planner.skillHits || []).some((hit) => hit.modeled && hit.spellRipple)) return "In calc";
-      return planner.nativeHitCycle || planner.activation.activeNames?.has("Scorching Beam")
-        ? "Not modeled"
-        : "Inactive";
-    }
+    // Spell Ripple: In calc where a modeled Main Spell hit spawns Pulses.
+    if (SPELL_RIPPLE_LINE.test(text))
+      return (planner.skillHits || []).some((hit) => hit.modeled && hit.spellRipple) ? "In calc" : "Inactive";
     // Sweeping Fury (user-supplied 2026-10-19: one ring projectile per ring hits a single boss): In calc where a modeled Main
     // Horizontal Projectile hit casts rings; its Projectile Quantity cap is In calc where it cut a hit's extra projectiles, No
     // DPS effect on a projectile skill under the cap.
@@ -1139,13 +1076,8 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
         ),
       ),
     );
-    // Scorching Beam's packets (packages/engine/src/build-mechanics.js → the beam hit ledger's "min" / "max" entries, 2026-10-14).
-    const beamTaken =
-      Boolean(planner.nativeHitCycle) &&
-      minMaxParts.some(({ part }) => (planner.directHit?.ledger || []).some((entry) => entry.lineText === part));
-    if (taken || beamTaken) return "In calc";
-    const damageModeled =
-      hits.length || planner.nativeHitCycle || (planner.minions || []).some((minion) => minion.modeled);
+    if (taken) return "In calc";
+    const damageModeled = hits.length || (planner.minions || []).some((minion) => minion.modeled);
     if (damageModeled && minMaxParts.some(({ parsed }) => parsed.kind === "minDamage")) return "Inactive";
   }
   // "+X% additional Max / Min Damage for Minions" (packages/engine/src/minions/minion-damage-model.js, 2026-10-14): In calc where a modeled Minion skill
@@ -1265,8 +1197,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   // Minion defence ("-90% additional damage taken by Minions", Orders; Bond's own): the dummy never attacks the Minions.
   if (planner?.activation && /^[+-]?[\d.]+% additional damage taken by Minions$/i.test(text)) return "No DPS effect";
   // Overly Modified (packages/engine/src/minions/sentry-cores.js; read per skill on its own hits and DoT, and on the ailments each skill inflicts, which
-  // Reaps settle: user-supplied 2026-10-19): In calc where a modeled hit, DoT or ailment applier took it; Partly modeled with
-  // Scorching Beam, whose hit ledger and Ignite path are not scaled per inflicting skill.
+  // Reaps settle: user-supplied 2026-10-19): In calc where a modeled hit, DoT or ailment applier took it; Inactive otherwise.
   if (
     planner?.activation &&
     /^\+?[\d.]+% additional Sentry Damage, [+-]?[\d.]+% non-Sentry Active Skill damage$/i.test(text)
@@ -1286,8 +1217,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
           dot.modeled !== false &&
           (dot.overlyModified || (dot.extraAdditional || []).some((line) => line.overlyModified)),
       );
-    if (!applied) return "Inactive";
-    return planner.activation.activeNames?.has("Scorching Beam") ? "Partly modeled" : "In calc";
+    return applied ? "In calc" : "Inactive";
   }
   // Isomorphic Arms' "Minions gain the Main-Hand Weapon's bonuses." (game affix 103580002: node 358 copies the main-hand item, equip
   // slot 2, to the Minions): the weapon's damage (base and local affixes) and its other affixes reach the Minions, not its base attack
@@ -1457,8 +1387,6 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   if (blessing) return blessing;
   const copy = copyRuleStatus(text, planner);
   if (copy) return copy;
-  // "+N Beams" with Scorching Beam's hits modeled for several Beams (packages/engine/src/skills/scorching-beam-base-hit.js; Shotgun falloff): In calc.
-  if (/^\+\d+ Beams$/i.test(text) && planner?.nativeHitCycle?.beams > 1) return "In calc";
   // "+N Beams" on a skill-DoT main skill: extra beams do not add DoT statuses (user-confirmed 2026-10-10).
   if (/^\+\d+ Beams$/i.test(text) && planner?.skillDots?.some((dot) => dot.modeled)) return "No DPS effect";
   // Windwalk's timed DoT window and the Full Life pact lines are applied by the planner when present.
@@ -1576,9 +1504,8 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   )
     return "In calc";
   if (/^Activates the following effects when there are \d+ of this Kismet/i.test(text)) return "Planner only";
-  // Added flat damage to Spells / Attacks (gear-pact batch G16): the beam reads Fire / Cold / Lightning added to Spells
-  // (packages/engine/src/skills/scorching-beam-added-damage.js); the skill-hit engine reads every type added to Spells (skill-hit-lines ADDED_LINE)
-  // and the weapon model "to Attacks" for attack skills. Before 2026-10-12 only the beam was asked (47 Not modeled options).
+  // Added flat damage to Spells / Attacks (gear-pact batch G16): the skill-hit engine reads every type added to Spells
+  // (skill-hit-lines ADDED_LINE) and the weapon model "to Attacks" for attack skills.
   const added = text.match(
     /^Adds [\d.]+ ?[-–] ?[\d.]+ (Physical|Fire|Cold|Lightning|Erosion) Damage to (Attacks and Spells|Spells|Attacks|your Attacks and Spells)$/i,
   );
@@ -1586,15 +1513,13 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     const toSpells = /Spells/i.test(added[2]),
       toAttacks = /Attacks/i.test(added[2]);
     const hits = (planner.skillHits || []).filter((hit) => hit.modeled);
-    const beamReads =
-      toSpells && /^(?:Fire|Cold|Lightning)$/i.test(added[1]) && planner.beamAddedDamage?.sources?.length > 0;
     // The skill-hit engine adds "to Spells" lines to Spell skill hits only, and "to Attacks and Spells" also to attacks
     // (packages/engine/src/skills/skill-hit-model.js; before 2026-10-18 "to Spells" reached attack hits too).
     const spellReads =
       toSpells && hits.some((hit) => (hit.profile?.tags || []).includes("Spell") && !hit.profile?.weaponScaling);
     const attackReads = toAttacks && hits.some((hit) => hit.rate?.speedType === "attack-speed");
-    if (beamReads || spellReads || attackReads) return "In calc";
-    if (planner.activation.activeNames?.has("Scorching Beam") || hits.length) return "Inactive";
+    if (spellReads || attackReads) return "In calc";
+    if (hits.length) return "Inactive";
   }
   // Plain damage / penetration templates: the shared classifier (packages/engine/src/text/damage-line-classifier.js) applies
   // them through build-mechanics, which marks every applied or already-counted line in `recognized`
@@ -1640,21 +1565,18 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
         });
         return route.dot || route.penetration;
       });
-    // Carried by the build: build-mechanics marks what the beam / DoT ledgers took (checked first); the skill-hit and
+    // Carried by the build: build-mechanics marks what the DoT ledgers took (checked first); the skill-hit and
     // skill-DoT engines read it themselves (gear-pact batch chunk 3: a Lightning line on Haunting Abomination's added
     // Lightning read Inactive while it moved damage). Otherwise Inactive.
     if (planner.modifierTexts?.some((line) => normalizePercentageText(String(line.text ?? "")).trim() === text))
       return skillHitApplies || skillDotApplies ? "In calc" : "Inactive";
-    // Not in the build: say whether the rule would apply it to this build's hitting skill or its DoTs.
-    const beam = planner.activation?.setups?.find((setup) => setup.name === "Scorching Beam");
-    const beamActive = Boolean(beam) && planner.activation?.activeNames?.has("Scorching Beam") === true;
-    const main = planner.mainSkill || beam;
-    const hitRoute = routeDamageLine(generic, { skillTags: new Set(beam?.tags || []), hitActive: beamActive });
-    const dotRoute = routeDamageLine(generic, { skillTags: new Set(main?.tags || []), hitActive: false });
+    // Not in the build: say whether the rule would apply it to the main skill's Ignite / DoT ledger or to this build's
+    // skill hits and DoTs. The route's default damage type is Fire (the Ignite), so a Fire penetration line reads In calc.
+    const dotRoute = routeDamageLine(generic, { skillTags: new Set(planner.mainSkill?.tags || []), hitActive: false });
     const fireOnly = Boolean(generic.damageTypes) || generic.ailments?.has("ignite");
     const canIgnite = planner.theoretical?.totals?.baseIgniteDamage?.max > 0;
     const dotApplies = dotRoute.dot && (!fireOnly || canIgnite);
-    if (hitRoute.hit || dotApplies || hitRoute.penetration) return "In calc";
+    if (dotApplies || dotRoute.penetration) return "In calc";
     return skillHitApplies || skillDotApplies ? "In calc" : "Inactive";
   }
   const ailmentNamed = text.match(/\b(Wilt|Trauma|Ignite)\b/);
@@ -1965,11 +1887,9 @@ function readerLineStatus(text, planner) {
   if (/^\+[\d.]+% Fire Skill Critical Strike Damage$/i.test(text)) {
     if (unreadOnly(READ_ORIGINS)) return "Not modeled";
     if (!engines) return "In calc";
-    const fireHit =
-      engines.beam ||
-      engines.hits.some((hit) =>
-        (planner.activation?.setups?.find((setup) => setup.setupKey === hit.setupKey)?.tags || []).includes("Fire"),
-      );
+    const fireHit = engines.hits.some((hit) =>
+      (planner.activation?.setups?.find((setup) => setup.setupKey === hit.setupKey)?.tags || []).includes("Fire"),
+    );
     return fireHit ? "In calc" : "Counted in stats";
   }
   // Skill levels by tag (gear-pact batch G9): In calc where an active, modeled damage setup (or an active aura) takes the
@@ -1999,7 +1919,7 @@ export function skillLevelLineStatus(text, planner = context) {
     return enabled.some(
       (setup) =>
         active.has(setup.name) &&
-        (setup.name === "Scorching Beam" || modeledKeys.has(setup.setupKey) || auraNames.has(setup.name)) &&
+        (modeledKeys.has(setup.setupKey) || auraNames.has(setup.name)) &&
         !pinned(setup) &&
         emptySlotLevelApplies(empty, setup),
     )
@@ -2018,7 +1938,7 @@ export function skillLevelLineStatus(text, planner = context) {
       (setup) =>
         setup.enabled !== false &&
         active.has(setup.name) &&
-        (setup.name === "Scorching Beam" || modeledKeys.has(setup.setupKey) || auraNames.has(setup.name)),
+        (modeledKeys.has(setup.setupKey) || auraNames.has(setup.name)),
     );
     // A level the user pinned (manualAddedLevels) ignores the build's level lines.
     const pinned = (setup) => Boolean(planner.state?.skills?.skillLevels?.[setup.setupKey]?.manualAddedLevels);
@@ -2115,7 +2035,7 @@ export function heroModuleLineStatus(heroId, text, planner = context) {
   if (!entry) return "Not modeled";
   if (!entry.active || entry.status !== "In calc") return entry.status;
   // A module's untyped "+X% additional damage taken" body is an enemy debuff (packages/engine/src/build-mechanics.js reads hero-module debuffs
-  // into the DoT and beam layers; the skill-hit and Minion engines read derived taken lines), not the character's own
+  // into the DoT layers; the skill-hit and Minion engines read derived taken lines), not the character's own
   // defence that the plain clause reader assumes (Selena traits batch 2026-10-13: Crimson Tide, Purgatory).
   const statuses = entry.bodies
     .map((body) => body.derivedText)
@@ -2185,8 +2105,7 @@ function uncarriedPreviewStatus(text, planner) {
     if (!tlidbSupportCatalog.some((entry) => entry.name === name)) return "Not modeled";
     const main = planner.mainSkill && planner.activation.setups?.find((setup) => setup.name === planner.mainSkill.name);
     if (!main || !planner.activation.activeNames?.has(main.name)) return "Inactive";
-    // Cataclysm on Scorching Beam keeps its Ignite-ledger path (packages/engine/src/planner.js); other grants join the main skill's supports.
-    if (name === "Cataclysm" && main.name === "Scorching Beam") return "In calc";
+    // The grant joins the main skill's supports.
     const profile = (planner.damageSources || []).find((source) => source.setupKey === main.setupKey)?.profile || null;
     const effects = resolveSupportEffects(
       { ...main, supports: [{ name, level: Number(grant[1]), effectiveLevel: Number(grant[1]), enabled: true }] },
@@ -2195,23 +2114,8 @@ function uncarriedPreviewStatus(text, planner) {
     return grantedSupportStatus(effects, name);
   }
   // Max / Min Channeled Stacks (packages/engine/src/build-mechanics.js): the main skill's channel when it channels.
-  if (/^\+\d+ (?:to )?Max Channeled Stacks?$|^Min Channeled Stacks \+\d+$/i.test(text)) {
-    if (!plannerEngines(planner)?.channeled) return "Inactive";
-    // A higher Max with the channel held full and no per-stack line: no change (the carried note path says the same).
-    const perStack =
-      (planner.mechanics?.channel?.perStackSupercharge || 0) > 0 ||
-      (planner.modifierTexts || []).some((line) =>
-        /for every \+1 additional Max Channeled Stack|per channeled stack|every channeled stack|excess stacks? of Min Channeled Stacks/i.test(
-          String(line.text),
-        ),
-      );
-    return /^\+\d+ (?:to )?Max/i.test(text) &&
-      planner.conditions?.prebuiltSelfBuffs !== false &&
-      !perStack &&
-      plannerEngines(planner)?.beam
-      ? "No DPS effect"
-      : "In calc";
-  }
+  if (/^\+\d+ (?:to )?Max Channeled Stacks?$|^Min Channeled Stacks \+\d+$/i.test(text))
+    return plannerEngines(planner)?.channeled ? "In calc" : "Inactive";
   // Precise: Acuteness / Corrosion Focus Buffs (packages/engine/src/build-mechanics.js): base ailment, chance and typed additional damage reach
   // every modeled hit (the ailment needs a hit to apply).
   if (
@@ -2220,11 +2124,13 @@ function uncarriedPreviewStatus(text, planner) {
     )
   )
     return plannerEngines(planner)?.anyHit ? "In calc" : "Inactive";
-  // Ring-slot channel lines (packages/engine/src/build-mechanics.js): judged as if equipped in that ring.
-  if (/^\+\d+ (?:Max|minimum|Min) Channeled Stacks when equipped in the (?:left|right) Ring slot$/i.test(text))
-    return plannerEngines(planner)?.beam ? "In calc" : "Inactive";
-  // "+X% additional Channeled Skill Damage for every N excess stack of Min Channeled Stacks": needs start stacks above Max.
-  if (/additional Channeled Skill Damage for every \d+ excess stacks? of Min Channeled Stacks$/i.test(text))
-    return plannerEngines(planner)?.beam && planner.mechanics?.channel?.excessStacks > 0 ? "In calc" : "Inactive";
+  // Ring-slot channel lines and "+X% additional Channeled Skill Damage for every N excess stack of Min Channeled Stacks"
+  // (packages/engine/src/build-mechanics.js): only the carried note (checked first in clauseStatus) judges them; an uncarried
+  // preview reads Inactive.
+  if (
+    /^\+\d+ (?:Max|minimum|Min) Channeled Stacks when equipped in the (?:left|right) Ring slot$/i.test(text) ||
+    /additional Channeled Skill Damage for every \d+ excess stacks? of Min Channeled Stacks$/i.test(text)
+  )
+    return "Inactive";
   return null;
 }

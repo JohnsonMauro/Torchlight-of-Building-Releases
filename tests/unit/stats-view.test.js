@@ -13,20 +13,11 @@ import { numberText } from "../../src/app/stats/number-text.ts";
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const format = (value) => number.format(value);
 const state = (id) => goldenInputs().find((input) => input.id === id).state;
-// The damage path also reads the build at 30% target Fire Resistance (src/app/stats/stats-controller.js statsSource).
-const calculated = (id) => {
-  const input = state(id);
-  const theoretical = calculateGoldenCase({
-    ...input,
-    combat: { ...input.combat, targetFireResistancePercent: 30 },
-  }).theoretical;
-  return { planner: calculateGoldenCase(input), theoretical };
-};
-const yougaBuild = calculated("youga-l94");
-const youga = yougaBuild.planner;
-const view = (planner, skill, excluded = [], { theoretical = yougaBuild.theoretical, path = "hit" } = {}) =>
+const calculated = (id) => calculateGoldenCase(state(id));
+const youga = calculated("youga-l94");
+const view = (planner, skill, excluded = [], { path = "hit" } = {}) =>
   statsView(
-    { sheet: prepareStatSheet(planner, skill, format), damagePath: prepareDamagePath(theoretical, planner, format) },
+    { sheet: prepareStatSheet(planner, skill, format), damagePath: prepareDamagePath(planner, format) },
     { panel: "sheet", path, excluded },
   );
 
@@ -119,7 +110,7 @@ test("the Effective HP banner and the Character stats tabs", () => {
 
 test("hero trait lines with a spaced percent sign print it closed", () => {
   const erika = calculated("hero/erika-wind-stalker/first");
-  const text = JSON.stringify(view(erika.planner, "", [], { theoretical: erika.theoretical }));
+  const text = JSON.stringify(view(erika, ""));
   assert.match(text, /Hero trait: Wind Stalker \(Lv 1\): \+26% Movement Speed/);
   assert.doesNotMatch(text, /\d %/);
 });

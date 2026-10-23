@@ -1,4 +1,4 @@
-import { normalizePercentageText, cleanGameText } from "./text/percentage-text.js";
+import { normalizePercentageText } from "./text/percentage-text.js";
 import { supportProgression } from "../data/skills/support-progression.generated.js";
 import { skillProgression } from "../data/skills/skill-progression.generated.js";
 import { collectEnemyAilments, ailmentStateNames } from "./ailments/enemy-ailments.js";
@@ -7,12 +7,10 @@ import { allSkillEffects } from "../data/skills/all-skill-effects.generated.js";
 import { collectAilmentTypedSources, unscopeSkillAilmentLine } from "./ailments/ailment-model.js";
 import { selenaCompleteSkillLoadout } from "../data/skills/selena-complete-skill-loadout.js";
 import { collectGenericDamageLines } from "./text/damage-line-classifier.js";
-import { classifyHitLine, splitHitLineText, scopeApplies } from "./skills/skill-hit-lines.js";
 import { inferDamageProfile } from "./skills/skill-damage-profiles.js";
-import { supportEffectsFor, SCORCHING_BEAM_DEDICATED_SUPPORTS } from "./supports/support-effects.js";
+import { supportEffectsFor } from "./supports/support-effects.js";
 import { curseTakenEffect, curseTakenLine, NO_DUMMY_EFFECT_CURSES } from "./skills/curse-effects.js";
 import { triggeredCurseRank, curseLimitReason } from "./skills/curse-limit.js";
-import { doubleDamageForSkill } from "./combat/double-damage.js";
 import { mainAttributeBonusRemoved } from "./gear/gear-unique-modules.js";
 import { collectAllReapingSources } from "./ailments/reaping-model.js";
 import { buildWideAilmentBlock, blockedAilmentsOf } from "./ailments/ailment-blocks.js";
@@ -54,9 +52,6 @@ const ENTANGLED_PAIN_LEVEL20_DOT_TAKEN =
 // Origins whose copies of talent / slate-total keys no total reads (gear-pact batch G8).
 // "follower" (2026-10-17): Tartarus: Black Hole's "+X% additional Affliction effect" (packages/engine/src/followers/follower-model.js).
 const OTHER_ORIGINS = new Set(["gear", "kismet", "pact", "memory", "follower"]);
-// Supports whose effects other modules already model.
-// (The same list packages/engine/src/supports/support-effects.js uses for the clause statuses.)
-const separatelyModeledSupports = SCORCHING_BEAM_DEDICATED_SUPPORTS;
 
 const acutenessAdditionalPhysical = (level) => {
   const table = skillProgression["Precise: Acuteness Focus"]?.levels?.[String(Math.max(1, Math.min(40, level)))];
@@ -80,26 +75,23 @@ export function collectBuildMechanics({
 } = {}) {
   const recognized = new Map();
   const mark = (line, note) => recognized.set(normalizePercentageText(line.text), note);
-  const hit = [],
-    igniteIncreased = [],
+  const igniteIncreased = [],
     igniteAdditional = [],
     igniteCombatAdditional = [],
     combatTaken = [],
     synthetic = [],
     notes = [];
-  const pushAll = (entry, { hitBucket, igniteBucket }) => {
-    if (hitBucket) hit.push({ source: entry.source, bucket: hitBucket, percent: entry.value, text: entry.text });
+  const pushAll = (entry, { igniteBucket }) => {
     if (igniteBucket === "increased") igniteIncreased.push(entry);
     if (igniteBucket === "additional") igniteAdditional.push(entry);
     if (igniteBucket === "combatAdditional") igniteCombatAdditional.push(entry);
   };
-  const beamActive = activeNames.has(main?.name || "Scorching Beam");
+  const mainActive = Boolean(main) && activeNames.has(main.name);
   const mainSupports = (main?.supports || []).filter((support) => support.enabled !== false);
   // The main skill's support clauses (packages/engine/src/supports/support-effects.js): leveled values at the effective level, star bonuses,
   // rolls; anchored rules, so crit-only and per-stack lines are not taken as flat additional damage (B1).
   const mainEffects = main
     ? supportEffectsFor(main, {
-        engine: main.name === "Scorching Beam" ? "scorching-beam" : undefined,
         specialSupportConfigs,
         isMain: true,
       })
@@ -193,22 +185,19 @@ export function collectBuildMechanics({
   // Supports on the main skill that are not modeled elsewhere.
   let perStackSupercharge = 0,
     superchargeFlat = 0;
-  // Crit-only lines (Critical Strike Damage Increase) reach the beam's crit branch only (packages/engine/src/skills/spell-critical.js
-  // critOnlyFactor), never Ignite or another DoT; listed here for the ledgers. Per-Focus-Blessing-stack lines (Overload)
-  // wait for the blessing model's stack count (packages/engine/src/planner.js applies `pendingPerStack` after calculateBlessings).
-  const critOnly = [],
-    pendingPerStack = [];
+  // Per-Focus-Blessing-stack lines (Overload) wait for the blessing model's stack count (packages/engine/src/planner.js applies
+  // `pendingPerStack` after calculateBlessings). Crit-only lines (Critical Strike Damage Increase) reach the hits only, never
+  // Ignite or another DoT (packages/engine/src/skills/skill-hit-model.js reads them).
+  const pendingPerStack = [];
   const sumOf = (clauses) => clauses.reduce((total, clause) => total + (clause.value || 0), 0);
-  // Typed, Damage Over Time and ailment lines of the main skill's supports (chunk 2). Hits: typed lines whose scope reaches
-  // the main skill's hits (its damage type is Fire for Scorching Beam; Spell / Area / Projectile / Channeled by tag; Hit).
+  // Typed, Damage Over Time and ailment lines of the main skill's supports (chunk 2).
   // Ignite and the main skill's other ailments: Fire / Elemental typed lines (Ignite only, they read as Fire lines in
   // packages/engine/src/ailments/ailment-shared.js; provisional, Q9), "additional Damage Over Time for the supported skill" (provisional, Q10) and
   // "additional Ailment / Ignite Damage for the supported skill". Trauma- / Wilt-only lines cannot be scoped on this path.
   const mainTags = new Set(main?.tags || []);
-  const mainTypes =
-    main?.name === "Scorching Beam"
-      ? ["Fire"]
-      : (main?.tags || []).filter((tag) => ["Physical", "Fire", "Cold", "Lightning", "Erosion"].includes(tag));
+  const mainTypes = (main?.tags || []).filter((tag) =>
+    ["Physical", "Fire", "Cold", "Lightning", "Erosion"].includes(tag),
+  );
   const scopedMainLine = (support, clause) => {
     if (!clause.value) return;
     const source = `Support: ${support.name}`;
@@ -229,7 +218,7 @@ export function collectBuildMechanics({
             value: clause.value,
             category: "Additional damage",
           },
-          { hitBucket: reachesHit ? "additional" : null, igniteBucket: reachesIgnite ? "additional" : null },
+          { igniteBucket: reachesIgnite ? "additional" : null },
         );
       return;
     }
@@ -256,7 +245,6 @@ export function collectBuildMechanics({
       );
   };
   for (const support of mainSupports) {
-    if (separatelyModeledSupports.has(support.name)) continue;
     const clauses = clausesOf(support);
     if (/\((?:Magnificent|Noble)\)$/.test(support.name)) {
       const stars = sumOf(clauses.filter((clause) => clause.origin === "star"));
@@ -290,7 +278,7 @@ export function collectBuildMechanics({
             value,
             category: "Additional damage",
           },
-          { hitBucket: "additional", igniteBucket: "additional" },
+          { igniteBucket: "additional" },
         );
       for (const clause of clauses.filter((item) => item.origin !== "star")) scopedMainLine(support, clause);
       continue;
@@ -309,16 +297,8 @@ export function collectBuildMechanics({
             value: clause.value,
             category: "Additional damage",
           },
-          { hitBucket: "additional", igniteBucket: "additional" },
+          { igniteBucket: "additional" },
         );
-      // Listed for the Scorching Beam main only: other skill hits carry their own crit-only lines (packages/engine/src/skills/skill-hit-model.js).
-      else if (clause.family === "critOnlyAdditional" && main?.name === "Scorching Beam")
-        critOnly.push({
-          source: `Support: ${support.name}`,
-          text: `+${clause.value}% additional damage when the supported skill lands a Critical Strike (crit branch only; not Ignite)`,
-          value: clause.value,
-          category: "Additional damage (crits only)",
-        });
       else if (clause.family === "perStack" && clause.stackSource === "focusBlessing")
         pendingPerStack.push({
           source: `Support: ${support.name}`,
@@ -340,17 +320,12 @@ export function collectBuildMechanics({
         value,
         category: "Additional damage",
       },
-      { hitBucket: "additional", igniteBucket: "additional" },
+      { igniteBucket: "additional" },
     );
   }
 
   // Skill-scoped ailment base and chance: the main skill's own text and the supports on it.
-  const allScopedAilmentLines = beamActive ? collectSkillScopedAilmentLines(main) : [];
-  // Supports modeled elsewhere (Additional Ignite and the other packages/engine/src/supports/support-model.js supports, in the Ignite ledger)
-  // only count toward which ailments the target carries; they are not added again.
-  const scopedAilmentLines = allScopedAilmentLines.filter(
-    (line) => !separatelyModeledSupports.has(line.source.replace(/^Support: /, "")),
-  );
+  const scopedAilmentLines = mainActive ? collectSkillScopedAilmentLines(main) : [];
   synthetic.push(...scopedAilmentLines);
   const igniteScopedLines = scopedAilmentLines;
   const igniteScoped = collectAilmentTypedSources("ignite", igniteScopedLines);
@@ -379,7 +354,7 @@ export function collectBuildMechanics({
   const enemyAilments = collectEnemyAilments({
     setups,
     activeNames,
-    modifierTexts: [...modifierTexts, ...allScopedAilmentLines],
+    modifierTexts: [...modifierTexts, ...scopedAilmentLines],
     mainName: main?.name,
     applierNames,
     auraChance: auraAilmentChance,
@@ -417,7 +392,7 @@ export function collectBuildMechanics({
         category: match[2] ? "Additional damage" : "Increased damage",
         condition: targetFlag ? `target is ${targetLabel}` : `target ${word || "has an Ailment"}`,
       },
-      { hitBucket: match[2] ? "additional" : "increased", igniteBucket: match[2] ? "additional" : "increased" },
+      { igniteBucket: match[2] ? "additional" : "increased" },
     );
     mark(line, targetFlag ? `Damage vs ${targetLabel}` : `Damage vs ${word || "ailing"} target`);
   }
@@ -458,7 +433,7 @@ export function collectBuildMechanics({
             category: "Additional damage",
             condition: "Target Life",
           },
-          { hitBucket: "additional", igniteBucket: "additional" },
+          { igniteBucket: "additional" },
         );
       mark(
         line,
@@ -478,19 +453,19 @@ export function collectBuildMechanics({
     const text = line.text,
       scale = line.multiplier ?? 1;
     let match = text.match(/^\+(\d+(?:\.\d+)?)% damage for Channeled Skills$/i);
-    if (match && beamActive) {
+    if (match && mainActive) {
       pushAll(
         { source: line.source, text, value: number(match[1]) * scale, category: "Increased damage" },
-        { hitBucket: "increased", igniteBucket: "increased" },
+        { igniteBucket: "increased" },
       );
       mark(line, "Increased damage (channeled skill)");
       continue;
     }
     match = text.match(/^\+(\d+(?:\.\d+)?)% additional Channeled Skill damage$/i);
-    if (match && beamActive) {
+    if (match && mainActive) {
       pushAll(
         { source: line.source, text, value: number(match[1]) * scale, category: "Additional damage" },
-        { hitBucket: "additional", igniteBucket: "additional" },
+        { igniteBucket: "additional" },
       );
       mark(line, "Additional damage (channeled skill)");
       continue;
@@ -498,7 +473,7 @@ export function collectBuildMechanics({
     match = text.match(
       /^\+(\d+(?:\.\d+)?)% additional Channeled Skill Damage for every (\d+) excess stacks? of Min Channeled Stacks$/i,
     );
-    if (match && beamActive) {
+    if (match && mainActive) {
       const steps = Math.floor(excessStacks / Number(match[2]));
       if (steps > 0) {
         pushAll(
@@ -508,7 +483,7 @@ export function collectBuildMechanics({
             value: number(match[1]) * scale * steps,
             category: "Additional damage",
           },
-          { hitBucket: "additional", igniteBucket: "additional" },
+          { igniteBucket: "additional" },
         );
         mark(line, "Additional damage (channeled skill)");
       } else
@@ -519,7 +494,7 @@ export function collectBuildMechanics({
       continue;
     }
     match = text.match(/^\+(\d+(?:\.\d+)?)% damage for every \+1 additional Max Channeled Stack\(s\)$/i);
-    if (match && beamActive) {
+    if (match && mainActive) {
       const value = number(match[1]) * scale * additionalMaxStacks;
       pushAll(
         {
@@ -528,7 +503,7 @@ export function collectBuildMechanics({
           value,
           category: "Increased damage",
         },
-        { hitBucket: "increased", igniteBucket: "increased" },
+        { igniteBucket: "increased" },
       );
       mark(line, `Increased damage × ${additionalMaxStacks} additional max stacks`);
       continue;
@@ -536,9 +511,9 @@ export function collectBuildMechanics({
     // Focus core (Elementalist 24): game affix 328531744 "+P2% additional damage for every +P1 additional
     // Max Channeled Stack(s)". Node 114 turns the added max-stack field (20060502: stacks above the base 5,
     // from every source) into one attr 57191 mod-4 write of P2 × stacks / P1 with no skill tag: a single
-    // additional-damage layer on all damage (beam hits and DoTs).
+    // additional-damage layer on all damage (hits and DoTs).
     match = text.match(/^\+(\d+(?:\.\d+)?)% additional damage for every \+(\d+) additional Max Channeled Stack\(s\)$/i);
-    if (match && beamActive) {
+    if (match && mainActive) {
       const value = round((number(match[1]) * scale * additionalMaxStacks) / number(match[2]));
       pushAll(
         {
@@ -547,7 +522,7 @@ export function collectBuildMechanics({
           value,
           category: "Additional damage",
         },
-        { hitBucket: "additional", igniteBucket: "additional" },
+        { igniteBucket: "additional" },
       );
       mark(line, `Additional damage per additional max channeled stack (${additionalMaxStacks})`);
       continue;
@@ -562,7 +537,7 @@ export function collectBuildMechanics({
           category: "Increased damage",
           condition: "cursed target",
         },
-        { hitBucket: "increased", igniteBucket: "increased" },
+        { igniteBucket: "increased" },
       );
       mark(line, "Increased damage vs Cursed (target cursed)");
       continue;
@@ -578,7 +553,7 @@ export function collectBuildMechanics({
     // feeds the installed-support path (theoretical-sources.js); other names stay unmodeled. The item's
     // level is static: user-confirmed 2026-10-10 that Support Skill Level bonuses do NOT raise it (Lv.25 stays 25).
     match = text.match(/^(?:The )?Main Skill is supported by (?:a )?Lv\. (\d+) ([\w' :()-]+?)$/i);
-    if (match && match[2] === "Cataclysm" && beamActive) {
+    if (match && match[2] === "Cataclysm" && mainActive) {
       grantedSupports.push({ name: match[2], level: Number(match[1]), source: line.source, text });
       mark(line, `Cataclysm support on the Main Skill (item-granted, Lv.${match[1]})`);
       continue;
@@ -756,7 +731,7 @@ export function collectBuildMechanics({
   for (const line of tormentEffectLines)
     mark(line, `Torment Effect: Torment's +15% additional DoT × (1 + ${tormentEffectPercent}%)`);
   const tormentValue = Math.round(15 * (1 + tormentEffectPercent / 100) * 10000) / 10000;
-  if (tormentLines && beamActive)
+  if (tormentLines && mainActive)
     igniteCombatAdditional.push({
       source: `Torment (3 stacks${tormentEffectPercent ? `, +${tormentEffectPercent}% Torment Effect` : ""})`,
       text: `Each stack: +5% additional Damage Over Time for 4 s, up to 3 stacks${tormentEffectPercent ? ` × (1 + ${tormentEffectPercent}% Torment Effect)` : ""}`,
@@ -927,8 +902,6 @@ export function collectBuildMechanics({
       const line = curseTakenLine(taken, curseEffectPercent);
       const source = `${curse.name} curse (${curse.source})`;
       synthetic.push({ text: line.text, source, origin: "derived", multiplier: 1 });
-      if (taken.type === "Hit" && activeNames.has("Scorching Beam"))
-        hit.push({ source, bucket: "additional", percent: line.value, text: line.text });
       recognized.set(normalizePercentageText(curse.text), `${curse.name} curse → ${line.text}`);
     } else if (NO_DUMMY_EFFECT_CURSES[curse.name]) {
       notes.push(`${curse.name}: ${NO_DUMMY_EFFECT_CURSES[curse.name]}, so it is not applied.`);
@@ -950,40 +923,10 @@ export function collectBuildMechanics({
   for (const line of modifierTexts) {
     if (line.origin !== "derived" || !["combatState", "heroModule", "follower"].includes(line.lineEffect?.key))
       continue;
-    // Frail's "+X% additional Spell Damage taken" reaches the beam's Spell hits (never DoTs: Spell Damage taken).
-    const spell = String(line.text).match(/^\+(\d+(?:\.\d+)?)% additional Spell Damage taken$/i);
-    if (spell) {
-      if (activeNames.has("Scorching Beam"))
-        hit.push({
-          source: line.source,
-          bucket: "additional",
-          percent: number(spell[1]),
-          text: `${line.text} (enemy debuff)`,
-        });
-      continue;
-    }
-    // A Fire debuff on the dummy (Melting Flames, pact scripted-effects batch 2026-10-13) reaches the beam's Fire hits and its
-    // Ignite (the Scorching Beam Ignite ledger does not read typed lines; generic ailments do, and ailment-shared.js keeps this
-    // Fire line off Trauma and Wilt).
-    const fire = String(line.text).match(/^\+(\d+(?:\.\d+)?)% additional Fire Damage taken$/i);
-    if (fire) {
-      if (activeNames.has("Scorching Beam")) {
-        hit.push({
-          source: line.source,
-          bucket: "additional",
-          percent: number(fire[1]),
-          text: `${line.text} (enemy debuff)`,
-        });
-        combatTaken.push({
-          source: line.source,
-          text: line.text,
-          value: number(fire[1]),
-          category: "Additional damage taken",
-          condition: line.lineEffect.conditionText,
-        });
-      }
-      continue;
-    }
+    // Frail's "+X% additional Spell Damage taken" reaches Spell hits only (never DoTs), and a Fire debuff on the dummy
+    // (Melting Flames, pact scripted-effects batch 2026-10-13) Fire hits and Ignite: the skill-hit engine and the generic
+    // ailments read the typed line themselves (ailment-shared.js keeps the Fire line off Trauma and Wilt).
+    if (/^\+\d+(?:\.\d+)?% additional (?:Spell|Fire) Damage taken$/i.test(String(line.text))) continue;
     // Paralysis ("Increases damage taken by 15%", keyword 704; packages/engine/src/combat-states.js derives "+X% damage taken") reaches every
     // damage the same way (pact scripted-effects batch 2026-10-13: before, only the skill-hit engine read it; as its own
     // multiplier, provisional).
@@ -998,75 +941,7 @@ export function collectBuildMechanics({
       category: "Additional damage taken",
       condition: line.lineEffect.conditionText,
     });
-    if (activeNames.has("Scorching Beam"))
-      hit.push({ source: line.source, bucket: "additional", percent: value, text: `${line.text} (enemy debuff)` });
   }
-  // Own timed buffs with an "additional Max Damage" body (Bitter Thunder; packages/engine/src/combat-states.js): the beam's upper hit roll.
-  for (const line of modifierTexts) {
-    if (line.lineEffect?.key !== "combatState" || !activeNames.has("Scorching Beam")) continue;
-    const max = String(line.text).match(/^\+(\d+(?:\.\d+)?)% additional Max Damage$/i);
-    if (max)
-      hit.push({ source: line.source, bucket: "max", percent: number(max[1]), text: `${line.text} (upper hit roll)` });
-  }
-  // "+/-X% additional [<scope>] Min / Max Damage" lines (Impermanence and the like, 2026-10-14; packages/engine/src/skills/skill-hit-lines.js, a compound
-  // "Min …, and Max …" line read as its two lines): the beam and explosion packets' lower / upper roll, where the line's scope
-  // reaches a Fire hit of the beam's tags. The slates' plain "+X% additional Max Damage" stays in the slate total (Judgment
-  // boosts it; packages/engine/src/skills/scorching-beam-hit.js) and the timed-buff bodies above are read there.
-  if (activeNames.has("Scorching Beam")) {
-    const beamTags = new Set([
-      ...(main?.name === "Scorching Beam"
-        ? main.tags || []
-        : setups.find((setup) => setup.name === "Scorching Beam")?.tags || []),
-      "Channeled",
-    ]);
-    for (const line of modifierTexts) {
-      if (line.lineEffect?.key === "combatState") continue;
-      if (
-        line.origin === "slate" &&
-        /^\+\d+(?:\.\d+)?% additional Max Damage$/i.test(normalizePercentageText(String(line.text)).trim())
-      )
-        continue;
-      for (const part of splitHitLineText(line.text)) {
-        const parsed = classifyHitLine(part);
-        if (
-          !parsed ||
-          (parsed.kind !== "minDamage" && parsed.kind !== "maxDamage") ||
-          !scopeApplies(parsed.scope, { damageTypes: ["Fire"], skillTags: beamTags })
-        )
-          continue;
-        const roll = parsed.kind === "minDamage" ? "min" : "max";
-        const lineText = cleanGameText(String(part));
-        hit.push({
-          source: line.source,
-          bucket: roll,
-          percent: parsed.value * (line.multiplier ?? 1),
-          text: `${lineText} (${roll === "min" ? "lower" : "upper"} hit roll)`,
-          lineText,
-        });
-      }
-    }
-  }
-
-  // Double Damage on the beam's hits (packages/engine/src/combat/double-damage.js; gear-pact batch chunk 3): expected ×(1 + min(100, Σ chance)/100),
-  // hits only. Per-stat chance lines need the stat sheet, which this layer does not have: the beam does not read them.
-  const beamSetup =
-    setups.find((setup) => setup.name === "Scorching Beam") || (main?.name === "Scorching Beam" ? main : null);
-  if (beamSetup && activeNames.has("Scorching Beam")) {
-    const doubleDamage = doubleDamageForSkill(
-      modifierTexts.filter((line) => !/ per \d+ (?:Strength|Dexterity|Intelligence)/i.test(line.text)),
-      { tags: [...(beamSetup.tags || []), "Channeled"] },
-    );
-    if (doubleDamage.chancePercent > 0) {
-      hit.push({
-        source: `Double Damage (${doubleDamage.sources.map((line) => line.source).join(", ")})`,
-        bucket: "additional",
-        percent: (doubleDamage.factor - 1) * 100,
-        text: `${round(doubleDamage.chancePercent)}% Double Damage chance → ×${round(doubleDamage.factor)} expected beam hit damage`,
-      });
-      for (const line of doubleDamage.sources) mark(line, "Double Damage chance (hits)");
-    }
-  }
-
   // Secondary skills that debuff the target.
   for (const setup of setups) {
     if (!activeNames.has(setup.name) || setup.name === main?.name) continue;
@@ -1084,12 +959,6 @@ export function collectBuildMechanics({
         category: "Additional damage taken",
         condition: "target selected by the supported skill",
       });
-      hit.push({
-        source: `${setup.name}: Feud debuff`,
-        bucket: "additional",
-        percent: roll,
-        text: `+${roll}% additional damage taken`,
-      });
     }
   }
 
@@ -1097,9 +966,7 @@ export function collectBuildMechanics({
   // kismets, memories, unmodeled cores), read once by the shared classifier. Lines a whitelist path
   // already feeds into the ledgers (engine.js modifierPatterns, talent / slate / pact totals, hero
   // memory totals, modeled cores) are listed under `alreadyCounted` and not added again.
-  const hitSkill =
-    setups.find((setup) => setup.name === "Scorching Beam") || (main?.name === "Scorching Beam" ? main : null);
-  // Damage types the build deals, for penetration: Fire (the beam and Ignite path, as before), the damage-type
+  // Damage types the build deals, for penetration: Fire (the Ignite ledger, as before), the damage-type
   // tags of active skills (Wilting Beam: Erosion), and the types of ailments with a base (Wilt: Erosion).
   const dealtTypes = new Set(["Fire"]);
   for (const setup of setups) {
@@ -1116,8 +983,6 @@ export function collectBuildMechanics({
   if (collectAilmentTypedSources("trauma", ailmentBaseLines).base.length) dealtTypes.add("Physical");
   const generic = collectGenericDamageLines({
     modifierTexts,
-    hitSkill,
-    hitActive: Boolean(hitSkill) && activeNames.has("Scorching Beam"),
     dotMain: main,
     heroMemories,
     skip: (line) => recognized.has(normalizePercentageText(line.text)),
@@ -1125,7 +990,7 @@ export function collectBuildMechanics({
   });
   const ignitePenetration = [];
   const penetrationSources = [];
-  // Penetration by damage type: Fire feeds the beam hits and the Ignite ledger (below); every type reaches
+  // Penetration by damage type: Fire feeds the Ignite ledger (below; skill hits read their own penetration lines); every type reaches
   // that type's DoTs through packages/engine/src/ailments/ailment-shared.js (Wilt, Erosion skill DoTs). Physical has no resistance
   // to penetrate, and the dummy has no armour against damage over time, so Trauma gets none.
   const penetrationByType = {};
@@ -1167,13 +1032,9 @@ export function collectBuildMechanics({
       category,
       ...(line.requiresSkillTag ? { requiresSkillTag: line.requiresSkillTag } : {}),
     };
-    if (line.hit) hit.push({ source: line.source, bucket: line.hit, percent: line.value, text: line.text });
     if (line.dot === "increased") igniteIncreased.push(entry);
     if (line.dot === "additional") igniteAdditional.push(entry);
-    mark(
-      line,
-      `${category} (${[line.hit && "hits", line.dot && (igniteOnly ? "Ignite" : "damage over time")].filter(Boolean).join(" and ")})`,
-    );
+    mark(line, `${category} (${line.dot ? (igniteOnly ? "Ignite" : "damage over time") : ""})`);
   }
   for (const line of generic.alreadyCounted) mark(line, `Counted by the ${line.by}`);
   const penetration = {
@@ -1194,18 +1055,9 @@ export function collectBuildMechanics({
     return total / slices / superchargeFactorAt(maxStacks);
   };
 
-  // "You can only deal Cold Damage" (Extreme Coldness; packages/engine/src/combat/damage-type-restriction.js, user-confirmed 2026-10-18): the Scorching
-  // Beam hit ledger is Fire only (no conversion or "added as" part in it) and the Ignite ledger is Fire, so both take −100%.
+  // "You can only deal Cold Damage" (Extreme Coldness; packages/engine/src/combat/damage-type-restriction.js, user-confirmed 2026-10-18): the
+  // Ignite ledger is Fire, so it takes −100%.
   const typeRestriction = damageTypeRestriction(modifierTexts);
-  const beamRestriction = restrictionLine(typeRestriction, "Fire", "Scorching Beam hit damage");
-  if (beamRestriction)
-    hit.push({
-      source: beamRestriction.source,
-      bucket: "additional",
-      percent: -100,
-      text: beamRestriction.text,
-      restriction: true,
-    });
   const igniteRestriction = restrictionLine(typeRestriction, "Fire", "Ignite damage");
   if (igniteRestriction)
     igniteAdditional.push({
@@ -1215,7 +1067,6 @@ export function collectBuildMechanics({
 
   return {
     typeRestriction,
-    critOnly,
     pendingPerStack,
     channel: {
       baseMax: BASE_MAX_CHANNELED_STACKS,
@@ -1250,7 +1101,6 @@ export function collectBuildMechanics({
     },
     enemyAilments: { types: enemyAilments.types, count: enemyAilments.count },
     intelligence,
-    hit,
     penetration,
     generic,
     grantedSupports,

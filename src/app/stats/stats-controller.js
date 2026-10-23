@@ -1,11 +1,10 @@
 // The Stats view: its prepared stat sheet and damage path, and its open questions.
-import { calculatePlanner } from "#engine";
 import { EMPTY_DAMAGE_SUMMARY, damageSummaryView } from "../bridge/damage-summary-view-model.ts";
 import { prepareDamagePath } from "../bridge/damage-path-view-model.ts";
 import { prepareStatSheet, statsView } from "../bridge/stats-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { format, showToast } from "../planner/page.js";
-import { calculationsPaused, capturePlannerState, currentPlanner, plannerState } from "../planner/session.js";
+import { calculationsPaused, currentPlanner } from "../planner/session.js";
 import { DAMAGE_PATH_KEY, saveWorkspaceLocation, ui } from "../planner/ui-state.js";
 import { recountExcludedSources, setRecountSourceExcluded } from "./dummy-recount-panel.js";
 import { openQuestionsFor, openQuestionsText } from "./open-questions.js";
@@ -57,8 +56,8 @@ export function renderCharacter() {
   viewSourceChanged("stats");
 }
 // The Stats view's data (src/app/bridge/stats-view-model.ts). The stat sheet is prepared once per calculated build and
-// picked skill, the damage path once per calculated build (from a second calculation at 30% target Fire Resistance):
-// switching panels or paths, or leaving a recount source out of the view, prepares neither again.
+// picked skill, the damage path once per calculated build: switching panels or paths, or leaving a recount source out of
+// the view, prepares neither again.
 let preparedStatSheet = null,
   preparedDamagePath = null;
 function statsSource() {
@@ -69,13 +68,8 @@ function statsSource() {
       skill: ui.selectedStatSheetSkill,
       sheet: prepareStatSheet(planner, ui.selectedStatSheetSkill, format),
     };
-  if (preparedDamagePath?.planner !== planner) {
-    const theoretical = calculatePlanner({
-      ...capturePlannerState(),
-      combat: { ...plannerState.combat, targetFireResistancePercent: 30 },
-    }).theoretical;
-    preparedDamagePath = { planner, path: prepareDamagePath(theoretical, planner, format) };
-  }
+  if (preparedDamagePath?.planner !== planner)
+    preparedDamagePath = { planner, path: prepareDamagePath(planner, format) };
   return statsView(
     { sheet: preparedStatSheet.sheet, damagePath: preparedDamagePath.path },
     { panel: ui.activeStatsPanel, path: ui.selectedDamagePath, excluded: recountExcludedSources() },

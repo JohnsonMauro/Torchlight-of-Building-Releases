@@ -1,8 +1,8 @@
 import { BASE_CRITICAL_DAMAGE_PERCENT } from "#engine";
 
 // Build-driven Damage path views. The options follow what the build actually
-// deals: beam hits, Ignite when it has a base, one view per modeled ailment
-// (Trauma, Wilt), Reaping over every active damage over time, and the combined
+// deals: one view per modeled spell hit and Minion, one per modeled ailment
+// (Ignite, Trauma, Wilt), Reaping over every active damage over time, and the combined
 // 5-second / 20-second windows that feed the stat sheet.
 //
 // 2026-10-11 restyle: every view is a "path model" ({ title, final, stages, … }) rendered by
@@ -17,26 +17,17 @@ export const wholeFormat = (format) => (value) => format(Math.abs(value) >= 1000
 
 const signed = (format, value, unit = "%") => `${value >= 0 ? "+" : ""}${format(value)}${unit}`;
 
-// The hit view is the calibrated Scorching Beam path; other main skills have no hit model yet.
-export const hitLabel = (planner) =>
-  planner?.activation?.activeNames?.has("Scorching Beam") || !planner?.mainSkill
-    ? "Scorching Beam hits"
-    : `${planner.mainSkill.name} hits (not modeled)`;
-
 export function damagePathOptions(planner) {
   const options = [];
-  // Generic spell hits (packages/engine/src/skills/skill-hit-model.js) have their own path each; the legacy "hit" view stays for
-  // Scorching Beam or when no other hit skill is modeled (it then explains that the main skill has no hit model).
+  // Generic spell hits (packages/engine/src/skills/skill-hit-model.js) have their own path each; without a modeled hit
+  // skill or Minion the "hit" view explains that the main skill has no hit model.
   const skillHits = (planner.skillHits || []).filter((hit) => hit.modeled);
   const minions = (planner.minions || []).filter((minion) => minion.modeled);
-  if (planner?.activation?.activeNames?.has("Scorching Beam") || (!skillHits.length && !minions.length))
-    options.push({ value: "hit", label: hitLabel(planner) });
+  if (!skillHits.length && !minions.length)
+    options.push({ value: "hit", label: `${planner.mainSkill?.name || "Spell"} hits (not modeled)` });
   for (const hit of skillHits) options.push({ value: `hit:${hit.setupKey || hit.name}`, label: `${hit.name} hits` });
   // Minions (packages/engine/src/minions/minion-damage-model.js): one view per Minion type.
   for (const minion of minions) options.push({ value: `minion:${minion.minionKey}`, label: `${minion.name} (Minion)` });
-  const igniteBase = planner.theoretical?.totals?.baseIgniteDamage?.max || 0;
-  if (igniteBase > 0 || planner.firesAllure?.active || !planner.damagePaths)
-    options.push({ value: "ignite", label: planner.firesAllure?.active ? "Scorch / Ignite damage" : "Ignite damage" });
   for (const ailment of Object.values(planner.ailments || {})) {
     if (ailment.base.max > 0) options.push({ value: `ailment:${ailment.key}`, label: `${ailment.name} damage` });
   }
@@ -45,22 +36,11 @@ export function damagePathOptions(planner) {
   return options;
 }
 
-/**
- * Whether the build has an active Reaping source: a multi-source path source with a trigger, or an
- * Ignite-path source that triggers (same rule as packages/engine/src/text/line-coverage.js).
- */
+/** Whether the build has an active Reaping source: a damage path Reaping source with a trigger. */
 export function hasActiveReaping(planner) {
-  const ignite = (planner?.theoretical?.combat?.reaping?.sources || []).some(
-    (source) => source.minimum?.triggersPerSecond > 0 || source.maximum?.triggersPerSecond > 0,
-  );
-  const multi = (planner?.damagePaths?.twentySeconds?.reaping?.sources || []).some(
+  return (planner?.damagePaths?.twentySeconds?.reaping?.sources || []).some(
     (source) => source.triggersPerSecond > 0 || source.intervalSeconds < Infinity,
   );
-  return ignite || multi;
-}
-
-export function resolveDamagePath(selected, options) {
-  return options.some((option) => option.value === selected) ? selected : options[0]?.value || "hit";
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -881,7 +861,6 @@ export function combinedPathModel(
     (window) => window?.reaping?.sources?.length,
   );
   const parts = (window) => [
-    ["Scorching Beam hits", window.beamDps],
     ...(window.hits || []).map((hit) => [hit.name, hit.dps]),
     ...window.dots.map((dot) => [dot.skillDot ? `${dot.name} (skill damage over time)` : dot.name, dot.dps]),
     // No Reaping source in any window: no zero Reaping row.

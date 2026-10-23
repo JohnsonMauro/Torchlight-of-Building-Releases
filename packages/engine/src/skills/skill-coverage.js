@@ -16,11 +16,8 @@ import { installedSupportRejected, supportRuleText } from "../supports/support-c
 // Statuses: "In calc", "Partly modeled", "Not modeled", "No DPS effect",
 // "Inactive", "Not installed".
 
-// Skills the planner calculates hits for (packages/engine/src/planner.js models Scorching Beam's
-// beam hits, explosion and ailments). Other "main" skills only contribute
-// through the effects they apply (debuffs, enemy ailments).
-const MODELED_MAIN_SKILLS = new Set(["Scorching Beam"]);
-// Other skills are modeled when the planner's damage sources say so (packages/engine/src/skills/skill-damage-profiles.js).
+// A skill is modeled when the planner's damage sources say so (packages/engine/src/skills/skill-damage-profiles.js). Other
+// "main" skills only contribute through the effects they apply (debuffs, enemy ailments).
 const modeledDamageSource = (planner, skillName) =>
   (planner?.damageSources || []).find((source) => source.name === skillName && source.status === "modeled") || null;
 
@@ -150,26 +147,24 @@ function contributions(planner) {
         visit(child, depth + 1, fallbackCategory);
   };
   // Talent batch T7: a ledger only counts when its engine runs in this build. The Ignite ledger (and the build-mechanics
-  // lines feeding it) also feeds Trauma, Wilt and skill DoTs (packages/engine/src/ailments/ailment-shared.js), so it counts with any DoT or the
-  // beam; the beam hit ledger with the beam; an ailment with a base. Lists of lines an engine did not apply are skipped.
-  const active = planner.activation?.activeNames || new Set();
-  const beam = active.has("Scorching Beam");
+  // lines feeding it) also feeds Trauma, Wilt and skill DoTs (packages/engine/src/ailments/ailment-shared.js), so it counts with any DoT or
+  // an Ignite applier; an ailment with a base. Lists of lines an engine did not apply are skipped.
   const ailmentEntries = Object.values(planner.ailments || {}).filter(
     (entry) => entry && typeof entry === "object" && (entry.base?.max ?? 1) > 0,
   );
   const anyDot =
     ailmentEntries.length > 0 ||
     (planner.skillDots || []).some((dot) => dot?.modeled) ||
-    (planner.theoretical?.totals?.baseIgniteDamage?.max > 0 && (beam || (planner.igniteAppliers || []).length > 0));
+    (planner.theoretical?.totals?.baseIgniteDamage?.max > 0 && (planner.igniteAppliers || []).length > 0);
   const igniteActive =
     planner.theoretical?.totals?.baseIgniteDamage?.max > 0 &&
     (planner.igniteAppliers || []).some((applier) => applier.chancePercent > 0);
-  if (beam || igniteActive || !planner.activation) {
+  if (igniteActive || !planner.activation) {
     visit(planner.theoretical?.combat?.ledger, 0);
     visit(planner.theoretical?.ledger, 0);
     visit(planner.mechanics, 0);
   } else if (anyDot) {
-    // Without the beam and Ignite, only the non-Fire lines of the Ignite ledger reach a DoT (packages/engine/src/ailments/ailment-shared.js).
+    // Without Ignite, only the non-Fire lines of the Ignite ledger reach a DoT (packages/engine/src/ailments/ailment-shared.js).
     const shared = (lines) => (Array.isArray(lines) ? lines : []).filter((line) => !isFireOnlyLedgerLine(line));
     visit(shared(planner.theoretical?.combat?.ledger), 0);
     visit(shared(planner.theoretical?.ledger), 0);
@@ -183,9 +178,8 @@ function contributions(planner) {
   }
   visit(planner.aim?.sources, 0);
   visit(planner.activation ? ailmentEntries : planner.ailments, 0);
-  if (beam || !planner.activation) visit(planner.directHit?.ledger, 0, "hit damage");
   // The generic engines (talent batch T7): spell / attack hits, skill DoTs, Minions and the weapon model, so a line one of
-  // them applied reads "In calc" (it read "Inactive" / "No DPS effect" when only the beam and the Ignite path were visited).
+  // them applied reads "In calc".
   for (const hit of planner.skillHits || [])
     if (hit?.modeled) {
       visit(hit.ledger, 0, "hit damage");
@@ -443,13 +437,6 @@ function classifySkill(planner, skillName, setup) {
       ? result("Partly modeled", `${reason}; not modeled: ${unread.map((line) => line.text).join("; ")}`)
       : result("In calc", reason);
   }
-  if (MODELED_MAIN_SKILLS.has(skillName)) {
-    const level = matchingContributions(planner, skillName).find((entry) => /level/.test(entry.source));
-    return result(
-      "In calc",
-      `hit and ailment ledgers${level ? `; ${signed(level.value)}% ${categoryText(level.category) || "damage"} from skill level` : ""}`,
-    );
-  }
   const damageSource = modeledDamageSource(planner, skillName);
   // A modeled hit source the engine found unable to fire on the dummy (Ice Focus without Frostbite, a weapon restriction,
   // a Focus skill whose trigger never happens): the skill-hit result decides, not the profile (gear-pact batch G14).
@@ -644,7 +631,7 @@ function classifySupport(planner, supportName, skillName, setup) {
       return result("Partly modeled", `${contributionReason(matches)}; not modeled: ${clauseList(clauses.missing)}`);
     return result("In calc", contributionReason(matches));
   }
-  if (role === "main" && !MODELED_MAIN_SKILLS.has(skillName) && !modeledDamageSource(planner, skillName))
+  if (role === "main" && !modeledDamageSource(planner, skillName))
     return result("Not modeled", `supports ${skillName}, whose own damage is not modeled`);
   // Generic spell-hit engine (packages/engine/src/skills/skill-hit-model.js): it reads the support resolver's clauses (additional damage, added
   // damage, speed, cooldown recovery, crit-only, stars and rolls) but no trigger / Activation Medium mechanics.

@@ -27,7 +27,7 @@ export interface RecountAssumption {
   value: unknown;
   text: string;
 }
-/** A window of the timeline. Sources are keyed like "hit:<setup>", "minion:<id>", "ignite", "beam", "reap:<n>". */
+/** A window of the timeline. Sources are keyed like "hit:<setup>", "minion:<id>", "ignite", "reap:<n>". */
 export interface RecountWindow {
   start: number;
   seconds: number;
@@ -268,7 +268,6 @@ export interface PlannerResult {
   /** What the calculation could not model or settle, as text for the user. */
   warnings: string[];
 
-  igniteAttemptsPerSecond: number;
   effectiveTargetFireResistancePercent: number;
   murmursTideEffectPercent: number;
   tideEffectFactor: number;
@@ -280,15 +279,11 @@ export interface PlannerResult {
   ailments: ResultSection;
   aim: AimSummary;
   aura: AuraLedger;
-  bardDelivery: ResultSection | null;
-  beamAddedDamage: ResultSection;
   beamCastRate: ResultSection;
   beamCritical: ResultSection;
-  beamDelivery: ResultSection | null;
   blessings: ResultSection;
   block: ResultSection;
   blurEffects: ResultSection;
-  combatProjection: ResultSection | null;
   conditions: PlannerConditions;
   coreTalents: ResultSection;
   critNumbedBuffs: ResultSection;
@@ -297,7 +292,6 @@ export interface PlannerResult {
   damagePaths: ResultSection | null;
   damageTypeRestriction: ResultSection | null;
   danceOfTheDeep: ResultSection;
-  directHit: ResultSection;
   dotTriggers: ResultSection;
   empowerEffects: ResultSection;
   enemyDebuffCores: ResultSection;
@@ -307,7 +301,6 @@ export interface PlannerResult {
   fullLife: ResultSection;
   heroMemories: ResultSection;
   hitRateFacts: ResultSection | null;
-  igniteIllOmen: ResultSection | null;
   illOmen: ResultSection | null;
   lineEffects: ResultSection;
   lowResources: LowResources;
@@ -315,13 +308,9 @@ export interface PlannerResult {
   mechanics: ResultSection;
   minionCores: ResultSection;
   miraculousGain: ResultSection | null;
-  nativeHitCycle: ResultSection | null;
   pact: ResultSection;
   periodicBurst: ResultSection;
   pureHeart: ResultSection | null;
-  recountFiveSeconds: ResultSection | null;
-  recountOpening: ResultSection | null;
-  recountVariation: ResultSection | null;
   resistances: ResultSection;
   seaFoamNocturne: SeaFoamNocturne;
   singWithTheTide: ResultSection;
@@ -359,7 +348,6 @@ export const plannerResultKeys = [
   "assumptions",
   "bestCaseAssumptions",
   "warnings",
-  "igniteAttemptsPerSecond",
   "effectiveTargetFireResistancePercent",
   "murmursTideEffectPercent",
   "tideEffectFactor",
@@ -370,15 +358,11 @@ export const plannerResultKeys = [
   "ailments",
   "aim",
   "aura",
-  "bardDelivery",
-  "beamAddedDamage",
   "beamCastRate",
   "beamCritical",
-  "beamDelivery",
   "blessings",
   "block",
   "blurEffects",
-  "combatProjection",
   "conditions",
   "coreTalents",
   "critNumbedBuffs",
@@ -387,7 +371,6 @@ export const plannerResultKeys = [
   "damagePaths",
   "damageTypeRestriction",
   "danceOfTheDeep",
-  "directHit",
   "dotTriggers",
   "empowerEffects",
   "enemyDebuffCores",
@@ -397,7 +380,6 @@ export const plannerResultKeys = [
   "fullLife",
   "heroMemories",
   "hitRateFacts",
-  "igniteIllOmen",
   "illOmen",
   "lineEffects",
   "lowResources",
@@ -405,13 +387,9 @@ export const plannerResultKeys = [
   "mechanics",
   "minionCores",
   "miraculousGain",
-  "nativeHitCycle",
   "pact",
   "periodicBurst",
   "pureHeart",
-  "recountFiveSeconds",
-  "recountOpening",
-  "recountVariation",
   "resistances",
   "seaFoamNocturne",
   "singWithTheTide",

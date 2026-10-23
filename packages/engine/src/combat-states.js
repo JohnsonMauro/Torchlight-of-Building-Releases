@@ -1155,27 +1155,16 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
   for (const line of find(PATTERNS.infiltrationEffect)) {
     const type = line.clean.match(PATTERNS.infiltrationEffect)[2];
     const word = type[0].toUpperCase() + type.slice(1).toLowerCase();
-    const beamFire = word === "Fire" && state.beamActive;
-    const held = debuffs.infiltration.has(word) && !beamFire;
-    entry(
-      line,
-      held,
-      held
-        ? `scales the ${word} Infiltration on the dummy`
-        : beamFire
-          ? "the beam path's Fire Infiltration does not read Infiltration Effect"
-          : `no ${word} Infiltration source`,
-      beamFire ? { status: "Not modeled" } : {},
-    );
+    const held = debuffs.infiltration.has(word);
+    entry(line, held, held ? `scales the ${word} Infiltration on the dummy` : `no ${word} Infiltration source`, {});
   }
   for (const type of debuffs.infiltration)
-    if (!(type === "Fire" && state.beamActive))
-      derive(
-        `+${round(BUFF_VALUES.infiltration * (1 + infiltrationEffect(type) / 100))}% additional ${type} Damage taken`,
-        `${type} Infiltration (keyword ${type === "Fire" ? "10000103" : type === "Cold" ? "10000104" : "10000105"})`,
-        `${type} Infiltration on the dummy`,
-        true,
-      );
+    derive(
+      `+${round(BUFF_VALUES.infiltration * (1 + infiltrationEffect(type) / 100))}% additional ${type} Damage taken`,
+      `${type} Infiltration (keyword ${type === "Fire" ? "10000103" : type === "Cold" ? "10000104" : "10000105"})`,
+      `${type} Infiltration on the dummy`,
+      true,
+    );
   for (const line of find(PATTERNS.perInfiltrationType)) {
     const count =
       debuffs.infiltration.size + (state.fireInfiltrationCondition && !debuffs.infiltration.has("Fire") ? 1 : 0);

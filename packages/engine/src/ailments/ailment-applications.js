@@ -14,7 +14,7 @@ import { allSkillEffects } from "../../data/skills/all-skill-effects.generated.j
 import { supportProgression } from "../../data/skills/support-progression.generated.js";
 
 // Per-skill ailment application (2026-10-11). Hit ailments (Ignite, Trauma, Wilt) are applied by
-// every hitting skill, not only the main beam: each application attempt is a hit, its chance is the
+// every hitting skill: each application attempt is a hit, its chance is the
 // build-wide chance plus the lines scoped to that skill (its own text and the supports on it), and
 // a "cannot inflict" line on the skill or a support blocks that skill alone. The ailment's damage
 // uses the build-wide layers (packages/engine/src/ailments/ailment-shared.js, which already carry the main skill's supports
@@ -61,25 +61,10 @@ export function ailmentBlockFor(setup, ailmentKey) {
 /**
  * The hitting skills that can apply ailments, with their application (hit) rates.
  * @param {object} p
- * @param {object|null} p.beam Scorching Beam when active: { setup, castsPerSecond, critChancePercent }
- * @param {{ hit: object, setup: object }[]} p.skillHits modeled generic spell hits (packages/engine/src/skills/skill-hit-model.js) with their setups
+ * @param {{ hit: object, setup: object }[]} p.skillHits modeled hits (packages/engine/src/skills/skill-hit-model.js) with their setups
  */
-export function collectAilmentApplierCandidates({ beam = null, skillHits = [] } = {}) {
+export function collectAilmentApplierCandidates({ skillHits = [] } = {}) {
   const candidates = [];
-  if (beam?.setup && beam.castsPerSecond > 0) {
-    candidates.push({
-      key: "beam",
-      name: beam.setup.name || "Scorching Beam",
-      setupKey: beam.setup.setupKey || beam.setup.name,
-      setup: beam.setup,
-      beam: true,
-      tags: beam.setup.tags || [],
-      level: beam.setup.effectiveLevel ?? 20,
-      applicationsPerSecond: beam.castsPerSecond,
-      critChancePercent: beam.critChancePercent || 0,
-      hit: null,
-    });
-  }
   for (const { hit, setup } of skillHits) {
     if (!hit?.modeled || hit.profile?.canInflictHitAilments === false) continue;
     const inputs = hit.ailmentInputs || {};
@@ -90,7 +75,6 @@ export function collectAilmentApplierCandidates({ beam = null, skillHits = [] } 
       name: hit.name,
       setupKey: hit.setupKey || setup?.setupKey,
       setup,
-      beam: false,
       tags: inputs.tags || hit.profile?.tags || [],
       level: inputs.level ?? hit.level ?? 20,
       applicationsPerSecond,
@@ -205,55 +189,52 @@ export function ailmentAppliersFor({
       buildWideAilmentBlock(modifierTexts, ailmentDefinitions[ailmentKey]?.name);
     const tags = new Set((candidate.tags || []).map((tag) => String(tag).toLowerCase()));
     const scaleSources = [];
-    let scale = 1;
-    if (!candidate.beam) {
-      // The skill's own scoped layers (its supports' "additional damage for the supported skill" and star bonuses,
-      // its level bonus past Lv.20) replace the main skill's, which the shared layers carry.
-      const hitLines = (candidate.hit?.primary?.additional || []).filter(
-        (line) =>
-          (/^Support: /.test(line.source || "") && supportedSkillAdditional.test(line.text || "") && !line.condition) ||
-          line.source === `${candidate.name} level ${candidate.level}`,
-      );
-      let own = 1;
-      for (const line of [...hitLines, ...ownAilmentSupportLines(candidate.setup, ailmentKey)]) {
-        own *= 1 + line.value / 100;
-        scaleSources.push({ source: line.source, text: line.text, factor: 1 + line.value / 100 });
-      }
-      if (
-        !hitLines.some((line) => line.source === `${candidate.name} level ${candidate.level}`) &&
-        candidate.level > 20
-      ) {
-        const factor = skillLevelDamageMultiplier(candidate.level);
-        own *= factor;
-        scaleSources.push({
-          source: `${candidate.name} level ${candidate.level}`,
-          text: `+${Math.round((factor - 1) * 10000) / 100}% additional damage (TLIDB Skill Level past Lv.20)`,
-          factor,
-        });
-      }
-      // Strength / Dexterity main stats (manual: "This includes … Ailment Damage dealt directly by the skill"; the bonuses of
-      // several main stats are added together): the skill's share joins the pooled Intelligence line of the shared layers.
-      const ownMainStat = (candidate.hit?.mainStatParts || [])
-        .filter((part) => part.stat !== "Intelligence")
-        .reduce((sum, part) => sum + part.value, 0);
-      if (ownMainStat) {
-        const pooled = shared.intelligencePercent || 0;
-        const factor = (1 + (pooled + ownMainStat) / 100) / Math.max(1e-9, 1 + pooled / 100);
-        own *= factor;
-        scaleSources.push({
-          source: `${candidate.name} main stats`,
-          text: `+${Math.round(ownMainStat * 100) / 100}% Strength / Dexterity main-stat bonus added to the pooled ${Math.round(pooled * 100) / 100}% (manual: main-stat bonuses add)`,
-          factor,
-        });
-      }
-      if (mainScopedFactor !== 1)
-        scaleSources.push({
-          source: "Main skill layers removed",
-          text: (shared.mainScopedLines || []).map((line) => line.source).join(", "),
-          factor: 1 / mainScopedFactor,
-        });
-      scale = own / mainScopedFactor;
+    // The skill's own scoped layers (its supports' "additional damage for the supported skill" and star bonuses,
+    // its level bonus past Lv.20) replace the main skill's, which the shared layers carry.
+    const hitLines = (candidate.hit?.primary?.additional || []).filter(
+      (line) =>
+        (/^Support: /.test(line.source || "") && supportedSkillAdditional.test(line.text || "") && !line.condition) ||
+        line.source === `${candidate.name} level ${candidate.level}`,
+    );
+    let own = 1;
+    for (const line of [...hitLines, ...ownAilmentSupportLines(candidate.setup, ailmentKey)]) {
+      own *= 1 + line.value / 100;
+      scaleSources.push({ source: line.source, text: line.text, factor: 1 + line.value / 100 });
     }
+    if (
+      !hitLines.some((line) => line.source === `${candidate.name} level ${candidate.level}`) &&
+      candidate.level > 20
+    ) {
+      const factor = skillLevelDamageMultiplier(candidate.level);
+      own *= factor;
+      scaleSources.push({
+        source: `${candidate.name} level ${candidate.level}`,
+        text: `+${Math.round((factor - 1) * 10000) / 100}% additional damage (TLIDB Skill Level past Lv.20)`,
+        factor,
+      });
+    }
+    // Strength / Dexterity main stats (manual: "This includes … Ailment Damage dealt directly by the skill"; the bonuses of
+    // several main stats are added together): the skill's share joins the pooled Intelligence line of the shared layers.
+    const ownMainStat = (candidate.hit?.mainStatParts || [])
+      .filter((part) => part.stat !== "Intelligence")
+      .reduce((sum, part) => sum + part.value, 0);
+    if (ownMainStat) {
+      const pooled = shared.intelligencePercent || 0;
+      const factor = (1 + (pooled + ownMainStat) / 100) / Math.max(1e-9, 1 + pooled / 100);
+      own *= factor;
+      scaleSources.push({
+        source: `${candidate.name} main stats`,
+        text: `+${Math.round(ownMainStat * 100) / 100}% Strength / Dexterity main-stat bonus added to the pooled ${Math.round(pooled * 100) / 100}% (manual: main-stat bonuses add)`,
+        factor,
+      });
+    }
+    if (mainScopedFactor !== 1)
+      scaleSources.push({
+        source: "Main skill layers removed",
+        text: (shared.mainScopedLines || []).map((line) => line.source).join(", "),
+        factor: 1 / mainScopedFactor,
+      });
+    let scale = own / mainScopedFactor;
     // Overly Modified (packages/engine/src/minions/sentry-cores.js): an ailment inherits the inflicting skill's classification, +30% from a Sentry skill,
     // -50% from another Active skill (user-supplied 2026-10-19, Google AI Mode answer, not tested in game); a Reap settles the
     // scaled DoT, so it inherits it too.
@@ -303,7 +284,6 @@ export function ailmentAppliersFor({
       name: candidate.name,
       setupKey: candidate.setupKey,
       main: isMain,
-      beam: candidate.beam,
       tags: candidate.tags || [],
       level: candidate.level,
       applicationsPerSecond: candidate.applicationsPerSecond,
@@ -333,7 +313,7 @@ export function textGlobalChanceSources(ailmentKey, modifierTexts = [], auraChan
 }
 
 // Ignite's build-wide chance: the Ignite ledger's (packages/engine/src/theoretical-sources.js) "Ignite application chance"
-// entries without the main-skill-scoped ones (Additional Ignite on the beam, the beam's own scoped lines).
+// entries without the main-skill-scoped ones (Additional Ignite on the main skill, its own scoped lines).
 // It already holds the Volcano Kismet negatives (pact totals), Flame Focus and Ailment Amplification.
 export function igniteGlobalChanceSources(theoretical) {
   return (theoretical?.ledger || [])
