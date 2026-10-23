@@ -361,6 +361,14 @@ const SPLITS = [
     pattern:
       /^(The base main (?:stat|attribute) no longer additionally increases damage)[.!]? ([+-]\d+(?:\.\d+)?% additional (?:Strength|Dexterity|Intelligence)(?: and (?:Strength|Dexterity|Intelligence))?)$/,
   },
+  // Grasp of Truth (2026-10-23): TLIDB prints the [Penetrating] affix as one row; its page shows three lines, the keyword's
+  // two (Infiltration by damage type, +8% per Infiltration type) and "+12% additional Spell Damage", which the corroded
+  // row ends with too. The keyword tag goes; the readers match the lines (packages/engine/src/combat-states.js).
+  {
+    items: /^Grasp of Truth$/,
+    pattern:
+      /^\[Penetrating\] (When dealing Fire, Lightning, or Cold Damage, inflicts Fire Infiltration ?, Lightning Infiltration ?, or Cold Infiltration respectively\.) (Upon inflicting damage, \+\d+(?:\.\d+)?% additional Elemental Damage for each type of Infiltration Effect the enemy has) (\+\d+(?:\.\d+)?% additional Spell Damage)$/,
+  },
 ];
 
 // Round 2: one row that lists several damage types reads as one line per type, as its wording says ("Adds 48 - 60 Cold, Fire,
@@ -562,7 +570,7 @@ function readExpandScriptedItemLine(itemName, text) {
   for (const split of SPLITS) {
     if (!split.items.test(String(itemName ?? ""))) continue;
     const match = clean.match(split.pattern);
-    if (match) return match.slice(1).map((part) => part.trim());
+    if (match) return match.slice(1).map((part) => part.trim().replace(/ ,/g, ","));
   }
   const multiType = splitMultiTypeLine(clean);
   if (multiType) return multiType;

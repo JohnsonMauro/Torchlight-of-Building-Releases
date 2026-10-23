@@ -1149,7 +1149,10 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
     );
   }
   for (const line of find(PATTERNS.penetrating)) {
-    const types = ["Fire", "Lightning", "Cold"].filter((type) => dealt.has(type));
+    // "When dealing <Type> Damage": the types the build deals (planner.js dealtDamageTypes), not `dealtTypes`, which always
+    // carries the Ignite ledger's Fire (2026-10-23: a Lightning-only build held Fire Infiltration too).
+    const dealing = state.dealtDamageTypes || dealt;
+    const types = ["Fire", "Lightning", "Cold"].filter((type) => dealing.has(type));
     for (const type of types) debuffs.infiltration.add(type);
     entry(
       line,
