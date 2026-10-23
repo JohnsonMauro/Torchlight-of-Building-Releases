@@ -1,7 +1,8 @@
 // Crafted Divinity Slate shapes for "Import from game" (research/slate-shape-import-2026-10-19.md).
 //
-// A god's crafted slate logs ShapeId 10X1. X is the shape in the order TLIDB lists each god's six slates, by their item
-// icons UI_TalantNG_<code>_0_Icon: Z1, Z2, L1, L2, O1, T1. The game only rotates a slate (Direction = quarter turns,
+// A god's crafted slate logs ShapeId 10XY. X is the shape in the order TLIDB lists each god's six slates, by their item
+// icons UI_TalantNG_<code>_0_Icon: Z1, Z2, L1, L2, O1, T1; Y differs by god (1 on Goddess of Deception's, 2 on Goddess
+// of Knowledge's) and leaves the shape as it is. The game only rotates a slate (Direction = quarter turns,
 // clockwise on screen); it never mirrors one, so Z2 and L2 are shapes of their own, the mirror images of Z1 and L1.
 // Direction 0 is the item icon's orientation. A missing Direction is read as 0.
 //
@@ -12,7 +13,8 @@
 //
 // Confirmed on the user's board (2026-10-19 log: four crafted Goddess of Deception slates and Pedigree of Gods cover 23
 // of the 24 cells in exactly one legal way): 1011 Z1, 1041 L2, 1061 T1. 1021 Z2, 1031 L1 and 1051 O1 follow TLIDB's
-// order and the same anchor rule (provisional).
+// order and the same anchor rule (provisional). Goddess of Knowledge (2026-10-22 log: two crafted slates, three A Corner
+// of Divinity and Pedigree of Gods; of the 36 readings of 1012 and 1042 only one places every slate): 1012 Z1, 1042 L2.
 //
 // plannerIndex is the planner's crafted shape key <god>-<index> (Z1, L1, O1, T1 in slateShapeCodes). The planner has no
 // Z2 / L2 keys: they use the Z / L key, flipped.
@@ -80,6 +82,28 @@ export const CRAFTED_SLATE_SHAPES = {
       [0, 1],
       [1, 1],
       [2, 1],
+    ],
+    confirmed: true,
+  },
+  1012: {
+    code: "Z1",
+    plannerIndex: 0,
+    cells: [
+      [0, 0],
+      [0, 1],
+      [1, 1],
+      [1, 2],
+    ],
+    confirmed: true,
+  },
+  1042: {
+    code: "L2",
+    plannerIndex: 1,
+    cells: [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [0, 1],
     ],
     confirmed: true,
   },

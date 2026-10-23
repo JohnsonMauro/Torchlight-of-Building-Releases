@@ -24,6 +24,7 @@ import { folkloreRingOptions } from "../engine/gear/legendary-ring-options.js";
 import { placeholderPool } from "../engine/gear/legendary-placeholder-pools.js";
 import { legendaryLowerTierTemplates, legendaryTierTextForAffixId } from "../engine/gear/legendary-affix-tiers.js";
 import { heroTraitTree, treeRules, treeMaxCapacity } from "../engine/heroes/hero-trait-tree.js";
+import { CLOCKWORK_CORE, TRAIT_SLOT_GRANTS } from "../engine/heroes/trait-board-grants.js";
 import { allProfessionTalentCatalogueSs13 } from "../data/talents/all-profession-trees-ss13.generated.js";
 import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../data/catalogs/tlidb-ss13.js";
 import { selenaCompleteSkillLoadoutSs13 } from "../data/skills/selena-complete-skill-loadout-ss13.js";
@@ -66,6 +67,7 @@ import {
 } from "./slate-shape-ids.js";
 import { isValidPedigreeAffix } from "../engine/talents/pedigree-slots.js";
 import { etherealPrismBases, prismAffixes } from "../engine/talents/prism-crafting.js";
+import { TLIDB_PRISM_AFFIXES } from "../data/talents/prism-affixes-tlidb.generated.js";
 
 export const GAME_LOG_FOLDER_HINT = "<Torchlight Infinite>\\UE_game\\TorchLight\\Saved\\Logs";
 // User answer 2026-10-12, "probably": a pactspirit's planner level is its star level + 1.
@@ -130,7 +132,7 @@ const KEPT_SECTIONS = {
   SkillSlot: ["costSlot"],
   ContractInfosV2: ["ContractDatas", "pointDatas", "unlockInfo"],
   ServantInfos: ["servantData"],
-  heroCharacterv3OverView: ["pointOverView", "reminiscenceOverView"],
+  heroCharacterv3OverView: ["pointOverView", "reminiscenceOverView", "treeActivatedNodes"],
 };
 const UUID_VALUE = /^(\d+)_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -630,36 +632,46 @@ function* choose(count, size, prefix = []) {
   for (let index = 0; index < size; index += 1)
     if (!prefix.includes(index)) yield* choose(count, size, [...prefix, index]);
 }
-/** Fills a "(a–b)" template with logged rolls. Extra rolls must equal fixed numbers in the text. */
+/**
+ * Fills a "(a–b)" template with logged rolls. Extra rolls must equal fixed numbers in the text. Lines that share one
+ * range share one roll when the log has fewer rolls than ranges ("+(26–36)% Cast Speed / +(26–36)% Minion Cast Speed"
+ * is logged as a single 29, shown as 29 on both lines).
+ */
 export function fillTemplate(template, args = []) {
   const ranges = [...String(template).matchAll(RANGE)].map((match) => ({
     min: Math.min(+match[1], +match[2]),
     max: Math.max(+match[1], +match[2]),
   }));
+  const keys = ranges.map((range) => `${range.min}:${range.max}`);
+  const shared = args.length < ranges.length;
+  // The rolls to find: one per range, or one per distinct range when the lines share theirs.
+  const rolls = shared ? ranges.filter((_, index) => keys.indexOf(keys[index]) === index) : ranges;
+  const rollOf = (rangeIndex) =>
+    shared ? rolls.findIndex((range) => `${range.min}:${range.max}` === keys[rangeIndex]) : rangeIndex;
   const fixed = (String(template).replace(RANGE, " ").match(NUMBER) || []).map((value) => Math.abs(Number(value)));
   const leftoversFit = (used) =>
     args.every(
       (value, index) => used.includes(index) || fixed.some((number) => Math.abs(number - Math.abs(value)) < 1e-6),
     );
-  if (args.length < ranges.length)
-    return { ok: false, reason: `${ranges.length} rolled values expected, ${args.length} logged` };
-  for (const pick of choose(ranges.length, args.length)) {
+  if (args.length < rolls.length)
+    return { ok: false, reason: `${rolls.length} rolled values expected, ${args.length} logged` };
+  for (const pick of choose(rolls.length, args.length)) {
     if (
       !pick.every(
-        (argIndex, rangeIndex) =>
-          args[argIndex] >= ranges[rangeIndex].min - 1e-6 && args[argIndex] <= ranges[rangeIndex].max + 1e-6,
+        (argIndex, rollIndex) =>
+          args[argIndex] >= rolls[rollIndex].min - 1e-6 && args[argIndex] <= rolls[rollIndex].max + 1e-6,
       )
     )
       continue;
     if (!leftoversFit(pick)) continue;
     let index = 0;
-    return { ok: true, text: String(template).replace(RANGE, () => formatNumber(args[pick[index++]])) };
+    return { ok: true, text: String(template).replace(RANGE, () => formatNumber(args[pick[rollOf(index++)]])) };
   }
-  if (ranges.length && args.length === ranges.length) {
+  if (rolls.length && args.length === rolls.length) {
     let index = 0;
     return {
       ok: true,
-      text: String(template).replace(RANGE, () => formatNumber(args[index++])),
+      text: String(template).replace(RANGE, () => formatNumber(args[rollOf(index++)])),
       note: "roll outside the catalog range",
     };
   }
@@ -1345,6 +1357,13 @@ function resolveTalents(tree, idMap, report, state) {
   state.talents.selectedTrees = selectedTrees;
 }
 
+// A prism affix's id-map entry. The upstream map lacks the lower prism tiers' ids (1214…, 1224…) a dropped prism logs:
+// those come from TLIDB's table (scripts/fetch-tlidb-prism-affixes.js).
+const prismAffixEntry = (idMap, id) => idMap.affixes[id] || TLIDB_PRISM_AFFIXES[id] || null;
+// TLIDB writes "The area of effect expands to" where the planner's options say "The Effect Area expands to".
+const prismSignature = (text) =>
+  affixSignature(String(text).replace(/^The area of effect expands to\b/i, "The Effect Area expands to"));
+
 function resolvePrism(info, treeName, nodes, idMap, report, state) {
   const prism = info.prismInfo,
     item = prism.item || {};
@@ -1369,6 +1388,7 @@ function resolvePrism(info, treeName, nodes, idMap, report, state) {
     radiusAffix: "",
     rareAffix: "",
     legendaryAffix: "",
+    baseAffix: "",
   };
   const lists = {
     radiusAffix: prismAffixes.radius,
@@ -1376,13 +1396,13 @@ function resolvePrism(info, treeName, nodes, idMap, report, state) {
     legendaryAffix: prismAffixes.legendary,
   };
   for (const affix of entries(item.Prefix)) {
-    const entry = idMap.affixes[affix.Id];
+    const entry = prismAffixEntry(idMap, affix.Id);
     const field =
       entry &&
       Object.keys(lists).find(
-        (key) => !crafted[key] && lists[key].some((option) => affixSignature(option) === affixSignature(entry[1])),
+        (key) => !crafted[key] && lists[key].some((option) => prismSignature(option) === prismSignature(entry[1])),
       );
-    if (field) crafted[field] = lists[field].find((option) => affixSignature(option) === affixSignature(entry[1]));
+    if (field) crafted[field] = lists[field].find((option) => prismSignature(option) === prismSignature(entry[1]));
     else
       add(
         report,
@@ -1393,8 +1413,15 @@ function resolvePrism(info, treeName, nodes, idMap, report, state) {
       );
   }
   for (const affix of [...entries(item.BaseAffix), ...entries(item.BaseAttrAffix), ...entries(prism.extAffix)]) {
-    const entry = idMap.affixes[affix.Id];
+    const entry = prismAffixEntry(idMap, affix.Id);
     if (entry && /Replaces the Core Talent/.test(entry[1]) && entry[1].includes(base)) continue; // the base effect, implied by the base name
+    // A base affix that adds an effect to the panel's core (Haze's, 2026-10-22 log): kept on the prism, which applies it.
+    if (entry && /^Adds an additional effect to the Core Talent/.test(entry[1]) && !crafted.baseAffix) {
+      // The upstream id map writes the line break as the two characters "\\n".
+      crafted.baseAffix = entry[1].replace(/\\n/g, "\n");
+      add(report, "talents", "imported", `${treeName}: prism base affix ${entry[1].replace(/\n/g, " / ")}`);
+      continue;
+    }
     add(
       report,
       "talents",
@@ -1635,8 +1662,14 @@ function resolveSkills(tree, others, idMap, report, state) {
       return null;
     }
     const level = levelOf(entry.item);
+    // A skill a hero trait puts in this Active slot (Youga's Stasis Vault in slot 2, …) is the trait's own skill in the
+    // planner (src/engine/heroes/trait-board-grants.js): its supports go under `trait:<skill>`, where the granted skill
+    // reads them, and the slot is left to the grant.
+    const granted =
+      role === "skill" && Object.values(TRAIT_SLOT_GRANTS).some((grant) => grant.skill === name && grant.row === index);
     let key;
-    if (capturedSetups.has(name) && !used.has(name)) {
+    if (granted) key = `trait:${name}`;
+    else if (capturedSetups.has(name) && !used.has(name)) {
       key = name;
       used.add(name);
       skills.setupEnabled[key] = true;
@@ -1660,7 +1693,14 @@ function resolveSkills(tree, others, idMap, report, state) {
     }
     if (!entry.item)
       add(report, "skills", "notes", `${describe(slotNumber)}: ${name} level not logged; Lv ${level} assumed`);
-    add(report, "skills", "imported", `${describe(slotNumber)}: ${name} Lv ${level}${mergedNote(entry)}`);
+    add(
+      report,
+      "skills",
+      "imported",
+      granted
+        ? `${describe(slotNumber)}: ${name} (granted by the hero trait; its supports go on the granted skill)${mergedNote(entry)}`
+        : `${describe(slotNumber)}: ${name} Lv ${level}${mergedNote(entry)}`,
+    );
     const order = ["", "", "", "", ""];
     const supportSlots =
       role === "aura"
@@ -1670,6 +1710,16 @@ function resolveSkills(tree, others, idMap, report, state) {
       const support = slots.get(String(supportSlot));
       if (!support) return;
       const [supportName] = idMap.itemBases[support.baseId] || [];
+      // Youga's trait puts Clockwork Core in this socket; the planner grants it from the trait, never from the board.
+      if (supportName === CLOCKWORK_CORE.name) {
+        add(
+          report,
+          "skills",
+          "imported",
+          `${name} support ${position + 1}: Clockwork Core (granted by the hero trait; the planner adds it itself)`,
+        );
+        return;
+      }
       const supportCatalog = supportName && supportByName.get(supportName);
       if (!supportCatalog) {
         add(
@@ -1730,7 +1780,7 @@ function resolveSkills(tree, others, idMap, report, state) {
       );
     });
     skills.supportOrder[key] = order;
-    return key;
+    return granted ? "" : key;
   };
   skills.boardSlots.skills = ACTIVE_SKILL_SLOTS.map((slot, index) => setupFor(slot, "skill", index) || "");
   skills.boardSlots.auras = AURA_SLOTS.map((slot, index) => setupFor(slot, "aura", index) || "");
@@ -1739,7 +1789,7 @@ function resolveSkills(tree, others, idMap, report, state) {
 // ---------------------------------------------------------------- slates
 
 // The game anchors a slate at one cell: the cell with the most neighbours in the shape (first such cell). Index =
-// column x 10 + row of that cell; Direction 2 is the unrotated shape and each step turns 90 degrees. Calibrated on the
+// column x 10 + row of that cell; Direction 2 is the unrotated shape, each step turns 90 degrees and a missing one is 0. Calibrated on the
 // user's nine slates (Fallen Starlight, A Corner of Divinity, Pedigree of Gods, Sparks, Prairie, Judgment). The same rule
 // places god-crafted slates (src/game-log/slate-shape-ids.js; research/slate-shape-import-2026-10-19.md).
 const CALIBRATED_SLATES = new Set([
@@ -2046,9 +2096,10 @@ function resolveSlates(tree, idMap, report, state) {
     }
     for (const problem of problems)
       add(report, "slates", "unresolved", `${label}: ${problem}`, "no planner talent at that id");
-    // Placement from the game's anchor cell.
+    // Placement from the game's anchor cell. The log leaves Direction out when it is 0 (no dump writes "Direction [0]"),
+    // so a missing one is 0, as for god-crafted slates (gameDirectionTurn).
     const shape = legendarySlateShapes[name];
-    const turned = item.Direction != null ? ((Number(item.Direction) + 2) % 4) * 90 : 0;
+    const turned = gameDirectionTurn(item.Direction) ?? 0;
     const offsets = slateOffsets({ shape }, turned, 1, 1);
     const anchor = offsets[anchorCell(shape)];
     const boardSlate = { ...crafted, shape, overlay: isNether && name.endsWith("Judgment") };
@@ -2516,9 +2567,9 @@ function resolveHero(tree, idMap, report, state) {
   const overview = tree.heroCharacterv3OverView;
   const traits = allHeroTraitsSs13[hero.id]?.traits || [];
   // A trait-tree hero (src/engine/heroes/hero-trait-tree.js) takes the active traits as its tree picks, in the logged order; the placement
-  // rule seats them (the log does not say which memory row each trait sits in).
-  const traitTree = heroTraitTree(hero.id),
-    treePicks = [];
+  // rule seats them (pointOverView does not say which memory row each trait sits in).
+  const traitTree = heroTraitTree(hero.id);
+  let treePicks = [];
   for (const traitId of entries(overview?.pointOverView?.activeId)) {
     const name = idMap.heroTraits[traitId];
     const trait = traits.find((entry) => entry.name === name && entry.level > 1);
@@ -2540,11 +2591,42 @@ function resolveHero(tree, idMap, report, state) {
     state.hero.selectedTraits[`level${trait.level}`] = trait.name;
     add(report, "hero", "imported", `Trait Lv ${trait.level}: ${trait.name}`);
   }
+  // SS14 logs a tree hero's picks as activated tree nodes instead (treeActivatedNodes, printed beside an empty
+  // skillOverView), each with the memory row it sits in (matched_slot 1–4; the base trait has none). 2026-10-22 log, Youga – The Ultimate One: 1320011 / 1320021 / 1320032 in rows 1 / 2 / 3.
+  const activatedNodes = entries(overview?.treeActivatedNodes);
+  if (traitTree && activatedNodes.length) {
+    const nodeNames = new Map(
+      (allHeroTraitsSs13[hero.id]?.tree?.nodes || []).map((node) => [String(node.id), node.name]),
+    );
+    const rows = [];
+    for (const node of activatedNodes) {
+      if (node.matched_slot == null) continue; // the base trait
+      const name = nodeNames.get(String(node.node_id)),
+        row = Number(node.matched_slot) - 1;
+      if (!name || !Number.isInteger(row) || row < 0) {
+        add(
+          report,
+          "hero",
+          "unresolved",
+          `Hero trait node ${node.node_id}`,
+          name ? `memory row ${node.matched_slot} is not one the planner has` : `not a ${hero.trait} tree node`,
+        );
+        continue;
+      }
+      rows[row] = name;
+      add(report, "hero", "imported", `Trait path: ${name} (row ${row + 1})`);
+    }
+    treePicks = Array.from(rows, (name) => name || "");
+  }
   if (traitTree)
     state.hero.treeTraits = {
       ...(state.hero.treeTraits || {}),
       [hero.id]: treeRules(traitTree, treeMaxCapacity(traitTree)).normalize(treePicks),
     };
+  // Neither form in the login (a section the printer cut, or a layout this importer does not know yet): say so rather
+  // than import a hero with no traits picked in silence.
+  if (overview && !entries(overview.pointOverView?.activeId).length && !activatedNodes.length)
+    add(report, "hero", "missing", "Hero trait picks", "not in this login's data; pick them in the Hero Trait tab");
   for (const entry of entries(overview?.reminiscenceOverView?.reminiscence)) {
     if (!entry.detail) continue; // unlocked slot with no memory
     const detail = entry.detail,
