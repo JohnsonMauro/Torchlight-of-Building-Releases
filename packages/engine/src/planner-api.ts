@@ -280,7 +280,7 @@ export interface PlannerResult {
   aim: AimSummary;
   aura: AuraLedger;
   beamCastRate: ResultSection;
-  beamCritical: ResultSection;
+  ailmentCritical: ResultSection;
   blessings: ResultSection;
   block: ResultSection;
   blurEffects: ResultSection;
@@ -359,7 +359,7 @@ export const plannerResultKeys = [
   "aim",
   "aura",
   "beamCastRate",
-  "beamCritical",
+  "ailmentCritical",
   "blessings",
   "block",
   "blurEffects",

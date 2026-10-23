@@ -18,6 +18,14 @@ const recentCritStack = /^\+([\d.]+)% Critical Strike Damage per recent (non-)?C
 // The "recent" window for both wordings: 4 s (the planner's convention for "recently"; provisional).
 export const RECENT_STRIKE_WINDOW_SECONDS = 4;
 const versusAilment = /^\+([\d.]+)% Critical Strike Damage against enemies affected by Ailments$/i;
+
+// "+X% Critical Strike Damage against enemies affected by Ailments": always true for an ailment's own target.
+export function versusAilmentCriticalDamageSources(modifierTexts = []) {
+  return modifierTexts.flatMap((line) => {
+    const match = String(line.text).match(versusAilment);
+    return match ? [{ source: line.source, text: line.text, value: Number(match[1]) * (line.multiplier ?? 1) }] : [];
+  });
+}
 const perFireResistance = /^For every 1% Fire Resistance, \+([\d.]+)% Critical Strike Damage, up to \+([\d.]+)%$/i;
 
 // Expected number of recent-crit stacks: crits in the last `windowSeconds`, capped.
@@ -118,7 +126,6 @@ export function spellCritical({
   modifierTexts = [],
   fireResistanceTotalPercent = 0,
   castsPerSecond = 0,
-  targetHasAilment = false,
   strikeCritChancePercent = null,
 } = {}) {
   const baseRating = SPELL_BASE_CRITICAL_STRIKE_RATING;
@@ -258,9 +265,9 @@ export function spellCritical({
     100,
     BASE_CRITICAL_DAMAGE_PERCENT + increasedCriticalDamagePercent + fireResistanceCriticalDamagePercent,
   );
-  // Combat-only additions: recent-crit stacks and bonuses against ailing targets.
+  // Combat-only additions: recent-crit stacks ("against enemies affected by Ailments": versusAilmentCriticalDamageSources).
   const strikeChance = Math.max(0, Math.min(100, strikeCritChancePercent ?? criticalChancePercent));
-  // Crit hits/s keep this model's spell chance (unchanged; the ailment model's recent-crit lines read it too).
+  // Crit hits/s keep this model's spell chance.
   const critsPerSecond = (castsPerSecond * criticalChancePercent) / 100;
   // Non-crit hits/s for "per recent non-Critical Strike" (2026-10-15): hits/s × (1 − crit chance), with the strikes' own
   // chance (an attack's weapon crit when given).
@@ -286,9 +293,6 @@ export function spellCritical({
       });
       continue;
     }
-    match = line.text.match(versusAilment);
-    if (match && targetHasAilment)
-      conditionalSources.push({ source: line.source, text: line.text, value: Number(match[1]) * line.multiplier });
   }
   const combatCriticalDamagePercent =
     criticalDamagePercent + conditionalSources.reduce((sum, item) => sum + item.value, 0);

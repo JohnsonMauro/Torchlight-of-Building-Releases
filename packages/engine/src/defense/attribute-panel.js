@@ -190,8 +190,8 @@ export function mainSkillContext(planner) {
   const dot = (planner?.skillDots || []).find((item) => item.setupKey === key && item.modeled !== false) ?? null;
   const attack = tags.includes("Attack");
   const damageType = hit?.damageType ?? dot?.damageType ?? TYPES.find((type) => tags.includes(type)) ?? null;
-  const crit = hit?.crit ?? dot?.crit ?? planner?.beamCritical ?? null;
-  const critPath = hit ? `skillHits[${hit.name}].crit` : dot ? `skillDots[${dot.name}].crit` : "beamCritical";
+  const crit = hit?.crit ?? dot?.crit ?? planner?.ailmentCritical ?? null;
+  const critPath = hit ? `skillHits[${hit.name}].crit` : dot ? `skillDots[${dot.name}].crit` : "ailmentCritical";
   return {
     name: main.name ?? null,
     tags,

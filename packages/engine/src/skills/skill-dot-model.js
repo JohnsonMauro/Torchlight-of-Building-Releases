@@ -286,7 +286,7 @@ function spellLines(profile, modifierTexts, auraEntries) {
  * @param {object} p.shared buildAilmentSharedLayers(...) for this DoT's damage type / resistance
  * @param {object[]} p.auraEntries active aura entries (effectiveEffects)
  * @param {number} p.castsPerSecond uses per second (each use refreshes the status)
- * @param {object} p.crit beam critical inputs (information only)
+ * @param {object} p.crit the ailments' crit inputs (information only)
  * @param {number} [p.sustainedWindowSeconds]
  * @param {boolean} [p.triggered] an Activation Medium triggers the skill (packages/engine/src/skills/trigger-interval.js): triggered-only lines apply
  * @param {object} [p.lucky] the build's Lucky state (packages/engine/src/combat/lucky-damage.js readLuckyDamage, via packages/engine/src/combat-states.js)

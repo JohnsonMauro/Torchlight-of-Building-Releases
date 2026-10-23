@@ -162,7 +162,7 @@ import { clampBaseLevel } from "./state/skill-level-input.js";
 import { scorchingBeamCastRate } from "./skills/scorching-beam-cast-rate.js";
 import { activationMediumDotTrigger } from "./skills/trigger-interval.js";
 import { skillTiming } from "../data/skills/skill-timing.generated.js";
-import { spellCritical } from "./skills/spell-critical.js";
+import { spellCritical, versusAilmentCriticalDamageSources } from "./skills/spell-critical.js";
 import { ignitedFireResistance } from "./ailments/ignited-fire-resistance.js";
 import { calculateDummyRecount } from "./combat/dummy-recount.js";
 import { collectDummyRecountInputs } from "./combat/dummy-recount-inputs.js";
@@ -3793,16 +3793,6 @@ function calculatePlannerOnce(
     (1 + mechanics.intelligence.percent / 100) *
     (mechanics.intelligence.additionalFactor ?? 1) *
     0.5;
-  const beamCritical = spellCritical({
-    main,
-    talentSlate,
-    equipment: memoryEquipment,
-    pact,
-    modifierTexts,
-    fireResistanceTotalPercent: resistances.entries.find((entry) => entry.element === "Fire")?.total || 0,
-    castsPerSecond: beamCastRate.castsPerSecond,
-    targetHasAilment: true,
-  });
   const hasSealedLife =
     aura.entries.some((entry) => entry.reservation?.resource === "life") &&
     aura.entries.some((entry) => entry.reservation?.resource === "mana");
@@ -4127,7 +4117,6 @@ function calculatePlannerOnce(
         modifierTexts: sourceTexts,
         fireResistanceTotalPercent: resistances.entries.find((entry) => entry.element === "Fire")?.total || 0,
         castsPerSecond,
-        targetHasAilment: false,
         strikeCritChancePercent,
       });
     // Scorch (curse-model.js): cursed enemies take additional Fire damage; Entangled Pain is damage over time only.
@@ -4676,6 +4665,22 @@ function calculatePlannerOnce(
     lineEffects.lines = [...lineEffects.lines.filter((entry) => entry.module !== "illusion"), ...settled];
   }
   const modeledSkillHits = skillHits.filter((hit) => hit.modeled);
+  // The ailments' crit (their rolls' crit chance, Instant Smash's crit damage, recent-crit stacks): the main skill hit's, with
+  // its crit hits per second at its own chance, plus "+X% Critical Strike Damage against enemies affected by Ailments" (an
+  // ailment's target has one). No modeled main hit: no crit.
+  const mainHit = modeledSkillHits.find((hit) => hit.setupKey === resolvedMain?.setupKey) || null;
+  const ailmentCritical = (() => {
+    if (!mainHit) return {};
+    const versusAilmentSources = versusAilmentCriticalDamageSources(modifierTexts);
+    return {
+      ...mainHit.crit,
+      criticalChancePercent: mainHit.crit.chancePercent,
+      critsPerSecond: ((mainHit.rate.hitsPerSecond || 0) * mainHit.crit.chancePercent) / 100,
+      combatCriticalDamagePercent:
+        mainHit.crit.combatCriticalDamagePercent + versusAilmentSources.reduce((sum, line) => sum + line.value, 0),
+      versusAilmentSources,
+    };
+  })();
   // Crimson Gash's Gash (official patch notes: "+12% additional Terra Skill Damage (multiplies), −40% Terra Charge Recovery Speed,
   // up to 8 stacks, lasts 3 s"). The recovery penalty is in the Terra Charge interval (packages/engine/src/heroes/selena-dance.js settleGash).
   // "additional Terra Skill Damage" reaches Terra skills' hits only, not their own DoT (user-confirmed 2026-10-13 for the Dance
@@ -4951,7 +4956,7 @@ function calculatePlannerOnce(
           ailmentKey: key,
           modifierTexts,
           shared,
-          crit: beamCritical,
+          crit: ailmentCritical,
           appliers: appliersFor(key, shared),
           combat: damageCombat,
           auraChancePercent: ailmentChanceFromAuras,
@@ -4992,7 +4997,7 @@ function calculatePlannerOnce(
         ailmentKey: "ignite",
         modifierTexts,
         shared: igniteShared,
-        crit: beamCritical,
+        crit: ailmentCritical,
         appliers: igniteAppliers,
         combat: damageCombat,
         auraChancePercent: ailmentChanceFromAuras,
@@ -5141,7 +5146,7 @@ function calculatePlannerOnce(
       // (packages/engine/src/build-mechanics.js follows the resolved main skill's supports, so other setups keep the base count).
       // The channel rate is the DoT setup's own (its Quick Decision), not the Scorching Beam setup's (B5).
       castsPerSecond: dotCastsPerSecond(source),
-      crit: beamCritical,
+      crit: ailmentCritical,
       aim,
       triggered: Boolean(windRhythmFor(source)),
       lucky: lineEffects.combat?.lucky || null,
@@ -5200,7 +5205,7 @@ function calculatePlannerOnce(
             source.profile.refreshPerSecond ??
             modeledSkillHits.find((hit) => hit.setupKey === source.setupKey)?.rate.usesPerSecond ??
             0,
-          crit: beamCritical,
+          crit: ailmentCritical,
           aim,
           lucky: lineEffects.combat?.lucky || null,
           extraAdditional: [...grantedSetupLines(source.setupKey), ...(source.profile.extraAdditional || [])],
@@ -5363,7 +5368,6 @@ function calculatePlannerOnce(
   }
   // The recount's use schedule follows the resolved main skill (its hit or its own DoT), not whichever secondary
   // skill's hits happen to be modeled first (2026-10-11: Speed Phantom / Corrosion Focus hits beside a Wilting Beam main).
-  const mainHit = modeledSkillHits.find((hit) => hit.setupKey === resolvedMain?.setupKey) || null;
   const mainDot = skillDots.find((dot) => dot.modeled && dot.setupKey === resolvedMain?.setupKey) || null;
   const scheduleHit = mainHit || (mainDot ? null : modeledSkillHits[0] || null);
   // Vendetta / Endless Vendetta (packages/engine/src/heroes/vendetta-model.js): triggers of the Main Skill's modeled hit, reported as the net gain over
@@ -5657,7 +5661,7 @@ function calculatePlannerOnce(
               : !scheduleHit && mainMinion && mainUsesPerSecond === minionBasicRate
                 ? mainMinion.cycle.firstHitSeconds
                 : null,
-          critChancePercent: beamCritical.criticalChancePercent,
+          critChancePercent: ailmentCritical.criticalChancePercent ?? 0,
           prebuiltSelfBuffs: requestedConditions.prebuiltSelfBuffs !== false,
           timedDotLayers,
           // Automatic mode: the clean dummy's Affliction builds from 0 (and drops on removing Reaps) over the timeline.
@@ -6086,7 +6090,7 @@ function calculatePlannerOnce(
     igniteLimit,
     igniteLedger,
     beamCastRate,
-    beamCritical,
+    ailmentCritical,
     conditions,
     warnings: [...new Set(warnings)],
   };
