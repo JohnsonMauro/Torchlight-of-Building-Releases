@@ -1420,8 +1420,21 @@ function resolvePrism(info, treeName, nodes, idMap, report, state) {
         entry ? `"${entry[1].replace(/\n/g, " / ")}" is not a planner prism affix` : "no text for this id",
       );
   }
-  for (const affix of [...entries(item.BaseAffix), ...entries(item.BaseAttrAffix), ...entries(prism.extAffix)]) {
+  const attributes = new Set(entries(item.BaseAttrAffix));
+  for (const affix of [...entries(item.BaseAffix), ...attributes, ...entries(prism.extAffix)]) {
     const entry = prismAffixEntry(idMap, affix.Id);
+    // A base attribute neither the id map nor TLIDB has text for (1204509011 on the 2026-10-22 Lich prism): nothing to
+    // read, so a note rather than something the user should fix.
+    if (!entry && attributes.has(affix)) {
+      add(
+        report,
+        "talents",
+        "notes",
+        `${treeName}: prism base attribute ${affix.Id}`,
+        "the game data has no text for it; the planner does not read it",
+      );
+      continue;
+    }
     if (entry && /Replaces the Core Talent/.test(entry[1]) && entry[1].includes(base)) continue; // the base effect, implied by the base name
     // A base affix that adds an effect to the panel's core (Haze's, 2026-10-22 log): kept on the prism, which applies it.
     if (entry && /^Adds an additional effect to the Core Talent/.test(entry[1]) && !crafted.baseAffix) {
