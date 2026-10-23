@@ -1,7 +1,7 @@
 // Stale talent-node texts in catalogs and saved slates, normalized on read (like src/engine/state/legendary-text-migrations.js). The
 // catalog under src/data/ and saved builds keep their text; readers see the corrected line.
 //
-// Nether King Ultimate Talent Node (2026-10-15, user-supplied): the SS13 catalog (src/data/nether-king-ultimate-affixes-ss13.js,
+// Nether King Ultimate Talent Node (2026-10-15, user-supplied): the SS13 catalog (src/data/nether-king-ultimate-affixes-ss14.js,
 // TLIDB at capture time; game-id-map node 92100013) reads "+20% Critical Strike Damage per recent Critical Strike, up to 4
 // stacks". TLIDB's current text and the SS14 game record 298044 read "per recent non-Critical Strike"; the record's effect is
 // unchanged from SS13, so the node always counted non-Critical Strikes. Only this node carries the stale wording; the

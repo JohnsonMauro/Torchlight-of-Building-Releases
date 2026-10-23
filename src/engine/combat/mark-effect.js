@@ -4,7 +4,7 @@ import { KEYWORD_RADII_METERS } from "./dummy-target.js";
 // Mark on the training dummy (2026-10-14; Ranger Legendary Medium Talent "+25% chance to Mark the enemy on Critical Strike |
 // +20% Mark effect", the Erika "E1 Model" build).
 //
-//   Sourced: the TLIDB Mark keyword tooltip (src/data/catalogs/tlidb-ss13.js, the Marked Rain of Arrows supports' text): "Mark:
+//   Sourced: the TLIDB Mark keyword tooltip (src/data/catalogs/tlidb-ss14.js, the Marked Rain of Arrows supports' text): "Mark:
 //     The target is locked on. -20% Evasion and +10% additional Critical Strike Damage taken".
 //   Provisional (best case, user rule 2026-10-09): a build with any Mark source ("chance to Mark the enemy on Critical Strike"
 //     while its hits can crit, "chance to Mark the target on hit") keeps the dummy Marked all the time. The Mark's duration is not

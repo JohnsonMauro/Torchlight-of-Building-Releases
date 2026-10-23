@@ -1,7 +1,7 @@
-import { supportProgressionSs13 } from "../../data/skills/support-progression-ss13.generated.js";
+import { supportProgressionSs14 } from "../../data/skills/support-progression-ss14.generated.js";
 
 // Stacking rule: https://tlidb.com/en/Damage_Calculation
-// Values come from the TLIDB support progression tables (src/data/skills/support-progression-ss13.generated.js) at the
+// Values come from the TLIDB support progression tables (src/data/skills/support-progression-ss14.generated.js) at the
 // support's level: https://tlidb.com/en/{Additional_Ignite,Control_Spell,Guard,Refracted_Prism,Cataclysm}
 // Model parameters come from tooltips, never from held-out removal DPS.
 export const modeledSupportNames = ["Additional Ignite", "Control Spell", "Guard", "Refracted Prism"];
@@ -15,7 +15,7 @@ const cellNumbers = (raw) =>
       return bottom ? top / bottom : top;
     });
 function columnValues(name, heading, level) {
-  const column = (supportProgressionSs13[name]?.columns || []).find(
+  const column = (supportProgressionSs14[name]?.columns || []).find(
     (item) => item.heading !== "Descript" && heading.test(item.heading),
   );
   const values = column ? cellNumbers(column.values?.[String(level)]) : [];
@@ -23,7 +23,7 @@ function columnValues(name, heading, level) {
   return { values, heading: column.heading };
 }
 const baseLineNumber = (name, pattern) => {
-  const match = String(supportProgressionSs13[name]?.baseEffect || "")
+  const match = String(supportProgressionSs14[name]?.baseEffect || "")
     .split(/\r?\n/)
     .map((line) => line.trim())
     .map((line) => line.match(pattern))

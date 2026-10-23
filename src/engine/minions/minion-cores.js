@@ -1,6 +1,6 @@
 import { cleanGameText } from "../text/percentage-text.js";
 import { blessingBaseEffects } from "../defense/blessing-model.js";
-import { skillTimingSs13 } from "../../data/skills/skill-timing-ss13.generated.js";
+import { skillTimingSs14 } from "../../data/skills/skill-timing-ss14.generated.js";
 
 // Minion core mechanics the planner resolves around the Minion engine (core audit batch B7, research/core-talents-audit-2026-10-18.md
 // §5; src/engine/minions/minion-damage-model.js reads the results as Minion layers). Pure functions of the build's lines and the settled models.
@@ -110,7 +110,7 @@ const DARK_GATE_CDR = /^\+?(\d+(?:\.\d+)?)% additional Cooldown Recovery Speed t
 export function darkGateState({ setups = [], activeNames = new Set(), modifierTexts = [] } = {}) {
   const setup =
     setups.find((item) => item.name === "Dark Gate" && item.enabled !== false && activeNames.has(item.name)) || null;
-  const baseCooldown = skillTimingSs13["Dark Gate"]?.cooldown || 5;
+  const baseCooldown = skillTimingSs14["Dark Gate"]?.cooldown || 5;
   const sources = modifierTexts
     .map((line) => ({ line, match: norm(line.text).match(DARK_GATE_CDR) }))
     .filter((item) => item.match)

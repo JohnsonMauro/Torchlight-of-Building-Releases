@@ -7,7 +7,7 @@ import { heroTraitTree, treeRules, TREE_ROW_LEVELS, TREE_ROW_NAMES, SELENA_DANCE
 const tree = heroTraitTree(SELENA_DANCE_HERO_ID);
 const rules = treeRules(tree, tree.rows);
 
-export const selenaDanceTreeSs13 = { maxSelections: rules.capacity, nodes: tree.nodes };
+export const selenaDanceTreeSs14 = { maxSelections: rules.capacity, nodes: tree.nodes };
 
 /** The hero-trait memory rows (45 / 60 / 75): row-indexed picks sit in row SELENA_DANCE_ROW_LEVELS[i]. */
 export const SELENA_DANCE_ROW_LEVELS = TREE_ROW_LEVELS;

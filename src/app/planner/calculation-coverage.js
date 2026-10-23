@@ -1,5 +1,5 @@
 import {
-  allHeroTraitsSs13,
+  allHeroTraitsSs14,
   artificialMoonGate,
   auraGainedLineStatus,
   baseTraitDescriptionForLevel,
@@ -395,7 +395,7 @@ const squash = (text) => cleanGameText(String(text || ""));
 const moonLinePatterns = new Map();
 function artificialMoonPatterns(heroId) {
   if (moonLinePatterns.has(heroId)) return moonLinePatterns.get(heroId);
-  const base = allHeroTraitsSs13[heroId]?.traits?.find((trait) => trait.level === 1);
+  const base = allHeroTraitsSs14[heroId]?.traits?.find((trait) => trait.level === 1);
   const sources = [base?.description, baseTraitDescriptionForLevel(heroId, "")].filter(Boolean);
   const patterns = [];
   for (const source of sources) {
@@ -417,7 +417,7 @@ function artificialMoonPatterns(heroId) {
 }
 function isBaseTraitName(heroId, traitName) {
   if (!traitName || traitName === "(base trait)") return true;
-  return allHeroTraitsSs13[heroId]?.traits?.find((trait) => trait.level === 1)?.name === traitName;
+  return allHeroTraitsSs14[heroId]?.traits?.find((trait) => trait.level === 1)?.name === traitName;
 }
 /** Whether `line` is one of the hero's base-trait "Artificial Moon:" lines (the header itself excluded). */
 export function isArtificialMoonTraitLine(heroId, traitName, line) {
@@ -466,7 +466,7 @@ const LEVELLED_GENERIC_HEROES = new Set([
   WIND_STALKER_ID,
   THEA_WISDOM_ID,
   YOUGA_ULTIMATE_ID,
-  ...Object.keys(allHeroTraitsSs13).filter((id) => id !== DANCE_OF_THE_DEEP_ID && id !== "selena-sing-with-the-tide"),
+  ...Object.keys(allHeroTraitsSs14).filter((id) => id !== DANCE_OF_THE_DEEP_ID && id !== "selena-sing-with-the-tide"),
 ]);
 const LEVELLED_BADGE_HEROES = new Map([
   [DANCE_OF_THE_DEEP_ID, new Set(["Not modeled", "Partly modeled"])],

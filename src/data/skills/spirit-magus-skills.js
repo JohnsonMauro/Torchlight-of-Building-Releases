@@ -1,7 +1,7 @@
 // The skills each Spirit Magus uses (TLIDB, the Summon <element> Magus pages' "Minion Skill" line and each skill's own page,
 // fetched 2026-10-22, SS14): their tags, and how they deal damage: a hit (the game's Hit tag) or Persistent damage over
 // time (Blazing Spin's Fire Domain: the game's Damage Over Time tag); Thundercloud Surge, Gold Rush and Withering Payback
-// only grant a buff. Not generated: upstream's eligibility data (support-eligibility-ss13.generated.js)
+// only grant a buff. Not generated: upstream's eligibility data (support-eligibility-ss14.generated.js)
 // has no stone record for them. src/engine/supports/support-compatibility.js reads them for the supports a summon takes.
 export const spiritMagusSkills = {
   "Summon Fire Magus": [

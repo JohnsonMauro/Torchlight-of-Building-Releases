@@ -2,22 +2,22 @@
 import {
   allPlaceholderTemplates,
   folkloreRingModifier,
-  legendaryCorrodedModifiersSs13,
-  legendaryGearSs13,
+  legendaryCorrodedModifiersSs14,
+  legendaryGearSs14,
   legendaryModifierSignature,
   normalizeSunsEmbraceItem,
   reconcileLegendaryModifiers,
-  selenaScorchingBeamGearSs13,
+  selenaScorchingBeamGearSs14,
 } from "../../engine/index.ts";
 
 export function upgradeExistingCorrodedItems(state) {
-  const capturedById = new Map(selenaScorchingBeamGearSs13.items.map((item) => [`captured-${item.slot}`, item]));
+  const capturedById = new Map(selenaScorchingBeamGearSs14.items.map((item) => [`captured-${item.slot}`, item]));
   const upgrade = (item) => {
     if (!item) return item;
     if (item.name === "Sun's Embrace") return normalizeSunsEmbraceItem(item);
     const captured =
       capturedById.get(item.sourceInventoryId) ||
-      selenaScorchingBeamGearSs13.items.find((entry) => entry.name === item.name);
+      selenaScorchingBeamGearSs14.items.find((entry) => entry.name === item.name);
     if (captured?.corrosionModifiers?.length && !item.corrosionModifiers?.length) {
       const legacyCorrosion =
         item.name === "Coldness Tracer's Tear" ? /^(?:\+8 Dexterity|You can cast 1 additional Curses)$/i : null;
@@ -28,7 +28,7 @@ export function upgradeExistingCorrodedItems(state) {
         if (captured.legendaryModifiers) item.legendaryModifiers = [...captured.legendaryModifiers];
       }
     }
-    const legendarySource = legendaryGearSs13.find(
+    const legendarySource = legendaryGearSs14.find(
       (entry) => entry.name.toLowerCase() === (item.name || "").replace(/ - Priceless$/i, "").toLowerCase(),
     );
     if (legendarySource && item.legendaryModifiers?.length) {
@@ -60,7 +60,7 @@ export function legendaryKnownModifierSignatures(source) {
   return new Set(
     [
       ...source.modifiers,
-      ...(legendaryCorrodedModifiersSs13[source.id] || []),
+      ...(legendaryCorrodedModifiersSs14[source.id] || []),
       ...options,
       ...allPlaceholderTemplates(source.id),
     ].map(modifierSignature),

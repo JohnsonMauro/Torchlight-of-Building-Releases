@@ -21,7 +21,7 @@
 // Not sourced (flagged per skill in `assumptions`): Minion use rates (AI, cooldowns, Spirit Magus Stage/Growth) and
 // Command. The Modularization Base Damage table was confirmed in game at Lv.1 (10) and Lv.20 (300) on 2026-10-11.
 // The Minion damage path that consumes this table is src/engine/minions/minion-damage-model.js (profiles in src/engine/minions/minion-profiles.js,
-// per-level rows for all 54 skills in src/data/skills/minion-skill-damage-ss13.generated.js); the four components
+// per-level rows for all 54 skills in src/data/skills/minion-skill-damage-ss14.generated.js); the four components
 // below remain as the first reference and are pinned against the generated rows.
 import { skillLevelDamageMultiplier } from "../engine.js";
 

@@ -1,5 +1,5 @@
 // Shared line normalisation for matching planner modifier lines to game affix templates.
-// Used by the planner at runtime (src/data/affix-index-ss13.generated.js keys) and by
+// Used by the planner at runtime (src/data/affix-index-ss14.generated.js keys) and by
 // tools/report-tli-affix-coverage.mjs / tools/build-tli-affix-index.mjs. No dependencies.
 
 // Paraphrase aliases: planner wording -> game template wording. They rewrite the shaped string, so

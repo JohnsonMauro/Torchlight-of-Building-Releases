@@ -7,7 +7,7 @@
 // both must pass it unchanged.
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { heroCatalogSs13 } from "../../src/data/heroes/hero-catalog-ss13.js";
+import { heroCatalogSs14 } from "../../src/data/heroes/hero-catalog-ss14.js";
 import { PlannerPage } from "./pages/planner-page.js";
 import { HeroPage } from "./pages/hero-page.js";
 import { FollowerPage } from "./pages/follower-page.js";
@@ -15,10 +15,10 @@ import { followerPickerOptions } from "../../src/app/hero/follower-panel.js";
 import { PactsPage } from "./pages/pacts-page.js";
 import { TalentsPage } from "./pages/talents-page.js";
 import { fateSlotChoices } from "../../src/engine/pacts/fate-slot-unlocks.js";
-import { pactspiritCatalogSs13 } from "../../src/data/pacts/pactspirit-catalog-ss13.js";
+import { pactspiritCatalogSs14 } from "../../src/data/pacts/pactspirit-catalog-ss14.js";
 import { sortPactspirits } from "../../src/engine/pacts/pactspirit-selection.js";
-import { sageElixirsSs13 } from "../../src/data/heroes/sage-scent-ss13.generated.js";
-import { sageScentIngredientsSs13 } from "../../src/data/heroes/sage-scent-options-ss13.js";
+import { sageElixirsSs14 } from "../../src/data/heroes/sage-scent-ss14.generated.js";
+import { sageScentIngredientsSs14 } from "../../src/data/heroes/sage-scent-options-ss14.js";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
@@ -32,7 +32,7 @@ async function openPlanner(page) {
 }
 const heroCards = (dialog) => dialog.locator(".hero-selector-card");
 const matching = (query) =>
-  heroCatalogSs13.filter((hero) => `${hero.name} ${hero.trait}`.toLowerCase().includes(query)).length;
+  heroCatalogSs14.filter((hero) => `${hero.name} ${hero.trait}`.toLowerCase().includes(query)).length;
 
 test("the hero selector lists every hero, marks the current one and filters by name or trait", async ({ page }) => {
   const { planner, hero } = await openPlanner(page);
@@ -40,7 +40,7 @@ test("the hero selector lists every hero, marks the current one and filters by n
   const dialog = hero.heroSelector();
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("heading", { name: "Select Hero" })).toBeVisible();
-  await expect(heroCards(dialog)).toHaveCount(heroCatalogSs13.length);
+  await expect(heroCards(dialog)).toHaveCount(heroCatalogSs14.length);
   await expect(dialog.locator(".hero-selector-card.selected")).toHaveText("YougaThe Ultimate One");
   await expect(dialog.locator('[data-select-hero="selena-sing-with-the-tide"]').locator("img")).toHaveAttribute(
     "src",
@@ -70,7 +70,7 @@ test("the hero selector closes from ×, from outside and from Escape, and opens 
   await expect(dialog).toBeHidden();
   await hero.openHeroSelector();
   await expect(search).toHaveValue("");
-  await expect(heroCards(dialog)).toHaveCount(heroCatalogSs13.length);
+  await expect(heroCards(dialog)).toHaveCount(heroCatalogSs14.length);
   await page.mouse.click(5, 5);
   await expect(dialog).toBeHidden();
   await hero.openHeroSelector();
@@ -151,7 +151,7 @@ async function openPactspiritSelector(page) {
   return { planner, pacts, dialog: pacts.pactspiritSelector() };
 }
 // The selector lists every Pactspirit but the Drop ones (src/app/bridge/pacts-view-model.ts UNLISTED_CATEGORIES).
-const listedPacts = pactspiritCatalogSs13.filter((entry) => entry.category !== "Drop");
+const listedPacts = pactspiritCatalogSs14.filter((entry) => entry.category !== "Drop");
 const pactCategories = [...new Set(listedPacts.map((entry) => entry.category))];
 // What the selector keeps: every typed word somewhere in the name, category or description (src/app/bridge/search-match.ts).
 const pactMatches = (search, category = "All") =>
@@ -235,8 +235,8 @@ test("Sage's scent selector lists elixirs or one kind of ingredient, searches, p
   await expect(dialog.getByRole("heading", { name: "Select Elixir Skill" })).toBeVisible();
   await expect(search).toBeFocused();
   await expect(search).toHaveAttribute("placeholder", "Search skills… · /regex/");
-  await expect(options).toHaveCount(sageElixirsSs13.length);
-  await expect(options.first().locator("small i").first()).toHaveText(sageElixirsSs13[0].tags[0]);
+  await expect(options).toHaveCount(sageElixirsSs14.length);
+  await expect(options.first().locator("small i").first()).toHaveText(sageElixirsSs14[0].tags[0]);
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect(dialog).toBeHidden();
 
@@ -246,7 +246,7 @@ test("Sage's scent selector lists elixirs or one kind of ingredient, searches, p
     .click();
   await expect(page.locator("#sage-scent-title")).toHaveText("Select Damage Ingredient");
   await expect(search).toHaveAttribute("placeholder", "Search ingredients… · /regex/");
-  const ingredients = sageScentIngredientsSs13.damage;
+  const ingredients = sageScentIngredientsSs14.damage;
   await expect(options).toHaveCount(ingredients.length);
   await expect(options.first().locator("small")).toHaveText(ingredients[0].description.replace(/(\d) %/g, "$1%"));
   const word = ingredients[0].name.split(" ")[0];

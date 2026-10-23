@@ -9,11 +9,11 @@
 // saved line text).
 
 // TOWER Sequence ids that kept their game id but roll a new affix in SS14 (config_modifier: same id, group, tier and type; new
-// affix class). The current entry (src/data/gear/tower-sequences-ss13.generated.js, same id) carries the SS14 text; a saved
+// affix class). The current entry (src/data/gear/tower-sequences-ss14.generated.js, same id) carries the SS14 text; a saved
 // item's copy of the SS13 text is replaced by it on read.
 const DETERIORATION_1 = "+15% additional Deterioration Damage\n10% chance to inflict 1 additional stack(s) of Deterioration";
 const DETERIORATION_2 = "+30% additional Deterioration Damage\n10% chance to inflict 2 additional stack(s) of Deterioration";
-export const towerSequenceSs13Texts = {
+export const towerSequenceSs14Texts = {
   "tower-sequence-160508001": DETERIORATION_1, // Claw
   "tower-sequence-160508004": DETERIORATION_1, // One-Handed Hammer
   "tower-sequence-160508006": DETERIORATION_1, // One-Handed Sword

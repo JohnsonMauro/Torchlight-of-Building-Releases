@@ -4,15 +4,15 @@ import {
   canPlaceSlate,
   defaultPlannerState,
   equipmentSlots,
-  selenaCompleteSkillLoadoutSs13,
-  selenaScorchingBeamGearSs13,
-  selenaScorchingBeamPactsSs13,
-  selenaScorchingBeamSlatesSs13,
-  selenaScorchingBeamTalentSetupSs13,
+  selenaCompleteSkillLoadoutSs14,
+  selenaScorchingBeamGearSs14,
+  selenaScorchingBeamPactsSs14,
+  selenaScorchingBeamSlatesSs14,
+  selenaScorchingBeamTalentSetupSs14,
   setCoverageContext,
   tliArt,
-  tlidbSkillCatalogSs13,
-  tlidbSupportCatalogSs13,
+  tlidbSkillCatalogSs14,
+  tlidbSupportCatalogSs14,
 } from "../../engine/index.ts";
 import { upgradeExistingCorrodedItems } from "../gear/stored-items.js";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
@@ -30,8 +30,8 @@ import { isSafeMode, setSafeMode } from "../storage/recovery-core.js";
 import { hideOtherTabNotice, otherTabNoticeShown, showToast, updateStorageStatus } from "./page.js";
 import { ui } from "./ui-state.js";
 
-for (const entry of tlidbSkillCatalogSs13) tliArt.skills[entry.name] ||= entry.icon;
-for (const entry of tlidbSupportCatalogSs13) tliArt.supports[entry.name] ||= entry.icon;
+for (const entry of tlidbSkillCatalogSs14) tliArt.skills[entry.name] ||= entry.icon;
+for (const entry of tlidbSupportCatalogSs14) tliArt.supports[entry.name] ||= entry.icon;
 
 // Safe mode (Recovery screen): the planner opens on the Builds page and never runs build calculations until resumed.
 export const calculationsPaused = (() => {
@@ -46,10 +46,10 @@ upgradeExistingCorrodedItems(plannerState);
 // The open tree: the build's first one (applyPlannerState does the same for every build opened later).
 ui.activeTalentPanel = plannerState.talents?.selectedTrees?.[0] || "Goddess of Deception";
 export const equippedSlateIds = new Set(
-  plannerState.equippedSlateIds || selenaScorchingBeamSlatesSs13.slates.map((slate) => slate.id),
+  plannerState.equippedSlateIds || selenaScorchingBeamSlatesSs14.slates.map((slate) => slate.id),
 );
 export const slatesForBoard = () => [
-  ...selenaScorchingBeamSlatesSs13.slates,
+  ...selenaScorchingBeamSlatesSs14.slates,
   ...(plannerState.slates?.inventory || []).map(craftedSlateForBoard),
 ];
 const validSlatePlacements = (placements) =>
@@ -60,7 +60,7 @@ const validSlatePlacements = (placements) =>
 export let slatePlacements =
   plannerState.slates?.geometryVersion === 4 && validSlatePlacements(plannerState.slates?.placements)
     ? plannerState.slates.placements
-    : structuredClone(selenaScorchingBeamSlatesSs13.capturedPlacements);
+    : structuredClone(selenaScorchingBeamSlatesSs14.capturedPlacements);
 // Slates set beside the grid, by id: their stage position (percent) and transform.
 export let parkedSlates = plannerState.slates?.parked || {};
 // The sections that move slates replace these objects through the setters (an imported binding cannot be assigned).
@@ -73,7 +73,7 @@ export function setParkedSlates(next) {
 export const disabledEquipmentSlots = new Set(plannerState.disabledEquipmentSlots);
 export const disabledSupportNames = new Set(plannerState.disabledSupportNames);
 export const talentRanks = new Map();
-for (const panel of selenaScorchingBeamTalentSetupSs13.panels.filter(
+for (const panel of selenaScorchingBeamTalentSetupSs14.panels.filter(
   (panel) => plannerState.talents.useCapturedRanks !== false && plannerState.talents.selectedTrees.includes(panel.name),
 )) {
   for (const node of panel.allocatedNodes) {
@@ -171,7 +171,7 @@ export function refreshPactCandidate() {
 export function emptyPlannerState() {
   const empty = structuredClone(defaultPlannerState);
   empty.disabledEquipmentSlots = equipmentSlots.map(([slot]) => slot);
-  empty.removedInventoryItemIds = selenaScorchingBeamGearSs13.items.map((item) => `captured-${item.slot}`);
+  empty.removedInventoryItemIds = selenaScorchingBeamGearSs14.items.map((item) => `captured-${item.slot}`);
   empty.equipmentOverrides = {};
   empty.equipmentInventory = [];
   empty.hero = {
@@ -195,7 +195,7 @@ export function emptyPlannerState() {
     setupOrder: [],
     boardSlots: { skills: [], auras: [] },
     supportOrder: {},
-    setupEnabled: Object.fromEntries(selenaCompleteSkillLoadoutSs13.setups.map((setup) => [setup.name, false])),
+    setupEnabled: Object.fromEntries(selenaCompleteSkillLoadoutSs14.setups.map((setup) => [setup.name, false])),
     skillLevels: {},
     supportEnabled: {},
     supportLevels: {},
@@ -215,7 +215,7 @@ export function emptyPlannerState() {
     installedPrismNodes: {},
   };
   empty.pacts = {
-    activeSpirits: Object.fromEntries(selenaScorchingBeamPactsSs13.pactspirits.map((spirit) => [spirit.name, false])),
+    activeSpirits: Object.fromEntries(selenaScorchingBeamPactsSs14.pactspirits.map((spirit) => [spirit.name, false])),
     selectedSpirits: ["", "", ""],
     spiritLevels: {},
     nativeNodeQuantities: {},
@@ -247,22 +247,22 @@ export function applyPlannerState(next) {
   next.disabledEquipmentSlots.forEach((value) => disabledEquipmentSlots.add(value));
   disabledSupportNames.clear();
   next.disabledSupportNames.forEach((value) => disabledSupportNames.add(value));
-  for (const setup of selenaCompleteSkillLoadoutSs13.setups)
+  for (const setup of selenaCompleteSkillLoadoutSs14.setups)
     for (const support of setup.supports)
       if (next.skills.supportEnabled[supportStateKey(setup.name, support.name)] === false)
         disabledSupportNames.add(support.name);
   equippedSlateIds.clear();
-  (next.equippedSlateIds || selenaScorchingBeamSlatesSs13.slates.map((slate) => slate.id)).forEach((value) =>
+  (next.equippedSlateIds || selenaScorchingBeamSlatesSs14.slates.map((slate) => slate.id)).forEach((value) =>
     equippedSlateIds.add(value),
   );
   setSlatePlacements(
     next.slates?.geometryVersion === 4 && validSlatePlacements(next.slates?.placements)
       ? next.slates.placements
-      : structuredClone(selenaScorchingBeamSlatesSs13.capturedPlacements),
+      : structuredClone(selenaScorchingBeamSlatesSs14.capturedPlacements),
   );
   setParkedSlates(next.slates?.parked || {});
   talentRanks.clear();
-  for (const panel of selenaScorchingBeamTalentSetupSs13.panels.filter(
+  for (const panel of selenaScorchingBeamTalentSetupSs14.panels.filter(
     (panel) => next.talents.useCapturedRanks !== false && next.talents.selectedTrees.includes(panel.name),
   ))
     for (const node of panel.allocatedNodes) talentRanks.set(panel.name + ":" + node.coordinate, node.rank);

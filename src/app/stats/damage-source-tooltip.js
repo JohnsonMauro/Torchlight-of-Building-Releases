@@ -2,16 +2,16 @@
 // slate, Kismet, hero trait, memory, skill or support a source names (each domain's own query), else a breakdown of what
 // feeds the source. Query only (src/app/bridge/planner-queries.js); read from the build, never from the page.
 import {
-  allProfessionTalentCatalogueSs13,
+  allProfessionTalentCatalogueSs14,
   collectNormalizedGearModifiers,
   equipmentSlots,
-  kismetCatalogSs13,
+  kismetCatalogSs14,
   orderedPactspiritNodes,
   pactspiritEffectsAtLevel,
-  pactspiritTreesSs13,
+  pactspiritTreesSs14,
   resolveTalentCandidate,
-  selenaScorchingBeamPactsSs13,
-  selenaScorchingBeamTalentSetupSs13,
+  selenaScorchingBeamPactsSs14,
+  selenaScorchingBeamTalentSetupSs14,
 } from "../../engine/index.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { heroTraitTarget } from "../bridge/hero-traits-view-model.ts";
@@ -71,7 +71,7 @@ function namedCard(source) {
     );
   if (source.startsWith("Core talent: ")) {
     const name = source.slice("Core talent: ".length);
-    const core = Object.values(allProfessionTalentCatalogueSs13)
+    const core = Object.values(allProfessionTalentCatalogueSs14)
       .flatMap((panel) => panel.coreTalents || [])
       .find((entry) => entry.name === name);
     return summary(name, core?.description || "Core talent contribution");
@@ -146,7 +146,7 @@ function namedCard(source) {
           extra: false,
         }),
       );
-    const kismet = kismetCatalogSs13.find((item) => item.name === source || item.name === name);
+    const kismet = kismetCatalogSs14.find((item) => item.name === source || item.name === name);
     if (kismet) return summary(name, (kismet.affixes || []).join("\n"));
   }
   return null;
@@ -170,8 +170,8 @@ function breakdown(source, category) {
       contributors.push(`${item.name} (${slotLabel(item.slot)})\n${(item.modifiers || []).join("\n")}`);
   } else if (/^Talent/.test(source) && stat) {
     const candidate = resolveTalentCandidate(
-      selenaScorchingBeamTalentSetupSs13,
-      allProfessionTalentCatalogueSs13,
+      selenaScorchingBeamTalentSetupSs14,
+      allProfessionTalentCatalogueSs14,
       planner.state.talentRanks,
       planner.state.talents,
     );
@@ -225,7 +225,7 @@ function pactContributors(source, category, stat) {
   if (pacts.kismetSlotMode && additional)
     for (const name of pacts.selectedSpirits || []) {
       if (!name || pacts.activeSpirits[name] === false) continue;
-      const sequence = orderedPactspiritNodes(pactspiritTreesSs13[name] || []);
+      const sequence = orderedPactspiritNodes(pactspiritTreesSs14[name] || []);
       const outer = sequence.findIndex((node) => node.ring === "outer");
       if (pacts.nativeNodeQuantities[`${name}:${outer}`] !== 1) continue;
       const effects = pactspiritEffectsAtLevel(name, selectedPactspiritLevel(name)).filter((line) =>
@@ -234,7 +234,7 @@ function pactContributors(source, category, stat) {
       if (effects.length) lines.push(`${name}\n${effects.join("\n")}`);
     }
   if (!pacts.kismetSlotMode)
-    for (const spirit of selenaScorchingBeamPactsSs13.pactspirits) {
+    for (const spirit of selenaScorchingBeamPactsSs14.pactspirits) {
       if (pacts.activeSpirits[spirit.name] === false) continue;
       for (const node of spirit.unreplacedNativeNodes) {
         const quantity = pacts.nativeNodeQuantities[`${spirit.name}:${node.name}`] ?? node.quantity;

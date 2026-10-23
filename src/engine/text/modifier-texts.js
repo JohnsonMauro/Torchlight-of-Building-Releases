@@ -2,8 +2,8 @@ import { effectiveGearModifierTexts } from "../engine.js";
 import { normalizePercentageText } from "./percentage-text.js";
 import { activeKismetEffects } from "../pacts/kismet-effects.js";
 import { orderedPactspiritNodes, pactspiritEffectsAtLevel, pactspiritLevel } from "../pacts/pactspirit-levels.js";
-import { pactspiritTreesSs13 } from "../../data/pacts/pactspirit-trees-ss13.js";
-import { selenaScorchingBeamPactsSs13 } from "../../data/pacts/selena-scorching-beam-ss13.js";
+import { pactspiritTreesSs14 } from "../../data/pacts/pactspirit-trees-ss14.js";
+import { selenaScorchingBeamPactsSs14 } from "../../data/pacts/selena-scorching-beam-ss14.js";
 import {
   prismAddedCoreEffect,
   prismAreaBounds,
@@ -202,7 +202,7 @@ export function collectModifierTexts({
   // Kismets as fixed rolls toggled by `volcanoEnabled` (engine.js reads them into pact.totals). They are
   // listed here with the catalog wording so the text list matches the pact totals, as in slot mode.
   if (!pactState.kismetSlotMode) {
-    const volcano = selenaScorchingBeamPactsSs13.kismets.find((kismet) => kismet.name === "Kismet: Volcano");
+    const volcano = selenaScorchingBeamPactsSs14.kismets.find((kismet) => kismet.name === "Kismet: Volcano");
     (volcano?.rolls || []).forEach((roll, index) => {
       if (Array.isArray(pactState.volcanoEnabled) && pactState.volcanoEnabled[index] === false) return;
       push(
@@ -213,7 +213,7 @@ export function collectModifierTexts({
     });
     // The captured Micro Fates, with engine.js's toggles: Reaping Duration × reapingDurationQuantity (0–5, each
     // totalPercent / quantity = 12%), Spell Block rolls by spellBlockEnabled, Attack Block rolls by attackBlockEnabled.
-    const fate = (name) => selenaScorchingBeamPactsSs13.microFates.find((item) => item.name === name);
+    const fate = (name) => selenaScorchingBeamPactsSs14.microFates.find((item) => item.name === name);
     const reaping = fate("Micro Fate: Reaping Duration");
     if (reaping) {
       const count = Math.max(
@@ -244,14 +244,14 @@ export function collectModifierTexts({
   // lines pact.totals already counts (damage-line-classifier.js alreadyCountedBy, affix-attributes.js) treat
   // both modes alike. Node text is the pact tree's wording for that node name.
   if (!pactState.kismetSlotMode) {
-    for (const spirit of selenaScorchingBeamPactsSs13.pactspirits) {
+    for (const spirit of selenaScorchingBeamPactsSs14.pactspirits) {
       if (pactState.activeSpirits?.[spirit.name] === false) continue;
       const levelEffects = pactspiritEffectsAtLevel(
         spirit.name,
         pactspiritLevel(spirit.name, pactState.spiritLevels, spirit.rank),
       );
       for (const text of levelEffects.length ? levelEffects : spirit.effectsAtRank) push(text, spirit.name, "pact");
-      const treeNodes = orderedPactspiritNodes(pactspiritTreesSs13[spirit.name]);
+      const treeNodes = orderedPactspiritNodes(pactspiritTreesSs14[spirit.name]);
       for (const node of spirit.unreplacedNativeNodes || []) {
         const effect = treeNodes.find((item) => item.name === node.name)?.effect;
         const quantity = Math.max(
@@ -264,7 +264,7 @@ export function collectModifierTexts({
   }
   for (const spirit of pactState.kismetSlotMode ? pactState.selectedSpirits || [] : []) {
     if (!spirit || pactState.activeSpirits?.[spirit] === false) continue;
-    const nodes = orderedPactspiritNodes(pactspiritTreesSs13[spirit]);
+    const nodes = orderedPactspiritNodes(pactspiritTreesSs14[spirit]);
     nodes.forEach((node, index) => {
       if (pactState.nativeNodeQuantities?.[`${spirit}:${index}`] !== 1) return;
       if (["inner", "mid"].includes(node.ring) && !pactState.kismetSlots?.[`${spirit}:${index}`] && node.effect)

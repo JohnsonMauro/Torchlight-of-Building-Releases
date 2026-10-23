@@ -9,7 +9,7 @@
 //   - rehanLineRead: one clause's status, reason and derived bodies (src/engine/heroes/hero-trait-modules.js "rage" / "burst" / "spirit").
 //
 // Sourced:
-// - Trait texts (TLIDB, SS14; src/data/heroes/all-hero-traits-ss13.generated.js); game tier records (audit §4.3; SS14 tier data):
+// - Trait texts (TLIDB, SS14; src/data/heroes/all-hero-traits-ss14.generated.js); game tier records (audit §4.3; SS14 tier data):
 //   Fury's Onslaught's second parameter (-33.33 / -36.31 / -39.02 / -41.52 / -43.82) is a Berserk + Seething Spirit additional damage
 //   (affix 187841424: attr 5719 with tags 4030001 / 6001190), so the Spirit's casts take the player's +X% and this offset.
 // - TLIDB keyword tooltips (Torchlight_Hyperlink_hover, fetched 2026-10-19, research/tlidb-ss14/fetch-cache/): Rage (ece24b16: "a

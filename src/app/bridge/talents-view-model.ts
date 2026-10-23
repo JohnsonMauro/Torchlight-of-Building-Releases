@@ -4,9 +4,9 @@
 // src/app/talents/talents-controller.js publishes it (src/app/bridge/view-sources.ts "talents"). The open tree, the Slates tab and a prism
 // waiting to be placed stay planner state (the prism dialogs change them too).
 import {
-  allProfessionTalentCatalogueSs13,
+  allProfessionTalentCatalogueSs14,
   canAllocateTalent,
-  godTalentTreesSs13,
+  godTalentTreesSs14,
   inverseImageReflectedBounds,
   inverseImageReflectedCoordinates,
   inverseImageTalentNodes,
@@ -14,7 +14,7 @@ import {
   prismAreaBounds,
   prismReplacesCore,
   TALENT_THRESHOLDS,
-  talentFamiliesSs13,
+  talentFamiliesSs14,
   talentPointTotals,
   tliArt,
 } from "../../engine/index.ts";
@@ -44,7 +44,7 @@ export interface CoreTalent {
   unlockPoints: number;
   icon?: string;
 }
-/** A talent tree as the planner lists it (src/app/talents/talent-trees.js allTalentPanelsSs13). */
+/** A talent tree as the planner lists it (src/app/talents/talent-trees.js allTalentPanelsSs14). */
 export interface TalentPanel {
   name: string;
   coreTalents: CoreTalent[];
@@ -157,7 +157,7 @@ export interface TalentsView {
 }
 
 const TAB_LABELS = ["God tree", "Class tree", "Tree 3", "Tree 4"];
-const catalogue = allProfessionTalentCatalogueSs13 as Record<string, { emblem?: string }>;
+const catalogue = allProfessionTalentCatalogueSs14 as Record<string, { emblem?: string }>;
 const art = tliArt as unknown as {
   talentPanels: Record<string, string>;
   coreTalents: Record<string, string>;
@@ -167,8 +167,8 @@ const art = tliArt as unknown as {
 /** A tree's family class ("talent-family-goddess-of-knowledge"); "" for none. */
 export function talentFamilyClass(name: string | null | undefined): string {
   if (!name) return "";
-  const families = talentFamiliesSs13 as Record<string, string[]>;
-  const family = (godTalentTreesSs13 as string[]).includes(name)
+  const families = talentFamiliesSs14 as Record<string, string[]>;
+  const family = (godTalentTreesSs14 as string[]).includes(name)
     ? name
     : Object.entries(families).find(([, trees]) => trees.includes(name))?.[0];
   return family

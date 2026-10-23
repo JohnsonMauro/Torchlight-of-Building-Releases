@@ -6,16 +6,16 @@ import {
   reduceBaseTraitMemoryStat,
   artificialMoonGate as artificialMoonGateFor,
 } from "./hero-memory-rules.js";
-import { heroMemoryTierAffixesSs13 } from "../../data/heroes/hero-memory-tiers-ss13.js";
-import { heroMemoryFixedT0AffixesSs13 } from "../../data/heroes/hero-memory-fixed-t0-ss13.js";
-import { lunarPhaseRevivedAffixDetailsSs13 } from "../../data/heroes/memory-revival-details-ss13.js";
+import { heroMemoryTierAffixesSs14 } from "../../data/heroes/hero-memory-tiers-ss14.js";
+import { heroMemoryFixedT0AffixesSs14 } from "../../data/heroes/hero-memory-fixed-t0-ss14.js";
+import { lunarPhaseRevivedAffixDetailsSs14 } from "../../data/heroes/memory-revival-details-ss14.js";
 import {
   equippedBaseTraitSlot,
   memoryFitsBaseTraitSlot,
   normalizeRevivedAffix,
   revivedAffixForMemoryType,
   revivedAffixTiers,
-} from "../../data/heroes/memory-revival-ss13.js";
+} from "../../data/heroes/memory-revival-ss14.js";
 import { exclusiveRevivalState, revivedAffixCounts } from "./hero-exclusive-revivals.js";
 import { extraPickMemory } from "./hero-trait-tree.js";
 
@@ -25,13 +25,13 @@ import { extraPickMemory } from "./hero-trait-tree.js";
 function revivedFamilyText(memory, hero = {}) {
   if (!memory?.revivedAffix || !revivedAffixCounts(hero, memory)) return "";
   const name = normalizeRevivedAffix(memory.revivedAffix);
-  // Lunar-phase revivals (TLIDB text in memory-revival-details-ss13.js) join the intake too; hero-exclusive ones only through
+  // Lunar-phase revivals (TLIDB text in memory-revival-details-ss14.js) join the intake too; hero-exclusive ones only through
   // src/engine/heroes/hero-exclusive-revivals.js (the selected loadout, lines without a pending hero engine); the ones with their own rule
   // (Ceaseless Tide, Cat's Night Safari, Artificial Moon, "+1 Max Youga Count in the Universe") are read by name.
-  if (lunarPhaseRevivedAffixDetailsSs13[name]) {
+  if (lunarPhaseRevivedAffixDetailsSs14[name]) {
     const exclusive = exclusiveRevivalState(hero, memory);
     if (exclusive) return exclusive.intake.join("\n");
-    const text = lunarPhaseRevivedAffixDetailsSs13[name];
+    const text = lunarPhaseRevivedAffixDetailsSs14[name];
     if (/Hero Trait Exclusive/i.test(text) || name === "Ceaseless Tide" || /^Artificial Moon/.test(name)) return "";
     return text;
   }
@@ -51,7 +51,7 @@ export function resolvedMemoryAffix(memory, group, index) {
   if (!effect) return "";
   const fixed = group === "fixedAffixes",
     tier = memory[fixed ? "fixedTiers" : "randomTiers"]?.[index];
-  const catalog = fixed && tier === 0 ? heroMemoryFixedT0AffixesSs13 : heroMemoryTierAffixesSs13;
+  const catalog = fixed && tier === 0 ? heroMemoryFixedT0AffixesSs14 : heroMemoryTierAffixesSs14;
   const text =
     catalog.find(
       (entry) =>

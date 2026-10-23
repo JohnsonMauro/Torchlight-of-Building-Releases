@@ -2,7 +2,7 @@ import { normalizePercentageText } from "../text/percentage-text.js";
 import { effectiveGearModifierTexts } from "../engine.js";
 import { activeKismetEffects } from "../pacts/kismet-effects.js";
 import { orderedPactspiritNodes, pactspiritEffectsAtLevel, pactspiritLevel } from "../pacts/pactspirit-levels.js";
-import { pactspiritTreesSs13 } from "../../data/pacts/pactspirit-trees-ss13.js";
+import { pactspiritTreesSs14 } from "../../data/pacts/pactspirit-trees-ss14.js";
 import {
   prismAreaBounds,
   prismMutationDownside,
@@ -113,7 +113,7 @@ export function calculateResistances({
   for (const line of activeKismetEffects(pactState)) add(line.text, line.source, 1, true);
   for (const spirit of pactState.selectedSpirits || []) {
     if (!spirit || pactState.activeSpirits?.[spirit] === false) continue;
-    orderedPactspiritNodes(pactspiritTreesSs13[spirit]).forEach((node, index) => {
+    orderedPactspiritNodes(pactspiritTreesSs14[spirit]).forEach((node, index) => {
       const key = `${spirit}:${index}`;
       if (pactState.nativeNodeQuantities?.[key] !== 1 || pactState.kismetSlots?.[key]) return;
       const texts =

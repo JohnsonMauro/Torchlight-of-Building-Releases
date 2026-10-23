@@ -1,5 +1,5 @@
 // A Legendary item's base-item line (the stat printed under "Require lv" on its TLIDB page, from the "Base:" item).
-// The planner's Legendary catalog (src/data/gear/legendary-gear-ss13.generated.js) is built from TLIDB's list page, which
+// The planner's Legendary catalog (src/data/gear/legendary-gear-ss14.generated.js) is built from TLIDB's list page, which
 // leaves this line out, so saved Legendary items carry only their affixes.
 //
 // Sources: the individual TLIDB item pages saved in research/tlidb-legendary-placeholders/ (2026-10-13) and

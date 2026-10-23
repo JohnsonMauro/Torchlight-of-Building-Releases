@@ -6,8 +6,8 @@ import {
   heroTreeRules,
   heroTreeSelections,
   switchHeroLoadout,
-  tlidbSkillCatalogSs13,
-  tlidbSupportCatalogSs13,
+  tlidbSkillCatalogSs14,
+  tlidbSupportCatalogSs14,
 } from "../../engine/index.ts";
 import { carinoAmmoSelectorView, sageScentSelectorView } from "../bridge/hero-dialogs-view-model.ts";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
@@ -85,11 +85,11 @@ const carinoProjectileSupportOptions = () => {
     .flatMap((setup) => setup.supports || [])
     .map((support) => support.name);
   const wellPrepared = plannerState.hero.selectedTraits["carino-ranger-of-glory:level75"] === "Well Prepared";
-  return carinoSpecialAmmoOptions(tlidbSupportCatalogSs13, tlidbSkillCatalogSs13, installed, wellPrepared);
+  return carinoSpecialAmmoOptions(tlidbSupportCatalogSs14, tlidbSkillCatalogSs14, installed, wellPrepared);
 };
 
 export function heroTraitSupportOptions() {
-  return tlidbSupportCatalogSs13.filter(
+  return tlidbSupportCatalogSs14.filter(
     (support) => !support.passiveOnly && ["regular", "magnificent", "noble", "activation"].includes(support.category),
   );
 }

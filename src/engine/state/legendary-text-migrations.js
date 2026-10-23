@@ -8,12 +8,12 @@
 // ("(-1–1) Main Skill Level", "(0–10) % additional Attack and Cast Speed") carries no sign in the template, and the editor
 // used to save a positive roll without "+" ("1 Main Skill Level"), which the "+"-anchored readers skip. The editor now
 // writes the sign (src/app/gear/affix-rolls.js resolveModifierRolls); saved lines that match such a template are given their "+" on read.
-import { legendaryPlaceholderPoolsSs13 } from "../../data/gear/legendary-placeholder-pools-ss13.generated.js";
-import { legendaryGearSs13 } from "../../data/gear/legendary-gear-ss13.generated.js";
-import { legendaryCorrodedModifiersSs13 } from "../../data/gear/legendary-corroded-modifiers-ss13.generated.js";
+import { legendaryPlaceholderPoolsSs14 } from "../../data/gear/legendary-placeholder-pools-ss14.generated.js";
+import { legendaryGearSs14 } from "../../data/gear/legendary-gear-ss14.generated.js";
+import { legendaryCorrodedModifiersSs14 } from "../../data/gear/legendary-corroded-modifiers-ss14.generated.js";
 
 const RANGE = /\((-?\d+(?:\.\d+)?)\s*[–-]\s*(-?\d+(?:\.\d+)?)\)/;
-// Vorax / craft affix templates outside the legendary catalogs (craft-affixes-ss13.generated.js is not loaded here).
+// Vorax / craft affix templates outside the legendary catalogs (craft-affixes-ss14.generated.js is not loaded here).
 const EXTRA_SPANNING_TEMPLATES = ["(-1–1)% additional Hit Damage for skills cast by Spell Burst"];
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 let unsignedPatterns = null;
@@ -23,9 +23,9 @@ function spanningTemplateRests() {
   const add = (text) => {
     if (typeof text === "string") for (const line of text.split("\n")) lines.add(line.trim());
   };
-  for (const item of legendaryGearSs13) (item.modifiers || []).forEach(add);
-  for (const modifiers of Object.values(legendaryCorrodedModifiersSs13)) (modifiers || []).forEach(add);
-  for (const legendary of Object.values(legendaryPlaceholderPoolsSs13))
+  for (const item of legendaryGearSs14) (item.modifiers || []).forEach(add);
+  for (const modifiers of Object.values(legendaryCorrodedModifiersSs14)) (modifiers || []).forEach(add);
+  for (const legendary of Object.values(legendaryPlaceholderPoolsSs14))
     for (const pool of legendary.pools || [])
       for (const option of pool.options || []) (option?.effect || []).forEach(add);
   const rests = new Set();

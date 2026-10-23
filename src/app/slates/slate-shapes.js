@@ -1,5 +1,5 @@
 // A slate's cells and art on the board, and the coloured tree name of its affixes.
-import { divinitySlateTreeFamiliesSs13 } from "../../engine/index.ts";
+import { divinitySlateTreeFamiliesSs14 } from "../../engine/index.ts";
 import { escapeHtml } from "../html.js";
 import {
   godSlateCaptureByKey,
@@ -11,7 +11,7 @@ import {
 
 /** A talent tree's god colour class ("talent-family-god-of-war"); "" for a tree of no god family. */
 export const slateAffixFamilyClass = (tree) => {
-  const god = Object.entries(divinitySlateTreeFamiliesSs13).find(([, trees]) => trees.includes(tree))?.[0];
+  const god = Object.entries(divinitySlateTreeFamiliesSs14).find(([, trees]) => trees.includes(tree))?.[0];
   return god ? `talent-family-${god.toLowerCase().replaceAll(" ", "-")}` : "";
 };
 export const coloredSlateAffix = (affix) => {

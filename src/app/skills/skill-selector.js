@@ -14,8 +14,8 @@ import {
   specialSupportTierData,
   supportCanSupportSkill,
   supportFitsSlot,
-  tlidbSkillCatalogSs13,
-  tlidbSupportCatalogSs13,
+  tlidbSkillCatalogSs14,
+  tlidbSupportCatalogSs14,
   userInstalledSupports,
 } from "../../engine/index.ts";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
@@ -155,7 +155,7 @@ export function openFollowerSkillSelector(slot) {
 
 export function selectorEntries() {
   if (selectorKind === "skill")
-    return tlidbSkillCatalogSs13.filter((entry) =>
+    return tlidbSkillCatalogSs14.filter((entry) =>
       activeSkillBoardTab === "auras"
         ? entry.role === "aura"
         : entry.role !== "aura" ||
@@ -163,9 +163,9 @@ export function selectorEntries() {
     );
   if (selectorKind === "hero-support") return heroTraitSupportOptions();
   const setup = selectorTargetSetup();
-  if (!setup) return tlidbSupportCatalogSs13;
-  const skillTags = tlidbSkillCatalogSs13.find((entry) => entry.name === setup.name)?.tags || [];
-  return tlidbSupportCatalogSs13.filter((entry) => {
+  if (!setup) return tlidbSupportCatalogSs14;
+  const skillTags = tlidbSkillCatalogSs14.find((entry) => entry.name === setup.name)?.tags || [];
+  return tlidbSupportCatalogSs14.filter((entry) => {
     if (selectorKind === "support" && !supportFitsSlot(entry, selectorTargetSupportSlot)) return false;
     if (entry.exclusiveFor) return entry.exclusiveFor === setup.name;
     if (setup.role === "aura") {
@@ -173,12 +173,12 @@ export function selectorEntries() {
       if (
         gameRuleDecides(
           entry,
-          tlidbSkillCatalogSs13.find((skill) => skill.name === setup.name),
+          tlidbSkillCatalogSs14.find((skill) => skill.name === setup.name),
         )
       )
         return supportCanSupportSkill(
           entry,
-          tlidbSkillCatalogSs13.find((skill) => skill.name === setup.name),
+          tlidbSkillCatalogSs14.find((skill) => skill.name === setup.name),
           setup.supports,
         );
       if (entry.name === "Blind" && skillTags.includes("Spirit Magus")) return true;
@@ -187,7 +187,7 @@ export function selectorEntries() {
         !entry.passiveOnly &&
         supportCanSupportSkill(
           entry,
-          tlidbSkillCatalogSs13.find((skill) => skill.name === setup.name),
+          tlidbSkillCatalogSs14.find((skill) => skill.name === setup.name),
           setup.supports,
         )
       )
@@ -203,7 +203,7 @@ export function selectorEntries() {
       !entry.passiveOnly &&
       supportCanSupportSkill(
         entry,
-        tlidbSkillCatalogSs13.find((skill) => skill.name === setup.name),
+        tlidbSkillCatalogSs14.find((skill) => skill.name === setup.name),
         setup.supports,
       )
     );
@@ -254,7 +254,7 @@ export function selectorTargetSetup() {
 export function selectorTargetSupport() {
   if (selectorKind === "hero-support") {
     const name = plannerState.hero.heroTraitSupports?.[ui.activeHeroTraitSupportId] || "";
-    const entry = tlidbSupportCatalogSs13.find((support) => support.name === name);
+    const entry = tlidbSupportCatalogSs14.find((support) => support.name === name);
     return entry
       ? {
           ...entry,

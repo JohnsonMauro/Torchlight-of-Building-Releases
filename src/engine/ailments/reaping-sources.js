@@ -1,7 +1,7 @@
 import { effectiveGearModifierTexts } from "../engine.js";
 import { normalizePercentageText } from "../text/percentage-text.js";
 import { orderedPactspiritNodes, pactspiritEffectsAtLevel, pactspiritLevel } from "../pacts/pactspirit-levels.js";
-import { pactspiritTreesSs13 } from "../../data/pacts/pactspirit-trees-ss13.js";
+import { pactspiritTreesSs14 } from "../../data/pacts/pactspirit-trees-ss14.js";
 
 export function parseReapingSource(text, source) {
   // Dual Kismet: Plague Source (pact scripted-effects batch 2026-10-13): "0.5s after dealing Damage Over Time, Reaps 3s of Damage
@@ -68,7 +68,7 @@ export function collectReapingSources(equipment, pactState = {}, igniteChancePer
     pactState.kismetSlotMode &&
     pactState.selectedSpirits?.includes(spirit) &&
     pactState.activeSpirits?.[spirit] !== false;
-  const nodes = orderedPactspiritNodes(pactspiritTreesSs13[spirit]);
+  const nodes = orderedPactspiritNodes(pactspiritTreesSs14[spirit]);
   const outerIndex = nodes.findIndex((node) => node.ring === "outer");
   const allocated = selected && outerIndex >= 0 && pactState.nativeNodeQuantities?.[`${spirit}:${outerIndex}`] === 1;
   const pact = allocated

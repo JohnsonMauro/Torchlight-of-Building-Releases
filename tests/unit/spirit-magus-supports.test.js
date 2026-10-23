@@ -3,10 +3,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { supportCanSupportSkill } from "../../src/engine/supports/support-compatibility.js";
-import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../../src/data/catalogs/tlidb-ss13.js";
+import { tlidbSkillCatalogSs14, tlidbSupportCatalogSs14 } from "../../src/data/catalogs/tlidb-ss14.js";
 
-const skill = (name) => tlidbSkillCatalogSs13.find((entry) => entry.name === name);
-const support = (name) => tlidbSupportCatalogSs13.find((entry) => entry.name === name);
+const skill = (name) => tlidbSkillCatalogSs14.find((entry) => entry.name === name);
+const support = (name) => tlidbSupportCatalogSs14.find((entry) => entry.name === name);
 const accepts = (supportName, skillName) => supportCanSupportSkill(support(supportName), skill(skillName));
 
 test("Summon Thunder Magus takes Grudge and Target Projection, as the game equips them (2026-10-22 log)", () => {

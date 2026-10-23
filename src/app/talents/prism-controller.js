@@ -25,7 +25,7 @@ import { ui } from "../planner/ui-state.js";
 import { prismIcon, prismName } from "./prism-icons.js";
 import {
   clearInverseReflectedRanks,
-  professionTreeLayoutsAllSs13,
+  professionTreeLayoutsAllSs14,
   reconcileTalentRanksAfterPrismChange,
   renderTalents,
 } from "./talent-trees.js";
@@ -414,7 +414,7 @@ export function placeCraftedPrism(coordinate) {
   const { id, panel } = pendingPrismPlacement,
     item = (plannerState.talents.prismInventory || []).find((entry) => entry.id === id);
   if (!item || ui.activeTalentPanel !== panel) return;
-  if (!professionTreeLayoutsAllSs13[panel]?.nodes.some((node) => node.coordinate.join(",") === coordinate)) return;
+  if (!professionTreeLayoutsAllSs14[panel]?.nodes.some((node) => node.coordinate.join(",") === coordinate)) return;
   const previous = (plannerState.talents.prismInventory || []).find(
     (entry) => entry.id === plannerState.talents.installedPrisms?.[panel],
   );
@@ -445,7 +445,7 @@ function dropPrism(coordinate) {
   const panel = ui.activeTalentPanel,
     origin = plannerState.talents.installedPrismNodes?.[panel];
   const valid =
-    coordinate && professionTreeLayoutsAllSs13[panel]?.nodes.some((node) => node.coordinate.join(",") === coordinate);
+    coordinate && professionTreeLayoutsAllSs14[panel]?.nodes.some((node) => node.coordinate.join(",") === coordinate);
   if (!valid) {
     showToast("Invalid drop · Prism returned to its original node");
     return;

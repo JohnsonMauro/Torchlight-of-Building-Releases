@@ -4,9 +4,9 @@
 // when TLIDB changes it) would keep the old copy. User rule 2026-10-15: old builds change with the data. A saved support
 // named after a catalog support reads the catalog's current effect text; one the catalog does not hold keeps its own.
 // Storage is not rewritten eagerly: the build carries the new text when it is next saved.
-import { tlidbSupportCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
+import { tlidbSupportCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
 
-const catalogEffects = new Map(tlidbSupportCatalogSs13.map((entry) => [entry.name, entry.effects]));
+const catalogEffects = new Map(tlidbSupportCatalogSs14.map((entry) => [entry.name, entry.effects]));
 
 function migrateSupport(support) {
   const effects = catalogEffects.get(support?.name);

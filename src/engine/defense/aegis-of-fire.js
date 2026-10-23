@@ -1,15 +1,15 @@
 import { normalizePercentageText } from "../text/percentage-text.js";
 import { requestedCombatConditions } from "../combat-condition-mode.js";
-import { supportProgressionSs13 } from "../../data/skills/support-progression-ss13.generated.js";
+import { supportProgressionSs14 } from "../../data/skills/support-progression-ss14.generated.js";
 import { parseProgressionCell } from "../text/progression-cell.js";
 
 // Aegis of Fire on the skill board (Effective HP only; defence audit 2026-10-13, research/frost-terra-defense-compare-2026-10-13.md).
 //
 // Sourced:
-// - TLIDB skill text (src/data/skills/all-skill-effects-ss13.generated.js): "27.5% Attack Block Chance while the skill lasts",
+// - TLIDB skill text (src/data/skills/all-skill-effects-ss14.generated.js): "27.5% Attack Block Chance while the skill lasts",
 //   "27.5% Spell Block Chance while the skill lasts", "Lasts 5s."
 // - Activation Medium: Preparation (TLIDB): "Prepares the supported skill every (4–5) s" (the configured roll).
-// - Iron Fortification (TLIDB progression, src/data/skills/support-progression-ss13.generated.js): "+N Armor while the supported
+// - Iron Fortification (TLIDB progression, src/data/skills/support-progression-ss14.generated.js): "+N Armor while the supported
 //   skill lasts" (leveled column) and "+2% Armor Effective Rate against non-Physical Damage while the supported skill lasts".
 // - Lines that need it: Pantheon's Elegy, Iron Sentry's Dirge ("+20% Block Ratio while Aegis of Fire is active", "Converts 20% of
 //   Physical Damage taken to Fire Damage while Aegis of Fire is active").
@@ -38,7 +38,7 @@ const supportLevel = (support) =>
   Math.max(1, Math.min(40, Math.round(support?.effectiveLevel || support?.level || 20)));
 
 function ironFortification(support) {
-  const record = supportProgressionSs13["Iron Fortification"];
+  const record = supportProgressionSs14["Iron Fortification"];
   const level = supportLevel(support);
   const column = record?.columns?.find((item) => /Armor while the supported skill lasts/i.test(item.heading));
   const armor = parseProgressionCell(column?.values?.[String(level)])?.[0];

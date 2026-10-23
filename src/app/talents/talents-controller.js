@@ -9,7 +9,7 @@ import {
   prismReplacesCore,
   refineCoverage,
   removeTalentWithDependents,
-  talentFamiliesSs13,
+  talentFamiliesSs14,
   talentPointTotals,
   tliArt,
 } from "../../engine/index.ts";
@@ -51,7 +51,7 @@ import {
   clearInverseReflectedRanks,
   clearTalentTreeState,
   currentTalentPanel,
-  professionTreeLayoutsAllSs13,
+  professionTreeLayoutsAllSs14,
   reconcileTalentRanksAfterPrismChange,
   renderTalents,
   setTalentSlateMode,
@@ -163,7 +163,7 @@ function coreTalentTooltip(target) {
 function talentsSource() {
   return talentsView({
     panel: currentTalentPanel(),
-    baseLayouts: professionTreeLayoutsAllSs13,
+    baseLayouts: professionTreeLayoutsAllSs14,
     layouts: activeTalentLayouts(),
     ranks: Object.fromEntries(talentRanks),
     talents: plannerState.talents,
@@ -189,7 +189,7 @@ function selectTalentTree(name) {
     delete plannerState.talents.installedPrismNodes[previous];
   }
   plannerState.talents.selectedTrees[ui.activeTalentSlot] = name;
-  if (ui.activeTalentSlot === 0 && !talentFamiliesSs13[name].includes(plannerState.talents.selectedTrees[1])) {
+  if (ui.activeTalentSlot === 0 && !talentFamiliesSs14[name].includes(plannerState.talents.selectedTrees[1])) {
     const removed = plannerState.talents.selectedTrees[1];
     clearTalentTreeState(removed);
     delete plannerState.talents.installedPrisms[removed];

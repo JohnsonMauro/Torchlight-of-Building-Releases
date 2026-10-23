@@ -9,7 +9,7 @@
 //   - sageLineRead: one clause's status, reason and derived bodies (src/engine/heroes/hero-trait-modules.js "sageScent").
 //
 // Sourced:
-// - Trait texts (TLIDB, SS14; src/data/heroes/all-hero-traits-ss13.generated.js, the base trait's per-level texts in
+// - Trait texts (TLIDB, SS14; src/data/heroes/all-hero-traits-ss14.generated.js, the base trait's per-level texts in
 //   base-hero-trait-levels / progressions). The base trait's LV.1–4 texts carry the Ingredient catalogue with no moon section, so
 //   the catalogue is not an Artificial Moon effect (F4; src/engine/heroes/hero-memory-rules.js endsArtificialMoonSection).
 // - Game tier records (audit §4.3, rank 5): Licorice Note 1800001 (moon: attr 3631 Inflicted Elixir Effect, additional, Scent Bottle

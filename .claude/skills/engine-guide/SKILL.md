@@ -24,7 +24,9 @@ description: Rules for the calculation engine and game data — src/engine purit
   `tests/unit/planner-state.test.js` and `state-validation.test.js`.
 - `src/data/` is game data, mostly `*.generated.js` from upstream's data tools: kept byte for byte (Prettier ignores
   the folder) so a new upstream copy diffs cleanly. Never hand-edit a generated file; a correction goes in engine code
-  or a non-generated data module, with the reason in a comment.
+  or a non-generated data module, with the reason in a comment. The one sanctioned difference is the season in names:
+  file names and identifiers carry the season the data belongs to (`-ss14`, `Ss14`; renamed from upstream's legacy
+  `ss13` label on 2026-10-22, the content being SS14's).
 
 ## 2. TypeScript run by Node
 

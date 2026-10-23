@@ -4,7 +4,7 @@ import { averageRotatingBuffs, expandScriptedItemLine } from "./gear/gear-unique
 import { matchTalentTextClause } from "./text/talent-text-effects.js";
 import { activeKismetEffects, parseKismetEffect } from "./pacts/kismet-effects.js";
 import { auraBaseEffects, auraSupportEffects, auraSupportSealedManaCompensation } from "./skills/aura-effects.js";
-import { auraScalingSs13, auraStatUsesEffectScale } from "../data/skills/aura-scaling-ss13.js";
+import { auraScalingSs14, auraStatUsesEffectScale } from "../data/skills/aura-scaling-ss14.js";
 import { additionalIgniteMultiplier, supportEffect } from "./supports/support-model.js";
 import {
   nativePactspiritNodeEffect,
@@ -12,9 +12,9 @@ import {
   pactspiritEffectsAtLevel,
   pactspiritLevel,
 } from "./pacts/pactspirit-levels.js";
-import { pactspiritTreesSs13 } from "../data/pacts/pactspirit-trees-ss13.js";
-import { pactspiritLevelsSs13 } from "../data/pacts/pactspirit-levels-ss13.js";
-import { kismetCatalogSs13 } from "../data/pacts/kismet-catalog-ss13.js";
+import { pactspiritTreesSs14 } from "../data/pacts/pactspirit-trees-ss14.js";
+import { pactspiritLevelsSs14 } from "../data/pacts/pactspirit-levels-ss14.js";
+import { kismetCatalogSs14 } from "../data/pacts/kismet-catalog-ss14.js";
 const round = (value, places = 2) => Number(value.toFixed(places));
 
 export function calculateActionRate({ baseInterval, increasedPercent = 0, additionalPercent = 0 }) {
@@ -620,7 +620,7 @@ export function calculateAuraLedger(setups, options) {
       const globalAuraEffectPercent = options.globalAuraEffectPercent;
       const town = options.context === "town";
       const supportEffects = auraSupportEffects(enabledSupports, {
-        auraCount: setups.filter((item) => auraScalingSs13[item.name]).length,
+        auraCount: setups.filter((item) => auraScalingSs14[item.name]).length,
         nearbyElite: options.nearbyElite,
         affectedAllies: options.affectedAllies,
         context: town ? "town" : "dummy",
@@ -1244,7 +1244,7 @@ export function calculatePactCandidate(pactSetup, state = {}, snapshot) {
       ? [
           ...new Set(
             state.selectedSpirits.filter(
-              (name) => name && !capturedNames.has(name) && (pactspiritTreesSs13[name] || pactspiritLevelsSs13[name]),
+              (name) => name && !capturedNames.has(name) && (pactspiritTreesSs14[name] || pactspiritLevelsSs14[name]),
             ),
           ),
         ].map((name) => ({ name, rank: 1, effectsAtRank: [], unreplacedNativeNodes: [], uncaptured: true }))
@@ -1268,7 +1268,7 @@ export function calculatePactCandidate(pactSetup, state = {}, snapshot) {
         text: `${spirit.name}: pact spirit level not set, assumed Lv${level}.`,
       });
     const levelEffects = pactspiritEffectsAtLevel(spirit.name, level);
-    const nodeSequence = state.kismetSlotMode ? orderedPactspiritNodes(pactspiritTreesSs13[spirit.name]) : [];
+    const nodeSequence = state.kismetSlotMode ? orderedPactspiritNodes(pactspiritTreesSs14[spirit.name]) : [];
     const destinyIndex = nodeSequence.findIndex((node) => node.ring === "destiny");
     if (
       destinyIndex >= 0 &&

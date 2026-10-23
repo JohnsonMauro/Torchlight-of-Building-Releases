@@ -1,8 +1,8 @@
-import { tlidbSkillCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
-import { scorchingBeamSs13 } from "../../data/skills/scorching-beam-ss13.js";
+import { tlidbSkillCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
+import { scorchingBeamSs14 } from "../../data/skills/scorching-beam-ss14.js";
 import { selenaScorchingBeamStrippedValidations } from "../../data/stats/selena-scorching-beam-stripped-baseline.js";
 
-const skill = tlidbSkillCatalogSs13.find((entry) => entry.name === "Scorching Beam");
+const skill = tlidbSkillCatalogSs14.find((entry) => entry.name === "Scorching Beam");
 
 function parsePacket(label) {
   const effect = skill?.effects?.find((text) => text.startsWith(`${label}: Deals `));
@@ -24,7 +24,7 @@ export function findScorchingBeamSetup(setups = []) {
 // Levels 1–20 read the game rows (config_skill_damage 461 / 462); level 20 and above keep the TLIDB level-20 packets
 // scaled by the post-20 skill-level factor (levelFactor).
 const levelRow = (key, level) => {
-  const row = scorchingBeamSs13.levelRows?.[key]?.[level];
+  const row = scorchingBeamSs14.levelRows?.[key]?.[level];
   return row ? { min: row[0], max: row[1] } : null;
 };
 
@@ -43,7 +43,7 @@ export function scorchingBeamBaseHits({ effectiveLevel = 20, levelFactor = 1 } =
       effectiveLevel,
       referenceLevel: rowLevel,
       modeledLevel: true,
-      levelSource: scorchingBeamSs13.levelRows.source,
+      levelSource: scorchingBeamSs14.levelRows.source,
       maxChannelStacks,
     };
   }
@@ -68,7 +68,7 @@ export function scorchingBeamBaseHits({ effectiveLevel = 20, levelFactor = 1 } =
 // Scattershot run (2026-10-12) shows all three Beams reaching the dummy.
 export function scorchingBeamShotgunFactor(
   beams = 1,
-  coefficientPercent = scorchingBeamSs13.rules.shotgunFalloffCoefficientPercent,
+  coefficientPercent = scorchingBeamSs14.rules.shotgunFalloffCoefficientPercent,
 ) {
   const extra = Math.max(0, Math.trunc(Number(beams) || 1) - 1);
   return 1 + (extra * (Number(coefficientPercent) || 0)) / 100;

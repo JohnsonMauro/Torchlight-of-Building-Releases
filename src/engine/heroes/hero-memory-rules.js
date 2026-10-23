@@ -74,7 +74,7 @@ const moonNonBaseLevelCache = new Map();
 /** The base trait's Artificial Moon "+N to Non-Base Hero Trait Level" (0 when its moon section has none). */
 export function moonNonBaseTraitLevel(heroId) {
   if (moonNonBaseLevelCache.has(heroId)) return moonNonBaseLevelCache.get(heroId);
-  const lines = String(baseHeroTraitProgressionsSs13[heroId] || "")
+  const lines = String(baseHeroTraitProgressionsSs14[heroId] || "")
     .split("\n")
     .map((line) => line.trim());
   const header = lines.findIndex((line) => /^Artificial Moon:$/i.test(line));
@@ -111,7 +111,7 @@ export function baseTraitLevelForMemory(memory) {
 }
 
 export function baseTraitDescriptionForLevel(heroId, description) {
-  return baseHeroTraitProgressionsSs13[heroId] || description;
+  return baseHeroTraitProgressionsSs14[heroId] || description;
 }
 
 export function memoryMaxEnhancementForRarity(rarity) {
@@ -160,7 +160,7 @@ export function reduceBaseTraitMemoryStat(text, reduction) {
 }
 
 // Base-stat values come from the game's config_modifier table (rows 4031 SS Q LL; scripts/build-memory-base-stat-values.mjs ->
-// src/data/heroes/hero-memory-base-stat-values-ss13.generated.js): one value per memory type, stat, rarity (Q) and
+// src/data/heroes/hero-memory-base-stat-values-ss14.generated.js): one value per memory type, stat, rarity (Q) and
 // enhancement level (LL = 51 - enhancement). Checked 2026-10-19 against the user's game log: Legendary 40 Memory of Progress
 // +24.7% Movement Speed, Epic 30 Memory of Origin +70 Intelligence, Epic 30 Memory of Discipline +408 Max Energy Shield; and the
 // in-game Ultimate 50/50 checks (2026-10-10: +110 Intelligence, +642 Max Energy Shield, +30% Movement Speed). The value depends
@@ -170,7 +170,7 @@ export function reduceBaseTraitMemoryStat(text, reduction) {
 // lowest rarity that reaches its enhancement (enhancement 30: Epic), which keeps the old values at enhancement 10 / 20 / 30 /
 // 40 / 50 for every stat but Movement Speed (the SS14 Wilting Beam fixture, Epic 30 in game, keeps its panel match). The
 // planner's "Minion Attack Speed" base stat is the game's "Minion Attack and Cast Speed" row (403114).
-import { heroMemoryBaseStatValuesSs13 } from "../../data/heroes/hero-memory-base-stat-values-ss13.generated.js";
+import { heroMemoryBaseStatValuesSs14 } from "../../data/heroes/hero-memory-base-stat-values-ss14.generated.js";
 const memoryBaseStatRarity = {
   normal: "normal",
   common: "normal",
@@ -188,7 +188,7 @@ export function memoryBaseStatLabel(baseStat) {
 /** The data value of a memory base stat for its type, rarity and enhancement level, or null when the table has no row. */
 export function memoryBaseStatValue(baseStat, memoryType, enhancementLevel, rarity) {
   const label = memoryBaseStatLabel(String(baseStat || "").trim());
-  const stats = heroMemoryBaseStatValuesSs13[memoryType];
+  const stats = heroMemoryBaseStatValuesSs14[memoryType];
   const byRarity = stats?.[label] || stats?.[memoryBaseStatAliases[label]];
   if (!byRarity) return null;
   const level = clampMemoryEnhancement(enhancementLevel, rarity);
@@ -205,10 +205,10 @@ export function memoryScaledBaseStat(baseStat, memoryType, enhancementLevel, wax
   if (value === null) return memoryImplicitText(baseStat, waxAndWane);
   return memoryImplicitText(`${match[1]}${value}${match[3]}`, waxAndWane);
 }
-import { baseHeroTraitProgressionsSs13 } from "../../data/heroes/base-hero-trait-progressions-ss13.generated.js";
+import { baseHeroTraitProgressionsSs14 } from "../../data/heroes/base-hero-trait-progressions-ss14.generated.js";
 
 // Artificial Moon (user-corrected 2026-10-13; replaces the "any equipped Artificial Moon memory, any level" reading): the
-// Artificial Moon revived affix on an equipped memory opens the base trait slot (src/data/heroes/memory-revival-ss13.js
+// Artificial Moon revived affix on an equipped memory opens the base trait slot (src/data/heroes/memory-revival-ss14.js
 // baseTraitSlotFromMemory), and the base trait's "Artificial Moon:" lines are active only once the base trait reaches
 // level 5. User-corrected 2026-10-13 (in-game screenshot: base trait LV.3 with an Ultimate memory in the base slot): the
 // base trait starts at level 0, so its level here is 0 + the slot memory's trait-level bonus (traitLevelBonusForEnhancement:
@@ -220,7 +220,7 @@ import {
   equippedBaseTraitSlot,
   memoryFitsBaseTraitSlot,
   normalizeRevivedAffix,
-} from "../../data/heroes/memory-revival-ss13.js";
+} from "../../data/heroes/memory-revival-ss14.js";
 import { revivedAffixCounts } from "./hero-exclusive-revivals.js";
 export const ARTIFICIAL_MOON_TRAIT_LEVEL = 5;
 export function artificialMoonGate(hero = {}) {
@@ -270,7 +270,7 @@ export function artificialMoonGate(hero = {}) {
 // by shape). One line for most heroes; Youga – The Ultimate One has two (SS14, 2026-10-15). Lines every level has stay
 // (Vendetta's Sting prints "Replace the skill in the third slot with Vendetta" after its moon line). Without per-level data
 // the header and the one line after it are left out, as before.
-import { baseHeroTraitLevelsSs13 } from "../../data/heroes/base-hero-trait-levels-ss13.generated.js";
+import { baseHeroTraitLevelsSs14 } from "../../data/heroes/base-hero-trait-levels-ss14.generated.js";
 const traitLineShape = (line) =>
   String(line || "")
     .replace(/[+-]?\d+(?:\.\d+)?/g, "#")
@@ -279,7 +279,7 @@ const traitLineShape = (line) =>
 export function withoutArtificialMoonLines(heroId, lines = []) {
   const header = lines.findIndex((line) => String(line).trim() === "Artificial Moon:");
   if (header < 0) return lines;
-  const levelOne = baseHeroTraitLevelsSs13[heroId]?.[1];
+  const levelOne = baseHeroTraitLevelsSs14[heroId]?.[1];
   if (!levelOne) return lines.filter((_, index) => index !== header && index !== header + 1);
   const shapes = new Set(levelOne.split("\n").map(traitLineShape));
   return lines.filter(

@@ -8,7 +8,7 @@ import { calculatePlanner } from "../../src/engine/planner.js";
 import { defaultPlannerState } from "../../src/engine/state/planner-state.ts";
 import { switchHeroLoadout } from "../../src/engine/heroes/hero-loadouts.js";
 import { skillsView } from "../../src/app/bridge/skills-view-model.ts";
-import { selenaCompleteSkillLoadoutSs13 } from "../../src/data/skills/selena-complete-skill-loadout-ss13.js";
+import { selenaCompleteSkillLoadoutSs14 } from "../../src/data/skills/selena-complete-skill-loadout-ss14.js";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
@@ -106,7 +106,7 @@ test("empty rows are named by tab and row, and their sockets wait for a skill", 
   const state = structuredClone(defaultPlannerState);
   // What "Reset Skills" leaves (src/app/planner/session.js emptyPlannerState does the same): every captured setup off.
   state.skills.setupEnabled = Object.fromEntries(
-    selenaCompleteSkillLoadoutSs13.setups.map((setup) => [setup.name, false]),
+    selenaCompleteSkillLoadoutSs14.setups.map((setup) => [setup.name, false]),
   );
   const result = calculatePlanner(state);
   const skills = view(result);

@@ -1,7 +1,7 @@
 // The Divinity Slates board, the Slate Inventory, the slate crafter and the slate editor.
 import {
   canPlaceSlate,
-  divinitySlateAffixesSs13,
+  divinitySlateAffixesSs14,
   isActiveJudgment,
   isCopySlate,
   judgmentAffectedSlateIds,
@@ -53,7 +53,7 @@ let selectedSlateId = null;
 
 // The affixes only one equipped slate can apply ("<tree>: <name>: <effect>").
 const singleDivinityAffixes = new Set(
-  Object.values(divinitySlateAffixesSs13)
+  Object.values(divinitySlateAffixesSs14)
     .flat()
     .filter((affix) => affix.maxDivinityEffect === 1)
     .map((affix) => `${affix.tree}: ${affix.name}: ${affix.effect}`),

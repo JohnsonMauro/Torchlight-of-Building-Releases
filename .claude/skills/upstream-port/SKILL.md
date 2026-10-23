@@ -24,8 +24,10 @@ rebase onto it and never open PRs there. We read his diff and port by hand.
   section his change touches.
 - His page code imports engine and data modules directly; ours imports them only from `src/engine/index.ts`
   (`engine-guide` §1): a ported import becomes a name in the entry, added to its domain's group if it is new.
-- His `src/data/**` paths are unchanged and the files are kept byte for byte (`engine-guide` §1), so a
-  `*.generated.js` can probably be copied whole. Not tried yet: on the first port, check that nothing of ours imports a
+- His `src/data/**` paths are unchanged but for the season: his files and identifiers say `ss13` / `Ss13`, ours
+  `ss14` / `Ss14` (`engine-guide` §1). A copied file is renamed and its identifiers changed the same way
+  (`sed -e 's/Ss13/Ss14/g' -e 's/-ss13\b/-ss14/g'`); nothing else in it changes, so a `*.generated.js` can probably be
+  copied whole. Not tried yet: on the first port, check that nothing of ours imports a
   name his new copy dropped (typecheck + `pnpm test`), then delete this note.
 - His UI (legacy markup and CSS) is not ported as markup: port the behaviour into our React feature and Tailwind
   classes (`react-guide`, `styling-guide`).

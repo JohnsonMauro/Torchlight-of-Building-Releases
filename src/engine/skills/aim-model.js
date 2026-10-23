@@ -1,6 +1,6 @@
 import { normalizePercentageText } from "../text/percentage-text.js";
 import { dummyTarget, explicitRadiusHolds } from "../combat/dummy-target.js";
-import { supportProgressionSs13 } from "../../data/skills/support-progression-ss13.generated.js";
+import { supportProgressionSs14 } from "../../data/skills/support-progression-ss14.generated.js";
 import { parseProgressionCell } from "../text/progression-cell.js";
 import { empowerAdditionalLines } from "../talents/storm-command.js";
 
@@ -8,7 +8,7 @@ import { empowerAdditionalLines } from "../talents/storm-command.js";
 // level, 1–40); the linear fallback only when the table has no cell. Mass Effect's step above Lv20 is lower since the
 // 2026-10-15 data (Lv22 20.75 per Charge, was 21), so the old "10 + 0.5 × level" no longer holds there.
 function leveledSupportValue(name, heading, level, fallback) {
-  const column = supportProgressionSs13[name]?.columns?.find((item) => heading.test(item.heading));
+  const column = supportProgressionSs14[name]?.columns?.find((item) => heading.test(item.heading));
   const value = parseProgressionCell(column?.values?.[String(level)])?.[0];
   return Number.isFinite(value) ? value : fallback;
 }

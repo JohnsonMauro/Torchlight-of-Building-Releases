@@ -5,7 +5,7 @@
 // printed them (src/app/bridge/display-text.ts).
 import {
   gearGroupOfType,
-  gearGroupsSs13,
+  gearGroupsSs14,
   legendaryLineTiers,
   normalizePercentageText,
   placeholderPool,
@@ -459,7 +459,7 @@ interface GearGroup {
   label: string;
   entries: { label: string; type: string }[];
 }
-const gearGroups = gearGroupsSs13 as GearGroup[];
+const gearGroups = gearGroupsSs14 as GearGroup[];
 const groupOfType = gearGroupOfType as (
   type: string,
 ) => { group: GearGroup; entry: GearGroup["entries"][number] } | undefined;

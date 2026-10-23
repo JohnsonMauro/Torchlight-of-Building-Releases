@@ -26,7 +26,7 @@ const GROUP_ICONS: Readonly<Record<string, GearSlotIconKind>> = {
   "two-handed": "weapon",
 };
 
-/** An equipment slot's silhouette (src/data/gear/crafting-catalog-ss13.js slot keys); null for an unknown slot. */
+/** An equipment slot's silhouette (src/data/gear/crafting-catalog-ss14.js slot keys); null for an unknown slot. */
 export const slotIconKind = (slot: string): GearSlotIconKind | null => SLOT_ICONS[slot] ?? null;
-/** A gear group's silhouette (src/data/gear/gear-groups-ss13.js ids); null for an unknown group. */
+/** A gear group's silhouette (src/data/gear/gear-groups-ss14.js ids); null for an unknown group. */
 export const groupIconKind = (group: string): GearSlotIconKind | null => GROUP_ICONS[group] ?? null;

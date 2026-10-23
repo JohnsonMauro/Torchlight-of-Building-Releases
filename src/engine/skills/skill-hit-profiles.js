@@ -1,9 +1,9 @@
-import { skillHitDamageSs13 } from "../../data/skills/skill-hit-damage-ss13.generated.js";
+import { skillHitDamageSs14 } from "../../data/skills/skill-hit-damage-ss14.generated.js";
 import { skillHitDamageNewSkills } from "../../data/skills/skill-hit-damage-new-skills.generated.js";
 import { finisherAmplificationPercent, CONSUMED_COMBO_POINTS } from "./combo-points.js";
-import { skillTimingSs13 } from "../../data/skills/skill-timing-ss13.generated.js";
-import { tlidbSkillCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
-import { skillProgressionSs13 } from "../../data/skills/skill-progression-ss13.generated.js";
+import { skillTimingSs14 } from "../../data/skills/skill-timing-ss14.generated.js";
+import { tlidbSkillCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
+import { skillProgressionSs14 } from "../../data/skills/skill-progression-ss14.generated.js";
 import { shotgunProfileNote } from "../combat/shotgun-effect.js";
 
 // Damage profiles for the generic spell-hit engine (src/engine/skills/skill-hit-model.js, engine "skill-hit").
@@ -14,9 +14,9 @@ import { shotgunProfileNote } from "../combat/shotgun-effect.js";
 //     castSpeedScaled, falloff } for ground effects and barrages); DoT components (ground-effect
 //     "Persistent damage every second") go through the skill-DoT engine (src/engine/skills/skill-dot-model.js) as a
 //     status refreshed while the target stands in the area.
-//   - base: src/data/skills/skill-hit-damage-ss13.generated.js (typed min/max per level 1–20 and the +0x08
+//   - base: src/data/skills/skill-hit-damage-ss14.generated.js (typed min/max per level 1–20 and the +0x08
 //     "effectiveness of added damage" per group);
-//   - timing: src/data/skills/skill-timing-ss13.generated.js (use time, speed type, cooldown, charges), a
+//   - timing: src/data/skills/skill-timing-ss14.generated.js (use time, speed type, cooldown, charges), a
 //     TLIDB fallback where no Split file is linked (or `useTlidbTiming` when the linked file is another skill's),
 //     and a use model: "cast" (one use per cast), "terra" (one ground effect or sentry at a time; recast when it
 //     expires, so uses/s = 1 / duration), "channel" (one use per channel interval, stacks held at max; batch 1)
@@ -27,7 +27,7 @@ import { shotgunProfileNote } from "../combat/shotgun-effect.js";
 // Everything that needs more than one target (chains, jumps, splits, extra projectiles that cannot hit the same
 // enemy, on-kill effects) is left out. Hit ailments (Ignite / Frostbite / Shock from these hits) are a follow-up.
 
-const catalog = new Map(tlidbSkillCatalogSs13.map((entry) => [entry.name, entry]));
+const catalog = new Map(tlidbSkillCatalogSs14.map((entry) => [entry.name, entry]));
 
 const text = (note) => ({ basis: "text", note });
 const provisional = (note) => ({ basis: "provisional", note });
@@ -1060,10 +1060,10 @@ const mainStats = (tags = []) => tags.filter((tag) => ["Strength", "Dexterity", 
 
 function buildProfile(definition) {
   const entry = catalog.get(definition.name) || {};
-  const table = skillHitDamageSs13[definition.name] || skillHitDamageNewSkills[definition.name];
+  const table = skillHitDamageSs14[definition.name] || skillHitDamageNewSkills[definition.name];
   const groupById = new Map((table?.groups || []).map((group) => [group.id, group]));
-  const timing = definition.useTlidbTiming ? null : skillTimingSs13[definition.name] || null;
-  const gameTiming = skillTimingSs13[definition.name] || null;
+  const timing = definition.useTlidbTiming ? null : skillTimingSs14[definition.name] || null;
+  const gameTiming = skillTimingSs14[definition.name] || null;
   const tags = entry.tags || [];
   // A component may carry its own synthetic group (TLIDB per-level percents where the game row is not linked: Ghost Blade's blade).
   const components = definition.components.map((component) => ({
@@ -1327,7 +1327,7 @@ export function skillHitTiming(profile) {
       charges: timing.cdTimes || 0,
       source: profile.sources.timing,
       tlidbCastSeconds:
-        Number(String(skillProgressionSs13[profile.name]?.stats?.["cast speed"] || "").replace(/[^\d.]/g, "")) || null,
+        Number(String(skillProgressionSs14[profile.name]?.stats?.["cast speed"] || "").replace(/[^\d.]/g, "")) || null,
       agreesWithTlidb: timing.checks?.cast === "agree",
     };
   const fallback = profile.timingFallback;

@@ -3,19 +3,19 @@ import {
   clampMemoryEnhancement,
   closestMemoryTier,
   equippedBaseTraitSlot,
-  heroMemoryAffixesSs13,
-  heroMemoryFixedT0AffixesSs13,
-  heroMemoryTierAffixesSs13,
-  lunarPhaseRevivedAffixDetailsSs13,
-  lunarPhaseRevivedAffixesSs13,
+  heroMemoryAffixesSs14,
+  heroMemoryFixedT0AffixesSs14,
+  heroMemoryTierAffixesSs14,
+  lunarPhaseRevivedAffixDetailsSs14,
+  lunarPhaseRevivedAffixesSs14,
   memoryBaseStatLabel,
   memoryFitsBaseTraitSlot,
   memoryMaxEnhancementForRarity,
   memoryScaledBaseStat,
   memoryTierNumericValue,
   normalizeRevivedAffix,
-  regularRevivedAffixesSs13,
-  regularRevivedAffixNamesSs13,
+  regularRevivedAffixesSs14,
+  regularRevivedAffixNamesSs14,
   revivedAffixForMemoryType,
   revivedAffixRollRange,
   revivedAffixTiers,
@@ -128,10 +128,10 @@ function clearInvalidBaseTraitMemory() {
 // details (its effects and hero trait exclusive) for Alt.
 export function memoryRevivedEffectView(memory) {
   const name = normalizeRevivedAffix(memory.revivedAffix),
-    special = lunarPhaseRevivedAffixesSs13.includes(name);
+    special = lunarPhaseRevivedAffixesSs14.includes(name);
   const effect = revivedAffixForMemoryType(memory.revivedAffix, memory.type, memory.revivedTier, memory.revivedRoll);
   const tier = revivedAffixTiers(name).length ? memory.revivedTier : null;
-  const rawDetails = lunarPhaseRevivedAffixDetailsSs13[name];
+  const rawDetails = lunarPhaseRevivedAffixDetailsSs14[name];
   const details = name?.startsWith("Artificial Moon:")
     ? rawDetails?.replace(
         /\s*Reduces the Base Stats and Random Affixes of Memories installed in this slot by \d+%/i,
@@ -317,7 +317,7 @@ function startHeroMemoryCraft(memory = null) {
         traitLevelBonus: 1,
       };
   memoryDraft.name = memoryDraft.type;
-  const oldRevivedEntry = regularRevivedAffixesSs13.find((entry) => entry.effect === memoryDraft.revivedAffix);
+  const oldRevivedEntry = regularRevivedAffixesSs14.find((entry) => entry.effect === memoryDraft.revivedAffix);
   memoryDraft.revivedTier = memoryDraft.revivedTier ?? oldRevivedEntry?.tier ?? 1;
   memoryDraft.revivedRoll =
     memoryDraft.revivedRoll ?? (oldRevivedEntry ? revivedAffixRollRange(oldRevivedEntry.effect)?.max : null) ?? null;
@@ -354,12 +354,12 @@ function memoryTierOptions(group, effect) {
   if (!effect) return [];
   const kind = group === "fixedAffixes" ? "Fixed Affix" : "Random Affix",
     key = memoryAffixKey(effect);
-  const tiers = heroMemoryTierAffixesSs13.filter(
+  const tiers = heroMemoryTierAffixesSs14.filter(
     (entry) => entry.type === memoryDraft.type && entry.kind === kind && memoryAffixKey(entry.effect) === key,
   );
   if (group === "fixedAffixes" && memoryDraft.risingMoon)
     tiers.push(
-      ...heroMemoryFixedT0AffixesSs13.filter(
+      ...heroMemoryFixedT0AffixesSs14.filter(
         (entry) => entry.type === memoryDraft.type && memoryAffixKey(entry.baseEffect) === key,
       ),
     );
@@ -418,15 +418,15 @@ function memoryAffixLineView(group, index, value, entries, label) {
 }
 function memoryRevivedControlsView(draft) {
   const known =
-    regularRevivedAffixNamesSs13.includes(draft.revivedAffix) ||
-    lunarPhaseRevivedAffixesSs13.includes(draft.revivedAffix);
+    regularRevivedAffixNamesSs14.includes(draft.revivedAffix) ||
+    lunarPhaseRevivedAffixesSs14.includes(draft.revivedAffix);
   const tiers = revivedAffixTiers(draft.revivedAffix),
     active = tiers.find((entry) => entry.tier === draft.revivedTier) || tiers[0],
     range = revivedAffixRollRange(active?.effect);
   return {
     value: draft.revivedAffix,
-    regular: regularRevivedAffixNamesSs13.map((name) => ({ name, description: revivedAffixTiers(name)[0].effect })),
-    lunar: [...lunarPhaseRevivedAffixesSs13],
+    regular: regularRevivedAffixNamesSs14.map((name) => ({ name, description: revivedAffixTiers(name)[0].effect })),
+    lunar: [...lunarPhaseRevivedAffixesSs14],
     saved: Boolean(draft.revivedAffix && !known),
     tiers: active ? tiers.map((entry) => ({ tier: entry.tier, active: entry.tier === active.tier })) : null,
     roll: range
@@ -446,11 +446,11 @@ function heroMemoryCrafterView() {
   const draft = memoryDraft,
     maxEnhancement = memoryMaxEnhancementForRarity(draft.rarity),
     pool = (kind) => {
-      const base = heroMemoryAffixesSs13.filter((entry) => entry.type === draft.type && entry.kind === kind);
+      const base = heroMemoryAffixesSs14.filter((entry) => entry.type === draft.type && entry.kind === kind);
       return kind === "Fixed Affix" && draft.risingMoon
         ? [
             ...base,
-            ...heroMemoryFixedT0AffixesSs13
+            ...heroMemoryFixedT0AffixesSs14
               .filter(
                 (entry) =>
                   entry.type === draft.type &&
@@ -510,7 +510,7 @@ function heroMemoryCrafterView() {
           waxAndWane: Boolean(draft.waxAndWane),
           revivedAffix: draft.revivedAffix
             ? {
-                lunar: lunarPhaseRevivedAffixesSs13.includes(draft.revivedAffix),
+                lunar: lunarPhaseRevivedAffixesSs14.includes(draft.revivedAffix),
                 effect: memoryRevivedEffectView(draft),
               }
             : null,
@@ -559,7 +559,7 @@ function updateMemoryDraftField(field, value) {
   if (field === "risingMoon" && !value) {
     memoryDraft.fixedAffixes = memoryDraft.fixedAffixes.map((effect) =>
       effect &&
-      !heroMemoryTierAffixesSs13.some(
+      !heroMemoryTierAffixesSs14.some(
         (entry) =>
           entry.type === memoryDraft.type &&
           entry.kind === "Fixed Affix" &&

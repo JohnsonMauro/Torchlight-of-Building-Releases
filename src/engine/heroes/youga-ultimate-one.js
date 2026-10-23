@@ -20,7 +20,7 @@
 //   its own Recall count". Psionic Missile: "Projectiles of this skill cannot Penetrate, Jump, Return, or Recall"; secondary
 //   projectiles of Split Firebolt / Moon's Dawn / Splitting Lightning Bolt "cannot return or be Recalled".
 // - Selves of All Realms: lasts 7 s, cooldown 16 s, cooldown cannot be increased above 24 s; while it is active, skills
-//   supported by the Core gain their Alternate Spacetime Youga effect (19 skills, allHeroTraitsSs13 skillEffects).
+//   supported by the Core gain their Alternate Spacetime Youga effect (19 skills, allHeroTraitsSs14 skillEffects).
 // - Supreme Descent: cooldown 3.3 s; the Core links up to 4 enemies within 20 m with Chains of Enslavement. Governance: +1%
 //   additional Clockwork Core Damage per stack, 4 s. Centralization: +1% additional Clockwork Core Damage and +0.5% Projectile
 //   Speed per stack, 4 s.
@@ -71,7 +71,7 @@
 // - Windows: the trait skills are cast at t = 0 (own buffs built before engaging) and then on cooldown; the 5 s / 20 s windows
 //   follow that schedule (src/engine/combat/timed-effects.js steps on the supported skill's hits).
 import { normalizePercentageText } from "../text/percentage-text.js";
-import { tlidbSkillCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
+import { tlidbSkillCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
 import { BASE_MAX_TANGLE_QUANTITY, HIGHEST_MAX_TANGLE_QUANTITY, TANGLE_SUPPORTS } from "../ailments/tangle-model.js";
 import { recalledProjectilesPerUse } from "../skills/skill-hit-model.js";
 
@@ -217,7 +217,7 @@ export function readYougaLines(modifierTexts = []) {
   return found;
 }
 
-const catalogSkill = (name) => tlidbSkillCatalogSs13.find((entry) => entry.name === name) || null;
+const catalogSkill = (name) => tlidbSkillCatalogSs14.find((entry) => entry.name === name) || null;
 const skillTextLines = (name) =>
   (catalogSkill(name)?.effects || [])
     .join("\n")

@@ -1,10 +1,10 @@
 import { effectiveGearModifierTexts } from "../engine.js";
 import { normalizePercentageText } from "../text/percentage-text.js";
-import { allProfessionTalentCatalogueSs13 } from "../../data/talents/all-profession-trees-ss13.generated.js";
+import { allProfessionTalentCatalogueSs14 } from "../../data/talents/all-profession-trees-ss14.generated.js";
 import { withoutSlateCoreName } from "../text/granted-core-lines.js";
 
 const poisonedRelief =
-  Object.values(allProfessionTalentCatalogueSs13)
+  Object.values(allProfessionTalentCatalogueSs14)
     .flatMap((panel) => panel.coreTalents || [])
     .find((core) => core.name === "Poisoned Relief")?.description || "";
 

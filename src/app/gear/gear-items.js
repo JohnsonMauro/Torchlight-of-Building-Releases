@@ -1,18 +1,18 @@
 // Inventory and equipped gear as the planner shows it: rarity, icon, affix sections and the preview card.
 import {
-  baseAffixTiersSs13,
+  baseAffixTiersSs14,
   canDropGearInSlot,
-  craftAffixesSs13,
+  craftAffixesSs14,
   craftItemTypes,
   gearGroupOfType,
   itemCardRarity,
-  legendaryGearSs13,
+  legendaryGearSs14,
   rareBaseById,
   rareBaseByName,
   rareBaseForItem,
-  rareBaseItemsSs13,
-  selenaScorchingBeamGearSs13,
-  voraxCraftingSs13,
+  rareBaseItemsSs14,
+  selenaScorchingBeamGearSs14,
+  voraxCraftingSs14,
 } from "../../engine/index.ts";
 import { beltBlendById } from "./belt-blend-options.js";
 import { displayTexts } from "../bridge/display-text.ts";
@@ -57,7 +57,7 @@ export function compatibleEquipmentSlot(item) {
 }
 export function itemWeaponType(item) {
   return (
-    rareBaseItemsSs13.find((entry) => entry.id === item?.baseId)?.type ||
+    rareBaseItemsSs14.find((entry) => entry.id === item?.baseId)?.type ||
     craftItemTypes.find(([type]) => type === item?.base)?.[0] ||
     item?.base ||
     ""
@@ -116,7 +116,7 @@ export function itemDisplayRarity(item) {
   )
     return "vorax";
   const normalized = (item?.name || "").replace(/ - Priceless$/i, "").toLowerCase();
-  if (displayItem?.rarity === "legendary" || legendaryGearSs13.some((entry) => entry.name.toLowerCase() === normalized))
+  if (displayItem?.rarity === "legendary" || legendaryGearSs14.some((entry) => entry.name.toLowerCase() === normalized))
     return "legendary";
   const base = rareBaseForItem(item, [normalized, item?.base]);
   const implicitCount = base?.modifiers?.length || 0;
@@ -154,7 +154,7 @@ export function itemLevel100Class(item) {
 export function inventoryItems() {
   const removed = new Set(plannerState.removedInventoryItemIds || []);
   return [
-    ...selenaScorchingBeamGearSs13.items.map((item) => ({ ...item, id: `captured-${item.slot}`, rarity: "captured" })),
+    ...selenaScorchingBeamGearSs14.items.map((item) => ({ ...item, id: `captured-${item.slot}`, rarity: "captured" })),
     ...(plannerState.equipmentInventory || []),
   ].filter((item) => !removed.has(item.id));
 }
@@ -200,9 +200,9 @@ export function gearIcon(item) {
   return (
     capturedGearIcons[item.name] ||
     (rareBaseByName(normalizedName) || rareBaseByName(normalizedBase))?.icon ||
-    legendaryGearSs13.find((entry) => entry.name.toLowerCase() === normalizedName)?.icon ||
-    legendaryGearSs13.find((entry) => entry.slot === compatibleEquipmentSlot(item))?.icon ||
-    legendaryGearSs13[0]?.icon ||
+    legendaryGearSs14.find((entry) => entry.name.toLowerCase() === normalizedName)?.icon ||
+    legendaryGearSs14.find((entry) => entry.slot === compatibleEquipmentSlot(item))?.icon ||
+    legendaryGearSs14[0]?.icon ||
     ""
   );
 }
@@ -227,7 +227,7 @@ export function itemModifierSections(item) {
     .map(
       (resolved, position) =>
         item.baseAffixTierIds?.[position] ||
-        Object.entries(baseAffixTiersSs13[item.base] || {}).find(
+        Object.entries(baseAffixTiersSs14[item.base] || {}).find(
           ([template]) => modifierSignature(template) === modifierSignature(resolved),
         )?.[1] ||
         "",
@@ -249,8 +249,8 @@ export function itemModifierSections(item) {
   const inferredBadges = (values, side) =>
     (values || []).map((resolved) => {
       for (const family of (item.rarity === "vorax"
-        ? voraxCraftingSs13.affixes[item.base]
-        : craftAffixesSs13[item.base])?.[side] || []) {
+        ? voraxCraftingSs14.affixes[item.base]
+        : craftAffixesSs14[item.base])?.[side] || []) {
         const tier = family.tiers.find((candidate) => tierMatchesResolved(candidate, resolved));
         if (tier) return `T${tier.tier}`;
       }
@@ -282,7 +282,7 @@ export function itemModifierSections(item) {
     { label: "Suffix", entries: suffixEntries },
     { label: "Legendary Mod", entries: entries(item.legendaryModifiers) },
   ];
-  const legendarySource = legendaryGearSs13.find(
+  const legendarySource = legendaryGearSs14.find(
     (entry) => entry.name.toLowerCase() === (item.name || "").replace(/ - Priceless$/i, "").toLowerCase(),
   );
   const structuredLegendarySignatures =

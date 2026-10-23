@@ -1,5 +1,5 @@
 import { cleanGameText } from "../text/percentage-text.js";
-import { skillGameTagsSs13 } from "../../data/skills/support-eligibility-ss13.generated.js";
+import { skillGameTagsSs14 } from "../../data/skills/support-eligibility-ss14.generated.js";
 
 // Sentry core mechanics (core audit batch B7, research/core-talents-audit-2026-10-18.md §5). Sentry quantity is read by the hit model
 // (src/engine/skills/skill-hit-model.js sentryQuantity); Heat Up's cast-recently buff by src/engine/text/line-conditions.js (sentryCastRecently); Co-resonance's
@@ -40,7 +40,7 @@ export function overlyModifiedState(modifierTexts = []) {
 /** Whether a setup is a Sentry skill / an Active skill (game stone tags first, catalog tags otherwise). */
 export function setupSkillKind(setup) {
   const tags = new Set(setup?.tags || []);
-  const game = new Set(skillGameTagsSs13[setup?.name]?.tags || []);
+  const game = new Set(skillGameTagsSs14[setup?.name]?.tags || []);
   const sentry = tags.has("Sentry") || game.has(6000360);
   const active = game.size ? game.has(6000200) : !tags.has("Passive") && !["aura", "support"].includes(setup?.role);
   return { sentry, active };

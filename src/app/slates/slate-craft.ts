@@ -7,11 +7,11 @@
 // shape, orientation and affixes start over), a new shape starts upright, and an affix select holds its placeholder, the
 // value an edited slate brought (an option of its own) and the last pick from its searchable list.
 import {
-  divinitySlateAffixesSs13,
+  divinitySlateAffixesSs14,
   normalizePedigreeAffixes,
   normalizePercentageText,
   PEDIGREE_OF_GODS,
-  pedigreeCoreAffixesSs13,
+  pedigreeCoreAffixesSs14,
   slateTransformRules,
 } from "../../engine/index.ts";
 import {
@@ -124,7 +124,7 @@ export function slateSlotChoices(craft: SlateCraft, index: number): SlateChoice[
     const types = talentSlotTypes(craft.template)[index] || [],
       pool =
         craft.template === PEDIGREE_OF_GODS
-          ? [...allDivinitySlateAffixes, ...pedigreeCoreAffixesSs13]
+          ? [...allDivinitySlateAffixes, ...pedigreeCoreAffixesSs14]
           : allDivinitySlateAffixes;
     return pool
       .filter((affix: { name: string }) => types.includes(affix.name))
@@ -135,7 +135,7 @@ export function slateSlotChoices(craft: SlateCraft, index: number): SlateChoice[
       ? index < 2
         ? netherKingFixedPool
         : netherKingBrandPool
-      : (divinitySlateAffixesSs13 as Record<string, object[]>)[craft.god] || [];
+      : (divinitySlateAffixesSs14 as Record<string, object[]>)[craft.god] || [];
   return pool.map((affix: object) => slateAffixChoice(affix, craft.god));
 }
 const slotCount = (craft: SlateCraft) =>

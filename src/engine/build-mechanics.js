@@ -1,11 +1,11 @@
 import { normalizePercentageText, cleanGameText } from "./text/percentage-text.js";
-import { supportProgressionSs13 } from "../data/skills/support-progression-ss13.generated.js";
-import { skillProgressionSs13 } from "../data/skills/skill-progression-ss13.generated.js";
+import { supportProgressionSs14 } from "../data/skills/support-progression-ss14.generated.js";
+import { skillProgressionSs14 } from "../data/skills/skill-progression-ss14.generated.js";
 import { collectEnemyAilments, ailmentStateNames } from "./ailments/enemy-ailments.js";
 import { dummyTarget, dummyTargetWord } from "./combat/dummy-target.js";
-import { allSkillEffectsSs13 } from "../data/skills/all-skill-effects-ss13.generated.js";
+import { allSkillEffectsSs14 } from "../data/skills/all-skill-effects-ss14.generated.js";
 import { collectAilmentTypedSources, unscopeSkillAilmentLine } from "./ailments/ailment-model.js";
-import { selenaCompleteSkillLoadoutSs13 } from "../data/skills/selena-complete-skill-loadout-ss13.js";
+import { selenaCompleteSkillLoadoutSs14 } from "../data/skills/selena-complete-skill-loadout-ss14.js";
 import { collectGenericDamageLines } from "./text/damage-line-classifier.js";
 import { classifyHitLine, splitHitLineText, scopeApplies } from "./skills/skill-hit-lines.js";
 import { inferDamageProfile } from "./skills/skill-damage-profiles.js";
@@ -29,7 +29,7 @@ import { damageTypeRestriction, restrictionLine } from "./combat/damage-type-res
 //                   × GetEffectScale, so Lv.20 = 39 × (1 + Curse Effect). Physical only: it reaches Trauma
 //                   and its reaps through the ailment model's typed "taken" bucket, not Fire hits or Ignite.)
 //   Entangled Pain — "+39% additional Damage Over Time taken by Cursed enemies" (Lv.20; the skill
-//                   record's databaseLevel20 in selena-complete-skill-loadout-ss13.js)
+//                   record's databaseLevel20 in selena-complete-skill-loadout-ss14.js)
 //   Ominous       — "Cursed enemies can gain Ill Omen" (modeled in src/engine/ailments/ill-omen.js as a best-case Elite loop)
 //   Torment       — "+5% additional Damage Over Time per stack for 4 s, up to 3 stacks"
 //   Precise: Acuteness Focus Buff (Lv20) — 15.6% additional Physical Damage,
@@ -48,7 +48,7 @@ const BASE_MAX_CHANNELED_STACKS = 5;
 const BASE_MIN_CHANNELED_STACKS = 1;
 // Level-20 Entangled Pain, reused from the skill record (TLIDB Lv.20 text matches: +39%).
 const ENTANGLED_PAIN_LEVEL20_DOT_TAKEN =
-  selenaCompleteSkillLoadoutSs13.setups.find((setup) => setup.name === "Entangled Pain")?.databaseLevel20
+  selenaCompleteSkillLoadoutSs14.setups.find((setup) => setup.name === "Entangled Pain")?.databaseLevel20
     ?.cursedEnemyAdditionalDamageOverTimeTakenPercent ?? 39;
 // Curses whose effect on the dummy is modeled (named in the over-limit note).
 // Origins whose copies of talent / slate-total keys no total reads (gear-pact batch G8).
@@ -59,7 +59,7 @@ const OTHER_ORIGINS = new Set(["gear", "kismet", "pact", "memory", "follower"]);
 const separatelyModeledSupports = SCORCHING_BEAM_DEDICATED_SUPPORTS;
 
 const acutenessAdditionalPhysical = (level) => {
-  const table = skillProgressionSs13["Precise: Acuteness Focus"]?.levels?.[String(Math.max(1, Math.min(40, level)))];
+  const table = skillProgressionSs14["Precise: Acuteness Focus"]?.levels?.[String(Math.max(1, Math.min(40, level)))];
   const change = table?.changes?.find(([, text]) => /additional Physical Damage/i.test(text));
   const value = change ? Number(String(change[1]).match(/([\d.]+)%/)?.[1]) : NaN;
   return Number.isFinite(value) ? value : 15.6;
@@ -802,7 +802,7 @@ export function collectBuildMechanics({
     const effect = 1 + focusEffectPercent / 100;
     let percent = 15.6;
     for (let lv = 1; lv <= Math.max(1, Math.min(40, corrosion.level)); lv++)
-      for (const [, change] of skillProgressionSs13["Precise: Corrosion Focus"]?.levels?.[String(lv)]?.changes || []) {
+      for (const [, change] of skillProgressionSs14["Precise: Corrosion Focus"]?.levels?.[String(lv)]?.changes || []) {
         const value = String(change).match(/^\+?([\d.]+)% additional Erosion Damage$/i);
         if (value) percent = Number(value[1]);
       }
@@ -1307,13 +1307,13 @@ export function collectSkillScopedAilmentLines(main) {
       .split(/\r?\n/)
       .map((part) => part.trim())
       .filter(Boolean);
-  for (const text of new Set((allSkillEffectsSs13[main.name] || []).flatMap(split)))
+  for (const text of new Set((allSkillEffectsSs14[main.name] || []).flatMap(split)))
     add(text, `Skill: ${main.name}`, true);
   for (const support of main.supports || []) {
     if (support.enabled === false) continue;
     for (const text of [
       ...(support.effects || []).flatMap(split),
-      ...split(supportProgressionSs13[support.name]?.baseEffect),
+      ...split(supportProgressionSs14[support.name]?.baseEffect),
     ])
       add(text, `Support: ${support.name}`, false);
   }

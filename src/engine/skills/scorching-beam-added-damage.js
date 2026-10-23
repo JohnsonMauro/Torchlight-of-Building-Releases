@@ -1,6 +1,6 @@
 import { effectiveGearModifierTexts } from "../engine.js";
 import { stripGrantedCore } from "../text/granted-core-lines.js";
-import { kismetCatalogSs13 } from "../../data/pacts/kismet-catalog-ss13.js";
+import { kismetCatalogSs14 } from "../../data/pacts/kismet-catalog-ss14.js";
 import { kismetAffixesWithRolls } from "../pacts/kismet-crafting.js";
 import { microFateEffectScale, scaleKismetAffix } from "../pacts/kismet-effects.js";
 // SS13 Added Fire Damage progression, sourced from the support's TLIDB table.
@@ -69,7 +69,7 @@ export function scorchingBeamAddedDamage({ main, equipment, slates, equippedSlat
         (name) => name && key.startsWith(`${name}:`) && pacts.activeSpirits?.[name] !== false,
       );
       if (!spirit || (!key.includes(":extra:") && pacts.nativeNodeQuantities?.[key] !== 1)) continue;
-      const entry = kismetCatalogSs13.find((item) => item.name === slot.name);
+      const entry = kismetCatalogSs14.find((item) => item.name === slot.name);
       // A Micro Fate in a spirit with Star Trail carries its boosted value (src/engine/pacts/kismet-effects.js; pact badge audit 2026-10-13).
       const { scale } = microFateEffectScale(pacts, key);
       if (entry)

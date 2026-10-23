@@ -5,8 +5,8 @@ import {
   folkloreRingModifier,
   folkloreRingOptionFromModifiers,
   itemCardRarity,
-  legendaryCorrodedModifiersSs13,
-  legendaryGearSs13,
+  legendaryCorrodedModifiersSs14,
+  legendaryGearSs14,
   legendaryLineTiers,
   legendaryTierTemplate,
   normalizeSunsEmbraceItem,
@@ -450,19 +450,19 @@ function editingLegendaryModifierTemplate(source, index) {
   const tierTemplate = corroded ? null : legendaryTierTemplate(source.id, index, editingTierChoices.get(index));
   if (tierTemplate) return tierTemplate;
   return corroded
-    ? legendaryCorrodedModifiersSs13[source.id]?.[index] || source.modifiers[index]
+    ? legendaryCorrodedModifiersSs14[source.id]?.[index] || source.modifiers[index]
     : source.modifiers[index];
 }
 // Legendary (and captured legendary) items edit their catalog lines only; base implicits and other non-catalog lines are
 // found by text (src/app/gear/legendary-editor-model.js), stay out of the controls and are kept as they are on save.
 function legendaryEditorSource(item) {
   if (!item || !["legendary", "captured"].includes(item.rarity)) return null;
-  return legendarySourceForItem(item, legendaryGearSs13, legendaryCorrodedModifiersSs13);
+  return legendarySourceForItem(item, legendaryGearSs14, legendaryCorrodedModifiersSs14);
 }
 function inventoryLegendaryModel(item, source = legendaryEditorSource(item)) {
   return source
     ? legendaryEditorModel(item, source, {
-        corrodedLines: legendaryCorrodedModifiersSs13[source.id],
+        corrodedLines: legendaryCorrodedModifiersSs14[source.id],
         specialTexts: [
           beltBlendById(item?.beltBlendId)?.modifier,
           towerSequenceById(item?.towerSequenceId)?.modifier,
@@ -539,7 +539,7 @@ function editorLegendaryLines(item, source) {
       resolved = editingLegendaryLineText(source, index),
       values = rollValuesFromText(template, resolved) || ranges.map(preferredModifierRoll),
       pool = placeholderPool(source.id, index),
-      corrodedLine = legendaryCorrodedModifiersSs13[source.id]?.[index],
+      corrodedLine = legendaryCorrodedModifiersSs14[source.id]?.[index],
       // Its tiers also while corroded (the chips switch back), or only T1 when it has one range but a corroded form.
       tiers =
         legendaryLineTiers(source.id, index) ?? (corrodedLine ? [{ tier: 1, text: source.modifiers[index] }] : null),
@@ -578,7 +578,7 @@ function editorLegendaryLines(item, source) {
 }
 // A line of an item without a catalog legendary: a text field, with a slider when its catalog line has a range.
 function editorTextLine(item, modifier, index, value) {
-  const source = legendaryGearSs13.find(
+  const source = legendaryGearSs14.find(
       (entry) => entry.name.toLowerCase() === (item.name || "").replace(/ - Priceless$/i, "").toLowerCase(),
     ),
     range = modifierRollRange(source?.modifiers?.[index] || modifier);

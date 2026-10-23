@@ -11,7 +11,7 @@
 //   - theaLineRead: one clause's status, reason, derived bodies and clocked parts.
 //
 // Sourced:
-// - Trait texts (TLIDB, SS14; src/data/heroes/all-hero-traits-ss13.generated.js) and the game tier records (§4.3): God's Boon's
+// - Trait texts (TLIDB, SS14; src/data/heroes/all-hero-traits-ss14.generated.js) and the game tier records (§4.3): God's Boon's
 //   buff 82115 lasts the second parameter, 10 s (§6, answered from the game files); Predicted Reincarnation's buff 82113 and
 //   Farewell Prophecy's 82114 stack per Focus consumed (node 213); Prophecy of Purity writes the God's Boon buffs' stack limit
 //   (attr 3442 flat 1, tag 5008700).

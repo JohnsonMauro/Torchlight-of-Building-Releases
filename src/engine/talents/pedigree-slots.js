@@ -1,5 +1,5 @@
-import { divinitySlateAffixesSs13 } from "../../data/divinity-slate-affixes-ss13.js";
-import { pedigreeCoreAffixesSs13 } from "../../data/pedigree-core-affixes-ss13.js";
+import { divinitySlateAffixesSs14 } from "../../data/divinity-slate-affixes-ss14.js";
+import { pedigreeCoreAffixesSs14 } from "../../data/pedigree-core-affixes-ss14.js";
 
 // Pedigree of Gods (TLIDB Divinity Slate, base 1010) has four talent slots, each rolled when the
 // slate drops and never crafted:
@@ -16,10 +16,10 @@ export const pedigreeSlotTypes = [
   ["Lv.2 Core Talent"],
 ];
 
-const talentNodes = Object.entries(divinitySlateAffixesSs13).flatMap(([god, affixes]) =>
+const talentNodes = Object.entries(divinitySlateAffixesSs14).flatMap(([god, affixes]) =>
   affixes.map((affix) => ({ ...affix, god })),
 );
-export const pedigreeAffixPool = [...talentNodes, ...pedigreeCoreAffixesSs13];
+export const pedigreeAffixPool = [...talentNodes, ...pedigreeCoreAffixesSs14];
 
 // Same value the slate editor stores for a legendary-template option.
 export const pedigreeAffixValue = ({ tree, name, effect, talentName }) =>

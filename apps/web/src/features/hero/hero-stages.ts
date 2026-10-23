@@ -47,7 +47,7 @@ export interface TreeStage extends StageArt {
 
 export type HeroStage = TierStage | TreeStage;
 
-/** The hero traits drawn on their game screen, by hero id (hero-catalog-ss13.js: "rehan-seething-silhouette"). */
+/** The hero traits drawn on their game screen, by hero id (hero-catalog-ss14.js: "rehan-seething-silhouette"). */
 export const HERO_STAGES: Readonly<Record<string, HeroStage>> = {
   "rehan-seething-silhouette": {
     kind: "tiers",

@@ -1,6 +1,6 @@
 // Ignite inputs through the game's attribute data (research/ignite-attribute-mapping-2026-10-09.md).
 //
-// Resolves each planner modifier line to the game affix it came from (src/data/affix-index-ss13.generated.js),
+// Resolves each planner modifier line to the game affix it came from (src/data/affix-index-ss14.generated.js),
 // classifies every attribute / field / effect write of that affix into an Ignite ledger bucket using the
 // tag rules of §3.1, and compares the result with the bucket the planner's regex path uses today (§4).
 // Nothing here feeds calculatePlanner: it is a cross-check (tests and scripts/ignite-crosscheck.js).
@@ -17,7 +17,7 @@ import { nativePactspiritNodeEffect } from "../pacts/pactspirit-levels.js";
 import { parseReapingSource } from "../ailments/reaping-sources.js";
 import { parseBlessingRecovery } from "../defense/blessing-gear-effects.js";
 import { parseBlurSource } from "../combat/blur-sources.js";
-import { selenaScorchingBeamTalentSetupSs13 } from "../../data/talents/selena-scorching-beam-ss13.js";
+import { selenaScorchingBeamTalentSetupSs14 } from "../../data/talents/selena-scorching-beam-ss14.js";
 
 // ---------------------------------------------------------------------------------------------
 // Tags (§2.1). Names from the executable's EConfigAttrTag / EConfigSkillTag / EConfigCharState enums.
@@ -853,7 +853,7 @@ const firstNumber = (text) => Math.abs(extractLineValues(text)[0] ?? NaN);
 function capturedTalentNode(source) {
   const m = String(source || "").match(/^(.+) talent \((-?\d+),(-?\d+)\)$/);
   if (!m) return null;
-  const panel = selenaScorchingBeamTalentSetupSs13.panels.find((p) => p.name === m[1]);
+  const panel = selenaScorchingBeamTalentSetupSs14.panels.find((p) => p.name === m[1]);
   return panel?.allocatedNodes.find((n) => String(n.coordinate) === `${m[2]},${m[3]}`) || null;
 }
 

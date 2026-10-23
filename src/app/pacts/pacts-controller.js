@@ -6,18 +6,18 @@ import {
   fateSlotChoice,
   fateSlotChoices,
   kismetAffixesWithRolls,
-  kismetCatalogSs13,
+  kismetCatalogSs14,
   kismetKindForRing,
   kismetRollControls,
   microFateEffectScale,
   normalizeKismetRolls,
   orderedPactspiritNodes,
-  pactspiritCatalogSs13,
+  pactspiritCatalogSs14,
   pactspiritEffectsAtLevel,
   pactspiritLevel,
-  pactspiritTreesSs13,
+  pactspiritTreesSs14,
   selectPactspirit,
-  selenaScorchingBeamPactsSs13,
+  selenaScorchingBeamPactsSs14,
   starTrailNote,
   togglePactNodeChain,
   transferKismetSlot,
@@ -57,7 +57,7 @@ export const pactCommands = {
     );
     plannerState.pacts.activeSpirits = activeCapturedPactspirits(
       plannerState.pacts.selectedSpirits,
-      selenaScorchingBeamPactsSs13.pactspirits.map((spirit) => spirit.name),
+      selenaScorchingBeamPactsSs14.pactspirits.map((spirit) => spirit.name),
     );
     closeDialog("pactspirit-selector");
     refreshPactCandidate();
@@ -74,7 +74,7 @@ export const pactCommands = {
       plannerState.pacts.nativeNodeQuantities,
       spiritName,
       nodeIndex,
-      orderedPactspiritNodes(pactspiritTreesSs13[spiritName]).length,
+      orderedPactspiritNodes(pactspiritTreesSs14[spiritName]).length,
     );
     refreshPactCandidate();
   },
@@ -124,7 +124,7 @@ const lineCoverage = (status, line) => {
 // installed, else its effect or its spirit's level bonuses.
 function pactNodeTooltip(target) {
   const equipped = target.key ? plannerState.pacts.kismetSlots?.[target.key] : null,
-    kismet = kismetCatalogSs13.find((item) => item.name === equipped?.name);
+    kismet = kismetCatalogSs14.find((item) => item.name === equipped?.name);
   const slotMode = Boolean(plannerState.pacts.kismetSlotMode);
   if (kismet) {
     const boost = microFateEffectScale(plannerState.pacts, target.key);
@@ -140,7 +140,7 @@ function pactNodeTooltip(target) {
       extra: target.extra,
     });
   }
-  const entry = target.spirit ? pactspiritCatalogSs13.find((spirit) => spirit.name === target.spirit) : null;
+  const entry = target.spirit ? pactspiritCatalogSs14.find((spirit) => spirit.name === target.spirit) : null;
   const level = target.spirit ? selectedPactspiritLevel(target.spirit) : 1;
   return pactNodeTooltipView({
     name: target.name,
@@ -163,9 +163,9 @@ function pactNodeTooltip(target) {
 }
 // A Pactspirit at the level this build gives it (a slot's, or the one it would take when chosen).
 function pactspiritTooltip(name, place) {
-  const spirit = pactspiritCatalogSs13.find((entry) => entry.name === name);
+  const spirit = pactspiritCatalogSs14.find((entry) => entry.name === name);
   if (!spirit) return null;
-  const outer = pactspiritTreesSs13[name]?.find((node) => node.ring === "outer");
+  const outer = pactspiritTreesSs14[name]?.find((node) => node.ring === "outer");
   const effectsByLevel = [1, 2, 3, 4, 5, 6].map((level) => pactspiritEffectsAtLevel(name, level));
   return pactspiritTooltipView({
     spirit,
@@ -179,7 +179,7 @@ function pactspiritTooltip(name, place) {
 export function selectedPactspiritLevel(name) {
   const fallback = plannerState.pacts.kismetSlotMode
     ? 1
-    : selenaScorchingBeamPactsSs13.pactspirits.find((spirit) => spirit.name === name)?.rank || 1;
+    : selenaScorchingBeamPactsSs14.pactspirits.find((spirit) => spirit.name === name)?.rank || 1;
   return pactspiritLevel(name, plannerState.pacts.spiritLevels, fallback);
 }
 
@@ -193,7 +193,7 @@ function removeSelectedPactspirit(index) {
   plannerState.pacts.selectedSpirits[index] = "";
   plannerState.pacts.activeSpirits = activeCapturedPactspirits(
     plannerState.pacts.selectedSpirits,
-    selenaScorchingBeamPactsSs13.pactspirits.map((spirit) => spirit.name),
+    selenaScorchingBeamPactsSs14.pactspirits.map((spirit) => spirit.name),
   );
   refreshPactCandidate();
 }
@@ -244,7 +244,7 @@ function clearKismetNode(key) {
 let kismetCrafterSession = 0,
   kismetCrafterKind = "micro";
 function kismetChoices(kind = activeKismetSlot?.kind) {
-  return kismetCatalogSs13
+  return kismetCatalogSs14
     .filter((item) => item.kind === kind)
     .sort(
       (a, b) =>
@@ -253,7 +253,7 @@ function kismetChoices(kind = activeKismetSlot?.kind) {
 }
 function kismetCrafterSource() {
   const kindLabel = kismetCrafterKind === "micro" ? "Micro" : "Medium",
-    entry = kismetCatalogSs13.find((item) => item.name === selectedKismetName),
+    entry = kismetCatalogSs14.find((item) => item.name === selectedKismetName),
     controls = entry ? kismetRollControls(entry) : [];
   const previewBoost =
     entry && activeKismetSlot
@@ -300,7 +300,7 @@ function kismetCrafterSource() {
   };
 }
 function selectKismetChoice(name) {
-  const entry = kismetCatalogSs13.find((item) => item.name === name && item.kind === activeKismetSlot?.kind);
+  const entry = kismetCatalogSs14.find((item) => item.name === name && item.kind === activeKismetSlot?.kind);
   if (!entry) return;
   selectedKismetName = name;
   selectedKismetRolls = normalizeKismetRolls(entry);
@@ -308,7 +308,7 @@ function selectKismetChoice(name) {
 }
 // A value as typed: kept while it is in range (a value out of range waits for setKismetRoll's commit).
 function setKismetRoll(index, value) {
-  const entry = kismetCatalogSs13.find((item) => item.name === selectedKismetName),
+  const entry = kismetCatalogSs14.find((item) => item.name === selectedKismetName),
     control = entry && kismetRollControls(entry)[index];
   if (!control || !Number.isFinite(value) || value < control.min || value > control.max) return;
   selectedKismetRolls = Object.assign([...selectedKismetRolls], { [index]: value });
@@ -316,7 +316,7 @@ function setKismetRoll(index, value) {
 }
 // A typed value committed (leaving the field): snapped to its step and range.
 function commitKismetRoll(index, text) {
-  const entry = kismetCatalogSs13.find((item) => item.name === selectedKismetName);
+  const entry = kismetCatalogSs14.find((item) => item.name === selectedKismetName);
   if (!entry) return;
   selectedKismetRolls = normalizeKismetRolls(entry, Object.assign([...selectedKismetRolls], { [index]: text }));
   viewSourceChanged("kismetCrafter");
@@ -325,7 +325,7 @@ function openKismetCrafter(key, kind) {
   activeKismetSlot = { key, kind };
   kismetCrafterKind = kind;
   const saved = plannerState.pacts.kismetSlots?.[key],
-    entry = kismetCatalogSs13.find((item) => item.name === saved?.name && item.kind === kind) || kismetChoices()[0];
+    entry = kismetCatalogSs14.find((item) => item.name === saved?.name && item.kind === kind) || kismetChoices()[0];
   selectedKismetName = entry?.name || "";
   selectedKismetRolls = entry ? normalizeKismetRolls(entry, saved?.name === entry.name ? saved.rolls : []) : [];
   kismetCrafterSession++;
@@ -338,11 +338,11 @@ function saveKismetSlot(clear = false) {
   const next = { ...(plannerState.pacts.kismetSlots || {}) };
   if (clear) delete next[activeKismetSlot.key];
   else {
-    const entry = kismetCatalogSs13.find(
+    const entry = kismetCatalogSs14.find(
       (item) => item.name === selectedKismetName && item.kind === activeKismetSlot.kind,
     );
     if (!entry) return;
-    const current = equippedKismetSummary(selenaScorchingBeamPactsSs13, {
+    const current = equippedKismetSummary(selenaScorchingBeamPactsSs14, {
       ...plannerState.pacts,
       kismetSlotMode: true,
       kismetSlots: next,
@@ -370,7 +370,7 @@ function moveKismet(fromKey, toKey, kind, duplicate) {
     return;
   }
   if (result.action === "unchanged") return;
-  const summary = equippedKismetSummary(selenaScorchingBeamPactsSs13, {
+  const summary = equippedKismetSummary(selenaScorchingBeamPactsSs14, {
     ...plannerState.pacts,
     kismetSlotMode: true,
     kismetSlots: result.slots,

@@ -1,10 +1,10 @@
 // Legendary "<Random …>" placeholder lines (Pantheon's Elegy's Dirges, Lone Walker's Boots' Precise aura, …): the rolls each
-// can take, from src/data/gear/legendary-placeholder-pools-ss13.generated.js (TLIDB pool cards). The crafter and the
+// can take, from src/data/gear/legendary-placeholder-pools-ss14.generated.js (TLIDB pool cards). The crafter and the
 // inventory editor offer a dropdown per placeholder; the chosen roll replaces the placeholder text in item.modifiers, so the
 // calculator and the badges read it like any other line. An unchosen placeholder stays as its "<…>" text and adds nothing.
-import { legendaryPlaceholderPoolsSs13 } from "../../data/gear/legendary-placeholder-pools-ss13.generated.js";
+import { legendaryPlaceholderPoolsSs14 } from "../../data/gear/legendary-placeholder-pools-ss14.generated.js";
 import { namedGearAffixLines } from "../text/named-gear-affixes.js";
-import { beltBlendsSs13 } from "../../data/gear/belt-blends-ss13.generated.js";
+import { beltBlendsSs14 } from "../../data/gear/belt-blends-ss14.generated.js";
 import { inlineKeywordParts } from "../text/inline-keywords.js";
 
 // Belt blends whose text starts with their bracketed name: normalized text -> name.
@@ -20,7 +20,7 @@ const normalizeLines = (text) =>
     .filter(Boolean)
     .join("\n");
 const beltBlendKeywords = new Map(
-  beltBlendsSs13
+  beltBlendsSs14
     .map((blend) => [blend.modifier.match(/^\[([^\]]+)\]\s/)?.[1], blend])
     .filter(([name]) => name)
     .map(([name, blend]) => [normalizeLines(blend.modifier), name]),
@@ -38,7 +38,7 @@ const shape = (text) => normalize(text).replace(RANGE, "#").replace(NUMBER, "#")
 
 /** The pool for catalog line `index` of legendary `sourceId`, or null when that line is not a resolved placeholder. */
 export function placeholderPool(sourceId, index) {
-  const entry = legendaryPlaceholderPoolsSs13[sourceId];
+  const entry = legendaryPlaceholderPoolsSs14[sourceId];
   const poolIndex = entry?.slots?.[index];
   return Number.isInteger(poolIndex) ? entry.pools[poolIndex] : null;
 }
@@ -81,19 +81,19 @@ export function placeholderOptionForText(sourceId, index, text, corroded = false
 
 /** Every roll template of every placeholder line of legendary `sourceId` (the load-time reconcile treats them as known lines). */
 export function allPlaceholderTemplates(sourceId) {
-  return Object.keys(legendaryPlaceholderPoolsSs13[sourceId]?.slots || {}).flatMap((index) =>
+  return Object.keys(legendaryPlaceholderPoolsSs14[sourceId]?.slots || {}).flatMap((index) =>
     placeholderTemplates(sourceId, Number(index)),
   );
 }
 
 /** Legendary ids with at least one resolved placeholder. */
 export function legendaryIdsWithPlaceholderPools() {
-  return Object.keys(legendaryPlaceholderPoolsSs13);
+  return Object.keys(legendaryPlaceholderPoolsSs14);
 }
 
 // Keyword rolls (Pantheon's Elegy's Dirges): keyword -> effect lines, for the tooltip / dialog keyword display.
 const keywordEffects = new Map(
-  Object.values(legendaryPlaceholderPoolsSs13)
+  Object.values(legendaryPlaceholderPoolsSs14)
     .flatMap((entry) => entry.pools.flatMap((pool) => pool.options))
     .filter((option) => option.keyword)
     .map((option) => [option.keyword, option.effect || []]),
@@ -114,7 +114,7 @@ export function keywordRollParts(text) {
   // name, so its effect lines come from the table; any following lines (a corroded donor's "+(12–15)% Block Ratio") stay as rest.
   const named = namedGearAffixLines(keyword);
   if (named.length) return { keyword, effect: [...named], rest: lines.slice(1), named: true };
-  // A belt blend with a bracketed name ("[Reflection] +6% additional damage …\nMinions …", src/data/gear/belt-blends-ss13.generated.js):
+  // A belt blend with a bracketed name ("[Reflection] +6% additional damage …\nMinions …", src/data/gear/belt-blends-ss14.generated.js):
   // the name is the keyword and every line, the first without its bracket, is an effect line. Only a blend's own text matches.
   const blendName = beltBlendKeywords.get(normalizeLines(text));
   if (blendName)

@@ -1,5 +1,5 @@
 // Hero-exclusive revived memory affixes ("Lunar Phase" revivals whose TLIDB text ends "Hero Trait Exclusive: <hero> | <loadout>";
-// src/data/heroes/memory-revival-details-ss13.js). Hero trait audit batch B1 (2026-10-19, research/hero-traits-audit-2026-10-19.md
+// src/data/heroes/memory-revival-details-ss14.js). Hero trait audit batch B1 (2026-10-19, research/hero-traits-audit-2026-10-19.md
 // F3), open question Q-H11 (recommended reading, provisional):
 //   - an exclusive revival's lines apply only while the selected loadout is the one its "Hero Trait Exclusive" line names;
 //   - only one revived memory counts (the app's rule, src/app/hero/hero-memory-controller.js otherEquippedRevivedMemory: "Only one revived memory can be
@@ -10,9 +10,9 @@
 // Now the lines a generic reader handles join the memory intake (src/engine/heroes/hero-memory-model.js) like any memory line; the lines that
 // need a hero engine stay out (PENDING: the engine and the audit batch that builds it), so they cannot be misread as
 // unconditional bonuses. The badge (revivedAffixCoverage) combines the lines' statuses.
-import { lunarPhaseRevivedAffixDetailsSs13 } from "../../data/heroes/memory-revival-details-ss13.js";
-import { heroCatalogSs13 } from "../../data/heroes/hero-catalog-ss13.js";
-import { normalizeRevivedAffix } from "../../data/heroes/memory-revival-ss13.js";
+import { lunarPhaseRevivedAffixDetailsSs14 } from "../../data/heroes/memory-revival-details-ss14.js";
+import { heroCatalogSs14 } from "../../data/heroes/hero-catalog-ss14.js";
+import { normalizeRevivedAffix } from "../../data/heroes/memory-revival-ss14.js";
 
 /** The app's revived-memory test (src/app/hero/hero-memory-display.js heroMemoryIsRevived): a revival method, Wax and Wane, Rising Moon or a revived affix. */
 export function memoryIsRevived(memory) {
@@ -26,7 +26,7 @@ export function memoryIsRevived(memory) {
 }
 
 // Slot order: the level in the slot key ("<heroId>:level45", "level60"), then the key; the base trait slot (never revived:
-// src/data/heroes/memory-revival-ss13.js memoryFitsBaseTraitSlot) last.
+// src/data/heroes/memory-revival-ss14.js memoryFitsBaseTraitSlot) last.
 const slotOrder = (key) => Number(String(key).match(/level(\d+)/)?.[1] ?? 999);
 /** The id of the one revived memory that counts (the first equipped revived memory in slot order), or null. */
 // Audit harness only (scripts/audit-hero-traits.mjs): its trait probe holds two or three revived memories on purpose, to light
@@ -62,7 +62,7 @@ const loadoutCache = new Map();
 export function exclusiveRevivalLoadout(name) {
   const key = normalizeRevivedAffix(name || "");
   if (loadoutCache.has(key)) return loadoutCache.get(key);
-  const line = String(lunarPhaseRevivedAffixDetailsSs13[key] || "")
+  const line = String(lunarPhaseRevivedAffixDetailsSs14[key] || "")
     .split("\n")
     .map((part) => part.trim())
     .find((part) => /^Hero Trait Exclusive:/i.test(part));
@@ -73,7 +73,7 @@ export function exclusiveRevivalLoadout(name) {
       .split("|")
       .map((part) => part.trim());
     id =
-      heroCatalogSs13.find((hero) => flat(hero.trait) === flat(loadout) && flat(title).includes(flat(hero.name)))?.id ??
+      heroCatalogSs14.find((hero) => flat(hero.trait) === flat(loadout) && flat(title).includes(flat(hero.name)))?.id ??
       null;
   }
   loadoutCache.set(key, id);
@@ -243,7 +243,7 @@ const intakeText = (line) =>
 
 /** The effect lines of an exclusive revival (the "Hero Trait Exclusive" line and blank lines dropped). */
 export function exclusiveRevivalLines(name) {
-  return String(lunarPhaseRevivedAffixDetailsSs13[normalizeRevivedAffix(name || "")] || "")
+  return String(lunarPhaseRevivedAffixDetailsSs14[normalizeRevivedAffix(name || "")] || "")
     .split("\n")
     .map((part) => part.trim())
     .filter((part) => part && !/^Hero Trait Exclusive:/i.test(part));
@@ -255,7 +255,7 @@ export function pendingExclusiveLine(name, line) {
   return entries.find((entry) => text.startsWith(entry.start)) || null;
 }
 
-const heroName = (id) => heroCatalogSs13.find((hero) => hero.id === id);
+const heroName = (id) => heroCatalogSs14.find((hero) => hero.id === id);
 /**
  * The state of `memory`'s hero-exclusive revival in this build, or null when its revived affix is not hero-exclusive.
  * { name, loadoutId, module, applies, reason, lines: [{ text, intakeText, pending }], intake: [intakeText] }

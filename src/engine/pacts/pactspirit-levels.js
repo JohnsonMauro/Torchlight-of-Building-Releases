@@ -1,5 +1,5 @@
 import { normalizePercentageText } from "../text/percentage-text.js";
-import { pactspiritLevelsSs13 } from "../../data/pacts/pactspirit-levels-ss13.js";
+import { pactspiritLevelsSs14 } from "../../data/pacts/pactspirit-levels-ss14.js";
 
 export function pactspiritLevel(name, savedLevels, fallback = 1) {
   const saved = Number(savedLevels?.[name]);
@@ -7,7 +7,7 @@ export function pactspiritLevel(name, savedLevels, fallback = 1) {
 }
 
 export function pactspiritEffectsAtLevel(name, level) {
-  return (pactspiritLevelsSs13[name]?.[Math.max(1, Math.min(6, Number(level) || 1))] || [])
+  return (pactspiritLevelsSs14[name]?.[Math.max(1, Math.min(6, Number(level) || 1))] || [])
     .flatMap((effect) => effect.split("\n"))
     .map((effect) => effect.trim())
     .filter(Boolean);

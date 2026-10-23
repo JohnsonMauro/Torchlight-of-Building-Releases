@@ -1,10 +1,10 @@
 import { effectiveGearModifierTexts } from "../engine.js";
 import { activeKismetEffects } from "../pacts/kismet-effects.js";
-import { pactspiritTreesSs13 } from "../../data/pacts/pactspirit-trees-ss13.js";
+import { pactspiritTreesSs14 } from "../../data/pacts/pactspirit-trees-ss14.js";
 import { orderedPactspiritNodes, pactspiritEffectsAtLevel, pactspiritLevel } from "../pacts/pactspirit-levels.js";
 import { prismAreaBounds, prismNodeAffixes } from "../talents/prism-crafting.js";
 import { withoutSlateCoreName } from "../text/granted-core-lines.js";
-import { equipmentSlots } from "../../data/gear/crafting-catalog-ss13.js";
+import { equipmentSlots } from "../../data/gear/crafting-catalog-ss14.js";
 
 export function calculateCurseLimit({
   equipment,
@@ -72,7 +72,7 @@ export function calculateCurseLimit({
   for (const line of activeKismetEffects(pactState)) add(line.text, line.source);
   for (const spirit of pactState.selectedSpirits || []) {
     if (!spirit || pactState.activeSpirits?.[spirit] === false) continue;
-    const nodes = orderedPactspiritNodes(pactspiritTreesSs13[spirit]);
+    const nodes = orderedPactspiritNodes(pactspiritTreesSs14[spirit]);
     const outer = nodes.findIndex((node) => node.ring === "outer");
     if (outer >= 0 && pactState.nativeNodeQuantities?.[`${spirit}:${outer}`] === 1)
       for (const text of pactspiritEffectsAtLevel(spirit, pactspiritLevel(spirit, pactState.spiritLevels)))

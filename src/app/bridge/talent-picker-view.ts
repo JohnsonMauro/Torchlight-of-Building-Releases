@@ -3,8 +3,8 @@
 // open slot cannot take are off, with the reason. Pure; src/app/talents/talents-controller.js publishes it
 // (src/app/bridge/view-sources.ts "talentPicker").
 import {
-  allProfessionTalentCatalogueSs13,
-  talentFamiliesSs13,
+  allProfessionTalentCatalogueSs14,
+  talentFamiliesSs14,
   talentOptionsForSlot,
   tliArt,
 } from "../../engine/index.ts";
@@ -43,9 +43,9 @@ export interface TalentPickerInput {
   points: Record<string, number>;
 }
 
-const families = talentFamiliesSs13 as Record<string, string[]>;
+const families = talentFamiliesSs14 as Record<string, string[]>;
 const panelArt = (tliArt as unknown as { talentPanels: Record<string, string> }).talentPanels;
-const catalogue = allProfessionTalentCatalogueSs13 as Record<string, { emblem?: string }>;
+const catalogue = allProfessionTalentCatalogueSs14 as Record<string, { emblem?: string }>;
 const portraits = godPortraits as Record<string, string>;
 
 function slotTitle(slot: number, selectedTrees: string[]): string {

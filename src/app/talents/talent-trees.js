@@ -1,11 +1,11 @@
 // The talent trees: layouts (an installed Inverse Image reflects nodes), the open tree, ranks a prism change clears.
 import {
-  allProfessionTalentCatalogueSs13,
+  allProfessionTalentCatalogueSs14,
   inverseImageReflectedCoordinates,
   inverseImageReflectionMap,
   inverseImageTalentNodes,
   pruneInvalidTalentRanks,
-  selenaScorchingBeamTalentSetupSs13,
+  selenaScorchingBeamTalentSetupSs14,
 } from "../../engine/index.ts";
 import { talentDisplayNodes as talentNodesOnBoard } from "../bridge/talents-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
@@ -13,9 +13,9 @@ import { renderHeroPanel, renderHeroTraitTree } from "../hero/hero-controller.js
 import { plannerState, talentRanks } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
 
-const capturedTalentPanels = new Map(selenaScorchingBeamTalentSetupSs13.panels.map((panel) => [panel.name, panel]));
-export const professionTreeLayoutsAllSs13 = Object.fromEntries(
-  Object.entries(allProfessionTalentCatalogueSs13).map(([name, panel]) => [
+const capturedTalentPanels = new Map(selenaScorchingBeamTalentSetupSs14.panels.map((panel) => [panel.name, panel]));
+export const professionTreeLayoutsAllSs14 = Object.fromEntries(
+  Object.entries(allProfessionTalentCatalogueSs14).map(([name, panel]) => [
     name,
     {
       nodes: panel.nodes,
@@ -23,7 +23,7 @@ export const professionTreeLayoutsAllSs13 = Object.fromEntries(
     },
   ]),
 );
-const allTalentPanelsSs13 = Object.values(allProfessionTalentCatalogueSs13).map((panel) => ({
+const allTalentPanelsSs14 = Object.values(allProfessionTalentCatalogueSs14).map((panel) => ({
   ...panel,
   ...(capturedTalentPanels.get(panel.name) || {}),
   coreTalents: panel.coreTalents,
@@ -31,7 +31,7 @@ const allTalentPanelsSs13 = Object.values(allProfessionTalentCatalogueSs13).map(
 }));
 
 export function currentTalentPanel() {
-  return allTalentPanelsSs13.find((panel) => panel.name === ui.activeTalentPanel);
+  return allTalentPanelsSs14.find((panel) => panel.name === ui.activeTalentPanel);
 }
 
 // The Slates tab: the slate board in place of the open tree (apps/web/src/pages/build/TalentsView.tsx, from the
@@ -43,7 +43,7 @@ export function setTalentSlateMode(enabled) {
 }
 
 export function activeTalentLayouts() {
-  const layouts = { ...professionTreeLayoutsAllSs13 };
+  const layouts = { ...professionTreeLayoutsAllSs14 };
   for (const [name, id] of Object.entries(plannerState.talents.installedPrisms || {})) {
     const graph = layouts[name],
       coordinate = plannerState.talents.installedPrismNodes?.[name];
@@ -60,7 +60,7 @@ export function talentDisplayNodes(panel = currentTalentPanel()) {
   );
   return talentNodesOnBoard(
     panel,
-    professionTreeLayoutsAllSs13[panel.name],
+    professionTreeLayoutsAllSs14[panel.name],
     prism,
     plannerState.talents.installedPrismNodes?.[panel.name],
   );
@@ -76,7 +76,7 @@ export function renderTalents() {
 }
 export function clearInverseReflectedRanks(panel, item, coordinate) {
   for (const target of inverseImageReflectionMap(
-    professionTreeLayoutsAllSs13[panel]?.nodes || [],
+    professionTreeLayoutsAllSs14[panel]?.nodes || [],
     item,
     coordinate,
   ).keys())

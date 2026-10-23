@@ -6,8 +6,8 @@ import { readFileSync } from "node:fs";
 import { calculatePlanner } from "../../src/engine/planner.js";
 import { defaultPlannerState, normalizePlannerState } from "../../src/engine/state/planner-state.ts";
 import { switchHeroLoadout } from "../../src/engine/heroes/hero-loadouts.js";
-import { heroCatalogSs13 } from "../../src/data/heroes/hero-catalog-ss13.js";
-import { allHeroTraitsSs13 } from "../../src/data/heroes/all-hero-traits-ss13.generated.js";
+import { heroCatalogSs14 } from "../../src/data/heroes/hero-catalog-ss14.js";
+import { allHeroTraitsSs14 } from "../../src/data/heroes/all-hero-traits-ss14.generated.js";
 
 const TRAIT_LEVELS = [45, 60, 75];
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8"));
@@ -16,7 +16,7 @@ const youga = fixture("youga-the-ultimate-one-l94.state.json");
 function withHero(state, heroId, pick) {
   const next = structuredClone(state);
   next.hero = switchHeroLoadout(next.hero, heroId);
-  const traits = allHeroTraitsSs13[heroId]?.traits || [];
+  const traits = allHeroTraitsSs14[heroId]?.traits || [];
   for (const level of TRAIT_LEVELS) {
     const options = traits.filter((trait) => trait.level === level);
     if (options.length)
@@ -41,7 +41,7 @@ export function goldenInputs() {
     { id: "youga-l94/fire-res-75", state: withCombat(youga, { targetFireResistancePercent: 75 }) },
     { id: "youga-l94/affliction-0", state: withCombat(youga, { afflictionAverage: 0, afflictionPeak: 0 }) },
   ];
-  for (const hero of heroCatalogSs13) {
+  for (const hero of heroCatalogSs14) {
     for (const pick of ["first", "last"])
       inputs.push({ id: `hero/${hero.id}/${pick}`, state: withHero(youga, hero.id, pick) });
   }

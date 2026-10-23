@@ -13,7 +13,7 @@ import {
 } from "./skills/curse-limit.js";
 import { curseEffects } from "./skills/curse-model.js";
 import { calculateBlessings, blessingBaseEffects } from "./defense/blessing-model.js";
-import { skillGameTagsSs13 } from "../data/skills/support-eligibility-ss13.generated.js";
+import { skillGameTagsSs14 } from "../data/skills/support-eligibility-ss14.generated.js";
 import { blessingRecoverySources } from "./defense/blessing-gear-effects.js";
 import { calculateAim } from "./skills/aim-model.js";
 import { trueDamageSettleScale } from "./combat/true-damage.js";
@@ -102,18 +102,18 @@ import {
 import { normalizePlannerState } from "./state/planner-state.ts";
 import { resolveTalentCandidate, resolveSlateCandidate } from "./candidate-sources.js";
 import { grantedCoreNames } from "./text/granted-core-lines.js";
-import { selenaScorchingBeamTalentSetupSs13 as talents } from "../data/talents/selena-scorching-beam-ss13.js";
-import { allProfessionTalentCatalogueSs13 as catalogue } from "../data/talents/all-profession-trees-ss13.generated.js";
-import { selenaScorchingBeamGearSs13 as gear } from "../data/gear/selena-scorching-beam-ss13.js";
-import { selenaScorchingBeamPactsSs13 as pacts } from "../data/pacts/selena-scorching-beam-ss13.js";
-import { selenaScorchingBeamSlatesSs13 as slates } from "../data/slates/selena-scorching-beam-ss13.js";
+import { selenaScorchingBeamTalentSetupSs14 as talents } from "../data/talents/selena-scorching-beam-ss14.js";
+import { allProfessionTalentCatalogueSs14 as catalogue } from "../data/talents/all-profession-trees-ss14.generated.js";
+import { selenaScorchingBeamGearSs14 as gear } from "../data/gear/selena-scorching-beam-ss14.js";
+import { selenaScorchingBeamPactsSs14 as pacts } from "../data/pacts/selena-scorching-beam-ss14.js";
+import { selenaScorchingBeamSlatesSs14 as slates } from "../data/slates/selena-scorching-beam-ss14.js";
 import { supportValidationBaseline } from "../data/stats/support-validation-2026-09-08.js";
-import { selenaCompleteSkillLoadoutSs13 as skills } from "../data/skills/selena-complete-skill-loadout-ss13.js";
-import { auraScalingSs13 } from "../data/skills/aura-scaling-ss13.js";
+import { selenaCompleteSkillLoadoutSs14 as skills } from "../data/skills/selena-complete-skill-loadout-ss14.js";
+import { auraScalingSs14 } from "../data/skills/aura-scaling-ss14.js";
 import { auraDamageModifierTexts } from "./skills/aura-damage.js";
 import { collectSkillDamageSources, inferDamageProfile } from "./skills/skill-damage-profiles.js";
 import { MINION_PROFILES } from "./minions/minion-profiles.js";
-import { skillProgressionSs13 } from "../data/skills/skill-progression-ss13.generated.js";
+import { skillProgressionSs14 } from "../data/skills/skill-progression-ss14.generated.js";
 import { calculateSkillDot, skillDotAfflictionPerSecond } from "./skills/skill-dot-model.js";
 import { calculateSkillHit } from "./skills/skill-hit-model.js";
 import { skillHitDotComponents, skillHitTiming } from "./skills/skill-hit-profiles.js";
@@ -166,8 +166,8 @@ import {
   progressionSupportText,
   normalizeProgressionSupportConfig,
   isActivationMedium,
-} from "../data/skills/special-support-tiers-ss13.js";
-import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../data/catalogs/tlidb-ss13.js";
+} from "../data/skills/special-support-tiers-ss14.js";
+import { tlidbSkillCatalogSs14, tlidbSupportCatalogSs14 } from "../data/catalogs/tlidb-ss14.js";
 import { installedSupportRejected } from "./supports/support-compatibility.js";
 import { skillLevelBonus } from "./skills/skill-level-bonuses.js";
 import { supportEffectsAtLevel } from "./skills/skill-effect-progression.js";
@@ -177,7 +177,7 @@ import { scorchingBeamHitModifiers } from "./skills/scorching-beam-hit.js";
 import { findScorchingBeamSetup, scorchingBeamSustainedHits } from "./skills/scorching-beam-base-hit.js";
 import { scorchingBeamCastRate } from "./skills/scorching-beam-cast-rate.js";
 import { activationMediumDotTrigger } from "./skills/trigger-interval.js";
-import { skillTimingSs13 } from "../data/skills/skill-timing-ss13.generated.js";
+import { skillTimingSs14 } from "../data/skills/skill-timing-ss14.generated.js";
 import { scorchingBeamCritical } from "./skills/scorching-beam-critical.js";
 import { scorchingBeamAddedDamage } from "./skills/scorching-beam-added-damage.js";
 import {
@@ -933,7 +933,7 @@ function buildLineConditionState({
               .filter(
                 (support) =>
                   support.enabled !== false &&
-                  tlidbSupportCatalogSs13.find((entry) => entry.name === support.name)?.category === "noble",
+                  tlidbSupportCatalogSs14.find((entry) => entry.name === support.name)?.category === "noble",
               )
               .map((support) => support.name)
           : [],
@@ -1960,8 +1960,8 @@ function calculatePlannerOnce(
   }
   const profile = skills.energyProfile;
   const setupSources = [...skills.setups, ...(state.skills.customSetups || [])];
-  const catalogSkillsByName = new Map(tlidbSkillCatalogSs13.map((entry) => [entry.name, entry]));
-  const catalogSupportsByName = new Map(tlidbSupportCatalogSs13.map((entry) => [entry.name, entry]));
+  const catalogSkillsByName = new Map(tlidbSkillCatalogSs14.map((entry) => [entry.name, entry]));
+  const catalogSupportsByName = new Map(tlidbSupportCatalogSs14.map((entry) => [entry.name, entry]));
   // Supports item lines grant to the Main Skill (src/engine/gear/gear-unique-modules.js; gear-pact batch chunk 4): "The Main Skill is
   // supported by Lv. N X" and Lonesome's single-Ring grant. They join the first enabled main setup at their fixed level and
   // take no support slot. Cataclysm on Scorching Beam keeps its Ignite-ledger path (build-mechanics grantedSupports).
@@ -2095,7 +2095,7 @@ function calculatePlannerOnce(
       };
     });
     // A support the game does not allow on this skill (src/engine/supports/support-compatibility.js installedSupportRejected: the support
-    // stone's include / exclude tag groups, src/data/skills/support-eligibility-ss13.generated.js) stays saved in state but
+    // stone's include / exclude tag groups, src/data/skills/support-eligibility-ss14.generated.js) stays saved in state but
     // feeds nothing: `enabled` is derived false here only (state.skills.supportEnabled is never written), `savedEnabled`
     // keeps the user's flag for the support card, and `incompatible` drives the coverage badge.
     const catalogSkill = catalogSkillsByName.get(setup.name);
@@ -2177,10 +2177,10 @@ function calculatePlannerOnce(
     // Core audit B7 (Q11, settled from the game data): "+N Minion / Synthetic Troop / Spirit Magus Skill Level" (game affixes
     // 101080039 / 126530 / 557054) write the skill level field 2006400 on skills with the Minions (6000340) / Synthetic Troop
     // (6000320) / Spirit Magus (6000330) tag, which every Synthetic Troop and Spirit Magus summon stone carries (game stone tags,
-    // src/data/skills/support-eligibility-ss13.generated.js): sourced there. A Module's setup is one of its Minion skills (the Module
+    // src/data/skills/support-eligibility-ss14.generated.js): sourced there. A Module's setup is one of its Minion skills (the Module
     // stone is not in the catalog), so it stays provisional (Q9).
     const levelTagIds = { minion: 6000340, "synthetic troop": 6000320, "spirit magus": 6000330 };
-    const stoneTags = new Set(skillGameTagsSs13[setup.name]?.tags || []);
+    const stoneTags = new Set(skillGameTagsSs14[setup.name]?.tags || []);
     if (minionFamily)
       for (const entry of sourceBonus.contributions) {
         const kind = String(entry.text)
@@ -3340,7 +3340,7 @@ function calculatePlannerOnce(
     if (!activeNames.has(setup.name) || !(setup.tags || []).includes("Focus") || /^Precise: /.test(setup.name))
       continue;
     const level = Math.max(1, Math.min(40, Math.round(setup.effectiveLevel || 20)));
-    const tableLine = skillProgressionSs13[setup.name]?.levels?.[String(level)]?.changes
+    const tableLine = skillProgressionSs14[setup.name]?.levels?.[String(level)]?.changes
       ?.map(([, text]) => String(text))
       .find((text) => /^[\d.]+% additional \w+ Damage$/i.test(text));
     const referenceLine = (setup.effects || [])
@@ -5576,7 +5576,7 @@ function calculatePlannerOnce(
     }
     if (!dotTriggers.has(source.setupKey)) {
       // A Terra's Split cooldown is its Terra Charge gain (no use cooldown); other DoT skills use their game Split cooldown.
-      const cooldownSeconds = source.profile.recast ? 0 : Number(skillTimingSs13[source.setup?.name]?.cooldown) || 0;
+      const cooldownSeconds = source.profile.recast ? 0 : Number(skillTimingSs14[source.setup?.name]?.cooldown) || 0;
       const trigger = activationMediumDotTrigger({
         setup: source.setup,
         castRate: dotCastRate(source),
@@ -6330,7 +6330,7 @@ function calculatePlannerOnce(
     main.effectiveLevel < 1 ||
     Object.keys(state.skills.skillLevels)
       .map((key) => state.skills.customSetups.find((setup) => setup.instanceId === key)?.name || key)
-      .some((name) => name !== "Scorching Beam" && !auraScalingSs13[name]) ||
+      .some((name) => name !== "Scorching Beam" && !auraScalingSs14[name]) ||
     Object.keys(state.skills.supportLevels).some(
       (key) => !modeledSupportNames.some((name) => key === `Scorching Beam:${name}`),
     )
@@ -6359,7 +6359,7 @@ function calculatePlannerOnce(
   if (
     state.skills.customSetups.some(
       (setup) =>
-        (setup.role !== "aura" || !auraScalingSs13[setup.name]) &&
+        (setup.role !== "aura" || !auraScalingSs14[setup.name]) &&
         !damageSources.some((source) => source.name === setup.name && source.status === "modeled"),
     )
   )

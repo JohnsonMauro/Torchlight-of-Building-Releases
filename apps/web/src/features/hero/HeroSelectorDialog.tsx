@@ -2,7 +2,7 @@
 // search by name or trait. The planner opens it (src/app/hero/hero-controller.js openHeroSelector) and announces the "heroSelector"
 // source; picking a hero is the selectHero command.
 import { useRef } from "react";
-import { heroCatalogSs13 } from "@legacy/engine/index.ts";
+import { heroCatalogSs14 } from "@legacy/engine/index.ts";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import { searchMatcher, searchText } from "@legacy/app/bridge/search-match.ts";
 import { useSessionState } from "../../ui/use-session-state";
@@ -26,7 +26,7 @@ export function HeroSelectorDialog() {
   useRegisteredDialog(dialog);
   const [query, setQuery] = useSessionState(view?.session ?? 0, "");
   const matcher = searchMatcher(query);
-  const heroes = heroCatalogSs13.filter((hero) => matcher.matches(searchText([hero.name, hero.trait])));
+  const heroes = heroCatalogSs14.filter((hero) => matcher.matches(searchText([hero.name, hero.trait])));
   return (
     <dialog
       id="hero-selector"

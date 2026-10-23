@@ -4,10 +4,10 @@
 // Defense Lv62 #3007 / Lv61 #3012). The legacy record (game flag 0) is not obtainable, so it is hidden from the base
 // pickers and saved items on it are moved to the regular base on read (src/engine/state/changed-item-migrations.js). A lookup by
 // name never takes the legacy record: an item's own base id wins, then the game id, then the regular base of that name.
-import { rareBaseItemsSs13 } from "../../data/gear/rare-base-items-ss13.generated.js";
+import { rareBaseItemsSs14 } from "../../data/gear/rare-base-items-ss14.generated.js";
 import { rareBaseGameIds } from "../../data/gear/rare-base-game-ids.generated.js";
 
-const byId = new Map(rareBaseItemsSs13.map((entry) => [entry.id, entry]));
+const byId = new Map(rareBaseItemsSs14.map((entry) => [entry.id, entry]));
 const byGameId = new Map(
   Object.entries(rareBaseGameIds)
     .map(([id, value]) => [String(value.gameId), byId.get(id)])
@@ -26,7 +26,7 @@ export function rareBaseByGameId(gameId) {
 /** The regular base that replaces a legacy duplicate (same name, type and slot), or null when `entry` is not one. */
 export function activeRareBaseFor(entry) {
   if (!entry || isRegular(entry)) return null;
-  return rareBaseItemsSs13.find((other) => sameBase(other, entry) && isRegular(other)) || null;
+  return rareBaseItemsSs14.find((other) => sameBase(other, entry) && isRegular(other)) || null;
 }
 /** A legacy record that shares its name with a regular base (hidden from the base pickers). */
 export function isLegacyRareBase(entry) {
@@ -39,7 +39,7 @@ export function rareBaseByName(name, type = null) {
     .trim()
     .toLowerCase();
   if (!wanted) return null;
-  const matches = rareBaseItemsSs13.filter(
+  const matches = rareBaseItemsSs14.filter(
     (entry) => entry.name.toLowerCase() === wanted && (!type || entry.type === type),
   );
   return matches.find(isRegular) || matches[0] || null;

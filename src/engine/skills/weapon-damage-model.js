@@ -1,14 +1,14 @@
 import { cleanGameText } from "../text/percentage-text.js";
 import { effectiveGearModifierTexts } from "../engine.js";
 import { rareBaseForItem } from "../gear/rare-base-lookup.js";
-import { legendaryGearSs13 } from "../../data/gear/legendary-gear-ss13.generated.js";
-import { defaultBaseForItem } from "../../data/gear/corrosion-implicits-ss13.js";
+import { legendaryGearSs14 } from "../../data/gear/legendary-gear-ss14.generated.js";
+import { defaultBaseForItem } from "../../data/gear/corrosion-implicits-ss14.js";
 
 // Weapon-damage model for "Deals X% Weapon Attack Damage" skills (the attack batch of
 // research/skill-inventory-2026-10-11.md; first slice in src/engine/skills/attack-hit-profiles.js).
 //
 // What is sourced and what is provisional:
-//   - Weapon base lines come from the TLIDB equipment tables (src/data/gear/rare-base-items-ss13.generated.js, e.g.
+//   - Weapon base lines come from the TLIDB equipment tables (src/data/gear/rare-base-items-ss14.generated.js, e.g.
 //     Unforgotten Long Blade "154 - 154 Physical Damage", "500 Critical Strike Rating", "1.5 Attack Speed"; spell
 //     weapons carry "Adds X - X <Type> Damage to Spells" instead of weapon damage). A legendary or crafted weapon
 //     keeps the same base lines as implicit modifiers.
@@ -131,7 +131,7 @@ export function weaponTypeOf(item) {
   if (rareBase) return rareBase.type;
   if (item.base && [...ONE_HANDED_WEAPON_TYPES, ...TWO_HANDED_WEAPON_TYPES, ...SHIELD_TYPES].includes(item.base))
     return item.base;
-  const catalogItem = legendaryGearSs13.find((entry) => entry.name === item.name || entry.id === item.baseId);
+  const catalogItem = legendaryGearSs14.find((entry) => entry.name === item.name || entry.id === item.baseId);
   const remoteIcon = item.remoteIcon || catalogItem?.remoteIcon;
   const resolved = defaultBaseForItem({ ...item, remoteIcon: remoteIcon || "" });
   return resolved || null;
@@ -714,7 +714,7 @@ export function calculateWeaponAttack({
     notes,
     warnings,
     sources: {
-      bases: "TLIDB equipment tables (src/data/gear/rare-base-items-ss13.generated.js)",
+      bases: "TLIDB equipment tables (src/data/gear/rare-base-items-ss14.generated.js)",
       local:
         "game attribute ids per research/coverage-census-2026-10-11.md (Gear Physical Damage attr 5002, gear Attack Speed attr 6001, Attack Critical Strike Rating for this gear attr 4802)",
       dualWield: DUAL_WIELD_STATUS.source,

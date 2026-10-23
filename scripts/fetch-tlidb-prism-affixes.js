@@ -1,5 +1,5 @@
 // Writes src/data/talents/prism-affixes-tlidb.generated.js: every Ethereal Prism affix TLIDB lists, by the game's modifier
-// id, for "Import from game". The upstream id map (src/data/game-id-map-ss13.generated.js) lacks the lower prism tiers'
+// id, for "Import from game". The upstream id map (src/data/game-id-map-ss14.generated.js) lacks the lower prism tiers'
 // ids (1214…, 1224…) a dropped prism logs, so the importer reads them here. Source: TLIDB (tlidb.com/en/Ethereal_Prism).
 //   node scripts/fetch-tlidb-prism-affixes.js          fetch the page (one request)
 //   node scripts/fetch-tlidb-prism-affixes.js <dir>    same, keeping the page in <dir> and reusing it when there

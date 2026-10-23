@@ -1,4 +1,4 @@
-import { skillProgressionSs13 } from "../../data/skills/skill-progression-ss13.generated.js";
+import { skillProgressionSs14 } from "../../data/skills/skill-progression-ss14.generated.js";
 import { cleanGameText } from "../text/percentage-text.js";
 import { empowerAdditionalLines } from "../talents/storm-command.js";
 
@@ -78,7 +78,7 @@ const PLAIN_COOLDOWN = new RegExp(`^${N}% (additional )?Cooldown Recovery Speed$
 
 /** Bull's Rage's Euphoria at a level: the TLIDB level table (Lv.20 is the reference text). */
 export function bullsRageEuphoriaPercent(level) {
-  const entry = skillProgressionSs13["Bull's Rage"];
+  const entry = skillProgressionSs14["Bull's Rage"];
   const clamped = String(Math.max(1, Math.min(40, Math.floor(level || 20))));
   const text =
     entry?.levels?.[clamped]?.changes
@@ -183,7 +183,7 @@ export function bullsRageEuphoria({
 
 /** Ice Bond's Euphoria value at a level: the TLIDB level table (Lv.20 is the reference text). */
 export function iceBondEuphoriaPercent(level) {
-  const entry = skillProgressionSs13["Ice Bond"];
+  const entry = skillProgressionSs14["Ice Bond"];
   const clamped = String(Math.max(1, Math.min(40, Math.floor(level || 20))));
   const text =
     entry?.levels?.[clamped]?.changes

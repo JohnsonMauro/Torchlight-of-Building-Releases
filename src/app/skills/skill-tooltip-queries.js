@@ -6,8 +6,8 @@ import {
   skillBoardRows,
   supportClauseCoverage,
   supportLineCoverage,
-  tlidbSkillCatalogSs13,
-  tlidbSupportCatalogSs13,
+  tlidbSkillCatalogSs14,
+  tlidbSupportCatalogSs14,
 } from "../../engine/index.ts";
 import { coverageView } from "../bridge/gear-item-view.ts";
 import { skillTooltipView } from "../bridge/skill-tooltip-view.ts";
@@ -37,15 +37,15 @@ function skillTooltip({ row = null, skill = "", support = "", heroSupportId = ""
   const heroInstalled =
     heroSupportId && support
       ? {
-          ...tlidbSupportCatalogSs13.find((entry) => entry.name === support),
+          ...tlidbSupportCatalogSs14.find((entry) => entry.name === support),
           level: plannerState.hero.heroTraitSupportLevels?.[heroSupportId] || 20,
           specialConfig: plannerState.hero.heroTraitSupportConfigs?.[heroSupportId],
         }
       : null;
   const installed = heroInstalled || (support ? setup?.supports.find((entry) => entry.name === support) : setup);
   const catalog = support
-    ? tlidbSupportCatalogSs13.find((entry) => entry.name === support)
-    : tlidbSkillCatalogSs13.find((entry) => entry.name === skillName);
+    ? tlidbSupportCatalogSs14.find((entry) => entry.name === support)
+    : tlidbSkillCatalogSs14.find((entry) => entry.name === skillName);
   if (!installed && !catalog) return null;
   const coverageArgs = {
     skillName: support ? setup?.name || skillName : skillName,

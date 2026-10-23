@@ -27,7 +27,7 @@ import { classifyMinionLine, nourishmentLineKind } from "../minions/minion-damag
 import { classifySkillCoverage } from "../skills/skill-coverage.js";
 import { parseItemTrigger, itemTriggerEvent } from "../skills/item-triggered-skills.js";
 import { inferDamageProfile } from "../skills/skill-damage-profiles.js";
-import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
+import { tlidbSkillCatalogSs14, tlidbSupportCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
 import { resolveSupportEffects, supportClauseSummary } from "../supports/support-effects.js";
 import { expandScriptedItemLine, grantedPreciseAuras } from "../gear/gear-unique-modules.js";
 import { auraGainedLineStatus } from "../skills/aura-gained-effects.js";
@@ -659,7 +659,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   if (auraGrant && planner?.aura) {
     const choice = (planner.aura.grantedChoices || []).find((item) => item.name === auraGrant.name);
     if (choice) return choice.kept === "granted" ? "In calc" : "No DPS effect";
-    return tlidbSkillCatalogSs13.some((entry) => entry.name === auraGrant.name && (entry.tags || []).includes("Aura"))
+    return tlidbSkillCatalogSs14.some((entry) => entry.name === auraGrant.name && (entry.tags || []).includes("Aura"))
       ? "In calc"
       : "Not modeled";
   }
@@ -1508,7 +1508,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   );
   if (auraNamed && planner?.activation && !/^(?:additional )?$/i.test(auraNamed[1])) {
     const name = auraNamed[1].trim();
-    const known = tlidbSkillCatalogSs13.some((skill) => skill.name === name || skill.name === `Precise: ${name}`);
+    const known = tlidbSkillCatalogSs14.some((skill) => skill.name === name || skill.name === `Precise: ${name}`);
     const active = [...(planner.activation.activeNames || [])].some(
       (item) => item === name || item === `Precise: ${name}`,
     );
@@ -2147,7 +2147,7 @@ function uncarriedPreviewStatus(text, planner) {
   if (trigger) {
     if (trigger.notOnDummy) return "Not on dummy";
     if (trigger.unmodeled) return "Not modeled";
-    const skill = tlidbSkillCatalogSs13.find((entry) => entry.name === trigger.name);
+    const skill = tlidbSkillCatalogSs14.find((entry) => entry.name === trigger.name);
     const profile = skill
       ? inferDamageProfile({
           ...skill,
@@ -2182,7 +2182,7 @@ function uncarriedPreviewStatus(text, planner) {
       if (rings !== 1) return "Inactive";
     }
     const name = grant[2].trim();
-    if (!tlidbSupportCatalogSs13.some((entry) => entry.name === name)) return "Not modeled";
+    if (!tlidbSupportCatalogSs14.some((entry) => entry.name === name)) return "Not modeled";
     const main = planner.mainSkill && planner.activation.setups?.find((setup) => setup.name === planner.mainSkill.name);
     if (!main || !planner.activation.activeNames?.has(main.name)) return "Inactive";
     // Cataclysm on Scorching Beam keeps its Ignite-ledger path (src/engine/planner.js); other grants join the main skill's supports.

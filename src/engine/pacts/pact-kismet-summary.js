@@ -1,9 +1,9 @@
-import { kismetCatalogSs13 } from "../../data/pacts/kismet-catalog-ss13.js";
+import { kismetCatalogSs14 } from "../../data/pacts/kismet-catalog-ss14.js";
 import { kismetAffixesWithRolls } from "./kismet-crafting.js";
 import { boostedKismetAffixText, microFateEffectScale } from "./kismet-effects.js";
 import { fateExtraSlots, fateSlotBonuses } from "./fate-slot-unlocks.js";
 import { orderedPactspiritNodes } from "./pactspirit-levels.js";
-import { pactspiritTreesSs13 } from "../../data/pacts/pactspirit-trees-ss13.js";
+import { pactspiritTreesSs14 } from "../../data/pacts/pactspirit-trees-ss14.js";
 
 export function equippedKismetSummary(pactSetup, state = {}) {
   if (state.kismetSlotMode) {
@@ -11,7 +11,7 @@ export function equippedKismetSummary(pactSetup, state = {}) {
     const activeUnlocks = Object.fromEntries(
       (activeNames || [])
         .filter((name) => {
-          const index = orderedPactspiritNodes(pactspiritTreesSs13[name]).findIndex((node) => node.ring === "destiny");
+          const index = orderedPactspiritNodes(pactspiritTreesSs14[name]).findIndex((node) => node.ring === "destiny");
           return index >= 0 && state.nativeNodeQuantities?.[`${name}:${index}`] === 1;
         })
         .map((name) => [name, state.fateUnlocks?.[name]]),
@@ -29,7 +29,7 @@ export function equippedKismetSummary(pactSetup, state = {}) {
       )
       .map(([key, slot]) => ({
         key,
-        entry: kismetCatalogSs13.find((item) => item.name === slot.name),
+        entry: kismetCatalogSs14.find((item) => item.name === slot.name),
         rolls: slot.rolls,
       }))
       .filter(({ entry }) => entry);

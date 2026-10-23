@@ -1,8 +1,8 @@
 import { cleanGameText } from "./text/percentage-text.js";
 import { gameDamageLayer } from "./text/affix-bucket.js";
 import { auraSpeedStatLines } from "./skills/aura-gained-effects.js";
-import { heroById } from "../data/heroes/hero-catalog-ss13.js";
-import { allHeroTraitsSs13 } from "../data/heroes/all-hero-traits-ss13.generated.js";
+import { heroById } from "../data/heroes/hero-catalog-ss14.js";
+import { allHeroTraitsSs14 } from "../data/heroes/all-hero-traits-ss14.generated.js";
 import {
   baseTraitDescriptionForLevel,
   artificialMoonGate,
@@ -375,7 +375,7 @@ export function artificialMoonEquipped(hero = {}) {
 // memory installed (inactive). Youga's fourth tree row: { row: "extra", keys: [], level: 5 }.
 export function heroTraitSlotLevel(state = {}, traitName, levelBonus = { all: 0, nonBase: 0 }) {
   const hero = heroById(state.hero?.selectedHeroId);
-  const trait = hero && allHeroTraitsSs13[hero.id]?.traits?.find((item) => item.name === traitName);
+  const trait = hero && allHeroTraitsSs14[hero.id]?.traits?.find((item) => item.name === traitName);
   if (!trait || trait.level <= 1) return null;
   let row = trait.level;
   if (heroTraitTree(hero.id)) {
@@ -397,7 +397,7 @@ export function heroTraitSlotLevel(state = {}, traitName, levelBonus = { all: 0,
 export function heroTraitStatLines(state = {}, baseTraitLevel = 1, levelBonus = { all: 0, nonBase: 0 }, options = {}) {
   const hero = heroById(state.hero?.selectedHeroId);
   const moonActive = options.artificialMoon ?? artificialMoonEquipped(state.hero);
-  const traits = hero ? allHeroTraitsSs13[hero.id]?.traits || [] : [];
+  const traits = hero ? allHeroTraitsSs14[hero.id]?.traits || [] : [];
   if (!traits.length) return [];
   const picks = [];
   // The base trait: named like the hero trait, else the level-1 trait (Youga – The Ultimate One: "I Am the Ultimate One").

@@ -239,7 +239,7 @@ export function prismBaseEffect(type, base, legendaryAffix = "") {
 
 const addedCoreEffectPrefix = "Adds an additional effect to the Core Talent on the Any Advanced Talent Panel:";
 // The effects a Haze rolls as its base affix: the game's base affixes 1204200101–1204200114, worded as the upstream id
-// map (src/data/game-id-map-ss13.generated.js) writes them, so a prism from "Import from game" holds one of these.
+// map (src/data/game-id-map-ss14.generated.js) writes them, so a prism from "Import from game" holds one of these.
 const hazeAddedCoreEffects = [
   "+12% additional Attack Damage when holding a One-Handed Weapon\n+12% additional Base Damage for Two-Handed Weapons",
   "While standing still, +12% additional Attack Damage and Ailment Damage dealt by attacks. -5% additional damage taken",

@@ -11,13 +11,13 @@ import {
   judgmentAffixTargetPercent,
 } from "./talents/slate-judgment.js";
 import { PEDIGREE_OF_GODS, isPedigreeSlate, normalizePedigreeAffixes } from "./talents/pedigree-slots.js";
-import { divinitySlateAffixesSs13 } from "../data/divinity-slate-affixes-ss13.js";
+import { divinitySlateAffixesSs14 } from "../data/divinity-slate-affixes-ss14.js";
 
 // "(Max Active Divinity: 1)" talent nodes count once across the equipped slates (copies included).
 // Numbers are masked so a Judgment-scaled copy still matches its node.
 const divinityKey = (affix) => normalizePercentageText(String(affix)).replace(/[0-9.]+/g, "#");
 const maxOneDivinityKeys = new Set(
-  Object.values(divinitySlateAffixesSs13)
+  Object.values(divinitySlateAffixesSs14)
     .flat()
     .filter((affix) => affix.maxDivinityEffect === 1)
     .map((affix) => divinityKey(`${affix.tree}: ${affix.name}: ${affix.effect}`)),
