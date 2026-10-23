@@ -115,8 +115,8 @@ export const defaultPlannerState = {
     customSupports: {},
     customSetups: [],
   },
-  equippedSlateIds: null,
-  slates: { geometryVersion: 4, placements: null, parked: {}, inventory: [] },
+  equippedSlateIds: [],
+  slates: { geometryVersion: 4, placements: {}, parked: {}, inventory: [] },
   // The build's one follower (2026-10-15; packages/engine/src/followers/follower-model.js): its id, rarity and one Tartarus Skill per unlocked slot (its
   // name, or { name, tier, affixes } once support affixes are chosen, 2026-10-19; null when empty). Not part of the hero
   // loadouts: the follower stays when the hero changes.
@@ -232,15 +232,15 @@ export function normalizePlannerState(input: unknown = {}): PlannerState {
     disabledEquipmentSlots: Array.isArray(value.disabledEquipmentSlots) ? value.disabledEquipmentSlots : [],
     disabledSupportNames: Array.isArray(value.disabledSupportNames) ? value.disabledSupportNames : [],
     removedInventoryItemIds: Array.isArray(value.removedInventoryItemIds) ? value.removedInventoryItemIds : [],
-    equippedSlateIds: Array.isArray(value.equippedSlateIds) ? value.equippedSlateIds : null,
+    equippedSlateIds: Array.isArray(value.equippedSlateIds) ? value.equippedSlateIds : [],
     slates: {
       ...defaults.slates,
       ...(value.slates || {}),
-      // A save without a geometry version predates the current slate board (4): src/app/planner/session.js then ignores its placements
-      // and lays out the captured slates.
+      // A save without a geometry version predates the current slate board (4): src/app/planner/session.js then ignores its
+      // placements and the slates wait off the board.
       geometryVersion: Number(value.slates?.geometryVersion || 0),
       placements:
-        value.slates?.placements && typeof value.slates.placements === "object" ? value.slates.placements : null,
+        value.slates?.placements && typeof value.slates.placements === "object" ? value.slates.placements : {},
       parked: value.slates?.parked && typeof value.slates.parked === "object" ? value.slates.parked : {},
       inventory: Array.isArray(value.slates?.inventory) ? value.slates.inventory : [],
     },

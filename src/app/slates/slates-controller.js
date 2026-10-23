@@ -10,14 +10,14 @@ import {
   slateSize,
   slateTransformRules,
 } from "#engine";
-import { closeDialog, dialogOpen, openDialog } from "../bridge/dialogs.ts";
+import { openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { coverageView } from "../bridge/gear-item-view.ts";
 import { slateTooltipView } from "../bridge/slate-tooltip-view.ts";
 import { slatesView } from "../bridge/slates-view-model.ts";
 import { slateLineCoverage } from "../planner/calculation-coverage.js";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
-import { showToast, titleCase } from "../planner/page.js";
+import { showToast } from "../planner/page.js";
 import { slateAffixSelectPools } from "../planner/searchable-select.js";
 import {
   currentPlanner,
@@ -64,7 +64,7 @@ function slateTooltip(id) {
   const slate = slatesForBoard().find((item) => item.id === id);
   if (!slate) return null;
   const placed = equippedSlateIds.has(slate.id) && Boolean(slatePlacements[slate.id]);
-  const affixes = slateAffixes(slate);
+  const affixes = slate.fixed || [];
   const affected = judgmentAffectedSlateIds(slatesForBoard(), slatePlacements, equippedSlateIds).has(slate.id);
   const judgmentContext = {
     linked: affected,
@@ -203,7 +203,6 @@ export const slateCommands = {
   startSlateMove,
   placeSlateAtCell,
   transformSlate,
-  saveSlateEditor,
   wheelTransformSlate,
   removeSlate,
   rightClickRemoveSlate,
@@ -251,8 +250,6 @@ export const slateViewSources = {
     }),
   // The Slate Inventory.
   slateInventory: slateInventorySource,
-  // The slate editor.
-  slateEditor: slateEditorSource,
 };
 
 // ---- Slate Inventory commands (apps/web/src/features/slates/SlateInventoryDialog.tsx).
@@ -352,7 +349,6 @@ function removeCraftedSlate(id) {
   showToast("Slate removed from grid");
 }
 
-export const slateAffixes = (slate) => plannerState.slates?.affixOverrides?.[slate.id] || slate.fixed || [];
 // The Slate Inventory dialog (apps/web/src/features/slates/SlateInventoryDialog.tsx) shows the "slateInventory" source: the
 // crafted slates, or, in the crafter's mode, the crafter (src/app/slates/slate-craft.ts slateCrafterView).
 let slateInventoryMode = "inventory";
@@ -402,40 +398,6 @@ function backToSlateInventory() {
   slateCraft = { ...slateCraft, editingId: null };
   renderSlateInventory();
 }
-// The slate editor (apps/web/src/features/slates/SlateEditorDialog.tsx) shows the "slateEditor" source; each drawing
-// (opening, a rotation) starts its affix fields over from the slate, as the planner's markup did.
-let slateEditorSession = 0,
-  slateEditorId = "";
-function renderSlateEditor(slate) {
-  slateEditorId = slate.id;
-  slateEditorSession++;
-  viewSourceChanged("slateEditor");
-}
-function slateEditorSource() {
-  const slate = slatesForBoard().find((item) => item.id === slateEditorId);
-  if (!slate) return null;
-  const rules = slateTransformRules(slate);
-  return {
-    session: slateEditorSession,
-    id: slate.id,
-    title: `Edit ${titleCase(slate.rarity)} Slate`,
-    name: slate.name,
-    icon: slate.icon || slate.cellIcon || "",
-    rotate: Boolean(rules.rotate),
-    flip: Boolean(rules.flip),
-    rarity: slate.rarity.toUpperCase(),
-    affixes: displayTexts([...slateAffixes(slate)]),
-  };
-}
-// The slate editor's Save Changes: the non-empty affix texts become the slate's affixes.
-function saveSlateEditor(id, texts) {
-  plannerState.slates.affixOverrides ||= {};
-  plannerState.slates.affixOverrides[id] = texts.map((text) => text.trim()).filter(Boolean);
-  persistPlannerState();
-  closeDialog("slate-editor");
-  renderCandidateViews();
-  showToast("Slate affixes saved");
-}
 
 // The Divinity Slates board (apps/web/src/features/slates) re-reads its source (src/app/bridge/slates-view-model.ts).
 export function renderSlates() {
@@ -448,7 +410,6 @@ function pickUpTransformedSlate(slate, current, candidate, action) {
   setSlatePlacements({ ...slatePlacements, [slate.id]: candidate });
   selectedSlateId = null;
   slateToolsPosition = null;
-  closeDialog("slate-editor");
   renderSlates();
   showToast(`Move the ${action} slate and click to place it`);
 }
@@ -588,7 +549,6 @@ function transformSlate(id, change) {
   } else if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
     setSlatePlacements({ ...slatePlacements, [slate.id]: candidate });
     persistPlannerState();
-    if (change.rotate && dialogOpen("slate-editor")) renderSlateEditor(slate);
   } else pickUpTransformedSlate(slate, current, candidate, change.rotate ? "Rotated" : "Flipped");
 }
 // The wheel over the board with a slate selected: down rotates clockwise (Pedigree of Gods flips horizontally), up the
@@ -669,14 +629,7 @@ function rightClickRemoveSlate(id) {
 }
 function editSlate(id) {
   const crafted = (plannerState.slates.inventory || []).find((item) => item.id === id);
-  if (crafted) {
-    openCraftedSlateEditor(crafted);
-    openDialog("slate-inventory");
-  } else {
-    const slate = slatesForBoard().find((item) => item.id === id);
-    if (slate) {
-      renderSlateEditor(slate);
-      openDialog("slate-editor");
-    }
-  }
+  if (!crafted) return;
+  openCraftedSlateEditor(crafted);
+  openDialog("slate-inventory");
 }

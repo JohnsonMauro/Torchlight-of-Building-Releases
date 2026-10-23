@@ -25,7 +25,6 @@ import { CarinoAmmoSelectorDialog } from "../features/hero/CarinoAmmoSelectorDia
 import { TalentPanelPickerDialog } from "../features/talents/TalentPanelPickerDialog";
 import { CoreTalentPickerDialog } from "../features/talents/CoreTalentPickerDialog";
 import { SlateInventoryDialog } from "../features/slates/SlateInventoryDialog";
-import { SlateEditorDialog } from "../features/slates/SlateEditorDialog";
 import { EquipmentCrafterDialog } from "../features/gear/EquipmentCrafterDialog";
 import { InventoryItemDialog } from "../features/gear/InventoryItemDialog";
 import { SkillSelectorDialog } from "../features/skills/SkillSelectorDialog";
@@ -72,7 +71,6 @@ export function AppShell() {
       <TalentPanelPickerDialog />
       <CoreTalentPickerDialog />
       <SlateInventoryDialog />
-      <SlateEditorDialog />
       <EquipmentCrafterDialog />
       <InventoryItemDialog />
       <SkillSelectorDialog />

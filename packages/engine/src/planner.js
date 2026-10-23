@@ -1813,9 +1813,9 @@ function calculatePlannerOnce(
       if (typeof state.combat.bestCaseOverrides?.[key] !== "boolean") delete requestedBase[key];
   const requestedConditions = { ...requestedBase, ...conditionOverrides };
   const heroMemories = calculateHeroMemories(state.hero);
-  const equipped = state.equippedSlateIds ?? capturedSlates.slates.map((slate) => slate.id);
+  const equipped = state.equippedSlateIds;
   const talent = resolveTalentCandidate(capturedTalents, catalogue, state.talentRanks, state.talents);
-  const slate = resolveSlateCandidate(capturedSlates, equipped, state.slates);
+  const slate = resolveSlateCandidate(equipped, state.slates);
   const talentSlate = calculateTalentSlateCandidate({
     talentSetup: capturedTalents,
     talentRanks: state.talentRanks,
@@ -1831,7 +1831,7 @@ function calculatePlannerOnce(
   const offTheBeatenTrackSlate = slate.setup.slates.some(
     (item) =>
       equipped.includes(item.id) &&
-      (state.slates.placements || capturedSlates.capturedPlacements)?.[item.id] &&
+      state.slates.placements[item.id] &&
       [...(item.fixed || []), ...(item.brands || []), ...(item.copiedTalents || [])].some((effect) =>
         /off the beaten track/i.test(effect),
       ),
@@ -1864,9 +1864,7 @@ function calculatePlannerOnce(
       );
       return { ...panel, allocatedNodes, activeCores };
     }),
-    slates: slate.setup.slates.filter(
-      (item) => equipped.includes(item.id) && (state.slates.placements || capturedSlates.capturedPlacements)?.[item.id],
-    ),
+    slates: slate.setup.slates.filter((item) => equipped.includes(item.id) && state.slates.placements[item.id]),
   };
   const pact = calculatePactCandidate(capturedPacts, state.pacts, capturedSnapshots[0]);
   const modifierTexts = collectModifierTexts({

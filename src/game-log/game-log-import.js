@@ -762,7 +762,7 @@ export function blankPlannerState() {
     customSetups: [],
   };
   state.equippedSlateIds = [];
-  state.slates = { geometryVersion: 4, placements: {}, parked: {}, affixOverrides: {}, inventory: [] };
+  state.slates = { geometryVersion: 4, placements: {}, parked: {}, inventory: [] };
   state.talentRanks = {};
   state.talents = {
     useCapturedRanks: false,

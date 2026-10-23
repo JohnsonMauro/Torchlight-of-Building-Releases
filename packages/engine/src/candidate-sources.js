@@ -124,9 +124,9 @@ export function resolveTalentCandidate(captured, catalogue, ranks, selections) {
   return { setup: { panels }, activeCores, warnings };
 }
 
-export function resolveSlateCandidate(captured, equippedIds, state = {}) {
+export function resolveSlateCandidate(equippedIds, state = {}) {
   const warnings = [];
-  const placements = state.placements || captured.capturedPlacements;
+  const placements = state.placements || {};
   const crafted = (state.inventory || []).map((slate) => {
     // Pedigree slots only hold rolled talent nodes; invalid saved values are ignored here.
     const pedigree = isPedigreeSlate(slate) ? normalizePedigreeAffixes(slate.affixes) : null;
@@ -138,7 +138,7 @@ export function resolveSlateCandidate(captured, equippedIds, state = {}) {
       level: 100,
     };
   });
-  const allSlates = [...captured.slates, ...crafted];
+  const allSlates = crafted;
   const affected = judgmentAffectedSlateIds(allSlates, placements, equippedIds);
   const slates = allSlates.map((slate) => {
     const sourcePercent = slate.amplifiedPercent || 0;
@@ -148,7 +148,7 @@ export function resolveSlateCandidate(captured, equippedIds, state = {}) {
       linked: affected.has(slate.id),
       ownAuthority: Boolean(isActiveJudgment(slate) && equippedIds.includes(slate.id) && placements?.[slate.id]),
     };
-    const fixed = state.affixOverrides?.[slate.id] ?? slate.fixed ?? [];
+    const fixed = slate.fixed ?? [];
     const brands = slate.brands || [];
     const scaled = (affix) =>
       scaleJudgmentAffix(affix, sourcePercent, judgmentAffixTargetPercent(slate, affix, judgmentContext));
@@ -197,5 +197,5 @@ export function resolveSlateCandidate(captured, equippedIds, state = {}) {
       item.copiedAffixSources = kept;
       item.copiedTalents = kept.map((source) => source.affix);
     }
-  return { setup: { ...captured, slates }, warnings };
+  return { setup: { slates }, warnings };
 }

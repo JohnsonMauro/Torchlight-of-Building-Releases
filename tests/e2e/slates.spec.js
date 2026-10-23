@@ -1,16 +1,18 @@
 // Divinity Slates board (Build page, talent column's Slates button): the statue grid, the pieces, their quick tools,
 // drags (place, park beside the grid, rotate with a right-click), keyboard and wheel transforms, a rotation that no
 // longer fits following the pointer, and the dialogs the board opens. Written against the legacy board before it moves to
-// React, so both must pass it unchanged. Youga's build has three slates and free cells; the default library has nine,
-// with the Judgment overlay on top of the middle.
+// React, so both must pass it unchanged. Youga's build has three slates and free cells; the full board fixture
+// (tests/e2e/fixtures/slate-board.js) has seven, with the Judgment overlay on top of the middle.
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { PlannerPage } from "./pages/planner-page.js";
 import { SlatesPage } from "./pages/slates-page.js";
+import { withSlateBoard } from "./fixtures/slate-board.js";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
 );
+const fullBoard = withSlateBoard(youga);
 const PEDIGREE = "game-log-slate-2";
 const CORNER = "game-log-slate-4";
 const FALLEN = "game-log-slate-5";
@@ -28,11 +30,11 @@ async function openSlates(page, state = youga) {
 }
 
 test("the Slates button shows the statue board in place of the talent tree", async ({ page }) => {
-  const { planner, slates } = await openSlates(page, null);
+  const { planner, slates } = await openSlates(page, fullBoard);
   await expect(slates.talentTree()).toBeHidden();
   await expect(slates.cells()).toHaveCount(24);
-  await expect(slates.pieces()).toHaveCount(9);
-  await expect(slates.board().locator(".slate-piece.judgment-affected")).toHaveCount(4);
+  await expect(slates.pieces()).toHaveCount(7);
+  await expect(slates.board().locator(".slate-piece.judgment-affected")).toHaveCount(2);
   await expect(slates.board().locator(".slate-piece.copy-slate")).toHaveCount(2);
   await expect(slates.piece("judgment")).toHaveClass(/\boverlay-slate\b/);
   await expect(slates.piece("judgment")).toHaveAttribute(
@@ -149,16 +151,17 @@ test("Move, then a board cell, places the slate in that cell", async ({ page }) 
   await planner.expectNoErrors();
 });
 
-test("Inventory opens the slate inventory, and Edit affixes opens the slate's editor", async ({ page }) => {
-  const { planner, slates } = await openSlates(page, null);
+test("Inventory opens the slate inventory, and Edit affixes opens the crafter on the slate", async ({ page }) => {
+  const { planner, slates } = await openSlates(page, fullBoard);
   await slates.inventoryButton().click();
   await expect(slates.inventory()).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(slates.inventory()).toBeHidden();
   await slates.tile("moth-fire").click();
   await slates.tool("Edit affixes").click();
-  await expect(slates.editor()).toBeVisible();
-  await expect(slates.editor()).toContainText("Sparks of Moth Fire");
+  await expect(slates.inventory()).toBeVisible();
+  await expect(slates.inventory().locator(".slate-craft-card")).toContainText("Sparks of Moth Fire");
+  await expect(slates.inventory().getByRole("button", { name: "Save Changes", exact: true })).toBeVisible();
   await planner.expectNoErrors();
 });
 
@@ -171,81 +174,5 @@ test("hovering a slate shows its affixes", async ({ page }) => {
     await expect(slates.tooltip()).toBeVisible({ timeout: 500 });
   }).toPass();
   await expect(slates.tooltip()).toContainText("Pedigree of Gods");
-  await planner.expectNoErrors();
-});
-
-// ---- The slate editor (a board slate's Edit affixes tool).
-async function openEditor(page, id = "corner-life") {
-  const { planner, slates } = await openSlates(page, null);
-  await slates.tile(id).click();
-  await slates.tool("Edit affixes").click();
-  await expect(slates.editor()).toBeVisible();
-  return { planner, slates };
-}
-const affixInputs = (slates) => slates.editor().locator(".slate-affix-row input");
-
-test("the slate editor shows the slate, its orientation tools and affixes; Add affix and Save Changes keep the edits", async ({
-  page,
-}) => {
-  const { planner, slates } = await openEditor(page);
-  const editor = slates.editor();
-  await expect(editor.locator("#slate-editor-title")).toHaveText("Edit Legendary Slate");
-  await expect(editor.locator("h2")).toHaveText("A Corner of Divinity");
-  await expect(editor.locator(".slate-craft-card")).toHaveText("A Corner of DivinityDIVINITY SLATE · LEGENDARY");
-  await expect(editor.locator(".slate-editor-shape button")).toHaveText([
-    "↻ Rotate",
-    "↶ Rotate back",
-    "↔ Flip H",
-    "↕ Flip V",
-  ]);
-  await expect(editor.locator(".slate-editor-shape img")).toHaveAttribute("src", /\S/);
-  const count = await affixInputs(slates).count();
-  expect(count).toBeGreaterThan(0);
-  await expect(editor.locator("legend")).toHaveText(`Affixes (${count})`);
-  await expect(editor.locator(".slate-affix-row span").first()).toHaveText("Slot 1");
-  const first = await affixInputs(slates).first().inputValue();
-  expect(first).not.toBe("");
-
-  await editor.getByRole("button", { name: "Add affix" }).click();
-  await expect(affixInputs(slates)).toHaveCount(count + 1);
-  await expect(editor.locator(".slate-affix-row span").last()).toHaveText(`Slot ${count + 1}`);
-  await expect(affixInputs(slates).last()).toHaveValue("");
-  await affixInputs(slates).last().fill("+10% Fire Damage");
-  await affixInputs(slates).first().fill("  ");
-  await editor.getByRole("button", { name: "Save Changes" }).click();
-  await expect(slates.toast()).toHaveText("Slate affixes saved");
-  await expect(editor).toBeHidden();
-  const saved = (await slates.stored()).affixOverrides["corner-life"];
-  expect(saved.at(-1)).toBe("+10% Fire Damage");
-  expect(saved).toHaveLength(count);
-  expect(saved).not.toContain(first);
-
-  // Cancel closes without saving.
-  await slates.tile("corner-life").click();
-  await slates.tool("Edit affixes").click();
-  await expect(affixInputs(slates).last()).toHaveValue("+10% Fire Damage");
-  await affixInputs(slates).last().fill("not kept");
-  await editor.getByRole("button", { name: "Cancel" }).click();
-  await expect(editor).toBeHidden();
-  expect((await slates.stored()).affixOverrides["corner-life"].at(-1)).toBe("+10% Fire Damage");
-  await planner.expectNoErrors();
-});
-
-test("the slate editor's Rotate turns the slate on the board and draws the editor again", async ({ page }) => {
-  const { planner, slates } = await openEditor(page);
-  const editor = slates.editor();
-  const rotation = async () => (await slates.stored())?.placements["corner-life"]?.rotation ?? 0;
-  const before = await affixInputs(slates).first().inputValue();
-  await affixInputs(slates).first().fill("typed, not saved");
-  await editor.getByRole("button", { name: "↻ Rotate" }).click();
-  await expect.poll(async () => (await slates.stored())?.placements["corner-life"]).toBeTruthy();
-  const turned = await rotation();
-  // The editor is drawn again from the slate: what was typed and not saved is gone.
-  await expect(affixInputs(slates).first()).toHaveValue(before);
-  // ↻ turns a quarter clockwise, ↶ back.
-  await editor.getByRole("button", { name: "↻ Rotate" }).click();
-  await expect.poll(rotation).toBe((turned + 90) % 360);
-  await editor.getByRole("button", { name: "↶ Rotate back" }).click();
-  await expect.poll(rotation).toBe(turned);
   await planner.expectNoErrors();
 });

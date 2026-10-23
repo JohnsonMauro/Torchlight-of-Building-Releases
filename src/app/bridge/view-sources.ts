@@ -118,17 +118,6 @@ export interface ViewSources {
     item: { name: string; classes: string; icon: string; equipped: boolean } | null;
     editor: InventoryItemEditorView | null;
   };
-  /** The slate editor: the board slate it is open for (`session` goes up at every drawing: opening, a rotation). */
-  slateEditor: DialogSession & {
-    id: string;
-    title: string;
-    name: string;
-    icon: string;
-    rotate: boolean;
-    flip: boolean;
-    rarity: string;
-    affixes: string[];
-  };
   /**
    * The Slate Inventory: the crafted slates (on the grid, "equipped"; beside it, "staged"; with their art, or their shape
    * in their god's color), or the crafter's mode, which the planner writes itself.

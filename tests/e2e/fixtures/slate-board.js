@@ -1,0 +1,146 @@
+// A full Divinity Slates board for the board specs: seven crafted slates on the Youga build — a Judgment lying over the
+// board (two slates on its lines), two copy slates, a Pedigree of Gods and the rest — placed as a real board was laid out.
+export const SLATE_BOARD = [
+  {
+    id: "judgment",
+    name: "Nether King's Divinity: Judgment",
+    god: "Nether King",
+    shape: "single",
+    rotation: 0,
+    flipX: 1,
+    flipY: 1,
+    affixes: [
+      "Adds 5–5 Base Ignite Damage",
+      "+1.2% Erosion Damage per stack of Wilt inflicted, up to 60 stacks",
+      "+20% chance to gain Blur when inflicting crowd control effects",
+      "+16% Blur Effect",
+    ],
+    affixGroups: {
+      fixed: ["Adds 5–5 Base Ignite Damage"],
+      brand: [
+        "+1.2% Erosion Damage per stack of Wilt inflicted, up to 60 stacks",
+        "+20% chance to gain Blur when inflicting crowd control effects",
+        "+16% Blur Effect",
+      ],
+    },
+    rarity: "legendary",
+    icon: "",
+  },
+  {
+    id: "pedigree",
+    name: "Pedigree of Gods",
+    template: "Pedigree of Gods",
+    god: "Goddess of Deception",
+    shape: "",
+    rotation: 0,
+    flipX: 1,
+    flipY: 1,
+    affixes: ["+8 Dexterity", "+6% Attack Speed", "−4 Skill Cost", "Barrier of Radiance", "Daze"],
+    rarity: "legendary",
+    icon: "",
+  },
+  {
+    id: "fallen-native",
+    name: "Fallen Starlight",
+    template: "Fallen Starlight",
+    god: "Goddess of Deception",
+    shape: "",
+    rotation: 0,
+    flipX: 1,
+    flipY: 1,
+    affixes: [
+      "+6% Minion Damage",
+      "+15% Bond Gaining Speed",
+      "+9% Area Damage",
+      "Gain 1 Tenacity Blessing stack every 1 second while having Barrier",
+      "Inflicts 1 additional stack of Ignite",
+    ],
+    rarity: "legendary",
+    icon: "",
+  },
+  {
+    id: "corner-life",
+    name: "A Corner of Divinity",
+    template: "A Corner of Divinity",
+    god: "Goddess of Deception",
+    shape: "",
+    rotation: 0,
+    flipX: 1,
+    flipY: 1,
+    affixes: [
+      "13.6% additional damage applied to Life",
+      "Minions deal 13.6% additional damage to Life",
+      "Inflicts 2 additional stacks of Ignite",
+    ],
+    rarity: "legendary",
+    icon: "",
+  },
+  {
+    id: "moth-fire",
+    name: "Sparks of Moth Fire",
+    template: "Sparks of Moth Fire",
+    god: "Goddess of Deception",
+    shape: "",
+    rotation: 0,
+    flipX: 1,
+    flipY: 1,
+    affixes: ["Copies the last Talent on the adjacent slate above to this slate. Unable to copy the Core Talent."],
+    copyRule: "Copies the last Talent on the adjacent slate above to this slate. Unable to copy the Core Talent.",
+    rarity: "legendary",
+    icon: "",
+  },
+  {
+    id: "fallen-focus",
+    name: "Fallen Starlight",
+    template: "Fallen Starlight",
+    god: "Goddess of Deception",
+    shape: "",
+    rotation: 0,
+    flipX: 1,
+    flipY: 1,
+    affixes: [
+      "+2.55% chance to avoid damage",
+      "+15.3% Minion Damage",
+      "+2 Max Focus Blessing Stacks",
+      "Inflicts 2 additional stacks of Ignite",
+    ],
+    rarity: "legendary",
+    icon: "",
+  },
+  {
+    id: "prairie-ablaze",
+    name: "When Sparks Set the Prairie Ablaze",
+    template: "When Sparks Set the Prairie Ablaze",
+    god: "Goddess of Deception",
+    shape: "",
+    rotation: 0,
+    flipX: 1,
+    flipY: 1,
+    affixes: ["Copies the last Talent on all adjacent slates. Unable to copy Core Talents."],
+    copyRule: "Copies the last Talent on all adjacent slates. Unable to copy Core Talents.",
+    rarity: "legendary",
+    icon: "",
+  },
+];
+export const SLATE_BOARD_PLACEMENTS = {
+  judgment: { column: 2, row: 2, rotation: 0 },
+  pedigree: { column: 2, row: 4, rotation: 0 },
+  "fallen-native": { column: 1, row: 3, rotation: 0 },
+  "corner-life": { column: 2, row: 2, rotation: 270 },
+  "moth-fire": { column: 3, row: 1, rotation: 0 },
+  "fallen-focus": { column: 4, row: 1, rotation: 0 },
+  "prairie-ablaze": { column: 4, row: 3, rotation: 0 },
+};
+
+/** `base` (a stored build) with the board above in place of its own slates. */
+export function withSlateBoard(base) {
+  const state = structuredClone(base);
+  state.equippedSlateIds = SLATE_BOARD.map((slate) => slate.id);
+  state.slates = {
+    geometryVersion: 4,
+    placements: structuredClone(SLATE_BOARD_PLACEMENTS),
+    parked: {},
+    inventory: structuredClone(SLATE_BOARD),
+  };
+  return state;
+}

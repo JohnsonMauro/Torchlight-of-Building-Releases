@@ -12,7 +12,7 @@ import { registerDialog } from "../../ui/dialog-registry";
 
 const commands = plannerCommands;
 
-/** The dialog, its header strip and its body; SlateEditorDialog shares the frame. */
+/** The dialog, its header strip and its body. */
 const HEADER =
   "slate-inventory-tabs dialog-head shrink-0 justify-start gap-3 px-4 py-3.25 max-[760px]:flex-wrap max-[760px]:gap-2";
 const CLOSE = "picker-close dialog-close ml-auto";

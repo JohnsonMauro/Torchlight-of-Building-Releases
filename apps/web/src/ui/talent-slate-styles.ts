@@ -1,6 +1,5 @@
 // The class lists the talent trees, the prism and the slate dialogs share (TalentTree, TalentPanelPickerDialog,
-// CoreTalentPickerDialog, PrismInventoryDialog, PrismCrafterDialog, SlateInventoryDialog, SlateCrafter,
-// SlateEditorDialog).
+// CoreTalentPickerDialog, PrismInventoryDialog, PrismCrafterDialog, SlateInventoryDialog, SlateCrafter).
 
 /**
  * A god family's colour, by the view model's `talent-family-<family>` class: `--talent-emblem`, which paints the tree's

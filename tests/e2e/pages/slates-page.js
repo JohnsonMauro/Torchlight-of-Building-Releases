@@ -51,9 +51,6 @@ export class SlatesPage {
   inventory() {
     return this.page.locator("#slate-inventory");
   }
-  editor() {
-    return this.page.locator("#slate-editor");
-  }
   tooltip() {
     return this.page.getByRole("tooltip");
   }
@@ -92,7 +89,6 @@ export class SlatesPage {
         placements: build.state.slates.placements,
         parked: build.state.slates.parked,
         inventory: build.state.slates.inventory,
-        affixOverrides: build.state.slates.affixOverrides,
       };
     }, LIBRARY_STORAGE_KEY);
   }

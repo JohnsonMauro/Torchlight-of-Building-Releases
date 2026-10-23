@@ -31,8 +31,6 @@
  * @property {() => void} undoLastChange Calculation-failure notice: the build's latest saved revision replaces it.
  * @property {() => void} openSafeMode Calculation-failure notice: reloads without calculations.
  * @property {() => void} resumeCalculations Safe-mode notice: reloads with calculations.
- * @property {(id: string, texts: string[]) => void} saveSlateEditor Slate editor: the non-empty affix texts become the
- *   slate's affixes; closes.
  * @property {(id: string) => void} placeCraftedSlate Slate Inventory, right-click: places the slate on the grid (or
  *   beside a full grid).
  * @property {() => void} startSlateCraft Slate Inventory: Craft Slate (the crafter on a new slate).

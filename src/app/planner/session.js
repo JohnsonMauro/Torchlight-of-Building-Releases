@@ -5,7 +5,6 @@ import {
   defaultPlannerState,
   selenaCompleteSkillLoadout,
   selenaScorchingBeamPacts,
-  selenaScorchingBeamSlates,
   selenaScorchingBeamTalentSetup,
   setCoverageContext,
   tliArt,
@@ -43,22 +42,17 @@ export let plannerState = loadPlannerState();
 upgradeExistingCorrodedItems(plannerState);
 // The open tree: the build's first one (applyPlannerState does the same for every build opened later).
 ui.activeTalentPanel = plannerState.talents?.selectedTrees?.[0] || "Goddess of Deception";
-export const equippedSlateIds = new Set(
-  plannerState.equippedSlateIds || selenaScorchingBeamSlates.slates.map((slate) => slate.id),
-);
-export const slatesForBoard = () => [
-  ...selenaScorchingBeamSlates.slates,
-  ...(plannerState.slates?.inventory || []).map(craftedSlateForBoard),
-];
+export const equippedSlateIds = new Set(plannerState.equippedSlateIds);
+export const slatesForBoard = () => (plannerState.slates?.inventory || []).map(craftedSlateForBoard);
 const validSlatePlacements = (placements) =>
   placements &&
   slatesForBoard()
     .filter((slate) => equippedSlateIds.has(slate.id))
     .every((slate) => placements[slate.id] && canPlaceSlate(slate, placements[slate.id], placements, slatesForBoard()));
-export let slatePlacements =
-  plannerState.slates?.geometryVersion === 4 && validSlatePlacements(plannerState.slates?.placements)
-    ? plannerState.slates.placements
-    : structuredClone(selenaScorchingBeamSlates.capturedPlacements);
+// Placements of an older board (no geometry version 4) or that no longer fit are dropped: the slates wait off the board.
+const boardPlacements = (slates) =>
+  slates?.geometryVersion === 4 && validSlatePlacements(slates?.placements) ? slates.placements : {};
+export let slatePlacements = boardPlacements(plannerState.slates);
 // Slates set beside the grid, by id: their stage position (percent) and transform.
 export let parkedSlates = plannerState.slates?.parked || {};
 // The sections that move slates replace these objects through the setters (an imported binding cannot be assigned).
@@ -102,7 +96,6 @@ export function capturePlannerState() {
       geometryVersion: 4,
       placements: slatePlacements,
       parked: parkedSlates,
-      affixOverrides: plannerState.slates?.affixOverrides || {},
       inventory: plannerState.slates?.inventory || [],
     },
     talentRanks: Object.fromEntries(talentRanks),
@@ -203,7 +196,7 @@ export function emptyPlannerState() {
     customSetups: [],
   };
   empty.equippedSlateIds = [];
-  empty.slates = { geometryVersion: 4, placements: {}, affixOverrides: {} };
+  empty.slates = { geometryVersion: 4, placements: {} };
   empty.talentRanks = {};
   empty.talents = {
     useCapturedRanks: false,
@@ -251,14 +244,8 @@ export function applyPlannerState(next) {
       if (next.skills.supportEnabled[supportStateKey(setup.name, support.name)] === false)
         disabledSupportNames.add(support.name);
   equippedSlateIds.clear();
-  (next.equippedSlateIds || selenaScorchingBeamSlates.slates.map((slate) => slate.id)).forEach((value) =>
-    equippedSlateIds.add(value),
-  );
-  setSlatePlacements(
-    next.slates?.geometryVersion === 4 && validSlatePlacements(next.slates?.placements)
-      ? next.slates.placements
-      : structuredClone(selenaScorchingBeamSlates.capturedPlacements),
-  );
+  next.equippedSlateIds.forEach((value) => equippedSlateIds.add(value));
+  setSlatePlacements(boardPlacements(next.slates));
   setParkedSlates(next.slates?.parked || {});
   talentRanks.clear();
   for (const panel of selenaScorchingBeamTalentSetup.panels.filter(
