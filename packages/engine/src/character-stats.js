@@ -29,7 +29,7 @@ import { heroTraitKeywordPlainLines } from "./text/inline-keywords.js";
 // Buckets: flat, increased (%; adds), additional (%; multiplies), gearFlat / gearIncreased
 // (the item's own gear base values; the % is local to that item), base (weapon base values).
 // A final value is computed only where the planner already uses that rule:
-//   attributes = flat × (1 + increased%)   (theoretical-sources.js Intelligence pooling)
+//   attributes = flat × (1 + increased%)   (ignite-ledger.js Intelligence pooling)
 //   gear Armor / Evasion / Energy Shield per item = gear flat × (1 + that item's gear%)
 // Life, Mana, Energy Shield, Armor and Evasion need character base values and the scope of
 // "Defense" that are not sourced, so those show their components instead of a final value.

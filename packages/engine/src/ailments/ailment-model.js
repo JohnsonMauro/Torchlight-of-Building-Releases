@@ -137,7 +137,7 @@ function ailmentRulesFor(ailmentKey) {
     ["stackLimit", new RegExp(`^\\+(\\d+) ${A} ?limit$`, "i")],
     // Extra stacks per successful application (talent batch chunk 3): "6% chance to inflict 1 additional stack(s) of Wilt"
     // (Shadowmaster [5,0]) is an expected 0.06 extra stack. Ignite's "Inflicts N additional stack(s)" stays on the
-    // Ignite ledger (packages/engine/src/theoretical-sources.js), so it is not read here.
+    // Ignite ledger (packages/engine/src/ailments/ignite-ledger.js), so it is not read here.
     [
       "extraStacks",
       new RegExp(`^(\\d+(?:\\.\\d+)?)% chance to inflict (\\d+) additional stack\\(s\\) of ${A}$`, "i"),
@@ -461,7 +461,7 @@ export function calculateAilment({
   // talent batch chunk 3): increased damage of each ailment from its own raw (uncapped) chance, whole steps of the given
   // chance (rounding down: provisional), like Fiery Fantasy reads the uncapped sum. Uncapped chance is user-confirmed
   // (2026-10-12: "The chance is not capped").
-  // Ignite takes it from the Ignite ledger (packages/engine/src/theoretical-sources.js), which every Ignite path shares.
+  // Ignite takes it from the Ignite ledger (packages/engine/src/ailments/ignite-ledger.js), which every Ignite path shares.
   for (const line of ailmentKey === "ignite" ? [] : modifierTexts) {
     const match = String(line.text).trim().match(CHANCE_TO_DAMAGE);
     if (!match) continue;

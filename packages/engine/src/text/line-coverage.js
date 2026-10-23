@@ -286,11 +286,9 @@ export function plannerEngines(planner = context) {
     ]),
     igniteChance,
     baseIgnite,
-    reaping:
-      Boolean(planner.theoretical?.combat?.reaping?.sources?.some((source) => source.minimum?.triggersPerSecond > 0)) ||
-      (planner.damagePaths?.twentySeconds?.reaping?.sources || []).some(
-        (source) => source.triggersPerSecond > 0 || source.intervalSeconds < Infinity,
-      ),
+    reaping: (planner.damagePaths?.twentySeconds?.reaping?.sources || []).some(
+      (source) => source.triggersPerSecond > 0 || source.intervalSeconds < Infinity,
+    ),
     anyHit: hits.length > 0,
     anyDot: ignite || otherAilment || dots.length > 0,
     spellHit: hits.some((hit) => setupTags(hit.setupKey).has("Spell")),
@@ -1443,8 +1441,9 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     if (known && !active) return "Inactive";
   }
   if (appliedByPlanner(text, planner)) return "In calc";
-  // Ignite-path conditional lines (theoretical-sources.js). Not-Ignited chance only changes the
-  // 5 s / 20 s windows, and nothing when the ordinary chance already reaches 100%.
+  // Ignite-path conditional lines (ignite-ledger.js). Not-Ignited chance only changes the
+  // 5 s / 20 s windows, and nothing when the ordinary chance already reaches 100%. The ledger lists it, but no Ignite
+  // model reads it since the Scorching Beam delivery was deleted (open: model it, or read Not modeled).
   if (planner?.theoretical && /^\+[\d.]+% Ignite Chance against enemies that haven['’]t been Ignited$/i.test(text)) {
     if (!(planner.theoretical.totals?.baseIgniteDamage?.max > 0)) return "Inactive";
     return planner.theoretical.totals.applicationChancePercent >= 100 ? "No DPS effect" : "In calc";
@@ -1762,7 +1761,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   // The generic wording (residual batch A-2): every held Blessing is pre-built and refreshed, so a longer duration changes nothing.
   if (/^\+[\d.]+% Blessing Duration$/i.test(text) && planner?.blessings?.entries)
     return planner.blessings.entries.some((entry) => entry.stacks > 0) ? "No DPS effect" : "Inactive";
-  // Ailment chance → ailment damage (Warlock [5,4]; packages/engine/src/ailments/ailment-model.js, packages/engine/src/theoretical-sources.js).
+  // Ailment chance → ailment damage (Warlock [5,4]; packages/engine/src/ailments/ailment-model.js, packages/engine/src/ailments/ignite-ledger.js).
   if (CHANCE_TO_DAMAGE.test(text) && planner) {
     const engines = plannerEngines(planner);
     return engines && (engines.ignite || engines.otherAilment) ? "In calc" : "Inactive";

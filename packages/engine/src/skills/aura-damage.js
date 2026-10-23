@@ -7,7 +7,7 @@
 //
 // kinds:
 //   ledger    — read directly by the hit / Ignite ledgers (scorching-beam-hit.js,
-//               theoretical-sources.js, planner.js ailment chance/duration).
+//               ignite-ledger.js, planner.js ailment chance/duration).
 //   damageType — "+X% additional <Type> Damage": applies to every damage of that type the
 //               build deals. Physical and Erosion reach the Trauma / Wilt engines through
 //               auraDamageModifierTexts below. The beam's hit model is Fire only.

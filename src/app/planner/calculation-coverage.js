@@ -624,13 +624,13 @@ export function heroTraitLineCoverage(heroId, traitName, line, selected) {
 
 // Selena (Sing with the Tide) trait lines, keyed by text so the base-trait copy reads like the trait (residual batch P7: a
 // fixed list keyed by trait name read 31 of 32 options Not modeled). Statuses follow what packages/engine/src/planner.js and
-// packages/engine/src/theoretical-sources.js model: the Bard state (-20% additional Channeled Skill Damage), the Tide effect (+15%), damage
+// packages/engine/src/ailments/ignite-ledger.js model: the Bard state (-20% additional Channeled Skill Damage), the Tide effect (+15%), damage
 // taken on the Tide, Wave Aria, Idyll stacks and Murmurs' Tide Effect, each In calc while its condition holds in the build.
 // Loud Song on its own is not modeled (the planner assumes Bard; Ceaseless Tide holds both).
 function selenaTideLineStatus(line, planner) {
   const text = cleanGameText(String(line || ""));
   const conditions = planner?.conditions || null;
-  // The Tide entries apply only with Selena (Sing with the Tide) selected (packages/engine/src/theoretical-sources.js checks the hero id).
+  // The Tide entries apply only with Selena (Sing with the Tide) selected (packages/engine/src/ailments/ignite-ledger.js checks the hero id).
   const selena = !planner?.state?.hero || planner.state.hero.selectedHeroId === "selena-sing-with-the-tide";
   const held = (key) => (!conditions ? "In calc" : selena && conditions[key] ? "In calc" : "Inactive");
   // Selena traits batch (2026-10-13; packages/engine/src/heroes/selena-tide.js): Loud Song is in calc only through Ceaseless Tide (deemed Loud Song

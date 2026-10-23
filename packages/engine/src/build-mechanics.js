@@ -550,7 +550,7 @@ export function collectBuildMechanics({
     }
     // Item-granted supports: game node 244 installs support stone P1-level on skillPos 1 (the Main Skill),
     // e.g. TOWER Sequence "Main Skill is supported by Lv. 25 Cataclysm" (affix 202674 family). Cataclysm
-    // feeds the installed-support path (theoretical-sources.js); other names stay unmodeled. The item's
+    // feeds the installed-support path (ignite-ledger.js); other names stay unmodeled. The item's
     // level is static: user-confirmed 2026-10-10 that Support Skill Level bonuses do NOT raise it (Lv.25 stays 25).
     match = text.match(/^(?:The )?Main Skill is supported by (?:a )?Lv\. (\d+) ([\w' :()-]+?)$/i);
     if (match && match[2] === "Cataclysm" && mainActive) {

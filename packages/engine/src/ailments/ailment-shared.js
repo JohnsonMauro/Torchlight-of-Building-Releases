@@ -30,7 +30,7 @@ export function isFireOnlyLedgerLine(line) {
 }
 
 // "+X% additional Damage Over Time" (gear, slates, prisms, …) now arrives through the shared DoT
-// ledger (build-mechanics.js → theoretical-sources.js, read by the shared classifier), so it is
+// ledger (build-mechanics.js → ignite-ledger.js, read by the shared classifier), so it is
 // not read here a second time.
 const sealedManaAndLife = /^\+(\d+(?:\.\d+)?)% additional damage when having both Sealed Mana and Life$/i;
 const versusCursed = /^\+(\d+(?:\.\d+)?)% additional damage against Cursed enemies$/i;
@@ -40,7 +40,7 @@ const perEnemyAilmentType =
 
 // Lines scoped to the inflicting skill's tags ("Ailment Damage dealt by Area Skills", `requiresSkillTag`) are
 // gated in the Ignite ledger on Scorching Beam, which also inflicts Trauma and Wilt in this planner (they apply
-// at its use rate), so the gate carries over unchanged (packages/engine/src/theoretical-sources.js `inactiveSources`).
+// at its use rate), so the gate carries over unchanged (packages/engine/src/ailments/ignite-ledger.js `inactiveSources`).
 // Penetration (`penetration`: build-mechanics' `penetration`, lines by damage type) lowers the target
 // resistance of this DoT's damage type: Erosion penetration reaches Wilt and Erosion skill DoTs
 // (research/penetration-target-trace-2026-10-07.md: the Erosion routine reads Erosion Penetration 0x1526).
@@ -48,7 +48,7 @@ const perEnemyAilmentType =
 const AILMENT_DAMAGE_TYPE = { ignite: "Fire", trauma: "Physical", wilt: "Erosion" };
 
 // Lines the Ignite ledger carries for the main skill only: its supports ("Support: …", build-mechanics.js and
-// theoretical-sources.js) and its level bonus past Lv.20. Other inflicting skills replace them with their own
+// ignite-ledger.js) and its level bonus past Lv.20. Other inflicting skills replace them with their own
 // (packages/engine/src/ailments/ailment-applications.js `scale`).
 export const MAIN_SKILL_SCOPED_SOURCE = /^Support: |^Scorching Beam level \d+$/;
 

@@ -551,8 +551,7 @@ export function panelInputs(planner) {
   const afflictionPerSecond =
     planner.afflictionRating?.afflictionPerSecond ?? planner.theoretical?.townTooltip?.passiveAfflictionPerSecond;
   set("F2006467", afflictionPerSecond, "afflictionRating.afflictionPerSecond");
-  const afflictionEffect =
-    shared?.afflictionEffectPercent ?? planner.theoretical?.calculation?.factors?.afflictionEffectPercent;
+  const afflictionEffect = shared?.afflictionEffectPercent;
   const afflictionAdditional =
     shared?.additionalAfflictionEffectFactor ?? planner.theoretical?.townTooltip?.factors?.additionalAfflictionEffect;
   if (Number.isFinite(afflictionEffect))
@@ -569,31 +568,18 @@ export function panelInputs(planner) {
 
   // ---- Reaping ----
   const reaping = planner.damagePaths?.sustained?.reaping;
-  const theoreticalReaping = planner.theoretical?.combat?.reaping;
-  const durationPercent = reaping?.durationPercent ?? theoreticalReaping?.durationBonusPercent;
-  const recoveryPercent = reaping?.recoveryPercent ?? theoreticalReaping?.recoverySpeedPercent;
+  const durationPercent = reaping?.durationPercent;
+  const recoveryPercent = reaping?.recoveryPercent;
   if (Number.isFinite(durationPercent))
-    set(
-      "A6008X",
-      1 + durationPercent / 100,
-      reaping ? "damagePaths.sustained.reaping.durationPercent" : "theoretical.combat.reaping.durationBonusPercent",
-    );
+    set("A6008X", 1 + durationPercent / 100, "damagePaths.sustained.reaping.durationPercent");
   if (Number.isFinite(recoveryPercent))
-    set(
-      "A6009X",
-      1 + recoveryPercent / 100,
-      reaping ? "damagePaths.sustained.reaping.recoveryPercent" : "theoretical.combat.reaping.recoverySpeedPercent",
-    );
+    set("A6009X", 1 + recoveryPercent / 100, "damagePaths.sustained.reaping.recoveryPercent");
   set(
     "A6008E",
     reaping?.additionalDurationFactor ?? 1,
     reaping ? "damagePaths.sustained.reaping.additionalDurationFactor" : "no additional Reaping Duration layer",
   );
-  set(
-    "A6009E",
-    reaping?.additionalRecoveryFactor ?? theoreticalReaping?.additionalRecoveryFactor ?? 1,
-    "reaping additionalRecoveryFactor",
-  );
+  set("A6009E", reaping?.additionalRecoveryFactor ?? 1, "reaping additionalRecoveryFactor");
   // No Reaping model (no Reaping source): the character-stats.js totals of the plain Reaping lines.
   if (!Number.isFinite(durationPercent) || !Number.isFinite(recoveryPercent)) {
     const totals = characterStatTotals(planner).byKey;
@@ -835,22 +821,14 @@ export function plannerPanelValue(planner, id, context = mainSkillContext(planne
       );
     case 140055: {
       const r = planner.damagePaths?.sustained?.reaping;
-      return val(
-        r?.recoveryPercent ?? planner.theoretical?.combat?.reaping?.recoverySpeedPercent,
-        "reaping recoveryPercent",
-      );
+      return val(r?.recoveryPercent, "reaping recoveryPercent");
     }
     case 140056: {
       const r = planner.damagePaths?.sustained?.reaping;
-      return val(
-        r?.durationPercent ?? planner.theoretical?.combat?.reaping?.durationBonusPercent,
-        "reaping durationPercent",
-      );
+      return val(r?.durationPercent, "reaping durationPercent");
     }
     case 140060: {
-      const factor =
-        planner.damagePaths?.sustained?.reaping?.additionalRecoveryFactor ??
-        planner.theoretical?.combat?.reaping?.additionalRecoveryFactor;
+      const factor = planner.damagePaths?.sustained?.reaping?.additionalRecoveryFactor;
       return val(Number.isFinite(factor) ? (factor - 1) * 100 : null, "reaping additionalRecoveryFactor");
     }
     case 140061: {
@@ -875,12 +853,9 @@ export function plannerPanelValue(planner, id, context = mainSkillContext(planne
         ? val(planner.ailments.trauma.town?.minimumDps, "ailments.trauma.town.minimumDps (base minimum)")
         : val(0, "no Trauma modeled");
     case 160001:
-      return (planner.theoretical?.totals?.baseIgniteDamage?.min ?? 0) > 0
-        ? val(
-            planner.theoretical?.townTooltip?.perStackDps?.min,
-            "theoretical.townTooltip.perStackDps.min (one stack, base minimum)",
-          )
-        : val(0, "no Ignite base");
+      return planner.ailments?.ignite?.modeled
+        ? val(planner.ailments.ignite.town?.minimumDps, "ailments.ignite.town.minimumDps (base minimum)")
+        : val(0, "no Ignite modeled");
     case 160003:
       return planner.ailments?.wilt?.modeled
         ? val(planner.ailments.wilt.town?.minimumDps, "ailments.wilt.town.minimumDps")

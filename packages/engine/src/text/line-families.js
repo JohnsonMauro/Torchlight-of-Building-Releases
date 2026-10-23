@@ -216,7 +216,7 @@ export const FAMILIES = [
     "b-reap-affliction",
     "b",
     "Reaping and Affliction variants (new triggers, Affliction on a timer, True Flame, Reap blocks)",
-    "reaping-model, theoretical-sources (Affliction); these wordings have no reader",
+    "reaping-model, ignite-ledger (Affliction); these wordings have no reader",
     "DoT on the dummy",
     /\bReap|Affliction/i,
   ),

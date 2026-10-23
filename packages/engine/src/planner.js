@@ -144,7 +144,7 @@ import {
   BURST_SETUP_KEY,
 } from "./heroes/rehan-traits.js";
 const B6_MODULE_KEYS = new Set(["overload", "chargeCalling", "irisGrowing", "irisVigilant"]);
-import { compileScorchingBeamIgniteSources } from "./theoretical-sources.js";
+import { compileIgniteLedger } from "./ailments/ignite-ledger.js";
 import {
   defaultConfigurableSupportConfig,
   specialSupportStarBonus,
@@ -2671,7 +2671,7 @@ function calculatePlannerOnce(
     equipment.candidateGearIgniteLimit +
     (talentSlate.candidateTalent.igniteLimit || 0) +
     (talentSlate.candidateSlate.igniteLimit || 0);
-  // The Ignite ledger (packages/engine/src/theoretical-sources.js) and the ailment crit still read a skill of their own: an
+  // The Ignite ledger (packages/engine/src/ailments/ignite-ledger.js) and the ailment crit still read a skill of their own: an
   // inert Lv.20 stub with no supports, never a setup of the build.
   const main = {
     name: "Scorching Beam",
@@ -3364,34 +3364,38 @@ function calculatePlannerOnce(
     pact,
     aimCastSpeedPercent: aim.averageCastSpeedPercent,
   });
-  let theoretical = compileScorchingBeamIgniteSources({
-    extraSources: {
-      ...mechanics.ignite,
-      intelligence: mechanics.intelligence,
-      fieryFantasy: coreNames.has("Fiery Fantasy"),
-      chanceToDamage: modifierTexts.filter((line) => CHANCE_TO_DAMAGE.test(String(line.text).trim())),
-    },
-    block,
-    coreTalents,
-    enemyOnTideDamageTakenPercent,
-    tideEffectFactor,
-    waveAriaPercent,
-    idyllPerStackPercent,
-    heroMemories,
-    main,
-    setups,
-    activeNames,
-    talentSlate,
-    equipment,
-    pact: ledgerPact,
-    pactState: state.pacts,
-    aura,
-    igniteLimit,
-    combat: damageCombat,
-    conditions,
-    heroId: state.hero.selectedHeroId,
-    reapingApplicationAttemptsPerSecond: beamCastRate.castsPerSecond,
-  });
+  // The Ignite ledger (packages/engine/src/ailments/ignite-ledger.js), compiled again below as Subtle Impact, Blur and the
+  // Blessings join it.
+  const compileIgnite = (late = {}) =>
+    compileIgniteLedger({
+      extraSources: {
+        ...mechanics.ignite,
+        intelligence: mechanics.intelligence,
+        fieryFantasy: coreNames.has("Fiery Fantasy"),
+        chanceToDamage: modifierTexts.filter((line) => CHANCE_TO_DAMAGE.test(String(line.text).trim())),
+      },
+      block,
+      coreTalents,
+      enemyOnTideDamageTakenPercent,
+      tideEffectFactor,
+      waveAriaPercent,
+      idyllPerStackPercent,
+      heroMemories,
+      main,
+      setups,
+      activeNames,
+      talentSlate,
+      equipment,
+      pact: ledgerPact,
+      pactState: state.pacts,
+      aura,
+      igniteLimit,
+      combat: damageCombat,
+      conditions,
+      heroId: state.hero.selectedHeroId,
+      ...late,
+    });
+  let theoretical = compileIgnite();
   conditions.fireInfiltration = false;
   if (
     !(skillDotSources.length || skillHitDotSources.length) ||
@@ -3435,7 +3439,6 @@ function calculatePlannerOnce(
   damageCombat.targetFireResistancePercent = ignitedResistance.dotPercent;
   damageCombat.ignitedFireResistance = ignitedResistance;
   const hasReaping =
-    Boolean(theoretical.combat.reaping?.sources.some((source) => source.minimum.triggersPerSecond > 0)) ||
     ((skillDotSources.length > 0 || skillHitDotSources.length > 0) &&
       (collectAllReapingSources(modifierTexts).length > 0 ||
         skillDotSources.some((source) => source.profile.builtInReaping) ||
@@ -3478,34 +3481,7 @@ function calculatePlannerOnce(
         ? subtleImpactLines.map((line) => ({ ...line, source: `Subtle Impact (${subtleImpactGrant})` }))
         : subtleImpactLines),
     );
-    theoretical = compileScorchingBeamIgniteSources({
-      extraSources: {
-        ...mechanics.ignite,
-        intelligence: mechanics.intelligence,
-        fieryFantasy: coreNames.has("Fiery Fantasy"),
-        chanceToDamage: modifierTexts.filter((line) => CHANCE_TO_DAMAGE.test(String(line.text).trim())),
-      },
-      block,
-      coreTalents,
-      enemyOnTideDamageTakenPercent,
-      tideEffectFactor,
-      waveAriaPercent,
-      idyllPerStackPercent,
-      heroMemories,
-      main,
-      setups,
-      activeNames,
-      talentSlate,
-      equipment,
-      pact: ledgerPact,
-      pactState: state.pacts,
-      aura,
-      igniteLimit,
-      combat: damageCombat,
-      conditions,
-      heroId: state.hero.selectedHeroId,
-      reapingApplicationAttemptsPerSecond: beamCastRate.castsPerSecond,
-    });
+    theoretical = compileIgnite();
   }
   // Loud Song (Selena with Ceaseless Tide, deemed Loud Song while Bard): "-20% additional Attack and Cast Speed". The cast part
   // is in the cast-rate ledger (packages/engine/src/skills/scorching-beam-cast-rate.js); the attack part reaches the weapon's attack speed here.
@@ -3746,37 +3722,7 @@ function calculatePlannerOnce(
     pact,
     aimCastSpeedPercent: aim.averageCastSpeedPercent,
   });
-  const compileFinal = (attemptsPerSecond = beamCastRate.castsPerSecond) =>
-    compileScorchingBeamIgniteSources({
-      extraSources: {
-        ...mechanics.ignite,
-        intelligence: mechanics.intelligence,
-        fieryFantasy: coreNames.has("Fiery Fantasy"),
-        chanceToDamage: modifierTexts.filter((line) => CHANCE_TO_DAMAGE.test(String(line.text).trim())),
-      },
-      blurEffects,
-      blessings,
-      block,
-      coreTalents,
-      enemyOnTideDamageTakenPercent,
-      tideEffectFactor,
-      waveAriaPercent,
-      idyllPerStackPercent,
-      heroMemories,
-      main,
-      setups,
-      activeNames,
-      talentSlate,
-      equipment,
-      pact: ledgerPact,
-      pactState: state.pacts,
-      aura,
-      igniteLimit,
-      combat: damageCombat,
-      conditions,
-      heroId: state.hero.selectedHeroId,
-      reapingApplicationAttemptsPerSecond: attemptsPerSecond,
-    });
+  const compileFinal = () => compileIgnite({ blurEffects, blessings });
   theoretical = compileFinal();
   // Blessings and Blur can change Affliction per second or Reap recovery: re-derive once with the final ledger.
   if (afflictionRating) {
@@ -5961,7 +5907,7 @@ function calculatePlannerOnce(
     }
     // Sage (hero trait audit B8): the Reaps per second Sword Lily Leaf reads (Husk reads facts.critHitsPerSecond).
     if (sageRates) {
-      const reapSources = damagePaths?.sustained?.reaping?.sources || theoretical.combat.reaping?.sources || [];
+      const reapSources = damagePaths?.sustained?.reaping?.sources || [];
       facts.sage = { reapsPerSecond: reapSources.reduce((sum, source) => sum + (source.reapsPerSecond || 0), 0) };
     }
     // Carino (hero trait audit B9): every modeled Projectile skill's uses per second (one ammo per cast, Q-H8), measured without the
@@ -6026,7 +5972,7 @@ function calculatePlannerOnce(
     // Consumption cores (packages/engine/src/talents/consumption-procs.js): the Main Skill's cast rate and the event rates their stack gains read.
     if (consumptionCores) {
       const modeledHits = skillHits.filter((hit) => hit.modeled);
-      const reapSources = damagePaths?.sustained?.reaping?.sources || theoretical.combat.reaping?.sources || [];
+      const reapSources = damagePaths?.sustained?.reaping?.sources || [];
       facts.consumption = {
         mainUsesPerSecond: mainUsesPerSecond || 0,
         hitsPerSecond: modeledHits.reduce((sum, hit) => sum + (hit.rate.hitsPerSecond || 0), 0),

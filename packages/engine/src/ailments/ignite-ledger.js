@@ -1,25 +1,25 @@
-import { firesAllureDurationSources } from "./skills/fires-allure.js";
-import { blessingRecoverySources } from "./defense/blessing-gear-effects.js";
-import { normalizePercentageText } from "./text/percentage-text.js";
-import { curseEffects } from "./skills/curse-model.js";
-import {
-  calculateReaping,
-  calculateTheoreticalIgnite,
-  expectedRetainedAilmentBaseSum,
-  expectedStrongestAilmentBase,
-  projectTooltipAfflictionRating,
-} from "./theoretical-damage.js";
-import { supportEffect } from "./supports/support-model.js";
-import { effectiveGearModifierTexts, skillLevelDamageMultiplier } from "./engine.js";
-import { collectReapingSources } from "./ailments/reaping-sources.js";
+// The Ignite ledger: every line of the build that reaches Ignite (base, increased, additional, chance, duration, limit,
+// inflicted stacks, Affliction effect, penetration), the combat states every damage over time shares, the passive
+// Affliction per second and the Reaping timing. It computes no Ignite damage: the generic ailment model
+// (ailment-model.js) reads base, chance, duration, limit and stacks from it, and the shared ailment layers
+// (ailment-shared.js) read its lines, for Ignite and for the Trauma / Wilt / skill DoT layers that inherit them.
+import { firesAllureDurationSources } from "../skills/fires-allure.js";
+import { blessingRecoverySources } from "../defense/blessing-gear-effects.js";
+import { normalizePercentageText } from "../text/percentage-text.js";
+import { curseEffects } from "../skills/curse-model.js";
+import { projectTooltipAfflictionRating } from "../theoretical-damage.js";
+import { supportEffect } from "../supports/support-model.js";
+import { effectiveGearModifierTexts, skillLevelDamageMultiplier } from "../engine.js";
+import { collectReapingSources } from "./reaping-sources.js";
 import {
   averagedResistanceFactor,
   maxAfflictionUptime,
   windowMaxAfflictionFraction,
-} from "./ailments/max-affliction-resistance.js";
-import { trueDamageSettleScale } from "./combat/true-damage.js";
+} from "./max-affliction-resistance.js";
 
 const value = (ledger, stat, type) => ledger[`${stat}:${type}`] || 0;
+// The rounding the town tooltip factors always had (four places).
+const round = (amount) => Number(amount.toFixed(4));
 // `detail` carries what the line does (its tooltip text and/or stat key) so consumers such as
 // the shared ailment layers can tell Fire/Elemental-only effects from generic ones.
 const entry = (source, value, category, confidence = "documented", detail = {}) => ({
@@ -31,16 +31,14 @@ const entry = (source, value, category, confidence = "documented", detail = {}) 
 });
 // Slate "+X% additional Fire Damage" lines, one factor each (in-game panel: 81.2515% =
 // 1.6318375 × 1.068 × 1.04). Falls back to the summed total when the per-line list is absent.
-export function slateAdditionalFireLines(
-  talentSlate,
-  total = talentSlate?.candidateSlate?.additionalFireDamagePercent || 0,
-) {
+function slateAdditionalFireLines(talentSlate, total) {
   const lines = talentSlate?.candidateSlateAdditionalFirePercents || [];
   const sum = lines.reduce((acc, item) => acc + item, 0);
   return lines.length && Math.abs(sum - total) < 1e-3 ? lines : total ? [total] : [];
 }
 
-export function compileScorchingBeamIgniteSources({
+// `main` is the skill the ledger's skill-scoped lines belong to (its supports, its tags, its level past 20).
+export function compileIgniteLedger({
   blurEffects,
   blessings = { damageSources: [] },
   block = { damageSources: [] },
@@ -61,12 +59,10 @@ export function compileScorchingBeamIgniteSources({
   igniteLimit,
   combat,
   conditions,
-  heroId = "selena-sing-with-the-tide",
-  reapingApplicationAttemptsPerSecond,
+  heroId,
   extraSources = {},
 }) {
   const curses = curseEffects(setups);
-  const enabled = main?.enabled !== false && activeNames.has("Scorching Beam");
   const supports = new Map(
     (main?.supports || []).filter((support) => support.enabled !== false).map((support) => [support.name, support]),
   );
@@ -125,7 +121,7 @@ export function compileScorchingBeamIgniteSources({
     entry("Pacts: damage", pact.totals.damagePercent || 0, "Increased damage"),
     entry("Pacts: damage over time", pact.totals.damageOverTimePercent || 0, "Increased damage"),
     // "+X% Area Damage" (attr 5719, skill tag Area) is not here: the user confirmed 2026-10-11 that Area
-    // Damage does not boost damage over time (it stays on the beam hits, scorching-beam-hit.js). It was
+    // Damage does not boost damage over time (it stays on the skill hits). It was
     // added 2026-10-09 from the Vorax Digits Ignite ratio (1.05000 only with +9% in the pool); that ratio
     // now needs another explanation (research/ignite-attribute-mapping-2026-10-09.md, "Superseded").
     ...(extraSources.increased || []).map((line) =>
@@ -136,8 +132,7 @@ export function compileScorchingBeamIgniteSources({
     .filter((line) => ["additionalDamagePercent", "additionalDamageOverTimePercent"].includes(line.stat))
     .map((line) => entry("Core talent: " + line.source, line.value, "Additional damage", line.condition));
   // Selena's Bard state "-20% additional Channeled Skill Damage" is not in this ledger. User-confirmed 2026-10-13 (Selena
-  // traits batch Q2): it scales only the channeled skill's direct hit damage (Scorching Beam's beam hits and its explosion,
-  // packages/engine/src/skills/scorching-beam-hit.js), never Ignite, Trauma, Wilt, a skill's own DoT or the Reaps, which all read this ledger.
+  // traits batch Q2): it scales only the channeled skill's direct hit damage, never Ignite, Trauma, Wilt, a skill's own DoT or the Reaps, which all read this ledger.
   // Before 2026-10-13 it was an unscoped -20% here (Ignite and Reaps ×0.8).
   const additionalSources = [];
   const intelligenceAdjustment = extraSources.intelligence || { extraFlat: 0, percent: 0 };
@@ -240,7 +235,7 @@ export function compileScorchingBeamIgniteSources({
   if (main?.effectiveLevel > 20) {
     additionalSources.push(
       entry(
-        `Scorching Beam level ${main.effectiveLevel}`,
+        `${main.name} level ${main.effectiveLevel}`,
         (skillLevelDamageMultiplier(main.effectiveLevel) - 1) * 100,
         "Additional damage",
         "TLIDB Skill Level: additional damage past Lv.20",
@@ -337,10 +332,9 @@ export function compileScorchingBeamIgniteSources({
   ].filter((item) => item.value);
   // "+X% Ignite Chance against enemies that haven't been Ignited" (affix 2214789): the same chance
   // field (2006480) gated on the target NOT being Ignited (notOthers 4000130). It is kept out of the
-  // summed chance: it only counts for attempts made while the dummy has no active Ignite. The
-  // 5 s / 20 s windows start on a clean dummy, so it raises the first application (and any
-  // re-application after the shared timer expires) in scorching-beam-delivery.js. Steady state is
-  // treated as Ignited (no effect there).
+  // summed chance: it only counts for attempts made while the dummy has no active Ignite (the first
+  // application on a clean dummy, a re-application after the shared timer expires). Listed only: no Ignite model
+  // reads it since the Scorching Beam delivery that applied it was deleted (open).
   const notIgnitedChanceSources = [
     entry(
       "Talents: vs dummy not yet Ignited (5 s / 20 s windows: first application, re-application after expiry)",
@@ -470,8 +464,7 @@ export function compileScorchingBeamIgniteSources({
   };
   // "+X% additional Ailment Damage dealt by Area Skills" (Domain Expansion, affix 183965584: attr 3604 {Area})
   // needs the Area tag on the skill that inflicts the ailment (user decision 2026-10-11). Ignite, and the
-  // Trauma / Wilt layers that inherit this ledger (packages/engine/src/ailments/ailment-shared.js), are inflicted by `main` (Scorching
-  // Beam: the planner applies every ailment at its use rate). Without the tag the line is listed in
+  // Trauma / Wilt layers that inherit this ledger (packages/engine/src/ailments/ailment-shared.js), are inflicted by `main`. Without the tag the line is listed in
   // `inactiveSources` with the reason; skill DoTs are not ailments and never read ailment lines.
   const igniteAuraSkillTags = { additionalAreaAilmentDamagePercent: "Area" };
   for (const [name, auraEntry] of auraEntries) {
@@ -631,46 +624,16 @@ export function compileScorchingBeamIgniteSources({
     .filter((item) => item.category === "Additional Ignite duration")
     .reduce((factor, item) => factor * Math.max(0, 1 + item.value / 100), 1);
   const durationSeconds = Math.max(0, 4 * Math.max(0, 1 + increasedDurationPercent / 100) * additionalDurationFactor);
-  const commonInput = {
-    baseIgniteDamage: { min: enabled ? baseRange.min : 0, max: enabled ? baseRange.max : 0 },
-    addedDamageEffectivenessPercent: main?.databaseLevel20?.addedDamageEffectivenessPercent || 41,
-    sourceCoefficientPercents: [-30],
-    increasedDamagePercents: increasedSources.map((item) => item.value),
-    additionalDamagePercents: additionalSources.map((item) => item.value),
-    afflictionRating: 0,
-    afflictionEffectPercents: afflictionEffectSources.map((item) => item.value),
-    additionalAfflictionEffectPercents: additionalAfflictionEffectSources.map((item) => item.value),
-    durationSeconds,
-    applicationsPerSecond: 1 / (main?.databaseLevel20?.castIntervalSeconds || 0.333),
-    stacksPerApplication: 1 + Math.max(0, flatAdditionalStacks),
-    // A build-wide "Cannot inflict Ignite" (gear, kismet; residual batch) stops every application (packages/engine/src/ailments/ailment-applications.js).
-    applicationChancePercent: extraSources.igniteBlocked
-      ? 0
-      : Math.min(
-          100,
-          Math.max(
-            0,
-            chanceSources.reduce((sum, item) => sum + item.value, 0),
-          ),
-        ),
-    maximumActiveStacks: igniteLimit,
-  };
-  const notIgnitedApplicationChancePercent = extraSources.igniteBlocked
+  // A build-wide "Cannot inflict Ignite" (gear, kismet; residual batch) stops every application (packages/engine/src/ailments/ailment-applications.js).
+  const applicationChancePercent = extraSources.igniteBlocked
     ? 0
     : Math.min(
         100,
         Math.max(
           0,
-          chanceSources.reduce((sum, item) => sum + item.value, 0) +
-            notIgnitedChanceSources.reduce((sum, item) => sum + item.value, 0),
+          chanceSources.reduce((sum, item) => sum + item.value, 0),
         ),
       );
-  const calculation = calculateTheoreticalIgnite({
-    ...commonInput,
-    afflictionRating: 0,
-    targetResistancePercent: 0,
-    penetrationPercents: [],
-  });
   const totalAfflictionEffectPercent = afflictionEffectSources.reduce((sum, item) => sum + item.value, 0);
   const gearAfflictionFromEffect =
     value(gear, "afflictionPerSecondPerAfflictionEffectPercent", "ratio") * totalAfflictionEffectPercent;
@@ -687,12 +650,6 @@ export function compileScorchingBeamIgniteSources({
     coreAfflictionRateSources.reduce((sum, line) => sum + line.value, 0);
   const passiveAfflictionPerSecond = Math.max(0, rawPassiveAfflictionPerSecond);
   const projectedTooltipAffliction = projectTooltipAfflictionRating(passiveAfflictionPerSecond);
-  const townTooltip = calculateTheoreticalIgnite({
-    ...commonInput,
-    afflictionRating: projectedTooltipAffliction,
-    targetResistancePercent: 0,
-    penetrationPercents: [],
-  });
   const active = (id) => conditions[id] !== false;
   const tideActive = heroId === "selena-sing-with-the-tide" && active("tideContact");
   const idyllStacks = Math.max(0, Math.min(15, combat.idyllStacks || 0));
@@ -730,18 +687,8 @@ export function compileScorchingBeamIgniteSources({
       entry(line.source, line.value, "Additional damage taken", line.condition, { text: line.text }),
     ),
   ].filter(Boolean);
-  const outgoing = fixedCombatSources.filter((item) => item.category === "Additional damage").map((item) => item.value);
-  const taken = fixedCombatSources
-    .filter((item) => item.category === "Additional damage taken")
-    .map((item) => item.value);
   const aimAverage = active("aim") ? ((combat.aimDamagePercent ?? 38.5) * combat.aimUptimePercent) / 100 : 0;
-  const aimPeak = active("aim") ? (combat.aimDamagePercent ?? 38.5) : 0;
-  const reapingSources = collectReapingSources(equipment, pactState, commonInput.applicationChancePercent);
-  const successfulIgnitesPerSecond = enabled
-    ? (Math.max(0, reapingApplicationAttemptsPerSecond ?? commonInput.applicationsPerSecond) *
-        commonInput.applicationChancePercent) /
-      100
-    : 0;
+  const reapingSources = collectReapingSources(equipment, pactState, applicationChancePercent);
   const reapingGearSources = (stat, label) => {
     const pattern = new RegExp(`^\\+([\\d.]+)% ${label}$`, "i");
     const listed = equipment.candidateItems.flatMap((item) =>
@@ -759,15 +706,6 @@ export function compileScorchingBeamIgniteSources({
         ? [entry("Equipped gear", total, label)]
         : [];
   };
-  const reapingDurationSources = [
-    ...heroMemories.lines
-      .filter((line) => ["reapingDurationPercent"].includes(line.stat))
-      .map((line) => entry(line.source + ": " + line.text, line.value, "Reaping Duration")),
-    ...reapingGearSources("reapingDurationPercent", "Reaping Duration"),
-    entry("Pacts", pact.totals.reapingDurationPercent || 0, "Reaping Duration"),
-    entry("Talents", talent.reapingDurationPercent || 0, "Reaping Duration"),
-    entry("Divinity Slates", slate.reapingDurationPercent || 0, "Reaping Duration"),
-  ].filter((item) => item.value);
   const reapingRecoverySources = [
     ...blessingRecoverySources(equipment, blessings).map((line) =>
       entry(
@@ -793,14 +731,13 @@ export function compileScorchingBeamIgniteSources({
       "Additional Reaping Recovery Speed",
     ),
   ].filter((item) => item.value);
-  const reapingDurationPercent = reapingDurationSources.reduce((sum, item) => sum + item.value, 0);
   const reapingRecoverySpeedPercent = reapingRecoverySources.reduce((sum, item) => sum + item.value, 0);
   const reapingAdditionalRecoverySpeedPercents = reapingAdditionalRecoverySources.map((item) => item.value);
   ledger.push(...reapingAdditionalRecoverySources);
   // "−X% All Resistance when the enemy has max Affliction" (affix 371197; game: enemy-side 5101–5103/5401
   // mod 1 while the enemy has state 4000900). Applied to the dummy's Fire Resistance only for the share of
-  // time the dummy sits at 100 Affliction (max-affliction-resistance.js). Order follows calculateTheoreticalIgnite:
-  // the reduction changes target resistance before penetration; negative resistance is allowed there.
+  // time the dummy sits at 100 Affliction (max-affliction-resistance.js): the reduction
+  // changes target resistance before penetration; negative resistance is allowed there.
   const maxAfflictionReductionSources =
     coreTalents.fixesFireResistance || coreTalents.fixedFireResistancePercent != null
       ? []
@@ -845,191 +782,6 @@ export function compileScorchingBeamIgniteSources({
     return maxAffliction.penetrationPercent + 100 * (1 - factor);
   };
   const steadyMaxAfflictionFraction = maxAffliction ? windowMaxAfflictionFraction(maxAffliction, 0) : 0;
-  // maxAfflictionFraction: share of the time the dummy is at max Affliction (steady state by default).
-  const combatInput = (afflictionRating, aimPercent, maxAfflictionFraction = steadyMaxAfflictionFraction) => ({
-    ...commonInput,
-    additionalDamagePercents: [
-      ...commonInput.additionalDamagePercents,
-      ...outgoing,
-      ...(aimPercent ? [aimPercent] : []),
-    ],
-    additionalDamageTakenPercents: taken,
-    afflictionRating: active("affliction") ? afflictionRating : 0,
-    targetResistancePercent: resistanceAtMaxAfflictionShare(maxAfflictionFraction),
-    penetrationPercents: penetrationSources.map((item) => item.value),
-  });
-  const sustained = calculateTheoreticalIgnite(combatInput(combat.afflictionAverage, aimAverage));
-  const peak = calculateTheoreticalIgnite(
-    combatInput(combat.afflictionPeak, aimPeak, combat.afflictionPeak >= 100 ? 1 : steadyMaxAfflictionFraction),
-  );
-  // The panel formula is retained above. The observed dummy DoT instead fits
-  // directly added ailment base without Scorching Beam's hit coefficients.
-  // Restrict this estimate to the verified one-stack case for now.
-  // Whole-run convention (user-decided 2026-10-19, "count the whole fight"): the held Ignite is the strongest of every
-  // attempt in a sustained run of sustainedWindowSeconds (default 20 s), the same run the generic ailment model
-  // (packages/engine/src/ailments/ailment-model.js sustainedSeconds) and the dummy recount's shared-timer chain count; it was the attempts of one
-  // Ignite duration.
-  const sustainedRunSeconds = Number(combat.sustainedWindowSeconds) || 20;
-  const strongestOneStack =
-    igniteLimit === 1 && enabled && baseRange.max > 0
-      ? (() => {
-          const input = combatInput(combat.afflictionAverage, aimAverage);
-          const ailmentOnly = calculateTheoreticalIgnite({
-            ...input,
-            addedDamageEffectivenessPercent: 100,
-            sourceCoefficientPercents: [],
-          });
-          const applicationRate = Math.max(0, reapingApplicationAttemptsPerSecond ?? input.applicationsPerSecond);
-          const applicationAttempts = sustainedRunSeconds * applicationRate;
-          const expectedBase = expectedStrongestAilmentBase({
-            min: baseRange.min,
-            max: baseRange.max,
-            chancePercent: input.applicationChancePercent,
-            attempts: applicationAttempts,
-          });
-          return {
-            baseRange: { ...baseRange },
-            mode: "one-stack",
-            maximumActiveStacks: 1,
-            stacksPerApplication: input.stacksPerApplication,
-            expectedBaseDamage: Number(expectedBase.toFixed(4)),
-            expectedDps: Number(((expectedBase * ailmentOnly.perStackDps.max) / baseRange.max).toFixed(4)),
-            applicationAttempts: Number(applicationAttempts.toFixed(4)),
-            durationSeconds: input.durationSeconds,
-            applicationChancePercent: input.applicationChancePercent,
-            notIgnitedApplicationChancePercent,
-            maxAffliction,
-            confidence: "experimental strongest-active-Ignite expectation; damage rolls again at each tick",
-          };
-        })()
-      : null;
-  const expectedActiveIgnite =
-    strongestOneStack ||
-    (enabled && baseRange.max > 0 && commonInput.applicationChancePercent > 0 && igniteLimit > 1
-      ? (() => {
-          const input = combatInput(combat.afflictionAverage, aimAverage);
-          const applicationRate = Math.max(0, reapingApplicationAttemptsPerSecond ?? input.applicationsPerSecond);
-          const modeled = calculateTheoreticalIgnite({
-            ...input,
-            addedDamageEffectivenessPercent: 100,
-            sourceCoefficientPercents: [],
-            applicationsPerSecond: applicationRate,
-          });
-          const applicationAttempts = sustainedRunSeconds * applicationRate;
-          const expectedBaseSum = expectedRetainedAilmentBaseSum({
-            min: baseRange.min,
-            max: baseRange.max,
-            chancePercent: input.applicationChancePercent,
-            attempts: applicationAttempts,
-            stacksPerApplication: input.stacksPerApplication,
-            maximumActiveStacks: igniteLimit,
-          });
-          const damagePerBase = modeled.perStackDps.max / baseRange.max;
-          const expectedDps = expectedBaseSum * damagePerBase;
-          return {
-            mode: "multi-stack",
-            baseRange: { ...baseRange },
-            expectedBaseSum,
-            damagePerBase,
-            expectedActiveStacks: modeled.sustainedStacks,
-            expectedDps,
-            dpsRange: { min: expectedDps, max: expectedDps },
-            applicationChancePercent: input.applicationChancePercent,
-            notIgnitedApplicationChancePercent,
-            maxAffliction,
-            applicationAttempts,
-            durationSeconds: input.durationSeconds,
-            maximumActiveStacks: igniteLimit,
-            stacksPerApplication: input.stacksPerApplication,
-            confidence:
-              "experimental multi-stack strongest-roll expectation; assumes stacks from one application share a base roll",
-          };
-        })()
-      : null);
-  const activeDotDps = strongestOneStack
-    ? { min: strongestOneStack.expectedDps, max: strongestOneStack.expectedDps }
-    : expectedActiveIgnite?.dpsRange || sustained.sustainedDps;
-  // A Reap that triggers on full Affliction settles the DoT while the target is at 100 rating.
-  const fullAfflictionScale =
-    active("affliction") && sustained.factors?.afflictionTaken > 0
-      ? calculateTheoreticalIgnite(combatInput(100, aimAverage)).factors.afflictionTaken /
-        sustained.factors.afflictionTaken
-      : 1;
-  // Affliction damage taken is 1 + rating × perPoint (the dummy recount rescales DoTs with it over time).
-  const afflictionPerPoint = active("affliction")
-    ? Math.max(0, (calculateTheoreticalIgnite(combatInput(100, aimAverage)).factors?.afflictionTaken ?? 1) - 1) / 100
-    : 0;
-  // Such a Reap fires while the dummy is at max Affliction, so the max-Affliction resistance
-  // reduction holds in full at that moment (steady-state DoT uses its time share).
-  const fullAfflictionResistanceScale =
-    maxAffliction && sustained.factors?.resistance > 0
-      ? calculateTheoreticalIgnite(combatInput(100, aimAverage, 1)).factors.resistance / sustained.factors.resistance
-      : 1;
-  // A Reap is True Damage: the Ignite it settles drops its "damage applied to Life" lines (patch notes 2026-10-15;
-  // packages/engine/src/combat/true-damage.js). Ignite's own ticks keep them.
-  const trueDamage = trueDamageSettleScale(additionalSources);
-  const modeledReapingSources = reapingSources.map((source) => {
-    const settledScale = source.trigger === "full Affliction" ? fullAfflictionScale : 1;
-    const settledResistanceScale = source.trigger === "full Affliction" ? fullAfflictionResistanceScale : 1;
-    const calculate = (damageOverTimeDps) =>
-      calculateReaping({
-        damageOverTimeDps,
-        baseReapingDurationSeconds: source.baseDurationSeconds,
-        baseRecoverySeconds: source.baseRecoverySeconds,
-        reapingDurationPercent,
-        reapingRecoverySpeedPercent,
-        additionalRecoverySpeedPercents: reapingAdditionalRecoverySpeedPercents,
-        afflictionPerSecond: passiveAfflictionPerSecond,
-        trigger: source.trigger,
-        afflictionRemovedPercent: source.afflictionRemovedPercent,
-        successfulApplicationsPerSecond: successfulIgnitesPerSecond,
-      });
-    return {
-      ...source,
-      successfulApplicationsPerSecond: ["inflicting Ignite", "inflicting an ailment"].includes(source.trigger)
-        ? successfulIgnitesPerSecond
-        : null,
-      settledAfflictionScale: settledScale,
-      settledResistanceScale,
-      trueDamageScale: trueDamage.scale,
-      minimum: calculate(activeDotDps.min * settledScale * settledResistanceScale * trueDamage.scale),
-      maximum: calculate(activeDotDps.max * settledScale * settledResistanceScale * trueDamage.scale),
-    };
-  });
-  const primaryReapingSource = modeledReapingSources[0];
-  const totalReaping = (bound) => ({
-    ...primaryReapingSource[bound],
-    reapingDps: modeledReapingSources.reduce((sum, source) => sum + source[bound].reapingDps, 0),
-  });
-  const reaping = primaryReapingSource
-    ? {
-        source: primaryReapingSource.source,
-        sources: modeledReapingSources,
-        trigger: primaryReapingSource.trigger,
-        baseDurationSeconds: primaryReapingSource.baseDurationSeconds,
-        baseRecoverySeconds: primaryReapingSource.baseRecoverySeconds,
-        durationBonusPercent: reapingDurationPercent,
-        recoverySpeedPercent: reapingRecoverySpeedPercent,
-        durationSources: reapingDurationSources,
-        recoverySources: reapingRecoverySources,
-        additionalRecoverySources: reapingAdditionalRecoverySources,
-        additionalRecoveryFactor: reapingAdditionalRecoverySpeedPercents.reduce(
-          (factor, value) => factor * (1 + value / 100),
-          1,
-        ),
-        activeDotDps,
-        trueDamageScale: trueDamage.scale,
-        trueDamageSources: trueDamage.sources,
-        activeDotSource: strongestOneStack
-          ? "experimental one-stack target Ignite"
-          : expectedActiveIgnite
-            ? "experimental multi-stack target Ignite"
-            : "theoretical target Ignite",
-        minimum: totalReaping("minimum"),
-        maximum: totalReaping("maximum"),
-        confidence: "theoretical; dummy active-DoT pool is not exposed by the character panel",
-      }
-    : null;
   const combatLedger = [...fixedCombatSources];
   if (aimAverage)
     combatLedger.push(
@@ -1095,22 +847,19 @@ export function compileScorchingBeamIgniteSources({
       `Affliction per second sums to ${Math.round(rawPassiveAfflictionPerSecond * 100) / 100} (a negative line such as "Affliction Per Second for every +X% Affliction Effect"); the build inflicts no Affliction per second (provisional floor at 0).`,
     );
   return {
-    calculation,
+    // The character panel's Ignite tooltip: its pooled factors and the Affliction the passive rate projects there.
     townTooltip: {
-      ...townTooltip,
+      factors: {
+        increasedDamagePercent: round(increasedSources.reduce((sum, item) => sum + item.value, 0)),
+        additionalDamage: round(additionalSources.reduce((factor, item) => factor * (1 + item.value / 100), 1)),
+        additionalAfflictionEffect: round(
+          additionalAfflictionEffectSources.reduce((factor, item) => factor * (1 + item.value / 100), 1),
+        ),
+      },
       passiveAfflictionPerSecond,
-      rawPassiveAfflictionPerSecond,
       projectedAfflictionRating: projectedTooltipAffliction,
     },
     combat: {
-      sustained,
-      peak,
-      strongestOneStack,
-      expectedActiveIgnite,
-      reaping,
-      fullAfflictionScale,
-      fullAfflictionResistanceScale,
-      afflictionPerPoint,
       maxAffliction,
       afflictionRemovers,
       ledger: combatLedger,
@@ -1121,10 +870,8 @@ export function compileScorchingBeamIgniteSources({
       baseIgniteDamage: baseRange,
       increasedDamagePercent: increasedSources.reduce((sum, item) => sum + item.value, 0),
       additionalInflictedStacks: Math.max(0, flatAdditionalStacks),
-      applicationChancePercent: commonInput.applicationChancePercent,
-      notIgnitedApplicationChancePercent,
+      applicationChancePercent,
       igniteDurationSeconds: durationSeconds,
-      supportedSkillAfflictionPerSecond: cataclysmEffect?.afflictionPerSecond || 0,
     },
     warnings,
   };

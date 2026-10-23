@@ -778,7 +778,7 @@ const TALENT_KEYS = {
   firePenetrationAgainstIgnitedPercent: "firePenetration",
   reapingDurationPercent: "reapingDuration",
   reapingRecoverySpeedPercent: "reapingRecovery",
-  igniteChanceAgainstNotIgnitedPercent: "chance", // conditional chance: theoretical-sources.js → 5 s / 20 s windows only
+  igniteChanceAgainstNotIgnitedPercent: "chance", // conditional chance: listed in ignite-ledger.js, read by no Ignite model (open)
   enemyAllResistanceAtMaxAfflictionPercent: "targetFireResistance", // time share at max Affliction (max-affliction-resistance.js)
   attackAndCastSpeedPercent: "castRate",
   castSpeedPercent: "castRate",
@@ -946,7 +946,7 @@ export function regexIgniteBucket(line, { mechanics, heroMemories, coreTalents }
       parsed = {
         bucket: "reapingRecoveryAdditional",
         key: "additionalReapingRecoverySpeedPercent",
-        how: "engine.js calculatePactCandidate → theoretical-sources.js (multiplies Reaping recovery)",
+        how: "engine.js calculatePactCandidate → ignite-ledger.js (multiplies Reaping recovery)",
       };
     else if (/additional damage taken$/i.test(text))
       parsed = { bucket: null, key: "additionalDamageTakenPercent", how: "engine.js calculatePactCandidate (defense)" };

@@ -1143,9 +1143,9 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
       { provisional: true },
     );
   }
-  // Fire Infiltration on the beam / Ignite path stays the existing condition (packages/engine/src/skills/scorching-beam-hit.js, theoretical-sources).
-  // Infiltration Effect (residual batch A-3): scales that type's +13% (keyword value × (1 + Σ effect)). The beam / Ignite
-  // path's own Fire Infiltration (packages/engine/src/skills/scorching-beam-hit.js) does not read it.
+  // The Ignite ledger's Fire Infiltration is its own condition (packages/engine/src/ailments/ignite-ledger.js,
+  // `conditions.fireInfiltration`). Infiltration Effect (residual batch A-3): scales that type's +13% (keyword value ×
+  // (1 + Σ effect)); the Ignite ledger's Fire Infiltration does not read it.
   const infiltrationEffect = (type) =>
     sum(
       find(PATTERNS.infiltrationEffect)
