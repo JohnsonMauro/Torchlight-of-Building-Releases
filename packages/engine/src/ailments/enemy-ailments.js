@@ -67,7 +67,7 @@ export function collectEnemyAilments({
   setups = [],
   activeNames = new Set(),
   modifierTexts = [],
-  mainName = "Scorching Beam",
+  mainName,
   applierNames = [],
   auraChance = null,
 } = {}) {

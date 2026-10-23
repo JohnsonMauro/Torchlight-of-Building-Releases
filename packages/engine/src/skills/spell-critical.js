@@ -293,14 +293,14 @@ export function spellCritical({
   const combatCriticalDamagePercent =
     criticalDamagePercent + conditionalSources.reduce((sum, item) => sum + item.value, 0);
   // Crit-only support lines ("+X% additional damage for the supported skill when it lands a Critical Strike": Critical
-  // Strike Damage Increase) multiply the crit hits only (research/support-batch-2026-10-12.md B1). The factor is applied
-  // by the caller to the beam hit cycle (packages/engine/src/planner.js); it never reaches Ignite or any DoT, and the crit damage
-  // figures above stay without it (Instant Smash and the town panel read those). Skill hits apply their own.
+  // Strike Damage Increase) multiply the crit hits only (research/support-batch-2026-10-12.md B1); the crit damage figures
+  // above stay without it (Instant Smash and the town panel read those). Skill hits apply their own.
   const critOnlySources = [
-    ...(
-      supportEffectsFor(main, { engine: main?.name === "Scorching Beam" ? "scorching-beam" : undefined })
-        .critOnlyAdditional || []
-    ).map((line) => ({ source: line.source, text: line.text, value: line.value })),
+    ...(supportEffectsFor(main).critOnlyAdditional || []).map((line) => ({
+      source: line.source,
+      text: line.text,
+      value: line.value,
+    })),
     // Build-wide "+X% additional damage on [<Tag>] Critical Strike" lines (packages/engine/src/text/crit-only-lines.js; residual batch A-2).
     ...critOnlyLinesFor(modifierTexts, main?.tags || []),
   ];
