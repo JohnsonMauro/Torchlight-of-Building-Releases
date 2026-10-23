@@ -2668,18 +2668,9 @@ function calculatePlannerOnce(
     equipment.candidateGearIgniteLimit +
     (talentSlate.candidateTalent.igniteLimit || 0) +
     (talentSlate.candidateSlate.igniteLimit || 0);
-  // The Ignite ledger (packages/engine/src/ailments/ignite-ledger.js) and the ailment crit still read a skill of their own: an
-  // inert Lv.20 stub with no supports, never a setup of the build.
-  const main = {
-    name: "Scorching Beam",
-    role: "main",
-    enabled: false,
-    supports: [],
-    baseLevel: 20,
-    addedLevels: 0,
-    effectiveLevel: 20,
-    tags: [],
-  };
+  // The skill the Ignite ledger's skill-scoped lines belong to (its tags, its level past 20, its Cataclysm): the main skill
+  // while it is enabled and active, otherwise none.
+  const ledgerMain = resolvedMain?.enabled && activeNames.has(resolvedMain.name) ? resolvedMain : null;
   const block = calculateBlock({
     equipment,
     talents: levelSources.talents,
@@ -2731,7 +2722,7 @@ function calculatePlannerOnce(
   };
   const collectMechanics = () =>
     collectBuildMechanics({
-      main: resolvedMain || main,
+      main: resolvedMain,
       setups,
       activeNames,
       modifierTexts,
@@ -3369,7 +3360,7 @@ function calculatePlannerOnce(
       waveAriaPercent,
       idyllPerStackPercent,
       heroMemories,
-      main,
+      main: ledgerMain,
       setups,
       activeNames,
       talentSlate,

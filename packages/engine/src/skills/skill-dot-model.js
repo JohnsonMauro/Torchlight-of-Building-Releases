@@ -1,6 +1,7 @@
 import { skillLevelDamageMultiplier } from "../engine.js";
 import { supportEffectsFor } from "../supports/support-effects.js";
 import { expectedStrongestApplication, windowAverageStrongest } from "../ailments/ailment-model.js";
+import { isMainSkillScoped } from "../ailments/ailment-shared.js";
 import { classifyDamageLine, routeDamageLine } from "../text/damage-line-classifier.js";
 import { normalizePercentageText } from "../text/percentage-text.js";
 import { AFFLICTION_DAMAGE_PER_POINT } from "../game-attribute-defaults.js";
@@ -28,7 +29,6 @@ const product = (values) => values.reduce((factor, value) => factor * (1 + value
 const round = (value) => Math.round(value * 10000) / 10000;
 
 // Shared-ledger entries that are scoped to another skill or to ailments only.
-const otherSkillScoped = /^Support: |^Scorching Beam level |Disintegrate/i;
 const ailmentOnly = /\bAilment\b|\bIgnite\b|Fiery Fantasy/i;
 
 const signedText = (value) => `${value >= 0 ? "+" : ""}${value}`;
@@ -315,10 +315,10 @@ export function calculateSkillDot({
   const typed = typedLines(damageType, modifierTexts, { spell: (profile.tags || []).includes("Spell") });
   const supports = supportLayers(setup, damageType, profile, { triggered });
   const ledger = shared?.ledger || {};
+  // The main skill's own lines (its supports, its level past 20) are this skill's only when it is the main skill; the
+  // DoT reads its own supports and level below either way.
   const keep = (line) =>
-    !otherSkillScoped.test(line.source || "") &&
-    !ailmentOnly.test(line.source || "") &&
-    !ailmentOnly.test(line.text || "");
+    !isMainSkillScoped(line) && !ailmentOnly.test(line.source || "") && !ailmentOnly.test(line.text || "");
   const sharedIncreased = (ledger.increased || []).filter(keep);
   const sharedAdditional = [...(ledger.additional || []), ...(ledger.extraTown || [])].filter(keep);
   const sharedCombat = [...(ledger.combatOutgoing || []), ...(ledger.extraCombat || [])].filter(keep);

@@ -39,18 +39,18 @@ const perEnemyAilmentType =
   /^Upon inflicting damage, \+(\d+(?:\.\d+)?)% additional Ailment Damage \(multiplies\) for every type of Ailment the enemy has$/i;
 
 // Lines scoped to the inflicting skill's tags ("Ailment Damage dealt by Area Skills", `requiresSkillTag`) are
-// gated in the Ignite ledger on Scorching Beam, which also inflicts Trauma and Wilt in this planner (they apply
-// at its use rate), so the gate carries over unchanged (packages/engine/src/ailments/ignite-ledger.js `inactiveSources`).
+// gated in the Ignite ledger on the main skill's tags and re-gated per inflicting skill
+// (packages/engine/src/ailments/ignite-ledger.js `inactiveSources`, ailment-applications.js).
 // Penetration (`penetration`: build-mechanics' `penetration`, lines by damage type) lowers the target
 // resistance of this DoT's damage type: Erosion penetration reaches Wilt and Erosion skill DoTs
 // (research/penetration-target-trace-2026-10-07.md: the Erosion routine reads Erosion Penetration 0x1526).
 // Physical has no resistance; the dummy has no armour against damage over time, so Trauma gets none.
 const AILMENT_DAMAGE_TYPE = { ignite: "Fire", trauma: "Physical", wilt: "Erosion" };
 
-// Lines the Ignite ledger carries for the main skill only: its supports ("Support: …", build-mechanics.js and
-// ignite-ledger.js) and its level bonus past Lv.20. Other inflicting skills replace them with their own
+// Lines the Ignite ledger carries for the main skill only: its supports ("Support: …", build-mechanics.js) and its level
+// bonus past Lv.20 (`mainSkillScoped`, ignite-ledger.js). Every inflicting skill replaces them with its own
 // (packages/engine/src/ailments/ailment-applications.js `scale`).
-export const MAIN_SKILL_SCOPED_SOURCE = /^Support: |^Scorching Beam level \d+$/;
+export const isMainSkillScoped = (line) => line.mainSkillScoped === true || /^Support: /.test(line.source || "");
 
 export function buildAilmentSharedLayers({
   igniteLedger,
@@ -84,7 +84,7 @@ export function buildAilmentSharedLayers({
       keep(line) &&
       !isDazeLine(line),
   );
-  const mainScoped = additional.filter((line) => MAIN_SKILL_SCOPED_SOURCE.test(line.source || ""));
+  const mainScoped = additional.filter(isMainSkillScoped);
   // "… dealt by Area Skills" lines: active ones carry `requiresSkillTag` (the main skill has the tag); the
   // ledger lists the ones the main skill lacks in `inactiveSources`. Both are re-gated per inflicting skill.
   const tagGated = additional

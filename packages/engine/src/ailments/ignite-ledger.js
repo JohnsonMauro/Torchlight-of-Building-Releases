@@ -66,7 +66,6 @@ export function compileIgniteLedger({
   const supports = new Map(
     (main?.supports || []).filter((support) => support.enabled !== false).map((support) => [support.name, support]),
   );
-  const supportLevel = (support) => Math.min(40, support.effectiveLevel ?? support.level);
   const talent = talentSlate.candidateTalent;
   const slate = talentSlate.candidateSlate;
   const gear = equipment.candidate;
@@ -241,6 +240,7 @@ export function compileIgniteLedger({
         (skillLevelDamageMultiplier(main.effectiveLevel) - 1) * 100,
         "Additional damage",
         "TLIDB Skill Level: additional damage past Lv.20",
+        { mainSkillScoped: true },
       ),
     );
   }
@@ -249,27 +249,9 @@ export function compileIgniteLedger({
     additionalSources.push(
       entry("Equipment: Ailment Damage Enhancement", ailmentEnhancement, "Additional ailment damage"),
     );
-  // Support values from the support progression data (packages/engine/src/supports/support-model.js). Control Spell's line is "additional Hit Damage",
-  // so it never reaches Ignite or the DoT layers that read this ledger.
-  for (const name of ["Control Spell", "Guard", "Refracted Prism"]) {
-    const support = supports.get(name);
-    const effect = support ? supportEffect(name, supportLevel(support)) : null;
-    if (effect && !effect.hitOnly) additionalSources.push(entry(`Support: ${name}`, effect.more, "Additional damage"));
-  }
-  const additionalIgnite = supports.get("Additional Ignite");
-  const additionalIgniteEffect = additionalIgnite
-    ? supportEffect("Additional Ignite", supportLevel(additionalIgnite))
-    : null;
-  if (additionalIgniteEffect) {
-    additionalSources.push(
-      entry(
-        "Support: Additional Ignite",
-        Math.min(igniteLimit * additionalIgniteEffect.perStack, additionalIgniteEffect.cap),
-        "Additional Ignite damage",
-      ),
-    );
-  }
-  const noble = supports.get("Scorching Beam: Disintegrate (Noble)");
+  // The main skill's supports reach this ledger through their clauses (build-mechanics.js `extraSources`: "Support: …"
+  // lines), and each inflicting skill's own supports through its applier (ailment-applications.js: `scale`, extra stacks,
+  // scoped chance). Additional Ignite's "additional Ignite Damage per Ignite stack" has no reader yet (open).
   const inflictedStackSources = [
     entry("Talents", talent.additionalIgniteStacks || 0, "Additional Ignite stacks inflicted"),
     entry(
@@ -278,7 +260,6 @@ export function compileIgniteLedger({
       "Additional Ignite stacks inflicted",
     ),
     entry("Equipment", value(gear, "additionalIgniteStacks", "flat"), "Additional Ignite stacks inflicted"),
-    entry("Support: Additional Ignite", additionalIgnite ? 1 : 0, "Additional Ignite stacks inflicted"),
   ].filter((item) => item.value);
   const flatAdditionalStacks = inflictedStackSources.reduce((sum, item) => sum + item.value, 0);
   const chanceSources = [
@@ -318,16 +299,6 @@ export function compileIgniteLedger({
       ),
     // `skillScoped`: lines of the main skill and its supports only. Every other entry is build-wide and is
     // the Ignite chance every inflicting skill starts from (packages/engine/src/ailments/ailment-applications.js igniteGlobalChanceSources).
-    entry(
-      "Support: Additional Ignite",
-      additionalIgniteEffect?.igniteChancePercent || 0,
-      "Ignite application chance",
-      "documented",
-      {
-        skillScoped: true,
-        text: `+${additionalIgniteEffect?.igniteChancePercent || 0}% Ignite chance for the supported skill`,
-      },
-    ),
     ...(extraSources.chance || []).map((line) =>
       entry(line.source, line.value, "Ignite application chance", "documented", { text: line.text, skillScoped: true }),
     ),
@@ -408,18 +379,6 @@ export function compileIgniteLedger({
     entry("Equipment: Ignite limit", value(gear, "igniteLimit", "flat"), "Active Ignite limit"),
     entry("Kismet: Volcano", pact.totals.igniteLimit || 0, "Active Ignite limit"),
   ].filter((item) => item.value);
-  if (noble) {
-    additionalSources.push(
-      entry("Disintegrate (Noble): stars", noble.starAdditionalDamagePercent ?? 20, "Additional damage"),
-    );
-    additionalSources.push(
-      entry(
-        "Disintegrate (Noble): additionally inflicted stacks",
-        Math.max(0, flatAdditionalStacks) * (noble.roll ?? 26),
-        "Additional Ignite damage",
-      ),
-    );
-  }
   const slateFireLines = slateAdditionalFireLines(talentSlate, slate.additionalFireDamagePercent || 0);
   for (const percent of slateFireLines)
     additionalSources.push(
