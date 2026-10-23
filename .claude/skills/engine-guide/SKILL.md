@@ -5,6 +5,14 @@ description: Rules for the calculation engine and game data — packages/engine/
 
 # Engine and game data
 
+## 0. The game's rules, for any character (owner, 2026-10-23)
+
+The engine is the game's rules, in layers: the rules and formulas → applied to the character (stats, gear, talents,
+skills, hero, pacts) → damage and survival. It is calibrated against real characters read from game logs, but a
+calibration corrects a rule for every character: never a constant, baseline, snapshot or setup captured from one
+character (the inherited Selena capture is being removed for that reason, `architecture-plan.md`). A number that does not
+match the game is an open question about a rule, checked against logs of more than one character.
+
 ## 1. Boundaries
 
 - `packages/engine/src/` is the pure domain: it imports only `packages/engine/src` and `packages/engine/data`. No DOM, no storage, no HTML helpers:
