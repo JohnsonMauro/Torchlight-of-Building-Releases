@@ -63,6 +63,7 @@ import {
   towerSequenceTexts,
   towerSequences,
   TRAIT_SLOT_GRANTS,
+  traitGroupOf,
   treeMaxCapacity,
   treeRules,
   validatePlannerState,
@@ -2531,7 +2532,9 @@ function resolveHero(tree, idMap, report, state) {
       add(report, "hero", "imported", `Trait path: ${trait.name}`);
       continue;
     }
-    state.hero.selectedTraits[`level${trait.level}`] = trait.name;
+    // The pick goes under its choice group's key (Bing picks two traits per tier, one in each group).
+    state.hero.selectedTraits[traitGroupOf(hero.id, trait.level, trait.name)?.selectionKey || `level${trait.level}`] =
+      trait.name;
     add(report, "hero", "imported", `Trait Lv ${trait.level}: ${trait.name}`);
   }
   // SS14 logs a tree hero's picks as activated tree nodes instead (treeActivatedNodes, printed beside an empty

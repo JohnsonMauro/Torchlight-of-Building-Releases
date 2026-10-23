@@ -17,6 +17,7 @@ import {
   TREE_ROW_LEVELS,
   EXTRA_PICK_LEVEL,
 } from "./heroes/hero-trait-tree.js";
+import { picksTraitsByTier, selectedTierTraits } from "./heroes/trait-choice-groups.js";
 import { legendaryBaseDefenseLines } from "./gear/legendary-base-lines.js";
 import { heroTraitKeywordPlainLines } from "./text/inline-keywords.js";
 
@@ -411,16 +412,23 @@ export function heroTraitStatLines(state = {}, baseTraitLevel = 1, levelBonus = 
   const tierLevel = (key, levelKey) =>
     slotTraitLevel(state.hero, [key, levelKey], (levelBonus.all || 0) + (levelBonus.nonBase || 0), levelExtras);
   if (base) picks.push({ trait: base, level: Math.max(1, Math.min(5, Number(baseTraitLevel) || 1)) }); // base-slot memory only (user-confirmed 2026-10-13)
-  // One-per-level picks. Tree heroes pick on the tree (below); a tree hero's selectedTraits stay read as before (a game-log
-  // import wrote Selena's path there before 2026-10-15; the planner UI never does). A revamped hero's earlier picks whose
-  // trait moved to another tree level no longer match here; packages/engine/src/heroes/hero-trait-tree.js migrates them into the tree.
-  for (const [key, name] of Object.entries(state.hero?.selectedTraits || {})) {
-    const levelKey = key.match(/(level\d+)/)?.[1];
-    if (!levelKey || (key.includes(":") && !key.startsWith(`${hero.id}:`))) continue;
-    const trait = traits.find((item) => item.name === name && item.level === Number(levelKey.slice(5)));
-    const level = trait ? tierLevel(key.replace(/:(?:upper|lower)$/, ""), levelKey) : 0;
-    if (trait && level > 0) picks.push({ trait, level });
-  }
+  // One-per-level picks: one per choice group, read from the group's key (packages/engine/src/heroes/trait-choice-groups.js).
+  // Tree heroes pick on the tree (below); a tree hero's selectedTraits stay read as before (a game-log import wrote
+  // Selena's path there before 2026-10-15; the planner UI never does). A revamped hero's earlier picks whose trait moved
+  // to another tree level no longer match here; packages/engine/src/heroes/hero-trait-tree.js migrates them into the tree.
+  if (picksTraitsByTier(hero.id))
+    for (const { level: tier, selectionKey, trait } of selectedTierTraits(hero.id, state.hero?.selectedTraits)) {
+      const level = tierLevel(selectionKey.replace(/:(?:upper|lower)$/, ""), `level${tier}`);
+      if (level > 0) picks.push({ trait, level });
+    }
+  else
+    for (const [key, name] of Object.entries(state.hero?.selectedTraits || {})) {
+      const levelKey = key.match(/(level\d+)/)?.[1];
+      if (!levelKey || (key.includes(":") && !key.startsWith(`${hero.id}:`))) continue;
+      const trait = traits.find((item) => item.name === name && item.level === Number(levelKey.slice(5)));
+      const level = trait ? tierLevel(key.replace(/:(?:upper|lower)$/, ""), levelKey) : 0;
+      if (trait && level > 0) picks.push({ trait, level });
+    }
   if (tree) {
     heroTreeSelections(state.hero, hero.id).forEach((name, index) => {
       if (!name) return; // empty memory row

@@ -17,6 +17,7 @@ import {
   tlidbSupportCatalog,
   TREE_ROW_LEVELS,
   treeBoardLayout,
+  traitTierGroups,
   treeRowLevelKey,
 } from "#engine";
 import {
@@ -191,12 +192,6 @@ export interface HeroTraitsView {
 const SELENA_TIDE = "selena-sing-with-the-tide";
 const SAGE = "sage-licorice-note";
 const CARINO = "carino-ranger-of-glory";
-const BING = "bing-creative-genius";
-const CREATIVE_GENIUS_UPPER: Record<number, string[]> = {
-  45: ["Inspiration Overflow"],
-  60: ["Mind Domain", "Trouble Maker"],
-  75: ["Brainstorm", "Flash of Brilliance"],
-};
 const SCENT_INGREDIENTS = [
   ["damage", "Damage Ingredient"],
   ["defense", "Defense Ingredient"],
@@ -319,47 +314,21 @@ function traitTiers(heroId: string, hero: HeroState, traits: Trait[], treeHero: 
       const row = TREE_ROW_LEVELS.indexOf(level);
       return { level, memory: socket, row, pick: traitAt(picks[row], key), groups: [] };
     }
-    const choices = traits.filter((trait) => trait.level === level);
-    const group = (
-      groupChoices: Trait[],
-      selectionKey: string,
-      position: ChoiceGroupView["position"],
-    ): ChoiceGroupView => {
-      const legacySelection = hero.selectedTraits[key];
-      const selected =
-        hero.selectedTraits[selectionKey] ||
-        (groupChoices.some((choice) => choice.name === legacySelection) ? legacySelection : "");
+    const groups = traitTierGroups(heroId, level).map(({ position, selectionKey, choices }): ChoiceGroupView => {
+      const selected = hero.selectedTraits[selectionKey] || "";
       return {
         label: position ? `Level ${level} ${position} trait choice` : null,
         position,
         selectionKey,
-        choices: groupChoices.map((choice) => ({
+        choices: choices.map((choice) => ({
           name: choice.name,
           art: choice.icon ?? null,
           levelKey: key,
           selected: selected === choice.name,
         })),
       };
-    };
-    if (heroId !== BING) return { level, memory: socket, row: null, groups: [group(choices, key, null)] };
-    const upperNames = new Set(CREATIVE_GENIUS_UPPER[level] || []);
-    return {
-      level,
-      memory: socket,
-      row: null,
-      groups: [
-        group(
-          choices.filter((choice) => upperNames.has(choice.name)),
-          `${key}:upper`,
-          "upper",
-        ),
-        group(
-          choices.filter((choice) => !upperNames.has(choice.name)),
-          `${key}:lower`,
-          "lower",
-        ),
-      ],
-    };
+    });
+    return { level, memory: socket, row: null, groups };
   });
 
   const rowMoves: Record<number, number[]> = {};
@@ -411,7 +380,7 @@ function traitTiers(heroId: string, hero: HeroState, traits: Trait[], treeHero: 
       supports: supportSlots(heroId, hero),
     },
     tiers,
-    dual: heroId === BING,
+    dual: traitTierGroups(heroId, TREE_ROW_LEVELS[0]).length > 1,
     extraRow,
     rowMoves,
   };

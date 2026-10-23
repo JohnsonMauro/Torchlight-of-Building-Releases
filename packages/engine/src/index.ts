@@ -150,6 +150,7 @@ export {
   treeRules,
 } from "./heroes/hero-trait-tree.js";
 export { CLOCKWORK_CORE, TRAIT_SLOT_GRANTS, YOUGA_ULTIMATE_ONE_ID } from "./heroes/trait-board-grants.js";
+export { traitGroupOf, traitTierGroups } from "./heroes/trait-choice-groups.js";
 
 // Pacts
 export { fateExtraSlots, fateSlotChoice, fateSlotChoices } from "./pacts/fate-slot-unlocks.js";

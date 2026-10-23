@@ -5,6 +5,7 @@ import { normalizeTalentTreeSelection } from "../talents/talent-selection-rules.
 import { validatePlannerState } from "./state-validation.ts";
 import type { StoredCraftedMemory, StoredPlannerState } from "./state-validation.ts";
 import { migrateTreeTraits } from "../heroes/hero-trait-tree.js";
+import { withTierTraitKeys } from "../heroes/trait-choice-groups.js";
 import { clampMemoryEnhancement, traitLevelBonusForEnhancement } from "../heroes/hero-memory-rules.js";
 import { AIM_UPTIME_AUTO_SENTINEL } from "../skills/aim-model.js";
 import { migrateLegendaryEquipment } from "./legendary-text-migrations.js";
@@ -67,6 +68,13 @@ export type PlannerStateDiff = Record<
 
 // Fields that packages/engine/src/heroes/hero-trait-tree.js migrateTreeTraits has moved into hero.treeTraits. Heroes and loadouts reach here
 // validated, so always as objects.
+/** A stored hero loadout with its trait picks under their choice groups' keys (withTierTraitKeys). */
+function withTierLoadoutKeys<T extends { selectedTraits?: Record<string, string> }>(heroId: string, loadout: T): T {
+  return loadout.selectedTraits
+    ? { ...loadout, selectedTraits: withTierTraitKeys(heroId, loadout.selectedTraits) }
+    : loadout;
+}
+
 function withoutLegacyTreeFields<T extends { selenaDanceTraits?: unknown }>(hero: T): Omit<T, "selenaDanceTraits"> {
   const rest = { ...hero };
   delete rest.selenaDanceTraits;
@@ -225,6 +233,8 @@ export function normalizePlannerState(input: unknown = {}): PlannerState {
     : [];
   const memoryTraitLevels: Record<string, number> = { ...(value.hero?.memoryTraitLevels || {}) };
   const memoryNames: Record<string, string | undefined> = { ...(value.hero?.memories || {}) };
+  const selectedHeroId =
+    typeof value.hero?.selectedHeroId === "string" ? value.hero.selectedHeroId : defaults.hero.selectedHeroId;
   for (const [tier, id] of Object.entries(value.hero?.equippedMemoryIds || {})) {
     const memory = memoryInventory.find((item) => item.id === id);
     if (memory) {
@@ -277,9 +287,11 @@ export function normalizePlannerState(input: unknown = {}): PlannerState {
     hero: {
       ...defaults.hero,
       ...withoutLegacyTreeFields(value.hero || {}),
-      selectedHeroId:
-        typeof value.hero?.selectedHeroId === "string" ? value.hero.selectedHeroId : defaults.hero.selectedHeroId,
-      selectedTraits: { ...(value.hero?.selectedTraits || {}) },
+      selectedHeroId,
+      // A by-tier hero's picks under an older key (the game-log import's "level45", Bing's group-less "<hero>:level45")
+      // move into their choice group's key (packages/engine/src/heroes/trait-choice-groups.js; 2026-10-23: they were
+      // counted next to the group's own pick, which the Hero Trait tab shows, so a trait counted twice or unseen).
+      selectedTraits: withTierTraitKeys(selectedHeroId, value.hero?.selectedTraits || {}),
       memories: memoryNames,
       memoryInventory,
       memoryTraitLevels,
@@ -305,7 +317,7 @@ export function normalizePlannerState(input: unknown = {}): PlannerState {
       heroLoadouts: Object.fromEntries(
         Object.entries(value.hero?.heroLoadouts || {}).map(([id, loadout]) => [
           id,
-          withoutLegacyTreeFields(structuredClone(loadout)),
+          withTierLoadoutKeys(id, withoutLegacyTreeFields(structuredClone(loadout))),
         ]),
       ),
     },
