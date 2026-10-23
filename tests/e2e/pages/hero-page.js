@@ -1,5 +1,5 @@
 // The hero: the character column (portrait, name, trait), the Hero Trait tab (its trait tabs, the trait tiers with their
-// memory sockets, a tree hero's Trait Path, Sage's Scent Bottle, Carino's and Rosa's support slots), Change Hero in the
+// memory sockets, a hero's trait stage, a tree hero's Trait Path, Sage's Scent Bottle, Carino's and Rosa's support slots), Change Hero in the
 // open build's details (Builds view) and the dialogs they open.
 // Every selector the hero tests use lives here; traits and sockets are found by role and accessible name.
 import { expect } from "@playwright/test";
@@ -54,6 +54,18 @@ export class HeroPage {
   }
   pathCount() {
     return this.tree().locator(".selena-dance-tree header strong");
+  }
+  /** A hero's trait stage: its game screen with the traits and memories on it. */
+  stage() {
+    return this.tree().locator("[data-trait-stage]");
+  }
+  /** The lit links between picked traits on a tree stage. */
+  stageLinks() {
+    return this.stage().locator("[data-trait-link]");
+  }
+  /** A tree stage's "Available Traits: N". */
+  availableTraits() {
+    return this.stage().getByText(/^Available Traits: /);
   }
   /** A trait tier row of a tree hero ("0" = Lv45, "1" = Lv60, "2" = Lv75). */
   treeRow(row) {

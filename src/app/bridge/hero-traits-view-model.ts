@@ -64,6 +64,7 @@ interface TreeNode {
   base?: boolean;
   x: number;
   y: number;
+  screen: { x: number; y: number };
 }
 
 /** A trait button (a base trait, a tier choice, a tree pick). */
@@ -136,6 +137,10 @@ export interface TraitPathNodeView {
   /** "Base", "Lv.45" … */
   caption: string;
   levelKey: string;
+  /** The node it hangs from; null for the base trait. */
+  parent: string | null;
+  /** Where the game's Hero Trait screen draws it (TLIDB's tree coordinates). */
+  screen: { x: number; y: number };
 }
 export interface TraitPathLayout {
   height: number;
@@ -176,6 +181,11 @@ export interface HeroTraitsView {
   activeTab: HeroDetailTab;
   label: string;
   content: TraitTiersView | TraitPathView | ScentBottleView | null;
+  /**
+   * A tree hero's two halves at once, whichever tab is open: its memory rows and its tree, for a stage that draws both
+   * on the game's screen (apps/web/src/features/hero/hero-stages.ts); null for other heroes.
+   */
+  tree: { tiers: TraitTiersView; path: TraitPathView } | null;
 }
 
 const SELENA_TIDE = "selena-sing-with-the-tide";
@@ -431,6 +441,8 @@ function traitPath(heroId: string, hero: HeroState, traits: Trait[]): TraitPathV
         selected: chosen,
         locked: !node.base && !chosen && (!parentReady || atLimit),
         caption: node.base ? "Base" : trait?.level ? `Lv.${trait.level}` : "",
+        parent: node.parent ?? null,
+        screen: node.screen,
         levelKey: node.base
           ? "base"
           : selected.includes(node.name)
@@ -478,7 +490,8 @@ export function heroTraitsView(hero: HeroState, activeTab: HeroDetailTab): HeroT
   const selected = heroById(hero.selectedHeroId) as
     { id: string; name: string; trait: string; image?: string } | undefined;
   const characterLevel = hero.characterLevel ? String(hero.characterLevel) : "";
-  if (!selected) return { hero: null, characterLevel, tabs: null, activeTab, label: "No hero selected", content: null };
+  if (!selected)
+    return { hero: null, characterLevel, tabs: null, activeTab, label: "No hero selected", content: null, tree: null };
   const sage = selected.id === SAGE,
     treeHero = Boolean(heroTraitTree(selected.id));
   const traits = traitsOf(selected.id);
@@ -495,9 +508,12 @@ export function heroTraitsView(hero: HeroState, activeTab: HeroDetailTab): HeroT
     activeTab,
     label: `${selected.name}, ${selected.trait} hero traits`,
   };
-  if (sage && activeTab === "scent") return { ...view, content: scentBottle(hero) };
-  if (treeHero && activeTab === "path") return { ...view, content: traitPath(selected.id, hero, traits) };
-  return { ...view, content: traitTiers(selected.id, hero, traits, treeHero) };
+  const tree = treeHero
+    ? { tiers: traitTiers(selected.id, hero, traits, true), path: traitPath(selected.id, hero, traits) }
+    : null;
+  if (sage && activeTab === "scent") return { ...view, content: scentBottle(hero), tree };
+  if (tree && activeTab === "path") return { ...view, content: tree.path, tree };
+  return { ...view, content: tree ? tree.tiers : traitTiers(selected.id, hero, traits, false), tree };
 }
 
 /**

@@ -73,8 +73,9 @@ function layeredLayout(base, nodes, order) {
 
 const trees = new Map();
 /**
- * The tree of a hero, or null for a hero who picks one trait per level: { heroId, base, nodes: [{ name, x, y, parent?, base? }],
- * rows: 3, extraPick: { affix, level } | null }. A first-tier node's parent is the base trait.
+ * The tree of a hero, or null for a hero who picks one trait per level: { heroId, base, nodes: [{ name, x, y, screen, parent?,
+ * base? }], rows: 3, extraPick: { affix, level } | null }. x / y place the node on the planner's board, screen on the game's
+ * screen (TLIDB's coordinates). A first-tier node's parent is the base trait.
  */
 export function heroTraitTree(heroId) {
   if (trees.has(heroId)) return trees.get(heroId);
@@ -93,9 +94,12 @@ export function heroTraitTree(heroId) {
       .sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name))
       .map((node) => {
         const [x, y] = layout.get(node.name) || [200, BOARD_ROWS[0]];
+        // Where the game's own Hero Trait screen draws the node: TLIDB's tree coordinates are that screen's (Youga's
+        // radial tree matches the game screen within 3 px, 2026-10-22).
+        const screen = { x: node.x, y: node.y };
         return node.name === base
-          ? { name: node.name, x, y, base: true }
-          : { name: node.name, x, y, parent: node.parent };
+          ? { name: node.name, x, y, screen, base: true }
+          : { name: node.name, x, y, screen, parent: node.parent };
       });
     nodes.sort((a, b) => (b.base ? 1 : 0) - (a.base ? 1 : 0));
     tree = {

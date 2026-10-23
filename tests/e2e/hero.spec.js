@@ -1,5 +1,6 @@
-// HERO tab of the Build page's hero panel: the selected hero, the Hero Trait / Trait Path tabs, the trait tiers with
-// their memory sockets, picking and dragging a tree hero's traits, regular trait choices, Bing's paired choices, Sage's
+// HERO tab of the Build page's hero panel: the selected hero, Youga's trait tree on its game screen, the Hero Trait /
+// Trait Path tabs of the other tree heroes, the trait tiers with their memory sockets, picking and dragging a tree hero's
+// traits, regular trait choices, Bing's paired choices, Sage's
 // Scent Bottle, Carino's Special Ammo slots, Rosa's trait support slot, and an empty hero. Written against the legacy
 // tab before it moves to React, so both must pass it unchanged. The golden-master Youga build is The Ultimate One (a
 // tree hero) with no trait picked yet; other heroes are switched to through Change Hero.
@@ -20,17 +21,20 @@ async function openHero(page, state = youga) {
   return { planner, hero: new HeroPage(page) };
 }
 
-test("shows the selected hero, its trait tabs and its trait tiers", async ({ page }) => {
+test("shows the selected hero and, for Youga, the trait tree and memories on the game's screen, without tabs", async ({
+  page,
+}) => {
   const { planner, hero } = await openHero(page);
   await expect(hero.heroName()).toHaveText("Youga");
   await expect(hero.heroTrait()).toHaveText("The Ultimate One");
   await expect(hero.portrait().getByRole("img", { name: "Youga" })).toBeVisible();
-  await expect(hero.detailTabs()).toBeVisible();
-  await expect(hero.detailTab("Hero Trait")).toHaveClass(/\bactive\b/);
-  await expect(hero.detailTab("Trait Path")).not.toHaveClass(/\bactive\b/);
+  await expect(hero.detailTabs()).toBeHidden();
+  await expect(hero.stage()).toBeVisible();
   await expect(hero.tree()).toHaveAttribute("aria-label", "Youga, The Ultimate One hero traits");
   await expect(hero.button("I Am the Ultimate One")).toHaveAttribute("aria-pressed", "true");
+  await expect(hero.tree().locator(".selena-dance-node")).toHaveCount(11);
   await expect(hero.tree().locator(".hero-memory-socket")).toHaveCount(3);
+  await expect(hero.availableTraits()).toHaveText("Available Traits: 3");
   await planner.expectNoErrors();
 });
 
@@ -59,52 +63,55 @@ test("a memory socket opens the memory selector", async ({ page }) => {
   await planner.expectNoErrors();
 });
 
-test("Trait Path: a click picks a trait under the next row, a second click takes the path back", async ({ page }) => {
+test("Youga's stage: a click picks a trait under the next row and lights its link, a second click takes the path back", async ({
+  page,
+}) => {
   const { planner, hero } = await openHero(page);
-  await hero.detailTab("Trait Path").click();
-  await expect(hero.detailTab("Trait Path")).toHaveClass(/\bactive\b/);
-  await expect(hero.pathCount()).toHaveText("0/3 selected");
   await expect(hero.pathNode("I Will Hunt You Down")).toBeDisabled();
   await hero.pathNode("I Hold All in My Grasp").click();
   await expect(hero.toast()).toContainText("I Hold All in My Grasp selected under");
-  await expect(hero.pathCount()).toHaveText("1/3 selected");
+  await expect(hero.availableTraits()).toHaveText("Available Traits: 2");
   await expect(hero.pathNode("I Hold All in My Grasp")).toHaveClass(/\bselected\b/);
   await expect(hero.pathNode("I Will Hunt You Down")).toBeEnabled();
+  await expect(hero.stageLinks()).toHaveCount(1);
   expect((await hero.stored()).treeTraits[YOUGA][0]).toBe("I Hold All in My Grasp");
 
-  // The pick shows on the Hero Trait tab, in its row.
-  await hero.detailTab("Hero Trait").click();
-  await expect(hero.treeRow(0).getByRole("button", { name: "I Hold All in My Grasp", exact: true })).toBeVisible();
-
-  await hero.detailTab("Trait Path").click();
   await hero.pathNode("I Hold All in My Grasp").click();
   await expect(hero.toast()).toHaveText("Trait path shortened");
-  await expect(hero.pathCount()).toHaveText("0/3 selected");
+  await expect(hero.availableTraits()).toHaveText("Available Traits: 3");
+  await expect(hero.stageLinks()).toHaveCount(0);
   await planner.expectNoErrors();
 });
 
-test("a picked trait dragged onto another row moves there; a drop off the rows returns it", async ({ page }) => {
+test("Thea's Trait Path tab picks; a pick dragged onto another row moves there; a drop off the rows returns it", async ({
+  page,
+}) => {
+  const THEA = "thea-wisdom-of-the-gods";
   const { planner, hero } = await openHero(page);
+  await hero.selectHero(THEA);
+  await expect(hero.detailTab("Hero Trait")).toHaveClass(/\bactive\b/);
   await hero.detailTab("Trait Path").click();
-  await hero.pathNode("I Arrive Alongside Destiny").click();
-  await hero.pathNode("I Meet the Selves").click();
+  await expect(hero.detailTab("Trait Path")).toHaveClass(/\bactive\b/);
+  await expect(hero.pathCount()).toHaveText("0/3 selected");
+  await hero.pathNode("Prophecy of Truth").click();
+  await hero.pathNode("Predicted Justice").click();
   await expect(hero.pathCount()).toHaveText("2/3 selected");
   await hero.detailTab("Hero Trait").click();
-  const before = (await hero.stored()).treeTraits[YOUGA];
-  expect(before.slice(0, 2)).toEqual(["I Arrive Alongside Destiny", "I Meet the Selves"]);
+  const before = (await hero.stored()).treeTraits[THEA];
+  expect(before.slice(0, 2)).toEqual(["Prophecy of Truth", "Predicted Justice"]);
 
-  await hero.drag(hero.treeRow(0).getByRole("button", { name: "I Arrive Alongside Destiny" }), hero.treeRow(2));
-  await expect(hero.toast()).toContainText("Moved I Arrive Alongside Destiny under");
-  const moved = (await hero.stored()).treeTraits[YOUGA];
-  expect(moved[2]).toBe("I Arrive Alongside Destiny");
+  await hero.drag(hero.treeRow(0).getByRole("button", { name: "Prophecy of Truth" }), hero.treeRow(2));
+  await expect(hero.toast()).toContainText("Moved Prophecy of Truth under");
+  const moved = (await hero.stored()).treeTraits[THEA];
+  expect(moved[2]).toBe("Prophecy of Truth");
   expect(moved[0] || "").toBe("");
-  await expect(hero.treeRow(2).getByRole("button", { name: "I Arrive Alongside Destiny" })).toBeVisible();
+  await expect(hero.treeRow(2).getByRole("button", { name: "Prophecy of Truth" })).toBeVisible();
   // The click that ends the drag does not open the trait's row memory.
   await expect(hero.memorySelector()).not.toBeVisible();
 
-  await hero.drag(hero.treeRow(2).getByRole("button", { name: "I Arrive Alongside Destiny" }), hero.portrait());
+  await hero.drag(hero.treeRow(2).getByRole("button", { name: "Prophecy of Truth" }), hero.portrait());
   await expect(hero.toast()).toHaveText("Invalid drop · trait returned to its row");
-  expect((await hero.stored()).treeTraits[YOUGA]).toEqual(moved);
+  expect((await hero.stored()).treeTraits[THEA]).toEqual(moved);
   await planner.expectNoErrors();
 });
 

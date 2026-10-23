@@ -153,3 +153,19 @@ test("Sage's Scent Bottle: an elixir and three ingredient slots", () => {
     ],
   );
 });
+
+test("a tree hero's view carries both halves, the nodes placed where the game's screen draws them", () => {
+  for (const tab of ["traits", "path"]) {
+    const view = heroTraitsView(hero({ treeTraits: { [YOUGA]: ["I Hold All in My Grasp"] } }), tab);
+    assert.equal(view.tree.tiers.kind, "tiers");
+    assert.equal(view.tree.path.kind, "path");
+    assert.equal(view.tree.tiers.tiers.length, 3);
+    const node = (name) => view.tree.path.nodes.find((entry) => entry.name === name);
+    // TLIDB's coordinates (the game screen's): the base at the centre, Hold All down and right of it.
+    assert.deepEqual(node("I Am the Ultimate One").screen, { x: 648, y: 536 });
+    assert.deepEqual(node("I Hold All in My Grasp").screen, { x: 801, y: 685 });
+    assert.equal(node("I Am the Ultimate One").parent, null);
+    assert.equal(node("I Will Hunt You Down").parent, "I Hold All in My Grasp");
+  }
+  assert.equal(heroTraitsView(hero({ selectedHeroId: "bing-creative-genius" }), "traits").tree, null);
+});

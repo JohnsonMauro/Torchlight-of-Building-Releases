@@ -13,6 +13,7 @@ import { ScentTooltip } from "./MemoryTooltip";
 import { MemorySocket } from "./MemorySocket";
 import { HERO_STAGES, stageFits } from "./hero-stages";
 import { TraitStage } from "./TraitStage";
+import { TraitTreeStage } from "./TraitTreeStage";
 import { SkillTooltip } from "../skills/SkillTooltip";
 import type { TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import type {
@@ -120,7 +121,8 @@ export function HeroShowcase() {
 
 export function HeroDetailTabs() {
   const view = useViewSource("heroTraits");
-  const tabs = view?.tabs ?? null;
+  // A tree hero drawn on its game screen shows both halves there, so it has no tabs.
+  const tabs = view?.hero && HERO_STAGES[view.hero.id]?.kind === "tree" ? null : (view?.tabs ?? null);
   return (
     <div
       id="hero-detail-tabs"
@@ -189,10 +191,11 @@ function TreeContent({ view, drag }: { view: HeroTraitsView; drag: PickDrag }) {
         </button>
       </div>
     );
+  const stage = view.hero ? HERO_STAGES[view.hero.id] : undefined;
+  if (stage?.kind === "tree" && view.tree) return <TraitTreeStage stage={stage} tree={view.tree} />;
   if (content.kind === "scent") return <ScentBottle scent={content} />;
   if (content.kind === "path") return <TraitPath path={content} />;
-  const stage = view.hero ? HERO_STAGES[view.hero.id] : undefined;
-  if (stage && stageFits(stage, content)) return <TraitStage stage={stage} tiers={content} />;
+  if (stage?.kind === "tiers" && stageFits(stage, content)) return <TraitStage stage={stage} tiers={content} />;
   return <TraitTiers tiers={content} drag={drag} />;
 }
 

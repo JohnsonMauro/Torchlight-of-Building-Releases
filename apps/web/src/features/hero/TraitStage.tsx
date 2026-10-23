@@ -1,6 +1,6 @@
-// A hero's trait stage (hero-stages.ts): the game's Hero Trait screen as a decal, with the base trait, and for each tier
-// its trait choices (hexagons) above and below its memory, where the game draws them. A choice picks that trait; a memory
-// socket works as in the rows.
+// A hero's trait stage (hero-stages.ts): the game's Hero Trait screen as a decal (StageFrame), and for a tiers stage the base
+// trait and each tier's trait choices (hexagons) above and below its memory, where the game draws them. A choice picks
+// that trait; a memory socket works as in the rows. The tree stage is TraitTreeStage.
 import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { ChoiceGroupView, TraitTiersView } from "@legacy/app/bridge/hero-traits-view-model.ts";
@@ -19,10 +19,11 @@ import {
   STAGE_MEMORY,
   STAGE_NODE,
   type HeroStage,
+  type TierStage,
 } from "./hero-stages";
 
 /** A node on the decal, by its centre. */
-function Node({ x, y, size, children }: { x: number; y: number; size: number; children: ReactNode }) {
+export function Node({ x, y, size, children }: { x: number; y: number; size: number; children: ReactNode }) {
   const place: CSSProperties = { left: `${x}%`, top: `${y}%`, width: `${size}%` };
   return (
     <div className={STAGE_NODE} style={place}>
@@ -73,14 +74,13 @@ function useStageHeight(stage: { current: HTMLDivElement | null }): number {
 }
 
 /**
- * The stage: as tall as the window allows; the decal covers it (centred up and down), from its left edge, slid left only
- * as far as its nodes need to stay inside the right edge (the hero cut on the left then).
+ * A stage: as tall as the window allows; the decal covers it (centred up and down), from its left edge, slid left only
+ * as far as its nodes need to stay inside the right edge (`right`, a fraction of the decal's width; the hero cut on the
+ * left then). The children are placed on the decal.
  */
-export function TraitStage({ stage, tiers }: { stage: HeroStage; tiers: TraitTiersView }) {
-  const base = tiers.base.trait;
+export function StageFrame({ stage, right, children }: { stage: HeroStage; right: number; children: ReactNode }) {
   const element = useRef<HTMLDivElement>(null);
   const height = useStageHeight(element);
-  const right = (stage.columns[stage.columns.length - 1] + stage.node) / 100;
   // Cover: as tall as the stage or as wide, whichever is larger.
   const decalHeight = `${SCALE} * max(100cqh, 100cqw / ${stage.ratio})`,
     width = `${decalHeight} * ${stage.ratio}`;
@@ -88,8 +88,8 @@ export function TraitStage({ stage, tiers }: { stage: HeroStage; tiers: TraitTie
     height: `calc(${decalHeight})`,
     width: `calc(${width})`,
     top: `calc((100cqh - ${decalHeight}) / 2)`,
-    // Centred when narrower than the stage; else from its left edge, as far left as its nodes need.
-    left: `max(min(0px, calc(100cqw - ${width})), min(max(0px, calc((100cqw - ${width}) / 2)), calc(100cqw - ${right} * ${width})))`,
+    // Centred when narrower than the stage; else from its left edge, as far left as its nodes need; then the stage's shift.
+    left: `calc(max(min(0px, calc(100cqw - ${width})), min(max(0px, calc((100cqw - ${width}) / 2)), calc(100cqw - ${right} * ${width}))) - ${stage.shift ?? 0} * ${width})`,
   };
   return (
     <div
@@ -106,9 +106,19 @@ export function TraitStage({ stage, tiers }: { stage: HeroStage; tiers: TraitTie
       />
       <div className="absolute" style={decal}>
         <img src={stage.image} alt="" aria-hidden="true" className="absolute inset-0 size-full" />
-        <StageNodes stage={stage} tiers={tiers} base={base} />
+        {children}
       </div>
     </div>
+  );
+}
+
+/** A tiers stage (hero-stages.ts): the base trait, and per level a memory between its two trait choices. */
+export function TraitStage({ stage, tiers }: { stage: TierStage; tiers: TraitTiersView }) {
+  const right = (stage.columns[stage.columns.length - 1] + stage.node) / 100;
+  return (
+    <StageFrame stage={stage} right={right}>
+      <StageNodes stage={stage} tiers={tiers} base={tiers.base.trait} />
+    </StageFrame>
   );
 }
 
@@ -118,7 +128,7 @@ function StageNodes({
   tiers,
   base,
 }: {
-  stage: HeroStage;
+  stage: TierStage;
   tiers: TraitTiersView;
   base: TraitTiersView["base"]["trait"];
 }) {
@@ -178,7 +188,7 @@ function StageChoice({ choice, selectionKey }: { choice: ChoiceGroupView["choice
 }
 
 /** The check under a picked trait, as the game marks it (outside the hexagon, which clips its own content). */
-function PickedCheck() {
+export function PickedCheck() {
   return (
     <span className={STAGE_CHECK} aria-hidden="true">
       <StrokeIcon className="size-[70%] stroke-[3]">
