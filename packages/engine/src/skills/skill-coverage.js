@@ -155,19 +155,19 @@ function contributions(planner) {
   const anyDot =
     ailmentEntries.length > 0 ||
     (planner.skillDots || []).some((dot) => dot?.modeled) ||
-    (planner.theoretical?.totals?.baseIgniteDamage?.max > 0 && (planner.igniteAppliers || []).length > 0);
+    (planner.igniteLedger?.totals?.baseIgniteDamage?.max > 0 && (planner.igniteAppliers || []).length > 0);
   const igniteActive =
-    planner.theoretical?.totals?.baseIgniteDamage?.max > 0 &&
+    planner.igniteLedger?.totals?.baseIgniteDamage?.max > 0 &&
     (planner.igniteAppliers || []).some((applier) => applier.chancePercent > 0);
   if (igniteActive || !planner.activation) {
-    visit(planner.theoretical?.combat?.ledger, 0);
-    visit(planner.theoretical?.ledger, 0);
+    visit(planner.igniteLedger?.combat?.ledger, 0);
+    visit(planner.igniteLedger?.ledger, 0);
     visit(planner.mechanics, 0);
   } else if (anyDot) {
     // Without Ignite, only the non-Fire lines of the Ignite ledger reach a DoT (packages/engine/src/ailments/ailment-shared.js).
     const shared = (lines) => (Array.isArray(lines) ? lines : []).filter((line) => !isFireOnlyLedgerLine(line));
-    visit(shared(planner.theoretical?.combat?.ledger), 0);
-    visit(shared(planner.theoretical?.ledger), 0);
+    visit(shared(planner.igniteLedger?.combat?.ledger), 0);
+    visit(shared(planner.igniteLedger?.ledger), 0);
     const { generic, ignite, hit, ...rest } = planner.mechanics || {};
     visit(rest, 0);
     visit(

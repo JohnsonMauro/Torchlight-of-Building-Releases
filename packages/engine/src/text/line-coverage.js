@@ -265,7 +265,7 @@ export function plannerEngines(planner = context) {
   const setupTags = (key) => new Set(planner.activation.setups?.find((setup) => setup.setupKey === key)?.tags || []);
   const hits = (planner.skillHits || []).filter((hit) => hit.modeled);
   const dots = (planner.skillDots || []).filter((dot) => dot.modeled);
-  const baseIgnite = planner.theoretical?.totals?.baseIgniteDamage?.max > 0;
+  const baseIgnite = planner.igniteLedger?.totals?.baseIgniteDamage?.max > 0;
   const igniteAppliers = (planner.igniteAppliers || []).length > 0;
   // An applier with Ignite chance (packages/engine/src/ailments/ailment-applications.js): without one a base Ignite line starts nothing.
   const igniteChance = (planner.igniteAppliers || []).some((applier) => applier.chancePercent > 0);
@@ -671,7 +671,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
         const ailment = planner.ailments?.[key];
         const based =
           key === "ignite"
-            ? ailment?.base?.max > 0 || planner.theoretical?.totals?.baseIgniteDamage?.max > 0
+            ? ailment?.base?.max > 0 || planner.igniteLedger?.totals?.baseIgniteDamage?.max > 0
             : ailment?.base?.max > 0;
         return (
           based &&
@@ -680,7 +680,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
           )
         );
       }) ||
-      (planner.theoretical?.totals?.baseIgniteDamage?.max > 0 &&
+      (planner.igniteLedger?.totals?.baseIgniteDamage?.max > 0 &&
         (planner.mainSkill?.tags || []).some((item) => String(item).toLowerCase() === tag));
     return inflicts ? "In calc" : "Inactive";
   }
@@ -1444,14 +1444,14 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
   // Ignite-path conditional lines (ignite-ledger.js). Not-Ignited chance only changes the
   // 5 s / 20 s windows, and nothing when the ordinary chance already reaches 100%. The ledger lists it, but no Ignite
   // model reads it since the Scorching Beam delivery was deleted (open: model it, or read Not modeled).
-  if (planner?.theoretical && /^\+[\d.]+% Ignite Chance against enemies that haven['’]t been Ignited$/i.test(text)) {
-    if (!(planner.theoretical.totals?.baseIgniteDamage?.max > 0)) return "Inactive";
-    return planner.theoretical.totals.applicationChancePercent >= 100 ? "No DPS effect" : "In calc";
+  if (planner?.igniteLedger && /^\+[\d.]+% Ignite Chance against enemies that haven['’]t been Ignited$/i.test(text)) {
+    if (!(planner.igniteLedger.totals?.baseIgniteDamage?.max > 0)) return "Inactive";
+    return planner.igniteLedger.totals.applicationChancePercent >= 100 ? "No DPS effect" : "In calc";
   }
   // Max-Affliction resistance reduction: applied to Ignite for the time the dummy sits at max Affliction.
-  if (planner?.theoretical && /^[+-][\d.]+% All Resistance when the enemy has max Affliction$/i.test(text)) {
-    const maxAffliction = planner.theoretical.combat?.maxAffliction;
-    return planner.theoretical.totals?.baseIgniteDamage?.max > 0 && Number.isFinite(maxAffliction?.firstMaxSeconds)
+  if (planner?.igniteLedger && /^[+-][\d.]+% All Resistance when the enemy has max Affliction$/i.test(text)) {
+    const maxAffliction = planner.igniteLedger.combat?.maxAffliction;
+    return planner.igniteLedger.totals?.baseIgniteDamage?.max > 0 && Number.isFinite(maxAffliction?.firstMaxSeconds)
       ? "In calc"
       : "Inactive";
   }
@@ -1469,11 +1469,11 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     // added-Erosion attack; core audit batch B4): the generic rule judges it on the build's hits and DoTs of that type.
     const ailmentPresent =
       key === "ignite"
-        ? planner?.theoretical?.totals?.baseIgniteDamage?.max > 0
+        ? planner?.igniteLedger?.totals?.baseIgniteDamage?.max > 0
         : planner?.ailments?.[key]?.base?.max > 0;
     if ((key === "ignite" || planner?.activation) && !ailmentPresent && classifyDamageLine(text)?.damageTypes?.size > 0)
       break;
-    if (key === "ignite") return planner?.theoretical?.totals?.baseIgniteDamage?.max > 0 ? "In calc" : "Inactive";
+    if (key === "ignite") return planner?.igniteLedger?.totals?.baseIgniteDamage?.max > 0 ? "In calc" : "Inactive";
     return planner?.ailments?.[key]?.base?.max > 0 ? "In calc" : "Inactive";
   }
   if (collectDamagingAilmentChance([line]).length || collectAilmentDuration([line]).length) return "In calc";
@@ -1573,7 +1573,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     // skill hits and DoTs. The route's default damage type is Fire (the Ignite), so a Fire penetration line reads In calc.
     const dotRoute = routeDamageLine(generic, { skillTags: new Set(planner.mainSkill?.tags || []), hitActive: false });
     const fireOnly = Boolean(generic.damageTypes) || generic.ailments?.has("ignite");
-    const canIgnite = planner.theoretical?.totals?.baseIgniteDamage?.max > 0;
+    const canIgnite = planner.igniteLedger?.totals?.baseIgniteDamage?.max > 0;
     const dotApplies = dotRoute.dot && (!fireOnly || canIgnite);
     if (dotApplies || dotRoute.penetration) return "In calc";
     return skillHitApplies || skillDotApplies ? "In calc" : "Inactive";
@@ -1586,7 +1586,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     const key = ailmentNamed[1].toLowerCase();
     const present =
       key === "ignite"
-        ? planner?.theoretical?.totals?.baseIgniteDamage?.max > 0
+        ? planner?.igniteLedger?.totals?.baseIgniteDamage?.max > 0
         : planner?.ailments?.[key]?.base?.max > 0;
     if (!present) return "Inactive";
   }

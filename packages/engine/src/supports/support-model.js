@@ -4,7 +4,6 @@ import { supportProgression } from "../../data/skills/support-progression.genera
 // Values come from the TLIDB support progression tables (packages/engine/data/skills/support-progression.generated.js) at the
 // support's level: https://tlidb.com/en/{Additional_Ignite,Control_Spell,Guard,Refracted_Prism,Cataclysm}
 // Model parameters come from tooltips, never from held-out removal DPS.
-export const modeledSupportNames = ["Additional Ignite", "Control Spell", "Guard", "Refracted Prism"];
 
 // One progression cell → its numbers ("a/b" fractions, "a,b" pairs).
 const cellNumbers = (raw) =>

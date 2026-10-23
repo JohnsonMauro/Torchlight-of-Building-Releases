@@ -317,7 +317,7 @@ export interface PlannerResult {
   supportEffects: ResultSection;
   talentSlate: ResultSection;
   tangles: ResultSection;
-  theoretical: ResultSection;
+  igniteLedger: ResultSection;
   weaponAttack: ResultSection;
   weaponToSpells: ResultSection;
   windRhythmTerra: ResultSection;
@@ -396,7 +396,7 @@ export const plannerResultKeys = [
   "supportEffects",
   "talentSlate",
   "tangles",
-  "theoretical",
+  "igniteLedger",
   "weaponAttack",
   "weaponToSpells",
   "windRhythmTerra",

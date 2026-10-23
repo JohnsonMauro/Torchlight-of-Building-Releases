@@ -3395,11 +3395,11 @@ function calculatePlannerOnce(
       heroId: state.hero.selectedHeroId,
       ...late,
     });
-  let theoretical = compileIgnite();
+  let igniteLedger = compileIgnite();
   conditions.fireInfiltration = false;
   if (
     !(skillDotSources.length || skillHitDotSources.length) ||
-    theoretical.townTooltip.passiveAfflictionPerSecond + skillDotAfflictionRate <= 0
+    igniteLedger.townTooltip.passiveAfflictionPerSecond + skillDotAfflictionRate <= 0
   )
     conditions.affliction = false;
   // Automatic mode derives the dummy's Affliction rating from the build: Affliction per second,
@@ -3415,7 +3415,7 @@ function calculatePlannerOnce(
     damageCombat.afflictionDerivation = derived.text;
     return derived;
   };
-  let afflictionRating = resolveAfflictionRating(theoretical);
+  let afflictionRating = resolveAfflictionRating(igniteLedger);
   const firesAllure = calculateFiresAllure({
     active: coreTalents.firesAllure,
     limit: igniteLimit,
@@ -3481,7 +3481,7 @@ function calculatePlannerOnce(
         ? subtleImpactLines.map((line) => ({ ...line, source: `Subtle Impact (${subtleImpactGrant})` }))
         : subtleImpactLines),
     );
-    theoretical = compileIgnite();
+    igniteLedger = compileIgnite();
   }
   // Loud Song (Selena with Ceaseless Tide, deemed Loud Song while Bard): "-20% additional Attack and Cast Speed". The cast part
   // is in the cast-rate ledger (packages/engine/src/skills/scorching-beam-cast-rate.js); the attack part reaches the weapon's attack speed here.
@@ -3723,12 +3723,12 @@ function calculatePlannerOnce(
     aimCastSpeedPercent: aim.averageCastSpeedPercent,
   });
   const compileFinal = () => compileIgnite({ blurEffects, blessings });
-  theoretical = compileFinal();
+  igniteLedger = compileFinal();
   // Blessings and Blur can change Affliction per second or Reap recovery: re-derive once with the final ledger.
   if (afflictionRating) {
-    const settled = resolveAfflictionRating(theoretical);
+    const settled = resolveAfflictionRating(igniteLedger);
     if (Math.abs(settled.rating - afflictionRating.rating) > 1e-9) {
-      theoretical = compileFinal();
+      igniteLedger = compileFinal();
     }
     afflictionRating = settled;
   }
@@ -3771,12 +3771,12 @@ function calculatePlannerOnce(
           1,
         );
   const trueFlame = calculateCoreTalents(coreNames, {
-    ignited: theoretical.totals.baseIgniteDamage.max > 0 && theoretical.totals.applicationChancePercent > 0,
+    ignited: igniteLedger.totals.baseIgniteDamage.max > 0 && igniteLedger.totals.applicationChancePercent > 0,
     afflictionRating: conditions.affliction !== false ? damageCombat.afflictionAverage : 0,
-    afflictionEffectPercent: theoretical.ledger
+    afflictionEffectPercent: igniteLedger.ledger
       .filter((line) => line.category === "Affliction effect")
       .reduce((sum, line) => sum + line.value, 0),
-    additionalAfflictionEffectFactor: theoretical.ledger
+    additionalAfflictionEffectFactor: igniteLedger.ledger
       .filter((line) => line.category === "Additional Affliction effect")
       .reduce((factor, line) => factor * (1 + line.value / 100), 1),
   });
@@ -4922,7 +4922,7 @@ function calculatePlannerOnce(
   });
   const sharedFor = (key, resistance) =>
     buildAilmentSharedLayers({
-      theoretical,
+      igniteLedger,
       modifierTexts,
       conditions,
       combat: damageCombat,
@@ -4977,11 +4977,11 @@ function calculatePlannerOnce(
     shared: igniteShared,
     overlyModified,
     mainSetupKey: resolvedMain?.setupKey ?? null,
-    globalChanceSources: igniteGlobalChanceSources(theoretical),
+    globalChanceSources: igniteGlobalChanceSources(igniteLedger),
   });
   const applies = (applier) =>
     !applier.blocked && applier.applicationsPerSecond > 0 && (applier.chancePercent ?? 0) > 0;
-  const igniteBaseLines = theoretical.ledger.filter((line) => line.category === "Base Ignite");
+  const igniteBaseLines = igniteLedger.ledger.filter((line) => line.category === "Base Ignite");
   const igniteBase = {
     min: igniteBaseLines.reduce((sum, line) => sum + (line.value || 0), 0),
     max: igniteBaseLines.reduce((sum, line) => sum + (line.max ?? line.value ?? 0), 0),
@@ -4999,11 +4999,11 @@ function calculatePlannerOnce(
         auraDurationPercent: ailmentDurationFromAuras,
         enemyAilmentTypes,
         overrides: {
-          chance: combineAilmentChance(igniteGlobalChanceSources(theoretical)),
+          chance: combineAilmentChance(igniteGlobalChanceSources(igniteLedger)),
           base: igniteBase,
-          durationSeconds: theoretical.totals.igniteDurationSeconds,
+          durationSeconds: igniteLedger.totals.igniteDurationSeconds,
           stackLimit: igniteLimit,
-          stacksPerApplication: 1 + theoretical.totals.additionalInflictedStacks,
+          stacksPerApplication: 1 + igniteLedger.totals.additionalInflictedStacks,
           stacking: "strongest",
           skipTypedDamage: true,
         },
@@ -5123,7 +5123,7 @@ function calculatePlannerOnce(
       profile: source.profile,
       modifierTexts,
       shared: buildAilmentSharedLayers({
-        theoretical,
+        igniteLedger,
         modifierTexts,
         conditions,
         combat: damageCombat,
@@ -5183,7 +5183,7 @@ function calculatePlannerOnce(
           profile: source.profile,
           modifierTexts,
           shared: buildAilmentSharedLayers({
-            theoretical,
+            igniteLedger,
             modifierTexts,
             conditions,
             combat: damageCombat,
@@ -5246,7 +5246,7 @@ function calculatePlannerOnce(
         text,
         [mechanics.recognized.get(text), `Spell Damage (${dot.name} damage over time)`].filter(Boolean).join("; "),
       );
-  const afflictionPerSecondTotal = theoretical.townTooltip.passiveAfflictionPerSecond + skillDotAfflictionRate;
+  const afflictionPerSecondTotal = igniteLedger.townTooltip.passiveAfflictionPerSecond + skillDotAfflictionRate;
   // Built-in Reaps on max channeled stacks, at the skill's use rate. The channel starts at startStacks (base 1 +
   // Min Channeled Stacks; user-observed 2026-10-10: 1, and 3 with Channel Preparation Lv16) and gains one stack
   // per use; after the max-stack Reap it restarts at startStacks (provisional: the restart convention the planner
@@ -5456,7 +5456,7 @@ function calculatePlannerOnce(
     }));
     // A Reap is True Damage: every DoT it settles drops the build's "damage applied to Life" lines (patch notes 2026-10-15;
     // packages/engine/src/combat/true-damage.js). Each DoT ledger takes those lines from the Ignite ledger, so one scale serves them all.
-    const reapTrueDamage = trueDamageSettleScale(theoretical.ledger || []);
+    const reapTrueDamage = trueDamageSettleScale(igniteLedger.ledger || []);
     // Own buffs pre-built (user, 2026-10-09): channel stacks are already full when
     // the window starts; the dummy still starts clean, so DoTs build from zero.
     const prebuiltSelfBuffs = requestedConditions.prebuiltSelfBuffs !== false;
@@ -5761,7 +5761,7 @@ function calculatePlannerOnce(
     warnings.push(
       "Equipment estimate includes recognized modifiers and Energy changes; unique mechanics and level changes are not fully modeled.",
     );
-  warnings.push(...theoretical.warnings);
+  warnings.push(...igniteLedger.warnings);
   warnings.push(...shadowWarnings);
   warnings.push(...(pact.levelAssumptions || []).map((item) => item.text));
   const { channelRamp: _channelRamp, ...mechanicsSummary } = mechanics;
@@ -5774,7 +5774,7 @@ function calculatePlannerOnce(
         label: typeRestriction.label,
         sources: typeRestriction.sources,
         removed: [
-          ...(theoretical?.totals?.baseIgniteDamage?.max > 0 &&
+          ...(igniteLedger?.totals?.baseIgniteDamage?.max > 0 &&
           (igniteAppliers || []).some((applier) => applier.chancePercent > 0) &&
           removesType(typeRestriction, "Fire")
             ? [{ kind: "ailment", name: "Ignite", type: "Fire" }]
@@ -6084,7 +6084,7 @@ function calculatePlannerOnce(
     activation,
     aura,
     igniteLimit,
-    theoretical,
+    igniteLedger,
     beamCastRate,
     beamCritical,
     conditions,

@@ -315,8 +315,8 @@ export function textGlobalChanceSources(ailmentKey, modifierTexts = [], auraChan
 // Ignite's build-wide chance: the Ignite ledger's (packages/engine/src/ailments/ignite-ledger.js) "Ignite application chance"
 // entries without the main-skill-scoped ones (Additional Ignite on the main skill, its own scoped lines).
 // It already holds the Volcano Kismet negatives (pact totals), Flame Focus and Ailment Amplification.
-export function igniteGlobalChanceSources(theoretical) {
-  return (theoretical?.ledger || [])
+export function igniteGlobalChanceSources(igniteLedger) {
+  return (igniteLedger?.ledger || [])
     .filter((line) => line.category === "Ignite application chance" && !line.skillScoped)
     .map((line) => ({ source: line.source, text: line.text || "Ignite application chance", value: line.value }));
 }

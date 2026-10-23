@@ -3,7 +3,7 @@
 //
 // panelInputs(planner) maps the planner's computed totals to the game's attribute references, for the build's main skill:
 //   - the main skill's own ledgers (planner.skillHits / planner.skillDots), the ailment ledgers (planner.ailments,
-//     planner.theoretical) and the Reaping and Affliction layers, each line placed on the game attribute its text names (5719 All Damage, 5107 Fire, 5108
+//     planner.igniteLedger) and the Reaping and Affliction layers, each line placed on the game attribute its text names (5719 All Damage, 5107 Fire, 5108
 //     Lightning, 5109 Cold, 5002 Physical, 5402 Erosion, 5727 Elemental) and aggregated the game's way: X = 1 + Σ%,
 //     E = Π(1 + %), plain = default (config_attributes) + flat;
 //   - planner.resistances for resistances and max resistances;
@@ -508,21 +508,21 @@ export function panelInputs(planner) {
     "ailments.trauma.base.min",
   );
   set("A5824", planner.ailments?.wilt?.modeled ? (planner.ailments.wilt.base?.min ?? 0) : 0, "ailments.wilt.base.min");
-  set("A5823", planner.theoretical?.totals?.baseIgniteDamage?.min ?? 0, "theoretical.totals.baseIgniteDamage.min");
-  // Ignite: the planner keeps one increased total and one additional factor (theoretical.townTooltip.factors).
-  const igniteFactors = planner.theoretical?.townTooltip?.factors;
-  if (igniteFactors && (planner.theoretical?.totals?.baseIgniteDamage?.min ?? 0) > 0) {
+  set("A5823", planner.igniteLedger?.totals?.baseIgniteDamage?.min ?? 0, "igniteLedger.totals.baseIgniteDamage.min");
+  // Ignite: the planner keeps one increased total and one additional factor (igniteLedger.townTooltip.factors).
+  const igniteFactors = planner.igniteLedger?.townTooltip?.factors;
+  if (igniteFactors && (planner.igniteLedger?.totals?.baseIgniteDamage?.min ?? 0) > 0) {
     set(
       `A5719X${AILMENT_CONTEXT.Ignite}`,
       1 + (igniteFactors.increasedDamagePercent ?? 0) / 100,
-      "theoretical.townTooltip.factors.increasedDamagePercent (one pool: All, Fire and Elemental lines together)",
+      "igniteLedger.townTooltip.factors.increasedDamagePercent (one pool: All, Fire and Elemental lines together)",
     );
     set(`A5107X${AILMENT_CONTEXT.Ignite}`, 1, "pooled into A5719X (the planner keeps one Ignite increased total)");
     set(`A5727X${AILMENT_CONTEXT.Ignite}`, 1, "pooled into A5719X");
     set(
       `A5719E${AILMENT_CONTEXT.Ignite}`,
       igniteFactors.additionalDamage ?? 1,
-      "theoretical.townTooltip.factors.additionalDamage (one factor)",
+      "igniteLedger.townTooltip.factors.additionalDamage (one factor)",
     );
     set(`A5107E${AILMENT_CONTEXT.Ignite}`, 1, "pooled into A5719E");
     set(`A5727E${AILMENT_CONTEXT.Ignite}`, 1, "pooled into A5719E");
@@ -530,8 +530,8 @@ export function panelInputs(planner) {
   // Chances (F2006480 Ignite, F2006510 Trauma, F2006520 Wilt; F2006590 / F2006591 shared extra): the planner's raw chance.
   set(
     "F2006480",
-    planner.theoretical?.totals?.applicationChancePercent ?? 0,
-    "theoretical.totals.applicationChancePercent",
+    planner.igniteLedger?.totals?.applicationChancePercent ?? 0,
+    "igniteLedger.totals.applicationChancePercent",
   );
   set(
     "F2006510",
@@ -549,11 +549,11 @@ export function panelInputs(planner) {
   // ---- Affliction ----
   const shared = planner.ailments?.trauma?.shared ?? planner.ailments?.wilt?.shared ?? context.dot?.shared ?? null;
   const afflictionPerSecond =
-    planner.afflictionRating?.afflictionPerSecond ?? planner.theoretical?.townTooltip?.passiveAfflictionPerSecond;
+    planner.afflictionRating?.afflictionPerSecond ?? planner.igniteLedger?.townTooltip?.passiveAfflictionPerSecond;
   set("F2006467", afflictionPerSecond, "afflictionRating.afflictionPerSecond");
   const afflictionEffect = shared?.afflictionEffectPercent;
   const afflictionAdditional =
-    shared?.additionalAfflictionEffectFactor ?? planner.theoretical?.townTooltip?.factors?.additionalAfflictionEffect;
+    shared?.additionalAfflictionEffectFactor ?? planner.igniteLedger?.townTooltip?.factors?.additionalAfflictionEffect;
   if (Number.isFinite(afflictionEffect))
     set("A5724X", 1 + afflictionEffect / 100, "ailment shared ledger: afflictionEffectPercent");
   if (Number.isFinite(afflictionAdditional))
@@ -769,8 +769,8 @@ export function plannerPanelValue(planner, id, context = mainSkillContext(planne
           "ailments.trauma increased − typed − target lines (scripts/compare-game-log.js townDotIncreased)",
         );
       return val(
-        planner.theoretical?.totals?.increasedDamagePercent,
-        "theoretical.totals.increasedDamagePercent (Ignite pool, all types)",
+        planner.igniteLedger?.totals?.increasedDamagePercent,
+        "igniteLedger.totals.increasedDamagePercent (Ignite pool, all types)",
       );
     }
     case 20230: {
@@ -790,7 +790,7 @@ export function plannerPanelValue(planner, id, context = mainSkillContext(planne
         : none("main skill has no DoT");
     case 140052:
       return val(
-        planner.afflictionRating?.afflictionPerSecond ?? planner.theoretical?.townTooltip?.passiveAfflictionPerSecond,
+        planner.afflictionRating?.afflictionPerSecond ?? planner.igniteLedger?.townTooltip?.passiveAfflictionPerSecond,
         "afflictionRating.afflictionPerSecond",
       );
     case 140053:
@@ -843,7 +843,7 @@ export function plannerPanelValue(planner, id, context = mainSkillContext(planne
         ? val(planner.ailments.trauma.base?.min, "ailments.trauma.base.min")
         : val(0, "no Trauma modeled");
     case 160200:
-      return val(planner.theoretical?.totals?.baseIgniteDamage?.min ?? 0, "theoretical.totals.baseIgniteDamage.min");
+      return val(planner.igniteLedger?.totals?.baseIgniteDamage?.min ?? 0, "igniteLedger.totals.baseIgniteDamage.min");
     case 160300:
       return planner.ailments?.wilt?.modeled
         ? val(planner.ailments.wilt.base?.min, "ailments.wilt.base.min")
@@ -901,7 +901,7 @@ function differenceReason(id, game, planner, inputs, plannerSide, plannerResult)
       count: lines.length,
     };
   };
-  if (id === 20213 && String(plannerSide?.path || "").startsWith("theoretical.totals")) {
+  if (id === 20213 && String(plannerSide?.path || "").startsWith("igniteLedger.totals")) {
     return `the planner value is its Ignite increased pool (All, Fire and Elemental lines in one total); the game's DoT tab (20213) shows All Damage (5719) only, so the ${fmtNumber(planner - game)} difference is the Fire / Elemental lines of that pool (the Ignite DPS row adds them back: 5107X + 5719X + 5727X − 2)`;
   }
   if (id === 20212 || id === 20213) {
@@ -982,7 +982,7 @@ function differenceReason(id, game, planner, inputs, plannerSide, plannerResult)
     return parts.join("; ");
   }
   if (id === 140051)
-    return "same 40 s average ((40 − T/2) / 40, T = 100 / Affliction per second); the planner's town rating reads the passive Affliction per second (theoretical.townTooltip.passiveAfflictionPerSecond), without the main skill's own Affliction per second that the panel row 140052 includes";
+    return "same 40 s average ((40 − T/2) / 40, T = 100 / Affliction per second); the planner's town rating reads the passive Affliction per second (igniteLedger.townTooltip.passiveAfflictionPerSecond), without the main skill's own Affliction per second that the panel row 140052 includes";
   return null;
 }
 

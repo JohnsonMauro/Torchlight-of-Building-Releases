@@ -574,7 +574,7 @@ function finalize(total, planner) {
     total.formula = total.additional !== 1 ? "flat × (1 + increased%) × additional" : "flat × (1 + increased%)";
     total.damagePath =
       total.key === "intelligence" &&
-      planner?.theoretical?.ledger?.some((entry) => /Total Intelligence/.test(entry.source))
+      planner?.igniteLedger?.ledger?.some((entry) => /Total Intelligence/.test(entry.source))
         ? "Main-stat damage in calc (0.5% additional per point)"
         : "Not used by the modeled damage path";
     return;

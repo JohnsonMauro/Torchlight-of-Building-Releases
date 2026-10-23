@@ -53,7 +53,7 @@ const AILMENT_DAMAGE_TYPE = { ignite: "Fire", trauma: "Physical", wilt: "Erosion
 export const MAIN_SKILL_SCOPED_SOURCE = /^Support: |^Scorching Beam level \d+$/;
 
 export function buildAilmentSharedLayers({
-  theoretical,
+  igniteLedger,
   modifierTexts = [],
   conditions = {},
   combat = {},
@@ -64,7 +64,7 @@ export function buildAilmentSharedLayers({
   damageType = AILMENT_DAMAGE_TYPE[ailmentKey],
   penetration = null,
 }) {
-  const ledger = theoretical?.ledger || [];
+  const ledger = igniteLedger?.ledger || [];
   const penetrationLines =
     damageType && damageType !== "Physical"
       ? (penetration?.byType?.[damageType] || []).filter((line) => line.value)
@@ -90,7 +90,7 @@ export function buildAilmentSharedLayers({
   const tagGated = additional
     .filter((line) => line.requiresSkillTag)
     .map((line) => ({ source: line.source, value: line.value, requiresSkillTag: line.requiresSkillTag }));
-  const inactiveTagLines = (theoretical?.inactiveSources || [])
+  const inactiveTagLines = (igniteLedger?.inactiveSources || [])
     .filter((line) => line.requiresSkillTag && keep(line))
     .map((line) => ({ source: line.source, value: line.value, requiresSkillTag: line.requiresSkillTag }));
   const extraTown = [],
@@ -132,7 +132,7 @@ export function buildAilmentSharedLayers({
     })
     .filter(Boolean);
   const perEnemyAilmentTypePercents = perEnemyAilmentTypeSources.map((line) => line.value);
-  const combatLedger = theoretical?.combat?.ledger || [];
+  const combatLedger = igniteLedger?.combat?.ledger || [];
   const combatOutgoing = combatLedger.filter((line) => line.category === "Additional damage" && keep(line));
   const taken = combatLedger.filter((line) => line.category === "Additional damage taken" && keep(line) && line.value);
   const afflictionEffectPercent = ledger
@@ -150,7 +150,7 @@ export function buildAilmentSharedLayers({
     perEnemyAilmentTypePercents,
     afflictionEffectPercent,
     additionalAfflictionEffectFactor,
-    townAfflictionRating: theoretical?.townTooltip?.projectedAfflictionRating ?? 0,
+    townAfflictionRating: igniteLedger?.townTooltip?.projectedAfflictionRating ?? 0,
     combatAfflictionRating: conditions.affliction === false ? 0 : Number(combat.afflictionAverage) || 0,
     targetResistancePercent,
     damageType,
