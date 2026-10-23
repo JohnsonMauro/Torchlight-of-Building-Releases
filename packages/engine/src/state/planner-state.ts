@@ -124,10 +124,10 @@ export const defaultPlannerState = {
   equipmentOverrides: {},
   equipmentInventory: [],
   hero: {
-    selectedHeroId: "selena-sing-with-the-tide",
-    selectedTraits: { level45: "Wave Aria", level60: "Idyll of the Tide", level75: "Murmurs of the Distant Tide" },
-    memories: { level45: "Ceaseless Tide", level60: "", level75: "" },
-    memoryTraitLevels: { level45: 0, level60: 0, level75: 0 },
+    selectedHeroId: "",
+    selectedTraits: {},
+    memories: {},
+    memoryTraitLevels: {},
     memoryInventory: [],
     equippedMemoryIds: {},
     baseTraitMemoryId: "",
@@ -223,15 +223,8 @@ export function normalizePlannerState(input: unknown = {}): PlannerState {
         };
       })
     : [];
-  const defaultHeroSelected = !value.hero?.selectedHeroId || value.hero.selectedHeroId === defaults.hero.selectedHeroId;
-  const memoryTraitLevels: Record<string, number> =
-    value.hero?.memoryTraitLevels && !Object.keys(value.hero.memoryTraitLevels).length
-      ? {}
-      : { ...(defaultHeroSelected ? defaults.hero.memoryTraitLevels : {}), ...(value.hero?.memoryTraitLevels || {}) };
-  const memoryNames: Record<string, string | undefined> =
-    value.hero?.memories && !Object.keys(value.hero.memories).length
-      ? {}
-      : { ...(defaultHeroSelected ? defaults.hero.memories : {}), ...(value.hero?.memories || {}) };
+  const memoryTraitLevels: Record<string, number> = { ...(value.hero?.memoryTraitLevels || {}) };
+  const memoryNames: Record<string, string | undefined> = { ...(value.hero?.memories || {}) };
   for (const [tier, id] of Object.entries(value.hero?.equippedMemoryIds || {})) {
     const memory = memoryInventory.find((item) => item.id === id);
     if (memory) {
@@ -286,12 +279,7 @@ export function normalizePlannerState(input: unknown = {}): PlannerState {
       ...withoutLegacyTreeFields(value.hero || {}),
       selectedHeroId:
         typeof value.hero?.selectedHeroId === "string" ? value.hero.selectedHeroId : defaults.hero.selectedHeroId,
-      selectedTraits: {
-        ...(value.hero?.selectedTraits ??
-          (value.hero?.selectedHeroId && value.hero.selectedHeroId !== defaults.hero.selectedHeroId
-            ? {}
-            : defaults.hero.selectedTraits)),
-      },
+      selectedTraits: { ...(value.hero?.selectedTraits || {}) },
       memories: memoryNames,
       memoryInventory,
       memoryTraitLevels,

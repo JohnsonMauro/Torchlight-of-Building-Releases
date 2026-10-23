@@ -114,8 +114,8 @@ test("hero: traits, equipped memories, Carino ammo, trait support levels and the
   assert.equal(memory.name, "Memory of Progress");
   assert.equal(hero.memories.level60, "Memory of Progress");
   assert.equal(hero.memoryTraitLevels.level60, memory.traitLevelBonus);
-  // The default hero keeps its default memory in the other slots.
-  assert.equal(hero.memories.level45, "Ceaseless Tide");
+  // No memory in the other slots.
+  assert.equal(hero.memories.level45, undefined);
   assert.deepEqual(hero.carinoSpecialAmmoSupports, ["Ammo", "", ""]);
   assert.deepEqual(hero.heroTraitSupportLevels, { a: 1, b: 40 });
   assert.equal("selenaDanceTraits" in hero, false);

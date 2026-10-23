@@ -122,13 +122,13 @@ function gearPass(state, change) {
   return { ...state, disabledEquipmentSlots, equipmentOverrides, equipmentInventory };
 }
 
-// A hero the game no longer has (the default hero takes its place), traits the hero no longer offers, loadouts kept for a
+// A hero the game no longer has (the build is left without a hero), traits the hero no longer offers, loadouts kept for a
 // hero that is gone.
 function heroPass(state, change) {
   if (!state.hero) return state;
   const hero = { ...state.hero };
   if (hero.selectedHeroId && !heroIds.has(hero.selectedHeroId)) {
-    change.remove(`Hero ${hero.selectedHeroId} (the default hero takes its place)`);
+    change.remove(`Hero ${hero.selectedHeroId}`);
     delete hero.selectedHeroId;
     delete hero.selectedTraits;
   } else if (hero.selectedHeroId) {

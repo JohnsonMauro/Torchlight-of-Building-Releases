@@ -141,12 +141,12 @@ test("every golden build, all of the current season, goes through the compatibil
   }
 });
 
-test("a hero the game no longer has gives way to the default hero; gone traits and loadouts go", () => {
+test("a hero the game no longer has leaves the build without a hero; gone traits and loadouts go", () => {
   const gone = removeIncompatible({
     hero: { selectedHeroId: "vanished-hero", selectedTraits: { level45: "Old Trait" }, heroLoadouts: {} },
   });
   assert.deepEqual(gone.state.hero, { heroLoadouts: {} });
-  assert.deepEqual(gone.removed, ["Hero vanished-hero (the default hero takes its place)"]);
+  assert.deepEqual(gone.removed, ["Hero vanished-hero"]);
   const kept = removeIncompatible({
     hero: {
       selectedHeroId: youga.hero.selectedHeroId,

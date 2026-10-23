@@ -9,7 +9,7 @@ const youga = JSON.parse(
 );
 
 const builds = [
-  { name: "default library", state: null, heroTrait: "Sing with the Tide" },
+  { name: "default library", state: null, heroTrait: "Choose a hero trait" },
   { name: "Youga The Ultimate One L94", state: youga, heroTrait: "The Ultimate One" },
 ];
 

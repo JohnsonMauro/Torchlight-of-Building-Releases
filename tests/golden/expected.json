@@ -2,13 +2,13 @@
   "node": "v24.22.0",
   "cases": {
     "default": {
-      "sha256": "fba2f89eab446cc29b08aff97a9ec0ffe682f5148f1d4e8915c5884acf7e65fe",
+      "sha256": "029a86d00388abb5c417176f3af5664f5b896e8418e50e4a106200d410e6401e",
       "summary": {
         "mainSkill": null,
         "dps5s": null,
         "dps20s": null,
         "dpsSteady": null,
-        "warnings": 3
+        "warnings": 4
       }
     },
     "youga-l94": {
