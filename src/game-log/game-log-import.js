@@ -55,7 +55,6 @@ import {
   rareBaseByGameId,
   rareBaseByName,
   selenaCompleteSkillLoadout,
-  selenaScorchingBeamGear,
   selenaScorchingBeamPacts,
   slateOffsets,
   slateTransformRules,
@@ -731,8 +730,6 @@ const filledFrom = (report, section, stamp) => {
 /** The New Build template (src/app/planner/session.js emptyPlannerState) with the planner's default combat settings. */
 export function blankPlannerState() {
   const state = structuredClone(defaultPlannerState);
-  state.disabledEquipmentSlots = equipmentSlots.map(([slot]) => slot);
-  state.removedInventoryItemIds = selenaScorchingBeamGear.items.map((item) => `captured-${item.slot}`);
   state.equipmentOverrides = {};
   state.equipmentInventory = [];
   state.hero = {

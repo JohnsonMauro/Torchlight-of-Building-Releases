@@ -210,18 +210,54 @@ test("the editor opens on the stored corrosion: a corroded line and a corrosion 
   await planner.expectNoErrors();
 });
 
-test("a captured item (the default build's): its lines are text fields, saved as typed into an Inventory copy", async ({
-  page,
-}) => {
+// A legendary the catalog does not know (a renamed or removed one): its lines are plain text. Equipped in its slot in
+// place of the Youga build's item there.
+function withPlainItem(item) {
+  const state = structuredClone(youga);
+  const id = `gear-plain-${item.slot}`;
+  state.equipmentInventory = [...state.equipmentInventory.filter((entry) => entry.slot !== item.slot), { ...item, id }];
+  const { slot, ...stored } = item;
+  state.equipmentOverrides[slot] = { ...stored, sourceInventoryId: id };
+  return state;
+}
+const PLAIN_ROBE = {
+  slot: "chest",
+  name: "Long Night Sorcerer's Robe - Priceless",
+  rarity: "legendary",
+  level: 100,
+  base: "INT Chest Armor",
+  energy: 116,
+  defenses: { maxEnergyShield: 853 },
+  modifiers: [
+    "+8% Aura Effect",
+    "-40% additional Damage Over Time taken when you have at least 8000 Max Energy Shield",
+    "+54% Gear Energy Shield",
+    "+384 Gear Energy Shield",
+    "+18% Aura Effect",
+    "+19% Lightning Resistance",
+    "+24% Fire Resistance",
+  ],
+};
+const PLAIN_BELT = {
+  slot: "belt",
+  name: "Elder Sage Girdle - Priceless",
+  rarity: "legendary",
+  level: 100,
+  base: "Belt",
+  defenses: { maxEnergyShield: 140 },
+  modifiers: ["-15% additional damage taken at Low Mana", "+1 Ignite limit", "+308 Max Energy Shield"],
+};
+
+test("a legendary the catalog does not know: its lines are text fields, saved as typed", async ({ page }) => {
   const planner = new PlannerPage(page);
-  await planner.open();
+  await planner.open(withPlainItem(PLAIN_ROBE));
   await planner.showView("equipment");
   const gear = new GearPage(page);
   // Equipped, so it opens from its slot.
   await gear.slot("chest").click();
   await quick(gear).getByRole("button", { name: "Edit", exact: true }).click();
   const editor = gear.itemDialog().locator("#inventory-item-body");
-  await expect(editor.locator("h3").first()).toHaveText("Prefixes and Suffixes");
+  await expect(editor.locator("h3").first()).toHaveText("Legendary Mods");
   const first = editor.locator('.fixed-mod [data-edit-modifier="0"]');
   await expect(first).toHaveValue("+8% Aura Effect");
   await expect(editor.locator(".fixed-mod input[data-edit-modifier]")).toHaveCount(7);
@@ -237,9 +273,9 @@ test("a captured item (the default build's): its lines are text fields, saved as
   await planner.expectNoErrors();
 });
 
-test("the editor's Belt Blend and fields of a captured belt are saved", async ({ page }) => {
+test("the editor's Belt Blend and fields of a legendary belt the catalog does not know are saved", async ({ page }) => {
   const planner = new PlannerPage(page);
-  await planner.open();
+  await planner.open(withPlainItem(PLAIN_BELT));
   await planner.showView("equipment");
   const gear = new GearPage(page);
   await gear.slot("belt").click();

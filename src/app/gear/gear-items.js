@@ -11,7 +11,6 @@ import {
   rareBaseByName,
   rareBaseForItem,
   rareBaseItems,
-  selenaScorchingBeamGear,
   voraxCrafting,
 } from "#engine";
 import { beltBlendById } from "./belt-blend-options.js";
@@ -39,9 +38,9 @@ export function equippedSlotInventoryItem(slot, equipped) {
 }
 
 export function compatibleEquipmentSlot(item) {
+  const equipped = currentEquipmentImpact().allItems.filter((entry) => !disabledEquipmentSlots.has(entry.slot)),
+    occupied = (slot) => equipped.some((entry) => entry.slot === slot);
   if (item.slot === "leftRing") {
-    const equipped = currentEquipmentImpact().allItems.filter((entry) => !disabledEquipmentSlots.has(entry.slot)),
-      occupied = (slot) => equipped.some((entry) => entry.slot === slot);
     if (ui.selectedEquipmentSlot === "rightRing") return "rightRing";
     if (ui.selectedEquipmentSlot === "leftRing" && !occupied("leftRing")) return "leftRing";
     if (occupied("leftRing") && !occupied("rightRing")) return "rightRing";
@@ -50,7 +49,7 @@ export function compatibleEquipmentSlot(item) {
   }
   if (item.slot === "mainHand") {
     if (ui.selectedEquipmentSlot === "secondaryHand") return "secondaryHand";
-    if (!disabledEquipmentSlots.has("mainHand") && disabledEquipmentSlots.has("secondaryHand")) return "secondaryHand";
+    if (occupied("mainHand") && !occupied("secondaryHand")) return "secondaryHand";
     return "mainHand";
   }
   return item.slot;
@@ -152,11 +151,7 @@ export function itemLevel100Class(item) {
     : "";
 }
 export function inventoryItems() {
-  const removed = new Set(plannerState.removedInventoryItemIds || []);
-  return [
-    ...selenaScorchingBeamGear.items.map((item) => ({ ...item, id: `captured-${item.slot}`, rarity: "captured" })),
-    ...(plannerState.equipmentInventory || []),
-  ].filter((item) => !removed.has(item.id));
+  return plannerState.equipmentInventory || [];
 }
 // Gear section commands (apps/web/src/features/gear). The item dialog and the crafter stay here.
 export const inventoryItemById = (id) => inventoryItems().find((item) => item.id === id);
@@ -164,22 +159,10 @@ export function equippedSlotForInventoryItem(item) {
   const overrideSlot = Object.entries(plannerState.equipmentOverrides || {}).find(
     ([slot, override]) => override.sourceInventoryId === item?.id && !disabledEquipmentSlots.has(slot),
   )?.[0];
-  if (overrideSlot) return overrideSlot;
-  if (item?.id?.startsWith("captured-"))
-    return (
-      currentEquipmentImpact().allItems.find(
-        (entry) => !disabledEquipmentSlots.has(entry.slot) && entry.name === item.name && entry.slot === item.slot,
-      )?.slot || null
-    );
-  return null;
+  return overrideSlot || null;
 }
 export function isItemEquipped(item) {
-  const overrideSlot = equippedSlotForInventoryItem(item);
-  if (overrideSlot) return true;
-  if (item?.id && !item.id.startsWith("captured-")) return false;
-  return currentEquipmentImpact().allItems.some(
-    (entry) => !disabledEquipmentSlots.has(entry.slot) && entry.name === item.name && entry.slot === item.slot,
-  );
+  return Boolean(equippedSlotForInventoryItem(item));
 }
 const capturedGearIcons = {
   "Long Night Sorcerer's Robe - Priceless": "./src/assets/tli/gear/base-Long_Night_Sorcerers_Robe.webp",

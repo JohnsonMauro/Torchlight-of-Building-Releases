@@ -15,6 +15,7 @@ import {
 import { pactspiritTrees } from "../data/pacts/pactspirit-trees.js";
 import { pactspiritLevels } from "../data/pacts/pactspirit-levels.js";
 import { kismetCatalog } from "../data/pacts/kismet-catalog.js";
+import { equipmentSlots } from "../data/gear/crafting-catalog.js";
 const round = (value, places = 2) => Number(value.toFixed(places));
 
 export function calculateActionRate({ baseInterval, increasedPercent = 0, additionalPercent = 0 }) {
@@ -922,37 +923,26 @@ export function aggregateNormalizedModifiers(modifiers) {
     }, {});
 }
 
-export function applyEquipmentOverrides(items, overrides = {}) {
-  return items.map((item) => {
-    const override = overrides[item.slot];
-    if (!override) return structuredClone(item);
-    // Inventory equipment replaces the old item. Hand-entered overrides remain
-    // partial patches for older saved builds and the calculation controls.
-    if (!override.sourceInventoryId)
-      return {
-        ...structuredClone(item),
-        ...override,
-        slot: item.slot,
-        defenses: { ...(item.defenses || {}), ...(override.defenses || {}) },
-        modifiers: Array.isArray(override.modifiers) ? [...override.modifiers] : item.modifiers,
+// The build's items in slot order: the item stored for each slot; a slot without one is empty.
+export function equippedItems(overrides = {}) {
+  return equipmentSlots.flatMap(([slot]) => {
+    const override = overrides[slot];
+    if (!override) return [];
+    return [
+      {
+        ...structuredClone(override),
+        slot,
+        energy: override.energy ?? 0,
+        defenses: structuredClone(override.defenses || {}),
+        modifiers: Array.isArray(override.modifiers) ? [...override.modifiers] : [],
         corrosionModifiers: Array.isArray(override.corrosionModifiers) ? [...override.corrosionModifiers] : [],
-      };
-    return {
-      ...structuredClone(override),
-      slot: item.slot,
-      base: override.base ?? item.base,
-      level: override.level ?? item.level,
-      icon: override.icon ?? item.icon,
-      energy: override.energy ?? 0,
-      defenses: structuredClone(override.defenses || {}),
-      modifiers: Array.isArray(override.modifiers) ? [...override.modifiers] : [],
-      corrosionModifiers: Array.isArray(override.corrosionModifiers) ? [...override.corrosionModifiers] : [],
-    };
+      },
+    ];
   });
 }
 
 export function calculateEquipmentCandidate(baselineItems, overrides, snapshot, disabledSlots = []) {
-  const allItems = applyEquipmentOverrides(baselineItems, overrides);
+  const allItems = equippedItems(overrides);
   const candidateItems = allItems.filter((item) => !disabledSlots.includes(item.slot));
   const baselineModifiers = collectNormalizedGearModifiers(baselineItems);
   const candidateModifiers = collectNormalizedGearModifiers(candidateItems);
@@ -988,37 +978,11 @@ export function calculateEquipmentCandidate(baselineItems, overrides, snapshot, 
       ["gearEvasion", "evasion"],
       ["gearEnergyShield", "gearEnergyShield"],
     ]) {
-      const current = value(itemTotals, stat, "flat");
-      if (!Number.isFinite(item.defenses?.[defense])) defenses[defense] = (defenses[defense] || 0) + current;
-      else if (
-        overrides?.[item.slot] &&
-        !overrides[item.slot].sourceInventoryId &&
-        !Number.isFinite(overrides[item.slot].defenses?.[defense])
-      ) {
-        const original = baselineItems.find((entry) => entry.slot === item.slot);
-        const originalValue = original
-          ? value(aggregateNormalizedModifiers(collectNormalizedGearModifiers([original])), stat, "flat")
-          : 0;
-        defenses[defense] = (defenses[defense] || 0) + current - originalValue;
-      }
+      if (!Number.isFinite(item.defenses?.[defense]))
+        defenses[defense] = (defenses[defense] || 0) + value(itemTotals, stat, "flat");
     }
-    const currentArmor = value(
-      aggregateNormalizedModifiers(collectNormalizedGearModifiers([item])),
-      "gearArmor",
-      "flat",
-    );
-    if (!Number.isFinite(item.defenses?.armor)) defenses.armor = (defenses.armor || 0) + currentArmor;
-    else if (
-      overrides?.[item.slot] &&
-      !overrides[item.slot].sourceInventoryId &&
-      !Number.isFinite(overrides[item.slot].defenses?.armor)
-    ) {
-      const original = baselineItems.find((entry) => entry.slot === item.slot);
-      const originalArmor = original
-        ? value(aggregateNormalizedModifiers(collectNormalizedGearModifiers([original])), "gearArmor", "flat")
-        : 0;
-      defenses.armor = (defenses.armor || 0) + currentArmor - originalArmor;
-    }
+    if (!Number.isFinite(item.defenses?.armor))
+      defenses.armor = (defenses.armor || 0) + value(itemTotals, "gearArmor", "flat");
   }
   const nonEnergySlots = new Set(["necklace", "belt", "leftRing", "rightRing"]);
   const energy = candidateItems.reduce(

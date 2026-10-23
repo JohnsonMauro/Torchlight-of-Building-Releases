@@ -2,13 +2,13 @@
   "node": "v24.22.0",
   "cases": {
     "default": {
-      "sha256": "f816cd84c0d88f56587fe9d382cdbbbf986978d352e9343e7132ca60abec31af",
+      "sha256": "77a56eeadd483978c8aecc1d741c470c3ca8a4e1241f906770726ad8f0ee79e8",
       "summary": {
         "mainSkill": "Scorching Beam",
-        "dps5s": 78399782044.59767,
-        "dps20s": 85273712771.34407,
-        "dpsSteady": 87489977220.77267,
-        "warnings": 4
+        "dps5s": 5536.660104152998,
+        "dps20s": 5789.43022253226,
+        "dpsSteady": 5833.468398273873,
+        "warnings": 3
       }
     },
     "youga-l94": {

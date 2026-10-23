@@ -179,14 +179,9 @@ function copySelectedItem() {
   if (duplicateInventoryItem(selectedInventoryItemId)) closeDialog("inventory-item-dialog");
 }
 function deleteSelectedItem() {
-  const item = inventoryItems().find((entry) => entry.id === selectedInventoryItemId);
-  if (item?.id.startsWith("captured-")) {
-    plannerState.removedInventoryItemIds = [...new Set([...(plannerState.removedInventoryItemIds || []), item.id])];
-    disabledEquipmentSlots.add(item.slot);
-  } else
-    plannerState.equipmentInventory = plannerState.equipmentInventory.filter(
-      (entry) => entry.id !== selectedInventoryItemId,
-    );
+  plannerState.equipmentInventory = plannerState.equipmentInventory.filter(
+    (entry) => entry.id !== selectedInventoryItemId,
+  );
   for (const [slot, override] of Object.entries(plannerState.equipmentOverrides)) {
     if (override.sourceInventoryId === selectedInventoryItemId) {
       delete plannerState.equipmentOverrides[slot];
@@ -355,7 +350,7 @@ function sortInventory() {
   persistPlannerState();
 }
 function resetEquipment() {
-  equipmentSlots.forEach(([slot]) => disabledEquipmentSlots.add(slot));
+  disabledEquipmentSlots.clear();
   plannerState.equipmentOverrides = {};
   persistPlannerState();
   renderCandidateViews();
@@ -617,7 +612,7 @@ function inventoryItemEditorView(item) {
         ],
       },
     },
-    heading: item.rarity === "legendary" ? "Legendary Mods" : source ? "Legendary affixes" : "Prefixes and Suffixes",
+    heading: item.rarity === "legendary" ? "Legendary Mods" : "Legendary affixes",
     legendaryLines: source ? editorLegendaryLines(item, source) : [],
     textLines: source
       ? []
@@ -696,11 +691,7 @@ function openInventoryItemEditor(item) {
   if (!item) return;
   normalizeSunsEmbraceItem(item);
   selectedInventoryItemId = item.id;
-  if (
-    item.rarity !== "legendary" &&
-    !legendaryEditorSource(item) &&
-    plannerState.equipmentInventory.some((entry) => entry.id === item.id)
-  ) {
+  if (item.rarity !== "legendary" && !legendaryEditorSource(item)) {
     openCraftedItemEditor(item);
     return;
   }

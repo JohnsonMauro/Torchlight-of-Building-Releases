@@ -3,9 +3,7 @@ import {
   calculatePlanner,
   canPlaceSlate,
   defaultPlannerState,
-  equipmentSlots,
   selenaCompleteSkillLoadout,
-  selenaScorchingBeamGear,
   selenaScorchingBeamPacts,
   selenaScorchingBeamSlates,
   selenaScorchingBeamTalentSetup,
@@ -173,8 +171,6 @@ export function refreshPactCandidate() {
 
 export function emptyPlannerState() {
   const empty = structuredClone(defaultPlannerState);
-  empty.disabledEquipmentSlots = equipmentSlots.map(([slot]) => slot);
-  empty.removedInventoryItemIds = selenaScorchingBeamGear.items.map((item) => `captured-${item.slot}`);
   empty.equipmentOverrides = {};
   empty.equipmentInventory = [];
   empty.hero = {

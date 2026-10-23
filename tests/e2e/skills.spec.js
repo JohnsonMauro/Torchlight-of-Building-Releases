@@ -20,31 +20,31 @@ async function openSkills(page, state = null) {
 }
 
 test("lists the active skills with their levels, supports and Energy", async ({ page }) => {
-  const { planner, skills } = await openSkills(page);
-  await expect(skills.energyTotal()).toHaveText("515/520");
+  const { planner, skills } = await openSkills(page, youga);
+  await expect(skills.energyTotal()).toHaveText("450/455");
   await expect(skills.rows()).toHaveCount(5);
-  await expect(skills.rows().first()).toContainText("Scorching Beam");
-  await expect(skills.row("Scorching Beam")).toContainText("Lv.20 +11");
-  await expect(skills.row("Scorching Beam").locator(".skill-row-energy")).toHaveText("175");
-  await expect(skills.support("Scorching Beam", "Replace Guard")).toBeVisible();
-  await expect(skills.support("Aim", "Add support 5 to Aim")).toBeVisible();
+  await expect(skills.rows().first()).toContainText("Homing Frost Bolt");
+  await expect(skills.row("Homing Frost Bolt")).toContainText("Lv.20 +6");
+  await expect(skills.row("Homing Frost Bolt").locator(".skill-row-energy")).toHaveText("175");
+  await expect(skills.support("Homing Frost Bolt", "Replace Multiple Projectiles")).toBeVisible();
+  await expect(skills.support("Ice Bond", "Add support 5 to Ice Bond")).toBeVisible();
   await expect(skills.reservationSummary()).toBeHidden();
   await planner.expectNoErrors();
 });
 
 test("the Auras tab shows the four aura rows and the reservation summary", async ({ page }) => {
-  const { planner, skills } = await openSkills(page);
+  const { planner, skills } = await openSkills(page, youga);
   await skills.tab("Auras").click();
   await expect(skills.tab("Auras")).toHaveClass(/\bactive\b/);
   await expect(skills.tab("Skills")).not.toHaveClass(/\bactive\b/);
   await expect(skills.rows()).toHaveCount(4);
-  await expect(skills.socket("Replace Precise: Deep Pain")).toBeVisible();
+  await expect(skills.socket("Replace Frigid Domain")).toBeVisible();
   await expect(skills.reservationSummary()).toBeVisible();
   // As the game shows it: what the auras leave free of the build's own Max Mana / Life, and what they seal.
-  await expect(skills.reservationSummary()).toContainText("30.94 / 535");
-  await expect(skills.reservationSummary()).toContainText("5.78%");
-  await expect(skills.reservationSummary()).toContainText("504.06 sealed");
-  await expect(skills.reservationSummary()).toContainText("234.01 / 2,192.68");
+  await expect(skills.reservationSummary()).toContainText("65.58 / 580.75");
+  await expect(skills.reservationSummary()).toContainText("11.29%");
+  await expect(skills.reservationSummary()).toContainText("515.17 sealed");
+  await expect(skills.reservationSummary()).toContainText("79.9 / 2,232.44");
   await skills.tab("Skills").click();
   await expect(skills.rows()).toHaveCount(5);
   await expect(skills.reservationSummary()).toBeHidden();

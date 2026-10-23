@@ -1,4 +1,4 @@
-// src/app/bridge/skills-view-model.ts on real calculations (the default build, the golden-master Youga build and a hero whose trait
+// src/app/bridge/skills-view-model.ts on real calculations (the golden-master Youga build, an empty board and a hero whose trait
 // takes a board row), with the parts of a result the golden cases never reach (a curse past the limit, a skill set aside
 // by a board rule, auras asking for 100% or more) put into a copy of a real result.
 import { test } from "node:test";
@@ -13,38 +13,44 @@ import { selenaCompleteSkillLoadout } from "../../packages/engine/data/skills/se
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
 );
-const defaultResult = calculatePlanner(structuredClone(defaultPlannerState));
+const yougaResult = calculatePlanner(structuredClone(youga));
 const view = (result, tab = "skills") => skillsView(result, result.state.skills, tab);
 
-test("the default build: five skill rows with their supports, levels and Energy", () => {
-  const skills = view(defaultResult);
+test("a built build: five skill rows with their supports, levels and Energy", () => {
+  const skills = view(yougaResult);
   assert.equal(skills.tab, "skills");
   assert.deepEqual(skills.energy, {
-    used: 515,
-    available: 520,
+    used: 450,
+    available: 455,
     gear: [
-      { slot: "Weapon 1", item: "Dark Gaze Scepter - Priceless", value: 61 },
-      { slot: "Weapon 2", item: "Dark Gaze Scepter - Priceless", value: 59 },
-      { slot: "Helmet", item: "Sun's Embrace", value: 61 },
-      { slot: "Chest Armor", item: "Long Night Sorcerer's Robe - Priceless", value: 116 },
-      { slot: "Gloves", item: "Torturer's Touch", value: 59 },
-      { slot: "Boots", item: "Valerie's Night Stroll", value: 60 },
+      { slot: "Weapon 1", item: "Headless Cleric Wand", value: 55 },
+      { slot: "Weapon 2", item: "Headless Cleric Wand", value: 50 },
+      { slot: "Helmet", item: "Blind Vision", value: 59 },
+      { slot: "Chest Armor", item: "Long Night Sorcerer's Robe", value: 110 },
+      { slot: "Gloves", item: "Ice Pulse", value: 34 },
+      { slot: "Boots", item: "Blade-dancer's Steps", value: 49 },
     ],
-    fromLevel: 104,
+    fromLevel: 98,
   });
   assert.deepEqual(
     skills.rows.map((row) => row.label),
-    ["Replace Scorching Beam", "Replace Aim", "Replace Swiftness Dew", "Replace Entangled Pain", "Replace Scorch"],
+    [
+      "Replace Homing Frost Bolt",
+      "Replace Ice Bond",
+      "Replace Speed Phantom",
+      "Replace Selves of All Realms",
+      "Replace Timid",
+    ],
   );
-  const [beam, aim] = skills.rows;
+  const [bolt, iceBond] = skills.rows;
   assert.deepEqual(
-    { ...beam.skill, art: typeof beam.skill.art },
+    { ...bolt.skill, art: typeof bolt.skill.art },
     {
-      name: "Scorching Beam",
-      setupKey: "Scorching Beam",
+      name: "Homing Frost Bolt",
+      setupKey: "game-log-skill-1",
       art: "string",
       baseLevel: 20,
-      addedLevels: 11,
+      addedLevels: 6,
       grantNote: "",
       grantedBy: null,
       draggable: true,
@@ -53,38 +59,38 @@ test("the default build: five skill rows with their supports, levels and Energy"
       energy: 175,
     },
   );
-  assert.deepEqual(aim.supports[4], {
+  assert.deepEqual(iceBond.supports[4], {
     slot: 4,
     name: null,
     art: null,
     grantedBy: null,
     draggable: false,
-    label: "Add support 5 to Aim",
+    label: "Add support 5 to Ice Bond",
     title: "Add support",
   });
-  assert.equal(aim.supports[1].label, "Replace Mass Effect");
-  assert.equal(aim.supports[1].title, "Drag to move · right-click while dragging to duplicate");
-  assert.equal(aim.supports[1].draggable, true);
-  assert.match(aim.supports[1].art, /\.webp$/);
+  assert.equal(iceBond.supports[2].label, "Replace Mass Effect");
+  assert.equal(iceBond.supports[2].title, "Drag to move · right-click while dragging to duplicate");
+  assert.equal(iceBond.supports[2].draggable, true);
+  assert.match(iceBond.supports[2].art, /\.webp$/);
 });
 
 test("the Auras tab: four rows and the Mana and Life the auras leave free, of the build's own pools", () => {
-  const auras = view(defaultResult, "auras");
+  const auras = view(yougaResult, "auras");
   assert.equal(auras.rows.length, 4);
-  assert.equal(auras.rows[2].label, "Replace Precise: Deep Pain");
+  assert.equal(auras.rows[2].label, "Replace Frigid Domain");
   assert.deepEqual(auras.reservation, {
     mana: {
-      percent: "5.78%",
-      sealed: "30.94 / 535",
-      detail: "504.06 sealed",
-      meterPercent: 5.7829,
+      percent: "11.29%",
+      sealed: "65.58 / 580.75",
+      detail: "515.17 sealed",
+      meterPercent: 11.2926,
       overCapacity: false,
     },
     life: {
-      percent: "10.67%",
-      sealed: "234.01 / 2,192.68",
-      detail: "1,958.67 sealed",
-      meterPercent: 10.6725,
+      percent: "3.58%",
+      sealed: "79.9 / 2,232.44",
+      detail: "2,152.54 sealed",
+      meterPercent: 3.5791,
       overCapacity: false,
     },
     problems: [],
@@ -92,14 +98,14 @@ test("the Auras tab: four rows and the Mana and Life the auras leave free, of th
 });
 
 test("the Energy sources leave out a gear slot that is switched off", () => {
-  const state = structuredClone(defaultPlannerState);
+  const state = structuredClone(youga);
   state.disabledEquipmentSlots = ["gloves", "boots"];
   const { energy } = view(calculatePlanner(state));
   assert.deepEqual(
     energy.gear.map((piece) => piece.slot),
     ["Weapon 1", "Weapon 2", "Helmet", "Chest Armor"],
   );
-  assert.equal(energy.available, 520 - 59 - 60);
+  assert.equal(energy.available, 455 - 34 - 49);
 });
 
 test("empty rows are named by tab and row, and their sockets wait for a skill", () => {
@@ -139,37 +145,37 @@ test("a support and a skill granted by the hero trait: shown with the trait, nev
 
 test("Skills tab: a curse past the curse limit says why it is off; the Auras tab shows no curse note", () => {
   const result = {
-    ...defaultResult,
-    curseLimit: { maximum: 1, active: ["Entangled Pain"], excluded: ["Scorch", "Precise: Deep Pain"] },
+    ...yougaResult,
+    curseLimit: { maximum: 1, active: ["Selves of All Realms"], excluded: ["Timid", "Frigid Domain"] },
   };
-  const scorch = view(result).rows[4].skill;
-  assert.equal(scorch.curseOffReason, "curse limit reached (1/1 slots used by Entangled Pain)");
+  const timid = view(result).rows[4].skill;
+  assert.equal(timid.curseOffReason, "curse limit reached (1/1 slots used by Selves of All Realms)");
   assert.equal(view(result).rows[3].skill.curseOffReason, null);
   // The Auras tab never shows the note, even for a name the limit lists.
-  assert.equal(view(result, "auras").rows[2].skill.name, "Precise: Deep Pain");
+  assert.equal(view(result, "auras").rows[2].skill.name, "Frigid Domain");
   assert.ok(view(result, "auras").rows.every((row) => row.skill?.curseOffReason === null));
 });
 
 test("a skill a board rule set aside keeps its row and says why", () => {
   const reason = "Spirit Magus in an active slot needs Iris";
   const activation = {
-    ...defaultResult.activation,
-    setups: defaultResult.activation.setups.map((setup) =>
-      setup.name === "Aim" ? { ...setup, enabled: false, slotInactive: reason } : setup,
+    ...yougaResult.activation,
+    setups: yougaResult.activation.setups.map((setup) =>
+      setup.name === "Ice Bond" ? { ...setup, enabled: false, slotInactive: reason } : setup,
     ),
   };
-  const skills = view({ ...defaultResult, activation });
-  assert.equal(skills.rows[1].skill.name, "Aim");
+  const skills = view({ ...yougaResult, activation });
+  assert.equal(skills.rows[1].skill.name, "Ice Bond");
   assert.equal(skills.rows[1].skill.inactiveReason, reason);
-  assert.equal(skills.energy.used, 515 - 25);
+  assert.equal(skills.energy.used, 450 - skills.rows[1].skill.energy);
 });
 
 test("auras asking for 100% or more: the request before the cap, and what stops the setup", () => {
-  const planned = { ...defaultResult.aura.planned, manaReservedPercent: 99.99, manaDemandPercent: 104.5 };
-  const { reservation } = view({ ...defaultResult, aura: { ...defaultResult.aura, planned } }, "auras");
+  const planned = { ...yougaResult.aura.planned, manaReservedPercent: 99.99, manaDemandPercent: 104.5 };
+  const { reservation } = view({ ...yougaResult, aura: { ...yougaResult.aura, planned } }, "auras");
   assert.deepEqual(reservation.mana, {
     percent: "0.01%",
-    sealed: "0.05 / 535",
+    sealed: "0.06 / 580.75",
     detail: "104.5% requested before cap",
     meterPercent: 0.01,
     overCapacity: true,

@@ -181,7 +181,7 @@ test("Reset Gear empties every slot and keeps the Inventory", async ({ page }) =
   await expect(gear.inventory().getByText("Equipped", { exact: true })).toHaveCount(0);
   const stored = await gear.stored();
   expect(stored.overrides).toEqual({});
-  expect([...stored.disabled].sort()).toEqual([...SLOTS].sort());
+  expect(stored.disabled).toEqual([]);
   await planner.expectNoErrors();
 });
 
