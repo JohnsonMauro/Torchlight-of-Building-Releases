@@ -102,13 +102,13 @@ import {
 import { normalizePlannerState } from "./state/planner-state.ts";
 import { resolveTalentCandidate, resolveSlateCandidate } from "./candidate-sources.js";
 import { grantedCoreNames } from "./text/granted-core-lines.js";
-import { selenaScorchingBeamTalentSetup as talents } from "../data/talents/selena-scorching-beam.js";
+import { selenaScorchingBeamTalentSetup as capturedTalents } from "../data/talents/selena-scorching-beam.js";
 import { allProfessionTalentCatalogue as catalogue } from "../data/talents/all-profession-trees.generated.js";
-import { selenaScorchingBeamGear as gear } from "../data/gear/selena-scorching-beam.js";
-import { selenaScorchingBeamPacts as pacts } from "../data/pacts/selena-scorching-beam.js";
-import { selenaScorchingBeamSlates as slates } from "../data/slates/selena-scorching-beam.js";
+import { selenaScorchingBeamGear as capturedGear } from "../data/gear/selena-scorching-beam.js";
+import { selenaScorchingBeamPacts as capturedPacts } from "../data/pacts/selena-scorching-beam.js";
+import { selenaScorchingBeamSlates as capturedSlates } from "../data/slates/selena-scorching-beam.js";
 import { supportValidationBaseline } from "../data/stats/support-validation-2026-09-08.js";
-import { selenaCompleteSkillLoadout as skills } from "../data/skills/selena-complete-skill-loadout.js";
+import { selenaCompleteSkillLoadout as capturedSkills } from "../data/skills/selena-complete-skill-loadout.js";
 import { auraScaling } from "../data/skills/aura-scaling.js";
 import { auraDamageModifierTexts } from "./skills/aura-damage.js";
 import { collectSkillDamageSources, inferDamageProfile } from "./skills/skill-damage-profiles.js";
@@ -156,8 +156,8 @@ import {
   BURST_SETUP_KEY,
 } from "./heroes/rehan-traits.js";
 const B6_MODULE_KEYS = new Set(["overload", "chargeCalling", "irisGrowing", "irisVigilant"]);
-import { selenaScorchingBeamObservedSnapshots as snapshots } from "../data/stats/selena-scorching-beam-observed-snapshots.js";
-import { selenaScorchingBeamCombatValidation as combat } from "../data/stats/selena-scorching-beam-combat-validation.js";
+import { selenaScorchingBeamObservedSnapshots as capturedSnapshots } from "../data/stats/selena-scorching-beam-observed-snapshots.js";
+import { selenaScorchingBeamCombatValidation as capturedCombat } from "../data/stats/selena-scorching-beam-combat-validation.js";
 import { compileScorchingBeamIgniteSources } from "./theoretical-sources.js";
 import {
   defaultConfigurableSupportConfig,
@@ -1813,15 +1813,15 @@ function calculatePlannerOnce(
       if (typeof state.combat.bestCaseOverrides?.[key] !== "boolean") delete requestedBase[key];
   const requestedConditions = { ...requestedBase, ...conditionOverrides };
   const heroMemories = calculateHeroMemories(state.hero);
-  const equipped = state.equippedSlateIds ?? slates.slates.map((slate) => slate.id);
-  const talent = resolveTalentCandidate(talents, catalogue, state.talentRanks, state.talents);
-  const slate = resolveSlateCandidate(slates, equipped, state.slates);
+  const equipped = state.equippedSlateIds ?? capturedSlates.slates.map((slate) => slate.id);
+  const talent = resolveTalentCandidate(capturedTalents, catalogue, state.talentRanks, state.talents);
+  const slate = resolveSlateCandidate(capturedSlates, equipped, state.slates);
   const talentSlate = calculateTalentSlateCandidate({
-    talentSetup: talents,
+    talentSetup: capturedTalents,
     talentRanks: state.talentRanks,
-    slateSetup: slates,
+    slateSetup: capturedSlates,
     equippedSlateIds: equipped,
-    snapshot: snapshots[0],
+    snapshot: capturedSnapshots[0],
     candidateTalentSetup: talent.setup,
     candidateSlateSetup: slate.setup,
   });
@@ -1831,15 +1831,15 @@ function calculatePlannerOnce(
   const offTheBeatenTrackSlate = slate.setup.slates.some(
     (item) =>
       equipped.includes(item.id) &&
-      (state.slates.placements || slates.capturedPlacements)?.[item.id] &&
+      (state.slates.placements || capturedSlates.capturedPlacements)?.[item.id] &&
       [...(item.fixed || []), ...(item.brands || []), ...(item.copiedTalents || [])].some((effect) =>
         /off the beaten track/i.test(effect),
       ),
   );
   const equipment = calculateEquipmentCandidate(
-    gear.items,
+    capturedGear.items,
     state.equipmentOverrides,
-    snapshots[0],
+    capturedSnapshots[0],
     state.disabledEquipmentSlots,
   );
   const levelSources = {
@@ -1865,10 +1865,10 @@ function calculatePlannerOnce(
       return { ...panel, allocatedNodes, activeCores };
     }),
     slates: slate.setup.slates.filter(
-      (item) => equipped.includes(item.id) && (state.slates.placements || slates.capturedPlacements)?.[item.id],
+      (item) => equipped.includes(item.id) && (state.slates.placements || capturedSlates.capturedPlacements)?.[item.id],
     ),
   };
-  const pact = calculatePactCandidate(pacts, state.pacts, snapshots[0]);
+  const pact = calculatePactCandidate(capturedPacts, state.pacts, capturedSnapshots[0]);
   const modifierTexts = collectModifierTexts({
     equipment,
     disabledSlots: state.disabledEquipmentSlots,
@@ -1958,8 +1958,8 @@ function calculatePlannerOnce(
         });
     }
   }
-  const profile = skills.energyProfile;
-  const setupSources = [...skills.setups, ...(state.skills.customSetups || [])];
+  const profile = capturedSkills.energyProfile;
+  const setupSources = [...capturedSkills.setups, ...(state.skills.customSetups || [])];
   const catalogSkillsByName = new Map(tlidbSkillCatalog.map((entry) => [entry.name, entry]));
   const catalogSupportsByName = new Map(tlidbSupportCatalog.map((entry) => [entry.name, entry]));
   // Supports item lines grant to the Main Skill (packages/engine/src/gear/gear-unique-modules.js; gear-pact batch chunk 4): "The Main Skill is
@@ -2749,13 +2749,13 @@ function calculatePlannerOnce(
   const sourceStacks = talentSlate.disintegrate.candidateAdditionalStacks;
   const equipmentDisintegrateFactor =
     (1 + Math.max(0, sourceStacks + equipment.additionalIgniteStacksDelta) * 0.26) / (1 + sourceStacks * 0.26);
-  const support = calculateSupportCandidate(main.supports, skills.setups[0].supports, {
+  const support = calculateSupportCandidate(main.supports, capturedSkills.setups[0].supports, {
     igniteLimit,
     additionalStacks: Math.max(0, sourceStacks + equipment.additionalIgniteStacksDelta),
     useEffectiveLevels: state.talents.useCapturedRanks === false,
   });
   const supportFactor = support.igniteFactor;
-  const baselineMainLevel = skills.setups[0].effectiveLevel;
+  const baselineMainLevel = capturedSkills.setups[0].effectiveLevel;
   const skillLevelFactor =
     main.effectiveLevel >= 20
       ? skillLevelDamageMultiplier(main.effectiveLevel) / skillLevelDamageMultiplier(baselineMainLevel)
@@ -3560,7 +3560,7 @@ function calculatePlannerOnce(
   };
   let afflictionRating = resolveAfflictionRating(theoretical);
   const configuredFor = () =>
-    calculateConfiguredCombatDamage(combat, {
+    calculateConfiguredCombatDamage(capturedCombat, {
       ...state.combat,
       afflictionAverage: damageCombat.afflictionAverage,
       conditions,
