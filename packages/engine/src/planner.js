@@ -102,7 +102,6 @@ import {
 import { normalizePlannerState } from "./state/planner-state.ts";
 import { resolveTalentCandidate, resolveSlateCandidate } from "./candidate-sources.js";
 import { grantedCoreNames } from "./text/granted-core-lines.js";
-import { selenaScorchingBeamTalentSetup as capturedTalents } from "../data/talents/selena-scorching-beam.js";
 import { allProfessionTalentCatalogue as catalogue } from "../data/talents/all-profession-trees.generated.js";
 import { auraScaling } from "../data/skills/aura-scaling.js";
 import { auraDamageModifierTexts } from "./skills/aura-damage.js";
@@ -1807,7 +1806,7 @@ function calculatePlannerOnce(
   const requestedConditions = { ...requestedBase, ...conditionOverrides };
   const heroMemories = calculateHeroMemories(state.hero);
   const equipped = state.equippedSlateIds;
-  const talent = resolveTalentCandidate(capturedTalents, catalogue, state.talentRanks, state.talents);
+  const talent = resolveTalentCandidate(catalogue, state.talentRanks, state.talents);
   const slate = resolveSlateCandidate(equipped, state.slates);
   const talentSlate = calculateTalentSlateCandidate({
     talentSetup: talent.setup,
@@ -3388,7 +3387,7 @@ function calculatePlannerOnce(
     targetFireResistancePercent: fixedFireResistance ?? state.combat.targetFireResistancePercent,
     idyllStacks: conditions.idyll ? state.combat.idyllStacks : 0,
   };
-  // Talent nodes (captured or text, packages/engine/src/text/talent-text-effects.js) and slate copies of Warlord [5,2] inflict Fire Infiltration.
+  // Talent nodes (their text, packages/engine/src/text/talent-text-effects.js) and slate copies of Warlord [5,2] inflict Fire Infiltration.
   if (
     !talent.setup.panels.some((panel) =>
       panel.allocatedNodes.some((node) => node.rank > 0 && node.effects?.inflictsFireInfiltrationAgainstIgnited),

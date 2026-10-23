@@ -17,7 +17,6 @@ import { nativePactspiritNodeEffect } from "../pacts/pactspirit-levels.js";
 import { parseReapingSource } from "../ailments/reaping-sources.js";
 import { parseBlessingRecovery } from "../defense/blessing-gear-effects.js";
 import { parseBlurSource } from "../combat/blur-sources.js";
-import { selenaScorchingBeamTalentSetup } from "../../data/talents/selena-scorching-beam.js";
 
 // ---------------------------------------------------------------------------------------------
 // Tags (§2.1). Names from the executable's EConfigAttrTag / EConfigSkillTag / EConfigCharState enums.
@@ -850,38 +849,6 @@ const BLUR_DOT =
   /^Blur gains an additional effect:\s*\+([\d.]+)% (additional )?Damage Over Time for (?:each|every 1) Blur Rating$/i; // blur-effects.js
 const firstNumber = (text) => Math.abs(extractLineValues(text)[0] ?? NaN);
 
-function capturedTalentNode(source) {
-  const m = String(source || "").match(/^(.+) talent \((-?\d+),(-?\d+)\)$/);
-  if (!m) return null;
-  const panel = selenaScorchingBeamTalentSetup.panels.find((p) => p.name === m[1]);
-  return panel?.allocatedNodes.find((n) => String(n.coordinate) === `${m[2]},${m[3]}`) || null;
-}
-
-// Which captured key a talent clause maps to (the captured data has effectsPerRank / effects keys, not clause text).
-function capturedTalentKey(node, text) {
-  const effects = { ...(node.effectsPerRank || {}), ...(node.effects || {}) };
-  const keys = Object.keys(effects);
-  const parsed = Object.keys(parseTalentEffects(text).effects);
-  const same = parsed.find((k) => keys.includes(k));
-  if (same) return { key: same, how: "captured effectsPerRank (same key as parseTalentEffects)" };
-  if (/minion/i.test(text)) return { key: null, how: "captured talent data omits minion clauses" };
-  const n = firstNumber(text);
-  const byValue = keys.filter((k) => typeof effects[k] === "number" && Math.abs(effects[k]) === n);
-  if (byValue.length === 1) return { key: byValue[0], how: "captured effectsPerRank (value match)" };
-  if (keys.length === 1) return { key: keys[0], how: "captured effectsPerRank (single key)" };
-  const words = text
-    .toLowerCase()
-    .replace(/[^a-z ]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 3);
-  const scored = (byValue.length ? byValue : keys)
-    .map((k) => ({ k, s: words.filter((w) => k.toLowerCase().includes(w.slice(0, 5))).length }))
-    .sort((a, b) => b.s - a.s);
-  return scored[0]?.s
-    ? { key: scored[0].k, how: "captured effectsPerRank (keyword match)" }
-    : { key: null, how: "captured node has no key for this clause" };
-}
-
 function recognizedBucket(note, text) {
   if (!note) return null;
   if (/^Inactive|Curse limit reached/i.test(note)) return { bucket: null, note };
@@ -941,20 +908,13 @@ export function regexIgniteBucket(line, { mechanics, heroMemories, coreTalents }
       parsed = { bucket, key: keys.join("+"), how: "engine.js modifierPatterns" };
     }
   } else if (line.origin === "talent") {
-    const node = capturedTalentNode(line.source);
-    if (node) {
-      const { key, how } = capturedTalentKey(node, text);
-      if (key) parsed = { bucket: TALENT_KEYS[key] ?? null, key, how };
-      else if (/minion/i.test(text)) parsed = { bucket: null, key: "minion clause", how };
-    } else {
-      const keys = Object.keys(parseTalentEffects(text).effects);
-      if (keys.length)
-        parsed = {
-          bucket: keys.map((k) => TALENT_KEYS[k]).find(Boolean) ?? null,
-          key: keys.join("+"),
-          how: "candidate-sources.js parseTalentEffects",
-        };
-    }
+    const keys = Object.keys(parseTalentEffects(text).effects);
+    if (keys.length)
+      parsed = {
+        bucket: keys.map((k) => TALENT_KEYS[k]).find(Boolean) ?? null,
+        key: keys.join("+"),
+        how: "candidate-sources.js parseTalentEffects",
+      };
   } else if (line.origin === "slate") {
     const totals = aggregateSlateEffects({ slates: [{ id: "crosscheck", fixed: [line.text] }] });
     const keys = Object.keys(totals).filter((k) => totals[k]);

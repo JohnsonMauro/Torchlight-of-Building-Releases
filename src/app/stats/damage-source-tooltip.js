@@ -10,7 +10,6 @@ import {
   pactspiritEffectsAtLevel,
   pactspiritTrees,
   resolveTalentCandidate,
-  selenaScorchingBeamTalentSetup,
 } from "#engine";
 import { displayTexts } from "../bridge/display-text.ts";
 import { heroTraitTarget } from "../bridge/hero-traits-view-model.ts";
@@ -169,7 +168,6 @@ function breakdown(source, category) {
       contributors.push(`${item.name} (${slotLabel(item.slot)})\n${(item.modifiers || []).join("\n")}`);
   } else if (/^Talent/.test(source) && stat) {
     const candidate = resolveTalentCandidate(
-      selenaScorchingBeamTalentSetup,
       allProfessionTalentCatalogue,
       planner.state.talentRanks,
       planner.state.talents,

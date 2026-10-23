@@ -43,11 +43,10 @@ export function parseTalentEffects(description = "") {
   return { effects, unsupported };
 }
 
-export function resolveTalentCandidate(captured, catalogue, ranks, selections) {
+export function resolveTalentCandidate(catalogue, ranks, selections) {
   const warnings = [],
     activeCores = new Set();
   const panels = selections.selectedTrees.filter(Boolean).map((name) => {
-    const baseline = captured.panels.find((panel) => panel.name === name);
     const panel = catalogue[name];
     if (!panel) return { name, allocatedNodes: [] };
     const prism = (selections.prismInventory || []).find((item) => item.id === selections.installedPrisms?.[name]);
@@ -62,20 +61,8 @@ export function resolveTalentCandidate(captured, catalogue, ranks, selections) {
       );
     const allocatedNodes = nodes.map((node) => {
       const source = sourceNodes.get(node.reflectedFrom) || node;
-      const known = baseline?.allocatedNodes.find((item) => String(item.coordinate) === String(source.coordinate));
       const rank = ranks[`${name}:${node.coordinate}`] ?? 0;
       const multiplier = node.reflectedFrom ? inverseImageEffectMultiplier(prism, source.type) : 1;
-      if (known)
-        return {
-          ...known,
-          coordinate: node.coordinate,
-          rank,
-          reflectedFrom: node.reflectedFrom,
-          inverseEffectMultiplier: multiplier,
-          replacedBy: node.reflectedFrom ? undefined : known.replacedBy,
-          effectsPerRank: scaleEffects(known.effectsPerRank, multiplier),
-          effects: scaleEffects(known.effects, multiplier),
-        };
       const parsed = parseTalentEffects(source.description);
       if (rank > 0 && parsed.unsupported.length)
         warnings.push(`${name} (${node.coordinate}): unmodeled ${parsed.unsupported.join("; ")}`);
