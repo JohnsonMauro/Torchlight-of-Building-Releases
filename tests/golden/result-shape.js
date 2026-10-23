@@ -27,12 +27,10 @@ const NULLABLE = new Set([
 ]);
 const NUMBERS = [
   "igniteAttemptsPerSecond",
-  "skillLevelFactor",
   "effectiveTargetFireResistancePercent",
   "murmursTideEffectPercent",
   "tideEffectFactor",
   "igniteLimit",
-  "sourceDamageMultiplier",
 ];
 const LISTS = [
   "warnings",

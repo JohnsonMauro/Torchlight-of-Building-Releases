@@ -5,7 +5,6 @@ import { matchTalentTextClause } from "./text/talent-text-effects.js";
 import { activeKismetEffects, parseKismetEffect } from "./pacts/kismet-effects.js";
 import { auraBaseEffects, auraSupportEffects, auraSupportSealedManaCompensation } from "./skills/aura-effects.js";
 import { auraScaling, auraStatUsesEffectScale } from "../data/skills/aura-scaling.js";
-import { additionalIgniteMultiplier } from "./supports/support-model.js";
 import {
   nativePactspiritNodeEffect,
   orderedPactspiritNodes,
@@ -27,143 +26,6 @@ export function skillLevelDamageMultiplier(level) {
   const levels21To30 = Math.min(level, 30) - 20;
   const levels31Plus = Math.max(0, level - 30);
   return 1.1 ** levels21To30 * 1.08 ** levels31Plus;
-}
-
-export function calculateConfiguredCombatDamage(combat, configuration = {}) {
-  const sourceDamageMultiplier = configuration.sourceDamageMultiplier ?? 1;
-  const baseDps = combat.characterSheet.igniteDps * sourceDamageMultiplier;
-  const enabled = (id) => configuration.conditions?.[id] !== false;
-  const idyllStacks = Math.max(0, Math.min(15, configuration.idyllStacks ?? 15));
-  const tideEffectFactor = configuration.tideEffectFactor ?? 1;
-  const afflictionAverage = Math.max(0, Math.min(100, configuration.afflictionAverage ?? 50));
-  const afflictionPeak = Math.max(0, Math.min(100, configuration.afflictionPeak ?? 100));
-  // The planner passes the build-derived Aim uptime (aim-model.js); 100% is the best case.
-  const aimUptimePercent = Math.max(0, Math.min(100, configuration.aimUptimePercent ?? 100));
-  const multiply = (entries) => entries.reduce((value, entry) => value * entry.factor, baseDps);
-  const allFixed = [
-    {
-      id: "tideContact",
-      label: "Tide effect (15% × Tide Effect)",
-      factor: 1 + (15 * tideEffectFactor) / 100,
-      confidence: "database",
-    },
-    {
-      id: "onTheTide",
-      label: "Sing with the Tide: enemy damage taken at selected level",
-      factor: 1 + (configuration.enemyOnTideDamageTakenPercent ?? 20) / 100,
-      confidence: "database",
-    },
-    {
-      id: "waveAria",
-      label: `Wave Aria: damage against enemies on Tide`,
-      factor: 1 + ((configuration.waveAriaPercent ?? 16) * tideEffectFactor) / 100,
-      confidence: "database",
-    },
-    {
-      id: "idyll",
-      label: `Idyll of the Tide at ${idyllStacks} movement stacks`,
-      factor: 1 + (idyllStacks * (configuration.idyllPerStackPercent ?? 1.6) * tideEffectFactor) / 100,
-      confidence: "conditional",
-    },
-    { id: "fireInfiltration", label: "Fire Infiltration", factor: 1.13, confidence: "database" },
-    {
-      id: "entangledPain",
-      label: "Entangled Pain (captured effective value)",
-      factor: 1 + (configuration.entangledPainDamagePercent ?? 42.5) / 100,
-      confidence: "captured",
-    },
-    {
-      id: "scorch",
-      label: "Scorch (captured effective value)",
-      factor: 1 + (configuration.scorchDamagePercent ?? 45) / 100,
-      confidence: "captured",
-    },
-  ];
-  const fixed = allFixed.filter(
-    (entry) =>
-      enabled(entry.id) &&
-      (entry.id !== "waveAria" || (enabled("tideContact") && enabled("onTheTide"))) &&
-      (entry.id !== "idyll" || enabled("tideContact")),
-  );
-  const afflictionFactor = (points) => 1 + (points * combat.characterSheet.igniteDamagePerAfflictionPercent) / 100;
-  const aimActiveFactor = 1 + (configuration.aimDamagePercent ?? 38.5) / 100;
-  const aimAverageFactor = enabled("aim") ? 1 + ((aimActiveFactor - 1) * aimUptimePercent) / 100 : 1;
-  const sustained = multiply([
-    ...fixed,
-    { factor: afflictionFactor(enabled("affliction") ? afflictionAverage : 0) },
-    { factor: aimAverageFactor },
-  ]);
-  const peak = multiply([
-    ...fixed,
-    { factor: afflictionFactor(enabled("affliction") ? afflictionPeak : 0) },
-    { factor: enabled("aim") ? aimActiveFactor : 1 },
-  ]);
-  const trace = [
-    {
-      label: "Captured combat-sheet Ignite DPS",
-      factor: 1,
-      value: combat.characterSheet.igniteDps,
-      confidence: "observed",
-    },
-    ...(sourceDamageMultiplier === 1
-      ? []
-      : [
-          {
-            id: "candidateSources",
-            label: "Candidate talent and slate sources",
-            factor: round(sourceDamageMultiplier, 6),
-            value: baseDps,
-            confidence: "configured",
-          },
-        ]),
-    ...fixed.map((entry) => ({ ...entry, value: null })),
-    {
-      id: "affliction",
-      label: `Affliction sustained average (${enabled("affliction") ? afflictionAverage : 0})`,
-      factor: afflictionFactor(enabled("affliction") ? afflictionAverage : 0),
-      value: null,
-      confidence: "modeled",
-    },
-    {
-      id: "aim",
-      label: `Aim sustained uptime (${enabled("aim") ? aimUptimePercent : 0}%)`,
-      factor: round(aimAverageFactor, 4),
-      value: null,
-      confidence: "configured",
-    },
-  ];
-  return {
-    baseDps,
-    sustained: {
-      dps: round(sustained),
-      low: round(sustained),
-      high: round(sustained),
-      afflictionAverage: enabled("affliction") ? afflictionAverage : 0,
-      aimUptimePercent: enabled("aim") ? aimUptimePercent : 0,
-    },
-    peak: {
-      dps: round(peak),
-      affliction: enabled("affliction") ? afflictionPeak : 0,
-      aimActive: enabled("aim"),
-      idyllStacks,
-    },
-    fixedMultiplier: round(
-      fixed.reduce((value, entry) => value * entry.factor, 1),
-      4,
-    ),
-    trace,
-    alreadyIncluded: [
-      "10 active Ignites",
-      "Disintegrate Noble +390%",
-      "four Precise auras",
-      "Blur 100",
-      "Focus Blessing 6",
-      "Tenacity Blessing 7",
-      "five channel stacks in the selected skill model",
-    ],
-    warning:
-      "Configured estimate is anchored to the captured combat sheet. The recount's 5T ceiling is only a lower bound and cannot calibrate this result.",
-  };
 }
 
 // Energy from the character level: +1 per level ("Level Up: Every level +1") over a base of 4. The game's Energy panel shows
@@ -664,32 +526,13 @@ export function equippedItems(overrides = {}) {
   });
 }
 
-export function calculateEquipmentCandidate(baselineItems, overrides, snapshot, disabledSlots = []) {
+export function calculateEquipmentCandidate(overrides, disabledSlots = []) {
   const allItems = equippedItems(overrides);
   const candidateItems = allItems.filter((item) => !disabledSlots.includes(item.slot));
-  const baselineModifiers = collectNormalizedGearModifiers(baselineItems);
   const candidateModifiers = collectNormalizedGearModifiers(candidateItems);
-  const baseline = aggregateNormalizedModifiers(baselineModifiers);
   const candidate = aggregateNormalizedModifiers(candidateModifiers);
-  const keys = [...new Set([...Object.keys(baseline), ...Object.keys(candidate)])];
-  const delta = Object.fromEntries(keys.map((key) => [key, round((candidate[key] || 0) - (baseline[key] || 0), 4)]));
   const value = (ledger, stat, type) => ledger[`${stat}:${type}`] || 0;
-  const increasedDelta =
-    value(delta, "damagePercent", "increased") +
-    value(delta, "damageOverTimePercent", "increased") +
-    value(delta, "elementalDamagePercent", "increased");
-  const increasedDamageFactor =
-    (100 + snapshot.damage.damageBonusPercent + increasedDelta) / (100 + snapshot.damage.damageBonusPercent);
-  const baseIgniteDelta = value(delta, "baseIgniteDamage", "flat");
-  const baseIgniteFactor =
-    (snapshot.buffsAndMechanics.baseIgniteDamage + baseIgniteDelta) / snapshot.buffsAndMechanics.baseIgniteDamage;
-  const additionalIgniteDelta = value(delta, "additionalIgniteDamagePercent", "more");
-  const additionalIgniteFactor =
-    (100 + snapshot.damage.additionalDamageBonusPercent + additionalIgniteDelta) /
-    (100 + snapshot.damage.additionalDamageBonusPercent);
   const candidateGearIgniteLimit = value(candidate, "igniteLimit", "flat");
-  const baselineGearIgniteLimit = value(baseline, "igniteLimit", "flat");
-  const additionalIgniteStacksDelta = value(delta, "additionalIgniteStacks", "flat");
   const defenses = candidateItems.reduce((totals, item) => {
     for (const [key, amount] of Object.entries(item.defenses || {}))
       if (typeof amount === "number") totals[key] = round((totals[key] || 0) + amount, 4);
@@ -718,24 +561,13 @@ export function calculateEquipmentCandidate(baselineItems, overrides, snapshot, 
       .filter((text) => !recognizedTexts.has(`${item.slot}:${text}`))
       .map((text) => ({ slot: item.slot, source: item.name, text })),
   );
-  const nonLimitDamageMultiplier = increasedDamageFactor * baseIgniteFactor * additionalIgniteFactor;
   return {
     allItems,
     candidateItems,
-    baseline,
     candidate,
-    delta,
     defenses,
     equipmentEnergy: energy,
-    baselineGearIgniteLimit,
     candidateGearIgniteLimit,
-    additionalIgniteStacksDelta,
-    factors: {
-      increasedDamageFactor: round(increasedDamageFactor, 6),
-      baseIgniteFactor: round(baseIgniteFactor, 6),
-      additionalIgniteFactor: round(additionalIgniteFactor, 6),
-      nonLimitDamageMultiplier: round(nonLimitDamageMultiplier, 6),
-    },
     recognizedCount: candidateModifiers.length,
     unrecognized,
   };
@@ -831,79 +663,21 @@ export function slateAdditionalFirePercents(slateSetup, equippedIds = slateSetup
     });
 }
 
-export function calculateTalentSlateCandidate({
-  talentSetup,
-  talentRanks,
-  slateSetup,
-  equippedSlateIds,
-  snapshot,
-  candidateTalentSetup = talentSetup,
-  candidateSlateSetup = slateSetup,
-}) {
-  const baselineTalent = aggregateTalentEffects(talentSetup);
-  const candidateTalent = aggregateTalentEffects(candidateTalentSetup, talentRanks);
-  const baselineSlate = aggregateSlateEffects(slateSetup);
-  const candidateSlate = aggregateSlateEffects(candidateSlateSetup, equippedSlateIds);
-  const talentDelta = Object.fromEntries(
-    [...new Set([...Object.keys(baselineTalent), ...Object.keys(candidateTalent)])].map((key) => [
-      key,
-      round((candidateTalent[key] || 0) - (baselineTalent[key] || 0), 4),
-    ]),
-  );
-  const slateDelta = Object.fromEntries(
-    [...new Set([...Object.keys(baselineSlate), ...Object.keys(candidateSlate)])].map((key) => [
-      key,
-      round((candidateSlate[key] || 0) - (baselineSlate[key] || 0), 4),
-    ]),
-  );
-  const increasedDamageDelta =
-    (talentDelta.damagePercent || 0) +
-    (talentDelta.damageOverTimePercent || 0) +
-    (talentDelta.fireDamageOverTimePercent || 0);
-  const increasedDamageFactor =
-    (100 + snapshot.damage.damageBonusPercent + increasedDamageDelta) / (100 + snapshot.damage.damageBonusPercent);
-  const baselineBaseIgnite = snapshot.buffsAndMechanics.baseIgniteDamage;
-  const baseIgniteFactor =
-    (baselineBaseIgnite + (talentDelta.baseIgniteDamage || 0) + (slateDelta.baseIgniteDamage || 0)) /
-    baselineBaseIgnite;
-  const additionalFireFactor =
-    (100 + snapshot.damage.additionalFireDamageBonusPercent + (slateDelta.additionalFireDamagePercent || 0)) /
-    (100 + snapshot.damage.additionalFireDamageBonusPercent);
-  const baselineAdditionalStacks = 15;
-  const candidateAdditionalStacks = Math.max(
-    0,
-    baselineAdditionalStacks + (talentDelta.additionalIgniteStacks || 0) + (slateDelta.additionalIgniteStacks || 0),
-  );
-  const disintegrateFactor = (1 + candidateAdditionalStacks * 0.26) / (1 + baselineAdditionalStacks * 0.26);
-  const damageMultiplier = increasedDamageFactor * baseIgniteFactor * additionalFireFactor * disintegrateFactor;
+export function calculateTalentSlateCandidate({ talentSetup, talentRanks, slateSetup, equippedSlateIds }) {
+  const candidateTalent = aggregateTalentEffects(talentSetup, talentRanks);
+  const candidateSlate = aggregateSlateEffects(slateSetup, equippedSlateIds);
   return {
-    baselineTalent,
     candidateTalent,
-    talentDelta,
-    baselineSlate,
     candidateSlate,
-    slateDelta,
-    candidateSlateAdditionalFirePercents: slateAdditionalFirePercents(candidateSlateSetup, equippedSlateIds),
-    factors: {
-      increasedDamageFactor: round(increasedDamageFactor, 6),
-      baseIgniteFactor: round(baseIgniteFactor, 6),
-      additionalFireFactor: round(additionalFireFactor, 6),
-      disintegrateFactor: round(disintegrateFactor, 6),
-      damageMultiplier: round(damageMultiplier, 6),
-    },
-    disintegrate: {
-      baselineAdditionalStacks,
-      candidateAdditionalStacks,
-      additionalIgniteDamagePercent: round(candidateAdditionalStacks * 26),
-    },
+    candidateSlateAdditionalFirePercents: slateAdditionalFirePercents(slateSetup, equippedSlateIds),
     sealedManaCompensationPercent: round(
-      21.5 + (talentDelta.sealedManaCompensationPercent || 0) + (slateDelta.sealedManaCompensationPercent || 0),
+      (candidateTalent.sealedManaCompensationPercent || 0) + (candidateSlate.sealedManaCompensationPercent || 0),
       4,
     ),
   };
 }
 
-export function calculatePactCandidate(pactSetup, state = {}, snapshot) {
+export function calculatePactCandidate(state = {}) {
   const defenseSources = [];
   const nativeQuantities = state.nativeNodeQuantities || {};
   const totals = {
@@ -1004,25 +778,8 @@ export function calculatePactCandidate(pactSetup, state = {}, snapshot) {
     if (effect.stat === "additionalIgniteDurationPercent")
       additionalIgniteDurationRolls.push({ source: line.name, key: line.key, value: effect.value });
   }
-  const enabledVolcanoRolls = [
-    ...new Set(kismetLines.filter((line) => line.name === "Kismet: Volcano").map((line) => line.key)),
-  ];
   totals.igniteLimit ??= 0;
   totals.reapingDurationPercent ??= 0;
-  const baselineIgniteLimit = 10;
-  const candidateIgniteLimit = 6 + totals.igniteLimit;
-  const activeIgniteFactor = candidateIgniteLimit / baselineIgniteLimit;
-  const additionalIgniteSupportFactor =
-    additionalIgniteMultiplier(30, candidateIgniteLimit) / additionalIgniteMultiplier(30, baselineIgniteLimit);
-  const baselineIncreasedPool = 100 + snapshot.damage.damageBonusPercent;
-  const increasedDamageFactor =
-    (baselineIncreasedPool +
-      totals.damageOverTimePercent -
-      pactSetup.unreplacedNativeNodeTotals.damageOverTimePercent) /
-    baselineIncreasedPool;
-  const outgoingAdditionalFactor = (1 + totals.outgoingAdditionalDamagePercent / 100) / 1.02;
-  const nonLimitDamageMultiplier = increasedDamageFactor * outgoingAdditionalFactor;
-  const damageMultiplier = activeIgniteFactor * additionalIgniteSupportFactor * nonLimitDamageMultiplier;
   return {
     totals,
     levelAssumptions,
@@ -1033,16 +790,5 @@ export function calculatePactCandidate(pactSetup, state = {}, snapshot) {
       .filter((line) => line.type === "all")
       .reduce((factor, line) => factor * (1 + line.value / 100), 1),
     singleEnemyPhysicalDamageTakenFactor: defenseSources.reduce((factor, line) => factor * (1 + line.value / 100), 1),
-    factors: {
-      activeIgniteFactor: round(activeIgniteFactor, 6),
-      additionalIgniteSupportFactor: round(additionalIgniteSupportFactor, 6),
-      increasedDamageFactor: round(increasedDamageFactor, 6),
-      outgoingAdditionalFactor: round(outgoingAdditionalFactor, 6),
-      nonLimitDamageMultiplier: round(nonLimitDamageMultiplier, 6),
-      damageMultiplier: round(damageMultiplier, 6),
-    },
-    candidateIgniteLimit,
-    enabledVolcanoCount: enabledVolcanoRolls.length,
-    reapingDurationPerFatePercent: 12,
   };
 }

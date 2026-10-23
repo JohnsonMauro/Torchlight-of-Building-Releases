@@ -84,10 +84,9 @@ import {
   windRhythmTerraTrigger,
   buildCooldownRecoveryLines,
 } from "./heroes/selena-dance.js";
-import { calculateSupportCandidate, modeledSupportNames } from "./supports/support-model.js";
+import { modeledSupportNames } from "./supports/support-model.js";
 import {
   collectNormalizedGearModifiers,
-  calculateConfiguredCombatDamage,
   calculateTalentSlateCandidate,
   calculatePactCandidate,
   calculateEquipmentCandidate,
@@ -105,11 +104,6 @@ import { resolveTalentCandidate, resolveSlateCandidate } from "./candidate-sourc
 import { grantedCoreNames } from "./text/granted-core-lines.js";
 import { selenaScorchingBeamTalentSetup as capturedTalents } from "../data/talents/selena-scorching-beam.js";
 import { allProfessionTalentCatalogue as catalogue } from "../data/talents/all-profession-trees.generated.js";
-import { selenaScorchingBeamGear as capturedGear } from "../data/gear/selena-scorching-beam.js";
-import { selenaScorchingBeamPacts as capturedPacts } from "../data/pacts/selena-scorching-beam.js";
-import { selenaScorchingBeamSlates as capturedSlates } from "../data/slates/selena-scorching-beam.js";
-import { supportValidationBaseline } from "../data/stats/support-validation-2026-09-08.js";
-import { selenaCompleteSkillLoadout as capturedSkills } from "../data/skills/selena-complete-skill-loadout.js";
 import { auraScaling } from "../data/skills/aura-scaling.js";
 import { auraDamageModifierTexts } from "./skills/aura-damage.js";
 import { collectSkillDamageSources, inferDamageProfile } from "./skills/skill-damage-profiles.js";
@@ -157,8 +151,6 @@ import {
   BURST_SETUP_KEY,
 } from "./heroes/rehan-traits.js";
 const B6_MODULE_KEYS = new Set(["overload", "chargeCalling", "irisGrowing", "irisVigilant"]);
-import { selenaScorchingBeamObservedSnapshots as capturedSnapshots } from "../data/stats/selena-scorching-beam-observed-snapshots.js";
-import { selenaScorchingBeamCombatValidation as capturedCombat } from "../data/stats/selena-scorching-beam-combat-validation.js";
 import { compileScorchingBeamIgniteSources } from "./theoretical-sources.js";
 import {
   defaultConfigurableSupportConfig,
@@ -1818,13 +1810,10 @@ function calculatePlannerOnce(
   const talent = resolveTalentCandidate(capturedTalents, catalogue, state.talentRanks, state.talents);
   const slate = resolveSlateCandidate(equipped, state.slates);
   const talentSlate = calculateTalentSlateCandidate({
-    talentSetup: capturedTalents,
+    talentSetup: talent.setup,
     talentRanks: state.talentRanks,
-    slateSetup: capturedSlates,
+    slateSetup: slate.setup,
     equippedSlateIds: equipped,
-    snapshot: capturedSnapshots[0],
-    candidateTalentSetup: talent.setup,
-    candidateSlateSetup: slate.setup,
   });
   const offTheBeatenTrackTalent = talent.activeCores.has("Off The Beaten Track");
   // An equipped slate counts only once placed on the board, like every other slate line (levelSources.slates; core audit batch
@@ -1837,12 +1826,7 @@ function calculatePlannerOnce(
         /off the beaten track/i.test(effect),
       ),
   );
-  const equipment = calculateEquipmentCandidate(
-    capturedGear.items,
-    state.equipmentOverrides,
-    capturedSnapshots[0],
-    state.disabledEquipmentSlots,
-  );
+  const equipment = calculateEquipmentCandidate(state.equipmentOverrides, state.disabledEquipmentSlots);
   const levelSources = {
     gear: equipment.allItems.filter((item) => !state.disabledEquipmentSlots.includes(item.slot)),
     talents: talent.setup.panels.map((panel) => {
@@ -1867,7 +1851,7 @@ function calculatePlannerOnce(
     }),
     slates: slate.setup.slates.filter((item) => equipped.includes(item.id) && state.slates.placements[item.id]),
   };
-  const pact = calculatePactCandidate(capturedPacts, state.pacts, capturedSnapshots[0]);
+  const pact = calculatePactCandidate(state.pacts);
   const modifierTexts = collectModifierTexts({
     equipment,
     disabledSlots: state.disabledEquipmentSlots,
@@ -2735,47 +2719,6 @@ function calculatePlannerOnce(
     tags: [],
   };
   const main = scorchingBeam;
-  const sourceStacks = talentSlate.disintegrate.candidateAdditionalStacks;
-  const equipmentDisintegrateFactor =
-    (1 + Math.max(0, sourceStacks + equipment.additionalIgniteStacksDelta) * 0.26) / (1 + sourceStacks * 0.26);
-  const support = calculateSupportCandidate(main.supports, capturedSkills.setups[0].supports, {
-    igniteLimit,
-    additionalStacks: Math.max(0, sourceStacks + equipment.additionalIgniteStacksDelta),
-  });
-  const supportFactor = support.igniteFactor;
-  const baselineMainLevel = capturedSkills.setups[0].effectiveLevel;
-  const skillLevelFactor =
-    main.effectiveLevel >= 20
-      ? skillLevelDamageMultiplier(main.effectiveLevel) / skillLevelDamageMultiplier(baselineMainLevel)
-      : 1;
-  const townSupportPrediction = {
-    spellDps: supportValidationBaseline.spellDps * support.spellFactor,
-    igniteDps: supportValidationBaseline.igniteDps * support.townIgniteFactor,
-  };
-  const capturedAuraFactor = 1.255 * 1.435 * 1.41 * 1.34 * 1.04;
-  const currentAuraFactor = aura.entries.reduce((factor, auraEntry) => {
-    const effects = auraEntry.baseEffects;
-    const damageStats = [
-      "additionalAilmentDamagePercent",
-      "additionalFireDamagePercent",
-      "additionalDamageOverTimePercent",
-      "additionalAreaAilmentDamagePercent",
-    ];
-    const scaled = damageStats.reduce((result, stat) => result * (1 + (effects[stat] || 0) / 100), 1);
-    return factor * scaled * (auraEntry.name === "Precise: Domain Expansion" ? 1.04 : 1);
-  }, 1);
-  const configuredAuraFactor = currentAuraFactor / capturedAuraFactor;
-  const sourceDamageMultiplier =
-    (((activeNames.has("Scorching Beam") ? 1 : 0) *
-      talentSlate.factors.damageMultiplier *
-      pact.factors.nonLimitDamageMultiplier *
-      equipment.factors.nonLimitDamageMultiplier *
-      equipmentDisintegrateFactor *
-      igniteLimit) /
-      10) *
-    supportFactor *
-    configuredAuraFactor *
-    skillLevelFactor;
   const block = calculateBlock({
     equipment,
     talents: levelSources.talents,
@@ -3545,21 +3488,6 @@ function calculatePlannerOnce(
     return derived;
   };
   let afflictionRating = resolveAfflictionRating(theoretical);
-  const configuredFor = () =>
-    calculateConfiguredCombatDamage(capturedCombat, {
-      ...state.combat,
-      afflictionAverage: damageCombat.afflictionAverage,
-      conditions,
-      ...curses,
-      sourceDamageMultiplier,
-      enemyOnTideDamageTakenPercent,
-      tideEffectFactor,
-      waveAriaPercent,
-      idyllPerStackPercent,
-      aimDamagePercent: aim.ailmentDamagePercent,
-      aimUptimePercent: aim.uptimePercent,
-    });
-  let configured = configuredFor();
   const firesAllure = calculateFiresAllure({
     active: coreTalents.firesAllure,
     limit: igniteLimit,
@@ -3956,7 +3884,6 @@ function calculatePlannerOnce(
     const settled = resolveAfflictionRating(theoretical);
     if (Math.abs(settled.rating - afflictionRating.rating) > 1e-9) {
       theoretical = compileFinal();
-      configured = configuredFor();
     }
     afflictionRating = settled;
   }
@@ -5319,7 +5246,6 @@ function calculatePlannerOnce(
     theoretical = compileFinal(igniteAttemptsPerSecond);
     if (afflictionRating) {
       afflictionRating = resolveAfflictionRating(theoretical);
-      configured = configuredFor();
     }
     igniteChanceForRecount = Math.min(100, (mainChance * igniteAttemptsPerSecond) / beamCastRate.castsPerSecond);
   }
@@ -6697,16 +6623,12 @@ function calculatePlannerOnce(
     dotTriggers: Object.fromEntries([...dotTriggers].filter(([, value]) => value)),
     empowerEffects,
     heroMemories,
-    support,
-    townSupportPrediction,
     talentSlate,
     equipment,
     pact,
     activation,
     aura,
     igniteLimit,
-    skillLevelFactor,
-    sourceDamageMultiplier,
     theoretical,
     directHit,
     beamCastRate,
@@ -6719,7 +6641,6 @@ function calculatePlannerOnce(
     recountFiveSeconds,
     recountOpening,
     recountVariation,
-    configured,
     conditions,
     warnings: [...new Set(warnings)],
   };

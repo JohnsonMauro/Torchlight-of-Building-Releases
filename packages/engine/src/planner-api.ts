@@ -269,12 +269,10 @@ export interface PlannerResult {
   warnings: string[];
 
   igniteAttemptsPerSecond: number;
-  skillLevelFactor: number;
   effectiveTargetFireResistancePercent: number;
   murmursTideEffectPercent: number;
   tideEffectFactor: number;
   igniteLimit: number;
-  sourceDamageMultiplier: number;
 
   activation: SkillActivation;
   activationMediumTerra: ResultSection;
@@ -292,7 +290,6 @@ export interface PlannerResult {
   blurEffects: ResultSection;
   combatProjection: ResultSection | null;
   conditions: PlannerConditions;
-  configured: ResultSection;
   coreTalents: ResultSection;
   critNumbedBuffs: ResultSection;
   curseLimit: ResultSection;
@@ -328,12 +325,10 @@ export interface PlannerResult {
   resistances: ResultSection;
   seaFoamNocturne: SeaFoamNocturne;
   singWithTheTide: ResultSection;
-  support: ResultSection;
   supportEffects: ResultSection;
   talentSlate: ResultSection;
   tangles: ResultSection;
   theoretical: ResultSection;
-  townSupportPrediction: ResultSection;
   weaponAttack: ResultSection;
   weaponToSpells: ResultSection;
   windRhythmTerra: ResultSection;
@@ -365,12 +360,10 @@ export const plannerResultKeys = [
   "bestCaseAssumptions",
   "warnings",
   "igniteAttemptsPerSecond",
-  "skillLevelFactor",
   "effectiveTargetFireResistancePercent",
   "murmursTideEffectPercent",
   "tideEffectFactor",
   "igniteLimit",
-  "sourceDamageMultiplier",
   "activation",
   "activationMediumTerra",
   "afflictionRating",
@@ -387,7 +380,6 @@ export const plannerResultKeys = [
   "blurEffects",
   "combatProjection",
   "conditions",
-  "configured",
   "coreTalents",
   "critNumbedBuffs",
   "curseLimit",
@@ -423,12 +415,10 @@ export const plannerResultKeys = [
   "resistances",
   "seaFoamNocturne",
   "singWithTheTide",
-  "support",
   "supportEffects",
   "talentSlate",
   "tangles",
   "theoretical",
-  "townSupportPrediction",
   "weaponAttack",
   "weaponToSpells",
   "windRhythmTerra",
