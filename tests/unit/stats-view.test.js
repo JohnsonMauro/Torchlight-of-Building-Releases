@@ -63,8 +63,8 @@ test("the status, the skill picker and the recount of the build's main skill", (
     recount.fields.map((field) => field.key),
     ["averageDps", "highest5sDps", "last5sDps"],
   );
-  assert.deepEqual(recount.fields[0].value, { full: "1,593,002,745", short: "1.59 Billion" });
-  assert.deepEqual(totalModeled, { full: "1,633,717,331", short: "1.63 Billion" });
+  assert.deepEqual(recount.fields[0].value, { full: "1,593,003,097", short: "1.59 Billion" });
+  assert.deepEqual(totalModeled, { full: "1,633,717,738", short: "1.63 Billion" });
   assert.equal(recount.duration, "00:00:10");
   assert.equal(recount.sources.length, 4);
   assert.equal(recount.shown, 4);
@@ -133,7 +133,7 @@ test("the damage path tabs, grouped by skill, and the path a stale pick falls ba
       ["hit:game-log-skill-1", "1.63 B"],
       ["hit:game-log-skill-2", "554 K"],
       ["hit:game-log-skill-3", "50.8 K"],
-      ["minion:thunder-magus", "10.0 K"],
+      ["minion:thunder-magus", "10.4 K"],
       ["combined", "1.62 B"],
     ],
   );

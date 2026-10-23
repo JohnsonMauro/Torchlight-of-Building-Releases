@@ -433,6 +433,11 @@ export function compareObservedDamageStates(baseline, candidate) {
   };
 }
 
+// Energy from the character level: +1 per level ("Level Up: Every level +1") over a base of 4. The game's Energy panel shows
+// "+98 Character level" at level 94 (owner's screenshot, 2026-10-22); the base is that one reading, not a published rule.
+const CHARACTER_LEVEL_ENERGY_BASE = 4;
+export const characterLevelEnergy = (level) => level + CHARACTER_LEVEL_ENERGY_BASE;
+
 export function calculateAvailableEnergy(items, disabledSlots = [], nonEquipmentEnergy = 0) {
   const disabled = new Set(disabledSlots);
   const nonEnergySlots = new Set(["necklace", "belt", "leftRing", "rightRing"]);

@@ -216,6 +216,7 @@ const craftedPrism = shape({
   radiusAffix: text,
   rareAffix: text,
   legendaryAffix: text,
+  baseAffix: text,
   inverseRolls: shape({
     micro: number(-100, 200, true),
     medium: number(-100, 100, true),

@@ -26,7 +26,7 @@ import {
 } from "../../engine/text/line-coverage.js";
 import { isNameReadCoreClause, nameReadCoreGrant } from "../../engine/text/granted-core-lines.js";
 import { matchTalentTextClause, talentKeyRoute } from "../../engine/text/talent-text-effects.js";
-import { prismMutationDownside } from "../../engine/talents/prism-crafting.js";
+import { prismAddedCoreEffect, prismMutationDownside } from "../../engine/talents/prism-crafting.js";
 import { residualNonDamageStatus } from "../../engine/text/line-families.js";
 import { resolveHeroModules } from "../../engine/heroes/hero-trait-modules.js";
 import { weaponLocalLineKind, weaponHands, weaponTypeOf, readWeapon } from "../../engine/skills/weapon-damage-model.js";
@@ -321,6 +321,8 @@ export function prismAffixCoverage(prism, kind, clause = null) {
   // roll as the ordinary roll x 1.75 (6% -> 10.5%), and its legendary affixes have no amplified
   // variants (user: Torment is not scaled). So the base affix is carried by the roll values.
   if (kind === "base" && prism?.type === "ethereal" && prism.base === "Phantasmagoria") return "In calc";
+  // A base affix that adds an effect to the core (Haze's): the status of that effect's clauses.
+  if (kind === "base" && prismAddedCoreEffect(prism)) return refineCoverage("Not modeled", prismAddedCoreEffect(prism));
   // Effortless Command (core audit Q12): no affix record in either season's game tables, so there is nothing to model yet.
   if (kind === "base" && prism?.type === "ethereal" && prism.base === "Effortless Command") return "Not modeled";
   // Every other base's text reaches the readers as "[Base] clause" lines (src/engine/text/modifier-texts.js; core audit batch B1): the
@@ -339,7 +341,24 @@ export function prismAffixCoverage(prism, kind, clause = null) {
   )
     return "In calc";
   const gained = String(prism?.[kind] || "").match(/also gain:\s*(.+)$/i)?.[1];
-  return gained ? refineCoverage("Not modeled", gained.replace(/;\s*/g, "\n")) : "Not modeled";
+  if (!gained) return "Not modeled";
+  // Each clause as the calculation got it: the lines the prism gave its covered talents, scaled by their points ("+30% Minion
+  // Critical Strike Rating" from a 3-point node, src/engine/text/modifier-texts.js), else the affix's own wording.
+  const shape = (text) =>
+    normalizePercentageText(String(text))
+      .replace(/[+-]?\d+(?:\.\d+)?/g, "#")
+      .trim();
+  const given = (coverageContext()?.modifierTexts || []).filter(
+    (line) => line.origin === "prism" && String(line.source || "").includes(`· ${prism.base || "Prism"} (`),
+  );
+  return combineStatuses(
+    gained.split(/;\s*/).map((clause) => {
+      const own = given.filter((line) => shape(line.text) === shape(clause));
+      return own.length
+        ? combineStatuses(own.map((line) => refineCoverage("Not modeled", line.text)))
+        : refineCoverage("Not modeled", clause);
+    }),
+  );
 }
 
 // Badge tooltip for prism affixes whose status needs a reason.

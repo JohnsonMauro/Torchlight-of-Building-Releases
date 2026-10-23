@@ -1172,15 +1172,17 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     );
     return took ? "In calc" : "Inactive";
   }
-  // Minion damage, speed and Multistrike lines (src/engine/minions/minion-damage-model.js; core audit B7): where a Minion is modeled, In calc when
-  // a modeled Minion applied the line, Inactive when every one left it out (its damage type, skill tag or Multistrike has no taker
-  // in the cycle: `lines.inactive`). Without a modeled Minion the rules below decide.
+  // Minion damage, speed, crit and Multistrike lines (src/engine/minions/minion-damage-model.js; core audit B7; crit 2026-10-22): where a
+  // Minion is modeled, In calc when a modeled Minion applied the line, Inactive when every one left it out (its damage type, skill tag
+  // or Multistrike has no taker in the cycle: `lines.inactive`). Without a modeled Minion the rules below decide.
   if (
     minionRoll &&
     [
       "additional",
       "increased",
       "speed",
+      "critRating",
+      "critDamage",
       "multistrikeChance",
       "multistrikeIncrement",
       "multistrikeIncrementAdditional",
@@ -1197,6 +1199,8 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
         "increased",
         "additional",
         "speed",
+        "critRating",
+        "critDamage",
         "multistrikeChance",
         "multistrikeIncrement",
         "multistrikeIncrementAdditional",

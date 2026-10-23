@@ -5,6 +5,7 @@ import { orderedPactspiritNodes, pactspiritEffectsAtLevel, pactspiritLevel } fro
 import { pactspiritTreesSs13 } from "../../data/pacts/pactspirit-trees-ss13.js";
 import { selenaScorchingBeamPactsSs13 } from "../../data/pacts/selena-scorching-beam-ss13.js";
 import {
+  prismAddedCoreEffect,
   prismAreaBounds,
   prismMutationCoreEffects,
   prismMutationDownside,
@@ -99,6 +100,12 @@ export function collectModifierTexts({
     const prism = talentState.prismInventory?.find((item) => item.id === talentState.installedPrisms?.[panel.name]);
     const coordinate = talentState.installedPrismNodes?.[panel.name];
     if (prism && coordinate && prism.type !== "inverse") {
+      // A base affix that adds an effect to the Core Talent (Haze, 2026-10-22 log): the effect joins the core lines of the
+      // panel the prism is installed in while that panel has an active core (provisional: the game names "the Any Advanced
+      // Talent Panel").
+      const addedEffect = prismAddedCoreEffect(prism);
+      if (addedEffect && (panel.activeCores || []).length)
+        push(addedEffect, `${panel.name} · Ethereal Prism ${prism.base}: added core effect`, "core");
       // A mutated-core legendary affix carries one downside line on the installed prism.
       const downside = prismMutationDownside(prism);
       if (downside) push(downside, `${panel.name} · ${prism.base} mutated core downside`, "prism");

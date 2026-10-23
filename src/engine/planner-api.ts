@@ -240,6 +240,8 @@ export interface AuraReservation {
 export interface AuraLedger extends AuraReservation {
   /** Set on every golden case; optional because the engine adds it to the ledger afterwards (TS cannot see it). */
   planned?: AuraReservation;
+  /** The build's Max Mana and Max Life the sealed shares are of (added afterwards, like `planned`). */
+  pools?: { maxMana: number; maxLife: number };
 }
 
 // ---- The result ---------------------------------------------------------------------------------------------------

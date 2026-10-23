@@ -5,7 +5,6 @@
 import { tliArt } from "../../data/assets/tli-art.js";
 import { equipmentSlots } from "../../data/gear/crafting-catalog-ss13.js";
 import { tlidbSkillCatalogSs13, tlidbSupportCatalogSs13 } from "../../data/catalogs/tlidb-ss13.js";
-import { selenaCompleteSkillLoadoutSs13 } from "../../data/skills/selena-complete-skill-loadout-ss13.js";
 import { curseSlotSummary } from "../../engine/skills/curse-limit.js";
 import { energyCostForSupportPositions } from "../../engine/engine.js";
 import { skillBoardRows } from "../../engine/skills/skill-board-slots.js";
@@ -58,15 +57,18 @@ export interface SkillRowView {
   label: string;
   supports: SupportSocketView[];
 }
-/** Mana or Life sealed by the auras on the board. */
+/**
+ * Mana or Life the auras on the board leave free, as the game's skill screen shows it under "Sealed Mana / Life" (2026-10-22:
+ * "64.70% · 1380/2133" is the Life left, with 35.30% sealed).
+ */
 export interface SealedResourceView {
-  /** The share sealed: "94.22%". */
+  /** The share left free: "64.7%". */
   percent: string;
-  /** "494.64 / 525" */
+  /** "1,380.73 / 2,133.48": free / max. */
   sealed: string;
-  /** "30.36 usable", or "104.5% requested before cap" once the auras ask for 100% or more. */
+  /** "752.75 sealed", or "104.5% requested before cap" once the auras ask for 100% or more. */
   detail: string;
-  /** Width of the meter, 0–100. */
+  /** Width of the meter (the free share), 0–100. */
   meterPercent: number;
   overCapacity: boolean;
 }
@@ -101,12 +103,6 @@ const artFor = (art: Record<string, string | undefined>, catalog: readonly { nam
 };
 const skillArt = artFor(tliArt.skills, tlidbSkillCatalogSs13);
 const supportArt = artFor(tliArt.supports, tlidbSupportCatalogSs13);
-/** The captured character's Mana and Life (the reservation is shown against them). */
-const observedReservation = selenaCompleteSkillLoadoutSs13.observedReservation as {
-  mana: { maximum: number };
-  life: { maximum: number };
-};
-
 export function skillsView(planner: PlannerResult, skills: PlannerSkills, tab: SkillBoardTab): SkillsView {
   const { profile, setups, energy } = planner.activation;
   const supportSlots = (setup: SkillSetup) =>
@@ -214,24 +210,23 @@ function reservationView(planner: PlannerResult): SkillsView["reservation"] {
   const ledger = planner.aura.planned || planner.aura;
   const resource = (maximum: number, reservedPercent: number, demandPercent: number): SealedResourceView => {
     const sealed = (maximum * reservedPercent) / 100;
+    const freePercent = Math.max(0, Math.round((100 - reservedPercent) * 10000) / 10000);
     const overCapacity = demandPercent >= 100;
     return {
-      percent: `${format(reservedPercent)}%`,
-      sealed: `${format(sealed)} / ${format(maximum)}`,
-      detail: overCapacity
-        ? `${format(demandPercent)}% requested before cap`
-        : `${format(Math.max(0, maximum - sealed))} usable`,
-      meterPercent: Math.min(100, reservedPercent),
+      percent: `${format(freePercent)}%`,
+      sealed: `${format(Math.max(0, maximum - sealed))} / ${format(maximum)}`,
+      detail: overCapacity ? `${format(demandPercent)}% requested before cap` : `${format(sealed)} sealed`,
+      meterPercent: Math.min(100, freePercent),
       overCapacity,
     };
   };
   const mana = resource(
-    observedReservation.mana.maximum,
+    planner.aura.pools?.maxMana ?? 0,
     ledger.manaReservedPercent,
     ledger.manaDemandPercent ?? ledger.manaReservedPercent,
   );
   const life = resource(
-    observedReservation.life.maximum,
+    planner.aura.pools?.maxLife ?? 0,
     ledger.lifeReservedPercent,
     ledger.lifeDemandPercent ?? ledger.lifeReservedPercent,
   );

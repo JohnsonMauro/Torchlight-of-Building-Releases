@@ -539,6 +539,17 @@ const LINE_RULES = [
       params: { every: num(m[2]), per: num(m[1]), cap: Infinity },
     }),
   ],
+  // Ethereal Prism base affix (Haze's added core effect, 2026-10-22 log): "+1% additional Damage per +5% Movement Speed, up to
+  // +12%": the character's Movement Speed total (stat sheet), rounded down per step (provisional, as the other per-N lines),
+  // capped.
+  [
+    new RegExp(`^\\+${N}% (additional )?(.+?) per \\+${N}% Movement Speed, up to \\+${N}%$`),
+    (m) => ({
+      body: `+${m[1]}% ${m[2] || ""}${m[3]}`,
+      key: "perMovementSpeed",
+      params: { per: num(m[1]), every: num(m[4]), cap: num(m[5]) },
+    }),
+  ],
   [
     new RegExp(`^For every \\+${N}% Attack or Spell Block Chance, \\+${N}% additional damage, up to \\+${N}%$`),
     (m) => ({
@@ -1296,6 +1307,17 @@ function resolveKey(condition, state) {
             { factor: steps, provisional: true },
           )
         : off(`${round(total)} ${params.stat === "maxMana" ? "Max Mana" : "Max Life"}: below ${params.every}`);
+    }
+    case "perMovementSpeed": {
+      const speed = Math.max(0, state.movementSpeedPercent ?? 0);
+      const steps = Math.floor(speed / params.every + 1e-9);
+      const appliedTotal = Math.min(params.cap, steps * params.per);
+      return appliedTotal > 0
+        ? on(
+            `${round(speed)}% Movement Speed ÷ ${params.every} = ${steps} → +${round(appliedTotal)}% (cap +${params.cap}%; rounded down: provisional)`,
+            { factor: appliedTotal / params.per, provisional: true },
+          )
+        : off(`${round(speed)}% Movement Speed: below ${params.every}%`);
     }
     case "perBlockChance": {
       const chance = Math.max(state.blockChance?.attack || 0, state.blockChance?.spell || 0);

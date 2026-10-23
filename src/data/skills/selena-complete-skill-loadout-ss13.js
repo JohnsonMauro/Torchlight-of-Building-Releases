@@ -3,15 +3,10 @@ const support = (name, level, effects, manaCostMultiplierPercent = 100) => ({ na
 export const selenaCompleteSkillLoadoutSs13 = {
   season: "SS13",
   energyProfile: {
-    observedUsed: 515, observedCapacity: 518, nonEquipmentEnergy: 102,
+    observedUsed: 515, observedCapacity: 518,
     activeSlotCosts: [0, 10, 15, 50, 100], passiveSlotCosts: [10, 10, 15, 50, 100],
     enabledSupportSlotsBySetup: [5, 3, 3, 4, 3, 3, 3, 4, 3],
     source: "Screenshot 2026-09-01 094109.png"
-  },
-  observedReservation: {
-    mana: { maximum: 525, unsealed: 24, unsealedPercent: 4.57 },
-    life: { maximum: 2150, unsealed: 0, unsealedPercent: 0.01 },
-    source: "codex-clipboard-20847ff7-0fb1-47f4-8c30-110b1a8b9ee8.png"
   },
   setups: [
     {

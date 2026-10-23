@@ -4,6 +4,7 @@ import {
   inverseImageRoll,
   inverseImageRolls,
   prismAffixes,
+  prismAddedCoreEffect,
   prismArea,
   prismBaseEffect,
   prismLegendaryAffixesForBase,
@@ -81,7 +82,15 @@ function prismAffixSectionsView(item) {
     {
       className: "base",
       heading: "Base Affix",
-      lines: [{ kind: "base", text: prismBaseEffect(item.type, item.base, item.legendaryAffix) }],
+      // A base affix that adds an effect to the core (Haze's, from the game log) is the prism's own line; else the base's.
+      lines: [
+        {
+          kind: "base",
+          text: prismAddedCoreEffect(item)
+            ? item.baseAffix
+            : prismBaseEffect(item.type, item.base, item.legendaryAffix),
+        },
+      ],
     },
     ...[
       ["radiusAffix", "Radius Affix"],

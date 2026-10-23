@@ -4,6 +4,7 @@ import {
   skillGameTagsSs13,
   supportEligibilitySs13,
 } from "../../data/skills/support-eligibility-ss13.generated.js";
+import { spiritMagusSkills } from "../../data/skills/spirit-magus-skills.js";
 import { inferDamageProfile } from "../skills/skill-damage-profiles.js";
 
 // Eligibility is the game's own tag filter: each support stone's include / exclude tag groups in config_skill_stone, read
@@ -90,6 +91,23 @@ function ruleAccepts(rule, ids) {
   return rule.include.some(full) && !rule.exclude.some(full);
 }
 
+/**
+ * A Spirit Magus summon's own skills as game tag ids, one set each (src/data/skills/spirit-magus-skills.js); none for
+ * another skill. A support the summon takes works on these skills, so the game reads them with the summon's tags: the
+ * 2026-10-22 game log has Grudge (Spell + Hit) and Target Projection (Projectile) on Summon Thunder Magus, whose Spell is
+ * the summon's and whose Hit and Projectile are Lightning Star's.
+ */
+function spiritMagusSkillTagIds(skillName) {
+  return (spiritMagusSkills[skillName] || []).map(
+    (skill) =>
+      new Set([
+        ...skill.tags.map((tag) => CATALOG_TAG_GAME_IDS[tag]).filter(Boolean),
+        ...(skill.hit ? [GAME_TAG.hit] : []),
+        ...(skill.damageOverTime ? [GAME_TAG.damageOverTime] : []),
+      ]),
+  );
+}
+
 /** The game's eligibility rule of a support ({ text, include, exclude, addsTags?, removesTags?, ... }), or null. */
 export function supportEligibilityRule(name) {
   return supportEligibilitySs13[name] || null;
@@ -154,7 +172,11 @@ export function supportCanSupportSkill(support, skill, linkedSupports = []) {
   const { ids, addedNames } = linkedTagChanges(skillGameTagIds(skill), linkedSupports, support.name);
   // Game filter on the skill's own stone tags; an Activation Medium also reads tags derived from the catalog for a skill
   // with no stone (TLIDB's SS13 cards have no "Supports" line for them).
-  if (rule && (skillGameTagsSs13[skill.name] || rule.category === "activation")) return ruleAccepts(rule, ids);
+  if (rule && (skillGameTagsSs13[skill.name] || rule.category === "activation"))
+    return (
+      ruleAccepts(rule, ids) ||
+      spiritMagusSkillTagIds(skill.name).some((own) => ruleAccepts(rule, new Set([...ids, ...own])))
+    );
   return supportTextRuleAccepts(
     support,
     addedNames.length ? { ...skill, tags: [...(skill.tags || []), ...addedNames] } : skill,

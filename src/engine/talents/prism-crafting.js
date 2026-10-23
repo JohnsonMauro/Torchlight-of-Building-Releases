@@ -237,6 +237,16 @@ export function prismBaseEffect(type, base, legendaryAffix = "") {
   return `Replaces the Core Talent of the Advanced Talent Panel with ${base}.`;
 }
 
+// An Ethereal Prism base affix that adds an effect to its panel's core ("Adds an additional effect to the Core Talent on the
+// Any Advanced Talent Panel:" then the effect; TLIDB Base Affix rows 12042001xx, the game's Haze, 2026-10-22 log): the effect,
+// or "" for another base affix or none.
+export function prismAddedCoreEffect(prism) {
+  const match = /^Adds an additional effect to the Core Talent on the .+? Advanced Talent Panel:\s*([\s\S]+)$/i.exec(
+    String(prism?.baseAffix || "").trim(),
+  );
+  return prism?.type === "ethereal" && match ? match[1].trim() : "";
+}
+
 export function prismReplacesCore(prism) {
   return prism?.type === "ethereal" && !["Haze", "Phantasmagoria"].includes(prism.base) && !prismHasMutatedCore(prism);
 }
@@ -260,13 +270,18 @@ export function prismAreaBounds(prismOrRadiusAffix, coordinate, columns = 7, row
       height: Math.min(rows - 1, row + 1) - top + 1,
     };
   }
-  const width = Math.min(areaWidth, columns),
-    height = Math.min(areaHeight, rows);
+  // The prism sits in the area's middle column and row (the 2nd of a 4- or 3-wide side, as TLIDB's "The Prism is located in
+  // the 2nd row, 2nd column"); the part past the panel's edge is cut off, never moved inside: a 4x3 Haze in the Lich panel's
+  // top row covers that row and the one under it only (the game's lit area, owner's screenshot 2026-10-22).
+  const left = column - Math.floor((areaWidth - 1) / 2),
+    top = row - Math.floor((areaHeight - 1) / 2);
+  const clippedLeft = Math.max(0, left),
+    clippedTop = Math.max(0, top);
   return {
-    left: Math.max(0, Math.min(columns - width, column - Math.floor((width - 1) / 2))),
-    top: Math.max(0, Math.min(rows - height, row - Math.floor((height - 1) / 2))),
-    width,
-    height,
+    left: clippedLeft,
+    top: clippedTop,
+    width: Math.min(columns, left + areaWidth) - clippedLeft,
+    height: Math.min(rows, top + areaHeight) - clippedTop,
   };
 }
 

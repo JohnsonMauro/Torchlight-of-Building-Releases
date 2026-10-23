@@ -181,6 +181,16 @@ const PATTERNS = [
     new RegExp(`^${NUM}% (additional )?Critical Strike Damage for Minions$`, "i"),
     (m) => ({ kind: "critDamage", value: number(m[1]), additional: Boolean(m[2]) }),
   ],
+  // The same stats named before the noun ("+10% Minion Critical Strike Rating": talent nodes, the Ethereal Prism "also gain"
+  // affixes; 23 lines in the profession trees, unread before 2026-10-22).
+  [
+    new RegExp(`^${NUM}% (additional )?Minion Critical Strike Rating$`, "i"),
+    (m) => ({ kind: "critRating", value: number(m[1]), additional: Boolean(m[2]) }),
+  ],
+  [
+    new RegExp(`^${NUM}% (additional )?Minion Critical Strike Damage$`, "i"),
+    (m) => ({ kind: "critDamage", value: number(m[1]), additional: Boolean(m[2]) }),
+  ],
   // "+X% additional Max / Min Damage for Minions" (2026-10-14): the Minion hit's upper / lower roll (Minion-named lines only,
   // rule 1001011821; a plain "additional Max Damage" line stays the player's).
   [

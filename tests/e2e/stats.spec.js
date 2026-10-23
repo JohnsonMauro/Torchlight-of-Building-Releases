@@ -132,18 +132,18 @@ test("a large figure shows its full number on click or Enter, and keeps it after
   await expect(average).toHaveText("1.59 Billion");
   await expect(average).toHaveAttribute("aria-expanded", "false");
   await average.click();
-  await expect(average).toHaveText("1,593,002,745");
+  await expect(average).toHaveText("1,593,003,097");
   await expect(average).toHaveAttribute("aria-expanded", "true");
-  await expect(average).toHaveAttribute("aria-label", "1,593,002,745. Click to shorten");
+  await expect(average).toHaveAttribute("aria-label", "1,593,003,097. Click to shorten");
   await expect(stats.recountValue("highest5sDps")).toHaveText("1.63 Billion");
   await page.keyboard.press("Enter");
   await expect(average).toHaveText("1.59 Billion");
   await page.keyboard.press("Space");
-  await expect(average).toHaveText("1,593,002,745");
+  await expect(average).toHaveText("1,593,003,097");
 
   await stats.skillSelect().selectOption("game-log-skill-2");
   await expect(stats.banner()).toContainText("Ice Bond");
-  await expect(stats.recountValue("averageDps")).toHaveText("1,593,002,745");
+  await expect(stats.recountValue("averageDps")).toHaveText("1,593,003,097");
   const ehp = stats.effectiveHp().locator('[data-ehp-field="pool"] .number-toggle');
   await expect(ehp).toHaveText("2.26 Thousand");
   await ehp.click();

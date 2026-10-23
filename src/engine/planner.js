@@ -93,6 +93,7 @@ import {
   calculateEquipmentCandidate,
   calculateAuraLedger,
   calculateAvailableEnergy,
+  characterLevelEnergy,
   allocateSkillEnergy,
   energyCostForSupportPositions,
   skillLevelDamageMultiplier,
@@ -2244,7 +2245,12 @@ function calculatePlannerOnce(
     resolveGrantedSupports,
   });
   if (traitBoard.summary) setups.splice(0, setups.length, ...traitBoard.setups);
-  const energy = calculateAvailableEnergy(equipment.allItems, state.disabledEquipmentSlots, profile.nonEquipmentEnergy);
+  // The Energy that is not the gear's comes from the character level (the build's, else the default level 100).
+  const energy = calculateAvailableEnergy(
+    equipment.allItems,
+    state.disabledEquipmentSlots,
+    characterLevelEnergy(buildCharacterLevel(state).level),
+  );
   // The Main Skill takes Energy first and is never switched off for Energy (src/engine/engine.js allocateSkillEnergy): the setup in
   // Active slot 1 when it is a main-role skill, else the board's first main-role skill, else the first enabled main-role setup.
   // A game-log import whose gear the log printer cut has only the non-equipment Energy; before this rule its Main Skill was the
@@ -2906,6 +2912,10 @@ function calculatePlannerOnce(
     talentPanels: levelSources.talents,
     resistances,
   });
+  // The build's own Max Mana and Max Life (the stat sheet the line conditions read), for the share the auras seal: the Skills
+  // board's Sealed Mana / Life read them instead of a captured build's (2026-10-22: 585.8 / 2133.48 at level 94 against the
+  // game's 585 / 2133).
+  aura.pools = { maxMana: lineConditionState.stats?.maxMana ?? 0, maxLife: lineConditionState.stats?.maxLife ?? 0 };
   // A chance debuff driven by a skill's hit rate (Grudge's Paralysis): this pass measures the rates (Paralysis held meanwhile,
   // so lines gated on it read alike) and a second pass applies the uptime. Damage taken does not change any hit rate.
   // Thunder Spike: Tremble (src/engine/supports/crit-numbed-buff.js; 2026-10-14, provisional): Numbed Effect while its crit buff is up, at the

@@ -21,7 +21,7 @@ async function openSkills(page, state = null) {
 
 test("lists the active skills with their levels, supports and Energy", async ({ page }) => {
   const { planner, skills } = await openSkills(page);
-  await expect(skills.energyTotal()).toHaveText("515/518");
+  await expect(skills.energyTotal()).toHaveText("515/520");
   await expect(skills.rows()).toHaveCount(5);
   await expect(skills.rows().first()).toContainText("Scorching Beam");
   await expect(skills.row("Scorching Beam")).toContainText("Lv.20 +11");
@@ -40,10 +40,11 @@ test("the Auras tab shows the four aura rows and the reservation summary", async
   await expect(skills.rows()).toHaveCount(4);
   await expect(skills.socket("Replace Precise: Deep Pain")).toBeVisible();
   await expect(skills.reservationSummary()).toBeVisible();
-  await expect(skills.reservationSummary()).toContainText("494.64 / 525");
-  await expect(skills.reservationSummary()).toContainText("94.22%");
-  await expect(skills.reservationSummary()).toContainText("30.36 usable");
-  await expect(skills.reservationSummary()).toContainText("1,920.54 / 2,150");
+  // As the game shows it: what the auras leave free of the build's own Max Mana / Life, and what they seal.
+  await expect(skills.reservationSummary()).toContainText("30.94 / 535");
+  await expect(skills.reservationSummary()).toContainText("5.78%");
+  await expect(skills.reservationSummary()).toContainText("504.06 sealed");
+  await expect(skills.reservationSummary()).toContainText("234.01 / 2,192.68");
   await skills.tab("Skills").click();
   await expect(skills.rows()).toHaveCount(5);
   await expect(skills.reservationSummary()).toBeHidden();
