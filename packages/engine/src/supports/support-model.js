@@ -73,18 +73,11 @@ const capturedBaselineCritChance = () => 5 * (1 + (126 + controlSpellCriticalRat
 export function calculateSupportCandidate(
   supports,
   baselineSupports,
-  {
-    igniteLimit = 10,
-    additionalStacks = 15,
-    critChance = capturedBaselineCritChance(),
-    critDamage = 150,
-    useEffectiveLevels = false,
-  } = {},
+  { igniteLimit = 10, additionalStacks = 15, critChance = capturedBaselineCritChance(), critDamage = 150 } = {},
 ) {
   const get = (name) => supports.find((s) => !s.custom && s.name === name);
   const active = (name) => get(name)?.enabled !== false && !!get(name);
-  const level = (support) =>
-    useEffectiveLevels ? Math.min(40, support.effectiveLevel ?? support.level) : support.level;
+  const level = (support) => Math.min(40, support.effectiveLevel ?? support.level);
   // Hit-only lines (Control Spell) scale the spell hits, never Ignite.
   let generalFactor = 1,
     hitFactor = 1;

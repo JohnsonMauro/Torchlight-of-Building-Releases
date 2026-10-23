@@ -42,16 +42,3 @@ export const formatEffect = (key, value) => {
   if (key.endsWith("Seconds")) return `${value} s`;
   return `${value > 0 ? "+" : ""}${value}`;
 };
-export const nodeTitle = (node) => {
-  if (node.replacedBy) return node.replacedBy;
-  const effects = node.effectsPerRank || node.effects || {};
-  return effectLabel(Object.keys(effects)[0] || "Talent node");
-};
-export const nodeIcon = (node) => {
-  const keys = Object.keys(node.effectsPerRank || node.effects || {});
-  if (node.replacedBy) return "◆";
-  if (keys.some((key) => /shield|life|defense/i.test(key))) return "⬡";
-  if (keys.some((key) => /speed|duration|reaping/i.test(key))) return "⌛";
-  if (keys.some((key) => /affliction|ignite|damage|fire/i.test(key))) return "✦";
-  return "◇";
-};

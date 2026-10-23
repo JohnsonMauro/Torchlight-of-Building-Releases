@@ -19,19 +19,14 @@ import {
   tliArt,
 } from "#engine";
 import { prismIcon, prismName } from "../talents/prism-icons.js";
-import { nodeIcon, nodeTitle } from "../talents/talent-labels.js";
 
 type Coordinate = [number, number];
-/** A node of a tree's layout, or the captured node on it (with its effects). Other fields are not read here. */
+/** A node of a tree's layout. Other fields are not read here. */
 export interface TalentNode {
   coordinate: Coordinate;
   type?: string;
   maxRank?: number;
-  effectsPerRank?: Record<string, unknown>;
-  effects?: Record<string, unknown>;
-  replacedBy?: string;
   icon?: string;
-  placeholder?: boolean;
   /** Inverse Image: the coordinate this node is reflected from. */
   reflectedFrom?: string;
 }
@@ -48,7 +43,6 @@ export interface CoreTalent {
 export interface TalentPanel {
   name: string;
   coreTalents: CoreTalent[];
-  allocatedNodes: TalentNode[];
 }
 export interface Prism {
   id: string;
@@ -179,19 +173,13 @@ export function talentFamilyClass(name: string | null | undefined): string {
     : "";
 }
 
-/** The open tree's nodes: the captured ones over its layout, the rest placeholders, reflected by an Inverse Image. */
+/** The open tree's nodes: its layout, reflected by an Inverse Image. */
 export function talentDisplayNodes(
-  panel: TalentPanel,
   baseLayout: TalentLayout,
   prism: Prism | undefined,
   prismCoordinate: string | undefined,
 ): TalentNode[] {
-  const allocated = new Map(panel.allocatedNodes.map((node) => [node.coordinate.join(","), node]));
-  const nodes = baseLayout.nodes.map((layoutNode) => {
-    const captured = allocated.get(layoutNode.coordinate.join(","));
-    return captured ? { ...layoutNode, ...captured, captured: true } : { ...layoutNode, placeholder: true };
-  });
-  return inverseImageTalentNodes(nodes, prism, prismCoordinate) as TalentNode[];
+  return inverseImageTalentNodes(baseLayout.nodes, prism, prismCoordinate) as TalentNode[];
 }
 
 const within = (bounds: { left: number; top: number; width: number; height: number }, [x, y]: Coordinate) =>
@@ -320,9 +308,9 @@ function stageView(
     ? [{ ...prismBounds, reflected: false }, ...(reflectedBounds ? [{ ...reflectedBounds, reflected: true }] : [])]
     : [];
   const nativeCoordinates = new Set(baseLayout.nodes.map((node) => node.coordinate.join(",")));
-  const nodes = talentDisplayNodes(panel, baseLayout, installedPrism, prismCoordinate).map((node): TalentNodeView => {
+  const nodes = talentDisplayNodes(baseLayout, installedPrism, prismCoordinate).map((node): TalentNodeView => {
     const rank = rankAt(node.coordinate);
-    const max = node.maxRank || (node.effectsPerRank ? 3 : 1);
+    const max = node.maxRank || 1;
     const coordinate = node.coordinate.join(",");
     const isPrismNode = hasPrism && coordinate === prismCoordinate;
     const affected =
@@ -340,7 +328,7 @@ function stageView(
     });
     const classes = [
       rank ? "allocated" : "",
-      node.placeholder && !rank ? "available" : "",
+      !rank ? "available" : "",
       !rank && !availability.allowed ? "locked" : "",
       node.type === "legendary" ? "legendary-node" : "",
       affected ? "prism-affected-node" : "",
@@ -348,22 +336,16 @@ function stageView(
       placing && nativeCoordinates.has(coordinate) ? "prism-placement-target" : "",
       isPrismNode ? "prism-covered-node" : "",
     ];
-    const label = node.placeholder ? `Unallocated ${node.type} talent` : nodeTitle(node);
+    const label = `Unallocated ${node.type} talent`;
     return {
       coordinate,
       column: node.coordinate[0] + 1,
       row: node.coordinate[1] + 1,
       classes: classes.filter(Boolean).join(" "),
-      type: node.type || "captured",
+      type: node.type || "",
       label: `${label}, rank ${rank} of ${max}${availability.allowed ? "" : `, ${availability.reason}`}${affected ? ", within Inverse Image reflected area" : ""}`,
       art: art.talents[panel.name]?.[node.reflectedFrom || coordinate] || node.icon || null,
-      symbol: node.placeholder
-        ? node.type === "legendary"
-          ? "✧"
-          : node.type === "medium"
-            ? "◇"
-            : "·"
-        : nodeIcon(node),
+      symbol: node.type === "legendary" ? "✧" : node.type === "medium" ? "◇" : "·",
       rank,
       max,
       locked: !rank && !availability.allowed,

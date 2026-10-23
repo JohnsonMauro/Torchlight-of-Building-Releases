@@ -4,7 +4,6 @@ import {
   canPlaceSlate,
   defaultPlannerState,
   selenaScorchingBeamPacts,
-  selenaScorchingBeamTalentSetup,
   setCoverageContext,
   tliArt,
   tlidbSkillCatalog,
@@ -63,17 +62,7 @@ export function setParkedSlates(next) {
 }
 export const disabledEquipmentSlots = new Set(plannerState.disabledEquipmentSlots);
 export const disabledSupportNames = new Set(plannerState.disabledSupportNames);
-export const talentRanks = new Map();
-for (const panel of selenaScorchingBeamTalentSetup.panels.filter(
-  (panel) => plannerState.talents.useCapturedRanks !== false && plannerState.talents.selectedTrees.includes(panel.name),
-)) {
-  for (const node of panel.allocatedNodes) {
-    const key = `${panel.name}:${node.coordinate}`;
-    talentRanks.set(key, plannerState.talentRanks[key] ?? node.rank);
-  }
-}
-for (const [key, rank] of Object.entries(plannerState.talentRanks || {}))
-  if (!talentRanks.has(key)) talentRanks.set(key, rank);
+export const talentRanks = new Map(Object.entries(plannerState.talentRanks || {}));
 for (const [panel, coordinate] of Object.entries(plannerState.talents.installedPrismNodes || {}))
   if (plannerState.talents.installedPrisms?.[panel]) talentRanks.set(`${panel}:${coordinate}`, 0);
 
@@ -85,7 +74,6 @@ export function capturePlannerState() {
     seasonChange: plannerState.seasonChange ?? null,
     disabledEquipmentSlots: [...disabledEquipmentSlots],
     disabledSupportNames: [...disabledSupportNames],
-    removedInventoryItemIds: plannerState.removedInventoryItemIds || [],
     equipmentOverrides: plannerState.equipmentOverrides,
     equipmentInventory: plannerState.equipmentInventory,
     hero: plannerState.hero,
@@ -198,7 +186,6 @@ export function emptyPlannerState() {
   empty.slates = { geometryVersion: 4, placements: {} };
   empty.talentRanks = {};
   empty.talents = {
-    useCapturedRanks: false,
     selectedTrees: ["", "", "", ""],
     coreSelections: {},
     prismInventory: [],
@@ -243,10 +230,6 @@ export function applyPlannerState(next) {
   setSlatePlacements(boardPlacements(next.slates));
   setParkedSlates(next.slates?.parked || {});
   talentRanks.clear();
-  for (const panel of selenaScorchingBeamTalentSetup.panels.filter(
-    (panel) => next.talents.useCapturedRanks !== false && next.talents.selectedTrees.includes(panel.name),
-  ))
-    for (const node of panel.allocatedNodes) talentRanks.set(panel.name + ":" + node.coordinate, node.rank);
   for (const [key, value] of Object.entries(next.talentRanks || {})) talentRanks.set(key, value);
   for (const [panel, coordinate] of Object.entries(next.talents.installedPrismNodes || {}))
     if (next.talents.installedPrisms?.[panel]) talentRanks.set(`${panel}:${coordinate}`, 0);

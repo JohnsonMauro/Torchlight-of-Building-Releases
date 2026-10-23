@@ -15,16 +15,13 @@ export function talentOptionsForSlot(slot, selectedTrees) {
   return source.filter((name) => !occupied.has(name));
 }
 
-export function normalizeTalentTreeSelection(value, fallback = ["Goddess of Deception", "Psychic", "Warlord", "Lich"]) {
-  const input = Array.isArray(value) ? value : fallback;
+// The four tree slots: a god tree first (none: every slot empty), one of its class trees, then two class trees.
+export function normalizeTalentTreeSelection(value) {
+  const input = Array.isArray(value) ? value : [];
   const result = ["", "", "", ""];
-  if (input[0] === "") return result;
-  result[0] = godTalentTrees.includes(input[0]) ? input[0] : fallback[0];
-  result[1] = talentFamilies[result[0]].includes(input[1])
-    ? input[1]
-    : result[0] === fallback[0] && talentFamilies[result[0]].includes(fallback[1])
-      ? fallback[1]
-      : "";
+  if (!godTalentTrees.includes(input[0])) return result;
+  result[0] = input[0];
+  result[1] = talentFamilies[result[0]].includes(input[1]) ? input[1] : "";
   for (const slot of [2, 3])
     if (classTalentTrees.includes(input[slot]) && !result.includes(input[slot])) result[slot] = input[slot];
   return result;

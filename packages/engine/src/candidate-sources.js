@@ -63,9 +63,7 @@ export function resolveTalentCandidate(captured, catalogue, ranks, selections) {
     const allocatedNodes = nodes.map((node) => {
       const source = sourceNodes.get(node.reflectedFrom) || node;
       const known = baseline?.allocatedNodes.find((item) => String(item.coordinate) === String(source.coordinate));
-      const rank =
-        ranks[`${name}:${node.coordinate}`] ??
-        (node.reflectedFrom || selections.useCapturedRanks === false ? 0 : (known?.rank ?? 0));
+      const rank = ranks[`${name}:${node.coordinate}`] ?? 0;
       const multiplier = node.reflectedFrom ? inverseImageEffectMultiplier(prism, source.type) : 1;
       if (known)
         return {
@@ -102,12 +100,9 @@ export function resolveTalentCandidate(captured, catalogue, ranks, selections) {
         warnings.push(`${prism.base}: prism core effect is not included in the independent damage calculation.`);
     }
     for (const core of panel.coreTalents || []) {
-      // The captured Selena build's core replacement (its Psychic panel ran the Fire's Allure prism) belongs to the captured
-      // ranks only; a build with its own ranks keeps its selected core (core audit 2026-10-18: it hid every Psychic core).
       if (
         selections.coreSelections[`${name}:${core.unlockPoints}`] !== core.name ||
         points < core.unlockPoints ||
-        (!prism && selections.useCapturedRanks !== false && baseline?.coreTalentReplacement) ||
         prismReplacesCore(prism)
       )
         continue;

@@ -764,7 +764,6 @@ export function blankPlannerState() {
   state.slates = { geometryVersion: 4, placements: {}, parked: {}, inventory: [] };
   state.talentRanks = {};
   state.talents = {
-    useCapturedRanks: false,
     selectedTrees: ["", "", "", ""],
     coreSelections: {},
     prismInventory: [],

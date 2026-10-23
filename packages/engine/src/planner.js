@@ -2741,7 +2741,6 @@ function calculatePlannerOnce(
   const support = calculateSupportCandidate(main.supports, capturedSkills.setups[0].supports, {
     igniteLimit,
     additionalStacks: Math.max(0, sourceStacks + equipment.additionalIgniteStacksDelta),
-    useEffectiveLevels: state.talents.useCapturedRanks === false,
   });
   const supportFactor = support.igniteFactor;
   const baselineMainLevel = capturedSkills.setups[0].effectiveLevel;
@@ -3512,7 +3511,6 @@ function calculatePlannerOnce(
     combat: damageCombat,
     conditions,
     heroId: state.hero.selectedHeroId,
-    useEffectiveSupportLevels: state.talents.useCapturedRanks === false,
     reapingApplicationAttemptsPerSecond: beamCastRate.castsPerSecond,
   });
   const canIgnite =
@@ -3656,7 +3654,6 @@ function calculatePlannerOnce(
       combat: damageCombat,
       conditions,
       heroId: state.hero.selectedHeroId,
-      useEffectiveSupportLevels: state.talents.useCapturedRanks === false,
       reapingApplicationAttemptsPerSecond: beamCastRate.castsPerSecond,
     });
   }
@@ -3952,7 +3949,6 @@ function calculatePlannerOnce(
       combat: damageCombat,
       conditions,
       heroId: state.hero.selectedHeroId,
-      useEffectiveSupportLevels: state.talents.useCapturedRanks === false,
       reapingApplicationAttemptsPerSecond: attemptsPerSecond,
     });
   theoretical = compileFinal();

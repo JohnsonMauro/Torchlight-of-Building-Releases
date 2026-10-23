@@ -67,10 +67,8 @@ function talentPass(state, change, trees) {
 }
 
 // Ranks whose prerequisites went with a removal (a node earlier on their path, the points a column needs), as the talent
-// tree prunes them after an edit. A build that still takes its ranks from the captured Selena setup
-// (`useCapturedRanks`, the old default) stores only part of them, so its stored ranks are not pruned.
+// tree prunes them after an edit.
 function prerequisitePass(state, change) {
-  if (state.talents?.useCapturedRanks !== false) return state;
   const talents = state.talents,
     layouts = activeTalentTreeLayouts(talents);
   let ranks = { ...(state.talentRanks || {}) };

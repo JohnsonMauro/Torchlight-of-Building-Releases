@@ -142,15 +142,15 @@ test("pacts: three spirit slots, or the default spirits that were not switched o
   );
 });
 
-test("talents: the blank New Build template starts without captured ranks", () => {
-  const removed = Array.from({ length: 10 }, (_, index) => `item${index}`);
-  const template = { skills: { setupOrder: [] }, removedInventoryItemIds: removed };
-  assert.equal(normalizePlannerState(template).talents.useCapturedRanks, false);
-  assert.equal(normalizePlannerState({ removedInventoryItemIds: removed }).talents.useCapturedRanks, true);
-  assert.equal(
-    normalizePlannerState({ ...template, talents: { useCapturedRanks: true } }).talents.useCapturedRanks,
-    true,
-  );
+test("an older build's fields of the captured Selena build are accepted and dropped", () => {
+  const state = normalizePlannerState({
+    removedInventoryItemIds: ["captured-helmet"],
+    talents: { useCapturedRanks: true },
+    slates: { affixOverrides: { judgment: ["+1% damage"] } },
+  });
+  assert.equal("removedInventoryItemIds" in state, false);
+  assert.equal("useCapturedRanks" in state.talents, false);
+  assert.equal("affixOverrides" in state.slates, false);
 });
 
 test("followers: an unknown follower empties the slot", () => {

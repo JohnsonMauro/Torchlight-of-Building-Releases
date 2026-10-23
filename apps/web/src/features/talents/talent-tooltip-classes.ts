@@ -12,9 +12,6 @@ export const BADGE =
 export const BODY = "px-3 py-2.25";
 export const BODY_TEXT = "text-xs/normal text-muted";
 export const CORE_LINE = "py-1.5 text-xs/normal text-text not-first:border-t not-first:border-line";
-export const EFFECT = "flex items-baseline justify-between gap-3 py-1.5 not-first:border-t not-first:border-line";
-export const EFFECT_LABEL = "text-xs/snug text-muted";
-export const EFFECT_VALUE = "text-right text-xs/snug font-bold whitespace-nowrap text-text";
 /** A coverage badge after a line of text. */
 export const INLINE_COVERAGE = "ml-1.5 inline-block px-1.5 py-0.5 align-middle";
 export const PRISM = "border-t border-line bg-violet/10 px-3 pt-2.25 pb-3";

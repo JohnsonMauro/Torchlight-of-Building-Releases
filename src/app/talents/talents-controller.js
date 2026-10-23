@@ -21,12 +21,7 @@ import { talentsView } from "../bridge/talents-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { renderConfiguration } from "../configuration/configuration-controller.js";
 import { showToast } from "../planner/page.js";
-import {
-  prismAffixCoverage,
-  prismAffixCoverageReason,
-  talentEffectCoverage,
-  talentLineCoverage,
-} from "../planner/calculation-coverage.js";
+import { prismAffixCoverage, prismAffixCoverageReason, talentLineCoverage } from "../planner/calculation-coverage.js";
 import {
   currentPlanner,
   persistPlannerState,
@@ -111,7 +106,6 @@ function talentNodeTooltip({ coordinate, art, locked, prismAffected }) {
       prism,
       prismCoordinate,
       prismName: prism ? prismName(prism) : "",
-      effectCoverage: talentEffectCoverage,
       lineCoverage: talentLineCoverage,
       prismAffixCoverage: (kind) => prismAffixCoverage(prism, kind),
     }),

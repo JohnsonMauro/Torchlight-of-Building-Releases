@@ -5,7 +5,6 @@ import {
   inverseImageReflectionMap,
   activeTalentTreeLayouts,
   pruneInvalidTalentRanks,
-  selenaScorchingBeamTalentSetup,
   talentTreeLayouts,
 } from "#engine";
 import { talentDisplayNodes as talentNodesOnBoard } from "../bridge/talents-view-model.ts";
@@ -14,14 +13,8 @@ import { renderHeroPanel, renderHeroTraitTree } from "../hero/hero-controller.js
 import { plannerState, talentRanks } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
 
-const capturedTalentPanels = new Map(selenaScorchingBeamTalentSetup.panels.map((panel) => [panel.name, panel]));
 export const professionTreeLayoutsAll = talentTreeLayouts;
-const allTalentPanels = Object.values(allProfessionTalentCatalogue).map((panel) => ({
-  ...panel,
-  ...(capturedTalentPanels.get(panel.name) || {}),
-  coreTalents: panel.coreTalents,
-  allocatedNodes: capturedTalentPanels.get(panel.name)?.allocatedNodes || [],
-}));
+const allTalentPanels = Object.values(allProfessionTalentCatalogue);
 
 export function currentTalentPanel() {
   return allTalentPanels.find((panel) => panel.name === ui.activeTalentPanel);
@@ -42,7 +35,6 @@ export function talentDisplayNodes(panel = currentTalentPanel()) {
     (item) => item.id === plannerState.talents.installedPrisms?.[panel.name],
   );
   return talentNodesOnBoard(
-    panel,
     professionTreeLayoutsAll[panel.name],
     prism,
     plannerState.talents.installedPrismNodes?.[panel.name],

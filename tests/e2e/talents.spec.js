@@ -328,7 +328,7 @@ test("hovering a node and the installed prism shows their tooltips", async ({ pa
   await expect(async () => {
     await page.mouse.move(0, 0);
     await talents.node("5,0").hover();
-    await expect(talents.tooltip()).toContainText("Attack and cast speed", { timeout: 500 });
+    await expect(talents.tooltip()).toContainText("Attack and Cast Speed", { timeout: 500 });
   }).toPass();
   await expect(async () => {
     await page.mouse.move(0, 0);

@@ -1,4 +1,4 @@
-// The talent trees' tooltips (src/app/bridge/talent-tooltip-view.ts): a node's effects at its rank, a core slot and an
+// The talent trees' tooltips (src/app/bridge/talent-tooltip-view.ts): a node's game text at its rank, a core slot and an
 // installed prism.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -11,7 +11,7 @@ import {
 
 const nodeInput = (overrides = {}) => ({
   tree: "Lich",
-  node: { coordinate: [1, 1], type: "medium", effectsPerRank: { damagePercent: 4 }, maxRank: 3 },
+  node: { coordinate: [1, 1], type: "medium", description: "+4% damage", maxRank: 3 },
   nodes: [],
   rankAt: () => 2,
   icon: "node.webp",
@@ -20,30 +20,27 @@ const nodeInput = (overrides = {}) => ({
   prism: null,
   prismCoordinate: null,
   prismName: "",
-  effectCoverage: () => "In calc",
-  lineCoverage: () => "Not modeled",
+  lineCoverage: (description, allocated) => (allocated ? "In calc" : "Not allocated"),
   prismAffixCoverage: () => "In calc",
   ...overrides,
 });
 
-test("a node shows its effects at its rank, its rank badge and its type", () => {
+test("a node shows its game text at its rank, its rank badge and its type", () => {
   const view = talentNodeTooltipView(nodeInput());
   assert.equal(view.talentType, "medium");
   assert.equal(view.kicker, "Medium Talent");
   assert.equal(view.badge, "2/3");
-  assert.equal(view.effects.length, 1);
-  assert.match(view.effects[0].value, /8/);
-  assert.deepEqual(view.effects[0].coverage, coverageView("In calc"));
-  assert.equal(view.description, null);
+  assert.match(view.description.text, /8%/);
+  assert.deepEqual(view.description.coverage, coverageView("In calc"));
   assert.equal(view.prism, null);
   assert.equal(view.footer, "Allocated");
 });
 
-test("a node without effects shows its description; an empty locked node says so", () => {
+test("a node without game text is a profession-tree node; a locked one says so", () => {
   const view = talentNodeTooltipView(
-    nodeInput({ node: { coordinate: [0, 0], type: "micro", placeholder: true }, rankAt: () => 0, locked: true }),
+    nodeInput({ node: { coordinate: [0, 0], type: "micro" }, rankAt: () => 0, locked: true }),
   );
-  assert.deepEqual(view.description, { text: "Profession-tree node", coverage: coverageView("Not modeled") });
+  assert.deepEqual(view.description, { text: "Profession-tree node", coverage: coverageView("Not allocated") });
   assert.equal(view.title, "Micro Talent");
   assert.equal(view.footer, "Locked · prerequisites not met");
 });

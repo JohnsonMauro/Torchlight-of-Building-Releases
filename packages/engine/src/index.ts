@@ -287,7 +287,7 @@ export { residualNonDamageStatus } from "./text/line-families.js";
 export { namedGearAffixLines } from "./text/named-gear-affixes.js";
 export { DASH, formatRecountInteger, formatShortNumber } from "./text/number-format.js";
 export { cleanGameText, normalizePercentageText } from "./text/percentage-text.js";
-export { matchTalentTextClause, talentKeyRoute } from "./text/talent-text-effects.js";
+export { matchTalentTextClause } from "./text/talent-text-effects.js";
 
 // Game data
 export { towerSequenceTexts } from "../data/changed-item-ids.js";

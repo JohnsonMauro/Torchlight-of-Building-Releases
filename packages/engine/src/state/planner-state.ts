@@ -46,17 +46,16 @@ export type PlannerSkills = Omit<Filled<Section<"skills">, Defaults["skills"]>, 
 
 /**
  * A build as normalizePlannerState returns it: the stored shape (packages/engine/src/state/state-validation.ts) with every field that has a
- * default present. Fields without a default (hero.characterLevel, combat.bestCaseOverrides, slates.affixOverrides)
- * stay optional.
+ * default present. Fields without a default (hero.characterLevel, combat.bestCaseOverrides) stay optional.
  */
 export type PlannerState = Omit<
   Filled<StoredPlannerState, Defaults>,
-  "hero" | "skills" | "slates" | "talents" | "pacts" | "combat" | "followers"
+  "hero" | "skills" | "slates" | "talents" | "pacts" | "combat" | "followers" | "removedInventoryItemIds"
 > & {
   hero: PlannerHero;
   skills: PlannerSkills;
-  slates: Filled<Section<"slates">, Defaults["slates"]>;
-  talents: Filled<Section<"talents">, Defaults["talents"]>;
+  slates: Omit<Filled<Section<"slates">, Defaults["slates"]>, "affixOverrides">;
+  talents: Omit<Filled<Section<"talents">, Defaults["talents"]>, "useCapturedRanks">;
   pacts: Filled<Section<"pacts">, Defaults["pacts"]>;
   combat: Filled<Section<"combat">, Defaults["combat"]>;
   followers: Filled<Section<"followers">, Defaults["followers"]>;
@@ -75,6 +74,27 @@ function withoutLegacyTreeFields<T extends { selenaDanceTraits?: unknown }>(hero
   return rest;
 }
 
+// Fields of the captured Selena build (removed 2026-10-23) that older stored builds still carry: accepted by the
+// validation, dropped here. removedInventoryItemIds hid the captured items; talents.useCapturedRanks took the captured
+// ranks; slates.affixOverrides edited the captured slates.
+function withoutCapturedFields<T extends { removedInventoryItemIds?: unknown }>(
+  value: T,
+): Omit<T, "removedInventoryItemIds"> {
+  const rest = { ...value };
+  delete rest.removedInventoryItemIds;
+  return rest;
+}
+function withoutCapturedRanks<T extends { useCapturedRanks?: unknown }>(talents: T): Omit<T, "useCapturedRanks"> {
+  const rest = { ...talents };
+  delete rest.useCapturedRanks;
+  return rest;
+}
+function withoutAffixOverrides<T extends { affixOverrides?: unknown }>(slates: T): Omit<T, "affixOverrides"> {
+  const rest = { ...slates };
+  delete rest.affixOverrides;
+  return rest;
+}
+
 export const defaultPlannerState = {
   schemaVersion: 1,
   season: currentSeason.id,
@@ -82,7 +102,6 @@ export const defaultPlannerState = {
   seasonChange: null,
   disabledEquipmentSlots: [],
   disabledSupportNames: [],
-  removedInventoryItemIds: [],
   equipmentOverrides: {},
   equipmentInventory: [],
   hero: {
@@ -123,14 +142,8 @@ export const defaultPlannerState = {
   followers: defaultFollowerState(),
   talentRanks: {},
   talents: {
-    useCapturedRanks: true,
-    selectedTrees: ["Goddess of Deception", "Psychic", "Warlord", "Lich"],
-    coreSelections: {
-      "Goddess of Deception:12": "Affliction",
-      "Goddess of Deception:24": "Subtle Impact",
-      "Warlord:24": "Starfire",
-      "Lich:24": "Off The Beaten Track",
-    },
+    selectedTrees: ["", "", "", ""],
+    coreSelections: {},
     prismInventory: [],
     installedPrisms: {},
     installedPrismNodes: {},
@@ -186,12 +199,6 @@ export function normalizePlannerState(input: unknown = {}): PlannerState {
   // A build from an earlier season is carried into the current one first (packages/engine/src/state/season-migration.js).
   const value: StoredPlannerState = migrateBuildSeason(validatePlannerState(input));
   const defaults = clone(defaultPlannerState);
-  // Older New Build saves lack this flag; removed captured gear identifies
-  // the blank template, whose talent ranks must start at zero.
-  const emptyTemplate =
-    Array.isArray(value.skills?.setupOrder) &&
-    Array.isArray(value.removedInventoryItemIds) &&
-    value.removedInventoryItemIds.length >= 10;
   const memoryInventory = Array.isArray(value.hero?.memoryInventory)
     ? value.hero.memoryInventory.map((memory) => {
         const enhancementLevel = clampMemoryEnhancement(memory.enhancementLevel, memory.rarity);
@@ -228,14 +235,13 @@ export function normalizePlannerState(input: unknown = {}): PlannerState {
   const selectedSpirits = value.pacts?.selectedSpirits;
   return {
     ...defaults,
-    ...value,
+    ...withoutCapturedFields(value),
     disabledEquipmentSlots: Array.isArray(value.disabledEquipmentSlots) ? value.disabledEquipmentSlots : [],
     disabledSupportNames: Array.isArray(value.disabledSupportNames) ? value.disabledSupportNames : [],
-    removedInventoryItemIds: Array.isArray(value.removedInventoryItemIds) ? value.removedInventoryItemIds : [],
     equippedSlateIds: Array.isArray(value.equippedSlateIds) ? value.equippedSlateIds : [],
     slates: {
       ...defaults.slates,
-      ...(value.slates || {}),
+      ...withoutAffixOverrides(value.slates || {}),
       // A save without a geometry version predates the current slate board (4): src/app/planner/session.js then ignores its
       // placements and the slates wait off the board.
       geometryVersion: Number(value.slates?.geometryVersion || 0),
@@ -247,9 +253,8 @@ export function normalizePlannerState(input: unknown = {}): PlannerState {
     talentRanks: value.talentRanks && typeof value.talentRanks === "object" ? value.talentRanks : {},
     talents: {
       ...defaults.talents,
-      ...(value.talents || {}),
-      useCapturedRanks: value.talents?.useCapturedRanks ?? !emptyTemplate,
-      selectedTrees: normalizeTalentTreeSelection(value.talents?.selectedTrees, defaults.talents.selectedTrees),
+      ...withoutCapturedRanks(value.talents || {}),
+      selectedTrees: normalizeTalentTreeSelection(value.talents?.selectedTrees),
       coreSelections: { ...(value.talents?.coreSelections ?? defaults.talents.coreSelections) },
       prismInventory: Array.isArray(value.talents?.prismInventory)
         ? value.talents.prismInventory.map((item) => ({ ...item }))

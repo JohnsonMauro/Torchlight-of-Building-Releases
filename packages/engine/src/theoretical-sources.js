@@ -62,7 +62,6 @@ export function compileScorchingBeamIgniteSources({
   combat,
   conditions,
   heroId = "selena-sing-with-the-tide",
-  useEffectiveSupportLevels = false,
   reapingApplicationAttemptsPerSecond,
   extraSources = {},
 }) {
@@ -71,8 +70,7 @@ export function compileScorchingBeamIgniteSources({
   const supports = new Map(
     (main?.supports || []).filter((support) => support.enabled !== false).map((support) => [support.name, support]),
   );
-  const supportLevel = (support) =>
-    useEffectiveSupportLevels ? Math.min(40, support.effectiveLevel ?? support.level) : support.level;
+  const supportLevel = (support) => Math.min(40, support.effectiveLevel ?? support.level);
   const talent = talentSlate.candidateTalent;
   const slate = talentSlate.candidateSlate;
   const gear = equipment.candidate;

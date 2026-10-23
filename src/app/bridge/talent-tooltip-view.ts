@@ -10,7 +10,6 @@ import {
   prismNodeAffixes,
   talentEffectText,
 } from "#engine";
-import { effectLabel, formatEffect, nodeTitle } from "../talents/talent-labels.js";
 import { coverageView, type CoverageView } from "./gear-item-view.ts";
 import type { PrismSectionLine, PrismSectionView } from "./prism-crafter-view.ts";
 import type { Prism, TalentNode } from "./talents-view-model.ts";
@@ -132,9 +131,8 @@ export interface TalentNodeTooltipView {
   title: string;
   /** "rank/max". */
   badge: string;
-  /** Its effects at its rank; empty for a node described in words (`description`). */
-  effects: { label: string; value: string; coverage: CoverageView }[];
-  description: { text: string; coverage: CoverageView } | null;
+  /** The node's game text at its rank. */
+  description: { text: string; coverage: CoverageView };
   /** An installed prism's effects on this node; null when it has none. */
   prism: {
     heading: string;
@@ -156,7 +154,6 @@ export interface TalentNodeTooltipInput {
   prism: (Prism & { rareAffix?: string }) | null;
   prismCoordinate: string | null;
   prismName: string;
-  effectCoverage: (key: string, value: unknown, rank: number) => string;
   lineCoverage: (description: string, allocated: boolean) => string;
   /** An Ethereal Prism's affix coverage ("rareAffix", "legendaryAffix"). */
   prismAffixCoverage: (kind: string) => string;
@@ -166,28 +163,18 @@ export function talentNodeTooltipView(input: TalentNodeTooltipInput): TalentNode
   const coordinate = node.coordinate.join(",");
   const rank = input.rankAt(coordinate);
   const type = node.type || "micro";
-  const max = node.maxRank || (node.effectsPerRank ? 3 : 1);
+  const max = node.maxRank || 1;
   const multiplier = node.reflectedFrom ? inverseImageEffectMultiplier(prism, type) : 1;
-  const effects = Object.entries(node.effectsPerRank || node.effects || {}).map(([key, value]) => ({
-    label: text(effectLabel(key)),
-    value: text(
-      formatEffect(key, typeof value === "number" ? value * (node.effectsPerRank ? rank : 1) * multiplier : value),
-    ),
-    coverage: coverageView(input.effectCoverage(key, value, rank)),
-  }));
   return {
     talentType: type,
     icon: input.icon,
     kicker: type === "legendary" ? "Legendary Medium Talent" : `${titleCase(type)} Talent`,
-    title: text(node.placeholder ? `${titleCase(type)} Talent` : nodeTitle(node)),
+    title: text(`${titleCase(type)} Talent`),
     badge: `${rank}/${max}`,
-    effects,
-    description: effects.length
-      ? null
-      : {
-          text: text(node.description ? talentEffectText(node.description, rank, multiplier) : "Profession-tree node"),
-          coverage: coverageView(input.lineCoverage(node.description || "", rank > 0)),
-        },
+    description: {
+      text: text(node.description ? talentEffectText(node.description, rank, multiplier) : "Profession-tree node"),
+      coverage: coverageView(input.lineCoverage(node.description || "", rank > 0)),
+    },
     prism: input.prismAffected && prism && input.prismCoordinate ? nodePrismEffects(input, type, rank) : null,
     footer: rank > 0 ? "Allocated" : input.locked ? "Locked · prerequisites not met" : "Click to allocate",
   };

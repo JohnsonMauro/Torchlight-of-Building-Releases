@@ -33,7 +33,6 @@ import {
   resolveHeroModules,
   routeStatus,
   skillLevelLineStatus,
-  talentKeyRoute,
   TRAIT_SLOT_GRANTS,
   weaponHands,
   weaponLocalLineKind,
@@ -161,13 +160,6 @@ function baseTalentLineCoverage(text, active) {
   return combineClauseStatuses(
     clauses.map((clause) => parsedClauseStatus(clause, "talent") ?? (parseBlockModifier(clause) ? "In calc" : null)),
   );
-}
-
-export function talentEffectCoverage(key, value, rank) {
-  if (!(rank > 0)) return "Not allocated";
-  if (typeof value === "number" || (key === "inflictsFireInfiltrationAgainstIgnited" && value === true))
-    return routeStatus(talentKeyRoute(key), key, coverageContext()) ?? "In calc";
-  return "Not verified";
 }
 
 function baseSlateLineCoverage(text, active) {

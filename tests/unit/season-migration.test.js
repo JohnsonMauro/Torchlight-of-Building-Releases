@@ -21,7 +21,8 @@ const node = lich.nodes.find((entry) => entry.maxRank === 1);
 const at = node.coordinate.join(",");
 const legendary = legendaryGear[0];
 
-// An SS13 build: a node the tree has (two ranks too many), a node it does not have, a core it offers and one it does not,
+// An SS13 build: a node the tree has (two ranks too many, and its prerequisites unallocated), a node it does not have, a
+// core it offers and one it does not,
 // a legendary the catalog has and one it does not (equipped and in the inventory).
 const ss13Build = () => ({
   season: "ss13",
@@ -54,7 +55,8 @@ test("an earlier season's build loses what the current one lacks, gets the point
   const state = migrateBuildSeason(ss13Build());
   assert.equal(state.season, currentSeason.id);
   assert.equal(state.seasonOrigin, "ss13");
-  assert.deepEqual(state.talentRanks, { [`Lich:${at}`]: 1 });
+  // The node keeps one rank, then goes: nothing before it on its path is allocated.
+  assert.deepEqual(state.talentRanks, {});
   assert.deepEqual(state.talents.coreSelections, { "Lich:24": lich.coreTalents.at(-1).name });
   assert.deepEqual(Object.keys(state.equipmentOverrides), ["belt"]);
   assert.deepEqual(state.disabledEquipmentSlots, ["helmet"]);
@@ -70,14 +72,15 @@ test("an earlier season's build loses what the current one lacks, gets the point
       "Talent Lich 9,9",
       "Talent Old Tree 0,0",
       "Core talent Gone Core (Lich)",
+      `Talent Lich ${at} (its prerequisites are gone)`,
       "Vanished Crown (helmet)",
       "Lost Ring (inventory)",
     ],
-    talentPointsReturned: 7,
+    talentPointsReturned: 8,
   });
   assert.equal(
     seasonChangeSummary(state.seasonChange),
-    "Moved from SS13 to SS14: 6 incompatible parts removed, 7 talent points returned",
+    "Moved from SS13 to SS14: 7 incompatible parts removed, 8 talent points returned",
   );
 });
 

@@ -5,18 +5,6 @@
  "seasonChange": null,
  "disabledEquipmentSlots": [],
  "disabledSupportNames": [],
- "removedInventoryItemIds": [
-  "captured-helmet",
-  "captured-chest",
-  "captured-necklace",
-  "captured-gloves",
-  "captured-belt",
-  "captured-boots",
-  "captured-leftRing",
-  "captured-rightRing",
-  "captured-mainHand",
-  "captured-secondaryHand"
- ],
  "equipmentOverrides": {
   "helmet": {
    "name": "Blind Vision",
@@ -1726,8 +1714,7 @@
     "rarity": "legendary",
     "icon": ""
    }
-  ],
-  "affixOverrides": {}
+  ]
  },
  "followers": {
   "followerId": null,
@@ -1783,7 +1770,6 @@
   "Lich:6,3": 1
  },
  "talents": {
-  "useCapturedRanks": false,
   "selectedTrees": [
    "Goddess of Knowledge",
    "Prophet",

@@ -75,21 +75,10 @@ function NodeCard({ view }: { view: TalentNodeTooltipView }) {
     <>
       <Head icon={view.icon} kicker={view.kicker} title={view.title} badge={view.badge} />
       <div className={classes.BODY}>
-        {view.effects.map((effect) => (
-          <div key={effect.label} className={classes.EFFECT}>
-            <span className={classes.EFFECT_LABEL}>{effect.label}</span>
-            <strong className={classes.EFFECT_VALUE}>{effect.value}</strong>
-            <CoverageBadge coverage={effect.coverage} />
-          </div>
-        ))}
-        {view.description ? (
-          <>
-            <p className={classes.BODY_TEXT}>
-              <KeywordText text={view.description.text} />
-            </p>
-            <CoverageBadge coverage={view.description.coverage} className={classes.INLINE_COVERAGE} />
-          </>
-        ) : null}
+        <p className={classes.BODY_TEXT}>
+          <KeywordText text={view.description.text} />
+        </p>
+        <CoverageBadge coverage={view.description.coverage} className={classes.INLINE_COVERAGE} />
       </div>
       {view.prism ? (
         <section className={classes.PRISM}>

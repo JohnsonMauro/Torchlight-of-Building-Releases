@@ -11,11 +11,11 @@ const library: BuildLibrary = loadBuildLibrary();
 // The defaults are a normalized build.
 export const fromDefaults: PlannerState = defaultPlannerState;
 // Every field with a default is present.
-export const filled: [string, string[], number, boolean, number, string | null, string[]] = [
+export const filled: [string, string[], number, string[], number, string | null, string[]] = [
   state.hero.selectedHeroId,
   state.hero.sageScent.elixir ? [] : state.skills.boardSlots.auras,
   state.combat.idyllStacks,
-  state.talents.useCapturedRanks,
+  state.talents.selectedTrees,
   state.slates.geometryVersion,
   state.followers.followerId,
   state.pacts.selectedSpirits,
@@ -26,6 +26,8 @@ export const openBuildName: string | undefined = library.builds.find(
 )?.name;
 export const revisionState: PlannerState = library.builds[0].revisions[0].state;
 
+// @ts-expect-error the captured Selena build's fields are dropped by the normalization
+export const capturedRanks = state.talents.useCapturedRanks;
 // @ts-expect-error fields without a default stay optional
 export const characterLevel: number = state.hero.characterLevel;
 // @ts-expect-error Selena's selenaDanceTraits is dropped by normalization
