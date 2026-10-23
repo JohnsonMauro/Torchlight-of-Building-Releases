@@ -1,6 +1,6 @@
 import { wholeFormat } from "./damage-path-views.js";
 
-// Damage path model for a Minion (src/engine/minions/minion-damage-model.js), in the stage layout the other paths use
+// Damage path model for a Minion (packages/engine/src/minions/minion-damage-model.js), in the stage layout the other paths use
 // (src/app/stats/damage-path-views.js `pathMarkup`): Minion Base Damage → skill percent → added flat → Minion increased →
 // Minion additional → crit → dummy armour → resistance, following the basic skill; the special skill(s) and the use
 // cycle are listed in sections. Presentation only: every figure is the engine's.

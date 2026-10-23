@@ -1,9 +1,9 @@
 // The saved-build library: the builds in localStorage (shared by every tab, each tab keeping its own open build),
 // conflicts between tabs, unreadable data kept aside, revisions, share codes and backups. The build state itself and its
-// normalization are src/engine/state/planner-state.ts.
+// normalization are packages/engine/src/state/planner-state.ts.
 import { libraryFromBackup } from "./recovery-core.js";
-import { decodePlannerState, defaultPlannerState, normalizePlannerState } from "../../engine/index.ts";
-import type { PlannerState } from "../../engine/index.ts";
+import { decodePlannerState, defaultPlannerState, normalizePlannerState } from "#engine";
+import type { PlannerState } from "#engine";
 
 // ---- Types ----------------------------------------------------------------------------------------------------------
 

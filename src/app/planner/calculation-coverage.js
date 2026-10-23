@@ -39,7 +39,7 @@ import {
   weaponLocalLineKind,
   weaponTypeOf,
   YOUGA_ULTIMATE_ONE_ID,
-} from "../../engine/index.ts";
+} from "#engine";
 
 function baseGearLineCoverage(item, text, active, block, lowResources, blurEffects) {
   if (!active) return "Not equipped";
@@ -50,13 +50,13 @@ function baseGearLineCoverage(item, text, active, block, lowResources, blurEffec
   if (item.corrosionModifiers?.length && item.implicitModifiers?.includes(text)) return "Replaced by corrosion";
   if (/^\+[\d.]+\s*%\s+(?:damage|Critical Strike Rating) if you have Blocked recently$/i.test(text))
     return block?.recentlyActive ? "In calc" : "Inactive";
-  // Movement Speed is summed by the stat sheet; no reader turns it into damage (src/engine/skills/attack-hit-profiles.js: "no Movement
+  // Movement Speed is summed by the stat sheet; no reader turns it into damage (packages/engine/src/skills/attack-hit-profiles.js: "no Movement
   // Speed total"; survey 2026-10-13 §4.3), and movement-driven buffs are assumed held anyway.
   if (/^(?:Feline Steps: )?\+[\d.]+\s*% Movement Speed$/i.test(text)) return "Counted in stats";
   if (/^Blur gains an additional effect:.*Damage Over Time.*Blur Rating$/i.test(text))
     return blurEffects?.active ? "In calc" : "Inactive";
   // "<Aura> gains an additional effect: <modifiers>" (Pantheon's Elegy): part of that Aura's buff while it is active
-  // (src/engine/skills/aura-gained-effects.js; Aura Effect scaling provisional). Partly / Not modeled when a clause has no reader.
+  // (packages/engine/src/skills/aura-gained-effects.js; Aura Effect scaling provisional). Partly / Not modeled when a clause has no reader.
   const gainedAura = auraGainedLineStatus(text, coverageContext());
   if (gainedAura) return gainedAura;
   // The refresh itself is planner-only (Blur is assumed held); a trailing "+X% Blur Effect" is in calc.
@@ -65,14 +65,14 @@ function baseGearLineCoverage(item, text, active, block, lowResources, blurEffec
     return /[\d.]+ ?% Blur Effect$/i.test(text) ? (blurEffects?.active ? "In calc" : "Inactive") : "Planner only";
   if (/^Grants [\d.]+ Blur Rating per second when equipped in the right Ring slot$/i.test(text))
     return item.slot === "rightRing" ? "In calc" : "Inactive";
-  // Folklore of Locking Fingers' left-ring grant: a Blur source (src/engine/combat/blur-sources.js) once the item sits in the left Ring slot.
+  // Folklore of Locking Fingers' left-ring grant: a Blur source (packages/engine/src/combat/blur-sources.js) once the item sits in the left Ring slot.
   if (/^Grants Blur [\d.]+ ?s after losing Blur when equipped in the left Ring slot$/i.test(text))
     return item.slot === "leftRing" && blurEffects?.active ? "In calc" : "Inactive";
   if (/Stealth Stab/.test(text)) return blurEffects?.active || blurEffects?.afterEnd ? "In calc" : "Inactive";
   const conditional = normalizePercentageText(text).match(
     /^([+-][\d.]+)% additional damage taken (?:when |while )?(?:at |on )?Low (Life|Mana)$/i,
   );
-  // Own damage taken at Low Life / Mana is defence (src/engine/defense/effective-hp.js sums it): "Counted in stats" while the condition
+  // Own damage taken at Low Life / Mana is defence (packages/engine/src/defense/effective-hp.js sums it): "Counted in stats" while the condition
   // holds, never "In calc" (gear-pact batch chunk 2; it moves no dummy damage).
   if (conditional)
     return lowResources?.[conditional[2].toLowerCase() === "life" ? "lowLife" : "lowMana"]
@@ -86,7 +86,7 @@ function baseGearLineCoverage(item, text, active, block, lowResources, blurEffec
     .filter(Boolean);
   if (!lines.length) return "Not modeled";
   // Weapon base and weapon-local lines ("6 - 6 Physical Damage", "+64% Gear Physical Damage", "Adds 68–84 Physical Damage to
-  // the gear", "+54% gear Attack Speed", "+85% Attack Critical Strike Rating for this gear"): src/engine/skills/weapon-damage-model.js
+  // the gear", "+54% gear Attack Speed", "+85% Attack Critical Strike Rating for this gear"): packages/engine/src/skills/weapon-damage-model.js
   // readWeapon applies them on the held weapon, which a modeled attack skill uses (gear-pact batch G1). Off a weapon, or in
   // a build without a modeled attack hit, they change nothing (Inactive).
   if (lines.length === 1 && weaponLocalLineKind(lines[0])) {
@@ -133,7 +133,7 @@ function effectiveReapingReset(item, line) {
   );
 }
 
-// Engine-aware status of one parsed clause (talent batch T7): the shared table's route (src/engine/text/talent-text-effects.js)
+// Engine-aware status of one parsed clause (talent batch T7): the shared table's route (packages/engine/src/text/talent-text-effects.js)
 // against the build in the coverage context. Before 2026-10-12 every parsed key read "In calc" whatever the build:
 // Spell crit on an attack build, defensive keys, cast speed on a Minion build. Returns null for an unparsed clause and
 // "utility" for a key no damage ledger reads (the engine-line layer decides those).
@@ -186,7 +186,7 @@ function baseSlateLineCoverage(text, active) {
   return combineClauseStatuses(statuses);
 }
 
-// Gear stats by engine family (src/engine/engine.js modifierPatterns), for the engine-aware gear badge (talent batch T7).
+// Gear stats by engine family (packages/engine/src/engine.js modifierPatterns), for the engine-aware gear badge (talent batch T7).
 // Stats not listed (weapon bases, defences, attributes, skill levels) keep their old "In calc".
 const GEAR_STAT_ROUTES = {
   spellCriticalStrikeRating: "crit",
@@ -214,7 +214,7 @@ const GEAR_STAT_ROUTES = {
   elementalDamagePercent: "damage",
 };
 // Defence stats (survey 2026-10-13 §4.3: 282 armor / Energy Shield / Evasion / Life / resistance lines read In calc with no
-// damage effect). They are summed by the stat sheet (src/engine/character-stats.js, src/engine/defense/effective-hp.js): "Counted in stats";
+// damage effect). They are summed by the stat sheet (packages/engine/src/character-stats.js, packages/engine/src/defense/effective-hp.js): "Counted in stats";
 // immunities "No DPS effect". A resistance stays In calc where the build carries a line that scales with that resistance
 // ("For every 1% Fire Resistance, +X% Critical Strike Damage"; such a line moved the Trauma build).
 const DEFENCE_STATS = new Set([
@@ -280,7 +280,7 @@ function gearStatStatus(item, line) {
 
 // One clause of a legendary prism affix (residual batch P5: the affix used to be judged whole, so "-30 to All Stats" or
 // "+1 to Max Tenacity Blessing Stacks" read Not modeled on the prism while the same clause read In calc on gear). The
-// "When activating 2 Legendary Medium Talent within the area," lead is the activation rule (src/engine/talents/prism-crafting.js
+// "When activating 2 Legendary Medium Talent within the area," lead is the activation rule (packages/engine/src/talents/prism-crafting.js
 // prismNodeAffixes applies the effect once two are allocated); the body is judged like any other line.
 const PRISM_AREA_LEAD =
   /^(?:When activating 2 Legendary Medium Talent within the area,|All (?:Micro|Medium|Legendary Medium) Talent within the area also gain:)\s*/i;
@@ -334,7 +334,7 @@ export function prismAffixCoverage(prism, kind, clause = null) {
   if (kind === "base" && prismAddedCoreEffect(prism)) return refineCoverage("Not modeled", prismAddedCoreEffect(prism));
   // Effortless Command (core audit Q12): no affix record in either season's game tables, so there is nothing to model yet.
   if (kind === "base" && prism?.type === "ethereal" && prism.base === "Effortless Command") return "Not modeled";
-  // Every other base's text reaches the readers as "[Base] clause" lines (src/engine/text/modifier-texts.js; core audit batch B1): the
+  // Every other base's text reaches the readers as "[Base] clause" lines (packages/engine/src/text/modifier-texts.js; core audit batch B1): the
   // base affix combines the statuses of those clauses.
   if (kind === "base" && prism?.type === "ethereal") {
     const coreLines = (coverageContext()?.modifierTexts || []).filter(
@@ -352,7 +352,7 @@ export function prismAffixCoverage(prism, kind, clause = null) {
   const gained = String(prism?.[kind] || "").match(/also gain:\s*(.+)$/i)?.[1];
   if (!gained) return "Not modeled";
   // Each clause as the calculation got it: the lines the prism gave its covered talents, scaled by their points ("+30% Minion
-  // Critical Strike Rating" from a 3-point node, src/engine/text/modifier-texts.js), else the affix's own wording.
+  // Critical Strike Rating" from a 3-point node, packages/engine/src/text/modifier-texts.js), else the affix's own wording.
   const shape = (text) =>
     normalizePercentageText(String(text))
       .replace(/[+-]?\d+(?:\.\d+)?/g, "#")
@@ -386,9 +386,9 @@ export function prismAffixCoverageReason(prism, kind) {
   return "";
 }
 
-// Artificial Moon (user-corrected 2026-10-13; src/engine/heroes/hero-memory-rules.js artificialMoonGate): an equipped Artificial Moon
+// Artificial Moon (user-corrected 2026-10-13; packages/engine/src/heroes/hero-memory-rules.js artificialMoonGate): an equipped Artificial Moon
 // memory opens the base trait slot, and the base trait's lines after "Artificial Moon:" are active only at base trait
-// level 5 (src/engine/heroes/hero-memory-model.js heroMemories.artificialMoon / artificialMoonGate; src/engine/character-stats.js
+// level 5 (packages/engine/src/heroes/hero-memory-model.js heroMemories.artificialMoon / artificialMoonGate; packages/engine/src/character-stats.js
 // heroTraitStatLines drops them otherwise), for every hero. A badge receives one line, so the moon section is looked up in
 // the base trait's catalog and per-level texts (progression "( a / b / c )" lists match any listed or substituted value).
 const squash = (text) => cleanGameText(String(text || ""));
@@ -435,7 +435,7 @@ function artificialMoonState(planner = coverageContext()) {
 const moonGatedOff = (heroId, traitName, line) =>
   artificialMoonState()?.active === false && isArtificialMoonTraitLine(heroId, traitName, line);
 // A 45 / 60 / 75 trait with no hero memory in its slot is inactive at level 0 (user-stated rule 2026-10-13;
-// src/engine/heroes/hero-memory-rules.js slotTraitLevel). Only judged with a planner whose hero is this hero.
+// packages/engine/src/heroes/hero-memory-rules.js slotTraitLevel). Only judged with a planner whose hero is this hero.
 const NO_MEMORY_REASON = "no hero memory installed";
 function noMemoryInSlot(heroId, traitName, planner = coverageContext()) {
   if (!planner?.state?.hero || planner.state.hero.selectedHeroId !== heroId) return false;
@@ -443,12 +443,12 @@ function noMemoryInSlot(heroId, traitName, planner = coverageContext()) {
 }
 // Selena (Dance of the Deep) trait lines (badge batch 2026-10-13). The tooltip shows the TLIDB progression text
 // ("( +35 / +45 / … )% additional damage taken by enemies affected by Crimson Tide"), which no reader matches; the planner
-// carries the levelled copy (src/engine/character-stats.js heroTraitStatLines, source "Hero trait: <name> (Lv N…)") and judges it in
-// planner.lineEffects.lines (hero modules, Life sealed, Cursed: the same state src/engine/heroes/selena-dance.js applies). The badge reads
+// carries the levelled copy (packages/engine/src/character-stats.js heroTraitStatLines, source "Hero trait: <name> (Lv N…)") and judges it in
+// planner.lineEffects.lines (hero modules, Life sealed, Cursed: the same state packages/engine/src/heroes/selena-dance.js applies). The badge reads
 // that levelled line: its line-effects entry when it has one (active → In calc, else Inactive with the condition), else the
 // plain readers on the levelled text. Without a planner for this hero the progression collapses to its first value.
 const DANCE_OF_THE_DEEP_ID = "selena-dance-of-the-deep";
-// Erika (Wind Stalker) batch 2026-10-14: the same levelled-line reading as Dance of the Deep (src/engine/heroes/erika-wind-stalker.js and the
+// Erika (Wind Stalker) batch 2026-10-14: the same levelled-line reading as Dance of the Deep (packages/engine/src/heroes/erika-wind-stalker.js and the
 // "stalker" hero module carry the Stalker clauses); an entry's "No DPS effect" / "Not on dummy" status passes through.
 const WIND_STALKER_ID = "erika-wind-stalker";
 // Thea – Wisdom of The Gods and Youga – The Ultimate One (trait trees, 2026-10-15): their tree traits print TLIDB progressions
@@ -497,7 +497,7 @@ function levelledLineState(heroId, traitName, line, planner = coverageContext())
     );
     if (entry) {
       // A line the condition layer leaves unmodeled (its "unmodeled" scope, e.g. "for skills cast by Spell Burst") that an engine
-      // reader claims (src/engine/text/line-coverage.js engineLineStatus: the skill-hit Spell Burst model) reads what the engine says, as the
+      // reader claims (packages/engine/src/text/line-coverage.js engineLineStatus: the skill-hit Spell Burst model) reads what the engine says, as the
       // same line on gear does (hero trait audit B1, F6: Inspiration Overflow moved the dummy figure while it badged Not modeled).
       if (entry.status === "Not modeled" || entry.status === "Partly modeled") {
         const engine = engineLineStatus(levelled.text, planner);
@@ -538,10 +538,10 @@ const ENGINE = {
   b11: ["B11", "Rosa's No Guard / Mercury Pts engine"],
 };
 const HERO_ENGINE_PENDING = {
-  // Carino (Ranger of Glory, Lethal Flash, Zealot of War): modeled by hero trait audit B9 (src/engine/heroes/carino-traits.js, src/engine/heroes/hero-trait-modules.js
+  // Carino (Ranger of Glory, Lethal Flash, Zealot of War): modeled by hero trait audit B9 (packages/engine/src/heroes/carino-traits.js, packages/engine/src/heroes/hero-trait-modules.js
   // "ammo" / "specialAmmo" / "heatUp" / "deflection" / "ouroboros").
-  // Erika – Lightning Shadow and Vendetta's Sting: modeled by hero trait audit B5 (src/engine/heroes/erika-traits.js, src/engine/heroes/hero-trait-modules.js).
-  // Rehan (Anger, Seething Silhouette): modeled by hero trait audit B10 (src/engine/heroes/rehan-traits.js, src/engine/heroes/hero-trait-modules.js "rage" / "burst" /
+  // Erika – Lightning Shadow and Vendetta's Sting: modeled by hero trait audit B5 (packages/engine/src/heroes/erika-traits.js, packages/engine/src/heroes/hero-trait-modules.js).
+  // Rehan (Anger, Seething Silhouette): modeled by hero trait audit B10 (packages/engine/src/heroes/rehan-traits.js, packages/engine/src/heroes/hero-trait-modules.js "rage" / "burst" /
   // "spirit"); Hysteria's Rage gains (left to B10 by B2) are read there, its Missing Life line by the generic reader (B2).
   "bing-blast-nova": [
     [/^Base Bomb Throwing Speed is/i, "b12bomb"],
@@ -554,17 +554,17 @@ const HERO_ENGINE_PENDING = {
     [/Whimsy Essence Recovery Speed$/i, "b12whimsy"],
     [/^When casting Ingenuity Overload ?, gains Buff Effect/i, "b12whimsy"],
   ],
-  // Thea (Wisdom of The Gods, Incarnation of the Gods, Blasphemer): modeled by hero trait audit B7 (src/engine/heroes/thea-traits.js,
-  // src/engine/heroes/hero-trait-modules.js "theaWisdom" / "theaIncarnation" / "theaBlasphemer").
-  // Youga – Spacetime Elapse: modeled by hero trait audit B4 (src/engine/heroes/hero-trait-modules.js "elapse").
+  // Thea (Wisdom of The Gods, Incarnation of the Gods, Blasphemer): modeled by hero trait audit B7 (packages/engine/src/heroes/thea-traits.js,
+  // packages/engine/src/heroes/hero-trait-modules.js "theaWisdom" / "theaIncarnation" / "theaBlasphemer").
+  // Youga – Spacetime Elapse: modeled by hero trait audit B4 (packages/engine/src/heroes/hero-trait-modules.js "elapse").
   // Moto (Order Calling, Charge Calling) and Iris (Growing Breeze, Vigilant Breeze): modeled by hero trait audit B6
-  // (src/engine/heroes/moto-iris-traits.js; src/engine/heroes/hero-trait-modules.js "overload" / "chargeCalling" / "irisGrowing" / "irisVigilant").
+  // (packages/engine/src/heroes/moto-iris-traits.js; packages/engine/src/heroes/hero-trait-modules.js "overload" / "chargeCalling" / "irisGrowing" / "irisVigilant").
   "rosa-high-court-chariot": [[/^For every 1 ?% Block Ratio, .*additional No Guard Effect/i, "b11"]],
   "rosa-unsullied-blade": [
     [/^Mana can be consumed via methods other than Mystic Mercury/i, "b11"],
     [/^For every 1000 Max Mana you have, \+10 ?% Max Mercury Pts/i, "b11"],
   ],
-  // Sage – Licorice Note: modeled by hero trait audit B8 (src/engine/heroes/sage-traits.js, src/engine/heroes/hero-trait-modules.js "sageScent").
+  // Sage – Licorice Note: modeled by hero trait audit B8 (packages/engine/src/heroes/sage-traits.js, packages/engine/src/heroes/hero-trait-modules.js "sageScent").
 };
 /** The engine a hero trait line waits for ({ batch, engine }), or null. */
 export function heroTraitPendingEngine(heroId, line) {
@@ -575,13 +575,13 @@ export function heroTraitPendingEngine(heroId, line) {
 const pendingReason = (pending) => `Not modeled: needs ${pending.engine} (hero trait audit ${pending.batch})`;
 
 /** Why a base-trait "Artificial Moon:" line is Inactive (what is missing), or "" when it is not gated off. */
-// Youga – The Ultimate One's board lines (src/engine/heroes/trait-board-grants.js): what the planner applies. The Clockwork Core line and the
-// trait skills' effects are read by src/engine/heroes/youga-ultimate-one.js (the module's badge and the skill badges carry their reasons).
+// Youga – The Ultimate One's board lines (packages/engine/src/heroes/trait-board-grants.js): what the planner applies. The Clockwork Core line and the
+// trait skills' effects are read by packages/engine/src/heroes/youga-ultimate-one.js (the module's badge and the skill badges carry their reasons).
 function yougaBoardLineReason(line) {
   const text = squash(line),
     grant = TRAIT_SLOT_GRANTS[text];
   if (grant)
-    return `${text}: applied. ${grant.skill} (Lv. 20 trait skill; the skill takes no energy, supports added to it cost energy as usual) takes Active slot ${grant.row + 1}, and the skill placed there is left out of the calculation${text === "Spacetime Conqueror" ? "; -15% Movement Speed is read" : ""}. What ${grant.skill} does on the dummy is on its skill badge (src/engine/heroes/youga-ultimate-one.js).`;
+    return `${text}: applied. ${grant.skill} (Lv. 20 trait skill; the skill takes no energy, supports added to it cost energy as usual) takes Active slot ${grant.row + 1}, and the skill placed there is left out of the calculation${text === "Spacetime Conqueror" ? "; -15% Movement Speed is read" : ""}. What ${grant.skill} does on the dummy is on its skill badge (packages/engine/src/heroes/youga-ultimate-one.js).`;
   return "";
 }
 
@@ -611,11 +611,11 @@ export function heroTraitLineCoverage(heroId, traitName, line, selected) {
   if (moonGatedOff(heroId, traitName, line)) return "Inactive";
   if (heroTraitPendingEngine(heroId, line)) return "Not modeled";
   // Other heroes (talent batch chunk 4): trait lines are build lines (origin "trait"), so the engine-line layer reads them
-  // per engine (In calc, Inactive, No DPS effect, …) and the hero modules (src/engine/heroes/hero-trait-modules.js) give their own status.
+  // per engine (In calc, Inactive, No DPS effect, …) and the hero modules (packages/engine/src/heroes/hero-trait-modules.js) give their own status.
   // A line no module claims and that cannot change dummy damage (headers, trait controls: residual batch §6) is neutral.
   if (heroId === DANCE_OF_THE_DEEP_ID)
     return /^Artificial Moon:?$/i.test(squash(line)) ? "No DPS effect" : danceLineState(traitName, line).status;
-  // Youga's Spacetime Dictator / Conqueror / Overlord: the slot replacement is applied (src/engine/heroes/trait-board-grants.js).
+  // Youga's Spacetime Dictator / Conqueror / Overlord: the slot replacement is applied (packages/engine/src/heroes/trait-board-grants.js).
   if (heroId === YOUGA_ULTIMATE_ONE_ID && TRAIT_SLOT_GRANTS[squash(line)]) return "In calc";
   if (LEVELLED_GENERIC_HEROES.has(heroId))
     return /^Artificial Moon:?$/i.test(squash(line))
@@ -631,17 +631,17 @@ export function heroTraitLineCoverage(heroId, traitName, line, selected) {
 }
 
 // Selena (Sing with the Tide) trait lines, keyed by text so the base-trait copy reads like the trait (residual batch P7: a
-// fixed list keyed by trait name read 31 of 32 options Not modeled). Statuses follow what src/engine/planner.js and
-// src/engine/theoretical-sources.js model: the Bard state (-20% additional Channeled Skill Damage), the Tide effect (+15%), damage
+// fixed list keyed by trait name read 31 of 32 options Not modeled). Statuses follow what packages/engine/src/planner.js and
+// packages/engine/src/theoretical-sources.js model: the Bard state (-20% additional Channeled Skill Damage), the Tide effect (+15%), damage
 // taken on the Tide, Wave Aria, Idyll stacks and Murmurs' Tide Effect, each In calc while its condition holds in the build.
 // Loud Song on its own is not modeled (the planner assumes Bard; Ceaseless Tide holds both).
 function selenaTideLineStatus(line, planner) {
   const text = cleanGameText(String(line || ""));
   const conditions = planner?.conditions || null;
-  // The Tide entries apply only with Selena (Sing with the Tide) selected (src/engine/theoretical-sources.js checks the hero id).
+  // The Tide entries apply only with Selena (Sing with the Tide) selected (packages/engine/src/theoretical-sources.js checks the hero id).
   const selena = !planner?.state?.hero || planner.state.hero.selectedHeroId === "selena-sing-with-the-tide";
   const held = (key) => (!conditions ? "In calc" : selena && conditions[key] ? "In calc" : "Inactive");
-  // Selena traits batch (2026-10-13; src/engine/heroes/selena-tide.js): Loud Song is in calc only through Ceaseless Tide (deemed Loud Song
+  // Selena traits batch (2026-10-13; packages/engine/src/heroes/selena-tide.js): Loud Song is in calc only through Ceaseless Tide (deemed Loud Song
   // while Bard; the planner keeps the Bard state otherwise), Chantey of Sinking with it, Undersea Ballad's Skill Area share
   // while the Tide holds, Sea Foam's count from the build's channel lines, and the Artificial Moon line while an equipped memory
   // carries the Artificial Moon revived affix (user-confirmed 2026-10-13: no base-trait-level requirement; Inactive without one).
@@ -649,7 +649,7 @@ function selenaTideLineStatus(line, planner) {
   if (/^Artificial Moon:?$/i.test(text) || /^Click the Trait Slot/i.test(text)) return "No DPS effect";
   if (/^In the Loud Song state, /i.test(text)) return tide?.ceaselessTide ? "In calc" : "Not modeled";
   // The base trait's Loud Song form line (-20% additional Attack and Cast Speed, +80% additional Tide Effect): applied with
-  // Ceaseless Tide (src/engine/heroes/selena-tide.js, src/engine/planner.js loudSongSpeedLines); before 2026-10-19 it badged No DPS effect
+  // Ceaseless Tide (packages/engine/src/heroes/selena-tide.js, packages/engine/src/planner.js loudSongSpeedLines); before 2026-10-19 it badged No DPS effect
   // (hero trait audit B1, F6).
   if (/^In Loud Song form, /i.test(text)) return tide?.ceaselessTide ? "In calc" : "Not modeled";
   if (/^For every 1 s in the Loud Song state/i.test(text))
@@ -672,7 +672,7 @@ function selenaTideLineStatus(line, planner) {
     /^Tide ?'s area is no longer affected by Skill Area$/i.test(text)
   )
     return "No DPS effect";
-  // Bard Song channel: the planner's Bard residual is a measured stand-in, not a model of the song (src/engine/skills/scorching-beam-delivery.js).
+  // Bard Song channel: the planner's Bard residual is a measured stand-in, not a model of the song (packages/engine/src/skills/scorching-beam-delivery.js).
   // User-stated 2026-10-13 (uncertain): Bard Song turns non-channeled skills into channeled ones; its interval and max stacks
   // are unknown, so those skills keep their normal casts (planner.singWithTheTide.bardSong lists them).
   if (/Bard Song/i.test(text)) return "Partly modeled";
@@ -697,7 +697,7 @@ export function heroTraitCoverage(heroId, traitName, lines, selected) {
   if (noMemoryInSlot(heroId, traitName)) return "Inactive";
   // Idyll of the Tide: its stacks persist while the Tide is up (user-confirmed 2026-10-09) and own buffs start built
   // (prebuiltSelfBuffs), so the planner applies the configured stacks (15, the cap) × per-level value × Tide Effect
-  // (src/engine/heroes/selena-tide.js); the line reads In calc while the Idyll condition holds, and the trait follows its lines.
+  // (packages/engine/src/heroes/selena-tide.js); the line reads In calc while the Idyll condition holds, and the trait follows its lines.
   // Sea Foam's "Min Channeled Stacks takes effect twice on Bard Song" belongs to the Bard Song channel (not modeled).
   if (heroId === "selena-sing-with-the-tide" && traitName === "Sea Foam Nocturne") return "Partly modeled";
   // Undersea Ballad and Chantey of Sinking: user-confirmed readings 2026-10-13 (increased Tide Effect).
@@ -774,7 +774,7 @@ export function heroTraitCoverageReason(heroId, traitName, lines, selected) {
 }
 
 export function gearLineCoverage(item, text, active, block, lowResources, blurEffects) {
-  // A named affix line ("Wield My Sword"): its badge summarizes its effect lines (src/engine/text/named-gear-affixes.js), as a Dirge
+  // A named affix line ("Wield My Sword"): its badge summarizes its effect lines (packages/engine/src/text/named-gear-affixes.js), as a Dirge
   // keyword's badge summarizes the effect lines it carries.
   const named = namedGearAffixLines(text);
   if (named.length) return gearLineCoverage(item, named.join("\n"), active, block, lowResources, blurEffects);
@@ -806,7 +806,7 @@ export function slateLineCoverage(text, active) {
     .join("");
   if (coreName && active) {
     // A Pedigree core's clauses read as the same core's on the panel (the core tooltip's per-clause rule): clauses the core
-    // applies by name (Affliction, Starfire's Ignite limit …; src/engine/text/granted-core-lines.js) by the core rule, Daze by its Blur
+    // applies by name (Affliction, Starfire's Ignite limit …; packages/engine/src/text/granted-core-lines.js) by the core rule, Daze by its Blur
     // state, the rest by their readers over "Not independently modeled" (not the slate-table base, which read Last Stand's
     // "Block Ratio is set to 0%" In calc from the slate while the panel's copy reads No DPS effect).
     const clauses = body

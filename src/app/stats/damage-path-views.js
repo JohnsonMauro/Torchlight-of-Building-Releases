@@ -1,4 +1,4 @@
-import { BASE_CRITICAL_DAMAGE_PERCENT } from "../../engine/index.ts";
+import { BASE_CRITICAL_DAMAGE_PERCENT } from "#engine";
 
 // Build-driven Damage path views. The options follow what the build actually
 // deals: beam hits, Ignite when it has a base, one view per modeled ailment
@@ -25,14 +25,14 @@ export const hitLabel = (planner) =>
 
 export function damagePathOptions(planner) {
   const options = [];
-  // Generic spell hits (src/engine/skills/skill-hit-model.js) have their own path each; the legacy "hit" view stays for
+  // Generic spell hits (packages/engine/src/skills/skill-hit-model.js) have their own path each; the legacy "hit" view stays for
   // Scorching Beam or when no other hit skill is modeled (it then explains that the main skill has no hit model).
   const skillHits = (planner.skillHits || []).filter((hit) => hit.modeled);
   const minions = (planner.minions || []).filter((minion) => minion.modeled);
   if (planner?.activation?.activeNames?.has("Scorching Beam") || (!skillHits.length && !minions.length))
     options.push({ value: "hit", label: hitLabel(planner) });
   for (const hit of skillHits) options.push({ value: `hit:${hit.setupKey || hit.name}`, label: `${hit.name} hits` });
-  // Minions (src/engine/minions/minion-damage-model.js): one view per Minion type.
+  // Minions (packages/engine/src/minions/minion-damage-model.js): one view per Minion type.
   for (const minion of minions) options.push({ value: `minion:${minion.minionKey}`, label: `${minion.name} (Minion)` });
   const igniteBase = planner.theoretical?.totals?.baseIgniteDamage?.max || 0;
   if (igniteBase > 0 || planner.firesAllure?.active || !planner.damagePaths)
@@ -47,7 +47,7 @@ export function damagePathOptions(planner) {
 
 /**
  * Whether the build has an active Reaping source: a multi-source path source with a trigger, or an
- * Ignite-path source that triggers (same rule as src/engine/text/line-coverage.js).
+ * Ignite-path source that triggers (same rule as packages/engine/src/text/line-coverage.js).
  */
 export function hasActiveReaping(planner) {
   const ignite = (planner?.theoretical?.combat?.reaping?.sources || []).some(
@@ -492,7 +492,7 @@ export function ailmentPathModel(ailment, { format: rawFormat, recountDps = null
     sources: typed.base,
     sourceValue: (item) => `${format(item.min)}–${format(item.max)}`,
   });
-  // A skill's own damage over time (src/engine/skills/skill-dot-model.js) publishes the exact lines its factors use
+  // A skill's own damage over time (packages/engine/src/skills/skill-dot-model.js) publishes the exact lines its factors use
   // (`ailment.ledger`): the shared ledger filtered of other-skill and ailment-only lines, plus its
   // supports, auras, level bonus and the Aim beam line. Listing the unfiltered shared ledger over-counted
   // and missed Aim (user report 2026-10-11), so the ledger wins when it exists.
@@ -618,7 +618,7 @@ export function ailmentPathModel(ailment, { format: rawFormat, recountDps = null
     ...typed.critOnlyAdditional.map((item) => ({ ...item, category: "crit only" })),
   ];
   const timingValue = (item) => `${signed(format, item.value)} ${item.category}`;
-  // Inflicting skills (src/engine/ailments/ailment-applications.js): each hitting skill's application rate, chance, block and own layers.
+  // Inflicting skills (packages/engine/src/ailments/ailment-applications.js): each hitting skill's application rate, chance, block and own layers.
   const appliers = (ailment.appliers || []).filter((applier) => applier.applicationsPerSecond > 0 || applier.blocked);
   if (appliers.length)
     push({
@@ -714,7 +714,7 @@ export function ailmentPathModel(ailment, { format: rawFormat, recountDps = null
 // ---------------------------------------------------------------------------------------------
 // Reaping over every active damage over time
 
-// A Reap is True Damage, so it settles the DoT without its "damage applied to Life" lines (src/engine/combat/true-damage.js).
+// A Reap is True Damage, so it settles the DoT without its "damage applied to Life" lines (packages/engine/src/combat/true-damage.js).
 const trueDamageNote = (dots = []) => {
   const scale = dots.find((dot) => (dot.trueDamageScale ?? 1) < 1)?.trueDamageScale;
   return scale
@@ -886,7 +886,7 @@ export function combinedPathModel(
     ...window.dots.map((dot) => [dot.skillDot ? `${dot.name} (skill damage over time)` : dot.name, dot.dps]),
     // No Reaping source in any window: no zero Reaping row.
     ...(withReaping ? [["Reaping", window.reaping?.reapingDps || 0]] : []),
-    // Ill Omen (src/engine/ailments/ill-omen.js): best-case True Damage beyond the dummy, from the DoT and Reaping above.
+    // Ill Omen (packages/engine/src/ailments/ill-omen.js): best-case True Damage beyond the dummy, from the DoT and Reaping above.
     ["Ill Omen", window.illOmen?.dps || 0],
     // Spacetime Turbulence (Youga – Spacetime Elapse, hero trait audit B4): the recorded share of the DoT and Reaping above.
     ["Spacetime Turbulence", window.turbulence?.dps || 0],
@@ -981,7 +981,7 @@ export function combinedPathModel(
 }
 
 /**
- * "Ill Omen (beyond the dummy)" card (src/engine/ailments/ill-omen.js): the Ominous source, Cumulative Efficiency and Reap
+ * "Ill Omen (beyond the dummy)" card (packages/engine/src/ailments/ill-omen.js): the Ominous source, Cumulative Efficiency and Reap
  * Purification, three target tiers (Normal / Magic, Rare / Elite, Boss execute) and the working. null when the build
  * applies no Ominous.
  */

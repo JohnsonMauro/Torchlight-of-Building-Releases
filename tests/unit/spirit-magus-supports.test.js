@@ -1,9 +1,9 @@
-// Supports on a Spirit Magus summon (src/engine/supports/support-compatibility.js with src/data/skills/spirit-magus-skills.js):
+// Supports on a Spirit Magus summon (packages/engine/src/supports/support-compatibility.js with packages/engine/data/skills/spirit-magus-skills.js):
 // the game reads the summon's tags together with each of the Magus's own skills.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { supportCanSupportSkill } from "../../src/engine/supports/support-compatibility.js";
-import { tlidbSkillCatalogSs14, tlidbSupportCatalogSs14 } from "../../src/data/catalogs/tlidb-ss14.js";
+import { supportCanSupportSkill } from "../../packages/engine/src/supports/support-compatibility.js";
+import { tlidbSkillCatalogSs14, tlidbSupportCatalogSs14 } from "../../packages/engine/data/catalogs/tlidb-ss14.js";
 
 const skill = (name) => tlidbSkillCatalogSs14.find((entry) => entry.name === name);
 const support = (name) => tlidbSupportCatalogSs14.find((entry) => entry.name === name);

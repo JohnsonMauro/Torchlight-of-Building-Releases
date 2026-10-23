@@ -1,4 +1,4 @@
-import { beltBlendsSs14 } from "../../engine/index.ts";
+import { beltBlendsSs14 } from "#engine";
 
 export const BELT_BLEND_CATEGORIES = ["Medium Talent", "Core Talent", "Aromatic Talent"];
 

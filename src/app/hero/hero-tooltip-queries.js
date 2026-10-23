@@ -24,7 +24,7 @@ import {
   sageScentIngredientsSs14,
   slotTraitLevel,
   traitLevelBonusForEnhancement,
-} from "../../engine/index.ts";
+} from "#engine";
 import { coverageView } from "../bridge/gear-item-view.ts";
 import { memoryTooltipView, scentTooltipView } from "../bridge/memory-tooltip-view.ts";
 import { heroTraitTooltipView } from "../bridge/trait-tooltip-view.ts";
@@ -49,15 +49,15 @@ export const heroTooltipQueries = {
   sageScentTooltip: (kind) => sageScentTooltip(kind),
 };
 
-// Trait level the tooltip shows, the rule src/engine/character-stats.js heroTraitStatLines and the planner apply (user-stated rule
-// 2026-10-13; src/engine/heroes/hero-memory-rules.js): a memory gives 1 (any), 2 (enhancement 30+), 3 (Ultimate 50), plus its own "+N to
+// Trait level the tooltip shows, the rule packages/engine/src/character-stats.js heroTraitStatLines and the planner apply (user-stated rule
+// 2026-10-13; packages/engine/src/heroes/hero-memory-rules.js): a memory gives 1 (any), 2 (enhancement 30+), 3 (Ultimate 50), plus its own "+N to
 // Hero Trait Level". Base trait: that of the base-slot memory (1 without one, open). A 45/60/75 trait: 0 (inactive) with no
 // memory in its slot, else that of its slot memory + the planner's non-memory "+N" lines; max 5.
 export function heroTraitTooltipLevel(levelKey = "base") {
   const bonus = heroTraitLevelBonus((currentPlanner().modifierTexts || []).filter((line) => line.origin !== "trait"));
   if (levelKey === "base")
     return Math.max(1, Math.min(5, baseTraitLevelForMemory(baseTraitReduction() === null ? null : baseTraitMemory())));
-  if (String(levelKey).endsWith(":extra")) return EXTRA_PICK_LEVEL; // Youga's fourth tree row: max level (src/engine/heroes/hero-trait-tree.js)
+  if (String(levelKey).endsWith(":extra")) return EXTRA_PICK_LEVEL; // Youga's fourth tree row: max level (packages/engine/src/heroes/hero-trait-tree.js)
   const tier = String(levelKey).match(/level\d+/)?.[0];
   return slotTraitLevel(
     plannerState.hero,

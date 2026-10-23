@@ -17,7 +17,7 @@ import {
   recountTiles,
   recountTotalModeledDps,
 } from "../stats/dummy-recount-panel.js";
-import { formatRecountInteger } from "../../engine/index.ts";
+import { formatRecountInteger } from "#engine";
 import { effectiveHpView, type EffectiveHpModel, type EffectiveHpView } from "../stats/effective-hp-view.ts";
 import { numberText, type NumberText } from "../stats/number-text.ts";
 import { displayTexts } from "./display-text.ts";
@@ -124,7 +124,7 @@ export interface StatsView {
   damagePath: DamagePathView;
 }
 
-// The calculated build as read here (src/engine/planner-api.ts PlannerResult; the stat sheet reads much more of it).
+// The calculated build as read here (packages/engine/src/planner-api.ts PlannerResult; the stat sheet reads much more of it).
 interface Planner {
   activation: { allocation: { allocations: { name: string; status: string }[] } };
   damageSources?: { name: string; status: string }[];

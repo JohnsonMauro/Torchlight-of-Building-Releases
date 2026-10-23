@@ -12,7 +12,7 @@ import {
   talentFamiliesSs14,
   talentPointTotals,
   tliArt,
-} from "../../engine/index.ts";
+} from "#engine";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { coverageView } from "../bridge/gear-item-view.ts";
 import { talentPickerView } from "../bridge/talent-picker-view.ts";

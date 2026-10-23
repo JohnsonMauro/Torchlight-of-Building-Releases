@@ -9,7 +9,7 @@ import {
   scaleJudgmentAffix,
   slateSize,
   slateTransformRules,
-} from "../../engine/index.ts";
+} from "#engine";
 import { closeDialog, dialogOpen, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { coverageView } from "../bridge/gear-item-view.ts";

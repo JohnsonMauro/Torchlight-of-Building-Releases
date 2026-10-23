@@ -7,18 +7,18 @@
 // both must pass it unchanged.
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { heroCatalogSs14 } from "../../src/data/heroes/hero-catalog-ss14.js";
+import { heroCatalogSs14 } from "../../packages/engine/data/heroes/hero-catalog-ss14.js";
 import { PlannerPage } from "./pages/planner-page.js";
 import { HeroPage } from "./pages/hero-page.js";
 import { FollowerPage } from "./pages/follower-page.js";
 import { followerPickerOptions } from "../../src/app/hero/follower-panel.js";
 import { PactsPage } from "./pages/pacts-page.js";
 import { TalentsPage } from "./pages/talents-page.js";
-import { fateSlotChoices } from "../../src/engine/pacts/fate-slot-unlocks.js";
-import { pactspiritCatalogSs14 } from "../../src/data/pacts/pactspirit-catalog-ss14.js";
-import { sortPactspirits } from "../../src/engine/pacts/pactspirit-selection.js";
-import { sageElixirsSs14 } from "../../src/data/heroes/sage-scent-ss14.generated.js";
-import { sageScentIngredientsSs14 } from "../../src/data/heroes/sage-scent-options-ss14.js";
+import { fateSlotChoices } from "../../packages/engine/src/pacts/fate-slot-unlocks.js";
+import { pactspiritCatalogSs14 } from "../../packages/engine/data/pacts/pactspirit-catalog-ss14.js";
+import { sortPactspirits } from "../../packages/engine/src/pacts/pactspirit-selection.js";
+import { sageElixirsSs14 } from "../../packages/engine/data/heroes/sage-scent-ss14.generated.js";
+import { sageScentIngredientsSs14 } from "../../packages/engine/data/heroes/sage-scent-options-ss14.js";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),

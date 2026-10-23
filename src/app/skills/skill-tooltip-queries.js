@@ -8,7 +8,7 @@ import {
   supportLineCoverage,
   tlidbSkillCatalogSs14,
   tlidbSupportCatalogSs14,
-} from "../../engine/index.ts";
+} from "#engine";
 import { coverageView } from "../bridge/gear-item-view.ts";
 import { skillTooltipView } from "../bridge/skill-tooltip-view.ts";
 import { heroTraitSupportConfig } from "../hero/hero-memory-display.js";

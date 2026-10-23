@@ -20,7 +20,7 @@ import {
   revivedAffixRollRange,
   revivedAffixTiers,
   traitLevelBonusForEnhancement,
-} from "../../engine/index.ts";
+} from "#engine";
 import { displayTexts } from "../bridge/display-text.ts";
 import { openDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";

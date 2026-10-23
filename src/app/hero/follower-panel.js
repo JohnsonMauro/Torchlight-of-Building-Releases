@@ -36,7 +36,7 @@ import {
   tartarusSkillByName,
   tartarusSkillTierName,
   tartarusSkillTiers,
-} from "../../engine/index.ts";
+} from "#engine";
 
 // The Hero panel's FOLLOWER tab (2026-10-15; design: the orchestrator's brief). The panel header is a HERO | FOLLOWER tab strip
 // in the Hero Trait / Trait Path tab style; the FOLLOWER tab shows a card mirroring the hero card (portrait, name, a rarity line
@@ -46,12 +46,12 @@ import {
 // Tartarus / Origin Tartarus Skills, 2026-10-15 user request); right-click clears it. Tooltips use the planner tooltip's
 // hero-trait layout tinted with the follower's rarity (followerTooltipRarity; the hero-memory rarity colours), and the card
 // portrait and the picker cards take the gear-tile rarity tint (follower-tint-<rarity>).
-// Tier and support affixes (2026-10-19; src/engine/followers/follower-affixes.js): each skill has a tier and its affix slots ("None" first, then
+// Tier and support affixes (2026-10-19; packages/engine/src/followers/follower-affixes.js): each skill has a tier and its affix slots ("None" first, then
 // the skill's Drop pool and, for the optional third slot, its Tempering pool); every game value is fixed, so a roll input
 // appears only for a ranged affix (none on 2026-10-19). They are edited in the skill picker's preview card
 // (followerSkillEditorMarkup; 2026-10-19 user request); a filled slot row shows a summary (followerSkillSummary). The skill
 // tooltip lists the chosen affixes with their coverage badges.
-// Letter rarities (rework 2026-10-19, src/engine/followers/follower-model.js): slot 1 is labelled "Initial skill" and takes the letter's
+// Letter rarities (rework 2026-10-19, packages/engine/src/followers/follower-model.js): slot 1 is labelled "Initial skill" and takes the letter's
 // initial-skill pool; its tier defaults to the rarity's and is selectable (2026-10-19 user decision), its affix slots by tier.
 // The initial skill is its own row in addition to the letter's Skill Slot Quantity (user correction 2026-10-19): slots 2 (and 3
 // from Magic up) take any skill of the species at any tier with that tier's affix slots.
@@ -65,7 +65,7 @@ const tintClass = (rarity) => (rarity?.id ? ` follower-tint-${escapeHtml(rarity.
 const skillTitle = (skill, tier) => `${skill.shortName}${tier ? ` ${tier}` : ""}`;
 
 // ---- Line coverage ---------------------------------------------------------------------------------------------------
-// One follower line's badge: the planner's reading (src/engine/followers/follower-model.js resolveFollowerEffects) when the line is equipped,
+// One follower line's badge: the planner's reading (packages/engine/src/followers/follower-model.js resolveFollowerEffects) when the line is equipped,
 // else the same rules on the text. A modeled buff in calc is refined by the engine layer (a build without its engine reads
 // Inactive); a plain player line reads like the same gear line.
 export function followerLineCoverage(text, { skill = null, kind = "skill", planner = null, follower = null } = {}) {
@@ -75,7 +75,7 @@ export function followerLineCoverage(text, { skill = null, kind = "skill", plann
   const buff = skill ? FOLLOWER_BUFFS.find((item) => item.skill === skill.name && item.pattern.test(text)) : null;
   if (entry?.toggle) {
     if (!entry.active) return { status: "Inactive", reason: entry.reason };
-    // src/engine/planner.js settles a buff the build cannot use (no damage over time, no Spell damage, no Steep Strike hit); a planner
+    // packages/engine/src/planner.js settles a buff the build cannot use (no damage over time, no Spell damage, no Steep Strike hit); a planner
     // that was not settled is checked here the same way.
     const missing = buff ? missingFollowerEngine(buff.engine, planner, plannerEngines(planner)) : "";
     return missing
@@ -84,7 +84,7 @@ export function followerLineCoverage(text, { skill = null, kind = "skill", plann
   }
   // 2026-10-17: the planner's reading of every other equipped line (own damage, marks on the dummy, skill-specific rules).
   if (entry?.status) return { status: entry.status, reason: entry.reason };
-  // Not equipped: the same resolver on the skill alone (src/engine/followers/follower-model.js staticFollowerLineReading), or on the ULT letter
+  // Not equipped: the same resolver on the skill alone (packages/engine/src/followers/follower-model.js staticFollowerLineReading), or on the ULT letter
   // without skills for its special effect (staticFollowerTraitReading).
   const reading = skill
     ? staticFollowerLineReading(text, skill)

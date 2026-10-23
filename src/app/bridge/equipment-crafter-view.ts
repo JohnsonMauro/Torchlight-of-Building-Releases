@@ -3,13 +3,7 @@
 // the rare and Vorax form, each with its preview. Pure; the planner (src/app/gear/gear-controller.js) publishes it as the "equipmentCrafter"
 // source and passes in how an item's preview looks, which depends on the open build. Texts are as the legacy markup
 // printed them (src/app/bridge/display-text.ts).
-import {
-  gearGroupOfType,
-  gearGroupsSs14,
-  legendaryLineTiers,
-  normalizePercentageText,
-  placeholderPool,
-} from "../../engine/index.ts";
+import { gearGroupOfType, gearGroupsSs14, legendaryLineTiers, normalizePercentageText, placeholderPool } from "#engine";
 import { beltBlendChoices } from "../gear/belt-blend-options.js";
 import { towerSequenceChoices } from "../gear/tower-sequence-options.js";
 import { modifierRollRanges, modifierRollStep, negativeRollFill } from "../gear/affix-rolls.js";

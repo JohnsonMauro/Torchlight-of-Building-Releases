@@ -1,12 +1,12 @@
 // An Ethereal Prism base affix that adds an effect to the panel's core (Haze in the 2026-10-22 game log): the prism keeps the
-// line (src/engine/talents/prism-crafting.js prismAddedCoreEffect), it joins the core lines of the panel the prism sits in,
+// line (packages/engine/src/talents/prism-crafting.js prismAddedCoreEffect), it joins the core lines of the panel the prism sits in,
 // and its "+1% additional Damage per +5% Movement Speed, up to +12%" reads the Movement Speed total
-// (src/engine/text/line-conditions.js perMovementSpeed).
+// (packages/engine/src/text/line-conditions.js perMovementSpeed).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { gameIdMapSs14 } from "../../src/data/game-id-map-ss14.generated.js";
-import { prismAddedCoreEffect, prismBaseAffixesForBase } from "../../src/engine/talents/prism-crafting.js";
-import { resolveLineCondition, splitCondition } from "../../src/engine/text/line-conditions.js";
+import { gameIdMapSs14 } from "../../packages/engine/data/game-id-map-ss14.generated.js";
+import { prismAddedCoreEffect, prismBaseAffixesForBase } from "../../packages/engine/src/talents/prism-crafting.js";
+import { resolveLineCondition, splitCondition } from "../../packages/engine/src/text/line-conditions.js";
 
 const HAZE = {
   id: "p1",

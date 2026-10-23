@@ -4,7 +4,7 @@ import type {
   StoredCustomSupport,
   StoredPlannerState,
   StoredSlatePlacement,
-} from "../../src/engine/state/state-validation.ts";
+} from "../../packages/engine/src/state/state-validation.ts";
 
 export const minimal: StoredPlannerState = {};
 export const typical: StoredPlannerState = {

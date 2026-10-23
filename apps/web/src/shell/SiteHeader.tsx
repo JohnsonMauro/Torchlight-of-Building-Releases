@@ -1,4 +1,4 @@
-import { currentSeason } from "@legacy/engine/index.ts";
+import { currentSeason } from "#engine";
 import { toggleTheme } from "../ui/theme";
 import { ShellAction } from "./ShellAction";
 

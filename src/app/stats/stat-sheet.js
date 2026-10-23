@@ -5,7 +5,7 @@ import {
   curseSlotSummary,
   effectiveHpModel,
   level85DummyDefenses,
-} from "../../engine/index.ts";
+} from "#engine";
 import { hasActiveReaping } from "./damage-path-views.js";
 const number = (value) => (Number.isFinite(value) ? value : null);
 
@@ -32,15 +32,15 @@ export function statSheetModel(planner, selectedKey) {
     options[0];
   const active = Boolean(skill && planner.activation.activeNames.has(skill.name));
   const beam = active && skill?.name === "Scorching Beam";
-  // A main skill whose own damage over time is modeled (src/engine/skills/skill-dot-model.js, e.g. Wilting Beam).
+  // A main skill whose own damage over time is modeled (packages/engine/src/skills/skill-dot-model.js, e.g. Wilting Beam).
   const skillDot = active
     ? (planner.skillDots || []).find((dot) => dot.setupKey === skill?.setupKey && dot.modeled) || null
     : null;
-  // A skill whose hits the generic spell-hit engine models (src/engine/skills/skill-hit-model.js, e.g. Fire Burst).
+  // A skill whose hits the generic spell-hit engine models (packages/engine/src/skills/skill-hit-model.js, e.g. Fire Burst).
   const skillHit = active
     ? (planner.skillHits || []).find((hit) => hit.setupKey === skill?.setupKey && hit.modeled) || null
     : null;
-  // A Minion skill (src/engine/minions/minion-damage-model.js, e.g. a Module's Overstrike): the Minion that the setup activates.
+  // A Minion skill (packages/engine/src/minions/minion-damage-model.js, e.g. a Module's Overstrike): the Minion that the setup activates.
   const minion = active
     ? (planner.minions || []).find((item) => item.modeled && item.setupKeys.includes(skill?.setupKey)) || null
     : null;
@@ -275,7 +275,7 @@ export function statSheetModel(planner, selectedKey) {
             { label: "Application chance", value: number(ailment.chancePercent), suffix: "%" },
             { label: "Duration", value: number(ailment.durationSeconds), suffix: "s" },
             { label: "Applications per second", value: number(ailment.applicationsPerSecond) },
-            // Which skills apply it (src/engine/ailments/ailment-applications.js): rate × chance, share of successes, own layers vs the main skill's.
+            // Which skills apply it (packages/engine/src/ailments/ailment-applications.js): rate × chance, share of successes, own layers vs the main skill's.
             ...(ailment.appliers || [])
               .filter((applier) => applier.applicationsPerSecond > 0 || applier.blocked)
               .map((applier) => ({
@@ -735,8 +735,8 @@ export function statSheetModel(planner, selectedKey) {
     });
   // Defense-side cards default to the Defense tab of the Character stats panel.
   for (const entry of defense) entry.tab ??= "defense";
-  // Every summed stat line, damage or not (src/engine/character-stats.js); rows are built at render time. The Legendary base-item
-  // defence lines (src/engine/gear/legendary-base-lines.js) are listed with the Effective HP pools they feed.
+  // Every summed stat line, damage or not (packages/engine/src/character-stats.js); rows are built at render time. The Legendary base-item
+  // defence lines (packages/engine/src/gear/legendary-base-lines.js) are listed with the Effective HP pools they feed.
   const statTotals = characterStatTotals(planner, { legendaryBaseLines: true });
   return {
     options,

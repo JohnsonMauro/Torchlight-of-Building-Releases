@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { calculatePlanner } from "../../src/engine/planner.js";
+import { calculatePlanner } from "../../packages/engine/src/planner.js";
 import { skillsView } from "../../src/app/bridge/skills-view-model.ts";
 
 const youga = JSON.parse(

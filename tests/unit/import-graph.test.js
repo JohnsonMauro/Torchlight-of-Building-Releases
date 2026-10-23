@@ -1,7 +1,8 @@
-// The shape of src/'s import graph: no import cycles; the folders depend one way (src/engine, the pure domain, imports only
-// itself and src/data; src/game-log does not import the page in src/app); and the calculation (everything
-// src/engine/planner.js reaches) loads no page code: no document / storage access and no HTML helpers. Imports are read from the source text (static `import` /
-// `export … from` with a relative path; `import type` is erased and does not count).
+// The shape of the import graph of src/ and the engine package (packages/engine: the engine in src/, its game data in
+// data/): no import cycles; the folders depend one way (the engine, the pure domain, imports only itself and its data;
+// src/game-log does not import the page in src/app); and the calculation (everything the engine's planner.js reaches)
+// loads no page code: no document / storage access and no HTML helpers. Imports are read from the source text (static
+// `import` / `export … from` with a relative path or `#engine`; `import type` is erased and does not count).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
@@ -9,16 +10,26 @@ import { dirname, join, normalize, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
-const files = readdirSync(join(root, "src"), { recursive: true })
-  .filter((file) => /\.(js|ts)$/.test(file) && !file.startsWith("assets"))
-  .map((file) => join("src", file));
+const ENGINE = join("packages", "engine", "src"),
+  DATA = join("packages", "engine", "data");
+// The engine package's entry: what `#engine` (package.json "imports") names.
+const entry = join(ENGINE, "index.ts");
+const walk = (folder) =>
+  readdirSync(join(root, folder), { recursive: true })
+    .filter((file) => /\.(js|ts)$/.test(file) && !file.startsWith("assets"))
+    .map((file) => join(folder, file));
+const files = [...walk("src"), ...walk(ENGINE), ...walk(DATA)];
+// "engine" and "data" for the package's two folders, else the src/ folder ("app", "game-log").
+const area = (file) =>
+  file.startsWith(ENGINE + "/") ? "engine" : file.startsWith(DATA + "/") ? "data" : file.split(/[\\/]/)[1];
 const source = Object.fromEntries(files.map((file) => [file, readFileSync(join(root, file), "utf8")]));
 const imports = new Map(
   files.map((file) => {
     const targets = new Set();
     for (const match of source[file].matchAll(/(?:import|export)\s+(type\s+)?[^"'`]*?\s*from\s*["']([^"']+)["']/g)) {
-      if (match[1] || !match[2].startsWith(".")) continue;
-      const target = relative(root, join(root, normalize(join(dirname(file), match[2]))));
+      if (match[1] || !(match[2].startsWith(".") || match[2] === "#engine")) continue;
+      const target =
+        match[2] === "#engine" ? entry : relative(root, join(root, normalize(join(dirname(file), match[2]))));
       if (source[target] !== undefined) targets.add(target);
     }
     return [file, [...targets]];
@@ -57,13 +68,13 @@ function cycles() {
   return found;
 }
 
-test("src/ has no import cycles", () => {
+test("src/ and the engine package have no import cycles", () => {
   assert.deepEqual(cycles(), []);
 });
 
 test("the calculation reaches no page code", () => {
   const reached = new Set();
-  const queue = ["src/engine/planner.js"];
+  const queue = [join(ENGINE, "planner.js")];
   while (queue.length) {
     const file = queue.pop();
     if (reached.has(file)) continue;
@@ -79,8 +90,7 @@ test("the calculation reaches no page code", () => {
   assert.deepEqual(pageCode, []);
 });
 
-test("src/engine imports only itself and src/data; src/game-log does not import src/app", () => {
-  const area = (file) => file.split(/[\\/]/)[1];
+test("the engine imports only itself and its data; src/game-log does not import src/app", () => {
   const allowed = { engine: ["engine", "data"], "game-log": ["game-log", "engine", "data"] };
   const crossings = files.flatMap((file) =>
     (allowed[area(file)] ? imports.get(file) : [])
@@ -90,17 +100,16 @@ test("src/engine imports only itself and src/data; src/game-log does not import 
   assert.deepEqual(crossings, []);
 });
 
-// The engine's boundary: code outside it (the planner page, the game log import, the React app) reaches the engine and its
-// game data only through src/engine/index.ts, type imports and on-demand import() included; the engine never imports its
+// The engine's boundary: code outside the package (the planner page, the game log import, the React app) reaches the engine
+// and its game data only through `#engine`, type imports and on-demand import() included; the engine never imports its
 // own entry.
-test("outside code reaches src/engine and src/data only through src/engine/index.ts", () => {
+test("outside code reaches the engine package only through #engine", () => {
   const outside = ["src/app", "src/game-log", "apps/web/src"].flatMap((area) =>
     readdirSync(join(root, area), { recursive: true })
       .filter((file) => /\.(js|ts|tsx)$/.test(file))
       .map((file) => join(area, file)),
   );
   assert.ok(outside.length > 200, `only ${outside.length} outside files: the file walk is broken`);
-  const entry = join("src", "engine", "index.ts");
   const resolve = (file, spec) =>
     spec.startsWith("@legacy/")
       ? join("src", spec.slice("@legacy/".length))
@@ -111,11 +120,11 @@ test("outside code reaches src/engine and src/data only through src/engine/index
   const reachesInside = (file) =>
     [...readFileSync(join(root, file), "utf8").matchAll(pattern)]
       .map((match) => resolve(file, match[1]))
-      .filter((target) => target && /^src[\\/](engine|data)[\\/]/.test(target) && target !== entry)
+      .filter((target) => target && /^packages[\\/]engine[\\/]/.test(target))
       .map((target) => `${file} -> ${target}`);
   assert.deepEqual(outside.flatMap(reachesInside), []);
   assert.deepEqual(
-    files.filter((file) => /^src[\\/]engine[\\/]/.test(file) && file !== entry && imports.get(file).includes(entry)),
+    files.filter((file) => area(file) === "engine" && file !== entry && imports.get(file).includes(entry)),
     [],
     "the engine imports its own entry",
   );

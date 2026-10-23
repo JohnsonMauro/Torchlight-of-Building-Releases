@@ -19,22 +19,22 @@
       "count": 4
     }
   },
-  "src/data/skills/special-support-tiers-ss14.js": {
+  "packages/engine/data/skills/special-support-tiers-ss14.js": {
     "no-unused-vars": {
       "count": 6
     }
   },
-  "src/engine/combat/dummy-recount.js": {
+  "packages/engine/src/combat/dummy-recount.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "src/engine/defense/attribute-panel.js": {
+  "packages/engine/src/defense/attribute-panel.js": {
     "no-unused-vars": {
       "count": 2
     }
   },
-  "src/engine/engine.js": {
+  "packages/engine/src/engine.js": {
     "no-unused-vars": {
       "count": 1
     },
@@ -42,52 +42,52 @@
       "count": 1
     }
   },
-  "src/engine/followers/follower-model.js": {
+  "packages/engine/src/followers/follower-model.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "src/engine/heroes/carino-traits.js": {
+  "packages/engine/src/heroes/carino-traits.js": {
     "no-useless-assignment": {
       "count": 2
     }
   },
-  "src/engine/heroes/erika-traits.js": {
+  "packages/engine/src/heroes/erika-traits.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "src/engine/heroes/hero-memory-model.js": {
+  "packages/engine/src/heroes/hero-memory-model.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "src/engine/heroes/sage-traits.js": {
+  "packages/engine/src/heroes/sage-traits.js": {
     "no-useless-assignment": {
       "count": 2
     }
   },
-  "src/engine/heroes/youga-ultimate-one.js": {
+  "packages/engine/src/heroes/youga-ultimate-one.js": {
     "no-unused-vars": {
       "count": 2
     }
   },
-  "src/engine/planner.js": {
+  "packages/engine/src/planner.js": {
     "no-unused-vars": {
       "count": 7
     }
   },
-  "src/engine/skills/aim-model.js": {
+  "packages/engine/src/skills/aim-model.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "src/engine/skills/attack-hit-profiles.js": {
+  "packages/engine/src/skills/attack-hit-profiles.js": {
     "no-useless-escape": {
       "count": 4
     }
   },
-  "src/engine/skills/skill-coverage.js": {
+  "packages/engine/src/skills/skill-coverage.js": {
     "no-unused-vars": {
       "count": 1
     },
@@ -95,17 +95,17 @@
       "count": 1
     }
   },
-  "src/engine/skills/skill-dot-model.js": {
+  "packages/engine/src/skills/skill-dot-model.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "src/engine/skills/skill-hit-model.js": {
+  "packages/engine/src/skills/skill-hit-model.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
-  "src/engine/text/affix-attributes.js": {
+  "packages/engine/src/text/affix-attributes.js": {
     "no-useless-assignment": {
       "count": 1
     }

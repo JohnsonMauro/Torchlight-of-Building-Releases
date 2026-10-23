@@ -1,9 +1,9 @@
-// A game text is read once (src/engine/text/read-once.js): the reading is kept by its text, shared and frozen.
+// A game text is read once (packages/engine/src/text/read-once.js): the reading is kept by its text, shared and frozen.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readOnce } from "../../src/engine/text/read-once.js";
-import { cleanGameText } from "../../src/engine/text/percentage-text.js";
-import { classifyDamageLine } from "../../src/engine/text/damage-line-classifier.js";
+import { readOnce } from "../../packages/engine/src/text/read-once.js";
+import { cleanGameText } from "../../packages/engine/src/text/percentage-text.js";
+import { classifyDamageLine } from "../../packages/engine/src/text/damage-line-classifier.js";
 
 test("a text is read once and every caller gets the same reading", () => {
   let reads = 0;

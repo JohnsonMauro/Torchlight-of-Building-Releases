@@ -1,10 +1,14 @@
 // The game keywords: how scripts/fetch-tlidb-keywords.js reads TLIDB's pages, what the generated
-// src/data/game/keywords.generated.js holds, and how src/engine/text/game-keywords.js finds keywords in a text.
+// packages/engine/data/game/keywords.generated.js holds, and how packages/engine/src/text/game-keywords.js finds keywords in a text.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildKeywords, parseGlossary, parseHoverCard, parseMarks } from "../../scripts/fetch-tlidb-keywords.js";
-import { GAME_KEYWORD_FORMS, GAME_KEYWORDS } from "../../src/data/game/keywords.generated.js";
-import { gameKeyword, gameKeywordSegments, gameKeywordsExplained } from "../../src/engine/text/game-keywords.js";
+import { GAME_KEYWORD_FORMS, GAME_KEYWORDS } from "../../packages/engine/data/game/keywords.generated.js";
+import {
+  gameKeyword,
+  gameKeywordSegments,
+  gameKeywordsExplained,
+} from "../../packages/engine/src/text/game-keywords.js";
 
 const mark = (id, page, form) =>
   `<e id=${id} class="Hyperlink" data-hover="/cache/en/Torchlight_Hyperlink_hover/h${id}" href="${page}">${form}</e>`;

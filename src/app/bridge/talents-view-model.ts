@@ -17,7 +17,7 @@ import {
   talentFamiliesSs14,
   talentPointTotals,
   tliArt,
-} from "../../engine/index.ts";
+} from "#engine";
 import { prismIcon, prismName } from "../talents/prism-icons.js";
 import { nodeIcon, nodeTitle } from "../talents/talent-labels.js";
 

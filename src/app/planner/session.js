@@ -13,7 +13,7 @@ import {
   tliArt,
   tlidbSkillCatalogSs14,
   tlidbSupportCatalogSs14,
-} from "../../engine/index.ts";
+} from "#engine";
 import { upgradeExistingCorrodedItems } from "../gear/stored-items.js";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { createPlannerCache } from "./planner-cache.js";

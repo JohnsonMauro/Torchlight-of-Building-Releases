@@ -1,5 +1,5 @@
 // Every image the sources name exists on disk: "./src/assets/…" strings (page-relative, as the game data and the views
-// write them) in src/ and apps/web, and the url(…) of the stylesheets (relative to the stylesheet). Strings built at
+// write them) in src/, the engine package (packages/engine) and apps/web, and the url(…) of the stylesheets (relative to the stylesheet). Strings built at
 // run time ("${…}") and comment lines are not checked. Guards the layout rework, which deletes layout images.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -12,7 +12,7 @@ const sourceFiles = (folder) =>
   readdirSync(join(root, folder), { recursive: true })
     .map((file) => join(folder, file))
     .filter((file) => /\.(js|ts|tsx|css|html)$/.test(file) && !file.startsWith(join("src", "assets")));
-const files = [...sourceFiles("src"), ...sourceFiles("apps/web")];
+const files = [...sourceFiles("src"), ...sourceFiles("packages/engine"), ...sourceFiles("apps/web")];
 const codeLines = (file) =>
   readFileSync(join(root, file), "utf8")
     .split("\n")

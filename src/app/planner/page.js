@@ -1,6 +1,6 @@
 // The page shell: lookups, number format, art frames, and what the page says about the open build (save status, toast,
 // another tab's change).
-import { normalizePercentageText } from "../../engine/index.ts";
+import { normalizePercentageText } from "#engine";
 import { buildSeasonView } from "../bridge/build-season-view.ts";
 import { buildTabNotices } from "../bridge/build-tab-notices.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";

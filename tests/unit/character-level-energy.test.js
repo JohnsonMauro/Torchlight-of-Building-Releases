@@ -1,10 +1,10 @@
-// The Energy the character level gives (src/engine/engine.js characterLevelEnergy, read by calculatePlanner): +1 per level
+// The Energy the character level gives (packages/engine/src/engine.js characterLevelEnergy, read by calculatePlanner): +1 per level
 // over a base of 4, as the game's Energy panel shows "+98 Character level" at level 94.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { characterLevelEnergy } from "../../src/engine/engine.js";
-import { calculatePlanner } from "../../src/engine/planner.js";
-import { defaultPlannerState } from "../../src/engine/state/planner-state.ts";
+import { characterLevelEnergy } from "../../packages/engine/src/engine.js";
+import { calculatePlanner } from "../../packages/engine/src/planner.js";
+import { defaultPlannerState } from "../../packages/engine/src/state/planner-state.ts";
 
 const levelEnergy = (characterLevel) => {
   const state = structuredClone(defaultPlannerState);

@@ -1,14 +1,14 @@
-// The game's gear groups (src/data/gear/gear-groups-ss14.js): every craftable item type in exactly one group, the
+// The game's gear groups (packages/engine/data/gear/gear-groups-ss14.js): every craftable item type in exactly one group, the
 // weapons split by hands as the calculation splits them.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { craftItemTypes } from "../../src/data/gear/crafting-catalog-ss14.js";
-import { gearGroupOfType, gearGroupsSs14 } from "../../src/data/gear/gear-groups-ss14.js";
+import { craftItemTypes } from "../../packages/engine/data/gear/crafting-catalog-ss14.js";
+import { gearGroupOfType, gearGroupsSs14 } from "../../packages/engine/data/gear/gear-groups-ss14.js";
 import {
   ONE_HANDED_WEAPON_TYPES,
   SHIELD_TYPES,
   TWO_HANDED_WEAPON_TYPES,
-} from "../../src/engine/skills/weapon-damage-model.js";
+} from "../../packages/engine/src/skills/weapon-damage-model.js";
 
 const typesOf = (id) => gearGroupsSs14.find((group) => group.id === id).entries.map((entry) => entry.type);
 

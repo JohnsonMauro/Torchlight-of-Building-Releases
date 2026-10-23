@@ -12,7 +12,7 @@ import {
   prismRareAffixesForBase,
   prismReplacesCore,
   prismSupportsLegendaryAffix,
-} from "../../engine/index.ts";
+} from "#engine";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";

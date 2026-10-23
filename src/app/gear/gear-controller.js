@@ -15,7 +15,7 @@ import {
   placeholderOptionTemplate,
   placeholderPool,
   rareBaseForItem,
-} from "../../engine/index.ts";
+} from "#engine";
 import { beltBlendById, beltBlendChoices } from "./belt-blend-options.js";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";

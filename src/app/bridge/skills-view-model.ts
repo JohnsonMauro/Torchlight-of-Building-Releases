@@ -11,8 +11,8 @@ import {
   tliArt,
   tlidbSkillCatalogSs14,
   tlidbSupportCatalogSs14,
-} from "../../engine/index.ts";
-import type { InstalledSupport, PlannerResult, PlannerSkills, SkillSetup } from "../../engine/index.ts";
+} from "#engine";
+import type { InstalledSupport, PlannerResult, PlannerSkills, SkillSetup } from "#engine";
 
 export type SkillBoardTab = "skills" | "auras";
 
@@ -192,7 +192,7 @@ export function skillsView(planner: PlannerResult, skills: PlannerSkills, tab: S
   };
 }
 
-/** The curses the curse limit leaves out of the skill bar (src/engine/skills/curse-limit.js), and why. */
+/** The curses the curse limit leaves out of the skill bar (packages/engine/src/skills/curse-limit.js), and why. */
 function curseLeftOut(planner: PlannerResult): { has: (name: string) => boolean; reason: string } | null {
   let summary: { leftOut: { kind: string; name: string }[]; reason?: string } | null;
   try {

@@ -8,7 +8,7 @@ import {
   netherKingUltimateAffixesSs14,
   PEDIGREE_OF_GODS,
   pedigreeSlotTypes,
-} from "../../engine/index.ts";
+} from "#engine";
 
 export const slateAsset = (name) => `./src/assets/tli/slates/${name}`;
 export const SLATE_GODS = [

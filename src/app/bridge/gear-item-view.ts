@@ -2,7 +2,7 @@
 // line's calculation coverage, and the item's tooltip. Pure; the planner passes in what depends on the open build
 // (src/app/gear/gear-controller.js gearTooltip query) and React renders it (apps/web/src/features/gear/GearTooltip.tsx,
 // apps/web/src/ui/ModifierText.tsx). Texts close the percentage gap as the legacy markup printed them.
-import { keywordRollParts, neutralStatuses, normalizePercentageText } from "../../engine/index.ts";
+import { keywordRollParts, neutralStatuses, normalizePercentageText } from "#engine";
 import { tierBadgeClasses, tierBadgeKey } from "../gear/tier-badge.ts";
 
 const text = (value: string) => normalizePercentageText(value);

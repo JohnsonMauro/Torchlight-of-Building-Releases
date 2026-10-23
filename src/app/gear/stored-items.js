@@ -8,7 +8,7 @@ import {
   normalizeSunsEmbraceItem,
   reconcileLegendaryModifiers,
   selenaScorchingBeamGearSs14,
-} from "../../engine/index.ts";
+} from "#engine";
 
 export function upgradeExistingCorrodedItems(state) {
   const capturedById = new Map(selenaScorchingBeamGearSs14.items.map((item) => [`captured-${item.slot}`, item]));

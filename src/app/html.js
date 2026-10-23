@@ -1,4 +1,4 @@
-import { normalizePercentageText } from "../engine/index.ts";
+import { normalizePercentageText } from "#engine";
 export function escapeHtml(value) {
   return normalizePercentageText(value).replace(
     /[&<>"']/g,

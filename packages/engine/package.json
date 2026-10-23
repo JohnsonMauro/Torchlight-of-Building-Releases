@@ -1,0 +1,10 @@
+{
+  "name": "@tob/engine",
+  "version": "14.0.0",
+  "description": "Torchlight: Infinite calculation engine and game data, one season of the game (the major version is the season)",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

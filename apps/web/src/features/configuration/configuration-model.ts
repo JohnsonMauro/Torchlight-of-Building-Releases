@@ -1,8 +1,8 @@
 // What the Config tab shows, read from the calculated build (coordinator design with the user, 2026-10-14). Conditions the
-// build can create stay automatic (best case); only the scenario switches, the exclusive choices (src/engine/planner.js
-// exclusiveConditionGroups), the best-case assumptions (src/engine/planner.js bestCaseAssumptions) and the rarely used numbers
+// build can create stay automatic (best case); only the scenario switches, the exclusive choices (packages/engine/src/planner.js
+// exclusiveConditionGroups), the best-case assumptions (packages/engine/src/planner.js bestCaseAssumptions) and the rarely used numbers
 // (Advanced) are shown. Every control writes the same combat state keys as before (src/app/bridge/planner-commands.js).
-import type { PlannerResult } from "@legacy/engine/index.ts";
+import type { PlannerResult } from "#engine";
 
 // Manual mode lists only the conditions this build has a source for (read from the automatic-mode probe).
 const MANUAL_CONDITIONS: readonly (readonly [id: string, label: string])[] = [

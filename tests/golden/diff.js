@@ -1,9 +1,10 @@
 // Shows what changed in planner results between a git ref and the working tree:
 //   pnpm golden:diff                  # HEAD vs working tree, every case
 //   pnpm golden:diff -- main "youga-l94"
-// The ref's src/ and tests/golden/ are extracted to a temp folder (src/assets left out: the planner never reads it) and
-// its own cases.js runs there, so file moves between the two sides do not matter.
-import { execFileSync } from "node:child_process";
+// The ref's src/, its engine package (packages/engine, from 2026-10-22 on) and tests/golden/ are extracted to a temp folder
+// (src/assets left out: the planner never reads it) and its own cases.js runs there, so file moves between the two sides
+// do not matter.
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,6 +17,7 @@ const folder = mkdtempSync(join(tmpdir(), "tli-golden-"));
 
 try {
   const archive = join(folder, "ref.tar");
+  const hasPackage = spawnSync("git", ["-C", repoRoot, "cat-file", "-e", `${ref}:packages/engine`]).status === 0;
   execFileSync("git", [
     "-C",
     repoRoot,
@@ -25,11 +27,15 @@ try {
     ref,
     "--",
     "src",
+    ...(hasPackage ? ["packages/engine"] : []),
     "tests/golden",
     ":(exclude)src/assets",
   ]);
   execFileSync("tar", ["-xf", archive, "-C", folder]);
-  writeFileSync(join(folder, "package.json"), JSON.stringify({ type: "module" }));
+  writeFileSync(
+    join(folder, "package.json"),
+    JSON.stringify({ type: "module", imports: { "#engine": "./packages/engine/src/index.ts" } }),
+  );
   const before = await import(pathToFileURL(join(folder, "tests/golden/cases.js")).href);
   const after = await import("./cases.js");
   const beforeInputs = new Map(before.goldenInputs().map(({ id, state }) => [id, state]));

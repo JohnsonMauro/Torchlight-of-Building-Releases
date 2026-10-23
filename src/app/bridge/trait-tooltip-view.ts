@@ -12,7 +12,7 @@ import {
   heroTraitKeywordsIn,
   normalizePercentageText,
   withoutArtificialMoonLines,
-} from "../../engine/index.ts";
+} from "#engine";
 import type { CoverageView } from "./gear-item-view.ts";
 
 const text = (value: string) => normalizePercentageText(value);
@@ -70,7 +70,7 @@ const TRAIT_NOTES: Readonly<Record<string, string>> = {
 
 /**
  * Youga – The Ultimate One's fourth trait row comes from the revived memory affix "+1 Max Youga Count in the Universe"
- * (src/engine/heroes/hero-trait-tree.js): it has no memory of its own, so its memory cell holds a "+1 Youga Count" chip,
+ * (packages/engine/src/heroes/hero-trait-tree.js): it has no memory of its own, so its memory cell holds a "+1 Youga Count" chip,
  * and its level cell reads the fixed maximum level with a "MAX" caption. Hovering the row (outside its trait) shows where
  * it comes from; the trait's own tooltip carries the same note.
  */

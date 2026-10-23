@@ -9,7 +9,7 @@ import {
   slateOffsets,
   slateSize,
   slateTransformRules,
-} from "../../engine/index.ts";
+} from "#engine";
 
 /** A slate as the planner lists it for the board (src/app/planner/session.js slatesForBoard). Other fields are not read here. */
 export interface BoardSlate {

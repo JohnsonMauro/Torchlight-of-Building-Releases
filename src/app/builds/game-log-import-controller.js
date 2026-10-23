@@ -1,5 +1,5 @@
 // Import from game: the local reader's snapshots or a picked UE_game.log, and the build it becomes.
-import { heroById } from "../../engine/index.ts";
+import { heroById } from "#engine";
 import {
   importReportText,
   importSnapshot,

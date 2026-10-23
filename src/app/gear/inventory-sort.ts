@@ -1,7 +1,7 @@
 // The Inventory's Sort order button, as the game sorts its bag: one-handed weapons, two-handed weapons, shields, then
 // helmet, chest armor, gloves, boots, belt, necklace and rings (owner, 2026-10-21, from the game's bag). The sort is
 // stable: items of one kind keep the order they had.
-import { gearGroupsSs14 } from "../../engine/index.ts";
+import { gearGroupsSs14 } from "#engine";
 
 interface SortableItem {
   slot?: string;

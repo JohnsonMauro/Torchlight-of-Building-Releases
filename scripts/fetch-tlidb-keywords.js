@@ -1,4 +1,4 @@
-// Writes src/data/game/keywords.generated.js: the game's keywords (Spell Burst, Tangle, Blur…), the words the game
+// Writes packages/engine/data/game/keywords.generated.js: the game's keywords (Spell Burst, Tangle, Blur…), the words the game
 // underlines in item, talent and skill text, with the definition it shows on hover. Source: TLIDB (tlidb.com/en/).
 //   node scripts/fetch-tlidb-keywords.js          fetch every page it needs (about 70 requests, one a second)
 //   node scripts/fetch-tlidb-keywords.js <dir>    same, keeping the pages in <dir> and reusing the ones already there
@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SITE = "https://tlidb.com";
-const OUTPUT = new URL("../src/data/game/keywords.generated.js", import.meta.url);
+const OUTPUT = new URL("../packages/engine/data/game/keywords.generated.js", import.meta.url);
 const LIST_PAGES = [
   "Legendary_Gear",
   "Craft",

@@ -13,7 +13,7 @@ import {
   progressionSupportTierData,
   specialSupportStarBonus,
   tliArt,
-} from "../../engine/index.ts";
+} from "#engine";
 import { highlightedAuraEffect, highlightedSkillEffect, skillDisplaySs14 } from "../skills/skill-display-ss14.js";
 import { highlightedSupportEffect, supportDisplaySs14 } from "../skills/support-display-ss14.js";
 import { htmlTextSegments, type TextSegment } from "./display-text.ts";
@@ -125,7 +125,7 @@ const levelOf = (entry: Leveled): SkillLevelView => ({
 });
 
 /**
- * The note on a trait-granted skill or support (src/engine/heroes/trait-board-grants.js `traitGranted`): which trait
+ * The note on a trait-granted skill or support (packages/engine/src/heroes/trait-board-grants.js `traitGranted`): which trait
  * grants it, its energy (the skill takes none, its supports and Clockwork Core's socket cost energy as usual), and what
  * it replaces; "" for anything else.
  */

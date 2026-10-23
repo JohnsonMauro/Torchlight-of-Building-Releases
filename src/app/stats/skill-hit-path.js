@@ -1,6 +1,6 @@
 import { compactNumber, wholeFormat } from "./damage-path-views.js";
 
-// Damage path model for a generic spell hit (src/engine/skills/skill-hit-model.js), in the stage layout the other
+// Damage path model for a generic spell hit (packages/engine/src/skills/skill-hit-model.js), in the stage layout the other
 // paths use (src/app/stats/damage-path-views.js `pathMarkup`): base roll → added flat → increased → additional →
 // (max roll) → crit and use rate → dummy armour → resistance → DPS. Presentation only: every figure is
 // the engine's. Stages follow the primary component (the game row's own type); added-damage components

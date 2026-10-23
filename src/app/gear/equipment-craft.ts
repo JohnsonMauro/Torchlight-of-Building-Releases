@@ -27,7 +27,7 @@ import {
   voraxBaseAffixSlotPool,
   voraxCraftingSs14,
   voraxItemTypes,
-} from "../../engine/index.ts";
+} from "#engine";
 import { beltBlendById } from "./belt-blend-options.js";
 import { equipmentEnergyAllowed, maxEquipmentEnergy, towerSequenceById, towerSequencesForType } from "./gear-rules.js";
 import {
@@ -152,7 +152,7 @@ export interface EquipmentCraft {
   rare: RareDraft | null;
   legendary: LegendaryDraft | null;
   /**
-   * Where the item picker stands (src/data/gear/gear-groups-ss14.js: a group, then its entry's type, then a base; a
+   * Where the item picker stands (packages/engine/data/gear/gear-groups-ss14.js: a group, then its entry's type, then a base; a
    * Vorax item: a group, then a limb; a legendary: a group, whose legendaries the list shows); null while a
    * rare or Vorax form shows. Back in the picker from the form, `rare` keeps the draft until a base or limb is picked.
    */
@@ -233,7 +233,7 @@ export interface LegendaryGroup {
 }
 let legendaryGroupList: LegendaryGroup[] | null = null;
 /**
- * The legendaries by gear group and item type (src/data/gear/legendary-gear-types-ss14.js). A legendary no type lists has
+ * The legendaries by gear group and item type (packages/engine/data/gear/legendary-gear-types-ss14.js). A legendary no type lists has
  * no attribute: it is the Special entry of the attribute group (STR/DEX/INT types) whose types share its slot.
  */
 export function legendaryGroups(): LegendaryGroup[] {

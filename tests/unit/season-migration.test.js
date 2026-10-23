@@ -1,17 +1,17 @@
-// A build from an earlier season is carried into the current one (src/engine/state/season-migration.js): it keeps what is
+// A build from an earlier season is carried into the current one (packages/engine/src/state/season-migration.js): it keeps what is
 // still compatible, loses what the current season no longer has (talent points go back) and keeps the season it was made
 // in and the list of what changed until the user dismisses it.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { allProfessionTalentCatalogueSs14 } from "../../src/data/talents/all-profession-trees-ss14.generated.js";
-import { legendaryGearSs14 } from "../../src/data/gear/legendary-gear-ss14.generated.js";
+import { allProfessionTalentCatalogueSs14 } from "../../packages/engine/data/talents/all-profession-trees-ss14.generated.js";
+import { legendaryGearSs14 } from "../../packages/engine/data/gear/legendary-gear-ss14.generated.js";
 import {
   migrateBuildSeason,
   removeIncompatible,
   seasonChangeSummary,
-} from "../../src/engine/state/season-migration.js";
-import { currentSeason } from "../../src/engine/state/season.ts";
-import { normalizePlannerState } from "../../src/engine/state/planner-state.ts";
+} from "../../packages/engine/src/state/season-migration.js";
+import { currentSeason } from "../../packages/engine/src/state/season.ts";
+import { normalizePlannerState } from "../../packages/engine/src/state/planner-state.ts";
 
 const lich = allProfessionTalentCatalogueSs14.Lich;
 const node = lich.nodes.find((entry) => entry.maxRank === 1);

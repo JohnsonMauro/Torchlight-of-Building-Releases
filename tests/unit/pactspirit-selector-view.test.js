@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { pactspiritSelectorView } from "../../src/app/bridge/pacts-view-model.ts";
-import { pactspiritCatalogSs14 } from "../../src/data/pacts/pactspirit-catalog-ss14.js";
+import { pactspiritCatalogSs14 } from "../../packages/engine/data/pacts/pactspirit-catalog-ss14.js";
 
 test("the selector leaves out the Drop Pactspirits (they add nothing to damage or defence) and keeps every other", () => {
   const view = pactspiritSelectorView();

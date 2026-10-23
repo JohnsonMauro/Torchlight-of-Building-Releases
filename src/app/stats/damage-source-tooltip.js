@@ -12,7 +12,7 @@ import {
   resolveTalentCandidate,
   selenaScorchingBeamPactsSs14,
   selenaScorchingBeamTalentSetupSs14,
-} from "../../engine/index.ts";
+} from "#engine";
 import { displayTexts } from "../bridge/display-text.ts";
 import { heroTraitTarget } from "../bridge/hero-traits-view-model.ts";
 import { pactsView } from "../bridge/pacts-view-model.ts";

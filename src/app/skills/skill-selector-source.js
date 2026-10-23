@@ -10,7 +10,7 @@ import {
   progressionSupportText,
   progressionSupportTierData,
   specialSupportStarBonus,
-} from "../../engine/index.ts";
+} from "#engine";
 import { displayTexts, htmlTextSegments } from "../bridge/display-text.ts";
 import { searchText } from "../bridge/search-match.ts";
 import { followerSkillSelectorList, followerSkillSelectorView } from "../hero/follower-panel.js";
@@ -137,7 +137,7 @@ function skillSelectorDetail() {
     (selectorKind === "support" && selectorTargetSupportSlot < activeSupportCount);
   const full = selectorKind === "support" && (!selectedSetup || (activeSupportCount >= 5 && !replacingSupport));
   const config = selectorSpecialConfig;
-  // Star supports (src/data/skills/special-support-tiers-ss14.js specialSupportTierData): one main affix with stars.
+  // Star supports (packages/engine/data/skills/special-support-tiers-ss14.js specialSupportTierData): one main affix with stars.
   const specialTiers = supportSelector ? configurableSupportTierData(entry.name) : null;
   const progressionTiers = supportSelector ? progressionSupportTierData(entry.name) : null;
   const selectedTier = specialTiers?.find((tier) => tier.tier === config?.tier) || specialTiers?.[0];

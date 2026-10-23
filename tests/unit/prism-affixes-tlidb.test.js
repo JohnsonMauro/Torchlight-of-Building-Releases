@@ -1,9 +1,9 @@
-// TLIDB's Ethereal Prism affixes (scripts/fetch-tlidb-prism-affixes.js → src/data/talents/prism-affixes-tlidb.generated.js):
+// TLIDB's Ethereal Prism affixes (scripts/fetch-tlidb-prism-affixes.js → packages/engine/data/talents/prism-affixes-tlidb.generated.js):
 // the page parser, and the lower-tier ids a dropped prism logs that the upstream id map lacks.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parsePrismAffixes } from "../../scripts/fetch-tlidb-prism-affixes.js";
-import { TLIDB_PRISM_AFFIXES } from "../../src/data/talents/prism-affixes-tlidb.generated.js";
+import { TLIDB_PRISM_AFFIXES } from "../../packages/engine/data/talents/prism-affixes-tlidb.generated.js";
 
 const PAGE = [
   '<div class="card-header">Ethereal Prism Affix /2 </div><table>',

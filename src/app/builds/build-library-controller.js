@@ -1,5 +1,5 @@
 // The build library around the open build: open, rename, reset, export / import, backups and other tabs' changes.
-import { encodePlannerState, expandBuildCode } from "../../engine/index.ts";
+import { encodePlannerState, expandBuildCode } from "#engine";
 import { resolveBuildRename } from "./build-tab-rename.js";
 import { closeDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
@@ -140,7 +140,7 @@ async function exportBuild() {
     showToast("Clipboard access was unavailable");
   }
 }
-// Import accepts the Export code and the compact "TLB3:" and "TLB2:" codes (src/engine/state/build-code-compact.js), which expand to the former.
+// Import accepts the Export code and the compact "TLB3:" and "TLB2:" codes (packages/engine/src/state/build-code-compact.js), which expand to the former.
 async function importBuildText(text) {
   const code = await expandBuildCode(text);
   persistPlannerState();

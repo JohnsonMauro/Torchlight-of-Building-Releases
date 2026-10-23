@@ -264,7 +264,7 @@ function ScentBottle({ scent }: { scent: ScentBottleView }) {
 
 function TraitPath({ path }: { path: TraitPathView }) {
   const board = useRef<HTMLDivElement>(null);
-  // The board is laid out at its width (src/engine/heroes/hero-trait-tree.js treeBoardLayout) once measured; a hidden
+  // The board is laid out at its width (packages/engine/src/heroes/hero-trait-tree.js treeBoardLayout) once measured; a hidden
   // board (0 px wide) keeps the tree's own layout in % until it shows.
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   useLayoutEffect(() => {

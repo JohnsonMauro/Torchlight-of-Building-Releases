@@ -17,7 +17,7 @@ import {
   tlidbSkillCatalogSs14,
   tlidbSupportCatalogSs14,
   userInstalledSupports,
-} from "../../engine/index.ts";
+} from "#engine";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import {
@@ -169,7 +169,7 @@ export function selectorEntries() {
     if (selectorKind === "support" && !supportFitsSlot(entry, selectorTargetSupportSlot)) return false;
     if (entry.exclusiveFor) return entry.exclusiveFor === setup.name;
     if (setup.role === "aura") {
-      // The game's tag filter decides when the aura and the support both have a stone record (src/engine/supports/support-compatibility.js).
+      // The game's tag filter decides when the aura and the support both have a stone record (packages/engine/src/supports/support-compatibility.js).
       if (
         gameRuleDecides(
           entry,

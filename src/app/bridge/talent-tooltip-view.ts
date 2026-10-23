@@ -9,7 +9,7 @@ import {
   prismAreaBounds,
   prismNodeAffixes,
   talentEffectText,
-} from "../../engine/index.ts";
+} from "#engine";
 import { effectLabel, formatEffect, nodeTitle } from "../talents/talent-labels.js";
 import { coverageView, type CoverageView } from "./gear-item-view.ts";
 import type { PrismSectionLine, PrismSectionView } from "./prism-crafter-view.ts";

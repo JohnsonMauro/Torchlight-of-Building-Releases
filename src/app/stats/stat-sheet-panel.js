@@ -1,8 +1,8 @@
-import { characterStatRows } from "../../engine/index.ts";
+import { characterStatRows } from "#engine";
 
 // Character stats panel for the Stats page (src/app/stats/stat-sheet.js; drawn by apps/web/src/features/stats). It
-// arranges what statSheetModel already computes (the stat totals of src/engine/character-stats.js, the Effective HP
-// pools of src/engine/defense/effective-hp.js and the skill-mechanic cards) the way the in-game character panel does:
+// arranges what statSheetModel already computes (the stat totals of packages/engine/src/character-stats.js, the Effective HP
+// pools of packages/engine/src/defense/effective-hp.js and the skill-mechanic cards) the way the in-game character panel does:
 // category tabs → collapsible sections → label/value rows, and a row opens to the lines behind it,
 // grouped by where they come from (Gear, Talent, Slate, Pactspirit, Hero Memories, Hero Trait).
 // Rows the build does not have (zero, empty, "None") are left out, and each figure is listed once.

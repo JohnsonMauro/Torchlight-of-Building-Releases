@@ -1,6 +1,6 @@
 // What a piece of gear can carry by its slot and type: Equipment Energy (and its cap by item level) and TOWER Sequences.
 // Pure; used by the crafter (src/app/gear/equipment-craft.ts) and the planner (src/app/gear/gear-controller.js).
-import { towerSequencesSs14 } from "../../engine/index.ts";
+import { towerSequencesSs14 } from "#engine";
 
 export function equipmentEnergyAllowed(slot) {
   return !["necklace", "belt", "leftRing", "rightRing"].includes(slot);

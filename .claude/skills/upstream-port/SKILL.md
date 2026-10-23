@@ -1,6 +1,6 @@
 ---
 name: upstream-port
-description: How to bring a change from TomSelleck09's repository (the upstream remote) into this fork — read his diff since the last ported commit, map his paths to ours, port by hand, keep src/data byte for byte, record the ported commit. Use when the owner asks to port, sync or check upstream changes, or when new game data arrives from upstream.
+description: How to bring a change from TomSelleck09's repository (the upstream remote) into this fork — read his diff since the last ported commit, map his paths to ours, port by hand, keep packages/engine/data byte for byte, record the ported commit. Use when the owner asks to port, sync or check upstream changes, or when new game data arrives from upstream.
 ---
 
 # Porting from upstream
@@ -18,13 +18,13 @@ rebase onto it and never open PRs there. We read his diff and port by hand.
 
 ## 2. Map his paths to ours
 
-- His `src/` root modules live in folders here: pure domain code in `src/engine/<domain>/`, the page in `src/app/`,
+- His `src/` root modules live in folders here: pure domain code in `packages/engine/src/<domain>/`, the page in `src/app/`,
   the log import in `src/game-log/`.
 - His `src/app.js` code is split into the section controllers (`planner-guide` §1): find the controller that owns the
   section his change touches.
-- His page code imports engine and data modules directly; ours imports them only from `src/engine/index.ts`
+- His page code imports engine and data modules directly; ours imports them only from `#engine`
   (`engine-guide` §1): a ported import becomes a name in the entry, added to its domain's group if it is new.
-- His `src/data/**` paths are unchanged but for the season: his files and identifiers say `ss13` / `Ss13`, ours
+- His `src/data/**` is our `packages/engine/data/**`, paths otherwise unchanged but for the season: his files and identifiers say `ss13` / `Ss13`, ours
   `ss14` / `Ss14` (`engine-guide` §1). A copied file is renamed and its identifiers changed the same way
   (`sed -e 's/Ss13/Ss14/g' -e 's/-ss13\b/-ss14/g'`); nothing else in it changes, so a `*.generated.js` can probably be
   copied whole. Not tried yet: on the first port, check that nothing of ours imports a

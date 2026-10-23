@@ -2,7 +2,7 @@
 // React views while it owns the open build. Each source is a
 // reader of the current data; the planner calls viewSourceChanged where it used to re-render its own markup, so a source
 // is read again only then (and only while a view subscribes). Edits go the other way, through src/app/bridge/planner-commands.js.
-import type { PlannerResult, PlannerState } from "../../engine/index.ts";
+import type { PlannerResult, PlannerState } from "#engine";
 import type { PactsView, PactspiritSelectorView } from "./pacts-view-model.ts";
 import type { FollowerPanelView, FollowerPickerCard } from "../hero/follower-panel.js";
 import type { SkillsView } from "./skills-view-model.ts";

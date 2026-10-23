@@ -1,8 +1,8 @@
-// Where an Ethereal Prism's area lies on a 7 x 5 talent panel (src/engine/talents/prism-crafting.js prismAreaBounds): the
+// Where an Ethereal Prism's area lies on a 7 x 5 talent panel (packages/engine/src/talents/prism-crafting.js prismAreaBounds): the
 // prism in the area's 2nd column and row, and the part past the panel's edge cut off, as the game lights it.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { prismAreaBounds } from "../../src/engine/talents/prism-crafting.js";
+import { prismAreaBounds } from "../../packages/engine/src/talents/prism-crafting.js";
 
 const area = (radiusAffix) => ({ type: "ethereal", radiusAffix });
 const FOUR_BY_THREE = area("The Effect Area expands to 4x3 Rectangle");

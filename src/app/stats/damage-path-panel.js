@@ -4,7 +4,7 @@ import {
   findScorchingBeamSetup,
   scorchingBeamBaseHits,
   strippedBeamHitCoefficient,
-} from "../../engine/index.ts";
+} from "#engine";
 import { recountSourceShares } from "./dummy-recount-panel.js";
 import { skillHitPathModel } from "./skill-hit-path.js";
 import { minionPathModel } from "./minion-path.js";
@@ -85,7 +85,7 @@ export function hitPathModel(planner, { format: rawFormat, recountDps = null }) 
     levelFactor: planner.directHit.levelFactor,
   });
   // The cycle carries the 49% coefficient (the dummy's 30% armour × 30% Fire Resistance): the target stages apply only the
-  // resistance's change from 30%, as the recount does (src/engine/combat/target-hit-mitigation.js calibratedBeamTargetCycle).
+  // resistance's change from 30%, as the recount does (packages/engine/src/combat/target-hit-mitigation.js calibratedBeamTargetCycle).
   // The resistance the hits meet: the target setting after reductions, less Fire penetration (as directHit.toTarget and the recount).
   const hitResistancePercent =
     planner.effectiveTargetFireResistancePercent - (planner.directHit.penetrationPercent || 0);
@@ -602,7 +602,7 @@ export function ignitePathModel(theoretical, planner, { format: rawFormat, recou
             note: "no target layers",
           }
         : null,
-      // Ill Omen on an Ignite-only build (no combined view): factor × (Ignite + Ignite Reaps) per window (src/engine/ailments/ill-omen.js).
+      // Ill Omen on an Ignite-only build (no combined view): factor × (Ignite + Ignite Reaps) per window (packages/engine/src/ailments/ill-omen.js).
       igniteIllOmen
         ? {
             label: "Ill Omen",
@@ -666,7 +666,7 @@ export function damagePathModels(theoretical, planner, { format }) {
         }),
       };
     if (option.value.startsWith("hit:")) {
-      // Generic spell hit (src/engine/skills/skill-hit-model.js / src/app/stats/skill-hit-path.js), grouped under its own skill.
+      // Generic spell hit (packages/engine/src/skills/skill-hit-model.js / src/app/stats/skill-hit-path.js), grouped under its own skill.
       const hit = (planner.skillHits || []).find((item) => `hit:${item.setupKey || item.name}` === option.value);
       return {
         ...option,
@@ -675,7 +675,7 @@ export function damagePathModels(theoretical, planner, { format }) {
       };
     }
     if (option.value.startsWith("minion:")) {
-      // Minion (src/engine/minions/minion-damage-model.js / src/app/stats/minion-path.js), grouped under its summon skill.
+      // Minion (packages/engine/src/minions/minion-damage-model.js / src/app/stats/minion-path.js), grouped under its summon skill.
       const minion = (planner.minions || []).find((item) => `minion:${item.minionKey}` === option.value);
       return {
         ...option,

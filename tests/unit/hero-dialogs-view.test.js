@@ -2,8 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { carinoAmmoSelectorView, sageScentSelectorView } from "../../src/app/bridge/hero-dialogs-view-model.ts";
-import { sageElixirsSs14 } from "../../src/data/heroes/sage-scent-ss14.generated.js";
-import { sageScentIngredientsSs14 } from "../../src/data/heroes/sage-scent-options-ss14.js";
+import { sageElixirsSs14 } from "../../packages/engine/data/heroes/sage-scent-ss14.generated.js";
+import { sageScentIngredientsSs14 } from "../../packages/engine/data/heroes/sage-scent-options-ss14.js";
 
 test("the scent selector lists elixirs with their tags, or one kind of ingredient with its effect", () => {
   const elixirs = sageScentSelectorView("elixir");

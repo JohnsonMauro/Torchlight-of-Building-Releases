@@ -8,7 +8,7 @@ import {
   switchHeroLoadout,
   tlidbSkillCatalogSs14,
   tlidbSupportCatalogSs14,
-} from "../../engine/index.ts";
+} from "#engine";
 import { carinoAmmoSelectorView, sageScentSelectorView } from "../bridge/hero-dialogs-view-model.ts";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { heroTraitsView } from "../bridge/hero-traits-view-model.ts";

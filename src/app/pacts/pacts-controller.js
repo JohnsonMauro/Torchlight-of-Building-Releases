@@ -21,7 +21,7 @@ import {
   starTrailNote,
   togglePactNodeChain,
   transferKismetSlot,
-} from "../../engine/index.ts";
+} from "#engine";
 import { closeDialog, openDialog } from "../bridge/dialogs.ts";
 import { displayTexts } from "../bridge/display-text.ts";
 import { searchText } from "../bridge/search-match.ts";

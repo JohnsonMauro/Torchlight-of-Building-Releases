@@ -22,7 +22,7 @@ export default [
   },
   // Planner sources in TypeScript (run by Node with the types stripped).
   ...tseslint.config({
-    files: ["src/**/*.ts", "tests/**/*.ts"],
+    files: ["src/**/*.ts", "packages/**/*.ts", "tests/**/*.ts"],
     extends: [js.configs.recommended, tseslint.configs.strict, tseslint.configs.stylistic],
     languageOptions: { ecmaVersion: "latest", sourceType: "module", globals: { ...globals.browser, ...globals.node } },
   }),

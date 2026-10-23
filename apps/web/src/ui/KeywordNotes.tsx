@@ -1,4 +1,4 @@
-import { gameKeyword } from "@legacy/engine/index.ts";
+import { gameKeyword } from "#engine";
 import { KEYWORD_DEFINITION, KEYWORD_NAME, KEYWORD_NOTE, KEYWORD_NOTES } from "./keyword-classes";
 import { KeywordText } from "./KeywordText";
 

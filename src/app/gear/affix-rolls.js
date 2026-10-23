@@ -1,7 +1,7 @@
 // Rolled modifier lines: a template's "(min–max)" ranges, the value a roll control starts at, a line resolved with its
 // rolls, and the rolls read back from a resolved line. Shared by the equipment crafter (src/app/gear/equipment-craft.ts),
 // the item editor and the tooltips (src/app/gear/gear-controller.js). Pure.
-import { legendaryModifierSignature } from "../../engine/index.ts";
+import { legendaryModifierSignature } from "#engine";
 
 const RANGE = /\((-?\d+(?:\.\d+)?)\s*[–-]\s*(-?\d+(?:\.\d+)?)\)/;
 const RANGES = new RegExp(RANGE.source, "g");

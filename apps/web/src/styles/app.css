@@ -9,7 +9,7 @@
 
 /*
  * Class sources beyond Vite's root (apps/web): the planner modules that build markup as HTML strings (tooltips, find
- * bar, searchable select, banners). Not src/data: its generated catalogs would only add accidental utilities.
+ * bar, searchable select, banners). Not packages/engine/data: its generated catalogs would only add accidental utilities.
  */
 @source "../../../../src/app";
 @source "../../../../src/game-log";

@@ -13,7 +13,7 @@ import {
   PEDIGREE_OF_GODS,
   pedigreeCoreAffixesSs14,
   slateTransformRules,
-} from "../../engine/index.ts";
+} from "#engine";
 import {
   LEGENDARY_SLATE_TEMPLATES,
   SLATE_GODS,

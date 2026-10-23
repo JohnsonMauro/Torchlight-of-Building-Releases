@@ -5,7 +5,7 @@ import {
   formatRecountInteger,
   summarizeRecount,
   windowTotals,
-} from "../../engine/index.ts";
+} from "#engine";
 
 // The training dummy recount of the stat sheet's damage banner: the in-game recount fields over a fixed 10 s span of the
 // planner's 60 s dummy timeline (planner.dummyRecount), each source's share, and the sources left out of the view. The

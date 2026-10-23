@@ -26,8 +26,8 @@ Before a commit: lint, typecheck, format:check and `pnpm test` green; e2e green 
 
 | Path | What | Rule |
 |---|---|---|
-| `src/engine/` | the calculation (pure domain), one season of the game | imports only `src/engine` and `src/data`; no DOM, no storage; outside code uses only `src/engine/index.ts` |
-| `src/data/` | game data, mostly `*.generated.js` from upstream's tools | kept byte for byte but the season in names (Prettier ignores it) |
+| `packages/engine/` | the engine package (`@tob/engine`, major version = the game season): `src/` the calculation (pure domain), `data/` its game data | `src/` imports only the package; no DOM, no storage; outside code imports only `#engine` (its `src/index.ts`) |
+| `packages/engine/data/` | game data, mostly `*.generated.js` from upstream's tools | kept byte for byte but the season in names (Prettier ignores it) |
 | `src/game-log/` | game log reader and import | never imports `src/app` |
 | `src/app/` | the planner page: state, commands, view models (`planner-guide`) | |
 | `src/app/bridge/` | view models and the two channels to React (`view-sources.ts`, `planner-commands.js`) | pure view models |
@@ -39,9 +39,9 @@ Before a commit: lint, typecheck, format:check and `pnpm test` green; e2e green 
 | `src/assets/` | images; every content image stays, also unreferenced ones | layout images go once unused |
 | `tests/unit`, `tests/golden`, `tests/e2e` | unit, engine golden master, Playwright (page objects in `tests/e2e/pages`) | |
 
-Dependencies point down: `apps/web` → `src/app` (bridge) → `src/engine` → `src/data`. Guards that fail the build:
+Dependencies point down: `apps/web` → `src/app` (bridge) → `packages/engine/src` → `packages/engine/data`. Guards that fail the build:
 `tests/unit/import-graph.test.js` (no cycles, the folder rules above, `src/app`, `src/game-log` and `apps/web` reach the
-engine and its data only through `src/engine/index.ts`), `dom-ratchet.test.js` (the planner's DOM
+engine package only through `#engine`), `dom-ratchet.test.js` (the planner's DOM
 coupling only goes down), `styling-rules.test.js` (one stylesheet, no state word in a utility),
 `asset-references.test.js` (every `./src/assets/…` path exists).
 
@@ -66,7 +66,7 @@ rows fit). Loading a skill after the code is written is too late.
 | A new React component, hook or dialog | `react-guide`, `styling-guide`, `e2e-guide` |
 | A command, a view source, a query, a controller, `plannerState` | `planner-guide` |
 | A tooltip (new kind, content, a card another tooltip shows) | `tooltip-guide`, `planner-guide`, `styling-guide` |
-| The calculation (`src/engine`), game data (`src/data`), state normalization | `engine-guide` |
+| The calculation (`packages/engine/src`), game data (`packages/engine/data`), state normalization | `engine-guide` |
 | A bug fix | `verify-guide` (regression test first) + the rows for the area |
 | An e2e test, a page object, a class or id a test reads | `e2e-guide` |
 | Deleting legacy code, moving or renaming files, a sweep | `refactor-guide` + the rows for what moves |
@@ -89,7 +89,7 @@ are deleted. Details and the reference screen: `styling-guide`.
   the same change.
 - Never write a colour, a gradient or a glow in a component; never add a `.css` file; never spell a state word in a
   utility (`styling-guide`).
-- Never touch `src/data/**/*.generated.js` by hand; never run `pnpm golden:update` to make a red test green without
+- Never touch `packages/engine/data/**/*.generated.js` by hand; never run `pnpm golden:update` to make a red test green without
   reading `pnpm golden:diff` first.
 - Never lower a guard to make it pass (eslint-suppressions, dom-ratchet baseline up, a skipped test).
 - `package.json` `build.publish` still points at upstream's releases: electron-updater would replace our build with

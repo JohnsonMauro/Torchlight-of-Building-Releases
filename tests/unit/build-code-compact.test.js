@@ -1,10 +1,10 @@
 // Import keeps reading the compact build codes ("TLB3:", "TLB2:") that players may still hold
-// (src/engine/state/build-code-compact.js expandBuildCode): each expands to the original Export code, byte for byte.
+// (packages/engine/src/state/build-code-compact.js expandBuildCode): each expands to the original Export code, byte for byte.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { expandBuildCode } from "../../src/engine/state/build-code-compact.js";
+import { expandBuildCode } from "../../packages/engine/src/state/build-code-compact.js";
 
 const fixture = JSON.parse(readFileSync(new URL("./fixtures/compact-build-codes.json", import.meta.url), "utf8"));
 const sha256 = (text) => createHash("sha256").update(text).digest("hex");

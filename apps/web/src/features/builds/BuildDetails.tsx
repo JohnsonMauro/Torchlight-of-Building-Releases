@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { heroById } from "@legacy/engine/index.ts";
+import { heroById } from "#engine";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { LibraryBuild } from "./build-library";
 import {

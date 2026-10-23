@@ -13,7 +13,7 @@ import {
   rareBaseItemsSs14,
   selenaScorchingBeamGearSs14,
   voraxCraftingSs14,
-} from "../../engine/index.ts";
+} from "#engine";
 import { beltBlendById } from "./belt-blend-options.js";
 import { displayTexts } from "../bridge/display-text.ts";
 import { modifierTextView } from "../bridge/gear-item-view.ts";

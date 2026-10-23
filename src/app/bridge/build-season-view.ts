@@ -1,7 +1,7 @@
 // What the build strip says about the open build's season (apps/web/src/shell/LoadoutStrip.tsx): nothing for a build made
 // in the current season; for one made in an earlier season, that season, and the change carrying it into the current one
-// until the user dismisses it (src/engine/state/season-migration.js). Pure: it reads the stored state it is given.
-import { currentSeason, seasonChangeSummary, seasonLabel } from "../../engine/index.ts";
+// until the user dismisses it (packages/engine/src/state/season-migration.js). Pure: it reads the stored state it is given.
+import { currentSeason, seasonChangeSummary, seasonLabel } from "#engine";
 
 export interface BuildSeasonView {
   /** "SS13 build". */

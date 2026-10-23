@@ -10,7 +10,7 @@ import {
   legendaryModifierSignature,
   placeholderPool,
   placeholderTemplates,
-} from "../../engine/index.ts";
+} from "#engine";
 
 const placeholderText = (text) => /^<[^>]+>$/.test(String(text || "").trim());
 
@@ -38,9 +38,9 @@ export function legendaryLineTemplates(source, index, corrodedLines = []) {
       folkloreRingModifier("left", true),
       folkloreRingModifier("right", true),
     );
-  // A "<Random …>" placeholder line can carry any roll of its pool (src/engine/gear/legendary-placeholder-pools.js).
+  // A "<Random …>" placeholder line can carry any roll of its pool (packages/engine/src/gear/legendary-placeholder-pools.js).
   templates.push(...placeholderTemplates(source.id, index));
-  // A tiered line (Ice Pulse's Spell Damage) can carry a lower tier's roll (src/engine/gear/legendary-affix-tiers.js).
+  // A tiered line (Ice Pulse's Spell Damage) can carry a lower tier's roll (packages/engine/src/gear/legendary-affix-tiers.js).
   templates.push(...legendaryLowerTierTemplates(source.id, index));
   return [...new Set(templates.filter(Boolean))];
 }

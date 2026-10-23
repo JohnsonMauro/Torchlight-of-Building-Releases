@@ -18,7 +18,7 @@ import {
   TREE_ROW_LEVELS,
   treeBoardLayout,
   treeRowLevelKey,
-} from "../../engine/index.ts";
+} from "#engine";
 import {
   heroMemoryIcon,
   heroMemoryIsRevived,
@@ -38,7 +38,7 @@ interface Memory {
   risingMoon?: unknown;
   revivedAffix?: unknown;
 }
-/** The stored hero settings (src/engine/state/planner-state.ts PlannerState["hero"]); other fields are not read here. */
+/** The stored hero settings (packages/engine/src/state/planner-state.ts PlannerState["hero"]); other fields are not read here. */
 export interface HeroState {
   selectedHeroId: string;
   /** The character level (1–100); none stored, the calculation assumes 100. */
@@ -288,7 +288,7 @@ function traitTiers(heroId: string, hero: HeroState, traits: Trait[], treeHero: 
     const trait = name ? traits.find((item) => item.name === name && item.level > 1) : undefined;
     return trait ? { name: trait.name, art: trait.icon ?? null, levelKey } : null;
   };
-  // The calculation reads "<hero>:level45", then "level45" (src/engine/character-stats.js; the game-log import stores
+  // The calculation reads "<hero>:level45", then "level45" (packages/engine/src/character-stats.js; the game-log import stores
   // memories under the level alone), so a socket shows and edits the first that holds one.
   const memoryKey = (key: string, level: number) =>
     [key, `level${level}`].find((candidate) => hero.memories[candidate] || hero.equippedMemoryIds?.[candidate]) || key;

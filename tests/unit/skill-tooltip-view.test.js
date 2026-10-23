@@ -1,7 +1,7 @@
 // A skill's, a support's or an aura's tooltip (src/app/bridge/skill-tooltip-view.ts).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { tlidbSkillCatalogSs14, tlidbSupportCatalogSs14 } from "../../src/data/catalogs/tlidb-ss14.js";
+import { tlidbSkillCatalogSs14, tlidbSupportCatalogSs14 } from "../../packages/engine/data/catalogs/tlidb-ss14.js";
 import { coverageView } from "../../src/app/bridge/gear-item-view.ts";
 import { skillTooltipView, traitGrantNote } from "../../src/app/bridge/skill-tooltip-view.ts";
 

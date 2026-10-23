@@ -10,13 +10,13 @@ import {
   parseBlockModifier,
   parseKismetEffect,
   refineCoverage,
-} from "../../engine/index.ts";
+} from "#engine";
 
 const STAR_TRAIL = /^\+?[\d.]+% for the effects of Micro Fates in the same Pact Branch$/i;
 
 /**
  * A kismet affix's badge on the pact board (`key`: the kismet's slot). Kismet: Star Trail follows the Micro Fates it boosts in
- * its pact spirit (src/engine/pacts/kismet-effects.js microFateEffectScale; whole spirit, user-stated 2026-10-13): In calc when one of them is
+ * its pact spirit (packages/engine/src/pacts/kismet-effects.js microFateEffectScale; whole spirit, user-stated 2026-10-13): In calc when one of them is
  * in the calculation, their neutral status when none changes damage, Inactive when its spirit holds no allocated Micro Fate. Before (pact badge audit 2026-10-13) it read
  * "No DPS effect" whatever it boosted.
  */
@@ -50,11 +50,11 @@ function starTrailCoverage(key, planner) {
 
 // A level effect that joins two stats with "; " ("+7% additional damage; +7% additional Minion Damage": Cloudgatherer - Violet,
 // Awooawoo - Violet and every other "Enhanced Attack" outer node; game affix 332988 writes attr 5719 mod 4 twice, the second
-// Minion-tagged) is judged clause by clause, the way src/engine/text/modifier-texts.js and src/engine/engine.js read it. Before (pact badge fix
+// Minion-tagged) is judged clause by clause, the way packages/engine/src/text/modifier-texts.js and packages/engine/src/engine.js read it. Before (pact badge fix
 // 2026-10-13) the joined line was judged whole and read "No DPS effect" although its first clause is in the calculation.
 const splitJoinedClauses = (text) => String(text ?? "").replace(/;\s*(?=[+-]?\d)/g, "\n");
 // The destiny node "Undetermined Fate Slots" ("+6 * 1% damage +6 * 1% Minion Damage"; game affix 10214: attr 5719 mod 3, the
-// second Minion-tagged): src/engine/engine.js calculatePactCandidate adds its +6% damage to the pact totals while the node is allocated
+// second Minion-tagged): packages/engine/src/engine.js calculatePactCandidate adds its +6% damage to the pact totals while the node is allocated
 // and no Fate slot is unlocked. It read "No DPS effect" before.
 const DESTINY_SLOTS = /^\+\d+ \* \d+(?:\.\d+)?% damage \+\d+ \* \d+(?:\.\d+)?% Minion Damage$/i;
 

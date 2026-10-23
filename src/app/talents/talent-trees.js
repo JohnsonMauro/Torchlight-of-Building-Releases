@@ -6,7 +6,7 @@ import {
   inverseImageTalentNodes,
   pruneInvalidTalentRanks,
   selenaScorchingBeamTalentSetupSs14,
-} from "../../engine/index.ts";
+} from "#engine";
 import { talentDisplayNodes as talentNodesOnBoard } from "../bridge/talents-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { renderHeroPanel, renderHeroTraitTree } from "../hero/hero-controller.js";

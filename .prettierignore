@@ -1,7 +1,7 @@
 # Prettier also reads .gitignore; this lists tracked files that stay as they are.
 
 # Game data, mostly written by the upstream data tools: kept byte for byte so new upstream copies diff cleanly
-src/data/
+packages/engine/data/
 
 # Images and SVG art
 src/assets/

@@ -1,8 +1,8 @@
 // The character column's damage summary (apps/web/src/features/stats/DamageSummary.tsx): the build's average DPS over
 // the recount span and each source's share — the Stats page's recount card (src/app/bridge/stats-view-model.ts), with
 // the same sources left out, so both read the same figures — and the main skill. The recount timeline is part of every
-// calculated build (src/engine/combat/dummy-recount.js), so this is a pass over its bins. Pure.
-import type { MainSkill } from "../../engine/index.ts";
+// calculated build (packages/engine/src/combat/dummy-recount.js), so this is a pass over its bins. Pure.
+import type { MainSkill } from "#engine";
 import { MIX_COLORS, RECOUNT_SPAN_SECONDS, recountSourceShares, recountTiles } from "../stats/dummy-recount-panel.js";
 import { numberText, type NumberText } from "../stats/number-text.ts";
 
@@ -16,7 +16,7 @@ export interface DamageSummaryView {
   sources: { key: string; label: string; share: string; width: string; color: string }[];
 }
 
-// The calculated build as read here (src/engine/planner-api.ts PlannerResult).
+// The calculated build as read here (packages/engine/src/planner-api.ts PlannerResult).
 interface Planner {
   mainSkill?: MainSkill | null;
   damageSources?: { name: string; status: string }[];

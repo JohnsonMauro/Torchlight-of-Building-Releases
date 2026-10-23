@@ -3,7 +3,7 @@
 // (apps/web/src/features/gear) renders it and src/app/gear/gear-controller.js publishes it (src/app/bridge/view-sources.ts "equipment").
 // How an item looks (its rarity classes, icon) and whether the curse limit leaves it out depend on the open build, so
 // the planner passes them in.
-import { canDropGearInSlot } from "../../engine/index.ts";
+import { canDropGearInSlot } from "#engine";
 
 /** An item as the planner lists it (an equipped item, or an Inventory entry). Other fields are not read here. */
 export interface GearItem {

@@ -4,11 +4,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { calculatePlanner } from "../../src/engine/planner.js";
-import { defaultPlannerState } from "../../src/engine/state/planner-state.ts";
-import { switchHeroLoadout } from "../../src/engine/heroes/hero-loadouts.js";
+import { calculatePlanner } from "../../packages/engine/src/planner.js";
+import { defaultPlannerState } from "../../packages/engine/src/state/planner-state.ts";
+import { switchHeroLoadout } from "../../packages/engine/src/heroes/hero-loadouts.js";
 import { skillsView } from "../../src/app/bridge/skills-view-model.ts";
-import { selenaCompleteSkillLoadoutSs14 } from "../../src/data/skills/selena-complete-skill-loadout-ss14.js";
+import { selenaCompleteSkillLoadoutSs14 } from "../../packages/engine/data/skills/selena-complete-skill-loadout-ss14.js";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),

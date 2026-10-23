@@ -70,7 +70,7 @@ import {
   treeRules,
   validatePlannerState,
   voraxCraftingSs14,
-} from "../engine/index.ts";
+} from "#engine";
 import {
   DEFAULT_GAME_DIRECTION,
   craftedSlateGod,
@@ -852,7 +852,7 @@ function resolveGear(tree, idMap, report) {
       for (const affix of entries(item.ChipAffix)) {
         const sequence = towerSequencesSs14.find((entry) => entry.id === `tower-sequence-${affix.Id}`);
         // A log written before the 2026-10-14 game patch carries the old affix's values for an id that now rolls a new affix
-        // (src/data/changed-item-ids.js): the item reads the current line, as a saved item does.
+        // (packages/engine/data/changed-item-ids.js): the item reads the current line, as a saved item does.
         const previous = sequence && towerSequenceSs14Texts[sequence.id];
         const filled =
           sequence &&
@@ -1125,7 +1125,7 @@ function resolveLegendary(item, label, idMap, report, unresolved, lineText) {
           { template: folkloreRingOptions[side].normal, corroded: false },
           { template: folkloreRingOptions[side].corroded, corroded: true },
         );
-    // A "<Random …>" placeholder line (False God's Skin, Lone Walker's Boots, …) carries one roll of its pool (src/engine/gear/legendary-placeholder-pools.js).
+    // A "<Random …>" placeholder line (False God's Skin, Lone Walker's Boots, …) carries one roll of its pool (packages/engine/src/gear/legendary-placeholder-pools.js).
     // A keyword roll (Pantheon's Elegy's Dirges) is logged as the keyword alone (corroded: the keyword and its extra lines), so it
     // matches by its first line and is saved as the pool's text: the keyword, its effect lines, then the logged extra lines.
     for (const option of placeholderPool(source.id, index)?.options || [])
@@ -1135,7 +1135,7 @@ function resolveLegendary(item, label, idMap, report, unresolved, lineText) {
           ? [{ template: option.corrodedTemplate, corroded: true, keyword: option.keyword, effect: option.effect }]
           : []),
       );
-    // A tiered line's lower tier (Ice Pulse's tier-2 Spell Damage, src/engine/gear/legendary-affix-tiers.js).
+    // A tiered line's lower tier (Ice Pulse's tier-2 Spell Damage, packages/engine/src/gear/legendary-affix-tiers.js).
     for (const template of legendaryLowerTierTemplates(source.id, index))
       list.push({ template, corroded: false, tier: true });
     return list;
@@ -1673,7 +1673,7 @@ function resolveSkills(tree, others, idMap, report, state) {
     }
     const level = levelOf(entry.item);
     // A skill a hero trait puts in this Active slot (Youga's Stasis Vault in slot 2, …) is the trait's own skill in the
-    // planner (src/engine/heroes/trait-board-grants.js): its supports go under `trait:<skill>`, where the granted skill
+    // planner (packages/engine/src/heroes/trait-board-grants.js): its supports go under `trait:<skill>`, where the granted skill
     // reads them, and the slot is left to the grant.
     const granted =
       role === "skill" && Object.values(TRAIT_SLOT_GRANTS).some((grant) => grant.skill === name && grant.row === index);
@@ -2576,7 +2576,7 @@ function resolveHero(tree, idMap, report, state) {
   add(report, "character", "imported", `Hero ${hero.name} · ${hero.trait}`);
   const overview = tree.heroCharacterv3OverView;
   const traits = allHeroTraitsSs14[hero.id]?.traits || [];
-  // A trait-tree hero (src/engine/heroes/hero-trait-tree.js) takes the active traits as its tree picks, in the logged order; the placement
+  // A trait-tree hero (packages/engine/src/heroes/hero-trait-tree.js) takes the active traits as its tree picks, in the logged order; the placement
   // rule seats them (pointOverView does not say which memory row each trait sits in).
   const traitTree = heroTraitTree(hero.id);
   let treePicks = [];

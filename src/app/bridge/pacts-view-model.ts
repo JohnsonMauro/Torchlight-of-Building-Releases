@@ -14,8 +14,8 @@ import {
   pactspiritTreesSs14,
   selenaScorchingBeamPactsSs14,
   sortPactspirits,
-} from "../../engine/index.ts";
-import type { PlannerState } from "../../engine/index.ts";
+} from "#engine";
+import type { PlannerState } from "#engine";
 import { displayTexts } from "./display-text.ts";
 import { searchText } from "./search-match.ts";
 

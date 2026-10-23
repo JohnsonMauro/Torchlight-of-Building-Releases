@@ -5,7 +5,7 @@ import {
   skillBoardRows,
   transferSupportSlot,
   userInstalledSupports,
-} from "../../engine/index.ts";
+} from "#engine";
 import { skillsView } from "../bridge/skills-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
 import { showToast } from "../planner/page.js";

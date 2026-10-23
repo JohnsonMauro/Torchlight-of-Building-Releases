@@ -15,7 +15,7 @@
 //
 // Pure module: reads the planner result and the state, never recomputes damage.
 
-import { isExclusiveRevival } from "../../engine/index.ts";
+import { isExclusiveRevival } from "#engine";
 
 const names = (list, pick = (item) => item?.name) => (list || []).map(pick).filter(Boolean);
 const count = (list, name) => list.filter((item) => item === name).length;
@@ -78,7 +78,7 @@ const activeEntries = (state) => (state?.entries || []).filter((entry) => entry?
 // Answered items stay out (e.g. Freeze at 100+ Frostbite Rating, user-confirmed 2026-10-18).
 const YOUGA_NOTES =
   "research/youga-recall-mechanics-2026-10-18.md; research/youga-homing-frost-bolt-audit-2026-10-18.md";
-// The follower's chosen Tartarus Skill support affixes (src/engine/followers/follower-model.js, 2026-10-19): [{ name, slot, skill }].
+// The follower's chosen Tartarus Skill support affixes (packages/engine/src/followers/follower-model.js, 2026-10-19): [{ name, slot, skill }].
 const FOLLOWER_AFFIX_NOTES = "research/followers/tartarus-skill-affixes-2026-10-19.md";
 // The follower letter rework (2026-10-19): letter rarities, the initial skill, the ULT special effects.
 const FOLLOWER_LETTER_NOTES =
@@ -90,7 +90,7 @@ const followerAffixes = (ctx) =>
 const hasFollowerAffix = (ctx, name) => followerAffixes(ctx).some((item) => item.name === name);
 
 // Hero trait audit 2026-10-19 (research/hero-traits-audit-2026-10-19.md, batch B1): Bing's sixth rank (Q-H2) and the
-// hero-exclusive revived affixes (Q-H11). The equipped memories with a hero-exclusive revival (src/engine/heroes/hero-exclusive-revivals.js).
+// hero-exclusive revived affixes (Q-H11). The equipped memories with a hero-exclusive revival (packages/engine/src/heroes/hero-exclusive-revivals.js).
 const HERO_TRAIT_AUDIT = "research/hero-traits-audit-2026-10-19.md";
 // A trait of this loadout is picked and carries lines ("Hero trait: <name> (Lv N…)"; hero trait audit B2).
 const traitPicked = (ctx, heroId, name) =>
@@ -257,7 +257,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       { reading: "Row 1282 is an extra Cold hit with each bolt", effect: "up to about ×1.4 on the bolt's hit damage" },
     ],
     test: "Watch the damage numbers of a single bolt on the dummy: one number per bolt, or a second smaller one.",
-    source: "src/engine/skills/skill-hit-profiles.js (Homing Frost Bolt note)",
+    source: "packages/engine/src/skills/skill-hit-profiles.js (Homing Frost Bolt note)",
     appliesWhen: (ctx) => ctx.skillHits.some((hit) => hit.name === "Homing Frost Bolt"),
   },
   {
@@ -325,7 +325,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       { reading: "Sealed Mana is ignored for Full Mana", effect: 'the build\'s "at Full Mana" lines turn on' },
     ],
     test: 'With Mana sealed by Auras, check whether an "at Full Mana" line shows as active on the character panel.',
-    source: "CLAUDE.md (Full Life, 2026-10-12); src/engine/text/line-conditions.js",
+    source: "CLAUDE.md (Full Life, 2026-10-12); packages/engine/src/text/line-conditions.js",
     appliesWhen: (ctx) => ctx.hasText(/\bFull Mana\b/i) && (ctx.lineState.manaRemainingPercent ?? 100) < 95,
   },
   {
@@ -382,7 +382,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     ],
     test: "With the core and only that gain source, watch the Agility stack count (or the Blur icon) while casting the Main Skill at the dummy, and count how often a cast finds a stack.",
     source:
-      "research/core-talents-audit-2026-10-18.md §6 Q5; research/google-ai-mode-answers-2026-10-19.md; src/engine/talents/consumption-procs.js",
+      "research/core-talents-audit-2026-10-18.md §6 Q5; research/google-ai-mode-answers-2026-10-19.md; packages/engine/src/talents/consumption-procs.js",
     appliesWhen: (ctx) => {
       const consumption = ctx.planner.lineEffects?.state?.consumption;
       return (
@@ -407,7 +407,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       { reading: "Thunderclap never lowers the held stacks below 1", effect: "one stack's effect kept: higher damage" },
     ],
     test: "With Thunderclap and a slow Agility source (one stack per second), cast quickly at the dummy and watch the Agility stack count between casts.",
-    source: "research/core-talents-audit-2026-10-18.md §5 B3; src/engine/talents/consumption-procs.js",
+    source: "research/core-talents-audit-2026-10-18.md §5 B3; packages/engine/src/talents/consumption-procs.js",
     appliesWhen: (ctx) => hasCore(ctx, "Thunderclap"),
   },
   {
@@ -420,7 +420,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       "Provisional (core audit batch B4): only your own crits add stacks; Minion crits add none. Answered (user-supplied 2026-10-19): each stack keeps its own 8 s timer, and the Armor part compounds (Armor × 0.9 ^ stacks).",
     alternatives: [{ reading: "Minion crits add stacks too", effect: "more stacks for Minion builds" }],
     test: "With Juggernaut on a Minion build whose Minions crit, let only the Minions hit the dummy and watch whether its Juggernaut debuff icon gains stacks.",
-    source: "research/core-talents-audit-2026-10-18.md §4.4 (Juggernaut), §5 B4; src/engine/combat-states.js",
+    source: "research/core-talents-audit-2026-10-18.md §4.4 (Juggernaut), §5 B4; packages/engine/src/combat-states.js",
     appliesWhen: (ctx) => hasCore(ctx, "Juggernaut"),
   },
   {
@@ -439,7 +439,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       { reading: "The Two-Handed and main-hand bonuses count too", effect: "higher spell hits with a two-hander" },
     ],
     test: "With Towering Presence and a plain weapon, compare a spell's tooltip damage with and without the weapon equipped.",
-    source: "research/core-talents-audit-2026-10-18.md §5 B5; src/engine/talents/towering-presence.js",
+    source: "research/core-talents-audit-2026-10-18.md §5 B5; packages/engine/src/talents/towering-presence.js",
     appliesWhen: (ctx) => hasCore(ctx, "Towering Presence"),
   },
   {
@@ -458,7 +458,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     ],
     test: "With Stab In The Back and a Blur source, cast the Main Skill repeatedly and watch how long the Blur icon stays between casts.",
     source:
-      "research/core-talents-audit-2026-10-18.md §5 B3; src/engine/talents/consumption-procs.js; src/engine/combat/blur-effects.js",
+      "research/core-talents-audit-2026-10-18.md §5 B3; packages/engine/src/talents/consumption-procs.js; packages/engine/src/combat/blur-effects.js",
     appliesWhen: (ctx) => hasCore(ctx, "Stab In The Back"),
   },
   {
@@ -477,7 +477,8 @@ export const OPEN_QUESTIONS = Object.freeze([
       { reading: "The splits take Shotgun falloff on the same target", effect: "less than 1 hit per split" },
     ],
     test: "Cast Bombard or Flame Jet at the dummy with and without the core, and count the damage numbers per cast.",
-    source: "research/google-ai-mode-answers-2026-10-19.md; src/engine/skills/skill-hit-model.js parabolicSplit",
+    source:
+      "research/google-ai-mode-answers-2026-10-19.md; packages/engine/src/skills/skill-hit-model.js parabolicSplit",
     appliesWhen: (ctx) =>
       hasCore(ctx, "Three Birds with One Stone") &&
       ctx.setups.some((setup) => (setup.tags || []).includes("Parabolic")),
@@ -495,7 +496,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       { reading: "A Module's max quantity is 1", effect: "×0.5 on the Module's damage (no second Minion)" },
     ],
     test: "Summon a Module with Rally and count the Minions on the field.",
-    source: "research/google-ai-mode-answers-2026-10-19.md; src/engine/minions/minion-damage-model.js",
+    source: "research/google-ai-mode-answers-2026-10-19.md; packages/engine/src/minions/minion-damage-model.js",
     appliesWhen: (ctx) =>
       hasCore(ctx, "Rally") && ctx.minions.some((minion) => minion.modeled && minion.family === "module"),
   },
@@ -589,7 +590,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       { reading: "Only one lands", effect: "a single hit per cast" },
     ],
     test: "Within 6 m, count the damage numbers per cast on the dummy, with and without Multiple Projectiles.",
-    source: "CLAUDE.md (Shotgun Effect); src/engine/combat/shotgun-effect.js",
+    source: "CLAUDE.md (Shotgun Effect); packages/engine/src/combat/shotgun-effect.js",
     appliesWhen: (ctx) =>
       ctx.components.some(
         ({ hit, component }) =>
@@ -683,7 +684,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     current: "Provisional (the user's source): yes, continuous on every tier.",
     alternatives: [{ reading: "The Boss lockout still applies", effect: "Ill Omen fires once on a Boss" }],
     test: "A long Boss or dummy run with Reap Purification, watching for repeated True Damage numbers.",
-    source: "src/engine/ailments/ill-omen.js; research/google-ai-mode-answers-2026-10-13.md",
+    source: "packages/engine/src/ailments/ill-omen.js; research/google-ai-mode-answers-2026-10-13.md",
     appliesWhen: (ctx) => Boolean(ctx.planner.illOmen?.reapPurification?.active),
   },
   {
@@ -732,7 +733,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       },
     ],
     test: "A Scorching Beam dummy run in Bard with Scorch on and off.",
-    source: "src/engine/skills/scorching-beam-delivery.js; research/dummy-54s-gap-2026-10-09.md",
+    source: "packages/engine/src/skills/scorching-beam-delivery.js; research/dummy-54s-gap-2026-10-09.md",
     appliesWhen: (ctx) =>
       ctx.heroId === "selena-sing-with-the-tide" &&
       ctx.setupNames.has("Scorching Beam") &&
@@ -1055,7 +1056,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     source: `${HERO_TRAIT_AUDIT} (§5 B2)`,
     appliesWhen: (ctx) => traitPicked(ctx, "gemma-ice-fire-fusion", "Ice to Blaze"),
   },
-  // Hero trait audit B3 (2026-10-19; src/engine/heroes/gemma-traits.js, src/engine/heroes/hero-trait-modules.js): Gemma's provisional readings.
+  // Hero trait audit B3 (2026-10-19; packages/engine/src/heroes/gemma-traits.js, packages/engine/src/heroes/hero-trait-modules.js): Gemma's provisional readings.
   {
     id: "gemma-frostfire-rampage-cycle",
     title: "Frostfire Rampage: do casts during the cooldown count?",
@@ -1166,7 +1167,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     source: `${HERO_TRAIT_AUDIT} (§5 B3)`,
     appliesWhen: (ctx) => traitPicked(ctx, "gemma-flame-of-pleasure", "Dress Licker"),
   },
-  // Hero trait audit B4 (2026-10-19; src/engine/heroes/youga-spacetime.js, src/engine/heroes/hero-trait-modules.js): Youga – Spacetime Illusion and Spacetime
+  // Hero trait audit B4 (2026-10-19; packages/engine/src/heroes/youga-spacetime.js, packages/engine/src/heroes/hero-trait-modules.js): Youga – Spacetime Illusion and Spacetime
   // Elapse's provisional readings (Q-H5, Q-H6).
   {
     id: "youga-illusion-rate",
@@ -1283,7 +1284,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       ctx.heroId === "youga-spacetime-elapse" &&
       ctx.hasText(/^When dealing damage to enemies in Twisted Spacetime, Reaps/i),
   },
-  // Hero trait audit B5 (2026-10-19; src/engine/heroes/erika-traits.js, src/engine/heroes/vendetta-model.js, src/engine/heroes/hero-trait-modules.js): Erika – Lightning
+  // Hero trait audit B5 (2026-10-19; packages/engine/src/heroes/erika-traits.js, packages/engine/src/heroes/vendetta-model.js, packages/engine/src/heroes/hero-trait-modules.js): Erika – Lightning
   // Shadow and Vendetta's Sting. Shown only for those Erika loadouts.
   {
     id: "erika-feline-figure-cadence",
@@ -1404,7 +1405,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       (traitPicked(ctx, "erika-vendettas-sting", "Feline Fury") ||
         ctx.hasText(/^For every 3 casts of Vendetta, generates/i)),
   },
-  // Hero trait audit B6 (2026-10-19; src/engine/heroes/moto-iris-traits.js, src/engine/minions/minion-damage-model.js, src/engine/heroes/hero-trait-modules.js): Moto (Order
+  // Hero trait audit B6 (2026-10-19; packages/engine/src/heroes/moto-iris-traits.js, packages/engine/src/minions/minion-damage-model.js, packages/engine/src/heroes/hero-trait-modules.js): Moto (Order
   // Calling, Charge Calling) and Iris (Growing Breeze, Vigilant Breeze). Shown only for those loadouts.
   {
     id: "moto-overload-uptime",
@@ -1528,7 +1529,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     appliesWhen: (ctx) =>
       ctx.heroId === "iris-vigilant-breeze" && traitPicked(ctx, "iris-vigilant-breeze", "Vigilant Breeze"),
   },
-  // Hero trait audit B7 (2026-10-19; src/engine/heroes/thea-traits.js, src/engine/defense/blessing-model.js, src/engine/heroes/hero-trait-modules.js): Thea (Wisdom of The
+  // Hero trait audit B7 (2026-10-19; packages/engine/src/heroes/thea-traits.js, packages/engine/src/defense/blessing-model.js, packages/engine/src/heroes/hero-trait-modules.js): Thea (Wisdom of The
   // Gods, Incarnation of the Gods, Blasphemer) and Rosa's Holy Domain duration (Q-H7). Shown only for those loadouts.
   {
     id: "thea-divine-blessing-cycle",
@@ -1667,7 +1668,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       ctx.heroId === "rosa-high-court-chariot" &&
       ctx.hasText(/^While inside the Holy Domain ?, \+\d+(?:\.\d+)? ?% additional damage$/i),
   },
-  // Hero trait audit B8 (2026-10-19; src/engine/heroes/sage-traits.js, src/engine/skills/elixir-model.js, src/engine/heroes/hero-trait-modules.js "sageScent"): Sage – Licorice
+  // Hero trait audit B8 (2026-10-19; packages/engine/src/heroes/sage-traits.js, packages/engine/src/skills/elixir-model.js, packages/engine/src/heroes/hero-trait-modules.js "sageScent"): Sage – Licorice
   // Note's Scent Bottles. Shown only for Sage.
   {
     id: "sage-scent-bottle-slots",
@@ -1826,7 +1827,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     source: `${HERO_TRAIT_AUDIT} (§5 B8)`,
     appliesWhen: (ctx) => ctx.heroId === "sage-licorice-note" && Boolean(ctx.lineState.sage?.omni),
   },
-  // Hero trait audit B9 (2026-10-19; src/engine/heroes/carino-traits.js, src/engine/heroes/hero-trait-modules.js, src/engine/planner.js): Carino (Ranger of Glory, Lethal
+  // Hero trait audit B9 (2026-10-19; packages/engine/src/heroes/carino-traits.js, packages/engine/src/heroes/hero-trait-modules.js, packages/engine/src/planner.js): Carino (Ranger of Glory, Lethal
   // Flash, Zealot of War). Shown only for Carino; Firepower Coverage (Q-H15) only for Bing – Blast Nova with the pick.
   {
     id: "carino-ammo-cadence",
@@ -2003,7 +2004,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     source: `${HERO_TRAIT_AUDIT} (§6 Q-H15)`,
     appliesWhen: (ctx) => ctx.heroId === "bing-blast-nova" && Boolean(ctx.lineState.firepowerCoverage),
   },
-  // Hero trait audit B10 (2026-10-19; src/engine/heroes/rehan-traits.js, src/engine/heroes/hero-trait-modules.js, src/engine/planner.js): Rehan (Anger, Seething Silhouette)
+  // Hero trait audit B10 (2026-10-19; packages/engine/src/heroes/rehan-traits.js, packages/engine/src/heroes/hero-trait-modules.js, packages/engine/src/planner.js): Rehan (Anger, Seething Silhouette)
   // and its revived affixes. Shown only for Rehan.
   {
     id: "rehan-rage-cycle",

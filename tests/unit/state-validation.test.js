@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { clampCombatNumber, validatePlannerState } from "../../src/engine/state/state-validation.ts";
-import { defaultPlannerState } from "../../src/engine/state/planner-state.ts";
+import { clampCombatNumber, validatePlannerState } from "../../packages/engine/src/state/state-validation.ts";
+import { defaultPlannerState } from "../../packages/engine/src/state/planner-state.ts";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),

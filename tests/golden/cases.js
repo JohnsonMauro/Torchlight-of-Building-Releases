@@ -3,11 +3,11 @@
 // and combat-setting variants. Imports are relative to this file so tests/golden/diff.js can run the copy from an older
 // git ref against its own src/.
 import { readFileSync } from "node:fs";
-import { calculatePlanner } from "../../src/engine/planner.js";
-import { defaultPlannerState, normalizePlannerState } from "../../src/engine/state/planner-state.ts";
-import { switchHeroLoadout } from "../../src/engine/heroes/hero-loadouts.js";
-import { heroCatalogSs14 } from "../../src/data/heroes/hero-catalog-ss14.js";
-import { allHeroTraitsSs14 } from "../../src/data/heroes/all-hero-traits-ss14.generated.js";
+import { calculatePlanner } from "../../packages/engine/src/planner.js";
+import { defaultPlannerState, normalizePlannerState } from "../../packages/engine/src/state/planner-state.ts";
+import { switchHeroLoadout } from "../../packages/engine/src/heroes/hero-loadouts.js";
+import { heroCatalogSs14 } from "../../packages/engine/data/heroes/hero-catalog-ss14.js";
+import { allHeroTraitsSs14 } from "../../packages/engine/data/heroes/all-hero-traits-ss14.generated.js";
 
 const TRAIT_LEVELS = [45, 60, 75];
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8"));

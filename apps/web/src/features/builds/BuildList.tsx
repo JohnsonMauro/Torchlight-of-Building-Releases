@@ -1,4 +1,4 @@
-import { heroById } from "@legacy/engine/index.ts";
+import { heroById } from "#engine";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { BuildLibrary, LibraryBuild } from "./build-library";
 import {

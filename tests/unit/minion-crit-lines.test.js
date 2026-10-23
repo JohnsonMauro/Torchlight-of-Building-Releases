@@ -1,10 +1,10 @@
 // Minion crit lines named before the noun ("+10% Minion Critical Strike Rating": talent nodes and the Ethereal Prism "also
-// gain" affixes; src/engine/minions/minion-damage-model.js), read like the "… for Minions" wording, and reaching a modeled Magus.
+// gain" affixes; packages/engine/src/minions/minion-damage-model.js), read like the "… for Minions" wording, and reaching a modeled Magus.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { classifyMinionLine } from "../../src/engine/minions/minion-damage-model.js";
-import { calculatePlanner } from "../../src/engine/planner.js";
+import { classifyMinionLine } from "../../packages/engine/src/minions/minion-damage-model.js";
+import { calculatePlanner } from "../../packages/engine/src/planner.js";
 
 const youga = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
