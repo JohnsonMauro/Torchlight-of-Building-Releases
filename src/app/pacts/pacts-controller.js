@@ -1,6 +1,5 @@
 // The Pactspirits section: spirits, Fate slots and the Kismet crafter.
 import {
-  activeCapturedPactspirits,
   equippedKismetSummary,
   fateExtraSlots,
   fateSlotChoice,
@@ -17,7 +16,6 @@ import {
   pactspiritLevel,
   pactspiritTrees,
   selectPactspirit,
-  selenaScorchingBeamPacts,
   starTrailNote,
   togglePactNodeChain,
   transferKismetSlot,
@@ -55,10 +53,6 @@ export const pactCommands = {
       selectedPactspiritSlot,
       name,
     );
-    plannerState.pacts.activeSpirits = activeCapturedPactspirits(
-      plannerState.pacts.selectedSpirits,
-      selenaScorchingBeamPacts.pactspirits.map((spirit) => spirit.name),
-    );
     closeDialog("pactspirit-selector");
     refreshPactCandidate();
   },
@@ -88,7 +82,6 @@ export const pactCommands = {
   closeKismetCrafter: () => {
     activeKismetSlot = null;
   },
-  clearKismetSlot: clearKismetNode,
   openFateSlotSelector,
   clearFateSlots,
   selectFateSlots,
@@ -125,7 +118,6 @@ const lineCoverage = (status, line) => {
 function pactNodeTooltip(target) {
   const equipped = target.key ? plannerState.pacts.kismetSlots?.[target.key] : null,
     kismet = kismetCatalog.find((item) => item.name === equipped?.name);
-  const slotMode = Boolean(plannerState.pacts.kismetSlotMode);
   if (kismet) {
     const boost = microFateEffectScale(plannerState.pacts, target.key);
     return kismetTooltipView({
@@ -136,7 +128,6 @@ function pactNodeTooltip(target) {
       })),
       boostNote: starTrailNote(boost) || "",
       nodeName: target.name,
-      slotMode,
       extra: target.extra,
     });
   }
@@ -156,7 +147,6 @@ function pactNodeTooltip(target) {
           }))
         : [],
     effectCoverage: target.effect ? lineCoverage(pactEffectCoverage(target.effect), target.effect) : null,
-    slotMode,
     allocated: target.allocated,
     holdsKismet: Boolean(kismetKindForRing(target.ring)),
   });
@@ -177,10 +167,7 @@ function pactspiritTooltip(name, place) {
 }
 
 export function selectedPactspiritLevel(name) {
-  const fallback = plannerState.pacts.kismetSlotMode
-    ? 1
-    : selenaScorchingBeamPacts.pactspirits.find((spirit) => spirit.name === name)?.rank || 1;
-  return pactspiritLevel(name, plannerState.pacts.spiritLevels, fallback);
+  return pactspiritLevel(name, plannerState.pacts.spiritLevels, 1);
 }
 
 // The Pactspirits section is React (apps/web/src/features/pacts): it re-reads its source.
@@ -191,10 +178,6 @@ export function renderPacts() {
 function removeSelectedPactspirit(index) {
   if (!plannerState.pacts.selectedSpirits[index]) return;
   plannerState.pacts.selectedSpirits[index] = "";
-  plannerState.pacts.activeSpirits = activeCapturedPactspirits(
-    plannerState.pacts.selectedSpirits,
-    selenaScorchingBeamPacts.pactspirits.map((spirit) => spirit.name),
-  );
   refreshPactCandidate();
 }
 
@@ -218,7 +201,6 @@ function selectFateSlots(choiceId) {
   );
   plannerState.pacts.fateUnlocks = nextUnlocks;
   plannerState.pacts.kismetSlots = nextKismets;
-  plannerState.pacts.kismetSlotMode = true;
   closeDialog("fate-slot-selector");
   refreshPactCandidate();
 }
@@ -230,13 +212,6 @@ function clearFateSlots(name) {
   plannerState.pacts.kismetSlots = Object.fromEntries(
     Object.entries(plannerState.pacts.kismetSlots || {}).filter(([key]) => !key.startsWith(`${name}:extra:`)),
   );
-  refreshPactCandidate();
-}
-function clearKismetNode(key) {
-  if (!plannerState.pacts.kismetSlots?.[key]) return;
-  const slots = { ...plannerState.pacts.kismetSlots };
-  delete slots[key];
-  plannerState.pacts.kismetSlots = slots;
   refreshPactCandidate();
 }
 // The Kismet crafter (apps/web/src/features/pacts/KismetCrafterDialog.tsx) shows the "kismetCrafter" source for the slot
@@ -340,11 +315,7 @@ function saveKismetSlot(clear = false) {
   else {
     const entry = kismetCatalog.find((item) => item.name === selectedKismetName && item.kind === activeKismetSlot.kind);
     if (!entry) return;
-    const current = equippedKismetSummary(selenaScorchingBeamPacts, {
-      ...plannerState.pacts,
-      kismetSlotMode: true,
-      kismetSlots: next,
-    });
+    const current = equippedKismetSummary({ ...plannerState.pacts, kismetSlots: next });
     if (
       !next[activeKismetSlot.key] &&
       (entry.kind === "micro" ? current.microCount >= current.microMax : current.mediumCount >= current.mediumMax)
@@ -355,7 +326,6 @@ function saveKismetSlot(clear = false) {
     next[activeKismetSlot.key] = { name: entry.name, rolls: normalizeKismetRolls(entry, selectedKismetRolls) };
   }
   plannerState.pacts.kismetSlots = next;
-  plannerState.pacts.kismetSlotMode = true;
   closeDialog("kismet-crafter");
   activeKismetSlot = null;
   refreshPactCandidate();
@@ -368,11 +338,7 @@ function moveKismet(fromKey, toKey, kind, duplicate) {
     return;
   }
   if (result.action === "unchanged") return;
-  const summary = equippedKismetSummary(selenaScorchingBeamPacts, {
-    ...plannerState.pacts,
-    kismetSlotMode: true,
-    kismetSlots: result.slots,
-  });
+  const summary = equippedKismetSummary({ ...plannerState.pacts, kismetSlots: result.slots });
   if (summary.microCount > summary.microMax || summary.mediumCount > summary.mediumMax) {
     showToast(`${kind === "micro" ? "Micro" : "Medium"} Kismet slots are full`);
     return;

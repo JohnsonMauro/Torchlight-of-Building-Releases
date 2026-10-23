@@ -2781,7 +2781,6 @@ function calculatePlannerOnce(
     talents: levelSources.talents,
     slates: levelSources.slates,
     memories: heroMemories,
-    pact,
     pactState: state.pacts,
     talentState: state.talents,
     blockedRecently: requestedConditions.blockedRecently !== false,

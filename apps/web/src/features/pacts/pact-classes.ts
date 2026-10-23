@@ -92,7 +92,7 @@ function stateClasses({ drag, craftable, draggable, violet, allocated, outer }: 
   ];
 }
 
-/** A tree node's classes from its data (slot mode makes inner/mid/outer/Fate nodes switchable). */
+/** A tree node's classes from its data (inner/mid/outer/Fate nodes are switchable). */
 export function nodeClasses(node: PactNodeView, switchable: boolean, drag: DragState) {
   return [
     "pact-tree-node",
@@ -113,10 +113,10 @@ export function nodeClasses(node: PactNodeView, switchable: boolean, drag: DragS
     .join(" ");
 }
 
-/** Unallocated nodes in slot mode: greyed art. */
+/** Unallocated nodes: greyed art. */
 export const nodeImage = (dimmed: boolean) => `size-full object-contain${dimmed ? " opacity-40 grayscale" : ""}`;
 
-/** Slot mode's badge at the node's top right: "+" to allocate, a green check once allocated. */
+/** The badge at the node's top right: "+" to allocate, a green check once allocated. */
 export const nodeStatus = (allocated: boolean) =>
   "pointer-events-none absolute -top-1.75 -right-1.25 z-2 grid size-4.25 place-items-center rounded-full border " +
   "text-[10px]/none font-bold not-italic " +

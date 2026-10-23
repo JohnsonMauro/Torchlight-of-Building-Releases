@@ -44,17 +44,14 @@ export interface KismetTooltipInput {
   boostNote: string;
   /** The node it replaces. */
   nodeName: string;
-  slotMode: boolean;
   /** A Fate slot's extra Kismet slot. */
   extra: boolean;
 }
 export function kismetTooltipView(input: KismetTooltipInput): PactTooltipView {
   const { kismet } = input;
-  const actions = input.slotMode
-    ? input.extra
-      ? "Right-click to edit or clear"
-      : "Left-click to allocate · Right-click to edit or clear"
-    : "Click to edit · Right-click to remove";
+  const actions = input.extra
+    ? "Right-click to edit or clear"
+    : "Left-click to allocate · Right-click to edit or clear";
   return {
     rarity: kismet.rarity.toLowerCase(),
     icon: kismet.icon,
@@ -76,7 +73,6 @@ export interface PactNodeTooltipInput {
   /** The spirit's level bonuses (the outer node shows them), each with its coverage. */
   rewards: { text: string; coverage: CoverageView }[];
   effectCoverage: CoverageView | null;
-  slotMode: boolean;
   allocated: boolean;
   /** Micro and Medium nodes take a Kismet. */
   holdsKismet: boolean;
@@ -93,13 +89,7 @@ export function pactNodeTooltipView(input: PactNodeTooltipInput): PactTooltipVie
       ? [{ kind: "text", text: text(input.effect), coverage: input.effectCoverage }]
       : [];
   const destiny = input.ring === "destiny";
-  const footer = input.slotMode
-    ? `Left-click to ${input.allocated ? "refund" : "allocate"}${destiny ? " · Right-click to configure Fate slots" : input.holdsKismet ? " · Right-click to add a Kismet" : ""}`
-    : destiny
-      ? "Click to unlock extra Fate slots · Right-click to remove them"
-      : input.holdsKismet
-        ? "Click to craft a Kismet · Right-click to remove"
-        : "TLIDB · outer node";
+  const footer = `Left-click to ${input.allocated ? "refund" : "allocate"}${destiny ? " · Right-click to configure Fate slots" : input.holdsKismet ? " · Right-click to add a Kismet" : ""}`;
   return {
     rarity: input.spirit?.rarity ? input.spirit.rarity.toLowerCase() : null,
     icon: input.icon,

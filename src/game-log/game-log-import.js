@@ -54,7 +54,6 @@ import {
   progressionSupportTierData,
   rareBaseByGameId,
   rareBaseByName,
-  selenaScorchingBeamPacts,
   slateOffsets,
   slateTransformRules,
   specialSupportTierData,
@@ -772,17 +771,11 @@ export function blankPlannerState() {
   };
   state.followers = defaultFollowerState(); // never carried over from the open build
   state.pacts = {
-    activeSpirits: Object.fromEntries(selenaScorchingBeamPacts.pactspirits.map((spirit) => [spirit.name, false])),
     selectedSpirits: ["", "", ""],
     spiritLevels: {},
     nativeNodeQuantities: {},
     kismetSlots: {},
     fateUnlocks: {},
-    kismetSlotMode: true,
-    volcanoEnabled: [false, false, false, false],
-    reapingDurationQuantity: 0,
-    spellBlockEnabled: [false],
-    attackBlockEnabled: [false, false],
   };
   return state;
 }
@@ -2451,7 +2444,6 @@ function resolvePacts(tree, idMap, report, state, pactDonors = []) {
     }
     spirit.planner = true;
     state.pacts.selectedSpirits[spirit.area - 1] = spirit.name;
-    state.pacts.activeSpirits[spirit.name] = true;
     const owned = levels.get(spirit.servantId);
     if (owned && owned.starLevel != null && Number.isFinite(Number(owned.starLevel))) {
       state.pacts.spiritLevels[spirit.name] = Math.max(1, Math.min(6, Number(owned.starLevel) + 1));

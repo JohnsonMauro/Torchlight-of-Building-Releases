@@ -1,4 +1,3 @@
-export const defaultPactspiritSlots = ["Preserver of Eternity", "Abyssal King Soul", "Knight of Pale Blue"];
 const pactspiritRarityOrder = { Legendary: 0, Rare: 1, Magic: 2 };
 
 export function sortPactspirits(entries) {
@@ -14,8 +13,4 @@ export function selectPactspirit(slots, slot, name) {
   if (previous !== -1 && previous !== slot) next[previous] = next[slot];
   next[slot] = name;
   return next;
-}
-
-export function activeCapturedPactspirits(slots, capturedNames) {
-  return Object.fromEntries(capturedNames.map((name) => [name, slots.includes(name)]));
 }

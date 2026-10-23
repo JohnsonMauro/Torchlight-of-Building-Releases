@@ -64,10 +64,7 @@ export function collectReapingSources(equipment, pactState = {}, igniteChancePer
       .filter(Boolean),
   );
   const spirit = "Fire Swordsman";
-  const selected =
-    pactState.kismetSlotMode &&
-    pactState.selectedSpirits?.includes(spirit) &&
-    pactState.activeSpirits?.[spirit] !== false;
+  const selected = pactState.selectedSpirits?.includes(spirit);
   const nodes = orderedPactspiritNodes(pactspiritTrees[spirit]);
   const outerIndex = nodes.findIndex((node) => node.ring === "outer");
   const allocated = selected && outerIndex >= 0 && pactState.nativeNodeQuantities?.[`${spirit}:${outerIndex}`] === 1;

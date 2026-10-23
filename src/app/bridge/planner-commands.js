@@ -123,7 +123,6 @@
  * @property {(name: string, nodeIndex: number) => void} togglePactNode Kismet slot mode: allocates or refunds a node
  *   (with the nodes it needs or that need it).
  * @property {(key: string, kind: "micro" | "medium") => void} openKismetCrafter Opens the Kismet crafter for a slot.
- * @property {(key: string) => void} clearKismetSlot Removes the Kismet in a slot.
  * @property {(name: string) => void} openFateSlotSelector Opens the extra Fate slot choices of a Pactspirit.
  * @property {(name: string) => void} clearFateSlots Removes a Pactspirit's extra Fate slots (and their Kismets).
  * @property {(id: string) => void} selectFateSlots Fate slot selector: unlocks those extra slots on the Pactspirit it is open

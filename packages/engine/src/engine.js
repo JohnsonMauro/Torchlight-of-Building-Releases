@@ -1173,7 +1173,6 @@ export function calculateTalentSlateCandidate({
 
 export function calculatePactCandidate(pactSetup, state = {}, snapshot) {
   const defenseSources = [];
-  const activeSpirits = state.activeSpirits || {};
   const nativeQuantities = state.nativeNodeQuantities || {};
   const totals = {
     elementalResistancePercent: 0,
@@ -1191,39 +1190,30 @@ export function calculatePactCandidate(pactSetup, state = {}, snapshot) {
       if (key === "additionalDamageTakenPercent") defenseSources.push({ type: "all", value });
     }
   };
-  // Kismet-slot builds may select any pact spirit, not only the captured ones: uncaptured spirits
-  // are read from the full catalog (level effects and node trees), the same way as captured ones.
-  const capturedNames = new Set(pactSetup.pactspirits.map((spirit) => spirit.name));
-  const uncapturedSpirits =
-    state.kismetSlotMode && Array.isArray(state.selectedSpirits)
-      ? [
-          ...new Set(
-            state.selectedSpirits.filter(
-              (name) => name && !capturedNames.has(name) && (pactspiritTrees[name] || pactspiritLevels[name]),
-            ),
-          ),
-        ].map((name) => ({ name, rank: 1, effectsAtRank: [], unreplacedNativeNodes: [], uncaptured: true }))
-      : [];
+  // The selected pact spirits, read from the catalog (level effects and node trees).
+  const spirits = [
+    ...new Set(
+      (state.selectedSpirits || []).filter((name) => name && (pactspiritTrees[name] || pactspiritLevels[name])),
+    ),
+  ];
   // A selected spirit without a saved level is calculated at Lv1; report it so the assumption is visible.
   const levelAssumptions = [];
   // Each "+X% additional damage" pact / kismet line on its own (game: attr 5719 operation 4; the generic collector keeps every
   // operation-4 entry as a separate multiplier, research/equipped-damage-source-map-2026-10-07.md). The ledgers multiply them
   // (pact badge audit 2026-10-13; before, the DoT and beam ledgers summed them into one "Pacts: additional damage" factor).
   const additionalDamageLines = [];
-  for (const spirit of [...pactSetup.pactspirits, ...uncapturedSpirits]) {
-    if (activeSpirits[spirit.name] === false) continue;
-    if (state.kismetSlotMode && Array.isArray(state.selectedSpirits) && !state.selectedSpirits.includes(spirit.name))
-      continue;
-    const level = pactspiritLevel(spirit.name, state.spiritLevels, state.kismetSlotMode ? 1 : spirit.rank);
+  for (const name of spirits) {
+    const spirit = { name };
+    const level = pactspiritLevel(spirit.name, state.spiritLevels, 1);
     const savedLevel = Number(state.spiritLevels?.[spirit.name]);
-    if (state.kismetSlotMode && !(Number.isInteger(savedLevel) && savedLevel >= 1))
+    if (!(Number.isInteger(savedLevel) && savedLevel >= 1))
       levelAssumptions.push({
         spirit: spirit.name,
         level,
         text: `${spirit.name}: pact spirit level not set, assumed Lv${level}.`,
       });
     const levelEffects = pactspiritEffectsAtLevel(spirit.name, level);
-    const nodeSequence = state.kismetSlotMode ? orderedPactspiritNodes(pactspiritTrees[spirit.name]) : [];
+    const nodeSequence = orderedPactspiritNodes(pactspiritTrees[spirit.name]);
     const destinyIndex = nodeSequence.findIndex((node) => node.ring === "destiny");
     if (
       destinyIndex >= 0 &&
@@ -1237,13 +1227,10 @@ export function calculatePactCandidate(pactSetup, state = {}, snapshot) {
       }
     }
     const outerIndex = nodeSequence.findIndex((node) => node.ring === "outer");
-    const outerAllocated =
-      !state.kismetSlotMode || (outerIndex >= 0 && nativeQuantities[`${spirit.name}:${outerIndex}`] === 1);
+    const outerAllocated = outerIndex >= 0 && nativeQuantities[`${spirit.name}:${outerIndex}`] === 1;
     // A level effect that joins two stats with "; " ("+7% additional damage; +7% additional Minion Damage", Cloudgatherer - Violet)
     // is read as two effects (frost-terra audit 2026-10-13; before, the joined text matched no pattern).
-    for (const effect of (outerAllocated ? (levelEffects.length ? levelEffects : spirit.effectsAtRank) : []).flatMap(
-      (text) => String(text).split(/;\s*(?=[+-]\d)/),
-    )) {
+    for (const effect of (outerAllocated ? levelEffects : []).flatMap((text) => String(text).split(/;\s*(?=[+-]\d)/))) {
       const physical = normalizePercentageText(effect).match(
         /^([+-]?[\d.]+)% additional Physical Damage taken when there (?:is|are) only 1 enem(?:y|ies) Nearby$/i,
       );
@@ -1262,73 +1249,32 @@ export function calculatePactCandidate(pactSetup, state = {}, snapshot) {
       match = normalizePercentageText(effect).match(/^\+([0-9.]+)% additional Reaping Recovery Speed$/i);
       if (match) add("additionalReapingRecoverySpeedPercent", Number(match[1]));
     }
-    if (state.kismetSlotMode) {
-      nodeSequence.forEach((node, index) => {
-        if (
-          !node ||
-          !["inner", "mid"].includes(node.ring) ||
-          nativeQuantities[`${spirit.name}:${index}`] !== 1 ||
-          state.kismetSlots?.[`${spirit.name}:${index}`]
-        )
-          return;
-        const effect = nativePactspiritNodeEffect(node);
-        if (effect) add(effect.stat, effect.value);
-      });
-    } else {
-      for (const node of spirit.unreplacedNativeNodes) {
-        const key = `${spirit.name}:${node.name}`;
-        const quantity = Math.max(0, Math.min(node.quantity, nativeQuantities[key] ?? node.quantity));
-        for (const [stat, value] of Object.entries(node.effectsPerNode)) add(stat, value * quantity);
-      }
-    }
+    nodeSequence.forEach((node, index) => {
+      if (
+        !node ||
+        !["inner", "mid"].includes(node.ring) ||
+        nativeQuantities[`${spirit.name}:${index}`] !== 1 ||
+        state.kismetSlots?.[`${spirit.name}:${index}`]
+      )
+        return;
+      const effect = nativePactspiritNodeEffect(node);
+      if (effect) add(effect.stat, effect.value);
+    });
   }
-  const volcano = pactSetup.kismets[0];
-  const volcanoEnabled = Array.isArray(state.volcanoEnabled) ? state.volcanoEnabled : volcano.rolls.map(() => true);
-  const kismetLines = state.kismetSlotMode ? activeKismetEffects(state) : [];
-  let enabledVolcanoRolls = [];
-  let additionalIgniteDurationRolls = [];
-  if (state.kismetSlotMode) {
-    for (const line of kismetLines) {
-      const effect = parseKismetEffect(line.text);
-      if (!effect) continue;
-      add(effect.stat, effect.value);
-      if (effect.stat === "outgoingAdditionalDamagePercent")
-        additionalDamageLines.push({ source: line.source, text: line.text, value: effect.value });
-      if (effect.stat === "additionalIgniteDurationPercent")
-        additionalIgniteDurationRolls.push({ source: line.name, key: line.key, value: effect.value });
-    }
-    enabledVolcanoRolls = [
-      ...new Set(kismetLines.filter((line) => line.name === "Kismet: Volcano").map((line) => line.key)),
-    ];
-  } else {
-    enabledVolcanoRolls = volcano.rolls.filter((_, index) => volcanoEnabled[index] !== false);
-    additionalIgniteDurationRolls = volcano.rolls.flatMap((roll, index) =>
-      volcanoEnabled[index] !== false
-        ? [{ source: "Kismet: Volcano", key: `captured:${index}`, value: roll.additionalIgniteDurationPercent }]
-        : [],
-    );
-    totals.igniteLimit = enabledVolcanoRolls.reduce((sum, roll) => sum + roll.igniteLimit, 0);
-    totals.chanceToIgniteTargetsPercent = enabledVolcanoRolls.reduce(
-      (sum, roll) => sum + roll.chanceToIgniteTargetsPercent,
-      0,
-    );
-    totals.additionalIgniteDurationPercent = enabledVolcanoRolls.reduce(
-      (sum, roll) => sum + roll.additionalIgniteDurationPercent,
-      0,
-    );
-    const reapingQuantity = Math.max(0, Math.min(5, state.reapingDurationQuantity ?? 5));
-    totals.reapingDurationPercent = reapingQuantity * 12;
-    const spellEnabled = Array.isArray(state.spellBlockEnabled) ? state.spellBlockEnabled : [true];
-    totals.spellBlockChancePercent = [6].reduce(
-      (sum, value, index) => sum + (spellEnabled[index] === false ? 0 : value),
-      0,
-    );
-    const attackEnabled = Array.isArray(state.attackBlockEnabled) ? state.attackBlockEnabled : [true, true];
-    totals.attackBlockChancePercent = [6, 8].reduce(
-      (sum, value, index) => sum + (attackEnabled[index] === false ? 0 : value),
-      0,
-    );
+  const kismetLines = activeKismetEffects(state);
+  const additionalIgniteDurationRolls = [];
+  for (const line of kismetLines) {
+    const effect = parseKismetEffect(line.text);
+    if (!effect) continue;
+    add(effect.stat, effect.value);
+    if (effect.stat === "outgoingAdditionalDamagePercent")
+      additionalDamageLines.push({ source: line.source, text: line.text, value: effect.value });
+    if (effect.stat === "additionalIgniteDurationPercent")
+      additionalIgniteDurationRolls.push({ source: line.name, key: line.key, value: effect.value });
   }
+  const enabledVolcanoRolls = [
+    ...new Set(kismetLines.filter((line) => line.name === "Kismet: Volcano").map((line) => line.key)),
+  ];
   totals.igniteLimit ??= 0;
   totals.reapingDurationPercent ??= 0;
   const baselineIgniteLimit = 10;
@@ -1348,7 +1294,6 @@ export function calculatePactCandidate(pactSetup, state = {}, snapshot) {
   return {
     totals,
     levelAssumptions,
-    uncapturedSpirits: uncapturedSpirits.map((spirit) => spirit.name),
     additionalIgniteDurationRolls,
     outgoingAdditionalDamageLines: additionalDamageLines,
     defenseSources,

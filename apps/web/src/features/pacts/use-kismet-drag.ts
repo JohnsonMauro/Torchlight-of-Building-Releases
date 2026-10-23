@@ -1,4 +1,4 @@
-// Dragging an equipped Kismet to another slot of the same kind (Kismet slot mode). A drag starts after 5 px; a right-click
+// Dragging an equipped Kismet to another slot of the same kind. A drag starts after 5 px; a right-click
 // during it turns the move into a copy. The drop target must be an allocated node or an extra Fate slot of the same kind.
 // The click (and, after a copy, the context menu) that follows the drop is swallowed, so it does not also act on the slot.
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";

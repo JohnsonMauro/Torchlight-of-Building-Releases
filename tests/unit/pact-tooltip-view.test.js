@@ -16,7 +16,6 @@ const node = (overrides = {}) => ({
   spirit: { name: "Dreamweaver", level: 3, rarity: "Legendary" },
   rewards: [{ text: "+5% damage", coverage: coverageView("In calc") }],
   effectCoverage: coverageView("In calc"),
-  slotMode: false,
   allocated: false,
   holdsKismet: true,
   ...overrides,
@@ -27,11 +26,11 @@ test("a node shows its effect, its ring and what a click does", () => {
   assert.equal(view.kicker, "Micro node");
   assert.equal(view.rarity, "legendary");
   assert.deepEqual(view.blocks, [{ kind: "text", text: "+10% Elemental Damage", coverage: coverageView("In calc") }]);
-  assert.equal(view.footer, "Click to craft a Kismet · Right-click to remove");
+  assert.equal(view.footer, "Left-click to allocate · Right-click to add a Kismet");
 });
 
-test("the outer node lists the spirit's level bonuses; slot mode says allocate or refund", () => {
-  const view = pactNodeTooltipView(node({ ring: "outer", holdsKismet: false, slotMode: true, allocated: true }));
+test("the outer node lists the spirit's level bonuses and says allocate or refund", () => {
+  const view = pactNodeTooltipView(node({ ring: "outer", holdsKismet: false, allocated: true }));
   assert.equal(view.kicker, "Outer node");
   assert.deepEqual(view.blocks[0], { kind: "heading", text: "Level 3 bonuses" });
   assert.equal(view.blocks[1].items[0].text.before, "+5% damage");
@@ -50,12 +49,11 @@ test("a Kismet names its kind and boost, lists its affixes and the node it repla
     ],
     boostNote: "Star Trail ×1.5",
     nodeName: "Elemental Mastery",
-    slotMode: false,
     extra: false,
   });
   assert.equal(view.kicker, "Rare · Micro Kismet · Star Trail ×1.5");
   assert.equal(view.blocks[0].items[0].text.effective, "7.5%");
-  assert.equal(view.footer, "Click to edit · Right-click to remove · Replaces Elemental Mastery");
+  assert.equal(view.footer, "Left-click to allocate · Right-click to edit or clear · Replaces Elemental Mastery");
 });
 
 test("a Pactspirit's tooltip groups its overview, its effect at its level and what each level adds", () => {

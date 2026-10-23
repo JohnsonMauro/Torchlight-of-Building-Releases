@@ -3,7 +3,6 @@ import { normalizePercentageText } from "./percentage-text.js";
 import { activeKismetEffects } from "../pacts/kismet-effects.js";
 import { orderedPactspiritNodes, pactspiritEffectsAtLevel, pactspiritLevel } from "../pacts/pactspirit-levels.js";
 import { pactspiritTrees } from "../../data/pacts/pactspirit-trees.js";
-import { selenaScorchingBeamPacts } from "../../data/pacts/selena-scorching-beam.js";
 import {
   prismAddedCoreEffect,
   prismAreaBounds,
@@ -198,72 +197,8 @@ export function collectModifierTexts({
     }
   }
   for (const line of activeKismetEffects(pactState)) push(line.text, line.source, "kismet");
-  // Captured-pact builds (kismetSlotMode off, e.g. defaultPlannerState) carry the four captured Volcano
-  // Kismets as fixed rolls toggled by `volcanoEnabled` (engine.js reads them into pact.totals). They are
-  // listed here with the catalog wording so the text list matches the pact totals, as in slot mode.
-  if (!pactState.kismetSlotMode) {
-    const volcano = selenaScorchingBeamPacts.kismets.find((kismet) => kismet.name === "Kismet: Volcano");
-    (volcano?.rolls || []).forEach((roll, index) => {
-      if (Array.isArray(pactState.volcanoEnabled) && pactState.volcanoEnabled[index] === false) return;
-      push(
-        `${roll.chanceToIgniteTargetsPercent}% chance to Ignite targets\n${roll.additionalIgniteDurationPercent}% additional Ignite Duration\n+${roll.igniteLimit} Ignite limit`,
-        `Kismet: Volcano (captured roll ${index + 1})`,
-        "kismet",
-      );
-    });
-    // The captured Micro Fates, with engine.js's toggles: Reaping Duration × reapingDurationQuantity (0–5, each
-    // totalPercent / quantity = 12%), Spell Block rolls by spellBlockEnabled, Attack Block rolls by attackBlockEnabled.
-    const fate = (name) => selenaScorchingBeamPacts.microFates.find((item) => item.name === name);
-    const reaping = fate("Micro Fate: Reaping Duration");
-    if (reaping) {
-      const count = Math.max(
-        0,
-        Math.min(reaping.quantity, Number(pactState.reapingDurationQuantity ?? reaping.quantity) || 0),
-      );
-      for (let index = 0; index < count; index++)
-        push(
-          `+${reaping.totalPercent / reaping.quantity}% Reaping Duration`,
-          `Micro Fate: Reaping Duration (captured ${index + 1})`,
-          "kismet",
-        );
-    }
-    for (const [name, label, enabled] of [
-      ["Micro Fate: Spell Block Chance", "Spell", pactState.spellBlockEnabled],
-      ["Micro Fate: Attack Block Chance", "Attack", pactState.attackBlockEnabled],
-    ]) {
-      (fate(name)?.valuesPercent || []).forEach((value, index) => {
-        if (Array.isArray(enabled) && enabled[index] === false) return;
-        push(`+${value}% ${label} Block Chance`, `${name} (captured ${index + 1})`, "kismet");
-      });
-    }
-  }
-  // Captured-pact builds: the captured pact spirits, read with engine.js calculatePactCandidate's rules (every
-  // captured spirit unless `activeSpirits` turns it off; outer effects at pactspiritLevel(name, spiritLevels,
-  // captured rank); each unreplaced native node `quantity` times, overridable by nativeNodeQuantities
-  // "<spirit>:<node name>"). Sources match slot mode ("<spirit> node" / "<spirit>") so the consumers that skip
-  // lines pact.totals already counts (damage-line-classifier.js alreadyCountedBy, affix-attributes.js) treat
-  // both modes alike. Node text is the pact tree's wording for that node name.
-  if (!pactState.kismetSlotMode) {
-    for (const spirit of selenaScorchingBeamPacts.pactspirits) {
-      if (pactState.activeSpirits?.[spirit.name] === false) continue;
-      const levelEffects = pactspiritEffectsAtLevel(
-        spirit.name,
-        pactspiritLevel(spirit.name, pactState.spiritLevels, spirit.rank),
-      );
-      for (const text of levelEffects.length ? levelEffects : spirit.effectsAtRank) push(text, spirit.name, "pact");
-      const treeNodes = orderedPactspiritNodes(pactspiritTrees[spirit.name]);
-      for (const node of spirit.unreplacedNativeNodes || []) {
-        const effect = treeNodes.find((item) => item.name === node.name)?.effect;
-        const quantity = Math.max(
-          0,
-          Math.min(node.quantity, pactState.nativeNodeQuantities?.[`${spirit.name}:${node.name}`] ?? node.quantity),
-        );
-        if (effect) for (let index = 0; index < quantity; index++) push(effect, `${spirit.name} node`, "pact");
-      }
-    }
-  }
-  for (const spirit of pactState.kismetSlotMode ? pactState.selectedSpirits || [] : []) {
-    if (!spirit || pactState.activeSpirits?.[spirit] === false) continue;
+  for (const spirit of pactState.selectedSpirits || []) {
+    if (!spirit) continue;
     const nodes = orderedPactspiritNodes(pactspiritTrees[spirit]);
     nodes.forEach((node, index) => {
       if (pactState.nativeNodeQuantities?.[`${spirit}:${index}`] !== 1) return;

@@ -76,7 +76,6 @@ export function calculateBlock({
   talents = [],
   slates = [],
   memories,
-  pact,
   pactState = {},
   talentState = {},
   blockedRecently = false,
@@ -140,48 +139,33 @@ export function calculateBlock({
     for (const text of [...(slate.fixed || []), ...(slate.brands || []), ...(slate.copiedTalents || [])])
       add(withoutSlateCoreName(text), slate.name);
   for (const line of [...(memories?.lines || []), ...(memories?.unsupported || [])]) add(line.text, line.source);
-  if (pactState.kismetSlotMode) {
-    for (const spirit of pactState.selectedSpirits || []) {
-      if (!spirit || pactState.activeSpirits?.[spirit] === false) continue;
-      const nodes = orderedPactspiritNodes(pactspiritTrees[spirit]);
-      const destiny = nodes.findIndex((node) => node.ring === "destiny");
-      nodes.forEach((node, index) => {
-        const slotKey = `${spirit}:${index}`;
-        if (pactState.nativeNodeQuantities?.[slotKey] !== 1) return;
-        const slot = pactState.kismetSlots?.[slotKey];
-        if (slot) {
-          const entry = kismetCatalog.find((entry) => entry.name === slot.name);
-          // A Micro Fate in a spirit with Star Trail carries its boosted value (packages/engine/src/pacts/kismet-effects.js; pact badge audit 2026-10-13).
-          const { scale } = microFateEffectScale(pactState, slotKey);
-          if (entry)
-            for (const text of kismetAffixesWithRolls(entry, slot.rolls))
-              add(scaleKismetAffix(text, scale), `${spirit} · ${slot.name}`);
-        } else if (node.ring === "outer") {
-          for (const text of pactspiritEffectsAtLevel(spirit, pactspiritLevel(spirit, pactState.spiritLevels)))
-            add(text, spirit);
-        } else add(node.effect, `${spirit} · ${node.name || node.ring}`);
-      });
-      if (destiny >= 0 && pactState.nativeNodeQuantities?.[`${spirit}:${destiny}`] === 1) {
-        for (const extra of fateExtraSlots(spirit, pactState.fateUnlocks?.[spirit])) {
-          const slot = pactState.kismetSlots?.[extra.key];
-          const entry = slot && kismetCatalog.find((entry) => entry.name === slot.name);
-          if (entry)
-            for (const text of kismetAffixesWithRolls(entry, slot.rolls)) add(text, `${spirit} · ${slot.name}`);
-        }
+  for (const spirit of pactState.selectedSpirits || []) {
+    if (!spirit) continue;
+    const nodes = orderedPactspiritNodes(pactspiritTrees[spirit]);
+    const destiny = nodes.findIndex((node) => node.ring === "destiny");
+    nodes.forEach((node, index) => {
+      const slotKey = `${spirit}:${index}`;
+      if (pactState.nativeNodeQuantities?.[slotKey] !== 1) return;
+      const slot = pactState.kismetSlots?.[slotKey];
+      if (slot) {
+        const entry = kismetCatalog.find((entry) => entry.name === slot.name);
+        // A Micro Fate in a spirit with Star Trail carries its boosted value (packages/engine/src/pacts/kismet-effects.js; pact badge audit 2026-10-13).
+        const { scale } = microFateEffectScale(pactState, slotKey);
+        if (entry)
+          for (const text of kismetAffixesWithRolls(entry, slot.rolls))
+            add(scaleKismetAffix(text, scale), `${spirit} · ${slot.name}`);
+      } else if (node.ring === "outer") {
+        for (const text of pactspiritEffectsAtLevel(spirit, pactspiritLevel(spirit, pactState.spiritLevels)))
+          add(text, spirit);
+      } else add(node.effect, `${spirit} · ${node.name || node.ring}`);
+    });
+    if (destiny >= 0 && pactState.nativeNodeQuantities?.[`${spirit}:${destiny}`] === 1) {
+      for (const extra of fateExtraSlots(spirit, pactState.fateUnlocks?.[spirit])) {
+        const slot = pactState.kismetSlots?.[extra.key];
+        const entry = slot && kismetCatalog.find((entry) => entry.name === slot.name);
+        if (entry) for (const text of kismetAffixesWithRolls(entry, slot.rolls)) add(text, `${spirit} · ${slot.name}`);
       }
     }
-  } else {
-    for (const [stat, name] of [
-      ["attackChance", "attackBlockChancePercent"],
-      ["spellChance", "spellBlockChancePercent"],
-    ])
-      if (pact?.totals?.[name])
-        sources.push({
-          source: "Pacts",
-          stat,
-          value: pact.totals[name],
-          text: `+${pact.totals[name]}% ${stat === "attackChance" ? "Attack" : "Spell"} Block Chance`,
-        });
   }
   const { attackChance, spellChance, ratioCap, ratio, blockedHitTakenFactor } = summarizeBlock(sources);
   const recentlyActive = blockedRecently && (attackChance > 0 || spellChance > 0);

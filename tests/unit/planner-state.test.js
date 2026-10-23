@@ -134,12 +134,9 @@ test("skills: special support stars move to the 1–5 scale once", () => {
   });
 });
 
-test("pacts: three spirit slots, or the default spirits that were not switched off", () => {
+test("pacts: three spirit slots, empty without a selection", () => {
   assert.deepEqual(normalizePlannerState({ pacts: { selectedSpirits: ["A"] } }).pacts.selectedSpirits, ["A", "", ""]);
-  assert.deepEqual(
-    normalizePlannerState({ pacts: { activeSpirits: { "Abyssal King Soul": false } } }).pacts.selectedSpirits,
-    ["Preserver of Eternity", "Knight of Pale Blue"],
-  );
+  assert.deepEqual(normalizePlannerState({ pacts: {} }).pacts.selectedSpirits, ["", "", ""]);
 });
 
 test("an older build's fields of the captured Selena build are accepted and dropped", () => {
@@ -147,10 +144,27 @@ test("an older build's fields of the captured Selena build are accepted and drop
     removedInventoryItemIds: ["captured-helmet"],
     talents: { useCapturedRanks: true },
     slates: { affixOverrides: { judgment: ["+1% damage"] } },
+    pacts: {
+      activeSpirits: { "Iron Lion": false },
+      kismetSlotMode: false,
+      volcanoEnabled: [true, true, true, true],
+      reapingDurationQuantity: 5,
+      spellBlockEnabled: [true],
+      attackBlockEnabled: [true, true],
+    },
   });
   assert.equal("removedInventoryItemIds" in state, false);
   assert.equal("useCapturedRanks" in state.talents, false);
   assert.equal("affixOverrides" in state.slates, false);
+  for (const field of [
+    "activeSpirits",
+    "kismetSlotMode",
+    "volcanoEnabled",
+    "reapingDurationQuantity",
+    "spellBlockEnabled",
+    "attackBlockEnabled",
+  ])
+    assert.equal(field in state.pacts, false, field);
 });
 
 test("followers: an unknown follower empties the slot", () => {

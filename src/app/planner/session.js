@@ -3,7 +3,6 @@ import {
   calculatePlanner,
   canPlaceSlate,
   defaultPlannerState,
-  selenaScorchingBeamPacts,
   setCoverageContext,
   tliArt,
   tlidbSkillCatalog,
@@ -193,17 +192,11 @@ export function emptyPlannerState() {
     installedPrismNodes: {},
   };
   empty.pacts = {
-    activeSpirits: Object.fromEntries(selenaScorchingBeamPacts.pactspirits.map((spirit) => [spirit.name, false])),
     selectedSpirits: ["", "", ""],
     spiritLevels: {},
     nativeNodeQuantities: {},
     kismetSlots: {},
     fateUnlocks: {},
-    kismetSlotMode: true,
-    volcanoEnabled: [false, false, false, false],
-    reapingDurationQuantity: 0,
-    spellBlockEnabled: [false],
-    attackBlockEnabled: [false, false],
   };
   empty.combat = {
     ...empty.combat,

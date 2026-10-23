@@ -10,7 +10,6 @@ import {
   pactspiritEffectsAtLevel,
   pactspiritTrees,
   resolveTalentCandidate,
-  selenaScorchingBeamPacts,
   selenaScorchingBeamTalentSetup,
 } from "#engine";
 import { displayTexts } from "../bridge/display-text.ts";
@@ -207,24 +206,23 @@ function breakdown(source, category) {
   );
 }
 
-/** The pact lines of a Pacts row: the allocated nodes' effects (slot mode), the spirits' level bonuses, Fate nodes. */
+/** The pact lines of a Pacts row: the allocated nodes' effects and the spirits' level bonuses. */
 function pactContributors(source, category, stat) {
   const pacts = plannerState.pacts;
   const additional = /additional damage/i.test(source);
   const words = additional ? "additional damage" : stat ? effectLabel(stat) : category;
   const lines = [];
   const view = pactsView(pacts);
-  if (view.slotMode)
-    for (const node of view.slots.flatMap((slot) => slot.nodes).filter((entry) => entry.allocated)) {
-      const effect = node.effect || "";
-      const matches = additional
-        ? ADDITIONAL_DAMAGE.test(effect.trim())
-        : words && effect.toLowerCase().includes(words.toLowerCase());
-      if (matches) lines.push(`${node.name}\n${effect}`);
-    }
-  if (pacts.kismetSlotMode && additional)
+  for (const node of view.slots.flatMap((slot) => slot.nodes).filter((entry) => entry.allocated)) {
+    const effect = node.effect || "";
+    const matches = additional
+      ? ADDITIONAL_DAMAGE.test(effect.trim())
+      : words && effect.toLowerCase().includes(words.toLowerCase());
+    if (matches) lines.push(`${node.name}\n${effect}`);
+  }
+  if (additional)
     for (const name of pacts.selectedSpirits || []) {
-      if (!name || pacts.activeSpirits[name] === false) continue;
+      if (!name) continue;
       const sequence = orderedPactspiritNodes(pactspiritTrees[name] || []);
       const outer = sequence.findIndex((node) => node.ring === "outer");
       if (pacts.nativeNodeQuantities[`${name}:${outer}`] !== 1) continue;
@@ -233,24 +231,5 @@ function pactContributors(source, category, stat) {
       );
       if (effects.length) lines.push(`${name}\n${effects.join("\n")}`);
     }
-  if (!pacts.kismetSlotMode)
-    for (const spirit of selenaScorchingBeamPacts.pactspirits) {
-      if (pacts.activeSpirits[spirit.name] === false) continue;
-      for (const node of spirit.unreplacedNativeNodes) {
-        const quantity = pacts.nativeNodeQuantities[`${spirit.name}:${node.name}`] ?? node.quantity;
-        if (quantity && node.effectsPerNode[stat])
-          lines.push(
-            `${spirit.name} · ${node.name} ×${quantity}\n${formatEffect(stat, node.effectsPerNode[stat] * quantity)}`,
-          );
-      }
-      if (additional) {
-        const effects = pactspiritEffectsAtLevel(spirit.name, selectedPactspiritLevel(spirit.name)).filter((line) =>
-          ADDITIONAL_DAMAGE.test(line),
-        );
-        if (effects.length) lines.push(`${spirit.name}\n${effects.join("\n")}`);
-      }
-    }
-  if (/reaping duration/i.test(category))
-    lines.push(`Reaping Duration Fate nodes ×${pacts.reapingDurationQuantity ?? 5}\n+12% Reaping Duration per node`);
   return lines;
 }

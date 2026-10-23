@@ -1,6 +1,6 @@
 // Pactspirits view ("Pacts" tab): the three pact slots, their trees, Kismets and the dialogs they open. Written against the
-// legacy view before it moved to React, so both must pass it unchanged. The golden-master Youga build has Kismet slot mode
-// on and every Dreamweaver node allocated; the default library has slot mode off.
+// legacy view before it moved to React, so both must pass it unchanged. The golden-master Youga build has every Dreamweaver
+// node allocated.
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { PlannerPage } from "./pages/planner-page.js";
@@ -69,7 +69,7 @@ test("a Pactspirit's level is saved", async ({ page }) => {
   await planner.expectNoErrors();
 });
 
-test("slot mode: a node is refunded and allocated again by click and by Enter", async ({ page }) => {
+test("a node is refunded and allocated again by click and by Enter", async ({ page }) => {
   const { planner, pacts } = await openPacts(page);
   const mastery = pacts.node(DREAMWEAVER, "Elemental Mastery");
   await mastery.click();
@@ -82,9 +82,7 @@ test("slot mode: a node is refunded and allocated again by click and by Enter", 
   await planner.expectNoErrors();
 });
 
-test("slot mode: right-click opens the Kismet crafter on a Kismet node and the Fate slots on the Fate node", async ({
-  page,
-}) => {
+test("right-click opens the Kismet crafter on a Kismet node and the Fate slots on the Fate node", async ({ page }) => {
   const { planner, pacts } = await openPacts(page);
   await pacts.node(DREAMWEAVER, "Elemental Damage I").click({ button: "right" });
   await expect(pacts.kismetCrafter()).toBeVisible();
@@ -156,16 +154,7 @@ test("an equipped Kismet moves to another slot by drag, and is copied with a rig
   await planner.expectNoErrors();
 });
 
-test("without slot mode, clicking a Kismet node opens the crafter", async ({ page }) => {
-  const { planner, pacts } = await openPacts(page, null);
-  await expect(pacts.filledSlots()).toHaveCount(3);
-  const node = pacts.slots().first().locator('.pact-tree-node[aria-label$="Click to craft a Kismet"]').first();
-  await node.click();
-  await expect(pacts.kismetCrafter()).toBeVisible();
-  await planner.expectNoErrors();
-});
-
-// ---- The Kismet crafter (right-click on a Kismet node in slot mode, or a click without it).
+// ---- The Kismet crafter (right-click on a Kismet node).
 const crafter = (pacts) => pacts.kismetCrafter();
 const choices = (pacts) => crafter(pacts).locator(".kismet-choice");
 async function openCrafter(page, nodeName = "Elemental Damage I", state = youga) {

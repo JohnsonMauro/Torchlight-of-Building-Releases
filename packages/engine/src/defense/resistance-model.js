@@ -112,7 +112,7 @@ export function calculateResistances({
   }
   for (const line of activeKismetEffects(pactState)) add(line.text, line.source, 1, true);
   for (const spirit of pactState.selectedSpirits || []) {
-    if (!spirit || pactState.activeSpirits?.[spirit] === false) continue;
+    if (!spirit) continue;
     orderedPactspiritNodes(pactspiritTrees[spirit]).forEach((node, index) => {
       const key = `${spirit}:${index}`;
       if (pactState.nativeNodeQuantities?.[key] !== 1 || pactState.kismetSlots?.[key]) return;

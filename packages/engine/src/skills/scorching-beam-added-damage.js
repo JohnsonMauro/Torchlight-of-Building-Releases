@@ -63,19 +63,16 @@ export function scorchingBeamAddedDamage({ main, equipment, slates, equippedSlat
             node.rank * (node.inverseEffectMultiplier ?? 1),
           );
       }
-  if (pacts?.kismetSlotMode)
-    for (const [key, slot] of Object.entries(pacts.kismetSlots || {})) {
-      const spirit = (pacts.selectedSpirits || []).find(
-        (name) => name && key.startsWith(`${name}:`) && pacts.activeSpirits?.[name] !== false,
-      );
-      if (!spirit || (!key.includes(":extra:") && pacts.nativeNodeQuantities?.[key] !== 1)) continue;
-      const entry = kismetCatalog.find((item) => item.name === slot.name);
-      // A Micro Fate in a spirit with Star Trail carries its boosted value (packages/engine/src/pacts/kismet-effects.js; pact badge audit 2026-10-13).
-      const { scale } = microFateEffectScale(pacts, key);
-      if (entry)
-        for (const text of kismetAffixesWithRolls(entry, slot.rolls))
-          collect(`${spirit}: ${entry.name}`, scaleKismetAffix(text, scale), true);
-    }
+  for (const [key, slot] of Object.entries(pacts?.kismetSlots || {})) {
+    const spirit = (pacts.selectedSpirits || []).find((name) => name && key.startsWith(`${name}:`));
+    if (!spirit || (!key.includes(":extra:") && pacts.nativeNodeQuantities?.[key] !== 1)) continue;
+    const entry = kismetCatalog.find((item) => item.name === slot.name);
+    // A Micro Fate in a spirit with Star Trail carries its boosted value (packages/engine/src/pacts/kismet-effects.js; pact badge audit 2026-10-13).
+    const { scale } = microFateEffectScale(pacts, key);
+    if (entry)
+      for (const text of kismetAffixesWithRolls(entry, slot.rolls))
+        collect(`${spirit}: ${entry.name}`, scaleKismetAffix(text, scale), true);
+  }
   for (const support of main?.supports || []) {
     if (support.name !== "Added Fire Damage" || !support.enabled) continue;
     const range = fireSupportRange(support.effectiveLevel || support.level || 20);

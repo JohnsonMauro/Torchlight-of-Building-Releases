@@ -6,7 +6,6 @@ import { validatePlannerState } from "./state-validation.ts";
 import type { StoredCraftedMemory, StoredPlannerState } from "./state-validation.ts";
 import { migrateTreeTraits } from "../heroes/hero-trait-tree.js";
 import { clampMemoryEnhancement, traitLevelBonusForEnhancement } from "../heroes/hero-memory-rules.js";
-import { defaultPactspiritSlots } from "../pacts/pactspirit-selection.js";
 import { AIM_UPTIME_AUTO_SENTINEL } from "../skills/aim-model.js";
 import { migrateLegendaryEquipment } from "./legendary-text-migrations.js";
 import { migrateChangedEquipment } from "./changed-item-migrations.js";
@@ -56,7 +55,7 @@ export type PlannerState = Omit<
   skills: PlannerSkills;
   slates: Omit<Filled<Section<"slates">, Defaults["slates"]>, "affixOverrides">;
   talents: Omit<Filled<Section<"talents">, Defaults["talents"]>, "useCapturedRanks">;
-  pacts: Filled<Section<"pacts">, Defaults["pacts"]>;
+  pacts: Omit<Filled<Section<"pacts">, Defaults["pacts"]>, CapturedPactField>;
   combat: Filled<Section<"combat">, Defaults["combat"]>;
   followers: Filled<Section<"followers">, Defaults["followers"]>;
 };
@@ -76,7 +75,8 @@ function withoutLegacyTreeFields<T extends { selenaDanceTraits?: unknown }>(hero
 
 // Fields of the captured Selena build (removed 2026-10-23) that older stored builds still carry: accepted by the
 // validation, dropped here. removedInventoryItemIds hid the captured items; talents.useCapturedRanks took the captured
-// ranks; slates.affixOverrides edited the captured slates.
+// ranks; slates.affixOverrides edited the captured slates; the pacts' kismetSlotMode false read the captured pact spirits,
+// Volcano rolls and Micro Fates that activeSpirits, volcanoEnabled, reapingDurationQuantity and the block lists switched.
 function withoutCapturedFields<T extends { removedInventoryItemIds?: unknown }>(
   value: T,
 ): Omit<T, "removedInventoryItemIds"> {
@@ -87,6 +87,25 @@ function withoutCapturedFields<T extends { removedInventoryItemIds?: unknown }>(
 function withoutCapturedRanks<T extends { useCapturedRanks?: unknown }>(talents: T): Omit<T, "useCapturedRanks"> {
   const rest = { ...talents };
   delete rest.useCapturedRanks;
+  return rest;
+}
+type CapturedPactField =
+  | "activeSpirits"
+  | "kismetSlotMode"
+  | "volcanoEnabled"
+  | "reapingDurationQuantity"
+  | "spellBlockEnabled"
+  | "attackBlockEnabled";
+function withoutCapturedPactFields<T extends Partial<Record<CapturedPactField, unknown>>>(
+  pacts: T,
+): Omit<T, CapturedPactField> {
+  const rest = { ...pacts };
+  delete rest.activeSpirits;
+  delete rest.kismetSlotMode;
+  delete rest.volcanoEnabled;
+  delete rest.reapingDurationQuantity;
+  delete rest.spellBlockEnabled;
+  delete rest.attackBlockEnabled;
   return rest;
 }
 function withoutAffixOverrides<T extends { affixOverrides?: unknown }>(slates: T): Omit<T, "affixOverrides"> {
@@ -149,17 +168,11 @@ export const defaultPlannerState = {
     installedPrismNodes: {},
   },
   pacts: {
-    activeSpirits: {},
-    selectedSpirits: [...defaultPactspiritSlots],
+    selectedSpirits: ["", "", ""],
     spiritLevels: {},
     nativeNodeQuantities: {},
     kismetSlots: {},
     fateUnlocks: {},
-    kismetSlotMode: false,
-    volcanoEnabled: [true, true, true, true],
-    reapingDurationQuantity: 5,
-    spellBlockEnabled: [true],
-    attackBlockEnabled: [true, true],
   },
   combat: {
     conditionMode: "auto",
@@ -344,13 +357,10 @@ export function normalizePlannerState(input: unknown = {}): PlannerState {
     followers: normalizeFollowerState(value.followers),
     pacts: {
       ...defaults.pacts,
-      ...(value.pacts || {}),
-      activeSpirits: { ...(value.pacts?.activeSpirits || {}) },
-      selectedSpirits: Array.isArray(selectedSpirits)
-        ? Array.from({ length: 3 }, (_, index) =>
-            typeof selectedSpirits[index] === "string" ? selectedSpirits[index] : "",
-          )
-        : defaultPactspiritSlots.filter((name) => value.pacts?.activeSpirits?.[name] !== false),
+      ...withoutCapturedPactFields(value.pacts || {}),
+      selectedSpirits: Array.from({ length: 3 }, (_, index) =>
+        typeof selectedSpirits?.[index] === "string" ? selectedSpirits[index] : "",
+      ),
       spiritLevels: { ...(value.pacts?.spiritLevels || {}) },
       nativeNodeQuantities: { ...(value.pacts?.nativeNodeQuantities || {}) },
       kismetSlots: { ...(value.pacts?.kismetSlots || {}) },

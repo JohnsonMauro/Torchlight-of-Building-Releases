@@ -12,7 +12,6 @@ import {
   pactspiritCatalog,
   pactspiritLevel,
   pactspiritTrees,
-  selenaScorchingBeamPacts,
   sortPactspirits,
 } from "#engine";
 import type { PlannerState } from "#engine";
@@ -35,7 +34,7 @@ export interface PactNodeView {
   /** Micro (inner ring) and Medium (mid ring) nodes hold a Kismet. */
   kismetKind: KismetKind | null;
   fate: boolean;
-  /** Slot mode: inner, mid, outer and Fate nodes can be allocated and refunded. */
+  /** Inner, mid, outer and Fate nodes can be allocated and refunded. */
   allocatable: boolean;
   allocated: boolean;
   hasKismet: boolean;
@@ -64,7 +63,6 @@ export interface PactSlotView {
   extras: ExtraSlotView[];
 }
 export interface PactsView {
-  slotMode: boolean;
   slots: PactSlotView[];
   kismets: { microCount: number; microMax: number; mediumCount: number; mediumMax: number };
 }
@@ -84,16 +82,12 @@ const equippedKismet = (pacts: Pacts, key: string, kind?: KismetKind) => {
   return kismetCatalog.find((item) => item.name === name && (kind === undefined || item.kind === kind));
 };
 
-/** A Pactspirit's level: saved, else 1 in slot mode, else its captured rank (the default build's pacts). */
+/** A Pactspirit's level: saved, else 1. */
 function slotLevel(pacts: Pacts, name: string): number {
-  const fallback = pacts.kismetSlotMode
-    ? 1
-    : selenaScorchingBeamPacts.pactspirits.find((spirit: { name: string }) => spirit.name === name)?.rank || 1;
-  return pactspiritLevel(name, pacts.spiritLevels, fallback);
+  return pactspiritLevel(name, pacts.spiritLevels, 1);
 }
 
 function nodeView(pacts: Pacts, name: string, node: PactTreeNode, index: number): PactNodeView {
-  const slotMode = pacts.kismetSlotMode;
   const key = kismetSlotKey(name, index);
   const kismet = equippedKismet(pacts, key);
   const kismetKind = kismetKindForRing(node.ring) as KismetKind | null;
@@ -101,13 +95,7 @@ function nodeView(pacts: Pacts, name: string, node: PactTreeNode, index: number)
   const allocatable = node.ring === "inner" || node.ring === "mid" || node.ring === "outer" || fate;
   const allocated = allocatable && quantity(pacts, key) > 0;
   const unlocked = fateSlotChoice(pacts.fateUnlocks[name]);
-  const action = slotMode
-    ? `${allocated ? "Allocated" : "Unallocated"}; left-click to ${allocated ? "refund" : "allocate"}${kismetKind ? "; right-click for Kismet" : fate ? "; right-click for Fate slots" : ""}${kismet ? "; drag to move or swap, right-click during drag to copy" : ""}`
-    : kismetKind
-      ? "Click to craft a Kismet"
-      : fate
-        ? "Click to unlock Fate slots"
-        : "";
+  const action = `${allocated ? "Allocated" : "Unallocated"}; left-click to ${allocated ? "refund" : "allocate"}${kismetKind ? "; right-click for Kismet" : fate ? "; right-click for Fate slots" : ""}${kismet ? "; drag to move or swap, right-click during drag to copy" : ""}`;
   return {
     key,
     index,
@@ -134,22 +122,20 @@ function slotView(pacts: Pacts, name: string, index: number): PactSlotView {
   const sequence: PactTreeNode[] = name ? orderedPactspiritNodes(TREES[name] || []) : [];
   const destinyIndex = sequence.findIndex((node) => node.ring === "destiny");
   const destinyAllocated = destinyIndex >= 0 && quantity(pacts, `${name}:${destinyIndex}`) > 0;
-  const extras = fateExtraSlots(name, destinyAllocated || !pacts.kismetSlotMode ? pacts.fateUnlocks[name] : null).map(
-    (slot) => {
-      const kind = slot.kind as KismetKind;
-      const kismet = equippedKismet(pacts, slot.key, kind);
-      const label = `Extra ${kind === "micro" ? "Micro" : "Medium"} Fate Slot ${slot.index}`;
-      return {
-        key: slot.key,
-        kind,
-        name: label,
-        effect: kismet ? kismet.affixes.join(" · ") : "Right-click to choose a Kismet",
-        icon: kismet?.icon || "",
-        hasKismet: Boolean(kismet),
-        label: kismet ? `${kismet.name} equipped; right-click to edit` : label,
-      };
-    },
-  );
+  const extras = fateExtraSlots(name, destinyAllocated ? pacts.fateUnlocks[name] : null).map((slot) => {
+    const kind = slot.kind as KismetKind;
+    const kismet = equippedKismet(pacts, slot.key, kind);
+    const label = `Extra ${kind === "micro" ? "Micro" : "Medium"} Fate Slot ${slot.index}`;
+    return {
+      key: slot.key,
+      kind,
+      name: label,
+      effect: kismet ? kismet.affixes.join(" · ") : "Right-click to choose a Kismet",
+      icon: kismet?.icon || "",
+      hasKismet: Boolean(kismet),
+      label: kismet ? `${kismet.name} equipped; right-click to edit` : label,
+    };
+  });
   return {
     index,
     name,
@@ -162,9 +148,8 @@ function slotView(pacts: Pacts, name: string, index: number): PactSlotView {
 
 export function pactsView(pacts: Pacts): PactsView {
   const names = Array.from({ length: 3 }, (_, index) => pacts.selectedSpirits[index] || "");
-  const summary = equippedKismetSummary(selenaScorchingBeamPacts, pacts);
+  const summary = equippedKismetSummary(pacts);
   return {
-    slotMode: pacts.kismetSlotMode,
     slots: names.map((name, index) => slotView(pacts, name, index)),
     kismets: {
       microCount: summary.microCount,

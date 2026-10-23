@@ -180,14 +180,12 @@ test("a Pactspirit the game no longer has leaves its slot empty with its levels 
   const { state, removed } = removeIncompatible({
     pacts: {
       selectedSpirits: ["Old Spirit", youga.pacts.selectedSpirits[1], ""],
-      activeSpirits: { "Old Spirit": true, [youga.pacts.selectedSpirits[1]]: true },
       spiritLevels: { "Old Spirit": 6 },
       nativeNodeQuantities: { "Old Spirit:0": 1, [`${youga.pacts.selectedSpirits[1]}:0`]: 1 },
       kismetSlots: { a: { name: "Old Kismet", rolls: [] } },
     },
   });
   assert.deepEqual(state.pacts.selectedSpirits, ["", youga.pacts.selectedSpirits[1], ""]);
-  assert.deepEqual(Object.keys(state.pacts.activeSpirits), [youga.pacts.selectedSpirits[1]]);
   assert.deepEqual(state.pacts.spiritLevels, {});
   assert.deepEqual(Object.keys(state.pacts.nativeNodeQuantities), [`${youga.pacts.selectedSpirits[1]}:0`]);
   assert.deepEqual(state.pacts.kismetSlots, {});

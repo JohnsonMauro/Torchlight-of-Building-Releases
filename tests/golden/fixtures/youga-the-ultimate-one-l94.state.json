@@ -1801,14 +1801,6 @@
   }
  },
  "pacts": {
-  "activeSpirits": {
-   "Preserver of Eternity": false,
-   "Abyssal King Soul": false,
-   "Knight of Pale Blue": false,
-   "Dreamweaver": true,
-   "Iron Lion": true,
-   "Awooawoo - White Mist": true
-  },
   "selectedSpirits": [
    "Dreamweaver",
    "Iron Lion",
@@ -1848,22 +1840,7 @@
    "Awooawoo - White Mist:8": 1
   },
   "kismetSlots": {},
-  "fateUnlocks": {},
-  "kismetSlotMode": true,
-  "volcanoEnabled": [
-   false,
-   false,
-   false,
-   false
-  ],
-  "reapingDurationQuantity": 0,
-  "spellBlockEnabled": [
-   false
-  ],
-  "attackBlockEnabled": [
-   false,
-   false
-  ]
+  "fateUnlocks": {}
  },
  "combat": {
   "conditionMode": "auto",

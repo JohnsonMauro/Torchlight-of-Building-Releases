@@ -71,7 +71,7 @@ export function calculateCurseLimit({
       add(withoutSlateCoreName(text), slate.name);
   for (const line of activeKismetEffects(pactState)) add(line.text, line.source);
   for (const spirit of pactState.selectedSpirits || []) {
-    if (!spirit || pactState.activeSpirits?.[spirit] === false) continue;
+    if (!spirit) continue;
     const nodes = orderedPactspiritNodes(pactspiritTrees[spirit]);
     const outer = nodes.findIndex((node) => node.ring === "outer");
     if (outer >= 0 && pactState.nativeNodeQuantities?.[`${spirit}:${outer}`] === 1)

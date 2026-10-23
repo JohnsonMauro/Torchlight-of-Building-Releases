@@ -36,7 +36,7 @@ export class PactsPage {
   level(name) {
     return this.slot(name).getByRole("slider", { name: "Level", exact: true });
   }
-  /** Slot mode: the allocated nodes of a Pactspirit's tree. */
+  /** The allocated nodes of a Pactspirit's tree. */
   allocatedNodes(name) {
     return this.slot(name).locator('.pact-tree-node[aria-pressed="true"]');
   }

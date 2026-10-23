@@ -214,7 +214,6 @@ function pactPass(state, change) {
       ...(pacts.selectedSpirits
         ? { selectedSpirits: pacts.selectedSpirits.map((name) => (gone.has(name) ? "" : name)) }
         : {}),
-      ...(pacts.activeSpirits ? { activeSpirits: withoutKeys(pacts.activeSpirits, ofGone) } : {}),
       ...(pacts.spiritLevels ? { spiritLevels: withoutKeys(pacts.spiritLevels, ofGone) } : {}),
       ...(pacts.nativeNodeQuantities ? { nativeNodeQuantities: withoutKeys(pacts.nativeNodeQuantities, ofGone) } : {}),
       kismetSlots,

@@ -86,36 +86,21 @@ function PactSlotList({ view }: { view: PactsView }) {
   const dragState = (key: string): DragState => ({ source: drag.source === key, target: drag.target === key });
 
   const nodeClick = (slot: PactSlotView, node: PactNodeView) => {
-    if (view.slotMode) {
-      if (node.allocatable) commands.togglePactNode(slot.name, node.index);
-    } else if (node.fate) commands.openFateSlotSelector(slot.name);
-    else if (node.kismetKind) commands.openKismetCrafter(node.key, node.kismetKind);
+    if (node.allocatable) commands.togglePactNode(slot.name, node.index);
   };
   const nodeContextMenu = (event: MouseEvent, slot: PactSlotView, node: PactNodeView) => {
     if (drag.swallowContextMenu()) return event.preventDefault();
-    if (view.slotMode && node.allocatable) {
-      event.preventDefault();
-      if (node.fate) {
-        if (node.allocated) commands.openFateSlotSelector(slot.name);
-        else commands.showToast("Allocate Undetermined Fate Slots first");
-      } else if (node.kismetKind) commands.openKismetCrafter(node.key, node.kismetKind);
-    } else if (node.fate) {
-      event.preventDefault();
-      commands.clearFateSlots(slot.name);
-    } else if (node.kismetKind) {
-      event.preventDefault();
-      if (view.slotMode) commands.openKismetCrafter(node.key, node.kismetKind);
-      else commands.clearKismetSlot(node.key);
-    }
-  };
-  const extraClick = (extra: ExtraSlotView) => {
-    if (!view.slotMode) commands.openKismetCrafter(extra.key, extra.kind);
+    if (!node.allocatable) return;
+    event.preventDefault();
+    if (node.fate) {
+      if (node.allocated) commands.openFateSlotSelector(slot.name);
+      else commands.showToast("Allocate Undetermined Fate Slots first");
+    } else if (node.kismetKind) commands.openKismetCrafter(node.key, node.kismetKind);
   };
   const extraContextMenu = (event: MouseEvent, extra: ExtraSlotView) => {
     event.preventDefault();
     if (drag.swallowContextMenu()) return;
-    if (view.slotMode) commands.openKismetCrafter(extra.key, extra.kind);
-    else commands.clearKismetSlot(extra.key);
+    commands.openKismetCrafter(extra.key, extra.kind);
   };
 
   return (
@@ -188,14 +173,13 @@ function PactSlotList({ view }: { view: PactsView }) {
                           key={node.key}
                           node={node}
                           slotName={slot.name}
-                          slotMode={view.slotMode}
                           drag={dragState(node.key)}
                           onActivate={() => {
                             if (!drag.swallowClick()) nodeClick(slot, node);
                           }}
                           onContextMenu={(event) => nodeContextMenu(event, slot, node)}
                           onPointerDown={
-                            view.slotMode && node.hasKismet && kind
+                            node.hasKismet && kind
                               ? (event) => drag.start(event, { key: node.key, kind, icon: node.icon })
                               : undefined
                           }
@@ -208,12 +192,10 @@ function PactSlotList({ view }: { view: PactsView }) {
                         extra={extra}
                         spirit={slot.name}
                         drag={dragState(extra.key)}
-                        onActivate={() => {
-                          if (!drag.swallowClick()) extraClick(extra);
-                        }}
+                        onActivate={() => drag.swallowClick()}
                         onContextMenu={(event) => extraContextMenu(event, extra)}
                         onPointerDown={
-                          view.slotMode && extra.hasKismet
+                          extra.hasKismet
                             ? (event) => drag.start(event, { key: extra.key, kind: extra.kind, icon: extra.icon })
                             : undefined
                         }
@@ -253,13 +235,12 @@ interface NodeProps {
 function PactNode({
   node,
   slotName,
-  slotMode,
   drag,
   onActivate,
   onContextMenu,
   onPointerDown,
-}: NodeProps & { node: PactNodeView; slotName: string; slotMode: boolean }) {
-  const switchable = slotMode && node.allocatable;
+}: NodeProps & { node: PactNodeView; slotName: string }) {
+  const switchable = node.allocatable;
   const acts = switchable || node.fate || node.kismetKind !== null;
   const target = {
     spirit: slotName,

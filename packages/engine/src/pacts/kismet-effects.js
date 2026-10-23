@@ -109,7 +109,7 @@ export function kismetSlotDisplayTexts(state = {}, key, rolls = undefined) {
 export function activeKismetEffects(state = {}) {
   const lines = [];
   for (const spirit of state.selectedSpirits || []) {
-    if (!spirit || state.activeSpirits?.[spirit] === false) continue;
+    if (!spirit) continue;
     for (const key of activeKismetSlotKeys(state, spirit)) {
       const slot = state.kismetSlots?.[key];
       const entry = slot && kismetCatalog.find((item) => item.name === slot.name);

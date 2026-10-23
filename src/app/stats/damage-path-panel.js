@@ -32,10 +32,7 @@ export function sourceNames(planner) {
     gear: names(planner?.equipment?.allItems, (item) => item?.name || item?.displayName || item?.base),
     slates: names(planner?.resolvedSlates, (item) => item?.name),
     skills: names([...(planner?.activation?.setups || []), ...(planner?.damageSources || [])], (item) => item?.name),
-    pacts: names(
-      [...(planner?.state?.pacts?.selectedSpirits || []), ...Object.keys(planner?.state?.pacts?.activeSpirits || {})],
-      (name) => name,
-    ),
+    pacts: names([...(planner?.state?.pacts?.selectedSpirits || [])], (name) => name),
   };
 }
 

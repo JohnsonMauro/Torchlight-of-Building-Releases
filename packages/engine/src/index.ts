@@ -176,7 +176,7 @@ export {
   pactspiritLevel,
   togglePactNodeChain,
 } from "./pacts/pactspirit-levels.js";
-export { activeCapturedPactspirits, selectPactspirit, sortPactspirits } from "./pacts/pactspirit-selection.js";
+export { selectPactspirit, sortPactspirits } from "./pacts/pactspirit-selection.js";
 
 // Skills
 export { AIM_UPTIME_AUTO_SENTINEL } from "./skills/aim-model.js";
@@ -343,7 +343,6 @@ export { sageElixirs } from "../data/heroes/sage-scent.generated.js";
 export { kismetCatalog } from "../data/pacts/kismet-catalog.js";
 export { pactspiritCatalog } from "../data/pacts/pactspirit-catalog.js";
 export { pactspiritTrees } from "../data/pacts/pactspirit-trees.js";
-export { selenaScorchingBeamPacts } from "../data/pacts/selena-scorching-beam.js";
 
 // Game data: Skills
 export { activationMediumGameAffixes } from "../data/skills/activation-medium-game-affixes.generated.js";
