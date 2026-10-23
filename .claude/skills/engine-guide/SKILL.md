@@ -67,6 +67,10 @@ setting variants) against `expected.json`, plus a readable summary per case.
 - Intended change (a formula fix, new game data): `pnpm golden:update`, and commit `expected.json` with the change
   that caused it, the commit body naming what moved and why.
 - A structure-only change (move, rename, split) must leave the golden master untouched: that is its proof.
+- Removing result keys nothing reads, or renaming one, changes the hashes but no value: list every changed path
+  against HEAD (no cap) and accept only `value → undefined` for removals; for a rename, compare the new key under its
+  old name (zero paths) and once without that mapping as a control (both keys show). Then `pnpm golden:update`, and
+  the commit body names the removed or renamed keys.
 
 ## 4. Testing engine code
 
