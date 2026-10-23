@@ -12,6 +12,7 @@ import {
   gameLogAutoSnapshots,
   gameLogBuildName,
   gameLogFileStatus,
+  gameLogFolders,
   gameLogFound,
   gameLogListFailedStatus,
   gameLogLogins,
@@ -50,6 +51,7 @@ const CLOSED_GAME_LOG_VIEW = {
   found: null,
   chooseOther: false,
   picker: false,
+  folders: [],
   reason: "",
   status: null,
   selectedId: null,
@@ -109,17 +111,24 @@ async function findGameLog() {
   }
   if (token !== gameLogReadToken) return;
   const auto = result?.found && Array.isArray(result.files) ? gameLogAutoSnapshots(result.files) : null;
+  const folders = gameLogFolders(Array.isArray(result?.searched) ? result.searched : null);
   if (!auto?.rows.length) {
     setGameLogView({
       status: null,
       picker: true,
+      folders,
       reason: result && result.found === false && result.reason ? result.reason : autoGameLogUnavailable(),
     });
     return;
   }
   gameLogSources = auto.sources;
   gameLogRows = auto.rows;
-  setGameLogView({ status: null, found: gameLogFound(result.files[0]), chooseOther: true });
+  setGameLogView({
+    status: null,
+    found: gameLogFound(result.files[0], result.folder || ""),
+    chooseOther: true,
+    folders,
+  });
   await selectGameLogSnapshot(gameLogRows[0].id);
 }
 async function selectGameLogSnapshot(id) {
@@ -185,6 +194,7 @@ function importGameLogBuild() {
     notes: importReportText(report),
     state,
     activate: true,
+    origin: "game-log",
   });
   applyPlannerState(loadPlannerState());
   renderCandidateViews();

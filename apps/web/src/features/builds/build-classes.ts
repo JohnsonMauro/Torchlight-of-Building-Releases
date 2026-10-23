@@ -29,8 +29,8 @@ export const ACTIVE_BUILD_TAB =
   "loadout-tab min-w-[275px] self-center py-2 pr-3.5 max-sm:min-w-0 max-sm:flex-[0_1_275px]";
 /** The name (or its field) and the pencil that renames it. */
 export const ACTIVE_BUILD_ROW = "mt-0.5 flex min-w-0 items-center gap-1.5";
-/** The pencil: muted, accent on hover or focus, as small as the name's type. */
-export const ACTIVE_BUILD_RENAME_BUTTON =
+/** A borderless icon button (the build name's pencil, a log folder's copy): muted, accent on hover or focus. */
+export const ICON_BUTTON =
   "grid size-6 shrink-0 cursor-pointer place-items-center rounded-sm border-0 bg-transparent p-0 text-muted hover:bg-raised hover:text-accent focus-visible:bg-raised focus-visible:text-accent focus-visible:outline-none";
 export const ACTIVE_BUILD_CAPTION = "block text-[10px] font-bold tracking-widest text-muted uppercase";
 export const ACTIVE_BUILD_NAME =

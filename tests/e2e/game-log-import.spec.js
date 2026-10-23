@@ -22,6 +22,9 @@ const fileInput = (page) => dialog(page).getByLabel("Game log");
 const importButton = (page) => dialog(page).getByRole("button", { name: "Import as new build" });
 const logins = (page) => dialog(page).locator(".game-log-snapshots button");
 const status = (page) => dialog(page).getByRole("status");
+const folders = (page) => dialog(page).locator(".game-log-folders li");
+const foundFolder = (page) => dialog(page).locator(".game-log-found-folder li");
+const LOG_PATH = "steamapps/common/Torchlight Infinite/UE_game/TorchLight/Saved/Logs";
 const library = (page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key)), LIBRARY_STORAGE_KEY);
 const logFile = (text, name = "UE_game.log") => ({ name, mimeType: "text/plain", buffer: Buffer.from(text) });
 
@@ -52,7 +55,8 @@ async function openDialog(page, body = null) {
   return planner;
 }
 
-test("without the local reader it says so and asks for the log file", async ({ page }) => {
+test("without the local reader it says so and asks for the log file", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const planner = new PlannerPage(page);
   let answer;
   const answered = new Promise((resolve) => (answer = resolve));
@@ -70,6 +74,15 @@ test("without the local reader it says so and asks for the log file", async ({ p
   await expect(fileInput(page)).toBeVisible();
   await expect(dialog(page)).toContainText("The log is read in this browser only. It is not uploaded or stored.");
   await expect(dialog(page)).toContainText("The game writes your build to it each time you log in to a character.");
+  // Steam's default folders, each with its copy button.
+  await expect(folders(page)).toHaveText([
+    `Windows · SteamC:\\Program Files (x86)\\Steam\\${LOG_PATH.replaceAll("/", "\\")}`,
+    `Linux · Steam (Proton)~/.local/share/Steam/${LOG_PATH}`,
+    `Linux · Steam (Flatpak)~/.var/app/com.valvesoftware.Steam/.local/share/Steam/${LOG_PATH}`,
+  ]);
+  await folders(page).nth(1).getByRole("button", { name: "Copy folder path" }).click();
+  await expect(folders(page).nth(1).getByRole("button", { name: "Folder path copied" })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`~/.local/share/Steam/${LOG_PATH}`);
   await expect(dialog(page).getByRole("button", { name: "Choose a different file…" })).toBeHidden();
   await expect(dialog(page).locator(".game-log-found")).toBeHidden();
   await expect(importButton(page)).toBeDisabled();
@@ -80,7 +93,16 @@ test("the reader's reason shows when it finds no log", async ({ page }) => {
   const planner = await openDialog(page, {
     found: false,
     reason: "The game's log folder was not found on this computer.",
+    searched: [
+      { label: "TLI_GAME_LOG_DIR", path: "/games/logs" },
+      { label: "Steam library", path: `/mnt/hdd/SteamLibrary/${LOG_PATH}` },
+    ],
   });
+  // The folders the reader looked in replace Steam's defaults.
+  await expect(folders(page)).toHaveText([
+    "TLI_GAME_LOG_DIR/games/logs",
+    `Steam library/mnt/hdd/SteamLibrary/${LOG_PATH}`,
+  ]);
   await expect(dialog(page).locator(".game-log-reason")).toHaveText(
     "The game's log folder was not found on this computer.",
   );
@@ -224,6 +246,8 @@ test("the local reader's log: found, best combined login chosen, and a different
   });
   const planner = await openDialog(page, body);
   await expect(dialog(page).locator(".game-log-found")).toHaveText("Found UE_game.log (updated 2026-10-19 14:05)");
+  await expect(foundFolder(page)).toHaveText(body.folder);
+  await expect(foundFolder(page).getByRole("button", { name: "Copy folder path" })).toBeVisible();
   await expect(dialog(page)).toContainText("Read from the game's log folder on this computer by the planner.");
   await expect(logins(page)).toHaveText([
     "Best combined · Divineshot Carino · Ranger of GloryLv 61 · newest login 2026-10-19 14:00 · gaps filled from 1 older login",

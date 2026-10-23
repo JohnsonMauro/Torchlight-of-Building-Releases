@@ -1,10 +1,14 @@
-// "Import from game" (the header's button): the game log the planner's local reader found, or the file picker; the
-// logins of the log, and the chosen one's summary; Import as new build. The planner opens it (looking the log up) and
+// "Import from game" (the header's button): the game log the planner's local reader found (and its folder), or the file
+// picker with the log folders to copy into the system's file dialog; the logins of the log, and the chosen one's summary; Import as new build. The planner opens it (looking the log up) and
 // announces the "gameLogImport" source; reading a file, choosing a login and importing are planner commands, and
 // closing it drops everything.
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
-import type { GameLogFromView, GameLogSummaryView } from "@legacy/app/bridge/game-log-import-view.ts";
+import type {
+  GameLogFolderView,
+  GameLogFromView,
+  GameLogSummaryView,
+} from "@legacy/app/bridge/game-log-import-view.ts";
 import {
   fieldControlClass,
   fieldHelpClass,
@@ -17,7 +21,9 @@ import {
   plainDialogTitleClass,
 } from "../../ui/dialog-classes";
 import { closeDialog, registerDialog } from "../../ui/dialog-registry";
+import { StrokeIcon } from "../../ui/StrokeIcon";
 import { useViewSource } from "../../ui/use-view-source";
+import { ICON_BUTTON } from "./build-classes";
 
 // A warning (older login, missing sections, changed build) and a step's heading.
 const CHANGED = "block text-xs text-warn";
@@ -30,6 +36,50 @@ const COUNTS =
 // A login to choose; the chosen one (.active) accent-edged.
 const LOGIN =
   "grid w-full cursor-pointer gap-0.5 rounded-sm border border-line bg-sunken px-3 py-2 text-left text-xs text-text hover:border-line-strong focus-visible:outline-2 focus-visible:outline-accent on:border-accent on:bg-accent/10";
+
+/** A log folder: what it is, its path, and a button that copies the path (a check for a moment once copied). */
+function GameLogFolder({ folder }: { folder: GameLogFolderView }) {
+  const [copied, setCopied] = useState(false);
+  const path = useRef<HTMLElement>(null);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(folder.path);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // No clipboard (an insecure page, a denied permission): select the path so Ctrl+C copies it.
+      if (path.current) getSelection()?.selectAllChildren(path.current);
+    }
+  };
+  return (
+    <li className="game-log-folder flex items-center gap-1.5">
+      <span className="grid min-w-0 flex-1 gap-0.5">
+        {folder.label ? <small className="text-xs text-muted">{folder.label}</small> : null}
+        <code ref={path} className={CODE}>
+          {folder.path}
+        </code>
+      </span>
+      <button
+        type="button"
+        className={ICON_BUTTON}
+        aria-label={copied ? "Folder path copied" : "Copy folder path"}
+        title={copied ? "Copied" : "Copy folder path"}
+        onClick={copy}
+      >
+        <StrokeIcon className="size-3.5">
+          {copied ? (
+            <path d="m5 12 5 5 9-10" />
+          ) : (
+            <>
+              <rect x="9" y="9" width="11" height="11" rx="2" />
+              <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+            </>
+          )}
+        </StrokeIcon>
+      </button>
+    </li>
+  );
+}
 
 function FromCell({ from }: { from: GameLogFromView }) {
   if (!from) return <td />;
@@ -137,6 +187,11 @@ export function ImportGameLogDialog() {
           </>
         ) : null}
       </p>
+      {view?.found?.folder ? (
+        <ul className="game-log-found-folder mt-1.5 grid">
+          <GameLogFolder folder={{ label: "", path: view.found.folder }} />
+        </ul>
+      ) : null}
       <p id="import-game-log-auto-privacy" className={`mt-2 ${fieldHelpClass}`} hidden={!view?.found}>
         Read from the game's log folder on this computer by the planner. Only build data is kept; nothing is uploaded or
         stored.
@@ -156,14 +211,16 @@ export function ImportGameLogDialog() {
       <p className={plainDialogTextClass} hidden={!picker}>
         {"Pick "}
         <code className={CODE}>UE_game.log</code>
-        {" from "}
-        <code className={CODE}>{"<Torchlight Infinite>\\UE_game\\TorchLight\\Saved\\Logs"}</code>
-        {" (with Steam, by default "}
-        <code className={CODE}>
-          C:\Program Files (x86)\Steam\steamapps\common\Torchlight Infinite\UE_game\TorchLight\Saved\Logs
-        </code>
-        ). The game writes your build to it each time you log in to a character.
+        {" from the game's log folder. The game writes your build to it each time you log in to a character."}
       </p>
+      <div hidden={!picker || !view?.folders.length}>
+        <p className={STEP}>Log folders</p>
+        <ul className="game-log-folders grid gap-2">
+          {view?.folders.map((folder) => (
+            <GameLogFolder key={folder.path} folder={folder} />
+          ))}
+        </ul>
+      </div>
       <label className={`mt-4 grid gap-2 ${fieldLabelClass}`} hidden={!picker}>
         Game log
         <input

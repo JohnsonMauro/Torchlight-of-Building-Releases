@@ -274,19 +274,47 @@ export function gameLogAutoSnapshots(files: GameLogLocalFile[] = []): {
   return { rows: [...best, ...rows], sources };
 }
 
-/** The local reader's newest file: its name and when it was last written (local time). */
-export function gameLogFound(file: GameLogLocalFile | undefined): { name: string; updated: string } {
-  return { name: file?.name || "UE_game.log", updated: gameLogLocalTime(file?.modified) };
+/** The local reader's newest file: its name, when it was last written (local time) and the folder it is in. */
+export function gameLogFound(file: GameLogLocalFile | undefined, folder = ""): GameLogFoundView {
+  return { name: file?.name || "UE_game.log", updated: gameLogLocalTime(file?.modified), folder };
+}
+export interface GameLogFoundView {
+  name: string;
+  updated: string;
+  /** The folder the local reader read it from, or "". */
+  folder: string;
+}
+
+/** A folder the game's log may be in, with what it is ("Steam", "Windows · Steam"…; "" when nothing to say). */
+export interface GameLogFolderView {
+  label: string;
+  path: string;
+}
+const LOG_SUBPATH = ["steamapps", "common", "Torchlight Infinite", "UE_game", "TorchLight", "Saved", "Logs"];
+/** Where Steam puts the log by default, for a page without the local reader (it cannot see this computer's folders). */
+export const GAME_LOG_DEFAULT_FOLDERS: GameLogFolderView[] = [
+  { label: "Windows · Steam", path: ["C:\\Program Files (x86)\\Steam", ...LOG_SUBPATH].join("\\") },
+  { label: "Linux · Steam (Proton)", path: ["~/.local/share/Steam", ...LOG_SUBPATH].join("/") },
+  {
+    label: "Linux · Steam (Flatpak)",
+    path: ["~/.var/app/com.valvesoftware.Steam/.local/share/Steam", ...LOG_SUBPATH].join("/"),
+  },
+];
+/** The folders to offer: the ones the local reader looked in (this computer's own paths), else Steam's defaults. */
+export function gameLogFolders(searched: GameLogFolderView[] | null | undefined): GameLogFolderView[] {
+  return searched?.length ? searched : GAME_LOG_DEFAULT_FOLDERS;
 }
 
 /** Everything the dialog shows, but the opening count (src/app/bridge/view-sources.ts adds it). */
 export interface GameLogImportView {
   /** The local reader's file, while the dialog shows it (until a file is chosen). */
-  found: { name: string; updated: string } | null;
+  found: GameLogFoundView | null;
   /** "Choose a different file…": shown with the found file until it is used. */
   chooseOther: boolean;
   /** The file picker and its help. */
   picker: boolean;
+  /** The folders the picker's help offers to copy (gameLogFolders). */
+  folders: GameLogFolderView[];
   /** Why the planner could not look the log up itself, or "". */
   reason: string;
   status: GameLogStatus | null;

@@ -6,9 +6,9 @@ import {
   ACTIVE_BUILD_CAPTION,
   ACTIVE_BUILD_NAME,
   ACTIVE_BUILD_RENAME,
-  ACTIVE_BUILD_RENAME_BUTTON,
   ACTIVE_BUILD_ROW,
   ACTIVE_BUILD_TAB,
+  ICON_BUTTON,
 } from "./build-classes";
 
 /**
@@ -46,7 +46,7 @@ export function ActiveBuildTab() {
             <button
               ref={pencil}
               type="button"
-              className={ACTIVE_BUILD_RENAME_BUTTON}
+              className={ICON_BUTTON}
               aria-label="Rename build"
               title="Rename build"
               onClick={() => setRenaming(true)}
