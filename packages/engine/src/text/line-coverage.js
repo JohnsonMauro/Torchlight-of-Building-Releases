@@ -22,7 +22,7 @@ import { classifyDoubleDamageLine } from "../combat/double-damage.js";
 import { classifyCritOnlyLine } from "./crit-only-lines.js";
 import { parseBlurSource } from "../combat/blur-sources.js";
 import { blockedAilmentsOf } from "../ailments/ailment-blocks.js";
-import { classifyTaggedCritLine } from "../skills/scorching-beam-critical.js";
+import { classifyTaggedCritLine } from "../skills/spell-critical.js";
 import { classifyMinionLine, nourishmentLineKind } from "../minions/minion-damage-model.js";
 import { classifySkillCoverage } from "../skills/skill-coverage.js";
 import { parseItemTrigger, itemTriggerEvent } from "../skills/item-triggered-skills.js";
@@ -890,7 +890,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
       ? "In calc"
       : "Inactive";
   }
-  // Tag-scoped crit rating / damage (packages/engine/src/skills/scorching-beam-critical.js classifyTaggedCritLine): In calc where a modeled hit (or the
+  // Tag-scoped crit rating / damage (packages/engine/src/skills/spell-critical.js classifyTaggedCritLine): In calc where a modeled hit (or the
   // beam) carries every tag of the scope, Inactive otherwise.
   const taggedCrit = classifyTaggedCritLine(text);
   if (taggedCrit && planner?.activation) {
@@ -1961,7 +1961,7 @@ function readerLineStatus(text, planner) {
     if (unreadOnly(new Set([...READ_ORIGINS, "talent", "slate", "prism", "trait"]))) return "Not modeled";
     return routeStatus("affliction", "additionalAfflictionEffectPercent", planner);
   }
-  // "+X% Fire Skill Critical Strike Damage" (packages/engine/src/skills/scorching-beam-critical.js: gear / kismet / pact / memory copies, Fire skills).
+  // "+X% Fire Skill Critical Strike Damage" (packages/engine/src/skills/spell-critical.js: gear / kismet / pact / memory copies, Fire skills).
   if (/^\+[\d.]+% Fire Skill Critical Strike Damage$/i.test(text)) {
     if (unreadOnly(READ_ORIGINS)) return "Not modeled";
     if (!engines) return "In calc";

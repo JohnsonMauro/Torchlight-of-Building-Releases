@@ -13,7 +13,7 @@
 //   affliction Affliction rate / effect / max-Affliction resistance
 //   reaping  Reaping duration / recovery
 //   castSpeed, attackAndCastSpeed, channeledSpeed  the cast-rate ledger (packages/engine/src/skills/scorching-beam-cast-rate.js)
-//   crit, spellCrit  the crit models (packages/engine/src/skills/scorching-beam-critical.js; attacks use the weapon model's rating)
+//   crit, spellCrit  the crit models (packages/engine/src/skills/spell-critical.js; attacks use the weapon model's rating)
 //   aura     the aura ledger (Aura Effect, Sealed Mana Compensation)
 //   defense  stat sheet / EHP only ("Counted in stats")
 //   utility  read by no damage ledger here (left to the engine-line badge layer: blessing, Blur, skill-level rules)

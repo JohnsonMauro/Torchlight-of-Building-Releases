@@ -193,7 +193,7 @@ export function collectBuildMechanics({
   // Supports on the main skill that are not modeled elsewhere.
   let perStackSupercharge = 0,
     superchargeFlat = 0;
-  // Crit-only lines (Critical Strike Damage Increase) reach the beam's crit branch only (packages/engine/src/skills/scorching-beam-critical.js
+  // Crit-only lines (Critical Strike Damage Increase) reach the beam's crit branch only (packages/engine/src/skills/spell-critical.js
   // critOnlyFactor), never Ignite or another DoT; listed here for the ledgers. Per-Focus-Blessing-stack lines (Overload)
   // wait for the blessing model's stack count (packages/engine/src/planner.js applies `pendingPerStack` after calculateBlessings).
   const critOnly = [],

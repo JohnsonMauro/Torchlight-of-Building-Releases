@@ -170,7 +170,7 @@ import { findScorchingBeamSetup, scorchingBeamSustainedHits } from "./skills/sco
 import { scorchingBeamCastRate } from "./skills/scorching-beam-cast-rate.js";
 import { activationMediumDotTrigger } from "./skills/trigger-interval.js";
 import { skillTiming } from "../data/skills/skill-timing.generated.js";
-import { scorchingBeamCritical } from "./skills/scorching-beam-critical.js";
+import { spellCritical } from "./skills/spell-critical.js";
 import { scorchingBeamAddedDamage } from "./skills/scorching-beam-added-damage.js";
 import {
   combineBeamAndIgnite,
@@ -3607,12 +3607,12 @@ function calculatePlannerOnce(
   const blessingCanHit = activeNames.has("Scorching Beam") || hittingSetups.length > 0;
   const blessingCanCrit =
     (activeNames.has("Scorching Beam") &&
-      scorchingBeamCritical({ main, talentSlate, equipment: memoryEquipment, pact }).criticalChancePercent > 0) ||
+      spellCritical({ main, talentSlate, equipment: memoryEquipment, pact }).criticalChancePercent > 0) ||
     skillHitSources.some((source) =>
       source.profile.weaponScaling
         ? weaponAttack.crit.chancePercent > 0
-        : scorchingBeamCritical({ main: source.setup, talentSlate, equipment: memoryEquipment, pact })
-            .criticalChancePercent > 0,
+        : spellCritical({ main: source.setup, talentSlate, equipment: memoryEquipment, pact }).criticalChancePercent >
+          0,
     );
   // Ethereal Prism core clauses reach the Blessing model like a panel core's text (core audit B7: Commander's Gambit's "-100% additional
   // Tenacity Blessing, Agility Blessing, and Focus Blessing Effect"; the panel cores arrive through levelSources.talents).
@@ -3718,7 +3718,7 @@ function calculatePlannerOnce(
       ],
     });
   // Towering Presence (packages/engine/src/talents/towering-presence.js; core audit batch B5): the main-hand weapon's damage and crit rating for Spell skills,
-  // as derived entries only the Spell-aware readers use (packages/engine/src/skills/skill-hit-model.js added damage, packages/engine/src/skills/scorching-beam-critical.js flat rating).
+  // as derived entries only the Spell-aware readers use (packages/engine/src/skills/skill-hit-model.js added damage, packages/engine/src/skills/spell-critical.js flat rating).
   const weaponToSpells = weaponToSpellEntries(modifierTexts, weaponAttack);
   modifierTexts.push(...weaponToSpells.lines);
   const targetCursed =
@@ -3960,7 +3960,7 @@ function calculatePlannerOnce(
   });
   const levelFactor =
     main.effectiveLevel >= 20 ? skillLevelDamageMultiplier(main.effectiveLevel) / skillLevelDamageMultiplier(20) : 1;
-  const beamCritical = scorchingBeamCritical({
+  const beamCritical = spellCritical({
     main,
     talentSlate,
     equipment: memoryEquipment,
@@ -4356,7 +4356,7 @@ function calculatePlannerOnce(
       enemyAilments: mechanics.enemyAilments,
     };
     const critFor = (castsPerSecond, strikeCritChancePercent = null) =>
-      scorchingBeamCritical({
+      spellCritical({
         main: setup,
         talentSlate,
         equipment: memoryEquipment,

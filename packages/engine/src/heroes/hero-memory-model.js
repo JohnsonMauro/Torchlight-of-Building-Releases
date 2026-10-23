@@ -111,7 +111,7 @@ export function calculateHeroMemories(hero = {}, options = {}) {
       const source = `Hero memory: ${memory.name || memory.type}`;
       // Scoped crit damage keeps its scope (gear-pact batch G10): "+X% Spell / Fire Skill Critical Strike Damage" joins the
       // modifier list as written and the spell crit model applies it to Spell / Fire skills only
-      // (packages/engine/src/skills/scorching-beam-critical.js). Before 2026-10-12 it was rewritten to plain Critical Strike Damage (every skill).
+      // (packages/engine/src/skills/spell-critical.js). Before 2026-10-12 it was rewritten to plain Critical Strike Damage (every skill).
       const parsed = collectNormalizedGearModifiers([{ name: source, modifiers: [text] }]);
       const extra = normalizePercentageText(text).match(
         /^\+([\d.]+)(%?) (Attack Block Chance|Spell Block Chance|Block Ratio|Strength|Dexterity|Max Life|Max Mana|Armor|Evasion|Movement Speed|Max Energy Shield|Fire Damage|Spell Damage|Max (?:Fire|Cold|Lightning|Erosion) Resistance|Spell Critical Strike Damage|Fire Skill Critical Strike Damage)$/i,

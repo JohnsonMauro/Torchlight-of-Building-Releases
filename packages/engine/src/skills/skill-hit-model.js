@@ -622,7 +622,7 @@ export function recalledProjectilesPerUse(component) {
  * @param {object} p.profile SKILL_HIT_PROFILES entry
  * @param {object[]} p.modifierTexts flattened modifier lines (planner.modifierTexts)
  * @param {object} p.castSpeed { factor, sources } — the planner's cast-speed total as a multiplier on uses/s
- * @param {object} p.crit scorchingBeamCritical(...) output for this setup (spell crit totals)
+ * @param {object} p.crit spellCritical(...) output for this setup (spell crit totals)
  * @param {object[]} p.auraEntries active aura entries (effectiveEffects)
  * @param {object} p.aim planner.aim
  * @param {number} p.intelligenceAdditionalPercent main-stat line (0.5% × total Intelligence) from the hit ledger
@@ -2376,11 +2376,11 @@ export function calculateSkillHit({
   // Critical strikes: expected factor with crit-only additional lines on the crit share.
   // Attack skills (B3): the supports' Critical Strike Rating lines join the weapon crit by the manual's formula, rating =
   // Σ base (weapon + flat) × (1 + Σ %) × Π(1 + additional %), 100 rating per 1% chance. Spell crit already reads its
-  // supports in packages/engine/src/skills/scorching-beam-critical.js (Critical Strike Rating Increase there keeps its Lv.21 cap, B6 open; the
+  // supports in packages/engine/src/skills/spell-critical.js (Critical Strike Rating Increase there keeps its Lv.21 cap, B6 open; the
   // attack path reads the TLIDB table at the support's level).
   const attackCritBase = attackProfile ? crit.attackCrit || weapon?.crit || null : null;
   let supportCrit = null;
-  // Tag-scoped crit rating lines ("+30% Projectile Critical Strike Rating"; packages/engine/src/skills/scorching-beam-critical.js taggedCrit, read for
+  // Tag-scoped crit rating lines ("+30% Projectile Critical Strike Rating"; packages/engine/src/skills/spell-critical.js taggedCrit, read for
   // this setup's tags) join the attack crit like the supports' lines (residual batch).
   const taggedRating = attackCritBase
     ? crit.taggedCrit || { ratingPercent: 0, ratingFlat: 0 }

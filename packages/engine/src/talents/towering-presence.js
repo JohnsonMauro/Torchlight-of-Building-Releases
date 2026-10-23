@@ -9,7 +9,7 @@
 //   838374 "Adds P1% of Main-Hand Weapon['’]s Critical Strike Rating to the Base Critical Strike Rating of Spell Skills": node 339 copies
 //     the main-hand slot's (equipSlot 2) final Critical Strike Rating (attr 4802, mod 5) × P1 / 100 to the flat / base rating
 //     (attr 4802, mod 1) of skills with the Spell tag (6001100). The planner adds it to the spell crit model's flat rating, which
-//     joins the base before the increased layer (packages/engine/src/skills/scorching-beam-critical.js), for Spell skills only.
+//     joins the base before the increased layer (packages/engine/src/skills/spell-critical.js), for Spell skills only.
 //   363414400 "-99% additional Ailment Damage" is read by the ailment ledgers (core audit batch B1).
 // The derived entries below carry structured fields (`weaponToSpells`, `spellBaseCritRating`) and a text that no added-damage or
 // crit regex reads, so only the Spell-aware readers use them (a plain "Adds … to Spells" line also reaches attack hits today).

@@ -1,12 +1,14 @@
 import { critOnlyLinesFor } from "../text/crit-only-lines.js";
-import { selenaScorchingBeamStrippedBaseline } from "../../data/stats/selena-scorching-beam-stripped-baseline.js";
+import { BASE_CRITICAL_DAMAGE_PERCENT } from "../game-attribute-defaults.js";
 import { supportEffectsFor, criticalStrikeRatingIncreasePercent } from "../supports/support-effects.js";
 import { controlSpellCriticalRatingPercent } from "../supports/support-model.js";
 
 const value = (object, key) => Number(object?.[key]) || 0;
 
-// The stripped Scorching Beam panel has 5% spell crit chance, equivalent to
-// 500 rating at 100 rating per chance point. Rating is never a chance bonus.
+// A Spell's base Critical Strike Rating: 500, 5% chance at 100 rating per chance point. Read from the in-game panel of a
+// Spell with nothing that adds rating (2026-09-15); the game data's Critical Strike Rating attribute (4802) defaults to 0,
+// so where the 500 comes from is open. Rating is never a chance bonus.
+export const SPELL_BASE_CRITICAL_STRIKE_RATING = 500;
 // Conditional crit lines that only apply in combat (the town panel omits them).
 // Two wordings (2026-10-15): "per recent Critical Strike" (stacks from crit hits) and "per recent non-Critical Strike"
 // (stacks from non-crit hits). Nether King's Ultimate node is the second (TLIDB current text and the SS14 game record 298044,
@@ -108,7 +110,7 @@ function scopedCritDamageLines(modifierTexts, main) {
 // `castsPerSecond` is the hit-event rate the recent-strike stacks count (the beam's cast rate; a skill hit's deduped
 // hits/s, packages/engine/src/skills/skill-hit-model.js strikeHitsPerUse). `strikeCritChancePercent` overrides the crit chance those strikes roll
 // (an attack's weapon crit chance); it defaults to this model's spell crit chance.
-export function scorchingBeamCritical({
+export function spellCritical({
   main,
   talentSlate,
   equipment,
@@ -119,8 +121,7 @@ export function scorchingBeamCritical({
   targetHasAilment = false,
   strikeCritChancePercent = null,
 } = {}) {
-  const baseline = selenaScorchingBeamStrippedBaseline.damage;
-  const baseRating = baseline.spellCriticalStrikeChancePercent * 100;
+  const baseRating = SPELL_BASE_CRITICAL_STRIKE_RATING;
   const talent = talentSlate?.candidateTalent || {};
   const slate = talentSlate?.candidateSlate || {};
   const gear = equipment?.candidate || {};
@@ -255,7 +256,7 @@ export function scorchingBeamCritical({
   const fireResistanceCriticalDamagePercent = fireResistanceSources.reduce((sum, item) => sum + item.value, 0);
   const criticalDamagePercent = Math.max(
     100,
-    baseline.spellCriticalStrikeDamagePercent + increasedCriticalDamagePercent + fireResistanceCriticalDamagePercent,
+    BASE_CRITICAL_DAMAGE_PERCENT + increasedCriticalDamagePercent + fireResistanceCriticalDamagePercent,
   );
   // Combat-only additions: recent-crit stacks and bonuses against ailing targets.
   const strikeChance = Math.max(0, Math.min(100, strikeCritChancePercent ?? criticalChancePercent));
@@ -316,7 +317,7 @@ export function scorchingBeamCritical({
     increasedRatingPercent,
     rating,
     criticalChancePercent,
-    baseCriticalDamagePercent: baseline.spellCriticalStrikeDamagePercent,
+    baseCriticalDamagePercent: BASE_CRITICAL_DAMAGE_PERCENT,
     increasedCriticalDamageSources,
     criticalDamagePercent,
     fireResistanceCriticalDamagePercent,

@@ -5,7 +5,7 @@
 // TLIDB at capture time; game-id-map node 92100013) reads "+20% Critical Strike Damage per recent Critical Strike, up to 4
 // stacks". TLIDB's current text and the SS14 game record 298044 read "per recent non-Critical Strike"; the record's effect is
 // unchanged from SS13, so the node always counted non-Critical Strikes. Only this node carries the stale wording; the
-// "per recent Critical Strike" reader stays for any other item that really says it (packages/engine/src/skills/scorching-beam-critical.js).
+// "per recent Critical Strike" reader stays for any other item that really says it (packages/engine/src/skills/spell-critical.js).
 // Matched with any value: a Judgment scales the number first (its own Brand talents take -30%, linked slates +40%).
 const STALE_SLATE_TALENT_LINES = [
   [

@@ -66,7 +66,7 @@ export function bodyReaders(body) {
   body = normalizeBody(body);
   const readers = [];
   if (SPEED.test(body)) readers.push("speed");
-  // Crit lines: the spell crit model (packages/engine/src/skills/scorching-beam-critical.js) and the weapon model read derived crit lines.
+  // Crit lines: the spell crit model (packages/engine/src/skills/spell-critical.js) and the weapon model read derived crit lines.
   // "+X% additional Critical Strike Rating" (Cohesion; core audit batch B3) is its own multiplier on the rating in both models.
   if (
     /^[+-]?[\d.]+% (?:Spell |Attack )?Critical Strike (?:Rating|Damage)$/i.test(body) ||

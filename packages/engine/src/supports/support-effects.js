@@ -1333,7 +1333,7 @@ function clauseStatus(clause, support, ctx) {
           ["skill-hit crit"],
         );
       if (clause.kind === "ratingPercent" && ["Critical Strike Rating Increase", "Control Spell"].includes(name))
-        return s("In calc", "spell crit rating (packages/engine/src/skills/scorching-beam-critical.js)", ["crit"]);
+        return s("In calc", "spell crit rating (packages/engine/src/skills/spell-critical.js)", ["crit"]);
       return s("Not modeled", "spell crit reads Critical Strike Rating Increase and Control Spell only");
     case "ailmentChance":
       if (engine === "skill-dot") return s("Inactive", "the skill deals no hits, so it applies no hit ailment");

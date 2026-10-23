@@ -232,7 +232,7 @@ export const FAMILIES = [
     "a-crit",
     "a",
     "Scoped or conditional crit (Ranged, Cold / Erosion Skill, Combo Finisher, per Ailment, against Distant, on Critical Strike)",
-    "scorching-beam-critical, weapon crit, skill-hit crit; scope tokens and conditions missing",
+    "spell-critical, weapon crit, skill-hit crit; scope tokens and conditions missing",
     "hits",
     /Critical Strike/i,
   ),
