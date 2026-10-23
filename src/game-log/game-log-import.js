@@ -19,7 +19,6 @@ import {
   CLOCKWORK_CORE,
   craftAffixes,
   craftedSlateShape,
-  defaultFollowerState,
   defaultPlannerState,
   equipmentSlots,
   etherealPrismBases,
@@ -722,63 +721,6 @@ const filledFrom = (report, section, stamp) => {
   const list = (report.filledFrom[section] ||= []);
   if (!list.includes(stamp)) list.push(stamp);
 };
-
-// ---------------------------------------------------------------- blank state
-
-/** The New Build template (src/app/planner/session.js emptyPlannerState) with the planner's default combat settings. */
-export function blankPlannerState() {
-  const state = structuredClone(defaultPlannerState);
-  state.equipmentOverrides = {};
-  state.equipmentInventory = [];
-  state.hero = {
-    selectedHeroId: "",
-    selectedTraits: {},
-    memories: {},
-    memoryTraitLevels: {},
-    memoryInventory: [],
-    equippedMemoryIds: {},
-    baseTraitMemoryId: "",
-    baseTraitMemoryRoll: null,
-    sageScent: { elixir: "", damage: "", defense: "", functional: "" },
-    carinoSpecialAmmoSupports: ["", "", ""],
-    heroTraitSupports: {},
-    heroTraitSupportLevels: {},
-    heroTraitSupportConfigs: {},
-    treeTraits: {},
-    heroLoadouts: {},
-  };
-  state.skills = {
-    setupOrder: [],
-    boardSlots: { skills: [], auras: [] },
-    supportOrder: {},
-    setupEnabled: {},
-    skillLevels: {},
-    supportEnabled: {},
-    supportLevels: {},
-    specialSupportConfigs: {},
-    customSupports: {},
-    customSetups: [],
-  };
-  state.equippedSlateIds = [];
-  state.slates = { geometryVersion: 4, placements: {}, parked: {}, inventory: [] };
-  state.talentRanks = {};
-  state.talents = {
-    selectedTrees: ["", "", "", ""],
-    coreSelections: {},
-    prismInventory: [],
-    installedPrisms: {},
-    installedPrismNodes: {},
-  };
-  state.followers = defaultFollowerState(); // never carried over from the open build
-  state.pacts = {
-    selectedSpirits: ["", "", ""],
-    spiritLevels: {},
-    nativeNodeQuantities: {},
-    kismetSlots: {},
-    fateUnlocks: {},
-  };
-  return state;
-}
 
 // ---------------------------------------------------------------- gear
 
@@ -2906,7 +2848,7 @@ export function importSnapshot(scan, dumpId, idMap, { merge = true } = {}) {
     if (section !== "slateInfluence") report.replaced[MERGE_SECTION[section]] = true;
   }
   reportSectionGaps(report, merged.chosen, tree);
-  const state = blankPlannerState();
+  const state = structuredClone(defaultPlannerState);
   resolveHero(tree, idMap, report, state);
   const gear = resolveGear(tree, idMap, report);
   state.equipmentInventory = gear.inventory;

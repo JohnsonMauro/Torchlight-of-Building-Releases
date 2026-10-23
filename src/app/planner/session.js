@@ -148,56 +148,10 @@ export function refreshPactCandidate() {
   renderCandidateViews();
 }
 
+// A new build: the defaults (no gear, skills, slates, talents, pacts or hero), every combat condition off but the
+// target's Life and the pre-built self buffs.
 export function emptyPlannerState() {
   const empty = structuredClone(defaultPlannerState);
-  empty.equipmentOverrides = {};
-  empty.equipmentInventory = [];
-  empty.hero = {
-    selectedHeroId: "",
-    selectedTraits: {},
-    memories: {},
-    memoryTraitLevels: {},
-    memoryInventory: [],
-    equippedMemoryIds: {},
-    baseTraitMemoryId: "",
-    baseTraitMemoryRoll: null,
-    sageScent: { elixir: "", damage: "", defense: "", functional: "" },
-    carinoSpecialAmmoSupports: ["", "", ""],
-    heroTraitSupports: {},
-    heroTraitSupportLevels: {},
-    heroTraitSupportConfigs: {},
-    treeTraits: {},
-    heroLoadouts: {},
-  };
-  empty.skills = {
-    setupOrder: [],
-    boardSlots: { skills: [], auras: [] },
-    supportOrder: {},
-    setupEnabled: {},
-    skillLevels: {},
-    supportEnabled: {},
-    supportLevels: {},
-    specialSupportConfigs: {},
-    customSupports: {},
-    customSetups: [],
-  };
-  empty.equippedSlateIds = [];
-  empty.slates = { geometryVersion: 4, placements: {} };
-  empty.talentRanks = {};
-  empty.talents = {
-    selectedTrees: ["", "", "", ""],
-    coreSelections: {},
-    prismInventory: [],
-    installedPrisms: {},
-    installedPrismNodes: {},
-  };
-  empty.pacts = {
-    selectedSpirits: ["", "", ""],
-    spiritLevels: {},
-    nativeNodeQuantities: {},
-    kismetSlots: {},
-    fateUnlocks: {},
-  };
   empty.combat = {
     ...empty.combat,
     conditions: {
