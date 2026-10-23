@@ -3,7 +3,7 @@
 // read (packages/engine/src/state/season-migration.js). A new season is a new entry here and a step in season-migration.js.
 
 export interface Season {
-  /** Stored in builds ("ss14"); also the suffix of the season's data files and identifiers (`-ss14`, `Ss14`). */
+  /** Stored in builds ("ss14"); the data's names carry no season (the package's major version does). */
   id: string;
   /** As the page prints it ("SS14"). */
   label: string;

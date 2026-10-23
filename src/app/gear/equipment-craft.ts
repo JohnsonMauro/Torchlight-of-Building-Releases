@@ -6,26 +6,26 @@
 // The rules are the legacy crafter's, which kept this state in its controls (a roll snaps as a range input does), except
 // that a change keeps what it does not touch: the legacy re-render also put every other roll back at its best value.
 import {
-  baseAffixesSs14,
-  baseAffixTiersSs14,
+  baseAffixes as baseAffixesCatalog,
+  baseAffixTiers as baseAffixTiersCatalog,
   corrosionImplicitsForBase,
-  craftAffixesSs14,
+  craftAffixes as craftAffixesCatalog,
   craftItemTypes,
   defaultBaseForItem,
   folkloreRingModifier,
   gearGroupOfType,
-  gearGroupsSs14,
+  gearGroups,
   isLegacyRareBase,
-  legendaryCorrodedModifiersSs14,
-  legendaryGearSs14,
-  legendaryGearTypesSs14,
+  legendaryCorrodedModifiers,
+  legendaryGear,
+  legendaryGearTypes,
   legendaryModifierSignature,
   legendaryTierTemplate,
   placeholderOption,
   placeholderOptionTemplate,
-  rareBaseItemsSs14,
+  rareBaseItems,
   voraxBaseAffixSlotPool,
-  voraxCraftingSs14,
+  voraxCrafting,
   voraxItemTypes,
 } from "#engine";
 import { beltBlendById } from "./belt-blend-options.js";
@@ -152,7 +152,7 @@ export interface EquipmentCraft {
   rare: RareDraft | null;
   legendary: LegendaryDraft | null;
   /**
-   * Where the item picker stands (packages/engine/data/gear/gear-groups-ss14.js: a group, then its entry's type, then a base; a
+   * Where the item picker stands (packages/engine/data/gear/gear-groups.js: a group, then its entry's type, then a base; a
    * Vorax item: a group, then a limb; a legendary: a group, whose legendaries the list shows); null while a
    * rare or Vorax form shows. Back in the picker from the form, `rare` keeps the draft until a base or limb is picked.
    */
@@ -169,17 +169,17 @@ export type CraftPickStep = "mode" | "group" | "type" | "base";
 export const CRAFT_MODES: readonly CraftMode[] = ["rare", "legendary", "vorax"];
 export const craftPickStep = (pick: CraftPick): CraftPickStep => (!pick.group ? "group" : !pick.type ? "type" : "base");
 
-const craftAffixes = craftAffixesSs14 as Record<string, { prefix?: CraftFamily[]; suffix?: CraftFamily[] }>;
-const vorax = voraxCraftingSs14 as {
+const craftAffixes = craftAffixesCatalog as Record<string, { prefix?: CraftFamily[]; suffix?: CraftFamily[] }>;
+const vorax = voraxCrafting as {
   bases: VoraxBase[];
   affixes: Record<string, { prefix?: CraftFamily[]; suffix?: CraftFamily[] }>;
   legendaryDonors: Record<string, { id: string; name: string; level?: number; modifiers: string[] }[]>;
 };
-const rareBases = rareBaseItemsSs14 as RareBase[];
-const baseAffixes = baseAffixesSs14 as Record<string, string[]>;
-const baseAffixTiers = baseAffixTiersSs14 as Record<string, Record<string, string>>;
-export const legendaries = legendaryGearSs14 as LegendaryEntry[];
-const corrodedLines = legendaryCorrodedModifiersSs14 as Record<string, (string | undefined)[]>;
+const rareBases = rareBaseItems as RareBase[];
+const baseAffixes = baseAffixesCatalog as Record<string, string[]>;
+const baseAffixTiers = baseAffixTiersCatalog as Record<string, Record<string, string>>;
+export const legendaries = legendaryGear as LegendaryEntry[];
+const corrodedLines = legendaryCorrodedModifiers as Record<string, (string | undefined)[]>;
 const AFFIX_SLOTS = [0, 1, 2, 3, 4, 5];
 const EMPTY_AFFIX: CraftAffixDraft = { familyId: "", tier: "", rolls: [], legendary: false };
 
@@ -193,7 +193,7 @@ export interface VoraxGroup {
 /** The gear groups a Vorax limb belongs to (a limb sits in the group whose types share its slot), each with its limbs. */
 export function voraxGroups(): VoraxGroup[] {
   const typeSlots = new Map(craftItemTypes as [string, string][]);
-  return (gearGroupsSs14 as { id: string; label: string; entries: { type: string }[] }[])
+  return (gearGroups as { id: string; label: string; entries: { type: string }[] }[])
     .map((group) => {
       const slots = new Set(group.entries.map((entry) => typeSlots.get(entry.type)));
       return {
@@ -208,9 +208,9 @@ export const voraxGroupOfLimb = (type: string): VoraxGroup | undefined =>
   voraxGroups().find((group) => group.limbs.includes(type));
 export const legendaryById = (id: string): LegendaryEntry | undefined => legendaries.find((entry) => entry.id === id);
 
-/** The item type a legendary drops as (legendary-gear-types-ss14.js); undefined for one without an attribute. */
+/** The item type a legendary drops as (legendary-gear-types.js); undefined for one without an attribute. */
 function legendaryType(id: string): string | undefined {
-  return Object.entries(legendaryGearTypesSs14 as Record<string, string[]>).find(([, ids]) => ids.includes(id))?.[0];
+  return Object.entries(legendaryGearTypes as Record<string, string[]>).find(([, ids]) => ids.includes(id))?.[0];
 }
 /**
  * The base a crafted legendary starts on: the type it drops as; else (a legendary without an attribute) the catalogue's
@@ -233,18 +233,18 @@ export interface LegendaryGroup {
 }
 let legendaryGroupList: LegendaryGroup[] | null = null;
 /**
- * The legendaries by gear group and item type (packages/engine/data/gear/legendary-gear-types-ss14.js). A legendary no type lists has
+ * The legendaries by gear group and item type (packages/engine/data/gear/legendary-gear-types.js). A legendary no type lists has
  * no attribute: it is the Special entry of the attribute group (STR/DEX/INT types) whose types share its slot.
  */
 export function legendaryGroups(): LegendaryGroup[] {
   if (legendaryGroupList) return legendaryGroupList;
-  const types = legendaryGearTypesSs14 as Record<string, string[]>,
+  const types = legendaryGearTypes as Record<string, string[]>,
     typeSlots = new Map(craftItemTypes as [string, string][]),
     listed = new Set(Object.values(types).flat()),
     unlisted = legendaries.filter((entry) => !listed.has(entry.id));
   // An id can repeat in the catalogue (Unholy Prayer): every entry it names.
   const byId = (ids: string[]) => ids.flatMap((id) => legendaries.filter((entry) => entry.id === id));
-  legendaryGroupList = (gearGroupsSs14 as { id: string; label: string; entries: { label: string; type: string }[] }[])
+  legendaryGroupList = (gearGroups as { id: string; label: string; entries: { label: string; type: string }[] }[])
     .map((group) => {
       const entries = group.entries.map((entry) => ({ ...entry, legendaries: byId(types[entry.type] || []) }));
       const attributes = group.entries.every((entry) => /^(STR|DEX|INT) /.test(entry.type)),

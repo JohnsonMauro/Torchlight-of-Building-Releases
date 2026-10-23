@@ -1,6 +1,6 @@
-import { allSkillEffectsSs14 } from "../../data/skills/all-skill-effects-ss14.generated.js";
-import { skillTimingSs14 } from "../../data/skills/skill-timing-ss14.generated.js";
-import { tlidbSkillCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
+import { allSkillEffects } from "../../data/skills/all-skill-effects.generated.js";
+import { skillTiming } from "../../data/skills/skill-timing.generated.js";
+import { tlidbSkillCatalog } from "../../data/catalogs/tlidb.js";
 import { classifyHitLine } from "../skills/skill-hit-lines.js";
 import { incisiveUptime } from "./erika-traits.js";
 
@@ -36,7 +36,7 @@ import { incisiveUptime } from "./erika-traits.js";
 
 const TRIGGER_PENALTY = /^([+-]?\d+(?:\.\d+)?)% additional damage when this skill is triggered$/i;
 const CANNOT_TRIGGER = /^This skill cannot be triggered$/i;
-const catalog = new Map(tlidbSkillCatalogSs14.map((entry) => [entry.name, entry]));
+const catalog = new Map(tlidbSkillCatalog.map((entry) => [entry.name, entry]));
 const round = (value) => Math.round(value * 10000) / 10000;
 
 function profile(
@@ -44,7 +44,7 @@ function profile(
   { repeats, cooldownSeconds, startSpeedPercent = 0, perRepeatSpeedPercent = 0, radiusMeters, desKey },
 ) {
   const entry = catalog.get(name) || {};
-  const timing = skillTimingSs14[name] || null;
+  const timing = skillTiming[name] || null;
   return Object.freeze({
     name,
     kind: "trigger",
@@ -100,7 +100,7 @@ export const VENDETTA_PROFILES = Object.freeze({
 });
 
 const mainText = (setup) =>
-  [...(allSkillEffectsSs14[setup?.name] || []), ...(setup?.effects || [])]
+  [...(allSkillEffects[setup?.name] || []), ...(setup?.effects || [])]
     .join("\n")
     .split(/\r?\n/)
     .map((line) => line.trim());

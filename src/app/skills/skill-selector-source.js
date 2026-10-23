@@ -18,8 +18,8 @@ import { heroTraitSupportConfig } from "../hero/hero-memory-display.js";
 import { artwork } from "../planner/page.js";
 import { currentEditedSetups, plannerState, setupStateKey } from "../planner/session.js";
 import { ui } from "../planner/ui-state.js";
-import { highlightedAuraEffect, highlightedSkillEffect, skillDisplaySs14 } from "./skill-display-ss14.js";
-import { highlightedSupportEffect, supportDisplaySs14 } from "./support-display-ss14.js";
+import { highlightedAuraEffect, highlightedSkillEffect, skillDisplayOf } from "./skill-display.js";
+import { highlightedSupportEffect, supportDisplayOf } from "./support-display.js";
 import { activeSkillBoardTab } from "./skill-board.js";
 import {
   auraFamilyName,
@@ -137,13 +137,13 @@ function skillSelectorDetail() {
     (selectorKind === "support" && selectorTargetSupportSlot < activeSupportCount);
   const full = selectorKind === "support" && (!selectedSetup || (activeSupportCount >= 5 && !replacingSupport));
   const config = selectorSpecialConfig;
-  // Star supports (packages/engine/data/skills/special-support-tiers-ss14.js specialSupportTierData): one main affix with stars.
+  // Star supports (packages/engine/data/skills/special-support-tiers.js specialSupportTierData): one main affix with stars.
   const specialTiers = supportSelector ? configurableSupportTierData(entry.name) : null;
   const progressionTiers = supportSelector ? progressionSupportTierData(entry.name) : null;
   const selectedTier = specialTiers?.find((tier) => tier.tier === config?.tier) || specialTiers?.[0];
   const progressionTier = progressionTiers?.find((tier) => tier.tier === config?.tier) || progressionTiers?.[0];
-  const skillDisplay = selectorKind === "skill" ? skillDisplaySs14(entry, selectorLevel) : null;
-  const supportDisplay = supportSelector ? supportDisplaySs14(entry, selectorLevel) : null;
+  const skillDisplay = selectorKind === "skill" ? skillDisplayOf(entry, selectorLevel) : null;
+  const supportDisplay = supportSelector ? supportDisplayOf(entry, selectorLevel) : null;
   const stars = (value) => ({ value, bonus: specialSupportStarBonus(value) });
   const affixLines = supportSelector ? activationMediumAffixLines(entry.name) : null;
   let progression = null;

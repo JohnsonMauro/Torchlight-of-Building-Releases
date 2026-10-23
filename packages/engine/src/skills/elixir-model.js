@@ -1,10 +1,10 @@
 // Elixir Skills on the training dummy (core audit batch B8: Tailored Remedy, Miraculous Touch; research/core-talents-audit-2026-10-18.md §5).
 //
 // Sourced:
-// - The Elixir Skills' text (TLIDB, packages/engine/data/catalogs/tlidb-ss14.js): "Casts this skill and gains an Elixir Effect: <values> Lasts
+// - The Elixir Skills' text (TLIDB, packages/engine/data/catalogs/tlidb.js): "Casts this skill and gains an Elixir Effect: <values> Lasts
 //   for 3s" (no level table on TLIDB), and "Defeating enemies can increase the Charging Progress of this skill. At 15 Charging
 //   Progress, gains 1 Charge." Restoration Elixirs (Tonics) restore Life / Mana instead. The game skill data gives every Elixir
-//   3 charges and a 0.5 s cooldown (packages/engine/data/skills/skill-timing-ss14.generated.js).
+//   3 charges and a 0.5 s cooldown (packages/engine/data/skills/skill-timing.generated.js).
 // - Miraculous Touch (Ethereal Prism core, talent 80002000): affix 558153024 "Elixir Skills gain P1 Charging Progress every
 //   second" (node 434: P1 ÷ 30 per server tick, filtered to Elixir-tagged skills). Gear lines of the same wording read the same.
 // - Tailored Remedy (Steel Vanguard core, talent 62001400; SS14 record 4104733 + 16269445, the SS13 -40% duration line is gone):
@@ -33,8 +33,8 @@
 //   maxed. Averaged (miraculousGainState): the Main Skill gains 25% × 10 uses per Elixir cast; the Blessings sit at max for
 //   min(1, 25% × Elixir casts per second × 6 s) of the time. The Lv. 20 skill and God of War's Blessing are not modeled (the
 //   ten skills are internal ids only and the Blessing's values are not identified).
-import { tlidbSkillCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
-import { skillTimingSs14 } from "../../data/skills/skill-timing-ss14.generated.js";
+import { tlidbSkillCatalog } from "../../data/catalogs/tlidb.js";
+import { skillTiming } from "../../data/skills/skill-timing.generated.js";
 import { cleanGameText } from "../text/percentage-text.js";
 
 export const ELIXIR_PROGRESS_LINE = /^Elixir Skills gain (\d+(?:\.\d+)?) Charging Progress every second$/i;
@@ -77,7 +77,7 @@ const VALUE_LINES = [
 
 /** The Elixir Effect of one Elixir Skill from its catalog text: kind, value lines, state lines, duration, progress per charge. */
 export function elixirSkillProfile(name) {
-  const effects = (tlidbSkillCatalogSs14.find((entry) => entry.name === name)?.effects || []).map(String);
+  const effects = (tlidbSkillCatalog.find((entry) => entry.name === name)?.effects || []).map(String);
   const effectText =
     effects.find((text) => /^Casts this skill and gains (?:an Elixir Effect|restoration):/i.test(text)) || "";
   const kind = /gains an Elixir Effect:/i.test(effectText)
@@ -106,7 +106,7 @@ export function elixirSkillProfile(name) {
   const progressPerCharge =
     Number(effects.join("\n").match(/At (\d+(?:\.\d+)?) Charging Progress, gains 1 Charge/i)?.[1]) ||
     DEFAULT_PROGRESS_PER_CHARGE;
-  const timing = skillTimingSs14[name] || {};
+  const timing = skillTiming[name] || {};
   // Restoration Elixirs (hero trait audit B8, Sage's Elixir of Immortality): "Restores X% Max Life / Max Mana within N s".
   const restoration = kind === "restoration" ? body : [];
   const restores = (pool) =>

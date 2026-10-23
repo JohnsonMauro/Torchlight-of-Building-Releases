@@ -1,6 +1,6 @@
 import { normalizePercentageText, cleanGameText } from "../text/percentage-text.js";
-import { auraValuesAtLevel } from "../../data/skills/aura-scaling-ss14.js";
-import { supportProgressionSs14 } from "../../data/skills/support-progression-ss14.generated.js";
+import { auraValuesAtLevel } from "../../data/skills/aura-scaling.js";
+import { supportProgression } from "../../data/skills/support-progression.generated.js";
 import { parseProgressionCell } from "../text/progression-cell.js";
 
 const supportLevel = (support) => Math.max(1, Math.min(40, support.effectiveLevel ?? support.level ?? 20));
@@ -45,7 +45,7 @@ export function auraSupportEffects(
     excluded = [];
   for (const support of supports) {
     const level = supportLevel(support);
-    const record = supportProgressionSs14[support.name];
+    const record = supportProgression[support.name];
     const column = record?.columns?.find((item) => /Aura Effect/i.test(item.heading));
     const amount = progressionValue(column, level);
     if (context === "town" && CONDITIONAL_AURA_SUPPORTS.has(support.name)) {
@@ -131,7 +131,7 @@ export function auraSupportSealedManaCompensation(supports = []) {
   const additionalPercents = [],
     sources = [];
   for (const support of supports) {
-    const record = supportProgressionSs14[support.name];
+    const record = supportProgression[support.name];
     const level = supportLevel(support);
     const lines = record
       ? String(record.baseEffect || "").split(/\r?\n/)

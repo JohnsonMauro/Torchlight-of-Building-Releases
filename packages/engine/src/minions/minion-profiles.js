@@ -1,7 +1,7 @@
-import { minionSkillDamageSs14 } from "../../data/skills/minion-skill-damage-ss14.generated.js";
-import { skillTimingSs14 } from "../../data/skills/skill-timing-ss14.generated.js";
-import { tlidbSkillCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
-import { allSkillEffectsSs14 } from "../../data/skills/all-skill-effects-ss14.generated.js";
+import { minionSkillDamage } from "../../data/skills/minion-skill-damage.generated.js";
+import { skillTiming } from "../../data/skills/skill-timing.generated.js";
+import { tlidbSkillCatalog } from "../../data/catalogs/tlidb.js";
+import { allSkillEffects } from "../../data/skills/all-skill-effects.generated.js";
 
 // Minion sources (2026-10-11): which Minion each "% of Base Damage" skill belongs to, what that Minion does on a single
 // training dummy, and the summon-skill text that shapes it. One source per Minion type; a catalog setup of any of the
@@ -9,9 +9,9 @@ import { allSkillEffectsSs14 } from "../../data/skills/all-skill-effects-ss14.ge
 // Minion's skills as separate "main" entries sharing the module icon).
 //
 // Sourced:
-// - Skill rows: packages/engine/data/skills/minion-skill-damage-ss14.generated.js (config_skill_damage: percent of Base Damage per
+// - Skill rows: packages/engine/data/skills/minion-skill-damage.generated.js (config_skill_damage: percent of Base Damage per
 //   level, row kind hit / persistent, typed entry's damage type; research/base-damage-skills-2026-10-11.md).
-// - Timing: packages/engine/data/skills/skill-timing-ss14.generated.js (SkillEditor Split: use time, speed type, cooldown). Spirit
+// - Timing: packages/engine/data/skills/skill-timing.generated.js (SkillEditor Split: use time, speed type, cooldown). Spirit
 //   Magus skills link only the summon's Split (1 s fixed), so their TLIDB cast time is the fallback (flagged).
 // - Minion count: the summon skill's TLIDB text ("This skill summons up to N Minions (LvX:N)"); Module summons carry a
 //   "{%s:1}" placeholder in the game text and TLIDB publishes no Module page, so one Minion is assumed (flagged).
@@ -28,8 +28,8 @@ import { allSkillEffectsSs14 } from "../../data/skills/all-skill-effects-ss14.ge
 // Use pattern (assumption, flagged): the Minion uses its special skill whenever its cooldown is ready and its basic skill
 // otherwise; hits land at the end of each use; the Minion is in range the whole time (the dummy stands still).
 
-const catalog = new Map(tlidbSkillCatalogSs14.map((entry) => [entry.name, entry]));
-const effectsOf = (name) => (allSkillEffectsSs14[name] || []).join("\n");
+const catalog = new Map(tlidbSkillCatalog.map((entry) => [entry.name, entry]));
+const effectsOf = (name) => (allSkillEffects[name] || []).join("\n");
 
 // "This skill summons up to 2 Minions (Lv1:2) (Lv3:2) (Lv4:3) (Lv17:3) (Lv18:4) (Lv25:4) (Lv26:4) (Lv34:4)"
 function countByLevelFromText(name) {
@@ -765,8 +765,8 @@ const DEFINITIONS = [
 
 function buildProfile(definition) {
   const skills = definition.skills.map((entry) => {
-    const row = minionSkillDamageSs14[entry.name] || null;
-    const timing = skillTimingSs14[entry.name] || null;
+    const row = minionSkillDamage[entry.name] || null;
+    const timing = skillTiming[entry.name] || null;
     const useTiming =
       entry.timingFallback ||
       (timing && !(definition.family === "spirit-magus")

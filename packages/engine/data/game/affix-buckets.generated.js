@@ -1,5 +1,5 @@
 // GENERATED FILE - do not edit by hand.
-// Source: src/data/affix-index-ss14.generated.js + affix-catalog-2026-10-15.json, built by scripts/build-affix-buckets.mjs.
+// Source: src/data/affix-index.generated.js + affix-catalog-2026-10-15.json, built by scripts/build-affix-buckets.mjs.
 // Regenerate: node scripts/build-affix-buckets.mjs [tools/bin/reverse-engineering/affix-catalog-<date>.json]
 // Game bucket per write (recipe `mod`): 1 flat, 2 added range, 3 increased (1 + Σ%), 4 additional (Π(1 + %)), 0 flag;
 //   node 114 = conversion (to attr, toMod), node 108 = skill field write; effect nodes without an attribute are left out.

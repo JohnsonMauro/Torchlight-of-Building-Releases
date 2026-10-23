@@ -354,7 +354,7 @@ export function collectDamageTakenLayers(modifierTexts = [], context = {}) {
   return layers;
 }
 
-// Damage over time (game data, packages/engine/data/affix-index-ss14.generated.js): every damage-taken line writes attr 5720.
+// Damage over time (game data, packages/engine/data/affix-index.generated.js): every damage-taken line writes attr 5720.
 //   "#% additional damage over time taken"  mod 4 (additional, multiplies), tag 5000004 (Damage Over Time)
 //   "#% additional ignite damage taken"     mod 4 (additional), tag 5100003 (Ignite)
 //   "#% wilt damage taken"                  mod 3 (increased: lines of one ailment sum), tag 5100007 (Wilt)

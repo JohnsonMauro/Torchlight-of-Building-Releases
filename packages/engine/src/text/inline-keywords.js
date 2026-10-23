@@ -12,7 +12,7 @@ const ON_DEFEAT = {
 };
 const GAME_TEXT = "Game text table (config_multi_language_en.bin 2026-10-09)";
 
-export const inlineKeywordsSs14 = {
+export const inlineKeywords = {
   "Eternal Morale": {
     ...ON_DEFEAT,
     source: `${GAME_TEXT}: hyperlink 10123, char_buff 35045_0`,
@@ -43,7 +43,7 @@ export const inlineKeywordsSs14 = {
 
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // Longest names first, so a longer keyword ("Low-Tier Eternal Morale", if added) wins over a name it contains.
-const names = Object.keys(inlineKeywordsSs14).sort((a, b) => b.length - a.length);
+const names = Object.keys(inlineKeywords).sort((a, b) => b.length - a.length);
 const pattern = names.length ? new RegExp(`(?<![\\w-])(${names.map(escapeRegExp).join("|")})(?![\\w-])`) : null;
 
 /**
@@ -54,7 +54,7 @@ export function inlineKeywordParts(text) {
   if (!pattern || line.includes("\n")) return null;
   const match = pattern.exec(line);
   if (!match) return null;
-  const entry = inlineKeywordsSs14[match[1]];
+  const entry = inlineKeywords[match[1]];
   return {
     keyword: match[1],
     before: line.slice(0, match.index),
@@ -73,7 +73,7 @@ export function inlineKeywordParts(text) {
 // ("+1 Jump" on gear stays a plain line).
 // Youga – The Ultimate One: TLIDB The_Ultimate_One links 19 terms (hyperlinks 107, 109, 756, 767, 12049 and 80070–80083); the
 // definitions paraphrase their TLIDB hover texts (Torchlight_Hyperlink_hover, fetched 2026-10-15 and saved in
-// research/tlidb-ss14/fetch-cache), numbers unchanged; the patch notes' appendix (research/patch-ss14/patch-notes-raw.md,
+// research/tlidb/fetch-cache), numbers unchanged; the patch notes' appendix (research/patch-ss14/patch-notes-raw.md,
 // "Youga linked terms") gives the same values. `aliases` are the forms the trait text uses ("Recalled", "Jump(s)").
 // `plainLines` are the keyword's stat lines, which join the build as trait lines (packages/engine/src/character-stats.js heroTraitStatLines) so
 // the generic readers apply them.

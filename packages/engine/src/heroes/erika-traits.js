@@ -4,7 +4,7 @@
 // engines apply: packages/engine/src/combat-states.js (Numbed on the dummy), packages/engine/src/heroes/vendetta-model.js (the Vendetta triggers), packages/engine/src/planner.js (the
 // derived lines, the Activation Medium block) and packages/engine/src/heroes/hero-trait-modules.js (the badges).
 //
-// Sourced (TLIDB keyword tooltips, Torchlight_Hyperlink_hover, fetched 2026-10-19 and saved in research/tlidb-ss14/fetch-cache):
+// Sourced (TLIDB keyword tooltips, Torchlight_Hyperlink_hover, fetched 2026-10-19 and saved in research/tlidb/fetch-cache):
 // - Electrify (507ee3bc…): "For every stack of Electrify, Feline Figure inflicts 1 stack of Numbed on enemies within the area".
 // - Feline Figure (2b9ca14f…): "Inflicts Numbed stacks equal to the number of Electrify stacks on enemies within the area. Skill
 //   Tags: Spell, Lightning" (no damage of its own).

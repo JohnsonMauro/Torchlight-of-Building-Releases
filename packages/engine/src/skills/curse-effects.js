@@ -1,9 +1,9 @@
-import { allSkillEffectsSs14 } from "../../data/skills/all-skill-effects-ss14.generated.js";
+import { allSkillEffects } from "../../data/skills/all-skill-effects.generated.js";
 import { normalizePercentageText } from "../text/percentage-text.js";
 
 // One table for the curses whose effect on the dummy is "+X% additional <Type> Damage taken by Cursed enemies"
 // (gear-pact batch G3 / G5, research/gear-pact-batch-2026-10-12.md §7.2). Read from each curse skill's TLIDB Lv.20 text
-// (packages/engine/data/skills/all-skill-effects-ss14.generated.js), in either published wording:
+// (packages/engine/data/skills/all-skill-effects.generated.js), in either published wording:
 //   Timid        — "+39% additional Hit Damage taken by Cursed enemies"
 //   Electrocute  — "+39% additional Lightning Damage taken by Cursed enemies"
 //   Vulnerability — "+39% additional Physical Damage taken by Cursed enemies" (game data 2026-10-10: char_buff 16060,
@@ -24,7 +24,7 @@ export const NO_DUMMY_EFFECT_CURSES = {
 };
 
 /** The "+X% additional <Type> Damage taken" a curse applies (Lv.20 TLIDB text), or null. */
-export function curseTakenEffect(name, effects = allSkillEffectsSs14[name] || []) {
+export function curseTakenEffect(name, effects = allSkillEffects[name] || []) {
   if (DEDICATED_CURSE_MODELS.has(name)) return null;
   for (const line of effects.join("\n").split(/\r?\n/)) {
     const text = normalizePercentageText(line).trim();

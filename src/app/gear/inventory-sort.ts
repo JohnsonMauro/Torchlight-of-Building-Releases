@@ -1,7 +1,7 @@
 // The Inventory's Sort order button, as the game sorts its bag: one-handed weapons, two-handed weapons, shields, then
 // helmet, chest armor, gloves, boots, belt, necklace and rings (owner, 2026-10-21, from the game's bag). The sort is
 // stable: items of one kind keep the order they had.
-import { gearGroupsSs14 } from "#engine";
+import { gearGroups } from "#engine";
 
 interface SortableItem {
   slot?: string;
@@ -21,7 +21,7 @@ const SLOT_KINDS: Readonly<Record<string, string>> = {
   rightRing: "ring",
   secondaryHand: "shield",
 };
-const HAND_GROUPS = (gearGroupsSs14 as { id: string; entries: { type: string }[] }[]).filter((group) =>
+const HAND_GROUPS = (gearGroups as { id: string; entries: { type: string }[] }[]).filter((group) =>
   ["one-handed", "two-handed", "shield"].includes(group.id),
 );
 

@@ -11,11 +11,11 @@
 //   - theaLineRead: one clause's status, reason, derived bodies and clocked parts.
 //
 // Sourced:
-// - Trait texts (TLIDB, SS14; packages/engine/data/heroes/all-hero-traits-ss14.generated.js) and the game tier records (§4.3): God's Boon's
+// - Trait texts (TLIDB, SS14; packages/engine/data/heroes/all-hero-traits.generated.js) and the game tier records (§4.3): God's Boon's
 //   buff 82115 lasts the second parameter, 10 s (§6, answered from the game files); Predicted Reincarnation's buff 82113 and
 //   Farewell Prophecy's 82114 stack per Focus consumed (node 213); Prophecy of Purity writes the God's Boon buffs' stack limit
 //   (attr 3442 flat 1, tag 5008700).
-// - TLIDB keyword tooltips (Torchlight_Hyperlink_hover, fetched 2026-10-19 into research/tlidb-ss14/fetch-cache):
+// - TLIDB keyword tooltips (Torchlight_Hyperlink_hover, fetched 2026-10-19 into research/tlidb/fetch-cache):
 //   Focus / Agility / Tenacity Blessing (initial max stacks 4: +5% additional damage; +4% Attack and Cast Speed and +2% additional
 //   damage; 4% damage reduction), Desecration (e08b6093: "+15% additional Erosion Damage taken (multiplies) for each stack of
 //   Desecration. Initial max stacks: 3. Lasts for 5s. Can only affect 1 target"), Sacrificial Pawn (0f6b3f2c: "-10% additional

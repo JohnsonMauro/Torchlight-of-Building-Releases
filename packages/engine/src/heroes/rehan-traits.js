@@ -9,10 +9,10 @@
 //   - rehanLineRead: one clause's status, reason and derived bodies (packages/engine/src/heroes/hero-trait-modules.js "rage" / "burst" / "spirit").
 //
 // Sourced:
-// - Trait texts (TLIDB, SS14; packages/engine/data/heroes/all-hero-traits-ss14.generated.js); game tier records (audit §4.3; SS14 tier data):
+// - Trait texts (TLIDB, SS14; packages/engine/data/heroes/all-hero-traits.generated.js); game tier records (audit §4.3; SS14 tier data):
 //   Fury's Onslaught's second parameter (-33.33 / -36.31 / -39.02 / -41.52 / -43.82) is a Berserk + Seething Spirit additional damage
 //   (affix 187841424: attr 5719 with tags 4030001 / 6001190), so the Spirit's casts take the player's +X% and this offset.
-// - TLIDB keyword tooltips (Torchlight_Hyperlink_hover, fetched 2026-10-19, research/tlidb-ss14/fetch-cache/): Rage (ece24b16: "a
+// - TLIDB keyword tooltips (Torchlight_Hyperlink_hover, fetched 2026-10-19, research/tlidb/fetch-cache/): Rage (ece24b16: "a
 //   Berserker exclusive energy that has a default upper limit of 100"), Berserk (b3645c45: "gains bonuses twice the Max Rage while
 //   Berserk is active; Berserk expires when you run out of Rage"), Burst (46230009: "deals … area explosion damage equal to 340% of
 //   Weapon Damage to enemies within 3m. While Dual Wielding, the Base Damage is the average damage of both weapons. For every +1 to

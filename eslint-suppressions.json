@@ -19,7 +19,7 @@
       "count": 4
     }
   },
-  "packages/engine/data/skills/special-support-tiers-ss14.js": {
+  "packages/engine/data/skills/special-support-tiers.js": {
     "no-unused-vars": {
       "count": 6
     }

@@ -9,7 +9,7 @@
 //     "deflection" / "ouroboros").
 //
 // Sourced:
-// - Trait texts (TLIDB, SS14; packages/engine/data/heroes/all-hero-traits-ss14.generated.js).
+// - Trait texts (TLIDB, SS14; packages/engine/data/heroes/all-hero-traits.generated.js).
 // - TLIDB keyword tooltips (Torchlight_Hyperlink_hover, read 2026-10-19): Reload (bb23b3f1: the whole magazine is reloaded; Projectile
 //   Skills cannot be used while reloading), Special Ammo (bab6adde: a chance to reload the slot's special ammo; it is consumed and
 //   grants the support's effects when that support is not on the skill panel and can support Projectile Skills), Magic Shot
@@ -62,7 +62,7 @@
 // - Royal Arsenal (revived): the Main Skill's enabled Noble supports count as activated.
 
 import { normalizePercentageText } from "../text/percentage-text.js";
-import { tlidbSkillCatalogSs14, tlidbSupportCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
+import { tlidbSkillCatalog, tlidbSupportCatalog } from "../../data/catalogs/tlidb.js";
 import { supportCanSupportProjectile } from "./carino-special-ammo.js";
 import { ASSUMED_MOVEMENT_METERS_PER_SECOND } from "../combat/dummy-target.js";
 
@@ -315,7 +315,7 @@ function specialAmmoSlots(hero, { expert, prepared, installedSupportNames = [] }
       const name = String(selections[index] || "");
       if (!name) return null;
       const open = index < 2 ? Boolean(expert) : Boolean(prepared);
-      const support = tlidbSupportCatalogSs14.find((entry) => entry.name === name) || null;
+      const support = tlidbSupportCatalog.find((entry) => entry.name === name) || null;
       const premium = support && ["magnificent", "noble"].includes(support.category);
       const reason = !open
         ? index < 2
@@ -325,7 +325,7 @@ function specialAmmoSlots(hero, { expert, prepared, installedSupportNames = [] }
           ? "not a support in the catalog"
           : premium && !prepared
             ? "Magnificent and Noble supports need Well Prepared"
-            : !supportCanSupportProjectile(support, tlidbSkillCatalogSs14)
+            : !supportCanSupportProjectile(support, tlidbSkillCatalog)
               ? "cannot support Projectile Skills"
               : installed.has(name)
                 ? "it is on the skill panel (Special Ammo keyword: then it is not consumed)"

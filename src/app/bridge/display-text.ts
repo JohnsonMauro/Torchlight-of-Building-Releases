@@ -21,7 +21,7 @@ const ENTITIES: Record<string, string> = { "&amp;": "&", "&lt;": "<", "&gt;": ">
 const decode = (html: string) => html.replace(/&(?:amp|lt|gt|quot|#39);/g, (entity) => ENTITIES[entity]);
 
 /**
- * The runs of an effect line the legacy highlighters (src/app/skills/skill-display-ss14.js, src/app/skills/support-display-ss14.js)
+ * The runs of an effect line the legacy highlighters (src/app/skills/skill-display.js, src/app/skills/support-display.js)
  * return as HTML: escaped text with `<span class="…">value</span>` around the highlighted values, and nothing else.
  */
 export function htmlTextSegments(html: string): TextSegment[] {

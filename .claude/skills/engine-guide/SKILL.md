@@ -22,8 +22,8 @@ description: Rules for the calculation engine and game data — packages/engine/
   (`packages/engine/src/state/season-migration.js`): a build of an earlier season goes through `seasonSteps` and then
   `removeIncompatible` (talent ranks on missing trees or nodes, ranks above a node's max, missing cores, prisms on
   missing nodes, legendaries out of the catalog: removed and listed, talent points returned); an unknown season is
-  refused. A new season: an entry in `season.ts`, the step from the one before in `seasonSteps`, the data renamed to its
-  id, and a migration test with a build of the season before.
+  refused. A new season: an entry in `season.ts`, the step from the one before in `seasonSteps`, the package's major version, the data replaced in place,
+  and a migration test with a build of the season before.
 - Game text is read once (`packages/engine/src/text/read-once.js`): a reader whose result depends on the text alone is wrapped in
   `readOnce` (or uses `cleanGameText`), and what depends on the build is applied to the reading by the caller. A reading
   is frozen and shared: copy it before changing it.
@@ -34,9 +34,9 @@ description: Rules for the calculation engine and game data — packages/engine/
   `tests/unit/planner-state.test.js` and `state-validation.test.js`.
 - `packages/engine/data/` is game data, mostly `*.generated.js` from upstream's data tools: kept byte for byte (Prettier ignores
   the folder) so a new upstream copy diffs cleanly. Never hand-edit a generated file; a correction goes in engine code
-  or a non-generated data module, with the reason in a comment. The one sanctioned difference is the season in names:
-  file names and identifiers carry the season the data belongs to (`-ss14`, `Ss14`; renamed from upstream's legacy
-  `ss13` label on 2026-10-22, the content being SS14's).
+  or a non-generated data module, with the reason in a comment. The one sanctioned difference: no season in names.
+  Upstream's file names and identifiers carry a season label (`-ss13`, `Ss13`); ours do not (owner, 2026-10-23: the
+  season lives in `season.ts`, the package's major version and the stored build, so a new season renames nothing).
 
 ## 2. TypeScript run by Node
 

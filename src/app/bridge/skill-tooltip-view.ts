@@ -14,8 +14,8 @@ import {
   specialSupportStarBonus,
   tliArt,
 } from "#engine";
-import { highlightedAuraEffect, highlightedSkillEffect, skillDisplaySs14 } from "../skills/skill-display-ss14.js";
-import { highlightedSupportEffect, supportDisplaySs14 } from "../skills/support-display-ss14.js";
+import { highlightedAuraEffect, highlightedSkillEffect, skillDisplayOf } from "../skills/skill-display.js";
+import { highlightedSupportEffect, supportDisplayOf } from "../skills/support-display.js";
 import { htmlTextSegments, type TextSegment } from "./display-text.ts";
 import type { CoverageView } from "./gear-item-view.ts";
 
@@ -174,8 +174,8 @@ export function skillTooltipView(input: SkillTooltipInput): SkillTooltipView {
   const level = installed?.effectiveLevel || installed?.level || catalog?.level || catalog?.baseLevel || 20;
   const levelLabel: SkillLevelView =
     installed?.baseLevel !== undefined ? levelOf(installed) : { text: `Lv. ${level}`, added: 0 };
-  const skillDisplay = !support && catalog ? skillDisplaySs14(catalog, level) : null;
-  const supportDisplay = support && catalog ? supportDisplaySs14(catalog, level) : null;
+  const skillDisplay = !support && catalog ? skillDisplayOf(catalog, level) : null;
+  const supportDisplay = support && catalog ? supportDisplayOf(catalog, level) : null;
   const configurable = support && (configurableSupportTierData(name) || progressionSupportTierData(name));
   const config: SpecialConfig | null = configurable
     ? normalizeProgressionSupportConfig(name, installed?.specialConfig) ||

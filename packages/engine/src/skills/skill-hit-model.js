@@ -693,7 +693,7 @@ export function calculateSkillHit({
     profile,
     speedType: speedTypeForSupports,
   });
-  // Aura stats scoped to the Melee tag (gear-pact batch G4; game-data aura records, packages/engine/data/skills/aura-scaling-ss14.js):
+  // Aura stats scoped to the Melee tag (gear-pact batch G4; game-data aura records, packages/engine/data/skills/aura-scaling.js):
   // Fearless "+X% Critical Strike Rating for Melee Skills" joins the attack crit rating's increased pool and Precise:
   // Fearless "+X% Melee Attack Speed" the attack-speed pool, like the supports' lines of the same kind. Melee skills only;
   // a Melee skill without an attack crit base (no weapon model) does not read the crit line (provisional).
@@ -2187,7 +2187,7 @@ export function calculateSkillHit({
   // Gale (Marksman core, "X% of the Projectile Speed bonus is also applied to the additional bonus for Projectile Damage") and
   // the plain wording ("… applied to Projectile Damage"). Game affixes 114414 / 101140017 are node 114 conversions from the
   // increased (mod 3) value of attribute 60051 (Projectile Speed) to attribute 57191 (damage, all) for the Projectile tag
-  // (6001110): mod 4 (additional) for Gale, mod 3 (increased) for the plain wording, no cap (packages/engine/data/affix-index-ss14.generated.js).
+  // (6001110): mod 4 (additional) for Gale, mod 3 (increased) for the plain wording, no cap (packages/engine/data/affix-index.generated.js).
   // The increased pool this skill reads: the build's plain "+X% Projectile Speed" lines, its own supports' "+X% Projectile
   // Speed for the supported skill", the Aura buffs' Projectile Speed and hero buffs (Youga's Centralization). "+X% additional
   // Projectile Speed" (mod 4) is not converted. Before 2026-10-18 Gale read No DPS effect.

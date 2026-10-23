@@ -1,6 +1,6 @@
 // One text→key table for talent node lines (packages/engine/src/candidate-sources.js parseTalentEffects) and slate lines
 // (packages/engine/src/engine.js slateNumericEffects), so a talent line and its slate copy read the same (talent batch T1, T2, T6:
-// research/talent-batch-2026-10-12.md §4). The captured Selena nodes (packages/engine/data/talents/selena-scorching-beam-ss14.js)
+// research/talent-batch-2026-10-12.md §4). The captured Selena nodes (packages/engine/data/talents/selena-scorching-beam.js)
 // must equal this table for every captured node text (tests/talent-text-effects.test.js).
 //
 // Each rule: `pattern` (anchored, on a normalized clause), `keys` ([key, value(match)] pairs), `scope` ("both",

@@ -3,8 +3,8 @@
 // in and the list of what changed until the user dismisses it.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { allProfessionTalentCatalogueSs14 } from "../../packages/engine/data/talents/all-profession-trees-ss14.generated.js";
-import { legendaryGearSs14 } from "../../packages/engine/data/gear/legendary-gear-ss14.generated.js";
+import { allProfessionTalentCatalogue } from "../../packages/engine/data/talents/all-profession-trees.generated.js";
+import { legendaryGear } from "../../packages/engine/data/gear/legendary-gear.generated.js";
 import {
   migrateBuildSeason,
   removeIncompatible,
@@ -13,10 +13,10 @@ import {
 import { currentSeason } from "../../packages/engine/src/state/season.ts";
 import { normalizePlannerState } from "../../packages/engine/src/state/planner-state.ts";
 
-const lich = allProfessionTalentCatalogueSs14.Lich;
+const lich = allProfessionTalentCatalogue.Lich;
 const node = lich.nodes.find((entry) => entry.maxRank === 1);
 const at = node.coordinate.join(",");
-const legendary = legendaryGearSs14[0];
+const legendary = legendaryGear[0];
 
 // An SS13 build: a node the tree has (two ranks too many), a node it does not have, a core it offers and one it does not,
 // a legendary the catalog has and one it does not (equipped and in the inventory).

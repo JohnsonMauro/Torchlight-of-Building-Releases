@@ -9,8 +9,8 @@ import {
   skillBoardRows,
   supportSlotsForSetup,
   tliArt,
-  tlidbSkillCatalogSs14,
-  tlidbSupportCatalogSs14,
+  tlidbSkillCatalog,
+  tlidbSupportCatalog,
 } from "#engine";
 import type { InstalledSupport, PlannerResult, PlannerSkills, SkillSetup } from "#engine";
 
@@ -103,8 +103,8 @@ const artFor = (art: Record<string, string | undefined>, catalog: readonly { nam
   const icons = new Map(catalog.map((entry) => [entry.name, entry.icon]));
   return (name: string) => art[name] || icons.get(name) || null;
 };
-const skillArt = artFor(tliArt.skills, tlidbSkillCatalogSs14);
-const supportArt = artFor(tliArt.supports, tlidbSupportCatalogSs14);
+const skillArt = artFor(tliArt.skills, tlidbSkillCatalog);
+const supportArt = artFor(tliArt.supports, tlidbSupportCatalog);
 export function skillsView(planner: PlannerResult, skills: PlannerSkills, tab: SkillBoardTab): SkillsView {
   const { profile, setups, energy } = planner.activation;
   const supportSlots = (setup: SkillSetup) =>

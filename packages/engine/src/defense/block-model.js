@@ -2,14 +2,14 @@ import { normalizePercentageText } from "../text/percentage-text.js";
 import { effectiveGearModifierTexts } from "../engine.js";
 import { prismAreaBounds, prismNodeAffixes, inverseImageEffectMultiplier } from "../talents/prism-crafting.js";
 import { orderedPactspiritNodes, pactspiritEffectsAtLevel, pactspiritLevel } from "../pacts/pactspirit-levels.js";
-import { pactspiritTreesSs14 } from "../../data/pacts/pactspirit-trees-ss14.js";
-import { kismetCatalogSs14 } from "../../data/pacts/kismet-catalog-ss14.js";
+import { pactspiritTrees } from "../../data/pacts/pactspirit-trees.js";
+import { kismetCatalog } from "../../data/pacts/kismet-catalog.js";
 import { kismetAffixesWithRolls } from "../pacts/kismet-crafting.js";
 import { microFateEffectScale, scaleKismetAffix } from "../pacts/kismet-effects.js";
 import { fateExtraSlots } from "../pacts/fate-slot-unlocks.js";
 import { rareBaseForItem } from "../gear/rare-base-lookup.js";
-import { legendaryGearSs14 } from "../../data/gear/legendary-gear-ss14.generated.js";
-import { defaultBaseForItem } from "../../data/gear/corrosion-implicits-ss14.js";
+import { legendaryGear } from "../../data/gear/legendary-gear.generated.js";
+import { defaultBaseForItem } from "../../data/gear/corrosion-implicits.js";
 import { namedGearAffixLines } from "../text/named-gear-affixes.js";
 import { MAX_BLOCK_CHANCE_PERCENT } from "../game-attribute-defaults.js";
 import { withoutSlateCoreName } from "../text/granted-core-lines.js";
@@ -31,7 +31,7 @@ function isOneHandedWeapon(item) {
   const rareBase = rareBaseForItem(item, [item.base]);
   if (rareBase) return oneHandedWeaponTypes.has(rareBase.type);
   if (oneHandedWeaponTypes.has(item.base)) return true;
-  const catalogItem = legendaryGearSs14.find((entry) => entry.name === item.name || entry.id === item.baseId);
+  const catalogItem = legendaryGear.find((entry) => entry.name === item.name || entry.id === item.baseId);
   const remoteIcon = item.remoteIcon || catalogItem?.remoteIcon;
   return Boolean(remoteIcon && oneHandedWeaponTypes.has(defaultBaseForItem({ ...item, remoteIcon })));
 }
@@ -143,14 +143,14 @@ export function calculateBlock({
   if (pactState.kismetSlotMode) {
     for (const spirit of pactState.selectedSpirits || []) {
       if (!spirit || pactState.activeSpirits?.[spirit] === false) continue;
-      const nodes = orderedPactspiritNodes(pactspiritTreesSs14[spirit]);
+      const nodes = orderedPactspiritNodes(pactspiritTrees[spirit]);
       const destiny = nodes.findIndex((node) => node.ring === "destiny");
       nodes.forEach((node, index) => {
         const slotKey = `${spirit}:${index}`;
         if (pactState.nativeNodeQuantities?.[slotKey] !== 1) return;
         const slot = pactState.kismetSlots?.[slotKey];
         if (slot) {
-          const entry = kismetCatalogSs14.find((entry) => entry.name === slot.name);
+          const entry = kismetCatalog.find((entry) => entry.name === slot.name);
           // A Micro Fate in a spirit with Star Trail carries its boosted value (packages/engine/src/pacts/kismet-effects.js; pact badge audit 2026-10-13).
           const { scale } = microFateEffectScale(pactState, slotKey);
           if (entry)
@@ -164,7 +164,7 @@ export function calculateBlock({
       if (destiny >= 0 && pactState.nativeNodeQuantities?.[`${spirit}:${destiny}`] === 1) {
         for (const extra of fateExtraSlots(spirit, pactState.fateUnlocks?.[spirit])) {
           const slot = pactState.kismetSlots?.[extra.key];
-          const entry = slot && kismetCatalogSs14.find((entry) => entry.name === slot.name);
+          const entry = slot && kismetCatalog.find((entry) => entry.name === slot.name);
           if (entry)
             for (const text of kismetAffixesWithRolls(entry, slot.rolls)) add(text, `${spirit} · ${slot.name}`);
         }

@@ -1,6 +1,6 @@
 // What each aura buff stat scales, shared by the damage engines and the coverage badges.
 //
-// The stat keys are the ones packages/engine/data/skills/aura-scaling-ss14.js maps from the installed
+// The stat keys are the ones packages/engine/data/skills/aura-scaling.js maps from the installed
 // game's config_char_buff affixes (research/aura-level-config-all-2026-10-07.json: all 40
 // "Activates the Aura" skills, with GetLevel anchors at 1/21/41). Level values past 20 come
 // from that game data only, never from TLIDB text.

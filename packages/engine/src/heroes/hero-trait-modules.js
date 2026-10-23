@@ -18,7 +18,7 @@ import {
   stacksHeld,
   twistedSpacetime,
 } from "./youga-spacetime.js";
-import { selenaCompleteSkillLoadoutSs14 } from "../../data/skills/selena-complete-skill-loadout-ss14.js";
+import { selenaCompleteSkillLoadout } from "../../data/skills/selena-complete-skill-loadout.js";
 import {
   LIGHTNING_PATTERNS,
   VENDETTA_PATTERNS,
@@ -2065,7 +2065,7 @@ export function resolveHeroModules(modifierTexts = [], state = {}) {
         // Lv20 is sourced below 20), × (1 + Curse Effect). A Scorch skill already on the dummy is the same curse (no second copy).
         // Whether it takes a curse slot is not stated (the trait also grants +1 curse): not counted against the limit (provisional).
         const level = num(match[1]);
-        const scorchSetup = selenaCompleteSkillLoadoutSs14.setups.find((setup) => setup.name === "Scorch");
+        const scorchSetup = selenaCompleteSkillLoadout.setups.find((setup) => setup.name === "Scorch");
         const scorch = curseEffects([{ ...scorchSetup, effectiveLevel: level }]).scorchDamagePercent;
         const curseEffect = Number(state.curseEffectPercent) || 0;
         const perCast = round(scorch * (1 + curseEffect / 100)),

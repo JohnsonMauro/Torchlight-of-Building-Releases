@@ -1,12 +1,12 @@
 // A skill's, a support's or an aura's tooltip (src/app/bridge/skill-tooltip-view.ts).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { tlidbSkillCatalogSs14, tlidbSupportCatalogSs14 } from "../../packages/engine/data/catalogs/tlidb-ss14.js";
+import { tlidbSkillCatalog, tlidbSupportCatalog } from "../../packages/engine/data/catalogs/tlidb.js";
 import { coverageView } from "../../src/app/bridge/gear-item-view.ts";
 import { skillTooltipView, traitGrantNote } from "../../src/app/bridge/skill-tooltip-view.ts";
 
-const skill = (name) => tlidbSkillCatalogSs14.find((entry) => entry.name === name);
-const support = (name) => tlidbSupportCatalogSs14.find((entry) => entry.name === name);
+const skill = (name) => tlidbSkillCatalog.find((entry) => entry.name === name);
+const support = (name) => tlidbSupportCatalog.find((entry) => entry.name === name);
 const input = (overrides = {}) => ({
   name: "Scorching Beam",
   support: false,

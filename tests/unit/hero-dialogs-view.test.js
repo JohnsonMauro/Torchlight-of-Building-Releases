@@ -2,21 +2,21 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { carinoAmmoSelectorView, sageScentSelectorView } from "../../src/app/bridge/hero-dialogs-view-model.ts";
-import { sageElixirsSs14 } from "../../packages/engine/data/heroes/sage-scent-ss14.generated.js";
-import { sageScentIngredientsSs14 } from "../../packages/engine/data/heroes/sage-scent-options-ss14.js";
+import { sageElixirs } from "../../packages/engine/data/heroes/sage-scent.generated.js";
+import { sageScentIngredients } from "../../packages/engine/data/heroes/sage-scent-options.js";
 
 test("the scent selector lists elixirs with their tags, or one kind of ingredient with its effect", () => {
   const elixirs = sageScentSelectorView("elixir");
   assert.equal(elixirs.title, "Select Elixir Skill");
   assert.equal(elixirs.placeholder, "Search skills…");
-  assert.equal(elixirs.choices.length, sageElixirsSs14.length);
-  assert.deepEqual(elixirs.choices[0].tags, sageElixirsSs14[0].tags);
+  assert.equal(elixirs.choices.length, sageElixirs.length);
+  assert.deepEqual(elixirs.choices[0].tags, sageElixirs[0].tags);
   // The search covers an elixir's tags and an ingredient's effect, not only the name.
-  assert.ok(elixirs.choices[0].search.includes(sageElixirsSs14[0].tags[0].toLowerCase()));
+  assert.ok(elixirs.choices[0].search.includes(sageElixirs[0].tags[0].toLowerCase()));
   const damage = sageScentSelectorView("damage");
   assert.equal(damage.title, "Select Damage Ingredient");
   assert.equal(damage.placeholder, "Search ingredients…");
-  assert.equal(damage.choices.length, sageScentIngredientsSs14.damage.length);
+  assert.equal(damage.choices.length, sageScentIngredients.damage.length);
   assert.equal(damage.choices[0].tags, null);
   assert.doesNotMatch(JSON.stringify(damage.choices), /\d %/);
   assert.ok(damage.choices[0].search.includes(damage.choices[0].description.split(" ")[0].toLowerCase()));

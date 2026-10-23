@@ -5,7 +5,7 @@ import { MINION_PROFILES } from "./minion-profiles.js";
 import { supportEffectsFor } from "../supports/support-effects.js";
 import { classifyHitLine, scopeApplies } from "../skills/skill-hit-lines.js";
 import { multistrikeSequence } from "../skills/skill-hit-model.js";
-import { skillTimingSs14 } from "../../data/skills/skill-timing-ss14.generated.js";
+import { skillTiming } from "../../data/skills/skill-timing.generated.js";
 
 import { BOND } from "./minion-cores.js";
 import {
@@ -370,7 +370,7 @@ export function spiritMagusState(lines = [], { extraGrowth = 0 } = {}) {
       value: line.percent * Math.floor(growth / 100),
     })),
     ...circle,
-    // Stage 5 (TLIDB Growth keyword, hover a3edcfc8, cached in research/tlidb-ss14/fetch-cache; 2026-10-19, coordinator decision):
+    // Stage 5 (TLIDB Growth keyword, hover a3edcfc8, cached in research/tlidb/fetch-cache; 2026-10-19, coordinator decision):
     // "At Stage 5, they +50% additional damage, +10% additional Skill Area, and gain increased Movement Speed and Tracking Area"
     // (sourced; the manual's 1001012034 value is a placeholder). The Skill Area, Movement Speed and Tracking Area parts change no
     // dummy figure.
@@ -441,8 +441,8 @@ export function spiritMagusState(lines = [], { extraGrowth = 0 } = {}) {
   };
 }
 
-// Iris – Growing Breeze Nourishment (2026-10-12; hero trait text, packages/engine/data/heroes/base-hero-trait-levels-ss14.generated.js and
-// all-hero-traits-ss14.generated.js). The base trait at every level carries: "When a Spirit Magus Skill is set as an Active
+// Iris – Growing Breeze Nourishment (2026-10-12; hero trait text, packages/engine/data/heroes/base-hero-trait-levels.generated.js and
+// all-hero-traits.generated.js). The base trait at every level carries: "When a Spirit Magus Skill is set as an Active
 // Skill, casting the Active Skill is considered as casting the Trait Skill as well"; "Grants 4 stack(s) of Nourishment to all
 // Spirit Magi when using Trait Skills. Cooldown: 5 s"; "When a Spirit Magus casts a skill, +30% chance for it to lose 1 stack
 // of Nourishment"; "For every stack of Nourishment a Spirit Magus has, when it uses a skill, +8% chance for it to lose a stack
@@ -1040,13 +1040,11 @@ export function calculateMinion({
       sdInput.extraPerCast;
     const maxAlive = count + sdInput.extraPerCast;
     const summonScaled =
-      skillTimingSs14[resolved.summon]?.speedType === "cast-speed" || resolved.family === "synthetic-troop";
+      skillTiming[resolved.summon]?.speedType === "cast-speed" || resolved.family === "synthetic-troop";
     const summonSeconds =
       (resolved.summonCastSeconds ?? 1) / (summonScaled && summonCastSpeed?.factor ? summonCastSpeed.factor : 1);
     const ownCooldown =
-      resolved.family === "module"
-        ? resolved.summonCooldownSeconds || 0
-        : skillTimingSs14[resolved.summon]?.cooldown || 0;
+      resolved.family === "module" ? resolved.summonCooldownSeconds || 0 : skillTiming[resolved.summon]?.cooldown || 0;
     const fuel = sdInput.fuelWar && sdInput.mainSummon ? sdInput.fuelWar : null;
     const ignoresCooldown = Boolean(fuel) && (resolved.family !== "module" || fuel.ignoresModuleCooldown);
     const castInterval = fuel
@@ -1361,7 +1359,7 @@ export function calculateMinion({
   // and the Spirit Magi (user-supplied 2026-10-19, Google AI Mode answer, not tested in game; the Split's "fixed" flag on the Spirit
   // Magus and Grim Phantom summons does not exempt them). A Module summon is not in that list and its stone is not in the data (not
   // applied).
-  const summonSpeedType = skillTimingSs14[resolved.summon]?.speedType || null;
+  const summonSpeedType = skillTiming[resolved.summon]?.speedType || null;
   const summonCastBase = resolved.summonCastSeconds ?? 1;
   const summonCastScaled =
     summonSpeedType === "cast-speed" || ["synthetic-troop", "spirit-magus"].includes(resolved.family);
@@ -2129,8 +2127,8 @@ export function calculateMinion({
       : null,
     sources: {
       base: "packages/engine/src/minions/minion-base-damage.js (TLIDB Minion table; in-game module tooltips)",
-      rows: "packages/engine/data/skills/minion-skill-damage-ss14.generated.js (config_skill_damage)",
-      timing: "packages/engine/data/skills/skill-timing-ss14.generated.js (SkillEditor Split)",
+      rows: "packages/engine/data/skills/minion-skill-damage.generated.js (config_skill_damage)",
+      timing: "packages/engine/data/skills/skill-timing.generated.js (SkillEditor Split)",
     },
   };
 }

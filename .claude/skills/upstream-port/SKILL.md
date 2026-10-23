@@ -24,9 +24,9 @@ rebase onto it and never open PRs there. We read his diff and port by hand.
   section his change touches.
 - His page code imports engine and data modules directly; ours imports them only from `#engine`
   (`engine-guide` §1): a ported import becomes a name in the entry, added to its domain's group if it is new.
-- His `src/data/**` is our `packages/engine/data/**`, paths otherwise unchanged but for the season: his files and identifiers say `ss13` / `Ss13`, ours
-  `ss14` / `Ss14` (`engine-guide` §1). A copied file is renamed and its identifiers changed the same way
-  (`sed -e 's/Ss13/Ss14/g' -e 's/-ss13\b/-ss14/g'`); nothing else in it changes, so a `*.generated.js` can probably be
+- His `src/data/**` is our `packages/engine/data/**`, paths otherwise unchanged but for the season label: his files and
+  identifiers say `-ss13` / `Ss13`, ours carry no season (`engine-guide` §1). A copied file loses the label in its name
+  and identifiers (`sed -e 's/Ss13//g' -e 's/-ss13\b//g'`); nothing else in it changes, so a `*.generated.js` can probably be
   copied whole. Not tried yet: on the first port, check that nothing of ours imports a
   name his new copy dropped (typecheck + `pnpm test`), then delete this note.
 - His UI (legacy markup and CSS) is not ported as markup: port the behaviour into our React feature and Tailwind

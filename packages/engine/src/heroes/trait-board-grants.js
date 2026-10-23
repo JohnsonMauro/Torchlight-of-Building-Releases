@@ -6,7 +6,7 @@
 //   support skill in the second support skill slot of that skill". User-stated (2026-10-15): the Main Skill is the skill in
 //   Active Skill slot 1, and the replaced socket is that row's second support slot (index 1; the third socket counting the
 //   skill). "Tanglable" is the game's own Spell Tangle filter (config_skill_stone 10003470,
-//   packages/engine/data/skills/support-eligibility-ss14.generated.js: Active + Spell; not Channeled, Sentry, Minion, Terra skills,
+//   packages/engine/data/skills/support-eligibility.generated.js: Active + Spell; not Channeled, Sentry, Minion, Terra skills,
 //   Scorching Pulse, Lightning Storm or Whirlwind Blade), as Clockwork Core attaches the skill "in the form of Spell Tangle".
 //   A skill the filter rejects keeps its supports.
 // - Lv45 keywords: Spacetime Dictator / Conqueror / Overlord replace the skill in the second / third / fourth Active Skill slot
@@ -27,7 +27,7 @@ import { heroTraitKeyword } from "../text/inline-keywords.js";
 import { skillBoardRows } from "../skills/skill-board-slots.js";
 import { supportCanSupportSkill } from "../supports/support-compatibility.js";
 import { supportSlotsForSetup } from "../supports/support-slot-transfer.js";
-import { tlidbSupportCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
+import { tlidbSupportCatalog } from "../../data/catalogs/tlidb.js";
 
 export const YOUGA_ULTIMATE_ONE_ID = "youga-the-ultimate-one";
 export const TRAIT_SKILL_LEVEL = 20;
@@ -73,7 +73,7 @@ const traitName = (source) =>
 
 /** Whether the game lets this skill be Tangled (the Spell Tangle support filter). */
 export function isTanglable(skill, linkedSupports = []) {
-  const support = tlidbSupportCatalogSs14.find((entry) => entry.name === TANGLE_FILTER_SUPPORT);
+  const support = tlidbSupportCatalog.find((entry) => entry.name === TANGLE_FILTER_SUPPORT);
   return Boolean(skill && support && supportCanSupportSkill(support, skill, linkedSupports));
 }
 

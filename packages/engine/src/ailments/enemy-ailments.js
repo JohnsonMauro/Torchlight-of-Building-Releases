@@ -1,9 +1,9 @@
 import { buildWideAilmentBlock } from "./ailment-blocks.js";
 import { normalizePercentageText } from "../text/percentage-text.js";
-import { supportProgressionSs14 } from "../../data/skills/support-progression-ss14.generated.js";
+import { supportProgression } from "../../data/skills/support-progression.generated.js";
 import { collectAilmentTypedSources, collectDamagingAilmentChance } from "./ailment-model.js";
 import { inflictedFrostbiteRating, BUFF_VALUES } from "../combat-states.js";
-import { allSkillEffectsSs14 } from "../../data/skills/all-skill-effects-ss14.generated.js";
+import { allSkillEffects } from "../../data/skills/all-skill-effects.generated.js";
 
 // TLIDB Ailment page: Ailments are Ignite, Frostbite, Freeze, Shock, Numbed, Trauma, and Wilt.
 // Damaging ailments need a non-zero base. Numbed only raises Lightning damage taken (+5% per
@@ -27,7 +27,7 @@ export const ailmentStateNames = {
 };
 
 const supportText = (support) =>
-  [...(support.effects || []), supportProgressionSs14[support.name]?.baseEffect || ""].join("\n");
+  [...(support.effects || []), supportProgression[support.name]?.baseEffect || ""].join("\n");
 
 const DAMAGE_TYPES = ["Physical", "Fire", "Cold", "Lightning", "Erosion"];
 
@@ -105,7 +105,7 @@ export function collectEnemyAilments({
   // not read here yet.
   for (const setup of setups) {
     if (setup.enabled === false || !activeNames.has(setup.name)) continue;
-    const text = [...(allSkillEffectsSs14[setup.name] || []), ...(setup.effects || [])].join("\n");
+    const text = [...(allSkillEffects[setup.name] || []), ...(setup.effects || [])].join("\n");
     const match = text.match(/^Inflicts (Frostbite|Numbed) when this skill deals damage$/im);
     if (match)
       add(

@@ -10,8 +10,8 @@ import { skillLevelDamageMultiplier } from "../engine.js";
 import { normalizePercentageText } from "../text/percentage-text.js";
 import { buildWideAilmentBlock } from "./ailment-blocks.js";
 import { overlyModifiedLine } from "../minions/sentry-cores.js";
-import { allSkillEffectsSs14 } from "../../data/skills/all-skill-effects-ss14.generated.js";
-import { supportProgressionSs14 } from "../../data/skills/support-progression-ss14.generated.js";
+import { allSkillEffects } from "../../data/skills/all-skill-effects.generated.js";
+import { supportProgression } from "../../data/skills/support-progression.generated.js";
 
 // Per-skill ailment application (2026-10-11). Hit ailments (Ignite, Trauma, Wilt) are applied by
 // every hitting skill, not only the main beam: each application attempt is a hit, its chance is the
@@ -35,13 +35,13 @@ const split = (text) =>
 function skillTexts(setup) {
   if (!setup) return [];
   const lines = [
-    ...new Set((allSkillEffectsSs14[setup.name] || []).flatMap(split).concat((setup.effects || []).flatMap(split))),
+    ...new Set((allSkillEffects[setup.name] || []).flatMap(split).concat((setup.effects || []).flatMap(split))),
   ].map((text) => ({ text, source: `Skill: ${setup.name}` }));
   for (const support of setup.supports || []) {
     if (support.enabled === false) continue;
     for (const text of [
       ...(support.effects || []).flatMap(split),
-      ...split(supportProgressionSs14[support.name]?.baseEffect),
+      ...split(supportProgression[support.name]?.baseEffect),
     ])
       lines.push({ text, source: `Support: ${support.name}` });
   }

@@ -2,26 +2,26 @@
 // memory and a Sage's scent (src/app/bridge/memory-tooltip-view.ts). Queries only (src/app/bridge/planner-queries.js);
 // apps/web/src/features/hero renders them.
 import {
-  allHeroTraitsSs14,
+  allHeroTraits,
   artificialMoonGate,
   baseTraitLevelForMemory,
   catsNightSafariStatus,
   equippedBaseTraitSlot,
   EXTRA_PICK_LEVEL,
   heroById,
-  heroMemoryFixedT0AffixesSs14,
+  heroMemoryFixedT0Affixes,
   heroMemoryLineCoverage,
-  heroMemoryTierAffixesSs14,
+  heroMemoryTierAffixes,
   heroTraitLevelBonus,
-  lunarPhaseRevivedAffixesSs14,
+  lunarPhaseRevivedAffixes,
   memoryMaxEnhancementForRarity,
   memoryScaledBaseStat,
   nonBaseTraitLevelExtras,
   normalizeRevivedAffix,
   reduceBaseTraitMemoryStat,
   revivedAffixCoverage,
-  sageElixirsSs14,
-  sageScentIngredientsSs14,
+  sageElixirs,
+  sageScentIngredients,
   slotTraitLevel,
   traitLevelBonusForEnhancement,
 } from "#engine";
@@ -69,7 +69,7 @@ export function heroTraitTooltipLevel(levelKey = "base") {
 
 function heroTraitTooltip({ name, levelKey = "base", selected = false }) {
   const hero = heroById(plannerState.hero.selectedHeroId),
-    trait = hero && allHeroTraitsSs14[hero.id]?.traits.find((item) => item.name === name);
+    trait = hero && allHeroTraits[hero.id]?.traits.find((item) => item.name === name);
   if (!trait) return null;
   return heroTraitTooltipView({
     heroId: hero.id,
@@ -91,7 +91,7 @@ export function savedMemoryAffix(memory, group, index) {
   const fixed = group === "fixedAffixes",
     tier = memory[fixed ? "fixedTiers" : "randomTiers"]?.[index],
     roll = memory[fixed ? "fixedRolls" : "randomRolls"]?.[index];
-  const catalog = fixed && tier === 0 ? heroMemoryFixedT0AffixesSs14 : heroMemoryTierAffixesSs14;
+  const catalog = fixed && tier === 0 ? heroMemoryFixedT0Affixes : heroMemoryTierAffixes;
   const match = catalog.find(
     (entry) =>
       entry.type === memory.type &&
@@ -154,7 +154,7 @@ function heroMemoryTooltip(target) {
       .map((text) => ({ text, coverage: coverageView(revivalStatus) })),
     revivedAffix: memory.revivedAffix
       ? {
-          lunar: lunarPhaseRevivedAffixesSs14.includes(normalizeRevivedAffix(memory.revivedAffix)),
+          lunar: lunarPhaseRevivedAffixes.includes(normalizeRevivedAffix(memory.revivedAffix)),
           effect: memoryRevivedEffectView(memory),
           note:
             memory.revivedAffix === "Ceaseless Tide"
@@ -182,7 +182,7 @@ function sageScentTooltip(kind) {
   const name = plannerState.hero.sageScent?.[kind];
   const entry =
     kind === "elixir"
-      ? sageElixirsSs14.find((item) => item.name === name)
-      : sageScentIngredientsSs14[kind]?.find((item) => item.name === name);
+      ? sageElixirs.find((item) => item.name === name)
+      : sageScentIngredients[kind]?.find((item) => item.name === name);
   return entry ? scentTooltipView({ kind, entry }) : null;
 }

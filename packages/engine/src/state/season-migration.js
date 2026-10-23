@@ -2,15 +2,15 @@
 // read with the current season's rules and keeps what is still compatible; what the current season no longer has is
 // removed (an item, a talent node: its points go back) and listed, so the page can say what changed. The build keeps the
 // season it was made in (`seasonOrigin`) and the list (`seasonChange`) until the user dismisses it.
-import { allProfessionTalentCatalogueSs14 } from "../../data/talents/all-profession-trees-ss14.generated.js";
-import { legendaryGearSs14 } from "../../data/gear/legendary-gear-ss14.generated.js";
+import { allProfessionTalentCatalogue } from "../../data/talents/all-profession-trees.generated.js";
+import { legendaryGear } from "../../data/gear/legendary-gear.generated.js";
 import { currentSeason, seasonById, seasonLabel, seasons } from "./season.ts";
 
 // What changes between two seasons beyond what the compatibility pass finds, by the season a build leaves:
 // seasonSteps.ss14 = (state) => state carries an SS14 build into SS15 (renamed items, moved talent nodes…). None yet.
 export const seasonSteps = {};
 
-const legendaryNames = new Set(legendaryGearSs14.map((item) => item.name));
+const legendaryNames = new Set(legendaryGear.map((item) => item.name));
 
 // A legendary the current season's catalog no longer has; other items are kept (their bases do not change between seasons).
 const missingLegendary = (item) => item?.rarity === "legendary" && !legendaryNames.has(item.name);
@@ -18,7 +18,7 @@ const missingLegendary = (item) => item?.rarity === "legendary" && !legendaryNam
 // The build's parts the current season does not have, removed: talent ranks on a tree or node that no longer exists (or
 // above the node's max rank: the extra points go back), core talents a tree no longer offers, a prism on a node that no
 // longer exists, legendary items no longer in the catalog. Returns the state, what was removed and the points returned.
-export function removeIncompatible(state, trees = allProfessionTalentCatalogueSs14) {
+export function removeIncompatible(state, trees = allProfessionTalentCatalogue) {
   const removed = [];
   let talentPointsReturned = 0;
   const nodeOf = (tree, coordinate) => trees[tree]?.nodes.find((node) => node.coordinate.join(",") === coordinate);

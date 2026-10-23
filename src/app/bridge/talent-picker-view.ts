@@ -2,7 +2,7 @@
 // one column per god, its portrait and name over its God tree and its four class trees. Every tree shows; the ones the
 // open slot cannot take are off, with the reason. Pure; src/app/talents/talents-controller.js publishes it
 // (src/app/bridge/view-sources.ts "talentPicker").
-import { allProfessionTalentCatalogueSs14, talentFamiliesSs14, talentOptionsForSlot, tliArt } from "#engine";
+import { allProfessionTalentCatalogue, talentFamilies, talentOptionsForSlot, tliArt } from "#engine";
 import { godPortraits } from "../talents/god-portraits.js";
 import { talentFamilyClass } from "./talents-view-model.ts";
 
@@ -38,9 +38,9 @@ export interface TalentPickerInput {
   points: Record<string, number>;
 }
 
-const families = talentFamiliesSs14 as Record<string, string[]>;
+const families = talentFamilies as Record<string, string[]>;
 const panelArt = (tliArt as unknown as { talentPanels: Record<string, string> }).talentPanels;
-const catalogue = allProfessionTalentCatalogueSs14 as Record<string, { emblem?: string }>;
+const catalogue = allProfessionTalentCatalogue as Record<string, { emblem?: string }>;
 const portraits = godPortraits as Record<string, string>;
 
 function slotTitle(slot: number, selectedTrees: string[]): string {

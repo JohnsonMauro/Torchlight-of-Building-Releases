@@ -2,22 +2,22 @@
 import {
   allPlaceholderTemplates,
   folkloreRingModifier,
-  legendaryCorrodedModifiersSs14,
-  legendaryGearSs14,
+  legendaryCorrodedModifiers,
+  legendaryGear,
   legendaryModifierSignature,
   normalizeSunsEmbraceItem,
   reconcileLegendaryModifiers,
-  selenaScorchingBeamGearSs14,
+  selenaScorchingBeamGear,
 } from "#engine";
 
 export function upgradeExistingCorrodedItems(state) {
-  const capturedById = new Map(selenaScorchingBeamGearSs14.items.map((item) => [`captured-${item.slot}`, item]));
+  const capturedById = new Map(selenaScorchingBeamGear.items.map((item) => [`captured-${item.slot}`, item]));
   const upgrade = (item) => {
     if (!item) return item;
     if (item.name === "Sun's Embrace") return normalizeSunsEmbraceItem(item);
     const captured =
       capturedById.get(item.sourceInventoryId) ||
-      selenaScorchingBeamGearSs14.items.find((entry) => entry.name === item.name);
+      selenaScorchingBeamGear.items.find((entry) => entry.name === item.name);
     if (captured?.corrosionModifiers?.length && !item.corrosionModifiers?.length) {
       const legacyCorrosion =
         item.name === "Coldness Tracer's Tear" ? /^(?:\+8 Dexterity|You can cast 1 additional Curses)$/i : null;
@@ -28,7 +28,7 @@ export function upgradeExistingCorrodedItems(state) {
         if (captured.legendaryModifiers) item.legendaryModifiers = [...captured.legendaryModifiers];
       }
     }
-    const legendarySource = legendaryGearSs14.find(
+    const legendarySource = legendaryGear.find(
       (entry) => entry.name.toLowerCase() === (item.name || "").replace(/ - Priceless$/i, "").toLowerCase(),
     );
     if (legendarySource && item.legendaryModifiers?.length) {
@@ -60,7 +60,7 @@ export function legendaryKnownModifierSignatures(source) {
   return new Set(
     [
       ...source.modifiers,
-      ...(legendaryCorrodedModifiersSs14[source.id] || []),
+      ...(legendaryCorrodedModifiers[source.id] || []),
       ...options,
       ...allPlaceholderTemplates(source.id),
     ].map(modifierSignature),

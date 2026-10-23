@@ -1,12 +1,12 @@
-import { skillProgressionSs14 } from "../../data/skills/skill-progression-ss14.generated.js";
-import { scorchingBeamSs14 } from "../../data/skills/scorching-beam-ss14.js";
-import { allSkillEffectsSs14 } from "../../data/skills/all-skill-effects-ss14.generated.js";
+import { skillProgression } from "../../data/skills/skill-progression.generated.js";
+import { scorchingBeam } from "../../data/skills/scorching-beam.js";
+import { allSkillEffects } from "../../data/skills/all-skill-effects.generated.js";
 import { SKILL_HIT_PROFILES } from "./skill-hit-profiles.js";
 import { ATTACK_HIT_PROFILES } from "./attack-hit-profiles.js";
-import { skillHitDamageSs14 } from "../../data/skills/skill-hit-damage-ss14.generated.js";
+import { skillHitDamage } from "../../data/skills/skill-hit-damage.generated.js";
 import { skillHitDamageNewSkills } from "../../data/skills/skill-hit-damage-new-skills.generated.js";
-import { skillTimingSs14 } from "../../data/skills/skill-timing-ss14.generated.js";
-import { tlidbSkillCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
+import { skillTiming } from "../../data/skills/skill-timing.generated.js";
+import { tlidbSkillCatalog } from "../../data/catalogs/tlidb.js";
 import { MINION_SKILL_PROFILES } from "../minions/minion-profiles.js";
 import { VENDETTA_PROFILES } from "../heroes/vendetta-model.js";
 
@@ -60,7 +60,7 @@ const dotRange =
   /Deals (\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+(?:\.\d+)?))? (?:Spell |Attack )?(\w+) Damage to enemies within it every ([\d.]+)s/i;
 
 function wiltingBeamPerSecondAtLevel(level) {
-  const entry = skillProgressionSs14["Wilting Beam"];
+  const entry = skillProgression["Wilting Beam"];
   const capped = Math.max(1, Math.min(20, Math.floor(level)));
   if (capped >= 20) return 981;
   const change = entry?.levels?.[String(capped)]?.changes?.find(([, text]) => dotLine.test(text));
@@ -113,24 +113,24 @@ const SCORCHING_BEAM = Object.freeze({
   engine: "scorching-beam",
   damageType: "Fire",
   spell: true,
-  tags: scorchingBeamSs14.tags.map((tag) => tag[0].toUpperCase() + tag.slice(1)),
+  tags: scorchingBeam.tags.map((tag) => tag[0].toUpperCase() + tag.slice(1)),
   delivery: "channel-beam",
-  castIntervalSeconds: scorchingBeamSs14.baseCastIntervalSeconds,
+  castIntervalSeconds: scorchingBeam.baseCastIntervalSeconds,
   channeled: true,
   beam: true,
-  maxChanneledStacks: scorchingBeamSs14.baseMaxChanneledStacks,
-  hits: scorchingBeamSs14.hits,
+  maxChanneledStacks: scorchingBeam.baseMaxChanneledStacks,
+  hits: scorchingBeam.hits,
   builtInReaping: null,
   canInflictHitAilments: true,
-  sources: { tlidb: scorchingBeamSs14.source, gameData: "config_skill_damage groups 461/462 (levels 1–20)" },
+  sources: { tlidb: scorchingBeam.source, gameData: "config_skill_damage groups 461/462 (levels 1–20)" },
 });
 
-// Skill-DoT profiles built from a config_skill_damage DoT row (packages/engine/data/skills/skill-hit-damage-ss14.generated.js),
+// Skill-DoT profiles built from a config_skill_damage DoT row (packages/engine/data/skills/skill-hit-damage.generated.js),
 // the Wilting Beam shape: a status the skill refreshes, strongest application, levels 1–20 from the game rows and
 // frozen past 20. `refreshPerSecond` fixes the application cadence when it is not the main skill's channel rate
 // (a cooldown-bound area); `recast` gives a Terra skill's recast cadence (planner: recast.perSecond(cast-speed factor)). Batches 1 and 3 of
 // research/skill-inventory-2026-10-11.md (2026-10-11).
-const catalogTags = (name) => tlidbSkillCatalogSs14.find((entry) => entry.name === name)?.tags || [];
+const catalogTags = (name) => tlidbSkillCatalog.find((entry) => entry.name === name)?.tags || [];
 const TERRA_CHARGE_DOT = {
   source: "Terra Charge",
   text: "+26% additional damage for the skill for every Terra Charge consumed (TLIDB; max 1 stack, 1 per 0.5 s: observed on the in-game Frost Terra Lv16 tooltip 2026-10-12, so every cast at up to 2 casts/s consumes one)",
@@ -145,7 +145,7 @@ const TERRA_CHARGE_DOT = {
 // 2 casts/s and every cast consumes a full charge. Casting faster than the charge would add no DoT uptime and lose the
 // Terra Charge bonus. Cooldown Recovery Speed on the charge gain is not applied (unsourced).
 function terraRecast(name) {
-  const timing = skillTimingSs14[name];
+  const timing = skillTiming[name];
   if (!timing) return null;
   const useTimeSeconds = timing.useTime ?? 1,
     speedType = timing.speedType || "fixed",
@@ -180,7 +180,7 @@ function dotProfile(
     randomRoll = null,
   },
 ) {
-  const table = skillHitDamageSs14[name] || skillHitDamageNewSkills[name];
+  const table = skillHitDamage[name] || skillHitDamageNewSkills[name];
   const group = (table?.groups || []).find((item) => item.id === groupId) || null;
   const row = (level) =>
     group?.levels?.[String(Math.max(1, Math.min(20, Math.floor(level || 20))))]?.entries?.[0] || null;
@@ -198,7 +198,7 @@ function dotProfile(
     castIntervalSeconds,
     channeled,
     beam: tags.includes("Beam"),
-    maxChanneledStacks: channeled ? (skillTimingSs14[name]?.channel?.maxStacks ?? 5) : null,
+    maxChanneledStacks: channeled ? (skillTiming[name]?.channel?.maxStacks ?? 5) : null,
     dot: {
       durationSeconds,
       perSecondAtLevel,
@@ -221,7 +221,7 @@ function dotProfile(
       gameData: group
         ? `config_skill_damage group ${groupId} (levels 1–20, DoT row${gameNote ? `; ${gameNote}` : ""})`
         : null,
-      timing: skillTimingSs14[name] ? `SkillEditor Split ${skillTimingSs14[name].splitId}` : null,
+      timing: skillTiming[name] ? `SkillEditor Split ${skillTiming[name].splitId}` : null,
     },
   });
 }
@@ -329,7 +329,7 @@ export const SKILL_DAMAGE_PROFILES = Object.freeze({
   "Wilting Beam": WILTING_BEAM,
 });
 
-const effectsOf = (setup) => [...(allSkillEffectsSs14[setup?.name] || []), ...(setup?.effects || [])].join("\n");
+const effectsOf = (setup) => [...(allSkillEffects[setup?.name] || []), ...(setup?.effects || [])].join("\n");
 
 // Profile for any setup from its published text when no dedicated profile exists: kind and damage
 // type only (engine null → "damage not modeled").

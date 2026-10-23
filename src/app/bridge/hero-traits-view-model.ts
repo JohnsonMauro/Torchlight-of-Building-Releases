@@ -3,7 +3,7 @@
 // hero's Trait Path board, or Sage's Scent Bottle. Pure; the React view (apps/web/src/features/hero) renders it and
 // src/app/hero/hero-controller.js publishes it (src/app/bridge/view-sources.ts "heroTraits"). The open tab stays planner state.
 import {
-  allHeroTraitsSs14,
+  allHeroTraits,
   equippedBaseTraitSlot,
   EXTRA_PICK_LEVEL,
   heroById,
@@ -11,10 +11,10 @@ import {
   heroTreeCapacity,
   heroTreeRules,
   heroTreeSelections,
-  sageElixirsSs14,
-  sageScentIngredientsSs14,
+  sageElixirs,
+  sageScentIngredients,
   tliArt,
-  tlidbSupportCatalogSs14,
+  tlidbSupportCatalog,
   TREE_ROW_LEVELS,
   treeBoardLayout,
   treeRowLevelKey,
@@ -203,9 +203,9 @@ const SCENT_INGREDIENTS = [
   ["functional", "Functional Ingredient"],
 ] as const;
 const art = tliArt as unknown as { hero: { memories: Record<string, string> } };
-const supports = tlidbSupportCatalogSs14 as { name: string; icon?: string }[];
+const supports = tlidbSupportCatalog as { name: string; icon?: string }[];
 const traitsOf = (heroId: string): Trait[] =>
-  (allHeroTraitsSs14 as Record<string, { traits: Trait[] }>)[heroId]?.traits || [];
+  (allHeroTraits as Record<string, { traits: Trait[] }>)[heroId]?.traits || [];
 
 // Lines of a trait tree between node centres, inset to the node edges; lit when both ends are picked.
 function treeLines(nodes: TreeNode[], selected: Set<string>): TraitPathLineView[] {
@@ -467,10 +467,10 @@ function traitPath(heroId: string, hero: HeroState, traits: Trait[]): TraitPathV
 
 function scentBottle(hero: HeroState): ScentBottleView {
   const scent = hero.sageScent || {};
-  const elixir = (sageElixirsSs14 as { name: string; icon: string; tags: string[] }[]).find(
+  const elixir = (sageElixirs as { name: string; icon: string; tags: string[] }[]).find(
     (entry) => entry.name === scent.elixir,
   );
-  const ingredients = sageScentIngredientsSs14 as Record<string, { name: string; icon: string }[]>;
+  const ingredients = sageScentIngredients as Record<string, { name: string; icon: string }[]>;
   return {
     kind: "scent",
     elixir: elixir ? { name: elixir.name, icon: elixir.icon, tags: elixir.tags } : null,

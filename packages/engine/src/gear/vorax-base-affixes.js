@@ -1,10 +1,10 @@
-import { voraxCraftingSs14 } from "../../data/gear/vorax-crafting-ss14.generated.js";
+import { voraxCrafting } from "../../data/gear/vorax-crafting.generated.js";
 
 // A Vorax limb has two base affix slots, both rolled from the base's own base-affix pool.
 export const VORAX_BASE_AFFIX_SLOTS = 2;
 
 export function voraxBaseAffixPool(type) {
-  return voraxCraftingSs14.baseAffixes[type] || [];
+  return voraxCrafting.baseAffixes[type] || [];
 }
 
 export function voraxBaseAffixSlotPool(type, slot) {

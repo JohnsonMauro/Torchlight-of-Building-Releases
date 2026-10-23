@@ -1,14 +1,14 @@
 import {
   CATALOG_TAG_GAME_IDS,
   GAME_SKILL_TAG_NAMES,
-  skillGameTagsSs14,
-  supportEligibilitySs14,
-} from "../../data/skills/support-eligibility-ss14.generated.js";
+  skillGameTags,
+  supportEligibility,
+} from "../../data/skills/support-eligibility.generated.js";
 import { spiritMagusSkills } from "../../data/skills/spirit-magus-skills.js";
 import { inferDamageProfile } from "../skills/skill-damage-profiles.js";
 
 // Eligibility is the game's own tag filter: each support stone's include / exclude tag groups in config_skill_stone, read
-// against the skill's own stone tags (packages/engine/data/skills/support-eligibility-ss14.generated.js, built by
+// against the skill's own stone tags (packages/engine/data/skills/support-eligibility.generated.js, built by
 // scripts/build-support-eligibility.mjs). TLIDB's opening "Supports ..." sentence is the fallback for a skill or support
 // with no linked stone record. Support tags describe the support itself and are not sufficient for matching skills.
 const tagAliases = {
@@ -72,7 +72,7 @@ const GAME_TAG = { active: 6000200, passive: 6000201, hit: 6001060, damageOverTi
 // The skill's game tag ids: its own skill-stone tags, or, for a skill with no linked stone record, its catalog tags plus
 // Active / Passive from its role and Hit / Damage Over Time from its effect text. `addedTags` are catalog tag names to add.
 export function skillGameTagIds(skill, addedTags = []) {
-  const linked = skillGameTagsSs14[skill?.name];
+  const linked = skillGameTags[skill?.name];
   const ids = new Set(
     linked ? linked.tags : (skill?.tags || []).map((tag) => CATALOG_TAG_GAME_IDS[tag]).filter(Boolean),
   );
@@ -110,17 +110,17 @@ function spiritMagusSkillTagIds(skillName) {
 
 /** The game's eligibility rule of a support ({ text, include, exclude, addsTags?, removesTags?, ... }), or null. */
 export function supportEligibilityRule(name) {
-  return supportEligibilitySs14[name] || null;
+  return supportEligibility[name] || null;
 }
 
 /** Whether the game filter decides this support on this skill (both have a linked stone record). */
 export function gameRuleDecides(support, skill) {
-  return Boolean(supportEligibilitySs14[support?.name] && skillGameTagsSs14[skill?.name]);
+  return Boolean(supportEligibility[support?.name] && skillGameTags[skill?.name]);
 }
 
 /** The game's eligibility rule of an Activation Medium, or null. */
 export function activationMediumRule(name) {
-  const rule = supportEligibilitySs14[name];
+  const rule = supportEligibility[name];
   return rule?.category === "activation" ? rule : null;
 }
 
@@ -131,7 +131,7 @@ function linkedTagChanges(baseIds, linkedSupports, self) {
     added = [];
   for (const linked of linkedSupports || []) {
     if (linked?.enabled === false || linked?.name === self) continue;
-    const rule = supportEligibilitySs14[linked?.name];
+    const rule = supportEligibility[linked?.name];
     if (!rule || !(rule.addsTags || rule.removesTags) || !ruleAccepts(rule, baseIds)) continue;
     for (const id of rule.addsTags || []) {
       ids.add(id);
@@ -168,11 +168,11 @@ export function supportCanSupportSkill(support, skill, linkedSupports = []) {
   // Blind on a Spirit Magus summon: kept from the earlier planner rule (tests/support-compatibility.test.js); the game
   // filter (Blind 10002730: include Hit) does not include the Passive summon skill itself.
   if (support.name === "Blind" && hasTag(skill, "Spirit Magus")) return true;
-  const rule = supportEligibilitySs14[support.name];
+  const rule = supportEligibility[support.name];
   const { ids, addedNames } = linkedTagChanges(skillGameTagIds(skill), linkedSupports, support.name);
   // Game filter on the skill's own stone tags; an Activation Medium also reads tags derived from the catalog for a skill
   // with no stone (TLIDB's SS13 cards have no "Supports" line for them).
-  if (rule && (skillGameTagsSs14[skill.name] || rule.category === "activation"))
+  if (rule && (skillGameTags[skill.name] || rule.category === "activation"))
     return (
       ruleAccepts(rule, ids) ||
       spiritMagusSkillTagIds(skill.name).some((own) => ruleAccepts(rule, new Set([...ids, ...own])))
@@ -198,7 +198,7 @@ export function installedSupportRejected(support, skill, linkedSupports = []) {
 
 /** The rule a rejected support breaks, for the coverage badge: the game text, the support's own skill, or its "Supports" text. */
 export function supportRuleText(support) {
-  const rule = supportEligibilitySs14[support?.name];
+  const rule = supportEligibility[support?.name];
   const gameText = (rule?.text || []).filter((line) => !/^This skill can only be installed/i.test(line)).join(" ");
   if (gameText) return gameText;
   if (support?.exclusiveFor) return `supports ${support.exclusiveFor} only`;

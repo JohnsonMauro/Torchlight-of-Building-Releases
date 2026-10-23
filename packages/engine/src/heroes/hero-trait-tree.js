@@ -12,8 +12,8 @@
 // three traits in sequence to claim my privilege: command a fourth Hero Trait, immediately raised to its maximum level") on an
 // equipped memory opens a fourth row (index 3). It can hold a pick only while the three memory rows are filled, it has no
 // memory, and its trait is at level 5 (the maximum).
-import { allHeroTraitsSs14 } from "../../data/heroes/all-hero-traits-ss14.generated.js";
-import { normalizeRevivedAffix } from "../../data/heroes/memory-revival-ss14.js";
+import { allHeroTraits } from "../../data/heroes/all-hero-traits.generated.js";
+import { normalizeRevivedAffix } from "../../data/heroes/memory-revival.js";
 import { revivedAffixCounts } from "./hero-exclusive-revivals.js";
 
 export const TREE_ROW_LEVELS = [45, 60, 75];
@@ -79,7 +79,7 @@ const trees = new Map();
  */
 export function heroTraitTree(heroId) {
   if (trees.has(heroId)) return trees.get(heroId);
-  const data = allHeroTraitsSs14[heroId];
+  const data = allHeroTraits[heroId];
   let tree = null;
   if (data?.tree?.nodes?.length) {
     // Node order (board and focus order): Selena keeps her earlier board order; the others follow TLIDB's trait cards.
@@ -165,7 +165,7 @@ export function treeBoardLayout(tree, width) {
 }
 
 export const heroHasTraitTree = (heroId) => Boolean(heroTraitTree(heroId));
-export const treeHeroIds = () => Object.keys(allHeroTraitsSs14).filter(heroHasTraitTree);
+export const treeHeroIds = () => Object.keys(allHeroTraits).filter(heroHasTraitTree);
 
 /** Whether an equipped memory of this hero carries "+1 Max Youga Count in the Universe" (the extra pick's source). */
 export function extraPickMemory(hero = {}, heroId = hero?.selectedHeroId) {

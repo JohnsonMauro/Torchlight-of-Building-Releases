@@ -1,6 +1,6 @@
-import { selenaSingWithTheTideSs14 } from "../../data/heroes/selena-sing-with-the-tide-ss14.js";
+import { selenaSingWithTheTide } from "../../data/heroes/selena-sing-with-the-tide.js";
 
-const trait = selenaSingWithTheTideSs14.choices.level60.find((choice) => choice.name === "Sea Foam Nocturne");
+const trait = selenaSingWithTheTide.choices.level60.find((choice) => choice.name === "Sea Foam Nocturne");
 const tideEffectByLevel = trait.valuesByTraitLevel.tideEffectPerChannelStackPercent;
 
 // Count (game affix 786645120): GetMaxMin(0, field 2006050 [extra Max Channeled Stacks] + field 2006051 [extra initial

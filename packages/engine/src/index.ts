@@ -259,7 +259,7 @@ export {
   talentEffectText,
   talentPointTotals,
 } from "./talents/talent-rules.js";
-export { godTalentTreesSs14, talentFamiliesSs14, talentOptionsForSlot } from "./talents/talent-selection-rules.js";
+export { godTalentTrees, talentFamilies, talentOptionsForSlot } from "./talents/talent-selection-rules.js";
 
 // Text
 export { gameKeyword, gameKeywordSegments, gameKeywordsExplained } from "./text/game-keywords.js";
@@ -288,70 +288,66 @@ export { cleanGameText, normalizePercentageText } from "./text/percentage-text.j
 export { matchTalentTextClause, talentKeyRoute } from "./text/talent-text-effects.js";
 
 // Game data
-export { towerSequenceSs14Texts } from "../data/changed-item-ids.js";
-export { divinitySlateAffixesSs14, divinitySlateTreeFamiliesSs14 } from "../data/divinity-slate-affixes-ss14.js";
-export {
-  memoryAffixTiersSs14,
-  memoryRevivalAffixIdsSs14,
-  observedGameAffixIdsSs14,
-} from "../data/game-import-tlidb-ss14.generated.js";
-export { netherKingFixedAffixesSs14 } from "../data/nether-king-slate-affixes-ss14.js";
-export { netherKingUltimateAffixesSs14 } from "../data/nether-king-ultimate-affixes-ss14.js";
-export { pedigreeCoreAffixesSs14 } from "../data/pedigree-core-affixes-ss14.js";
+export { towerSequenceTexts } from "../data/changed-item-ids.js";
+export { divinitySlateAffixes, divinitySlateTreeFamilies } from "../data/divinity-slate-affixes.js";
+export { memoryAffixTiers, memoryRevivalAffixIds, observedGameAffixIds } from "../data/game-import-tlidb.generated.js";
+export { netherKingFixedAffixes } from "../data/nether-king-slate-affixes.js";
+export { netherKingUltimateAffixes } from "../data/nether-king-ultimate-affixes.js";
+export { pedigreeCoreAffixes } from "../data/pedigree-core-affixes.js";
 
 // Game data: Assets
 export { tliArt } from "../data/assets/tli-art.js";
 
 // Game data: Catalogs
-export { tlidbSkillCatalogSs14, tlidbSupportCatalogSs14 } from "../data/catalogs/tlidb-ss14.js";
+export { tlidbSkillCatalog, tlidbSupportCatalog } from "../data/catalogs/tlidb.js";
 
 // Game data: Gear
-export { baseAffixTiersSs14, baseAffixesSs14 } from "../data/gear/base-affixes-ss14.generated.js";
-export { beltBlendsSs14 } from "../data/gear/belt-blends-ss14.generated.js";
-export { corrosionImplicitsForBase, defaultBaseForItem } from "../data/gear/corrosion-implicits-ss14.js";
-export { craftAffixesSs14 } from "../data/gear/craft-affixes-ss14.generated.js";
-export { craftItemTypes, equipmentSlots, voraxItemTypes } from "../data/gear/crafting-catalog-ss14.js";
-export { gearGroupOfType, gearGroupsSs14 } from "../data/gear/gear-groups-ss14.js";
-export { legendaryCorrodedModifiersSs14 } from "../data/gear/legendary-corroded-modifiers-ss14.generated.js";
-export { legendaryGearSs14 } from "../data/gear/legendary-gear-ss14.generated.js";
-export { legendaryGearTypesSs14 } from "../data/gear/legendary-gear-types-ss14.js";
-export { rareBaseItemsSs14 } from "../data/gear/rare-base-items-ss14.generated.js";
-export { selenaScorchingBeamGearSs14 } from "../data/gear/selena-scorching-beam-ss14.js";
-export { towerSequencesSs14 } from "../data/gear/tower-sequences-ss14.generated.js";
-export { voraxCraftingSs14 } from "../data/gear/vorax-crafting-ss14.generated.js";
+export { baseAffixTiers, baseAffixes } from "../data/gear/base-affixes.generated.js";
+export { beltBlends } from "../data/gear/belt-blends.generated.js";
+export { corrosionImplicitsForBase, defaultBaseForItem } from "../data/gear/corrosion-implicits.js";
+export { craftAffixes } from "../data/gear/craft-affixes.generated.js";
+export { craftItemTypes, equipmentSlots, voraxItemTypes } from "../data/gear/crafting-catalog.js";
+export { gearGroupOfType, gearGroups } from "../data/gear/gear-groups.js";
+export { legendaryCorrodedModifiers } from "../data/gear/legendary-corroded-modifiers.generated.js";
+export { legendaryGear } from "../data/gear/legendary-gear.generated.js";
+export { legendaryGearTypes } from "../data/gear/legendary-gear-types.js";
+export { rareBaseItems } from "../data/gear/rare-base-items.generated.js";
+export { selenaScorchingBeamGear } from "../data/gear/selena-scorching-beam.js";
+export { towerSequences } from "../data/gear/tower-sequences.generated.js";
+export { voraxCrafting } from "../data/gear/vorax-crafting.generated.js";
 
 // Game data: Heroes
-export { allHeroTraitsSs14 } from "../data/heroes/all-hero-traits-ss14.generated.js";
-export { heroById, heroCatalogSs14 } from "../data/heroes/hero-catalog-ss14.js";
-export { heroMemoryAffixesSs14 } from "../data/heroes/hero-memory-affixes-ss14.js";
-export { heroMemoryFixedT0AffixesSs14 } from "../data/heroes/hero-memory-fixed-t0-ss14.js";
-export { heroMemoryTierAffixesSs14 } from "../data/heroes/hero-memory-tiers-ss14.js";
-export { lunarPhaseRevivedAffixDetailsSs14 } from "../data/heroes/memory-revival-details-ss14.js";
+export { allHeroTraits } from "../data/heroes/all-hero-traits.generated.js";
+export { heroById, heroCatalog } from "../data/heroes/hero-catalog.js";
+export { heroMemoryAffixes } from "../data/heroes/hero-memory-affixes.js";
+export { heroMemoryFixedT0Affixes } from "../data/heroes/hero-memory-fixed-t0.js";
+export { heroMemoryTierAffixes } from "../data/heroes/hero-memory-tiers.js";
+export { lunarPhaseRevivedAffixDetails } from "../data/heroes/memory-revival-details.js";
 export {
   equippedBaseTraitSlot,
-  lunarPhaseRevivedAffixesSs14,
+  lunarPhaseRevivedAffixes,
   memoryFitsBaseTraitSlot,
   normalizeRevivedAffix,
-  regularRevivedAffixNamesSs14,
-  regularRevivedAffixesSs14,
+  regularRevivedAffixNames,
+  regularRevivedAffixes,
   revivedAffixForMemoryType,
   revivedAffixRollRange,
   revivedAffixTiers,
-} from "../data/heroes/memory-revival-ss14.js";
-export { sageScentIngredientsSs14 } from "../data/heroes/sage-scent-options-ss14.js";
-export { sageElixirsSs14 } from "../data/heroes/sage-scent-ss14.generated.js";
+} from "../data/heroes/memory-revival.js";
+export { sageScentIngredients } from "../data/heroes/sage-scent-options.js";
+export { sageElixirs } from "../data/heroes/sage-scent.generated.js";
 
 // Game data: Pacts
-export { kismetCatalogSs14 } from "../data/pacts/kismet-catalog-ss14.js";
-export { pactspiritCatalogSs14 } from "../data/pacts/pactspirit-catalog-ss14.js";
-export { pactspiritTreesSs14 } from "../data/pacts/pactspirit-trees-ss14.js";
-export { selenaScorchingBeamPactsSs14 } from "../data/pacts/selena-scorching-beam-ss14.js";
+export { kismetCatalog } from "../data/pacts/kismet-catalog.js";
+export { pactspiritCatalog } from "../data/pacts/pactspirit-catalog.js";
+export { pactspiritTrees } from "../data/pacts/pactspirit-trees.js";
+export { selenaScorchingBeamPacts } from "../data/pacts/selena-scorching-beam.js";
 
 // Game data: Skills
-export { activationMediumGameAffixesSs14 } from "../data/skills/activation-medium-game-affixes-ss14.generated.js";
-export { scaledAuraEffects } from "../data/skills/aura-scaling-ss14.js";
-export { selenaCompleteSkillLoadoutSs14 } from "../data/skills/selena-complete-skill-loadout-ss14.js";
-export { skillProgressionSs14 } from "../data/skills/skill-progression-ss14.generated.js";
+export { activationMediumGameAffixes } from "../data/skills/activation-medium-game-affixes.generated.js";
+export { scaledAuraEffects } from "../data/skills/aura-scaling.js";
+export { selenaCompleteSkillLoadout } from "../data/skills/selena-complete-skill-loadout.js";
+export { skillProgression } from "../data/skills/skill-progression.generated.js";
 export {
   activationMediumAffixLines,
   activationMediumGameLine,
@@ -368,17 +364,16 @@ export {
   progressionSupportTierData,
   specialSupportStarBonus,
   specialSupportTierData,
-} from "../data/skills/special-support-tiers-ss14.js";
-export { supportProgressionSs14 } from "../data/skills/support-progression-ss14.generated.js";
+} from "../data/skills/special-support-tiers.js";
+export { supportProgression } from "../data/skills/support-progression.generated.js";
 
 // Game data: Slates
-export { selenaScorchingBeamSlatesSs14 } from "../data/slates/selena-scorching-beam-ss14.js";
+export { selenaScorchingBeamSlates } from "../data/slates/selena-scorching-beam.js";
 
 // Game data: Talents
-export { allProfessionTalentCatalogueSs14 } from "../data/talents/all-profession-trees-ss14.generated.js";
+export { allProfessionTalentCatalogue } from "../data/talents/all-profession-trees.generated.js";
 export { TLIDB_PRISM_AFFIXES } from "../data/talents/prism-affixes-tlidb.generated.js";
-export { selenaScorchingBeamTalentSetupSs14 } from "../data/talents/selena-scorching-beam-ss14.js";
+export { selenaScorchingBeamTalentSetup } from "../data/talents/selena-scorching-beam.js";
 
 // The game id map (0.9 MB), loaded on demand: only a game log import reads it.
-export const importGameIdMap = () =>
-  import("../data/game-id-map-ss14.generated.js").then((module) => module.gameIdMapSs14);
+export const importGameIdMap = () => import("../data/game-id-map.generated.js").then((module) => module.gameIdMap);

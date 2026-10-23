@@ -8,7 +8,7 @@
 //   additional, once with the Empower tag 5100311 and once with the Defensive tag 5100304, on the player). The Empower half is
 //   read where the planner models an Empower Skill buff (packages/engine/src/skills/empower-effects.js, packages/engine/src/skills/aim-model.js); Defensive Skill effects are
 //   defence only.
-// - Warcry Skills' cooldown: 8 s in the game skill data for every Warcry it holds (packages/engine/data/skills/skill-timing-ss14.generated.js:
+// - Warcry Skills' cooldown: 8 s in the game skill data for every Warcry it holds (packages/engine/data/skills/skill-timing.generated.js:
 //   Resurrection, Raging, Charging, Shockwave and Commanding Warcry). Fearless Warcry has no record; read as 8 s (provisional).
 //
 // Reading (provisional; best-case switch `warcriesOnCooldown`, on by default, listed in the assumptions):
@@ -21,7 +21,7 @@
 // - The Warcries' own 0.8 s casts are not taken from the main skill's time (as for the other buff skills).
 // - The bonus is "Attack Damage": a derived "+X% additional Attack Damage" line the hit and weapon models read like the same
 //   plain line; a build without an Attack damage source gains nothing from it.
-import { skillTimingSs14 } from "../../data/skills/skill-timing-ss14.generated.js";
+import { skillTiming } from "../../data/skills/skill-timing.generated.js";
 import { cleanGameText } from "../text/percentage-text.js";
 
 export const STORM_COMMAND_LINE =
@@ -35,7 +35,7 @@ const clean = (text) => cleanGameText(String(text ?? ""));
 
 /** A Warcry's base cooldown from the game skill data (8 s for every Warcry it holds; 8 s when it has none). */
 export function warcryBaseCooldown(name) {
-  const cooldown = Number(skillTimingSs14[name]?.cooldown);
+  const cooldown = Number(skillTiming[name]?.cooldown);
   return { seconds: cooldown > 0 ? cooldown : WARCRY_BASE_COOLDOWN_SECONDS, sourced: cooldown > 0 };
 }
 

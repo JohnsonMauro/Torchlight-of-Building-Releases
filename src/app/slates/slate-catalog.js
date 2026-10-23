@@ -2,10 +2,10 @@
 // and talent slots, the Nether King pools, and an affix as a searchable select's choice. Pure; used by the slate crafter
 // (src/app/slates/slate-craft.ts) and the planner's board and tooltips (src/app/slates/slates-controller.js).
 import {
-  divinitySlateAffixesSs14,
-  divinitySlateTreeFamiliesSs14,
-  netherKingFixedAffixesSs14,
-  netherKingUltimateAffixesSs14,
+  divinitySlateAffixes,
+  divinitySlateTreeFamilies,
+  netherKingFixedAffixes,
+  netherKingUltimateAffixes,
   PEDIGREE_OF_GODS,
   pedigreeSlotTypes,
 } from "#engine";
@@ -70,12 +70,12 @@ export const legendaryTalentSlotTypes = {
   "A Corner of Divinity": Array.from({ length: 2 }, () => allGodSlateTalentTypes),
   [PEDIGREE_OF_GODS]: pedigreeSlotTypes,
 };
-export const allDivinitySlateAffixes = Object.entries(divinitySlateAffixesSs14).flatMap(([god, affixes]) =>
+export const allDivinitySlateAffixes = Object.entries(divinitySlateAffixes).flatMap(([god, affixes]) =>
   affixes.map((affix) => ({ ...affix, god })),
 );
 export const slateGodFamilyClass = (god) =>
-  divinitySlateTreeFamiliesSs14[god] ? `talent-family-${god.toLowerCase().replaceAll(" ", "-")}` : "";
-export const netherKingFixedPool = netherKingFixedAffixesSs14.map((affix) => ({
+  divinitySlateTreeFamilies[god] ? `talent-family-${god.toLowerCase().replaceAll(" ", "-")}` : "";
+export const netherKingFixedPool = netherKingFixedAffixes.map((affix) => ({
   ...affix,
   tree: "Nether King",
   god: "Nether King",
@@ -83,7 +83,7 @@ export const netherKingFixedPool = netherKingFixedAffixesSs14.map((affix) => ({
 export const netherKingBrandPool = [
   ...allDivinitySlateAffixes,
   ...netherKingFixedPool,
-  ...netherKingUltimateAffixesSs14.map((affix) => ({ ...affix, tree: "Nether King", god: "Nether King" })),
+  ...netherKingUltimateAffixes.map((affix) => ({ ...affix, tree: "Nether King", god: "Nether King" })),
 ];
 export const godSlateCaptureByKey = {
   hunting: "goddess-of-hunting",

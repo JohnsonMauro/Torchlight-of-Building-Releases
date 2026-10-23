@@ -1,9 +1,9 @@
-import { beltBlendsSs14 } from "#engine";
+import { beltBlends } from "#engine";
 
 export const BELT_BLEND_CATEGORIES = ["Medium Talent", "Core Talent", "Aromatic Talent"];
 
 export function beltBlendById(id) {
-  return beltBlendsSs14.find((entry) => entry.id === id);
+  return beltBlends.find((entry) => entry.id === id);
 }
 
 // Effect lines shown under the blend name in the searchable picker. Named talents carry a
@@ -23,7 +23,7 @@ export function beltBlendDescription(entry) {
 export function beltBlendChoices() {
   return BELT_BLEND_CATEGORIES.map((category) => ({
     group: category,
-    options: beltBlendsSs14
+    options: beltBlends
       .filter((entry) => entry.category === category)
       .map((entry) => {
         const description = beltBlendDescription(entry);

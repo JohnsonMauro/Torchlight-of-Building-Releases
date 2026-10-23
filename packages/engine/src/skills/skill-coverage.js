@@ -4,7 +4,7 @@ import { aegisOfFireState, AEGIS_OF_FIRE } from "../defense/aegis-of-fire.js";
 import { isFireOnlyLedgerLine } from "../ailments/ailment-shared.js";
 import { curseTakenEffect, NO_DUMMY_EFFECT_CURSES } from "./curse-effects.js";
 import { curseSlotSummary } from "./curse-limit.js";
-import { tlidbSkillCatalogSs14, tlidbSupportCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
+import { tlidbSkillCatalog, tlidbSupportCatalog } from "../../data/catalogs/tlidb.js";
 import { installedSupportRejected, supportRuleText } from "../supports/support-compatibility.js";
 
 // Coverage badges for skills, auras, curses and supports, derived from the
@@ -517,7 +517,7 @@ function classifySkill(planner, skillName, setup) {
     // to model. On the board it is the build's Mobility Skill, so the "after using Mobility Skills" lines are held (user rule
     // 2026-10-14, best-case switch mobilitySkillUsed). It read "Not modeled" before 2026-10-18.
     const tags = new Set(setup?.tags || []);
-    const deals = (tlidbSkillCatalogSs14.find((entry) => entry.name === skillName)?.effects || []).some((text) =>
+    const deals = (tlidbSkillCatalog.find((entry) => entry.name === skillName)?.effects || []).some((text) =>
       /\bDeals?\b|Damage\b/.test(String(text)),
     );
     if (!applied && tags.has("Mobility") && !deals) {
@@ -566,8 +566,8 @@ function classifySkill(planner, skillName, setup) {
 function incompatibleSupport(supportName, skillName, setup) {
   const installed = setup?.supports?.find((item) => item.name === supportName);
   if (installed?.granted) return null;
-  const support = tlidbSupportCatalogSs14.find((entry) => entry.name === supportName);
-  const skill = tlidbSkillCatalogSs14.find((entry) => entry.name === skillName);
+  const support = tlidbSupportCatalog.find((entry) => entry.name === supportName);
+  const skill = tlidbSkillCatalog.find((entry) => entry.name === skillName);
   if (!installed?.incompatible && !installedSupportRejected(support, skill, setup?.supports || [])) return null;
   return supportRuleText(support);
 }
@@ -839,7 +839,7 @@ function refineSupportClause(planner, setup, supportName, clause, base) {
     ["additional", "increased", "critOnlyAdditional", "dotAdditional", "perStack", "conditionalAdditional"].includes(
       clause.family,
     ) &&
-    !(tlidbSkillCatalogSs14.find((entry) => entry.name === skillName)?.effects || []).some((text) =>
+    !(tlidbSkillCatalog.find((entry) => entry.name === skillName)?.effects || []).some((text) =>
       /\bDeals?\b/.test(String(text)),
     )
   )

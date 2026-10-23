@@ -4,7 +4,7 @@
 // (the game rows stop at 20; TLIDB's Lv.21–40 rows are blank): past Lv.20 the base is frozen and the skill gains the
 // generic +10% / +8% additional damage per level (src/engine.js skillLevelDamageMultiplier). Every group's Lv.20 values
 // match the TLIDB card, and every published TLIDB level row matches the game row (checked by the generator).
-// Read by src/skill-hit-profiles.js and src/skill-damage-profiles.js beside skill-hit-damage-ss14.generated.js.
+// Read by src/skill-hit-profiles.js and src/skill-damage-profiles.js beside skill-hit-damage.generated.js.
 export const skillHitDamageNewSkills = {
  "Voltaic Ripple": {
   "tlidb": "https://tlidb.com/en/Voltaic_Ripple",

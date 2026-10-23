@@ -4,7 +4,7 @@
 // Minion engine applies (packages/engine/src/minions/minion-damage-model.js `heroTraits`), packages/engine/src/planner.js passes per Minion and packages/engine/src/heroes/hero-trait-modules.js
 // badges.
 //
-// Sourced (TLIDB keyword tooltips, Torchlight_Hyperlink_hover, fetched 2026-10-19 and saved in research/tlidb-ss14/fetch-cache):
+// Sourced (TLIDB keyword tooltips, Torchlight_Hyperlink_hover, fetched 2026-10-19 and saved in research/tlidb/fetch-cache):
 // - Overload (5f163559…): "Provides buffs for your Minions. Bonuses that apply to Empower Skill Effects are also applied to Overload
 //   Effect. Bonuses that apply to Skill Effect Duration are also applied to Overload Duration."
 // - Command (f18daf82…): +3% additional damage per point for Synthetic Troop Minions (packages/engine/src/minions/minion-cores.js commandState).

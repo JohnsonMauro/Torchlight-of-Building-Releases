@@ -1,15 +1,15 @@
-import { supportProgressionSs14 } from "../../data/skills/support-progression-ss14.generated.js";
+import { supportProgression } from "../../data/skills/support-progression.generated.js";
 import { dummyTarget, explicitRadiusHolds, DISTANT_STANDING_METERS } from "../combat/dummy-target.js";
 import { residualNonDamageStatus } from "../text/line-families.js";
 import { resolveLineCondition } from "../text/line-conditions.js";
-import { allSkillEffectsSs14 } from "../../data/skills/all-skill-effects-ss14.generated.js";
+import { allSkillEffects } from "../../data/skills/all-skill-effects.generated.js";
 import {
   specialSupportTierData,
   progressionSupportTierData,
   progressionSupportText,
   specialSupportStarBonus,
   isActivationMedium,
-} from "../../data/skills/special-support-tiers-ss14.js";
+} from "../../data/skills/special-support-tiers.js";
 import { EMPOWER_MODELED_SKILLS, EMPOWER_BUFF_SKILLS } from "../skills/empower-effects.js";
 // Movement rate for per-metre support lines (Hunting Tempo, 2026-10-15 patch update): packages/engine/src/combat/dummy-target.js, the same 6 m/s
 // placeholder as the Thunder Focus profile (no game figure fixes it).
@@ -96,7 +96,7 @@ export const SCORCHING_BEAM_DEDICATED_SUPPORTS = new Set([
 // table value is used where it exists (Lv.1–40), the linear rule beyond it (B6, fixed 2026-10-12 with the user's source).
 export function criticalStrikeRatingIncreasePercent(level) {
   const effective = Math.max(1, Math.round(level || 20));
-  const column = supportProgressionSs14["Critical Strike Rating Increase"]?.columns?.find((item) =>
+  const column = supportProgression["Critical Strike Rating Increase"]?.columns?.find((item) =>
     /Critical Strike Rating for the supported skill/i.test(item.heading),
   );
   const table = effective <= 40 ? parseProgressionCell(column?.values?.[String(effective)])?.[0] : null;
@@ -888,7 +888,7 @@ function configFor(setup, support, specialSupportConfigs = {}) {
 // Raw clauses of one support: { text, origin, level?, tier?, stars? }.
 function supportClauses(setup, support, ctx) {
   const name = support.name;
-  const entry = supportProgressionSs14[name];
+  const entry = supportProgression[name];
   const level = supportLevel(support);
   const special = isSpecial(name);
   const config = configFor(setup, support, ctx.specialSupportConfigs);
@@ -1713,7 +1713,7 @@ function resolveCondition(clause, support, conditions) {
   const stackCap =
     clause.condition === "standingStill" && clause.multiplies
       ? Number(
-          String(supportProgressionSs14[clause.grantedWillpower ? "Willpower" : support.name]?.baseEffect || "").match(
+          String(supportProgression[clause.grantedWillpower ? "Willpower" : support.name]?.baseEffect || "").match(
             /Stacks up to (\d+) time/i,
           )?.[1],
         ) || 1
@@ -1742,7 +1742,7 @@ const dotTypedApplies = (typed, damageType) =>
 // 2026-10-12: "falloff coefficient is 70%"), the game hit rule's one flat repeatDmgDecPercent row (100 − c), and the
 // Chromatic Shot runs (1 + 0.7 and 1 + 0.7 × 2). The "×0.3" reading of "usually a 70% reduction" is ruled out.
 export function shotgunFalloff(skillName) {
-  const text = (allSkillEffectsSs14[skillName] || []).join("\n");
+  const text = (allSkillEffects[skillName] || []).join("\n");
   if (!/Shotgun/i.test(text)) return null;
   const match =
     text.match(/Shotgun Effect falloff coefficient is (\d+(?:\.\d+)?)%/i) ||
@@ -1759,7 +1759,7 @@ export function shotgunFalloff(skillName) {
 // Shotgun Effect or not, keeps one projectile on one target. How many of the volley land (a fan: ceil(n / 2) standing close)
 // and the linear total are packages/engine/src/combat/shotgun-effect.js's.
 export function projectileQuantityFalloff(skillName) {
-  const lines = allSkillEffectsSs14[skillName] || [];
+  const lines = allSkillEffects[skillName] || [];
   const text = lines.join("\n");
   // Skill-wide exclusions only (Arrow Einherjar, Spikeburst, Thunderlight Arrow); Marked Rain of Arrows' "The Projectile is
   // not affected" names its Marked Arrow, while its Explosive Arrows take the bonus and can hit the same enemy.

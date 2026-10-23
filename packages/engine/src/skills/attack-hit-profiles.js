@@ -1,16 +1,16 @@
 import { buildSkillHitProfile } from "./skill-hit-profiles.js";
 import { finisherAmplificationPercent, CONSUMED_COMBO_POINTS, COMBO_POINTS_PER_STARTER } from "./combo-points.js";
 import { weaponRestriction } from "./weapon-damage-model.js";
-import { skillProgressionSs14 } from "../../data/skills/skill-progression-ss14.generated.js";
+import { skillProgression } from "../../data/skills/skill-progression.generated.js";
 import { shotgunProfileNote } from "../combat/shotgun-effect.js";
 
 // Attack batch, first slice (2026-10-11): the six "Weapon Attack Damage" skills deferred from batches 1 and 3 of
 // research/skill-inventory-2026-10-11.md (plus the two Precise Focus variants), modeled through the skill-hit engine
 // (packages/engine/src/skills/skill-hit-model.js) with the weapon model (packages/engine/src/skills/weapon-damage-model.js):
 //   hit = weapon damage × (row % Weapon Attack Damage) + added flat to Attacks × the same %, then the shared layers.
-// Per level the % is the +0x08 double of the skill's config_skill_damage rows (packages/engine/data/skills/skill-hit-damage-ss14.generated.js;
+// Per level the % is the +0x08 double of the skill's config_skill_damage rows (packages/engine/data/skills/skill-hit-damage.generated.js;
 // equal to TLIDB's "Deals X% Weapon Attack Damage" at every level for the four channels). Timing: the Split files
-// (packages/engine/data/skills/skill-timing-ss14.generated.js; 1 s, speed type 1 = attack speed). Each skill's "+100% additional
+// (packages/engine/data/skills/skill-timing.generated.js; 1 s, speed type 1 = attack speed). Each skill's "+100% additional
 // Attack Speed for this skill" is its own TLIDB line. Cadences the text leaves open are "provisional" (planner warning).
 
 const text = (note) => ({ basis: "text", note });
@@ -1206,7 +1206,7 @@ function SENTRY(durationSeconds = 8) {
  * (Ghost Blade's blade). `changeIndex` is the effect line's index in the TLIDB level table; Lv.20 is the skill text's value.
  */
 function tlidbWeaponGroup(name, changeIndex, lv20Percent) {
-  const entry = skillProgressionSs14[name];
+  const entry = skillProgression[name];
   const levels = {};
   let percent = null;
   for (let level = 1; level <= 20; level++) {

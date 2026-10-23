@@ -1,7 +1,7 @@
-import { tlidbSkillCatalogSs14, tlidbSupportCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
+import { tlidbSkillCatalog, tlidbSupportCatalog } from "../../data/catalogs/tlidb.js";
 import { supportCanSupportSkill } from "./support-compatibility.js";
 
-const catalog = new Map(tlidbSupportCatalogSs14.map((support) => [support.name, support]));
+const catalog = new Map(tlidbSupportCatalog.map((support) => [support.name, support]));
 const keyFor = (setup) => setup?.setupKey || setup?.instanceId || setup?.name || "";
 
 export function requiredSupportSlot(support) {
@@ -79,8 +79,8 @@ export function transferSupportSlot(skills, fromSetup, fromSlot, toSetup, toSlot
     return { error: `${source.name} belongs in support slot ${requiredSupportSlot(source) + 1}` };
   if (target && !duplicate && !supportFitsSlot(target, fromSlot))
     return { error: `${target.name} belongs in support slot ${requiredSupportSlot(target) + 1}` };
-  const targetSkill = tlidbSkillCatalogSs14.find((skill) => skill.name === toSetup.name),
-    sourceSkill = tlidbSkillCatalogSs14.find((skill) => skill.name === fromSetup.name);
+  const targetSkill = tlidbSkillCatalog.find((skill) => skill.name === toSetup.name),
+    sourceSkill = tlidbSkillCatalog.find((skill) => skill.name === fromSetup.name);
   if (
     targetSkill &&
     catalog.has(source.name) &&

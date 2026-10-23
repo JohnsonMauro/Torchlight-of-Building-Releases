@@ -1,6 +1,6 @@
 import { normalizePercentageText } from "../text/percentage-text.js";
-import { kismetCatalogSs14 } from "../../data/pacts/kismet-catalog-ss14.js";
-import { pactspiritTreesSs14 } from "../../data/pacts/pactspirit-trees-ss14.js";
+import { kismetCatalog } from "../../data/pacts/kismet-catalog.js";
+import { pactspiritTrees } from "../../data/pacts/pactspirit-trees.js";
 import { orderedPactspiritNodes } from "./pactspirit-levels.js";
 import { fateExtraSlots } from "./fate-slot-unlocks.js";
 import { kismetAffixesWithRolls, normalizeKismetRolls } from "./kismet-crafting.js";
@@ -21,7 +21,7 @@ const spiritOfSlot = (key) =>
 
 /** The allocated kismet slot keys of a pact spirit: inner and mid nodes, plus its Fate slots while the destiny node is allocated. */
 export function activeKismetSlotKeys(state = {}, spirit) {
-  const nodes = orderedPactspiritNodes(pactspiritTreesSs14[spirit]);
+  const nodes = orderedPactspiritNodes(pactspiritTrees[spirit]);
   const keys = nodes.flatMap((node, index) =>
     ["inner", "mid"].includes(node.ring) && state.nativeNodeQuantities?.[`${spirit}:${index}`] === 1
       ? [`${spirit}:${index}`]
@@ -39,7 +39,7 @@ export function activeKismetSlotKeys(state = {}, spirit) {
  */
 export function microFateEffectScale(state = {}, key) {
   const slot = state.kismetSlots?.[key];
-  const entry = slot && kismetCatalogSs14.find((item) => item.name === slot.name);
+  const entry = slot && kismetCatalog.find((item) => item.name === slot.name);
   const none = { scale: 1, percent: 0, sources: [] };
   if (entry?.kind !== "micro") return none;
   const spirit = spiritOfSlot(key);
@@ -48,7 +48,7 @@ export function microFateEffectScale(state = {}, key) {
   const sources = [];
   for (const other of keys) {
     const otherSlot = state.kismetSlots?.[other];
-    const otherEntry = otherSlot && kismetCatalogSs14.find((item) => item.name === otherSlot.name);
+    const otherEntry = otherSlot && kismetCatalog.find((item) => item.name === otherSlot.name);
     if (!otherEntry) continue;
     for (const text of kismetAffixesWithRolls(otherEntry, normalizeKismetRolls(otherEntry, otherSlot.rolls))) {
       const match = normalizePercentageText(text).trim().match(STAR_TRAIL);
@@ -68,7 +68,7 @@ export function scaleKismetAffix(text, scale) {
 /** The affix texts of the kismet in `key`, with a Star Trail boost applied to Micro Fates. */
 export function kismetSlotTexts(state = {}, key, rolls = undefined) {
   const slot = state.kismetSlots?.[key];
-  const entry = slot && kismetCatalogSs14.find((item) => item.name === slot.name);
+  const entry = slot && kismetCatalog.find((item) => item.name === slot.name);
   if (!entry) return [];
   const { scale } = microFateEffectScale(state, key);
   return kismetAffixesWithRolls(entry, rolls ?? normalizeKismetRolls(entry, slot.rolls)).map((text) =>
@@ -98,7 +98,7 @@ export function starTrailNote(boost) {
 /** The display texts of the kismet in `key` (rolled values, with the Star Trail effective value where boosted). */
 export function kismetSlotDisplayTexts(state = {}, key, rolls = undefined) {
   const slot = state.kismetSlots?.[key];
-  const entry = slot && kismetCatalogSs14.find((item) => item.name === slot.name);
+  const entry = slot && kismetCatalog.find((item) => item.name === slot.name);
   if (!entry) return [];
   const boost = microFateEffectScale(state, key);
   return kismetAffixesWithRolls(entry, rolls ?? normalizeKismetRolls(entry, slot.rolls)).map((text) =>
@@ -112,7 +112,7 @@ export function activeKismetEffects(state = {}) {
     if (!spirit || state.activeSpirits?.[spirit] === false) continue;
     for (const key of activeKismetSlotKeys(state, spirit)) {
       const slot = state.kismetSlots?.[key];
-      const entry = slot && kismetCatalogSs14.find((item) => item.name === slot.name);
+      const entry = slot && kismetCatalog.find((item) => item.name === slot.name);
       if (!entry) continue;
       // A Micro Fate in a spirit with Star Trail carries its boosted value; `baseText` keeps the rolled one (pact badge audit 2026-10-13).
       const boost = microFateEffectScale(state, key);

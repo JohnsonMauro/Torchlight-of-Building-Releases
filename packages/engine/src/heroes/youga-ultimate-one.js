@@ -6,7 +6,7 @@
 // packages/engine/src/skills/skill-coverage.js the Clockwork Core / trait-skill badges.
 //
 // Sourced (TLIDB tlidb.com/en/The_Ultimate_One, Clockwork_Core, Stasis_Vault, Supreme_Descent, Selves_of_All_Realms and their
-// hover texts, cached in research/tlidb-ss14/fetch-cache/; the patch notes' trait-tree appendix,
+// hover texts, cached in research/tlidb/fetch-cache/; the patch notes' trait-tree appendix,
 // research/patch-ss14/patch-notes-raw.md; game manual rules quoted in packages/engine/src/ailments/tangle-model.js):
 // - Clockwork Core (keyword 80070): casting the supported skill summons the Core (or moves it); the skill attaches to the Core
 //   as a Spell Tangle, only to the Core, and while the Core exists it is attached at Max Tangle Quantity; when the skill lands
@@ -20,7 +20,7 @@
 //   its own Recall count". Psionic Missile: "Projectiles of this skill cannot Penetrate, Jump, Return, or Recall"; secondary
 //   projectiles of Split Firebolt / Moon's Dawn / Splitting Lightning Bolt "cannot return or be Recalled".
 // - Selves of All Realms: lasts 7 s, cooldown 16 s, cooldown cannot be increased above 24 s; while it is active, skills
-//   supported by the Core gain their Alternate Spacetime Youga effect (19 skills, allHeroTraitsSs14 skillEffects).
+//   supported by the Core gain their Alternate Spacetime Youga effect (19 skills, allHeroTraits skillEffects).
 // - Supreme Descent: cooldown 3.3 s; the Core links up to 4 enemies within 20 m with Chains of Enslavement. Governance: +1%
 //   additional Clockwork Core Damage per stack, 4 s. Centralization: +1% additional Clockwork Core Damage and +0.5% Projectile
 //   Speed per stack, 4 s.
@@ -71,7 +71,7 @@
 // - Windows: the trait skills are cast at t = 0 (own buffs built before engaging) and then on cooldown; the 5 s / 20 s windows
 //   follow that schedule (packages/engine/src/combat/timed-effects.js steps on the supported skill's hits).
 import { normalizePercentageText } from "../text/percentage-text.js";
-import { tlidbSkillCatalogSs14 } from "../../data/catalogs/tlidb-ss14.js";
+import { tlidbSkillCatalog } from "../../data/catalogs/tlidb.js";
 import { BASE_MAX_TANGLE_QUANTITY, HIGHEST_MAX_TANGLE_QUANTITY, TANGLE_SUPPORTS } from "../ailments/tangle-model.js";
 import { recalledProjectilesPerUse } from "../skills/skill-hit-model.js";
 
@@ -217,7 +217,7 @@ export function readYougaLines(modifierTexts = []) {
   return found;
 }
 
-const catalogSkill = (name) => tlidbSkillCatalogSs14.find((entry) => entry.name === name) || null;
+const catalogSkill = (name) => tlidbSkillCatalog.find((entry) => entry.name === name) || null;
 const skillTextLines = (name) =>
   (catalogSkill(name)?.effects || [])
     .join("\n")

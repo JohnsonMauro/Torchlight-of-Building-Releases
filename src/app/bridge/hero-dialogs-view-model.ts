@@ -1,7 +1,7 @@
 // What the HERO tab's Sage scent selector and Carino Special Ammo selector list (apps/web/src/shell/dialogs). The planner
 // passes in what depends on the open build (the slot, its supports, Well Prepared); the texts are as the legacy markup
 // printed them (src/app/bridge/display-text.ts). Pure.
-import { sageElixirsSs14, sageScentIngredientsSs14 } from "#engine";
+import { sageElixirs, sageScentIngredients } from "#engine";
 import { displayTexts } from "./display-text.ts";
 import { searchText } from "./search-match.ts";
 
@@ -31,8 +31,8 @@ const titleCase = (value: string) =>
 export function sageScentSelectorView(kind: SageScentKind): SageScentSelectorView {
   const elixir = kind === "elixir";
   const entries: { name: string; icon: string; tags?: string[]; description?: string }[] = elixir
-    ? sageElixirsSs14
-    : sageScentIngredientsSs14[kind];
+    ? sageElixirs
+    : sageScentIngredients[kind];
   return {
     kind,
     title: elixir ? "Select Elixir Skill" : `Select ${titleCase(kind)} Ingredient`,

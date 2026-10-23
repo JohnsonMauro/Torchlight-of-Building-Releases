@@ -5,14 +5,14 @@ import {
   equippedKismetSummary,
   fateExtraSlots,
   fateSlotChoice,
-  kismetCatalogSs14,
+  kismetCatalog,
   kismetKindForRing,
   kismetSlotKey,
   orderedPactspiritNodes,
-  pactspiritCatalogSs14,
+  pactspiritCatalog,
   pactspiritLevel,
-  pactspiritTreesSs14,
-  selenaScorchingBeamPactsSs14,
+  pactspiritTrees,
+  selenaScorchingBeamPacts,
   sortPactspirits,
 } from "#engine";
 import type { PlannerState } from "#engine";
@@ -76,19 +76,19 @@ interface PactTreeNode {
   effect: string;
   icon: string;
 }
-const TREES: Readonly<Record<string, PactTreeNode[] | undefined>> = pactspiritTreesSs14;
+const TREES: Readonly<Record<string, PactTreeNode[] | undefined>> = pactspiritTrees;
 
 const quantity = (pacts: Pacts, key: string): number => Number(pacts.nativeNodeQuantities[key] ?? 0);
 const equippedKismet = (pacts: Pacts, key: string, kind?: KismetKind) => {
   const name = pacts.kismetSlots[key]?.name;
-  return kismetCatalogSs14.find((item) => item.name === name && (kind === undefined || item.kind === kind));
+  return kismetCatalog.find((item) => item.name === name && (kind === undefined || item.kind === kind));
 };
 
 /** A Pactspirit's level: saved, else 1 in slot mode, else its captured rank (the default build's pacts). */
 function slotLevel(pacts: Pacts, name: string): number {
   const fallback = pacts.kismetSlotMode
     ? 1
-    : selenaScorchingBeamPactsSs14.pactspirits.find((spirit: { name: string }) => spirit.name === name)?.rank || 1;
+    : selenaScorchingBeamPacts.pactspirits.find((spirit: { name: string }) => spirit.name === name)?.rank || 1;
   return pactspiritLevel(name, pacts.spiritLevels, fallback);
 }
 
@@ -130,7 +130,7 @@ function nodeView(pacts: Pacts, name: string, node: PactTreeNode, index: number)
 }
 
 function slotView(pacts: Pacts, name: string, index: number): PactSlotView {
-  const entry = pactspiritCatalogSs14.find((candidate: { name: string }) => candidate.name === name);
+  const entry = pactspiritCatalog.find((candidate: { name: string }) => candidate.name === name);
   const sequence: PactTreeNode[] = name ? orderedPactspiritNodes(TREES[name] || []) : [];
   const destinyIndex = sequence.findIndex((node) => node.ring === "destiny");
   const destinyAllocated = destinyIndex >= 0 && quantity(pacts, `${name}:${destinyIndex}`) > 0;
@@ -162,7 +162,7 @@ function slotView(pacts: Pacts, name: string, index: number): PactSlotView {
 
 export function pactsView(pacts: Pacts): PactsView {
   const names = Array.from({ length: 3 }, (_, index) => pacts.selectedSpirits[index] || "");
-  const summary = equippedKismetSummary(selenaScorchingBeamPactsSs14, pacts);
+  const summary = equippedKismetSummary(selenaScorchingBeamPacts, pacts);
   return {
     slotMode: pacts.kismetSlotMode,
     slots: names.map((name, index) => slotView(pacts, name, index)),
@@ -204,7 +204,7 @@ let selectorView: PactspiritSelectorView | null = null;
 /** The Pactspirit selector's choices; the dialog filters them and groups them by category in catalog order. */
 export function pactspiritSelectorView(): PactspiritSelectorView {
   if (selectorView) return selectorView;
-  const listed = pactspiritCatalogSs14.filter((entry) => !UNLISTED_CATEGORIES.has(entry.category));
+  const listed = pactspiritCatalog.filter((entry) => !UNLISTED_CATEGORIES.has(entry.category));
   const categories = [...new Set(listed.map((entry) => entry.category))];
   const rank = new Map<string, number>();
   for (const category of categories)

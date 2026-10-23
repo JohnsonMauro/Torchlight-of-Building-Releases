@@ -27,7 +27,7 @@ Before a commit: lint, typecheck, format:check and `pnpm test` green; e2e green 
 | Path | What | Rule |
 |---|---|---|
 | `packages/engine/` | the engine package (`@tob/engine`, major version = the game season): `src/` the calculation (pure domain), `data/` its game data | `src/` imports only the package; no DOM, no storage; outside code imports only `#engine` (its `src/index.ts`) |
-| `packages/engine/data/` | game data, mostly `*.generated.js` from upstream's tools | kept byte for byte but the season in names (Prettier ignores it) |
+| `packages/engine/data/` | game data, mostly `*.generated.js` from upstream's tools | kept byte for byte, but no season label in names (Prettier ignores it) |
 | `src/game-log/` | game log reader and import | never imports `src/app` |
 | `src/app/` | the planner page: state, commands, view models (`planner-guide`) | |
 | `src/app/bridge/` | view models and the two channels to React (`view-sources.ts`, `planner-commands.js`) | pure view models |

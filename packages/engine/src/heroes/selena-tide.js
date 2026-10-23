@@ -1,4 +1,4 @@
-import { selenaSingWithTheTideSs14 as tideData } from "../../data/heroes/selena-sing-with-the-tide-ss14.js";
+import { selenaSingWithTheTide as tideData } from "../../data/heroes/selena-sing-with-the-tide.js";
 import { calculateSeaFoamNocturne } from "./sea-foam-nocturne.js";
 import { parseCharacterStatClause } from "../character-stats.js";
 import { slotTraitLevel } from "./hero-memory-rules.js";

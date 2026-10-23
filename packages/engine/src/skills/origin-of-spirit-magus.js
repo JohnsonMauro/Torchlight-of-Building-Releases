@@ -1,8 +1,8 @@
 import { cleanGameText } from "../text/percentage-text.js";
-import { skillProgressionSs14 } from "../../data/skills/skill-progression-ss14.generated.js";
+import { skillProgression } from "../../data/skills/skill-progression.generated.js";
 
 // Origin of Spirit Magus (residual batch A2-origin). Sources: each "Summon <X> Magus" skill's TLIDB text and level table
-// (packages/engine/data/skills/skill-progression-ss14.generated.js, "Origin of Spirit Magus:" line), e.g. Lv.20 Thunder Magus "Gains Origin
+// (packages/engine/data/skills/skill-progression.generated.js, "Origin of Spirit Magus:" line), e.g. Lv.20 Thunder Magus "Gains Origin
 // of Thunder: +6% additional Attack and Cast Speed and 7.25% additional damage to the summoner". The summoner (the player)
 // gains it while that summon skill is active; kismets and lunar memories grant "the Origin of Spirit Magus Effect of a Lv. N
 // <X> Magus" without the summon. "+X% Origin of Spirit Magus effect" lines add up and "+X% additional … Effect" lines multiply,
@@ -14,7 +14,7 @@ const N = "([+-]?\\d+(?:\\.\\d+)?)";
 
 /** The Origin text of "Summon <magus> Magus" at `level` (the last level-table change at or below it), or null. */
 export function originTextAt(magus, level) {
-  const entry = skillProgressionSs14[`Summon ${magus} Magus`];
+  const entry = skillProgression[`Summon ${magus} Magus`];
   if (!entry) return null;
   let text = null;
   for (let lv = 1; lv <= Math.max(1, Math.floor(level)); lv++) {

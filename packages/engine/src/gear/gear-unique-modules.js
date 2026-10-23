@@ -1,7 +1,7 @@
 import { readOnce } from "../text/read-once.js";
 import { normalizePercentageText, cleanGameText } from "../text/percentage-text.js";
 import { DEDICATED_BRACKET_NAMES } from "../text/granted-core-lines.js";
-import { legendaryCorrodedModifiersSs14 as CORRODED_ROWS } from "../../data/gear/legendary-corroded-modifiers-ss14.generated.js";
+import { legendaryCorrodedModifiers as CORRODED_ROWS } from "../../data/gear/legendary-corroded-modifiers.generated.js";
 
 // Per-unique legendary modules (gear-pact batch chunk 4, research/gear-pact-batch-2026-10-12.md §7.3), the same idea as
 // packages/engine/src/heroes/hero-trait-modules.js: a scripted item effect is modeled only where its item text (and keyword tooltips) define it,

@@ -8,68 +8,68 @@
 // Design and evidence: research/game-log-import-2026-10-12.md.
 import {
   activationMediumAffixLines,
-  activationMediumGameAffixesSs14,
+  activationMediumGameAffixes,
   activationMediumGameLine,
   activationMediumGameRolls,
-  allHeroTraitsSs14,
-  allProfessionTalentCatalogueSs14,
-  baseAffixTiersSs14,
-  beltBlendsSs14,
+  allHeroTraits,
+  allProfessionTalentCatalogue,
+  baseAffixTiers,
+  beltBlends,
   canPlaceSlate,
   CLOCKWORK_CORE,
-  craftAffixesSs14,
+  craftAffixes,
   craftedSlateShape,
   defaultFollowerState,
   defaultPlannerState,
   equipmentSlots,
   etherealPrismBases,
   folkloreRingOptions,
-  heroCatalogSs14,
-  heroMemoryAffixesSs14,
+  heroCatalog,
+  heroMemoryAffixes,
   heroTraitTree,
   importGameIdMap,
   isActivationMedium,
   isValidPedigreeAffix,
-  kismetCatalogSs14,
+  kismetCatalog,
   kismetRollControls,
-  legendaryCorrodedModifiersSs14,
-  legendaryGearSs14,
+  legendaryCorrodedModifiers,
+  legendaryGear,
   legendaryLowerTierTemplates,
   legendarySlateShapes,
   legendaryTierTextForAffixId,
-  memoryAffixTiersSs14,
-  memoryRevivalAffixIdsSs14,
+  memoryAffixTiers,
+  memoryRevivalAffixIds,
   memoryScaledBaseStat,
-  netherKingFixedAffixesSs14,
-  netherKingUltimateAffixesSs14,
+  netherKingFixedAffixes,
+  netherKingUltimateAffixes,
   normalizePlannerState,
   normalizeRevivedAffix,
-  observedGameAffixIdsSs14,
+  observedGameAffixIds,
   orderedPactspiritNodes,
-  pactspiritCatalogSs14,
-  pactspiritTreesSs14,
+  pactspiritCatalog,
+  pactspiritTrees,
   placeholderPool,
   prismAffixes,
   progressionSupportHasStars,
   progressionSupportTierData,
   rareBaseByGameId,
   rareBaseByName,
-  selenaCompleteSkillLoadoutSs14,
-  selenaScorchingBeamGearSs14,
-  selenaScorchingBeamPactsSs14,
+  selenaCompleteSkillLoadout,
+  selenaScorchingBeamGear,
+  selenaScorchingBeamPacts,
   slateOffsets,
   slateTransformRules,
   specialSupportTierData,
   TLIDB_PRISM_AFFIXES,
-  tlidbSkillCatalogSs14,
-  tlidbSupportCatalogSs14,
-  towerSequenceSs14Texts,
-  towerSequencesSs14,
+  tlidbSkillCatalog,
+  tlidbSupportCatalog,
+  towerSequenceTexts,
+  towerSequences,
   TRAIT_SLOT_GRANTS,
   treeMaxCapacity,
   treeRules,
   validatePlannerState,
-  voraxCraftingSs14,
+  voraxCrafting,
 } from "#engine";
 import {
   DEFAULT_GAME_DIRECTION,
@@ -732,7 +732,7 @@ const filledFrom = (report, section, stamp) => {
 export function blankPlannerState() {
   const state = structuredClone(defaultPlannerState);
   state.disabledEquipmentSlots = equipmentSlots.map(([slot]) => slot);
-  state.removedInventoryItemIds = selenaScorchingBeamGearSs14.items.map((item) => `captured-${item.slot}`);
+  state.removedInventoryItemIds = selenaScorchingBeamGear.items.map((item) => `captured-${item.slot}`);
   state.equipmentOverrides = {};
   state.equipmentInventory = [];
   state.hero = {
@@ -756,7 +756,7 @@ export function blankPlannerState() {
     setupOrder: [],
     boardSlots: { skills: [], auras: [] },
     supportOrder: {},
-    setupEnabled: Object.fromEntries(selenaCompleteSkillLoadoutSs14.setups.map((setup) => [setup.name, false])),
+    setupEnabled: Object.fromEntries(selenaCompleteSkillLoadout.setups.map((setup) => [setup.name, false])),
     skillLevels: {},
     supportEnabled: {},
     supportLevels: {},
@@ -777,7 +777,7 @@ export function blankPlannerState() {
   };
   state.followers = defaultFollowerState(); // never carried over from the open build
   state.pacts = {
-    activeSpirits: Object.fromEntries(selenaScorchingBeamPactsSs14.pactspirits.map((spirit) => [spirit.name, false])),
+    activeSpirits: Object.fromEntries(selenaScorchingBeamPacts.pactspirits.map((spirit) => [spirit.name, false])),
     selectedSpirits: ["", "", ""],
     spiritLevels: {},
     nativeNodeQuantities: {},
@@ -843,17 +843,17 @@ function resolveGear(tree, idMap, report) {
     const blendAndTower = () => {
       const extra = { modifiers: [], fields: {} };
       for (const affix of entries(item.EnchantAffixs)) {
-        const blend = beltBlendsSs14.find((entry) => entry.id === idMap.blends?.[affix.Id]);
+        const blend = beltBlends.find((entry) => entry.id === idMap.blends?.[affix.Id]);
         if (blend) {
           extra.fields.beltBlendId = blend.id;
           extra.modifiers.push(blend.modifier);
         } else unresolved("belt blend", affix, "not in the belt blend table");
       }
       for (const affix of entries(item.ChipAffix)) {
-        const sequence = towerSequencesSs14.find((entry) => entry.id === `tower-sequence-${affix.Id}`);
+        const sequence = towerSequences.find((entry) => entry.id === `tower-sequence-${affix.Id}`);
         // A log written before the 2026-10-14 game patch carries the old affix's values for an id that now rolls a new affix
         // (packages/engine/data/changed-item-ids.js): the item reads the current line, as a saved item does.
-        const previous = sequence && towerSequenceSs14Texts[sequence.id];
+        const previous = sequence && towerSequenceTexts[sequence.id];
         const filled =
           sequence &&
           (previous && fillTemplate(previous, argsOf(affix)).ok
@@ -910,7 +910,7 @@ function resolveRare(item, baseName, baseType, label, idMap, report, unresolved,
     byGameId && byGameId.name === baseName && byGameId.type === baseType
       ? byGameId
       : rareBaseByName(baseName, baseType);
-  if (!base || !craftAffixesSs14[baseType]) return null;
+  if (!base || !craftAffixes[baseType]) return null;
   const implicitModifiers = [];
   for (const affix of [...entries(item.BaseAttrAffix), ...entries(item.FixedBaseAffix)]) {
     const entry = lineText(affix);
@@ -932,7 +932,7 @@ function resolveRare(item, baseName, baseType, label, idMap, report, unresolved,
       unresolved("base affix", affix, entry ? filled.reason : "no text for this id");
       continue;
     }
-    const tiers = baseAffixTiersSs14[baseType] || {};
+    const tiers = baseAffixTiers[baseType] || {};
     const tierKey = Object.keys(tiers).find((template) => affixSignature(template) === affixSignature(entry[1]));
     baseAffixModifiers.push(filled.text);
     baseAffixTierIds.push(tierKey ? String(tiers[tierKey]) : "");
@@ -953,9 +953,7 @@ function resolveRare(item, baseName, baseType, label, idMap, report, unresolved,
       const id = String(affix.Id);
       const familyId = `${group}-${id.slice(0, 7)}`,
         tier = String(Number(id.slice(7)));
-      const family = /^\d{9}$/.test(id)
-        ? craftAffixesSs14[baseType][group]?.find((entry) => entry.id === familyId)
-        : null;
+      const family = /^\d{9}$/.test(id) ? craftAffixes[baseType][group]?.find((entry) => entry.id === familyId) : null;
       const tierEntry = family?.tiers.find((entry) => entry.tier === tier);
       const filled = tierEntry && fillTemplate(tierEntry.template, argsOf(affix));
       if (!filled?.ok) {
@@ -1003,7 +1001,7 @@ const clampLevel = (value) => Math.max(1, Math.min(100, Math.round(Number(value)
 const energyOf = (item) => Math.max(0, Math.min(1000, Math.round(Number(item.cost) || 0)));
 
 function resolveVorax(item, baseName, label, idMap, report, unresolved) {
-  const base = voraxCraftingSs14.bases.find((entry) => entry.name === baseName);
+  const base = voraxCrafting.bases.find((entry) => entry.name === baseName);
   if (!base) return null;
   const text = (affix) => idMap.affixes[affix.Id]?.[1] || null;
   const implicitModifiers = [];
@@ -1020,7 +1018,7 @@ function resolveVorax(item, baseName, label, idMap, report, unresolved) {
     const template = text(affix);
     const entry =
       template &&
-      (voraxCraftingSs14.baseAffixes[baseName] || []).find(
+      (voraxCrafting.baseAffixes[baseName] || []).find(
         (option) => affixSignature(option.modifier) === affixSignature(template),
       );
     const filled = entry && fillTemplate(entry.modifier, argsOf(affix));
@@ -1052,12 +1050,12 @@ function resolveVorax(item, baseName, label, idMap, report, unresolved) {
       }
       const signature = affixSignature(template);
       const candidates = [];
-      for (const family of voraxCraftingSs14.affixes[baseName]?.[group] || [])
+      for (const family of voraxCrafting.affixes[baseName]?.[group] || [])
         for (const tier of family.tiers)
           if (affixSignature(tier.template) === signature)
             candidates.push({ id: family.id, tier: tier.tier, template: tier.template, legendary: false });
       if (!candidates.length)
-        for (const donor of voraxCraftingSs14.legendaryDonors[baseName] || [])
+        for (const donor of voraxCrafting.legendaryDonors[baseName] || [])
           donor.modifiers.forEach((modifier, index) => {
             if (affixSignature(modifier) === signature)
               candidates.push({ id: `${donor.id}-mod-${index}`, tier: "L", template: modifier, legendary: true });
@@ -1110,9 +1108,9 @@ function resolveVorax(item, baseName, label, idMap, report, unresolved) {
 
 function resolveLegendary(item, label, idMap, report, unresolved, lineText) {
   const name = idMap.legendaries[item.UniqueItmId];
-  const source = name && legendaryGearSs14.find((entry) => entry.name === name);
+  const source = name && legendaryGear.find((entry) => entry.name === name);
   if (!source) return null;
-  const corrodedTemplates = legendaryCorrodedModifiersSs14[source.id] || [];
+  const corrodedTemplates = legendaryCorrodedModifiers[source.id] || [];
   const isFolklore = source.id === "Folklore_of_Locking_Fingers";
   const options = (index) => {
     const list = [
@@ -1255,7 +1253,7 @@ const typeLabels = { micro: "Micro Talent", medium: "Medium Talent", legendary: 
 export function talentFromId(talentId, idMap) {
   const id = String(talentId).padStart(8, "0");
   const tree = idMap.professions[String(godTreeOf(id.slice(0, 2)))];
-  const catalogue = tree && allProfessionTalentCatalogueSs14[tree];
+  const catalogue = tree && allProfessionTalentCatalogue[tree];
   if (!catalogue) return null;
   const column = Number(id.slice(2, 4)) - 1,
     row = Number(id.slice(4, 6)) - 1;
@@ -1288,7 +1286,7 @@ function resolveTalents(tree, idMap, report, state) {
   infos.slice(0, 4).forEach((info, slot) => {
     if (!info.geniusCareerId || info.geniusCareerId === "0") return; // empty tree slot
     const treeName = idMap.professions[String(info.geniusCareerId)];
-    const catalogue = treeName && allProfessionTalentCatalogueSs14[treeName];
+    const catalogue = treeName && allProfessionTalentCatalogue[treeName];
     if (!catalogue) {
       add(
         report,
@@ -1453,9 +1451,9 @@ function resolvePrism(info, treeName, nodes, idMap, report, state) {
 
 // ---------------------------------------------------------------- skills
 
-const skillByName = new Map(tlidbSkillCatalogSs14.map((entry) => [entry.name, entry]));
-const supportByName = new Map(tlidbSupportCatalogSs14.map((entry) => [entry.name, entry]));
-const capturedSetups = new Map(selenaCompleteSkillLoadoutSs14.setups.map((setup) => [setup.name, setup]));
+const skillByName = new Map(tlidbSkillCatalog.map((entry) => [entry.name, entry]));
+const supportByName = new Map(tlidbSupportCatalog.map((entry) => [entry.name, entry]));
+const capturedSetups = new Map(selenaCompleteSkillLoadout.setups.map((setup) => [setup.name, setup]));
 const ACTIVE_SKILL_SLOTS = [1, 2, 3, 4, 5];
 const AURA_SLOTS = [1001, 1007, 1013, 1019];
 const levelOf = (item, fallback = 20) => Math.max(1, Math.min(40, Math.round(Number(item?.Level) || fallback)));
@@ -1470,8 +1468,8 @@ function specialSupportConfig(name, item, report, label) {
     const fixedLines = []; // lines whose logged row has no rolled value: their tier follows the rolled lines (below)
     for (const affix of affixes) {
       const id = String(affix.Id),
-        observed = observedGameAffixIdsSs14[id],
-        game = activationMediumGameAffixesSs14[id];
+        observed = observedGameAffixIds[id],
+        game = activationMediumGameAffixes[id];
       const roll = argsOf(affix);
       const label2 = `${label}: ${name} affix ${id}${roll.length ? ` = ${roll.join(", ")}` : ""}`;
       // Pinned observations first (Preparation, 2026-10-12), then the game's own row text (config_modifier, 2026-10-18).
@@ -2048,7 +2046,7 @@ function resolveSlates(tree, idMap, report, state) {
         const effect = node?.[0] === "nether-king" ? node[1].replace(/\n/g, " · ") : null;
         const known =
           effect &&
-          [...netherKingFixedAffixesSs14, ...netherKingUltimateAffixesSs14].some(
+          [...netherKingFixedAffixes, ...netherKingUltimateAffixes].some(
             (option) => option.name === node[2] && affixSignature(option.effect) === affixSignature(effect),
           );
         if (!known) {
@@ -2286,7 +2284,7 @@ function resolvePactBoard(contract, spirits, idMap, report, state, donors = []) 
         );
       continue;
     }
-    const nodes = orderedPactspiritNodes(pactspiritTreesSs14[spirit.name]);
+    const nodes = orderedPactspiritNodes(pactspiritTrees[spirit.name]);
     const placed = [];
     for (const id of areaPoints) {
       const [, type, level] = board[id];
@@ -2373,7 +2371,7 @@ function resolvePactBoard(contract, spirits, idMap, report, state, donors = []) 
       add(report, "pacts", "notes", `${label}: not imported (pactspirit slot ${area} is not a planner combat slot)`);
       continue;
     }
-    const entry = name && kismetCatalogSs14.find((item) => item.name === name);
+    const entry = name && kismetCatalog.find((item) => item.name === name);
     if (!entry) {
       add(
         report,
@@ -2435,7 +2433,7 @@ function resolvePacts(tree, idMap, report, state, pactDonors = []) {
   let levelRuleUsed = false,
     accountUsed = false;
   for (const spirit of spirits) {
-    if (!spirit.name || !pactspiritCatalogSs14.some((entry) => entry.name === spirit.name)) {
+    if (!spirit.name || !pactspiritCatalog.some((entry) => entry.name === spirit.name)) {
       add(
         report,
         "pacts",
@@ -2504,7 +2502,7 @@ const MEMORY_RARITY_RULE =
   "Hero Memory quality 1 / 2 read as Normal / Magic (the game's 1–5 quality order; 3 Epic, 4 Legendary and 5 Ultimate are confirmed)";
 
 function memoryAffixLabel(type, kind, text) {
-  const pool = heroMemoryAffixesSs14.filter((entry) => entry.type === type && entry.kind === kind);
+  const pool = heroMemoryAffixes.filter((entry) => entry.type === type && entry.kind === kind);
   const full = pool.filter((entry) => statSignature(entry.effect) === statSignature(text));
   if (full.length === 1) return full[0].effect;
   const firstLine = String(text).split("\n")[0];
@@ -2523,7 +2521,7 @@ export function memoryBaseStatById(id, idMap) {
 function resolveMemoryAffix(affix, type, kind, idMap) {
   const id = String(affix.Id),
     roll = argsOf(affix)[0] ?? null;
-  const observed = observedGameAffixIdsSs14[id];
+  const observed = observedGameAffixIds[id];
   if (observed?.family === "memory" && observed.type === type && observed.kind === kind)
     return { label: observed.label, tier: observed.tier, roll };
   const familyText =
@@ -2538,7 +2536,7 @@ function resolveMemoryAffix(affix, type, kind, idMap) {
     return { reason: `"${familyText.replace(/\n/g, " / ")}" has no planner ${kind.toLowerCase()} for ${type}` };
   const tier = Number(id.slice(-2));
   if (!(tier >= 0 && tier <= 3)) return { reason: `tier ${tier} out of range` };
-  const row = memoryAffixTiersSs14.find(
+  const row = memoryAffixTiers.find(
     (entry) =>
       entry.type === type &&
       entry.kind === kind &&
@@ -2553,8 +2551,7 @@ function resolveMemoryAffix(affix, type, kind, idMap) {
 function resolveHero(tree, idMap, report, state) {
   const player = tree.player || {};
   const purchase = idMap.heroPurchases[player.HeroPurchaseId];
-  const hero =
-    purchase && heroCatalogSs14.find((entry) => entry.trait === purchase[1] && purchase[0].includes(entry.name));
+  const hero = purchase && heroCatalog.find((entry) => entry.trait === purchase[1] && purchase[0].includes(entry.name));
   if (player.Level) {
     state.hero.characterLevel = clampLevel(player.Level);
     add(report, "character", "imported", `Level ${state.hero.characterLevel}`);
@@ -2575,7 +2572,7 @@ function resolveHero(tree, idMap, report, state) {
   state.hero.selectedHeroId = hero.id;
   add(report, "character", "imported", `Hero ${hero.name} · ${hero.trait}`);
   const overview = tree.heroCharacterv3OverView;
-  const traits = allHeroTraitsSs14[hero.id]?.traits || [];
+  const traits = allHeroTraits[hero.id]?.traits || [];
   // A trait-tree hero (packages/engine/src/heroes/hero-trait-tree.js) takes the active traits as its tree picks, in the logged order; the placement
   // rule seats them (pointOverView does not say which memory row each trait sits in).
   const traitTree = heroTraitTree(hero.id);
@@ -2605,9 +2602,7 @@ function resolveHero(tree, idMap, report, state) {
   // skillOverView), each with the memory row it sits in (matched_slot 1–4; the base trait has none). 2026-10-22 log, Youga – The Ultimate One: 1320011 / 1320021 / 1320032 in rows 1 / 2 / 3.
   const activatedNodes = entries(overview?.treeActivatedNodes);
   if (traitTree && activatedNodes.length) {
-    const nodeNames = new Map(
-      (allHeroTraitsSs14[hero.id]?.tree?.nodes || []).map((node) => [String(node.id), node.name]),
-    );
+    const nodeNames = new Map((allHeroTraits[hero.id]?.tree?.nodes || []).map((node) => [String(node.id), node.name]));
     const rows = [];
     for (const node of activatedNodes) {
       if (node.matched_slot == null) continue; // the base trait
@@ -2681,7 +2676,7 @@ function resolveHero(tree, idMap, report, state) {
     // few), else the roll must fit exactly one base stat at this enhancement. The logged value is the enhanced value.
     for (const affix of entries(detail.BaseAttrAffix)) {
       const roll = argsOf(affix)[0];
-      const candidates = heroMemoryAffixesSs14.filter((option) => option.type === type && option.kind === "Base Stats");
+      const candidates = heroMemoryAffixes.filter((option) => option.type === type && option.kind === "Base Stats");
       const byId = memoryBaseStatById(affix.Id, idMap);
       if (byId && byId.memory !== type) {
         add(
@@ -2775,7 +2770,7 @@ function resolveHero(tree, idMap, report, state) {
     }
     memory.risingMoon = memory.fixedTiers.includes(0) && memory.fixedAffixes.some(Boolean);
     for (const affix of entries(detail.AwakenAffix)) {
-      const revived = memoryRevivalAffixIdsSs14[affix.Id];
+      const revived = memoryRevivalAffixIds[affix.Id];
       if (!revived) {
         add(report, "hero", "unresolved", `${label}: revived affix ${affix.Id}`, "not in the revival table");
         continue;

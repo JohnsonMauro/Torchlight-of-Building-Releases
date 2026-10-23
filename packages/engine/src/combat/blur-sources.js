@@ -1,5 +1,5 @@
 import { effectiveGearModifierTexts } from "../engine.js";
-import { allSkillEffectsSs14 } from "../../data/skills/all-skill-effects-ss14.generated.js";
+import { allSkillEffects } from "../../data/skills/all-skill-effects.generated.js";
 import { withoutSlateCoreName } from "../text/granted-core-lines.js";
 
 export function parseBlurSource(text, source, { slot, hasReaping = false, inflictsWilt = true } = {}) {
@@ -80,6 +80,6 @@ export function collectBlurSources({
       add(withoutSlateCoreName(text), slate.name);
   for (const setup of setups)
     if (setup.enabled && activeNames.has(setup.name))
-      for (const text of allSkillEffectsSs14[setup.name] || []) add(text, `Skill: ${setup.name}`);
+      for (const text of allSkillEffects[setup.name] || []) add(text, `Skill: ${setup.name}`);
   return result;
 }

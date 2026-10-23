@@ -1,11 +1,11 @@
 // Legendaries drawn on the red Vorax card (user request 2026-10-13): TLIDB marks these SS14 legendaries "Graft" (organ items,
 // e.g. "Graft: Organ: Eternity"), and the game shows them on the Vorax-style red background. Only the card class changes; the
 // item stays a Legendary for its label, sections and the calculator.
-import { legendaryGearSs14 } from "../../data/gear/legendary-gear-ss14.generated.js";
+import { legendaryGear } from "../../data/gear/legendary-gear.generated.js";
 
 export const GRAFT_LEGENDARY_IDS = Object.freeze(["Lone_Walkers_Boots", "Pantheons_Elegy", "Eternity"]);
 const graftNames = new Set(
-  legendaryGearSs14.filter((entry) => GRAFT_LEGENDARY_IDS.includes(entry.id)).map((entry) => entry.name.toLowerCase()),
+  legendaryGear.filter((entry) => GRAFT_LEGENDARY_IDS.includes(entry.id)).map((entry) => entry.name.toLowerCase()),
 );
 
 export function usesVoraxCard(item) {
