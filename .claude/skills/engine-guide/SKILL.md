@@ -10,7 +10,7 @@ description: Rules for the calculation engine and game data — packages/engine/
 The engine is the game's rules, in layers: the rules and formulas → applied to the character (stats, gear, talents,
 skills, hero, pacts) → damage and survival. It is calibrated against real characters read from game logs, but a
 calibration corrects a rule for every character: never a constant, baseline, snapshot or setup captured from one
-character (the inherited Selena capture is being removed for that reason, `architecture-plan.md`). A number that does not
+character (the inherited Selena capture is being removed for that reason). A number that does not
 match the game is an open question about a rule, checked against logs of more than one character.
 
 ## 1. Boundaries
