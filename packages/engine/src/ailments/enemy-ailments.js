@@ -61,7 +61,8 @@ function dealsHitDamage(setup, type, modifierTexts, { conversion = true } = {}) 
 
 // `applierNames`: other active hitting skills that can apply hit ailments (packages/engine/src/ailments/ailment-applications.js), so a
 // damaging ailment counts when any of them is active, not only the main skill.
-// `auraChance` ({ ailment, ignite }): the active Auras' chance (Ailment Amplification, Flame Focus), which no text line carries;
+// `auraChance` ({ ailment, ignite, igniteBase }): the active Auras' chance (Ailment Amplification, Flame Focus) and whether one
+// adds base Ignite (Flame Focus), which no text line carries;
 // the Ignite ledger and the per-skill chance (packages/engine/src/ailments/ailment-applications.js) count it too.
 export function collectEnemyAilments({
   setups = [],
@@ -85,8 +86,14 @@ export function collectEnemyAilments({
       typed.chance.reduce((sum, line) => sum + line.value, 0) +
       genericChance +
       (key === "ignite" ? Number(auraChance?.ignite) || 0 : 0);
-    if (mainActive && typed.base.length && chance > 0)
-      add(key[0].toUpperCase() + key.slice(1), true, typed.base[0].source, "Base damage and chance to inflict");
+    const base = typed.base.length > 0 || (key === "ignite" && auraChance?.igniteBase === true);
+    if (mainActive && base && chance > 0)
+      add(
+        key[0].toUpperCase() + key.slice(1),
+        true,
+        typed.base[0]?.source ?? "Aura base Ignite",
+        "Base damage and chance to inflict",
+      );
   }
   for (const setup of setups) {
     if (!activeNames.has(setup.name)) continue;

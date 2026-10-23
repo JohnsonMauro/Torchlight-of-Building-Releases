@@ -150,6 +150,8 @@ const PATTERNS = {
   coldInfiltrationFrozen: /^Inflicts Cold Infiltration when dealing damage to Frozen enemies$/i,
   // The same Elementalist node since the 2026-10-14 game patch (TLIDB tree text): Frostbitten instead of Frozen.
   coldInfiltrationFrostbitten: /^Inflicts Cold Infiltration when dealing damage to Frostbitten enemies$/i,
+  // Warlord [5,2] (talent tree text; slates copy it).
+  fireInfiltrationIgnited: /^Inflicts Fire Infiltration when dealing Fire Damage to Ignited enemies$/i,
   // Broken Dream (2026-10-18): "Inflicts Cold Infiltration on enemies cursed by Biting Cold": held while that curse skill is on the dummy.
   infiltrationCursedBy: /^Inflicts (Fire|Cold|Lightning) Infiltration on enemies cursed by ([A-Z][\w' ]+?)$/i,
   penetrating:
@@ -1131,6 +1133,21 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
     if (frostbitten) debuffs.infiltration.add("Cold");
     entry(line, frostbitten, frostbitten ? "the dummy is Frostbitten" : "the build inflicts no Frostbite");
   }
+  // Ignite is Fire Damage, so an Ignited dummy takes the build's Fire Damage; the Config tab can switch it off.
+  const ignited = (state.enemyAilments || []).includes("Ignite");
+  for (const line of find(PATTERNS.fireInfiltrationIgnited)) {
+    const held = ignited && conditionOn("fireInfiltration");
+    if (held) debuffs.infiltration.add("Fire");
+    entry(
+      line,
+      held,
+      held
+        ? "the build keeps Ignite on the dummy"
+        : ignited
+          ? "Fire Infiltration is switched off"
+          : "the build keeps no Ignite on the dummy",
+    );
+  }
   for (const line of find(PATTERNS.penetrating)) {
     const types = ["Fire", "Lightning", "Cold"].filter((type) => dealt.has(type));
     for (const type of types) debuffs.infiltration.add(type);
@@ -1143,9 +1160,7 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
       { provisional: true },
     );
   }
-  // The Ignite ledger's Fire Infiltration is its own condition (packages/engine/src/ailments/ignite-ledger.js,
-  // `conditions.fireInfiltration`). Infiltration Effect (residual batch A-3): scales that type's +13% (keyword value ×
-  // (1 + Σ effect)); the Ignite ledger's Fire Infiltration does not read it.
+  // Infiltration Effect (residual batch A-3): scales that type's +13% (keyword value × (1 + Σ effect)).
   const infiltrationEffect = (type) =>
     sum(
       find(PATTERNS.infiltrationEffect)
@@ -1166,8 +1181,7 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
       true,
     );
   for (const line of find(PATTERNS.perInfiltrationType)) {
-    const count =
-      debuffs.infiltration.size + (state.fireInfiltrationCondition && !debuffs.infiltration.has("Fire") ? 1 : 0);
+    const count = debuffs.infiltration.size;
     const value = round(num(line.clean.match(PATTERNS.perInfiltrationType)[1]) * (line.multiplier ?? 1) * count);
     entry(line, count > 0, `${count} Infiltration type${count === 1 ? "" : "s"} on the dummy`, {
       bodies: [`+${value}% additional Elemental Damage`],

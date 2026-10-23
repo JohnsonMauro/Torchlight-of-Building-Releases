@@ -37,6 +37,14 @@ function slateAdditionalFireLines(talentSlate, total) {
   return lines.length && Math.abs(sum - total) < 1e-3 ? lines : total ? [total] : [];
 }
 
+// Base Ignite an active Aura's buff adds (skill text: Flame Focus and its Precise form "Adds 2 - 2 Base Ignite Damage" at every
+// level). No modifier text carries it, so the enemy-ailment model reads it from here too.
+export function auraBaseIgnite(activeNames) {
+  return ["Flame Focus", "Precise: Flame Focus"]
+    .filter((name) => activeNames.has(name))
+    .map((name) => ({ source: `Aura: ${name}`, min: 2, max: 2 }));
+}
+
 // `main` is the skill the ledger's skill-scoped lines belong to (its supports, its tags, its level past 20).
 export function compileIgniteLedger({
   blurEffects,
@@ -81,11 +89,9 @@ export function compileIgniteLedger({
       })
       .filter(Boolean),
   );
-  const flameFocusBase = ["Flame Focus", "Precise: Flame Focus"]
-    .filter((name) => activeNames.has(name))
-    .map((name) =>
-      entry(`Aura: ${name}`, 2, "Base Ignite", "skill text: Adds 2 - 2 Base Ignite Damage at every level"),
-    );
+  const flameFocusBase = auraBaseIgnite(activeNames).map((line) =>
+    entry(line.source, line.min, "Base Ignite", "skill text: Adds 2 - 2 Base Ignite Damage at every level"),
+  );
   const baseSources = [
     entry("Talents", talent.baseIgniteDamage || 0, "Base Ignite"),
     entry("Divinity Slates", slate.baseIgniteDamage || 0, "Base Ignite"),
@@ -629,7 +635,6 @@ export function compileIgniteLedger({
         "Additional damage",
         "SS13 buff 82304; movement stacks",
       ),
-    active("fireInfiltration") && entry("Fire Infiltration", 13, "Additional damage", "TLIDB"),
     heroId === "selena-sing-with-the-tide" &&
       active("onTheTide") &&
       entry(

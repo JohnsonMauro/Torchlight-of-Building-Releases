@@ -62,32 +62,32 @@
       }
     },
     "fire-burst-ignite": {
-      "sha256": "2e4d9ac5a1c3556488f737c8e01825570946a9f099941d623725542691435ae5",
+      "sha256": "3c59e726f47425c624df584a089f3f03d760b05374dc236f40eff8f3ad79e285",
       "summary": {
         "mainSkill": "Fire Burst",
-        "dps5s": 1196.2087431866253,
-        "dps20s": 1351.1645680541037,
-        "dpsSteady": 1402.8269205411675,
+        "dps5s": 1351.715879800886,
+        "dps20s": 1526.8159619011435,
+        "dpsSteady": 1585.1944202115192,
         "warnings": 10
       }
     },
     "fire-burst-ignite/manual-conditions": {
-      "sha256": "b1b9ae996cb4db6b34dc0d910674ddaefddadda0118082a2f23d1212db8d4792",
+      "sha256": "9a28a3a92f8e81b93f26449a70f3ac00cb262de0d13e2527283bc840a78315a8",
       "summary": {
         "mainSkill": "Fire Burst",
-        "dps5s": 1196.2087431866253,
-        "dps20s": 1351.1645680541037,
-        "dpsSteady": 1402.8269205411675,
+        "dps5s": 1351.715879800886,
+        "dps20s": 1526.8159619011435,
+        "dpsSteady": 1585.1944202115192,
         "warnings": 10
       }
     },
     "fire-burst-ignite/cold-start": {
-      "sha256": "190934e137a03858729c83ff3fb91232eb62e278f15ba31661d3455d7cf08be4",
+      "sha256": "74ad4dc5336c9602f2b2ca1a23884ab2eaafe5276d1222aebf094fd89b16b874",
       "summary": {
         "mainSkill": "Fire Burst",
-        "dps5s": 1196.2087431866253,
-        "dps20s": 1351.1645680541037,
-        "dpsSteady": 1402.8269205411675,
+        "dps5s": 1351.715879800886,
+        "dps20s": 1526.8159619011435,
+        "dpsSteady": 1585.1944202115192,
         "warnings": 10
       }
     },

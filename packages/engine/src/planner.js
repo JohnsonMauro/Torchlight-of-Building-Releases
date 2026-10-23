@@ -144,7 +144,7 @@ import {
   BURST_SETUP_KEY,
 } from "./heroes/rehan-traits.js";
 const B6_MODULE_KEYS = new Set(["overload", "chargeCalling", "irisGrowing", "irisVigilant"]);
-import { compileIgniteLedger } from "./ailments/ignite-ledger.js";
+import { auraBaseIgnite, compileIgniteLedger } from "./ailments/ignite-ledger.js";
 import {
   defaultConfigurableSupportConfig,
   specialSupportStarBonus,
@@ -2713,10 +2713,11 @@ function calculatePlannerOnce(
     ).filter((setup) => activeNames.has(setup.name)),
     conditions,
   });
-  // The active Auras' ailment / Ignite chance (Ailment Amplification, Flame Focus): the enemy-ailment check reads it with the
-  // text lines, as the Ignite ledger and the per-skill chance do.
+  // The active Auras' ailment / Ignite chance (Ailment Amplification, Flame Focus) and base Ignite (Flame Focus): the
+  // enemy-ailment check reads them with the text lines, as the Ignite ledger and the per-skill chance do.
   const activeAuraEntries = aura.entries.filter((entry) => activeNames.has(entry.name));
   const auraAilmentChance = {
+    igniteBase: auraBaseIgnite(activeNames).length > 0,
     ailment: activeAuraEntries.reduce((sum, entry) => sum + (entry.effectiveEffects?.ailmentChancePercent || 0), 0),
     ignite: activeAuraEntries.reduce((sum, entry) => sum + (entry.effectiveEffects?.igniteChancePercent || 0), 0),
   };
@@ -3313,12 +3314,16 @@ function calculatePlannerOnce(
     targetFireResistancePercent: fixedFireResistance ?? state.combat.targetFireResistancePercent,
     idyllStacks: conditions.idyll ? state.combat.idyllStacks : 0,
   };
-  // Talent nodes (their text, packages/engine/src/text/talent-text-effects.js) and slate copies of Warlord [5,2] inflict Fire Infiltration.
+  // Ignite on the dummy: the enemy-ailment model's types (an inflicting skill, Ignite chance and base Ignite).
+  const igniteOnTarget = mechanics.enemyAilments.types.some((type) => type.name === "Ignite");
+  // Talent nodes (their text, packages/engine/src/text/talent-text-effects.js) and slate copies of Warlord [5,2] inflict Fire Infiltration
+  // when dealing Fire Damage to Ignited enemies (the Config tab's state; the debuff itself is packages/engine/src/combat-states.js').
   if (
-    !talent.setup.panels.some((panel) =>
+    !igniteOnTarget ||
+    (!talent.setup.panels.some((panel) =>
       panel.allocatedNodes.some((node) => node.rank > 0 && node.effects?.inflictsFireInfiltrationAgainstIgnited),
     ) &&
-    !(talentSlate.candidateSlate?.inflictsFireInfiltrationAgainstIgnited > 0)
+      !(talentSlate.candidateSlate?.inflictsFireInfiltrationAgainstIgnited > 0))
   )
     conditions.fireInfiltration = false;
   // Aim charges and uptime are derived from the build (aim-model.js); an explicit
@@ -3375,7 +3380,6 @@ function calculatePlannerOnce(
       ...late,
     });
   let igniteLedger = compileIgnite();
-  conditions.fireInfiltration = false;
   if (
     !(skillDotSources.length || skillHitDotSources.length) ||
     igniteLedger.townTooltip.passiveAfflictionPerSecond + skillDotAfflictionRate <= 0
@@ -3398,7 +3402,7 @@ function calculatePlannerOnce(
   const firesAllure = calculateFiresAllure({
     active: coreTalents.firesAllure,
     limit: igniteLimit,
-    canApply: false,
+    canApply: igniteOnTarget,
     nearby: conditions.firesAllureNearby !== false,
     stacks: state.combat.firesAllureScorchStacks,
     baseResistance: state.combat.targetFireResistancePercent,
@@ -3538,8 +3542,9 @@ function calculatePlannerOnce(
     canHit: blessingCanHit,
     canCrit: blessingCanCrit,
     enemyAilments: mechanics.enemyAilments.types.map((type) => type.name),
-    igniteOnTarget: false,
-    spellHitActive: false,
+    igniteOnTarget,
+    // Spell-scoped per-stack Blessing lines ("… Spell Damage per stack") reach the build's Spell hits.
+    spellHitActive: hittingSetups.some((setup) => (setup.tags || []).includes("Spell")),
   });
   // Focus Blessing stacks from the blessing model: Overload's "for each stack of Focus Blessing" lines (B1) on every
   // setup, and the main skill's pending per-stack lines on the Ignite ledger.

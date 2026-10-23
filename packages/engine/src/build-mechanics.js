@@ -923,10 +923,22 @@ export function collectBuildMechanics({
   for (const line of modifierTexts) {
     if (line.origin !== "derived" || !["combatState", "heroModule", "follower"].includes(line.lineEffect?.key))
       continue;
-    // Frail's "+X% additional Spell Damage taken" reaches Spell hits only (never DoTs), and a Fire debuff on the dummy
-    // (Melting Flames, pact scripted-effects batch 2026-10-13) Fire hits and Ignite: the skill-hit engine and the generic
-    // ailments read the typed line themselves (ailment-shared.js keeps the Fire line off Trauma and Wilt).
-    if (/^\+\d+(?:\.\d+)?% additional (?:Spell|Fire) Damage taken$/i.test(String(line.text))) continue;
+    // Frail's "+X% additional Spell Damage taken" reaches Spell hits only (never DoTs). A Fire debuff on the dummy (Fire
+    // Infiltration, Melting Flames, pact scripted-effects batch 2026-10-13) reaches Fire hits, which read the typed line
+    // themselves, and Ignite, which takes it here (the generic Ignite reads typed lines only through this ledger;
+    // ailment-shared.js keeps the Fire line off Trauma and Wilt).
+    if (/^\+\d+(?:\.\d+)?% additional Spell Damage taken$/i.test(String(line.text))) continue;
+    const fireTaken = String(line.text).match(/^\+(\d+(?:\.\d+)?)% additional Fire Damage taken$/i);
+    if (fireTaken) {
+      combatTaken.push({
+        source: line.source,
+        text: line.text,
+        value: number(fireTaken[1]),
+        category: "Additional damage taken",
+        condition: line.lineEffect.conditionText,
+      });
+      continue;
+    }
     // Paralysis ("Increases damage taken by 15%", keyword 704; packages/engine/src/combat-states.js derives "+X% damage taken") reaches every
     // damage the same way (pact scripted-effects batch 2026-10-13: before, only the skill-hit engine read it; as its own
     // multiplier, provisional).
