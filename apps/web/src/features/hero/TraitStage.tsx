@@ -81,28 +81,25 @@ function useStageHeight(stage: { current: HTMLDivElement | null }): number {
 }
 
 /**
- * A stage: as tall as the window allows; the decal covers it (centred up and down), from its left edge, slid left only
- * as far as its nodes need to stay inside the right edge (`right`, a fraction of the decal's width; the hero cut on the
- * left then). The children are placed on the decal.
+ * A stage: as tall as the window allows; the decal over a blurred copy of itself, framed on its traits (`focus`) or as a
+ * scaled cover (coverFrame). The children are placed on the decal.
  */
 export function StageFrame({ stage, right, children }: { stage: HeroStage; right: number; children: ReactNode }) {
   const element = useRef<HTMLDivElement>(null);
   const height = useStageHeight(element);
-  // Cover: as tall as the stage or as wide, whichever is larger.
-  const decalHeight = `${SCALE} * max(100cqh, 100cqw / ${stage.ratio})`,
-    width = `${decalHeight} * ${stage.ratio}`;
-  const decal: CSSProperties = {
-    height: `calc(${decalHeight})`,
-    width: `calc(${width})`,
-    top: `calc((100cqh - ${decalHeight}) / 2)`,
-    // Centred when narrower than the stage; else from its left edge, as far left as its nodes need; then the stage's shift.
-    left: `calc(max(min(0px, calc(100cqw - ${width})), min(max(0px, calc((100cqw - ${width}) / 2)), calc(100cqw - ${right} * ${width}))) - ${stage.shift ?? 0} * ${width})`,
-  };
+  const decal: CSSProperties = stage.focus ? focusFrame(stage, stage.focus) : coverFrame(stage, right);
   return (
     <div
       ref={element}
       className="relative w-full overflow-hidden rounded [container-type:size]"
-      style={height ? { height } : { aspectRatio: stage.ratio }}
+      style={
+        // A stage framed on its traits is as tall as its decal at its width, no taller than the window allows.
+        stage.focus
+          ? { aspectRatio: stage.ratio, ...(height ? { maxHeight: height } : {}) }
+          : height
+            ? { height }
+            : { aspectRatio: stage.ratio }
+      }
       data-trait-stage=""
     >
       <img
@@ -117,6 +114,41 @@ export function StageFrame({ stage, right, children }: { stage: HeroStage; right
       </div>
     </div>
   );
+}
+
+/**
+ * The decal at SCALE of a cover (centred up and down), from its left edge, slid left only as far as its nodes need to stay
+ * inside the right edge (`right`, a fraction of its width; the hero cut on the left then), then the stage's shift.
+ */
+function coverFrame(stage: HeroStage, right: number): CSSProperties {
+  // Cover: as tall as the stage or as wide, whichever is larger.
+  const decalHeight = `${SCALE} * max(100cqh, 100cqw / ${stage.ratio})`,
+    width = `${decalHeight} * ${stage.ratio}`;
+  return {
+    height: `calc(${decalHeight})`,
+    width: `calc(${width})`,
+    top: `calc((100cqh - ${decalHeight}) / 2)`,
+    // Centred when narrower than the stage; else from its left edge, as far left as its nodes need; then the
+    // stage's shift.
+    left: `calc(max(min(0px, calc(100cqw - ${width})), min(max(0px, calc((100cqw - ${width}) / 2)), calc(100cqw - ${right} * ${width}))) - ${stage.shift ?? 0} * ${width})`,
+  };
+}
+
+/**
+ * The decal at the stage's width, hero to traits, nothing cut across; unless its traits (`focus`: the band they take, in
+ * percent down) would then not fit up and down: then as tall as they allow, against the right edge. Up and down: the
+ * traits' band centred, the decal kept against the stage's top and bottom where it covers them; shorter, centred.
+ */
+function focusFrame(stage: HeroStage, focus: NonNullable<HeroStage["focus"]>): CSSProperties {
+  const [top0, top1] = focus.y;
+  const height = `min(100cqw / ${stage.ratio}, 100cqh / ${(top1 - top0) / 100})`,
+    width = `${height} * ${stage.ratio}`;
+  return {
+    height: `calc(${height})`,
+    width: `calc(${width})`,
+    top: `clamp(min(100cqh - ${height}, (100cqh - ${height}) / 2), 50cqh - ${(top0 + top1) / 200} * ${height}, max(0px, (100cqh - ${height}) / 2))`,
+    left: `calc(100cqw - ${width})`,
+  };
 }
 
 /** A tiers stage (hero-stages.ts): the base trait, and per level a memory between its two trait choices. */

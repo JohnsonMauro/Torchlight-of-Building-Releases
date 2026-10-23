@@ -17,6 +17,11 @@ interface StageArt {
   ratio: number;
   /** How far left the decal is slid past its resting place (a fraction of its width), to bring the traits in. */
   shift?: number;
+  /**
+   * The band the traits take on the decal (percent down, from–to): the decal is drawn at the stage's width, smaller only
+   * when the band would not fit up and down, and placed up and down on the band (TraitStage focusFrame).
+   */
+  focus?: { y: [number, number] };
 }
 
 export interface TierStage extends StageArt {
@@ -78,6 +83,8 @@ export const HERO_STAGES: Readonly<Record<string, HeroStage>> = {
     kind: "tiers",
     image: "./src/assets/tli/hero-art/bing-creative-genius-stage.webp",
     ratio: 2,
+    // The level captions to the lower choices' second row, with a little margin.
+    focus: { y: [6, 92] },
     base: { x: 51.64, y: 48.67, size: 6.4 },
     columns: [66.6, 77.93, 89.18],
     rows: { level: 11, top: 30.86, memory: 48.05, bottom: 67.19 },
