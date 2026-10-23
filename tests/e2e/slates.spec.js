@@ -29,6 +29,19 @@ async function openSlates(page, state = youga) {
   return { planner, slates };
 }
 
+test("below character level 90 the board's eight outer cells show a lock and Lv.90, and no slate goes there", async ({
+  page,
+}) => {
+  const level82 = structuredClone(youga);
+  level82.hero.characterLevel = 82;
+  const { planner, slates } = await openSlates(page, level82);
+  await expect(slates.lockedCells()).toHaveCount(8);
+  await expect(slates.lockedCells().first()).toHaveText("Lv.90");
+  await expect(slates.cells()).toHaveCount(16);
+  await expect(slates.cell(3, 1)).toHaveCount(0);
+  await planner.expectNoErrors();
+});
+
 test("the Slates button shows the statue board in place of the talent tree", async ({ page }) => {
   const { planner, slates } = await openSlates(page, fullBoard);
   await expect(slates.talentTree()).toBeHidden();

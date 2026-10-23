@@ -230,6 +230,8 @@ export {
   SLATE_BOARD_ROWS,
   adjacentSlateIds,
   canPlaceSlate,
+  lockedSlateCells,
+  SLATE_UNLOCK_LEVEL,
   isCopySlate,
   isJudgmentSlate,
   slateOffsets,

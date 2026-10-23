@@ -16,6 +16,7 @@ import {
   baseAffixTiers,
   beltBlends,
   canPlaceSlate,
+  lockedSlateCells,
   CLOCKWORK_CORE,
   craftAffixes,
   craftedSlateShape,
@@ -1906,7 +1907,7 @@ function resolveCraftedSlate({ entry, item, position, baseName, idMap, report, s
     placement &&
     placement.column >= 1 &&
     placement.row >= 1 &&
-    canPlaceSlate(boardSlate, placement, placements, boardSlates)
+    canPlaceSlate(boardSlate, placement, placements, boardSlates, lockedSlateCells(state.hero.characterLevel))
   ) {
     placements[id] = placement;
     boardSlates.push(boardSlate);
@@ -2070,7 +2071,7 @@ function resolveSlates(tree, idMap, report, state) {
       rotationAllowed &&
       placement.column >= 1 &&
       placement.row >= 1 &&
-      canPlaceSlate(boardSlate, placement, placements, boardSlates);
+      canPlaceSlate(boardSlate, placement, placements, boardSlates, lockedSlateCells(state.hero.characterLevel));
     if (placeable) {
       placements[id] = placement;
       boardSlates.push(boardSlate);

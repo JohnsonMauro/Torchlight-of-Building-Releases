@@ -96,3 +96,7 @@ export const LABEL_NUMBER =
 export const LABEL_NAME =
   "pointer-events-none absolute top-1/2 right-2 left-2 z-2 -translate-y-1/2 text-center text-[10px]/tight font-semibold";
 export const LABEL_COUNT = "pointer-events-none absolute right-2 bottom-1.5 left-2 z-2 text-[10px]/[normal] opacity-80";
+/** A board cell the character's level has not opened: its lock and the level it opens at, as the game draws it. */
+export const LOCKED_CELL =
+  "pointer-events-none grid place-content-center justify-items-center gap-0.5 border border-line bg-sunken text-xs font-semibold text-dim";
+export const LOCK_ICON = "size-[calc(var(--cell)*0.3)]";

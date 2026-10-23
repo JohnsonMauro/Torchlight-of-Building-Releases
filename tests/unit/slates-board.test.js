@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { slatesView, slateTiles } from "../../src/app/bridge/slates-view-model.ts";
 import { dragDrop, pendingDrop } from "../../apps/web/src/features/slates/slate-drop.ts";
-import { canPlaceSlate } from "../../packages/engine/src/talents/slate-board.js";
+import { canPlaceSlate, lockedSlateCells } from "../../packages/engine/src/talents/slate-board.js";
 
 const rect = (left, top, width, height) => ({ left, top, width, height, right: left + width, bottom: top + height });
 // A 432 px grid (72 px cells) at (300, 100) inside a 1000 x 600 stage at (0, 0).
@@ -44,6 +44,7 @@ test("the view lists equipped slates in board order, parked slates apart, and th
     placements: { a: { column: 3, row: 1, rotation: 90 }, b: { column: 4, row: 2 } },
     parked: { c: { x: 4.5, y: 30, flipX: -1 } },
     equipped: new Set(["a", "b"]),
+    locked: new Set(),
     ui: { selectedId: "b", toolsPosition: null, editMode: true, pendingId: null },
   });
   assert.equal(view.cells.length, 24);
@@ -148,8 +149,39 @@ test("a Judgment lies over the slates under its corners, as in the game: its pla
     placements,
     parked: {},
     equipped: new Set(["judgment", "corner"]),
+    locked: new Set(),
     ui: { selectedId: null, toolsPosition: null, editMode: false, pendingId: null },
   });
   assert.equal(view.pieces.find((piece) => piece.id === "judgment").overlay, true);
   assert.equal(view.pieces.find((piece) => piece.id === "corner").overlay, false);
+});
+
+test("below character level 90 the board's eight outer cells are locked: shown so, and no slate goes there", () => {
+  const corner = {
+    id: "corner",
+    name: "A Corner of Divinity",
+    shape: [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+    ],
+  };
+  // Cells (3,1), (4,1) and (4,2): row 1 is the board's top pair of outer cells.
+  const top = { column: 3, row: 1, rotation: 0 };
+  assert.equal(canPlaceSlate(corner, top, {}, [corner], lockedSlateCells(82)), false);
+  assert.equal(canPlaceSlate(corner, top, {}, [corner], lockedSlateCells(90)), true);
+  assert.equal(canPlaceSlate(corner, top, {}, [corner], lockedSlateCells(undefined)), true);
+  const view = slatesView({
+    slates: [],
+    placements: {},
+    parked: {},
+    equipped: new Set(),
+    locked: lockedSlateCells(82),
+    ui: { selectedId: null, toolsPosition: null, editMode: false, pendingId: null },
+  });
+  assert.deepEqual(
+    view.cells.filter((cell) => cell.locked).map((cell) => `${cell.column},${cell.row}`),
+    ["3,1", "4,1", "1,3", "6,3", "1,4", "6,4", "3,6", "4,6"],
+  );
+  assert.equal(view.unlockLevel, 90);
 });

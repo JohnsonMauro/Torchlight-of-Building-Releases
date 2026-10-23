@@ -1,6 +1,7 @@
 // The Divinity Slates board, the Slate Inventory, the slate crafter and the slate editor.
 import {
   canPlaceSlate,
+  lockedSlateCells,
   divinitySlateAffixes,
   isActiveJudgment,
   isCopySlate,
@@ -49,6 +50,8 @@ import {
 } from "./slate-craft.ts";
 import { craftedSlateForBoard, craftedSlateIcon, slateAffixFamilyClass, slateShapeCells } from "./slate-shapes.js";
 
+// The board cells the build's character level has not opened yet (packages/engine/src/talents/slate-board.js): no slate goes there.
+const slateLocks = () => lockedSlateCells(plannerState.hero?.characterLevel);
 let selectedSlateId = null;
 
 // The affixes only one equipped slate can apply ("<tree>: <name>: <effect>").
@@ -241,6 +244,7 @@ export const slateViewSources = {
       placements: slatePlacements,
       parked: parkedSlates,
       equipped: equippedSlateIds,
+      locked: slateLocks(),
       ui: {
         selectedId: selectedSlateId,
         toolsPosition: slateToolsPosition,
@@ -268,7 +272,7 @@ function placeCraftedSlate(id) {
     for (let row = 1; row <= 6 && !placement; row += 1) {
       for (let column = 1; column <= 6; column += 1) {
         const candidate = { column, row, rotation, flipX, flipY };
-        if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
+        if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard(), slateLocks())) {
           placement = candidate;
           break;
         }
@@ -421,7 +425,7 @@ function finishPendingSlate({ placement, parked }) {
   const pending = slatePendingDrop,
     slate = slatesForBoard().find((item) => item.id === pending.id);
   slatePendingDrop = null;
-  if (placement && slate && canPlaceSlate(slate, placement, slatePlacements, slatesForBoard())) {
+  if (placement && slate && canPlaceSlate(slate, placement, slatePlacements, slatesForBoard(), slateLocks())) {
     setSlatePlacements({ ...slatePlacements, [pending.id]: placement });
     persistPlannerState();
     showToast(`${pending.action} slate placed`);
@@ -459,12 +463,13 @@ function addCraftedSlate() {
     if (equippedSlateIds.has(crafted.id)) {
       const boardSlate = craftedSlateForBoard(crafted),
         current = slatePlacements[crafted.id];
-      if (current && !canPlaceSlate(boardSlate, current, slatePlacements, slatesForBoard())) {
+      if (current && !canPlaceSlate(boardSlate, current, slatePlacements, slatesForBoard(), slateLocks())) {
         let placement = null;
         for (let row = 1; row <= 6 && !placement; row += 1)
           for (let column = 1; column <= 6 && !placement; column += 1) {
             const candidate = { ...current, row, column };
-            if (canPlaceSlate(boardSlate, candidate, slatePlacements, slatesForBoard())) placement = candidate;
+            if (canPlaceSlate(boardSlate, candidate, slatePlacements, slatesForBoard(), slateLocks()))
+              placement = candidate;
           }
         if (placement) setSlatePlacements({ ...slatePlacements, [crafted.id]: placement });
         else {
@@ -524,7 +529,7 @@ function placeSlateAtCell(column, row) {
     flipX: previous.flipX || 1,
     flipY: previous.flipY || 1,
   };
-  if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
+  if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard(), slateLocks())) {
     setSlatePlacements({ ...slatePlacements, [slate.id]: candidate });
     equippedSlateIds.add(slate.id);
     delete parkedSlates[slate.id];
@@ -546,7 +551,7 @@ function transformSlate(id, change) {
   if (parked) {
     setParkedSlates({ ...parkedSlates, [slate.id]: candidate });
     persistPlannerState();
-  } else if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
+  } else if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard(), slateLocks())) {
     setSlatePlacements({ ...slatePlacements, [slate.id]: candidate });
     persistPlannerState();
   } else pickUpTransformedSlate(slate, current, candidate, change.rotate ? "Rotated" : "Flipped");
@@ -568,7 +573,7 @@ function wheelTransformSlate(down) {
     setParkedSlates({ ...parkedSlates, [selectedSlateId]: candidate });
     persistPlannerState();
     renderSlates();
-  } else if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard())) {
+  } else if (canPlaceSlate(slate, candidate, slatePlacements, slatesForBoard(), slateLocks())) {
     setSlatePlacements({ ...slatePlacements, [selectedSlateId]: candidate });
     persistPlannerState();
     renderSlates();
@@ -595,7 +600,7 @@ function removeSlate(id) {
 // beside the grid (null on the grid or off the stage), both measured by the board.
 function dropSlate(id, { placement, parked }) {
   const slate = slatesForBoard().find((item) => item.id === id);
-  if (slate && placement && canPlaceSlate(slate, placement, slatePlacements, slatesForBoard())) {
+  if (slate && placement && canPlaceSlate(slate, placement, slatePlacements, slatesForBoard(), slateLocks())) {
     setSlatePlacements({ ...slatePlacements, [id]: placement });
     equippedSlateIds.add(id);
     delete parkedSlates[id];

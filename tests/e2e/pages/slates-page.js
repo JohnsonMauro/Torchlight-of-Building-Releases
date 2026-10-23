@@ -23,6 +23,10 @@ export class SlatesPage {
   cells() {
     return this.board().getByRole("button", { name: /^Board cell / });
   }
+  /** The cells the character's level has not opened (a lock and the level, no button). */
+  lockedCells() {
+    return this.board().getByRole("img", { name: /^Board cell \d, \d: opens at character level \d+$/ });
+  }
   cell(column, row) {
     return this.board().getByRole("button", { name: `Board cell ${column}, ${row}`, exact: true });
   }

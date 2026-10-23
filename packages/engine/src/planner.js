@@ -99,6 +99,7 @@ import {
 } from "./engine.js";
 import { normalizePlannerState } from "./state/planner-state.ts";
 import { resolveTalentCandidate, resolveSlateCandidate } from "./candidate-sources.js";
+import { SLATE_UNLOCK_LEVEL, lockedSlateCells, slateOnLockedCell } from "./talents/slate-board.js";
 import { grantedCoreNames } from "./text/granted-core-lines.js";
 import { allProfessionTalentCatalogue as catalogue } from "../data/talents/all-profession-trees.generated.js";
 import { auraScaling } from "../data/skills/aura-scaling.js";
@@ -1770,7 +1771,16 @@ function calculatePlannerOnce(
       if (typeof state.combat.bestCaseOverrides?.[key] !== "boolean") delete requestedBase[key];
   const requestedConditions = { ...requestedBase, ...conditionOverrides };
   const heroMemories = calculateHeroMemories(state.hero);
-  const equipped = state.equippedSlateIds;
+  // A slate on a board cell the character's level has not opened yet (slate-board.js lockedSlateCells) does not count.
+  const lockedCells = lockedSlateCells(state.hero?.characterLevel);
+  const placedSlates = resolveSlateCandidate(state.equippedSlateIds, state.slates).setup.slates;
+  const lockedSlates = placedSlates.filter(
+    (item) =>
+      state.slates.placements[item.id] && slateOnLockedCell(item, state.slates.placements[item.id], lockedCells),
+  );
+  const equipped = lockedSlates.length
+    ? state.equippedSlateIds.filter((id) => !lockedSlates.some((item) => item.id === id))
+    : state.equippedSlateIds;
   const talent = resolveTalentCandidate(catalogue, state.talentRanks, state.talents);
   const slate = resolveSlateCandidate(equipped, state.slates);
   const talentSlate = calculateTalentSlateCandidate({
@@ -5732,6 +5742,10 @@ function calculatePlannerOnce(
       "Equipment estimate includes recognized modifiers and Energy changes; unique mechanics and level changes are not fully modeled.",
     );
   warnings.push(...igniteLedger.warnings);
+  for (const item of lockedSlates)
+    warnings.push(
+      `${item.name} sits on a Divinity board cell that opens at character level ${SLATE_UNLOCK_LEVEL}; it is not counted.`,
+    );
   warnings.push(...shadowWarnings);
   warnings.push(...(pact.levelAssumptions || []).map((item) => item.text));
   const { channelRamp: _channelRamp, ...mechanicsSummary } = mechanics;

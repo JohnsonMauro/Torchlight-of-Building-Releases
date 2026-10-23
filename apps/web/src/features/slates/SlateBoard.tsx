@@ -21,6 +21,7 @@ import {
   type SlatesView,
 } from "@legacy/app/bridge/slates-view-model.ts";
 import { HelpButton } from "../../ui/HelpButton";
+import { StrokeIcon } from "../../ui/StrokeIcon";
 import { SlateTooltip } from "./SlateTooltip";
 import { useViewSource } from "../../ui/use-view-source";
 import {
@@ -28,6 +29,8 @@ import {
   LABEL_COUNT,
   LABEL_NAME,
   LABEL_NUMBER,
+  LOCK_ICON,
+  LOCKED_CELL,
   judgmentEdge,
   PIECE_ART,
   pieceClasses,
@@ -220,17 +223,34 @@ function SlateStage({ view }: { view: SlatesView }) {
         className={`${view.editMode ? "editing " : ""}divinity-board absolute top-(--slate-grid-top,109px) left-1/2 grid size-[calc(var(--cell)*6)] -translate-x-1/2 grid-cols-[repeat(6,var(--cell))] grid-rows-[repeat(6,var(--cell))]`}
         ref={boardRef}
       >
-        {view.cells.map((cell) => (
-          <button
-            key={`${cell.column},${cell.row}`}
-            type="button"
-            className="slate-cell pointer-events-none border border-line-strong bg-raised editmode:pointer-events-auto editmode:cursor-crosshair hover:border-info hover:bg-info/15"
-            style={{ gridColumn: cell.column, gridRow: cell.row }}
-            data-slate-cell={`${cell.column},${cell.row}`}
-            aria-label={`Board cell ${cell.column}, ${cell.row}`}
-            onClick={() => commands.placeSlateAtCell(cell.column, cell.row)}
-          />
-        ))}
+        {view.cells.map((cell) =>
+          cell.locked ? (
+            <div
+              key={`${cell.column},${cell.row}`}
+              className={LOCKED_CELL}
+              style={{ gridColumn: cell.column, gridRow: cell.row }}
+              data-slate-cell={`${cell.column},${cell.row}`}
+              role="img"
+              aria-label={`Board cell ${cell.column}, ${cell.row}: opens at character level ${view.unlockLevel}`}
+            >
+              <StrokeIcon className={LOCK_ICON}>
+                <rect x="5" y="11" width="14" height="10" rx="2" />
+                <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+              </StrokeIcon>
+              {`Lv.${view.unlockLevel}`}
+            </div>
+          ) : (
+            <button
+              key={`${cell.column},${cell.row}`}
+              type="button"
+              className="slate-cell pointer-events-none border border-line-strong bg-raised editmode:pointer-events-auto editmode:cursor-crosshair hover:border-info hover:bg-info/15"
+              style={{ gridColumn: cell.column, gridRow: cell.row }}
+              data-slate-cell={`${cell.column},${cell.row}`}
+              aria-label={`Board cell ${cell.column}, ${cell.row}`}
+              onClick={() => commands.placeSlateAtCell(cell.column, cell.row)}
+            />
+          ),
+        )}
         {view.pieces.map((piece) => (
           <SlatePiece key={piece.id} {...pieceProps(piece)} />
         ))}

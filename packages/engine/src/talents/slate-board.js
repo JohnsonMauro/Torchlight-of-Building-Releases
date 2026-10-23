@@ -10,6 +10,20 @@ const key = (column, row) => `${column},${row}`;
 export const SLATE_BOARD_CELLS = new Set(
   SLATE_BOARD_ROWS.flatMap((columns, row) => columns.map((column) => key(column, row + 1))),
 );
+// The board's eight outer cells (row 1 and 6, column 1 and 6) open at character level 90: the game draws a lock and
+// "Lv.90" on them below it (owner's screenshot of a level 82 character's board, 2026-10-23).
+export const SLATE_UNLOCK_LEVEL = 90;
+export const SLATE_LEVEL_LOCKED_CELLS = new Set(["3,1", "4,1", "1,3", "1,4", "6,3", "6,4", "3,6", "4,6"]);
+const NO_LOCKED_CELLS = new Set();
+/** The cells locked at this character level (none at 90 and over, and none when the build stores no level). */
+export function lockedSlateCells(characterLevel) {
+  const level = Number(characterLevel);
+  return Number.isFinite(level) && level > 0 && level < SLATE_UNLOCK_LEVEL ? SLATE_LEVEL_LOCKED_CELLS : NO_LOCKED_CELLS;
+}
+/** Whether a placed slate covers a locked cell. */
+export function slateOnLockedCell(slate, placement, locked) {
+  return locked.size > 0 && slateCells(slate, placement).some((cell) => locked.has(key(cell.column, cell.row)));
+}
 export function slateTransformRules(slate) {
   const name = typeof slate === "string" ? slate : slate?.template || slate?.name;
   if (name === "Space Rift" || name === "Residence of Stars") return { rotate: false, flip: false };
@@ -42,9 +56,13 @@ export function slateCells(slate, placement) {
 }
 // Nether King's Judgment lies over the board (its three corners on top of other slates), as in the game.
 export const isJudgmentSlate = (slate) => (slate?.template || slate?.name) === "Nether King's Divinity: Judgment";
-export function canPlaceSlate(slate, placement, placements, slates) {
+export function canPlaceSlate(slate, placement, placements, slates, locked = NO_LOCKED_CELLS) {
   const cells = slateCells(slate, placement);
-  if (!cells.length || cells.some((cell) => !SLATE_BOARD_CELLS.has(key(cell.column, cell.row)))) return false;
+  if (
+    !cells.length ||
+    cells.some((cell) => !SLATE_BOARD_CELLS.has(key(cell.column, cell.row)) || locked.has(key(cell.column, cell.row)))
+  )
+    return false;
   if (isJudgmentSlate(slate)) return true;
   const occupied = new Set();
   for (const other of slates)

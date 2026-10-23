@@ -7,6 +7,7 @@ import {
   isJudgmentSlate,
   judgmentAffectedSlateIds,
   SLATE_BOARD_ROWS,
+  SLATE_UNLOCK_LEVEL,
   slateOffsets,
   slateSize,
   slateTransformRules,
@@ -101,7 +102,9 @@ export interface SlateToolsView {
   rules: { rotate: boolean; flip: boolean };
 }
 export interface SlatesView {
-  cells: { column: number; row: number }[];
+  /** The board's cells; a locked one opens at `unlockLevel` (a drop there is refused). */
+  cells: { column: number; row: number; locked: boolean }[];
+  unlockLevel: number;
   pieces: SlatePieceView[];
   parked: SlatePieceView[];
   tools: SlateToolsView | null;
@@ -113,6 +116,8 @@ export interface SlatesViewInput {
   placements: Record<string, GridPlacement>;
   parked: Record<string, ParkedPlacement>;
   equipped: ReadonlySet<string>;
+  /** The cells the character's level has not opened ("column,row"; lockedSlateCells). */
+  locked: ReadonlySet<string>;
   ui: SlateBoardUi;
 }
 
@@ -144,7 +149,7 @@ export function slateExtent(slate: Pick<BoardSlate, "shape" | "size">, pose: Sla
   return slateSize(slate, pose.rotation, pose.flipX, pose.flipY) as [number, number];
 }
 
-export function slatesView({ slates, placements, parked, equipped, ui }: SlatesViewInput): SlatesView {
+export function slatesView({ slates, placements, parked, equipped, locked, ui }: SlatesViewInput): SlatesView {
   const judgment = judgmentAffectedSlateIds(slates, placements, equipped) as Set<string>;
   const copiedByNeighbor = new Set(
     slates
@@ -204,8 +209,9 @@ export function slatesView({ slates, placements, parked, equipped, ui }: SlatesV
       : null;
   return {
     cells: SLATE_BOARD_ROWS.flatMap((columns: number[], row: number) =>
-      columns.map((column) => ({ column, row: row + 1 })),
+      columns.map((column) => ({ column, row: row + 1, locked: locked.has(`${column},${row + 1}`) })),
     ),
+    unlockLevel: SLATE_UNLOCK_LEVEL,
     pieces,
     parked: parkedPieces,
     tools,
