@@ -11,7 +11,7 @@ const SECTION_EDGES: Record<string, string> = {
   rareAffix: "border-l-ok",
   legendaryAffix: "border-l-grade-rare",
 };
-const LINE = "text-xs leading-normal text-text [overflow-wrap:anywhere]";
+const LINE = "text-xs leading-normal whitespace-pre-line text-text [overflow-wrap:anywhere]";
 
 type Section = Omit<PrismSectionView, "lines"> & { lines: (PrismSectionLine & { coverage?: CoverageView })[] };
 

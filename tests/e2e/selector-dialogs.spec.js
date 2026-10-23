@@ -617,6 +617,10 @@ test("a Haze rolls its base affix: the effect it adds to the core, kept only on 
   // None, then the ten effects of the game's Haze base affixes.
   await expect(prismAffixList(crafter, "Base").getByRole("radio")).toHaveCount(11);
   await expect(prismAffixOption(crafter, "Base", "None")).toBeChecked();
+  // A two-line effect keeps its line break, as the game prints it.
+  expect(await prismAffixList(crafter, "Base").locator("label").nth(1).innerText()).toBe(
+    "+12% additional Attack Damage when holding a One-Handed Weapon\n+12% additional Base Damage for Two-Handed Weapons",
+  );
   // A long one in the section's summary is cut there: it does not widen the form past its column.
   await prismAffixList(crafter, "Base").getByRole("radio").nth(1).check();
   const form = crafter.locator(".prism-crafter-form > div").last();

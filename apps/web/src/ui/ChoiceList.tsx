@@ -52,7 +52,7 @@ export function ChoiceList({
             data-choice-value={option.value}
             onChange={() => onChange(option.value)}
           />
-          <span className="min-w-0 flex-1">
+          <span className="min-w-0 flex-1 whitespace-pre-line">
             <KeywordText text={option.label} />
             {option.data?.optionMeta ? (
               <small className="block text-xs text-muted">{option.data.optionMeta}</small>
