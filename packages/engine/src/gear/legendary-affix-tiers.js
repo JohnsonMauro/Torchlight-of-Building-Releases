@@ -4,6 +4,7 @@
 // Tier 1 is always the catalog line; every line not listed has one range and no tier choice. The corroded form is separate
 // (the editor's Corroded toggle).
 import { legendaryAffixTiers } from "../../data/gear/legendary-affix-tiers.generated.js";
+import { LEGENDARY_AFFIX_TEXTS } from "../../data/gear/legendary-affix-ids.generated.js";
 
 // [{ tier, id, text }, …] best tier first, or null when the line has a single range.
 export function legendaryLineTiers(sourceId, index) {
@@ -30,3 +31,8 @@ const textByAffixId = new Map(
     .map((entry) => [String(entry.id), entry.text]),
 );
 export const legendaryTierTextForAffixId = (id) => textByAffixId.get(String(id)) || null;
+
+// Game affix id -> [kind, template] of the current season's legendary lines, as the item pages print them
+// (legendary-affix-ids.generated.js, scripts/fetch-tlidb-legendary-affix-ids.js), or null. The game id map was built from
+// older pages: it lacks the lines of items the season added or rewrote and keeps older texts for some.
+export const legendaryAffixText = (id) => LEGENDARY_AFFIX_TEXTS[String(id)] || null;

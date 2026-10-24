@@ -86,6 +86,7 @@ export {
   legendaryLineTiers,
   legendaryLowerTierTemplates,
   legendaryTierTemplate,
+  legendaryAffixText,
   legendaryTierTextForAffixId,
 } from "./gear/legendary-affix-tiers.js";
 export { legendaryModifierSignature, reconcileLegendaryModifiers } from "./gear/legendary-modifier-signature.js";

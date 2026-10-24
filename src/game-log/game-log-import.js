@@ -36,6 +36,7 @@ import {
   legendaryGear,
   legendaryLowerTierTemplates,
   legendarySlateShapes,
+  legendaryAffixText,
   legendaryTierTextForAffixId,
   memoryAffixTiers,
   memoryRevivalAffixIds,
@@ -758,10 +759,14 @@ function resolveGear(tree, idMap, report) {
     if (!item) continue;
     const label = slotLabel(slot);
     const [baseName, baseType] = idMap.itemBases[item.BaseId] || [];
-    // A tiered legendary line's tier-2 id is not in the id map (TLIDB lists tier 1 and the corroded tier only).
+    // A legendary line reads the current season's text of its id (its TLIDB item page), which the id map, built from older
+    // pages, may lack (a line the season added or rewrote: On the Sublime, 2026-10-23) or print as it was; an id the map
+    // files as another kind (a base or prism line) keeps the map's. A tiered line's tier-2 id is in neither table.
     const lineText = (affix, kinds) => {
+      const mapped = idMap.affixes[affix.Id];
+      const current = !mapped || /^legendary/.test(mapped[0]) ? legendaryAffixText(affix.Id) : null;
       const tierText = legendaryTierTextForAffixId(affix.Id),
-        entry = idMap.affixes[affix.Id] || (tierText ? ["legendary", tierText] : null);
+        entry = current || mapped || (tierText ? ["legendary", tierText] : null);
       return entry && (!kinds || kinds.includes(entry[0])) ? entry : null;
     };
     const unresolved = (what, affix, reason) =>
