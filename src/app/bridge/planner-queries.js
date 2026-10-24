@@ -5,8 +5,9 @@
 
 /**
  * @typedef {object} PlannerQueries
- * @property {(target: { slot: string } | { inventoryId: string }) => import("./gear-item-view.ts").GearTooltipView | null}
- *   gearTooltip An equipped slot's or an Inventory item's tooltip; null for an empty slot.
+ * @property {(target: { slot: string } | { inventoryId: string } | { legendary: string }) => import("./gear-item-view.ts").GearTooltipView | null}
+ *   gearTooltip An equipped slot's or an Inventory item's tooltip, or a named legendary's (its equipped copy, else the
+ *   catalog's item); null for an empty slot.
  * @property {(target: { coordinate: string, art: string | null, locked: boolean, prismAffected: boolean }) =>
  *   ({ kind: "node", view: import("./talent-tooltip-view.ts").TalentNodeTooltipView }
  *   | { kind: "prism", view: import("./talent-tooltip-view.ts").PrismTooltipView }) | null} talentNodeTooltip

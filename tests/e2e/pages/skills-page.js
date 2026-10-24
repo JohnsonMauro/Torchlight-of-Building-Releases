@@ -56,6 +56,10 @@ export class SkillsPage {
   selectorConfirm() {
     return this.selector().getByRole("button", { name: "Confirm", exact: true });
   }
+  /** The selector detail's "Skill Source": the item that grants the highlighted skill. */
+  selectorSkillSource() {
+    return this.selector().locator(".skill-source");
+  }
   tooltip() {
     return this.page.getByRole("tooltip");
   }

@@ -684,6 +684,14 @@ export function fillTemplate(template, args = []) {
       note: "roll outside the catalog range",
     };
   }
+  // A line with no roll whose shown numbers are all logged: the other values are ones the game keeps but does not print
+  // (Necklace of Firebird logs 1750, 20, 1 for "… Replaces the Main Skill with Lv. 20 Barrier Burst"; 2026-10-24).
+  if (
+    !ranges.length &&
+    fixed.length &&
+    fixed.every((number) => args.some((value) => Math.abs(number - Math.abs(value)) < 1e-6))
+  )
+    return { ok: true, text: String(template), note: "the log also carries values the text does not show" };
   return {
     ok: false,
     reason: ranges.length ? "logged rolls do not fit the catalog ranges" : "logged values differ from the catalog text",
@@ -1621,8 +1629,12 @@ function resolveSkills(tree, others, idMap, report, state) {
     // A skill a hero trait puts in this Active slot (Youga's Stasis Vault in slot 2, …) is the trait's own skill in the
     // planner (packages/engine/src/heroes/trait-board-grants.js): its supports go under `trait:<skill>`, where the granted skill
     // reads them, and the slot is left to the grant.
+    // An item's skill in Active slot 1 (Necklace of Firebird's Barrier Burst, catalog `grantedBy`) is granted the same way.
+    const itemGrant = role === "skill" && index === 0 && catalog.grantedBy ? catalog.grantedBy : null;
     const granted =
-      role === "skill" && Object.values(TRAIT_SLOT_GRANTS).some((grant) => grant.skill === name && grant.row === index);
+      Boolean(itemGrant) ||
+      (role === "skill" &&
+        Object.values(TRAIT_SLOT_GRANTS).some((grant) => grant.skill === name && grant.row === index));
     let key;
     if (granted) key = `trait:${name}`;
     else {
@@ -1648,7 +1660,7 @@ function resolveSkills(tree, others, idMap, report, state) {
       "skills",
       "imported",
       granted
-        ? `${describe(slotNumber)}: ${name} (granted by the hero trait; its supports go on the granted skill)${mergedNote(entry)}`
+        ? `${describe(slotNumber)}: ${name} (granted by ${itemGrant || "the hero trait"}; its supports go on the granted skill)${mergedNote(entry)}`
         : `${describe(slotNumber)}: ${name} Lv ${level}${mergedNote(entry)}`,
     );
     const order = ["", "", "", "", ""];

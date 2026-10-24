@@ -18,7 +18,30 @@ const supportCatalogOverrides = {};
 
 const merge = (entries, overrides) => entries.map((entry) => ({ ...entry, ...(overrides[entry.name] || {}) }));
 
-export const tlidbSkillCatalog = merge(tlidbSkillCatalogGenerated, skillCatalogOverrides);
+// Skills only an item grants, which TLIDB's skill list leaves out: the game's own skill card (owner's screenshots,
+// 2026-10-24) and TLIDB's skill page. `grantedBy` names the item; packages/engine/src/heroes/trait-board-grants.js puts
+// the skill in its slot while the item is equipped.
+const itemGrantedSkills = [
+  {
+    name: "Barrier Burst",
+    role: "main",
+    icon: "./src/assets/tli/catalog/UI_SkillIcon_Skill_BarrierDetonate_Icon_128.webp",
+    tags: ["Spell", "Area", "Fire", "Strength", "Intelligence"],
+    baseLevel: 20,
+    addedLevels: 0,
+    grantedBy: "Necklace of Firebird",
+    details: [["Main stat", "Strength, Intelligence"], ["Cast speed", "1.0"], ["Cooldown", "0.4 s"], ["Added damage effectiveness", "100%"]],
+    effects: [
+      "Deals Spell Fire Damage equal to 75% of Barrier Rating to nearby enemies",
+      "This skill cannot be used",
+      "This skill can activate Spell Burst when triggered",
+      "This skill can only be triggered through Necklace of Firebird"
+    ],
+    source: "https://tlidb.com/en/Barrier_Burst"
+  }
+];
+
+export const tlidbSkillCatalog = [...merge(tlidbSkillCatalogGenerated, skillCatalogOverrides), ...itemGrantedSkills];
 for (const entry of tlidbSkillCatalog) entry.effects ??= allSkillEffects[entry.name] || [];
 
 export const tlidbSupportCatalog = merge(tlidbSupportCatalogGenerated, supportCatalogOverrides);

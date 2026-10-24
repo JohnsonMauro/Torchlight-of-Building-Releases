@@ -27,7 +27,7 @@ import { heroTraitKeyword } from "../text/inline-keywords.js";
 import { skillBoardRows } from "../skills/skill-board-slots.js";
 import { supportCanSupportSkill } from "../supports/support-compatibility.js";
 import { supportSlotsForSetup } from "../supports/support-slot-transfer.js";
-import { tlidbSupportCatalog } from "../../data/catalogs/tlidb.js";
+import { tlidbSkillCatalog, tlidbSupportCatalog } from "../../data/catalogs/tlidb.js";
 
 export const YOUGA_ULTIMATE_ONE_ID = "youga-the-ultimate-one";
 export const TRAIT_SKILL_LEVEL = 20;
@@ -38,6 +38,10 @@ export const TRAIT_SLOT_GRANTS = Object.freeze({
   "Spacetime Overlord": Object.freeze({ row: 3, skill: "Selves of All Realms" }),
   "Replace the skill in the third slot with Vendetta": Object.freeze({ row: 2, skill: "Vendetta" }),
 });
+// An item line that puts its skill in Active slot 1 (Necklace of Firebird: "Replaces the Main Skill with Lv. 20 Barrier Burst";
+// owner, 2026-10-24: equipping it puts the skill there over whatever the slot holds). Read for the catalog's skills only.
+const ITEM_MAIN_SKILL_GRANT = /^Replaces the Main Skill with Lv\. (\d+) (.+?)\.?$/i;
+const catalogSkillNames = new Set(tlidbSkillCatalog.map((entry) => entry.name));
 // Lines that change a granted skill into another (Swift Stalk).
 export const TRAIT_SLOT_SKILL_REPLACEMENTS = Object.freeze({
   "Replace Vendetta with Endless Vendetta": Object.freeze({ from: "Vendetta", to: "Endless Vendetta" }),
@@ -78,15 +82,30 @@ export function isTanglable(skill, linkedSupports = []) {
 }
 
 /**
- * The board grants the build's trait lines (origin "trait") carry: { slots: [{ keyword, row, skill, trait, source }],
- * clockworkCore: { trait, source } | null }. A trait line is present only while its trait is active (packages/engine/src/character-stats.js
- * heroTraitStatLines: a 45 / 60 / 75 pick with no memory in its row has no lines).
+ * The board grants the build's trait lines (origin "trait") and item lines (origin "gear") carry: { slots: [{ keyword, row,
+ * skill, trait, source, level?, item? }], clockworkCore: { trait, source } | null }. A trait line is present only while its
+ * trait is active (packages/engine/src/character-stats.js heroTraitStatLines: a 45 / 60 / 75 pick with no memory in its row has
+ * no lines), an item line while its item is equipped; `trait` names the trait or the item that grants the skill.
  */
 export function traitBoardGrantLines(modifierTexts = []) {
   const slots = [];
   let clockworkCore = null;
   const replacements = [];
   for (const line of modifierTexts) {
+    if (line?.origin === "gear") {
+      const match = squash(line.text).match(ITEM_MAIN_SKILL_GRANT);
+      if (match && catalogSkillNames.has(match[2]) && !slots.some((entry) => entry.row === 0))
+        slots.push({
+          keyword: squash(line.text),
+          row: 0,
+          skill: match[2],
+          trait: line.source,
+          source: line.source,
+          level: Number(match[1]),
+          item: true,
+        });
+      continue;
+    }
     if (line?.origin !== "trait") continue;
     const text = squash(line.text);
     if (TRAIT_SLOT_SKILL_REPLACEMENTS[text]) {
@@ -137,10 +156,11 @@ function grantedSkillSetup(grant, catalogSkill, replaced, resolveSupports, profi
       source: grant.source,
       replaces: replaced?.name || null,
       replacesKey: replaced ? keyOf(replaced) : null,
+      ...(grant.item ? { item: true } : {}),
     },
-    baseLevel: TRAIT_SKILL_LEVEL,
+    baseLevel: grant.level ?? TRAIT_SKILL_LEVEL,
     addedLevels: 0,
-    effectiveLevel: TRAIT_SKILL_LEVEL,
+    effectiveLevel: grant.level ?? TRAIT_SKILL_LEVEL,
     levelBonusSources: [],
     supports: [],
     enabled: true,

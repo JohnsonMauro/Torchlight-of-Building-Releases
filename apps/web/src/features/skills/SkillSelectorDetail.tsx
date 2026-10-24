@@ -12,6 +12,7 @@ import type {
   StarsView,
 } from "@legacy/app/bridge/skill-selector-view.ts";
 import { Artwork } from "../../ui/Artwork";
+import { GearTooltip } from "../gear/GearTooltip";
 import { KeywordText } from "../../ui/KeywordText";
 import { EffectSegments } from "./EffectSegments";
 import { RangeInput } from "../../ui/RangeInput";
@@ -20,6 +21,9 @@ import {
   CONFIG_HEADING,
   CONFIG_PANEL,
   ROLL_VALUE,
+  SKILL_SOURCE,
+  SKILL_SOURCE_ART,
+  SKILL_SOURCE_ITEM,
   STAR_BUTTON,
   SUPPORT_ART,
   TIER_BUTTON,
@@ -305,6 +309,7 @@ export function SkillSelectorDetail({ view }: DetailProps) {
               </p>
             ))}
           </div>
+          {view.grantedBy ? <SkillSource item={view.grantedBy} skill={view.name} /> : null}
           <a href={view.source} target="_blank" rel="noreferrer">
             Open TLIDB source
           </a>
@@ -316,5 +321,21 @@ export function SkillSelectorDetail({ view }: DetailProps) {
         </div>
       </article>
     </>
+  );
+}
+
+/** The item that grants the skill, with the item's tooltip: the game's "Skill Source" on its skill card. */
+function SkillSource({ item, skill }: { item: { name: string; icon: string }; skill: string }) {
+  return (
+    <div className={SKILL_SOURCE}>
+      <strong className="tracking-wide uppercase">Skill Source</strong>
+      <GearTooltip target={{ legendary: item.name }}>
+        <span className={SKILL_SOURCE_ITEM} tabIndex={0}>
+          <img className={SKILL_SOURCE_ART} src={item.icon} alt="" />
+          {item.name}
+        </span>
+      </GearTooltip>
+      <span>{`${skill} can only be triggered through ${item.name}: equipping it puts the skill in Active slot 1.`}</span>
+    </div>
   );
 }

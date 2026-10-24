@@ -59,6 +59,7 @@ import {
   craftedLegendaryItem,
   craftedRareItem,
   equipmentCraftFromItem,
+  legendaryDefaultBase,
   newCraftChoice,
   newEquipmentCraft,
 } from "./equipment-craft.ts";
@@ -140,6 +141,7 @@ export const gearViewSources = {
 // slot's item counts in the calculation; an Inventory item counts when it is equipped.
 function gearTooltip(target) {
   return withRenderPass(() => {
+    if ("legendary" in target) return legendaryTooltip(target.legendary);
     const inventory = "inventoryId" in target;
     const item = inventory
       ? inventoryItemById(target.inventoryId)
@@ -160,6 +162,37 @@ function gearTooltip(target) {
       lineStatus: (line) => gearLineCoverage(item, line, active, block, lowResources, blurEffects),
       curseReason: (line) => (active ? curseLineLeftOutReason(line, item) : ""),
     });
+  });
+}
+// A legendary named by another view (the item that grants a skill: Necklace of Firebird on Barrier Burst): the equipped
+// copy's tooltip while one is equipped, else the catalog's item with its roll ranges, as TLIDB prints it.
+function legendaryTooltip(name) {
+  const equipped = currentEquipmentImpact().allItems.find(
+    (entry) => entry.name === name && !disabledEquipmentSlots.has(entry.slot),
+  );
+  if (equipped) return gearTooltip({ slot: equipped.slot });
+  const entry = legendaryGear.find((candidate) => candidate.name === name);
+  if (!entry) return null;
+  const item = {
+    ...entry,
+    base: legendaryDefaultBase(entry),
+    rarity: "legendary",
+    legendaryModifiers: [...entry.modifiers],
+    modifiers: [...entry.modifiers],
+  };
+  const { block, lowResources, blurEffects } = currentPlanner();
+  return gearTooltipView({
+    item,
+    rarity: itemDisplayRarity(item),
+    icon: gearIcon(item),
+    sixAffix: false,
+    priceless: false,
+    itemLevel100: false,
+    sections: itemModifierSections(item),
+    energyAllowed: equipmentEnergyAllowed(item.slot),
+    inventory: true,
+    lineStatus: (line) => gearLineCoverage(item, line, false, block, lowResources, blurEffects),
+    curseReason: () => "",
   });
 }
 

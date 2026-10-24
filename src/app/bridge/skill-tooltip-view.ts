@@ -93,10 +93,12 @@ interface SpecialConfig {
   stars?: number;
 }
 interface TraitGrant {
+  /** The trait, or the item (`item`), that grants it. */
   trait: string;
   keyword?: string;
   row?: number;
   replaces?: string;
+  item?: boolean;
 }
 
 export interface SkillTooltipInput {
@@ -134,7 +136,7 @@ export function traitGrantNote(entry: (InstalledSkill & Leveled) | null | undefi
   if (!grant) return "";
   const kept = "it stays in your build and is left out of the calculation";
   return Number.isInteger(grant.row)
-    ? `Granted by ${grant.trait} (${grant.keyword}) · Lv. ${entry.effectiveLevel ?? 20} trait skill in Active slot ${(grant.row as number) + 1}, the skill takes no energy (its supports do)${grant.replaces ? ` · Replaces ${grant.replaces}: ${kept}` : ""}`
+    ? `Granted by ${grant.trait} (${grant.keyword}) · Lv. ${entry.effectiveLevel ?? 20} ${grant.item ? "item" : "trait"} skill in Active slot ${(grant.row as number) + 1}, the skill takes no energy (its supports do)${grant.replaces ? ` · Replaces ${grant.replaces}: ${kept}` : ""}`
     : `Granted by ${grant.trait} · second support slot, costs energy like any support${grant.replaces ? ` · Replaces ${grant.replaces}: ${kept}` : ""}`;
 }
 

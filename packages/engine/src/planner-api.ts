@@ -154,10 +154,12 @@ export interface SeaFoamNocturne {
 /** A hero trait shows this skill on a board row, over the user's skill there (packages/engine/src/heroes/trait-board-grants.js). */
 export interface SkillTraitGrant {
   row: number;
+  /** The trait, or the item (`item`: Necklace of Firebird's Barrier Burst), that grants the skill. */
   trait: string;
   source: string;
   /** The user's skill it replaces; null when the row was empty. */
   replaces: string | null;
+  item?: boolean;
 }
 /** A hero trait shows this support in a socket (packages/engine/src/heroes/trait-board-grants.js). */
 export interface SupportTraitGrant {

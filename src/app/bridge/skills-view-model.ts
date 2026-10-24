@@ -148,7 +148,9 @@ export function skillsView(planner: PlannerResult, skills: PlannerSkills, tab: S
         art: skillArt(setup.name),
         baseLevel: setup.baseLevel,
         addedLevels: Number(setup.addedLevels) || 0,
-        grantNote: grant ? ` · ${grant.replaces ? `replaces ${grant.replaces}` : "trait skill"}` : "",
+        grantNote: grant
+          ? ` · ${grant.replaces ? `replaces ${grant.replaces}` : grant.item ? "item skill" : "trait skill"}`
+          : "",
         grantedBy: grant?.trait ?? null,
         draggable: !grant && Boolean(own[row]),
         inactiveReason: setup.slotInactive ?? null,

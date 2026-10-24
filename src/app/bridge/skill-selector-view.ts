@@ -70,6 +70,8 @@ export type SkillSelectorDetailView =
       /** One line of runs per effect, the highlighted values with their class. */
       effects: TextSegment[][];
       source: string;
+      /** The item that grants the skill (its catalog `grantedBy`: Necklace of Firebird's Barrier Burst), else null. */
+      grantedBy: { name: string; icon: string } | null;
       /** Every support socket is taken. */
       full: boolean;
     };

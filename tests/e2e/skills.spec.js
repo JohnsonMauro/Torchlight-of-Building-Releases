@@ -214,3 +214,33 @@ test("hovering a skill and a support shows their tooltips", async ({ page }) => 
   }).toPass();
   await planner.expectNoErrors();
 });
+
+test("Necklace of Firebird puts Barrier Burst in Active slot 1, and the selector names the necklace as its source", async ({
+  page,
+}) => {
+  const line =
+    "When you have a Barrier, triggers the Main Skill upon taking damage, then removes Barrier\nReplaces the Main Skill with Lv. 20 Barrier Burst";
+  const state = structuredClone(youga);
+  state.equipmentOverrides = {
+    ...state.equipmentOverrides,
+    necklace: {
+      name: "Necklace of Firebird",
+      base: "Necklace",
+      rarity: "legendary",
+      legendaryModifiers: [line],
+      modifiers: [line],
+      implicitModifiers: [],
+    },
+  };
+  const { planner, skills } = await openSkills(page, state);
+  await expect(skills.rows().first()).toContainText("replaces Homing Frost Bolt");
+  await expect(skills.socket("Barrier Burst, granted by Necklace of Firebird")).toBeVisible();
+  await skills.socket("Replace Timid").click();
+  await skills.selectorSearch().fill("Barrier Burst");
+  await skills.selectorResults().first().click();
+  await expect(skills.selectorSkillSource()).toContainText("Necklace of Firebird");
+  await page.mouse.move(0, 0);
+  await skills.selectorSkillSource().getByText("Necklace of Firebird", { exact: true }).hover();
+  await expect(skills.tooltip()).toContainText("Replaces the Main Skill with Lv. 20");
+  await planner.expectNoErrors();
+});

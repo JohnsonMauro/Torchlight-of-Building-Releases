@@ -5,11 +5,12 @@ import { ModifierText } from "../../ui/ModifierText";
 import { Tooltip, type TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import * as classes from "./gear-tooltip-classes";
 
-type GearTarget = { slot: string } | { inventoryId: string };
+type GearTarget = { slot: string } | { inventoryId: string } | { legendary: string };
 
 /**
- * An item's tooltip on its equipped slot or Inventory card (`target`): the planner's gearTooltip query, read when it
- * opens. An Inventory card's sits beside the card; an empty slot has none.
+ * An item's tooltip on its equipped slot or Inventory card (`target`), or a named legendary's (the item that grants a
+ * skill): the planner's gearTooltip query, read when it opens. An Inventory card's sits beside the card; an empty slot
+ * has none.
  */
 export function GearTooltip({ target, children }: { target: GearTarget; children: TooltipAnchor }) {
   return (

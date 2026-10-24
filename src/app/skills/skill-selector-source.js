@@ -5,6 +5,7 @@ import {
   activationMediumSelectedLines,
   configurableSupportTierData,
   isSpiritMagusSkill,
+  legendaryGear,
   progressionRangeLabels,
   progressionSupportHasStars,
   progressionSupportText,
@@ -271,6 +272,12 @@ function skillSelectorDetail() {
         htmlTextSegments(highlight(effect)),
       ),
       source: entry.source,
+      grantedBy: entry.grantedBy
+        ? {
+            name: entry.grantedBy,
+            icon: legendaryGear.find((item) => item.name === entry.grantedBy)?.icon || "",
+          }
+        : null,
       full,
     },
     confirm: { label: installed ? "Installed" : "Confirm", disabled: Boolean(installed || full) },

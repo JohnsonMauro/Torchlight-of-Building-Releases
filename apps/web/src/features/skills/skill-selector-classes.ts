@@ -84,3 +84,8 @@ export const DETAIL = [
   "[&_.follower-affix-block_.affix-roll-number]:field [&_.follower-affix-block_.affix-roll-number]:h-7.5 [&_.follower-affix-block_.affix-roll-number]:w-20 [&_.follower-affix-block_.affix-roll-number]:text-center",
   "[&_.follower-affix-text]:text-xs [&_.follower-affix-text]:text-text",
 ].join(" ");
+/** "Skill Source": the item that grants the skill (Necklace of Firebird on Barrier Burst), as the game's skill card says. */
+export const SKILL_SOURCE = "skill-source mt-2.5 grid gap-1.5 border-t border-line pt-2 text-xs text-muted";
+export const SKILL_SOURCE_ITEM =
+  "inline-flex w-fit items-center gap-2 rounded-md font-semibold text-grade-legendary focus-visible:outline-2 focus-visible:outline-info";
+export const SKILL_SOURCE_ART = "size-9 shrink-0 object-contain";
