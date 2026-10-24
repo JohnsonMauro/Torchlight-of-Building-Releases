@@ -100,6 +100,9 @@ const stampIso = (line) => {
 };
 const CHANGE_EVENT =
   /ItemChange@ ProtoName=(PutOn|PutOff|UnequipSkill|EquipSkill|TalentBlockEquip|TalentBlockUnequip|TalentBlockUnEquip)\b.*\bstart\b/;
+// A skill or support put in or taken out of a skill socket after the login (page -6 is the skill board; 2026-10-24 log):
+// "ItemChange@ Add Id=7529_<uuid> BagNum=1 in PageId=-6 SlotId=101", "ItemChange@ Delete Id=7478_<uuid> in PageId=-6 SlotId=303".
+const SKILL_PAGE_CHANGE = /ItemChange@ (Add|Delete) Id=(\S+)(?: BagNum=\d+)? in PageId=-6 SlotId=(\d+)/;
 
 /** Turns the printer's tree lines into nested objects. Every value is a string. */
 export function parseTree(lines) {
@@ -149,13 +152,16 @@ const UUID_VALUE = /^(\d+)_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 const isWholeCut = (value) =>
   Boolean(value && typeof value === "object" && Object.keys(value).length === 1 && "..." in value);
 
+/** An item id as the import keeps it: "<base>_item<n>", one token per id in `tokens`; any other value as it is. */
+function itemToken(value, tokens) {
+  const m = UUID_VALUE.exec(value);
+  if (!m) return value;
+  if (!tokens.has(value)) tokens.set(value, `${m[1]}_item${tokens.size + 1}`);
+  return tokens.get(value);
+}
+
 function sanitizeTree(tree, tokens) {
-  const token = (value) => {
-    const m = UUID_VALUE.exec(value);
-    if (!m) return value;
-    if (!tokens.has(value)) tokens.set(value, `${m[1]}_item${tokens.size + 1}`);
-    return tokens.get(value);
-  };
+  const token = (value) => itemToken(value, tokens);
   const walk = (node) => {
     if (typeof node === "string") return token(node);
     if (!node || typeof node !== "object") return node;
@@ -208,6 +214,7 @@ export function scanGameLog(
   const tail = partialTail ? lines.pop() : "";
   const dumps = [],
     changes = [],
+    skillChanges = [],
     attributeSnapshots = [];
   let incompleteDumps = tail?.includes(DUMP_HEADER) ? 1 : 0,
     skippedDumps = 0;
@@ -251,6 +258,17 @@ export function scanGameLog(
       index = Math.max(index, end - 1);
       continue;
     }
+    if (line.includes("in PageId=-6 ")) {
+      const m = SKILL_PAGE_CHANGE.exec(line);
+      if (m)
+        skillChanges.push({
+          stamp: stampIso(line),
+          op: m[1] === "Add" ? "add" : "delete",
+          itemId: itemToken(m[2], tokens),
+          slot: m[3],
+        });
+      continue;
+    }
     if (line.includes("ItemChange@ ProtoName=")) {
       const m = CHANGE_EVENT.exec(line);
       if (m) changes.push({ stamp: stampIso(line), kind: m[1] });
@@ -291,9 +309,10 @@ export function scanGameLog(
         .filter((other) => other.stamp > dump.stamp)
         .map((other) => other.stamp)
         .sort()[0] || null;
-    dump.changesAfter = changes.filter(
-      (change) => change.stamp > dump.stamp && (!later || change.stamp < later),
-    ).length;
+    const inSession = (change) => change.stamp > dump.stamp && (!later || change.stamp < later);
+    dump.changesAfter = changes.filter(inSession).length;
+    // The skill sockets changed in this login's session, in order (applied over the login by collectSkillSlots).
+    dump.skillChanges = skillChanges.filter(inSession);
     dump.attributeSnapshotAfter = attributeSnapshots.some((stamp) => stamp > dump.stamp && (!later || stamp < later));
   }
   return { dumps: result, changeEvents: changes.length, incompleteDumps, skippedDumps };
@@ -562,7 +581,7 @@ export function mergeDumps(scan, dumpId) {
 }
 
 // Skill slots: layout (slot -> item token), equipped skill items and the skill inventory, each cut at 30 entries.
-function collectSkillSlots(tree, others) {
+function collectSkillSlots(tree, others, changes = []) {
   const fromTree = (source) => {
     const items = new Map(),
       slots = new Map();
@@ -577,6 +596,15 @@ function collectSkillSlots(tree, others) {
     return { items, slots };
   };
   const own = fromTree(tree);
+  // The sockets changed after the login, in order: an item put in replaces what the login shows; a socket emptied stays
+  // empty (no older login refills it).
+  const changed = new Map();
+  for (const change of changes) {
+    if (change.op === "add") own.slots.set(change.slot, change.itemId);
+    else if (own.slots.has(change.slot) && own.slots.get(change.slot) !== change.itemId) continue;
+    else own.slots.delete(change.slot);
+    changed.set(change.slot, change);
+  }
   const donors = others.map((dump) => ({ stamp: dump.stamp, ...fromTree(dump.tree) }));
   const expected = [...new Set(Object.values(tree.SkillSlot?.costSlot || {}).map(String))];
   for (const slot of own.slots.keys()) if (!expected.includes(slot)) expected.push(slot);
@@ -587,7 +615,7 @@ function collectSkillSlots(tree, others) {
   for (const slot of expected) {
     let itemId = own.slots.get(slot),
       from = null;
-    if (!itemId) {
+    if (!itemId && !changed.has(slot)) {
       const donor = donors.find((entry) => entry.slots.has(slot) && !usedIds.has(entry.slots.get(slot)));
       if (donor) {
         itemId = donor.slots.get(slot);
@@ -596,7 +624,7 @@ function collectSkillSlots(tree, others) {
       }
     }
     if (!itemId) {
-      if (cut) missing.push(slot);
+      if (cut && !changed.has(slot)) missing.push(slot);
       continue;
     }
     let item = own.items.get(itemId),
@@ -608,7 +636,14 @@ function collectSkillSlots(tree, others) {
         itemFrom = donor.stamp;
       }
     }
-    result.set(slot, { slot, itemId, baseId: itemId.split("_")[0], item: item || null, from: from || itemFrom });
+    result.set(slot, {
+      slot,
+      itemId,
+      baseId: itemId.split("_")[0],
+      item: item || null,
+      from: from || itemFrom,
+      equippedAt: changed.get(slot)?.op === "add" ? changed.get(slot).stamp : null,
+    });
   }
   return { slots: result, missing, cut };
 }
@@ -1583,8 +1618,8 @@ function specialSupportConfig(name, item, report, label) {
   return { tier: tier.tier, rolls: roll, ...starPart };
 }
 
-function resolveSkills(tree, others, idMap, report, state) {
-  const { slots, missing } = collectSkillSlots(tree, others);
+function resolveSkills(tree, others, idMap, report, state, changes = []) {
+  const { slots, missing } = collectSkillSlots(tree, others, changes);
   const skills = state.skills;
   const describe = (slot) => {
     const number = Number(slot);
@@ -1602,7 +1637,12 @@ function resolveSkills(tree, others, idMap, report, state) {
       describe(slot),
       "not in this dump or another dump of the character (the log cuts skill tables at 30 entries)",
     );
-  const mergedNote = (entry) => (entry.from ? ` (from the ${timeLabel(entry.from)} dump)` : "");
+  const mergedNote = (entry) =>
+    entry.equippedAt
+      ? ` (equipped after the login, at ${timeLabel(entry.equippedAt)})`
+      : entry.from
+        ? ` (from the ${timeLabel(entry.from)} dump)`
+        : "";
   if ([...slots.values()].some((entry) => entry.from))
     report.merges.push({
       section: "skills",
@@ -2880,7 +2920,7 @@ export function importSnapshot(scan, dumpId, idMap, { merge = true } = {}) {
   state.equipmentOverrides = gear.overrides;
   state.disabledEquipmentSlots = state.disabledEquipmentSlots.filter((slot) => !gear.overrides[slot]);
   resolveTalents(tree, idMap, report, state);
-  resolveSkills(tree, others, idMap, report, state);
+  resolveSkills(tree, others, idMap, report, state, merged.chosen.skillChanges || []);
   resolveSlates(tree, idMap, report, state);
   // The character's other dumps in merge order (older first), then point listings attached from other log files.
   const pactDonors = merge
