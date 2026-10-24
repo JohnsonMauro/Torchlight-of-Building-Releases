@@ -50,3 +50,16 @@ test("[Penetrating] inflicts only the Infiltrations of the damage types the buil
     "+8% additional Elemental Damage",
   ]);
 });
+
+test("a catalog row that joins lines the item page breaks is read as those lines (Glacial Abyss Arrow, Stray Bird's Return)", () => {
+  const row = (name, start) =>
+    legendaryGear.find((item) => item.name === name).modifiers.find((text) => text.startsWith(start));
+  assert.deepEqual(expandScriptedItemLine("Glacial Abyss Arrow", row("Glacial Abyss Arrow", "[Frostbitten]")), [
+    "[Frostbitten] Inflicts Frostbite when dealing Hit Cold Damage",
+    "+40% Frostbite Effect",
+  ]);
+  assert.deepEqual(expandScriptedItemLine("Stray Bird's Return", row("Stray Bird's Return", "Normal Projectiles")), [
+    "Normal Projectiles will return after reaching their max range and will hit enemies on their path again",
+    "(-15–-10)% additional Projectile Damage",
+  ]);
+});

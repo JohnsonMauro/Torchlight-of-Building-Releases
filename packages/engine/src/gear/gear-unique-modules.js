@@ -2,6 +2,7 @@ import { readOnce } from "../text/read-once.js";
 import { normalizePercentageText, cleanGameText } from "../text/percentage-text.js";
 import { DEDICATED_BRACKET_NAMES } from "../text/granted-core-lines.js";
 import { legendaryCorrodedModifiers as CORRODED_ROWS } from "../../data/gear/legendary-corroded-modifiers.generated.js";
+import { LEGENDARY_AFFIX_TEXTS } from "../../data/gear/legendary-affix-ids.generated.js";
 
 // Per-unique legendary modules (gear-pact batch chunk 4, research/gear-pact-batch-2026-10-12.md §7.3), the same idea as
 // packages/engine/src/heroes/hero-trait-modules.js: a scripted item effect is modeled only where its item text (and keyword tooltips) define it,
@@ -400,7 +401,7 @@ export function splitMultiTypeLine(text) {
 // Joined rows (research/unique-item-coverage-2026-10-13.md §4.5): TLIDB prints some base rows as two or three lines with no
 // separator ("-80 % additional Spell Damage -80 % additional Minion Damage", Bow of Endless Dusk). Two generic splits, for any
 // item and with or without the item name (the badge passes none):
-// 1. Corroded layout: the corroded catalog prints the same row with line breaks. A row whose wording, numbers aside, equals a
+// 1. Corroded layout: the corroded catalog (and every item page, legendary-affix-ids.generated.js) prints the same row with line breaks. A row whose wording, numbers aside, equals a
 //    corroded row's lines joined by spaces is cut at the same places (Magmaskull's three lines, "Changes … to (80–100)
 //    Affliction gains …", where no sign marks the second line).
 // 2. Signed clauses: a space followed by a signed number ("+12", "-80", "+(40–60)") starts a new line, unless the word before
@@ -424,7 +425,9 @@ let corrodedLayouts = null;
 function corrodedLayoutIndex() {
   if (corrodedLayouts) return corrodedLayouts;
   corrodedLayouts = new Map();
-  for (const rows of Object.values(CORRODED_ROWS)) {
+  // The item pages' lines (legendary-affix-ids.generated.js) break the base rows the catalog prints joined (Glacial Abyss
+  // Arrow's "[Frostbitten] … Hit Cold Damage" / "+40% Frostbite Effect", 2026-10-23), as the corroded catalog does its own.
+  for (const rows of [...Object.values(CORRODED_ROWS), Object.values(LEGENDARY_AFFIX_TEXTS).map(([, text]) => text)]) {
     for (const row of rows || []) {
       if (typeof row !== "string" || !row.includes("\n")) continue;
       const lines = row
