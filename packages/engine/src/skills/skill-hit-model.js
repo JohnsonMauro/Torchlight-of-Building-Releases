@@ -663,6 +663,8 @@ export function calculateSkillHit({
   tangleSkill = false,
   extraTriggeredUses = null,
   takenConversion = null,
+  // The build's Max Spell Burst (packages/engine/src/skills/max-spell-burst.js); without it, the plain "+N Max Spell Burst" lines.
+  maxSpellBurst: buildMaxSpellBurst = null,
 } = {}) {
   // Hero effects on one skill (packages/engine/src/heroes/youga-ultimate-one.js: Clockwork Core's Tangle cadence, its shared bonuses, Recall hits,
   // the crit cooldown reduction, the Spell Burst rules, the Alternate Spacetime lines): skill-local plain lines join the
@@ -1251,10 +1253,12 @@ export function calculateSkillHit({
   // cast time; the activation period is max(charge time, use interval), not rounded up to a whole number of use intervals.
   // Combo-cycle skills stay out (user-confirmed 2026-10-12: Combo skills cannot Spell Burst); rate-model skills stay out (user-confirmed 2026-10-12 for Corrosion Focus; the other rate-model skills follow by the same reading). The automatic casts cannot activate Spell Burst
   // again (manual), so they add no activations.
-  const maxSpellBurst = modifierTexts.reduce((total, line) => {
-    const match = String(line.text).match(/^\+(\d+) Max Spell Burst$/i);
-    return total + (match ? Number(match[1]) * (line.multiplier ?? 1) : 0);
-  }, 0);
+  const maxSpellBurst =
+    buildMaxSpellBurst ??
+    modifierTexts.reduce((total, line) => {
+      const match = String(line.text).match(/^\+(\d+) Max Spell Burst$/i);
+      return total + (match ? Number(match[1]) * (line.multiplier ?? 1) : 0);
+    }, 0);
   const spellBurstStacks = Math.floor(maxSpellBurst);
   // A rate-model skill whose own text lets it activate Spell Burst (Rehan – Hero's Resourcefulness: "Burst becomes Burst Blast and
   // can activate Spell Burst"; hero trait audit B10, packages/engine/src/heroes/rehan-traits.js burstProfile) is not blocked by its rate model.

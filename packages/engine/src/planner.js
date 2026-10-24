@@ -124,6 +124,7 @@ import {
 } from "./minions/minion-cores.js";
 import { overlyModifiedState, overlyModifiedLine } from "./minions/sentry-cores.js";
 import { heroTraitStatLines, heroTraitLevelBonus, characterStatTotals } from "./character-stats.js";
+import { resolveMaxSpellBurst } from "./skills/max-spell-burst.js";
 import { resolveLineEffects } from "./text/line-effects.js";
 import { conditionalAuraEffect } from "./skills/conditional-aura-effect.js";
 import { atFullLife, atFullMana, LOW_LIFE_BELOW_PERCENT } from "./text/line-conditions.js";
@@ -366,6 +367,7 @@ function buildLineConditionState({
   talentSlate,
   pact,
   heroMemories,
+  maxSpellBurst,
   earlyBlessings = null,
   damageSources = [],
   debuffHitRates = null,
@@ -402,7 +404,10 @@ function buildLineConditionState({
     : resolvedMain && activeNames.has(resolvedMain.name)
       ? speedFactor
       : 0;
-  const statTotals = characterStatTotals({ modifierTexts, state, heroMemories });
+  const statTotals = characterStatTotals(
+    { modifierTexts, state, heroMemories },
+    { maxSpellBurst: maxSpellBurst.total },
+  );
   const statsByKey = statTotals.byKey;
   // Max Mana / Max Life pools with the level base (packages/engine/src/defense/effective-hp.js rule), for "per 100 Max Mana owned" lines (chunk 3).
   const characterLevelForPools = buildCharacterLevel(state).level;
@@ -777,10 +782,7 @@ function buildLineConditionState({
     blessingMaxStacks: Object.fromEntries(
       (earlyBlessings?.entries || []).map((entry) => [entry.name, entry.maxStacks]),
     ),
-    maxSpellBurst: modifierTexts.reduce((total, line) => {
-      const match = String(line.text).match(/^\+(\d+) Max Spell Burst$/i);
-      return total + (match ? Number(match[1]) * (line.multiplier ?? 1) : 0);
-    }, 0),
+    maxSpellBurst: maxSpellBurst.total,
     // Grudge's Paralysis chance (packages/engine/src/supports/support-effects.js family "paralysis") on each active, modeled skill hit, with that skill's
     // measured hit rate once the planner's first pass has it (calculatePlannerOnce debuffHitRates; packages/engine/src/combat-states.js).
     chanceParalysis: setups
@@ -2211,6 +2213,19 @@ function calculatePlannerOnce(
   const activeNames = new Set(
     allocation.allocations.filter((entry) => entry.status === "active").map((entry) => entry.name),
   );
+  // The build's Max Spell Burst (packages/engine/src/skills/max-spell-burst.js): every Spell Burst reader takes this total. Its
+  // slow-movement lines read the Movement Speed bonus, without the lines that hang on the total itself.
+  const maxSpellBurst = resolveMaxSpellBurst({
+    modifierTexts,
+    movementSpeedPercent:
+      Number(characterStatTotals({ modifierTexts, state, heroMemories }).byKey.movementSpeed?.value) || 0,
+    empowerOrDefensiveSkills: setups.filter(
+      (setup) =>
+        setup.enabled !== false &&
+        activeNames.has(setup.name) &&
+        (setup.tags || []).some((tag) => tag === "Empower" || tag === "Defensive"),
+    ).length,
+  });
   // A granted Aura is always active (user-confirmed 2026-10-13). The board's own copy of the same Aura, when it is active too,
   // is compared with the granted one in the Aura ledger below; otherwise (switched off, or short of energy) the granted copy
   // stands in. activeNames carries the name either way; the board reads its own allocation, not this set.
@@ -2297,10 +2312,7 @@ function calculatePlannerOnce(
   // Terra Charge line. Without these lines the state is the default (1 charge at 26%) and nothing changes.
   // A Terra skill's own support clauses on Terra Charge (Ground Divide: +1 Max Terra Charge, Restoration Speed; frost-terra audit
   // 2026-10-13) join that skill's Terra Charge state only (packages/engine/src/heroes/selena-dance.js terraChargesForSetup).
-  const buildMaxSpellBurst = modifierTexts.reduce((total, line) => {
-    const match = String(line.text).match(/^\+(\d+) Max Spell Burst$/i);
-    return total + (match ? Number(match[1]) * (line.multiplier ?? 1) : 0);
-  }, 0);
+  const buildMaxSpellBurst = maxSpellBurst.total;
   // Icemirror's Mirrored Shade at max stacks (packages/engine/src/combat-states.js; best case, condition mirroredShade) adds Max Terra Charge on
   // the Main Terra Skill the player stands on.
   const mirroredShadeCharges = mirroredShadeTerraChargeLines(modifierTexts, {
@@ -2322,10 +2334,7 @@ function calculatePlannerOnce(
     resolvedMain,
     activeNames,
     extraChargeLines: terraLinesFor(resolvedMain),
-    maxSpellBurst: modifierTexts.reduce((total, line) => {
-      const match = String(line.text).match(/^\+(\d+) Max Spell Burst$/i);
-      return total + (match ? Number(match[1]) * (line.multiplier ?? 1) : 0);
-    }, 0),
+    maxSpellBurst: maxSpellBurst.total,
   });
   const terraChargesFor = (setup) =>
     setup?.setupKey && setup.setupKey === resolvedMain?.setupKey
@@ -2797,6 +2806,7 @@ function calculatePlannerOnce(
     talentSlate,
     pact,
     heroMemories,
+    maxSpellBurst,
     earlyBlessings,
     damageSources,
     debuffHitRates,
@@ -3624,10 +3634,7 @@ function calculatePlannerOnce(
     cursed: targetCursed,
     enemyAilments: mechanics.enemyAilments.types.map((type) => type.name),
     enemyAilmentTypeCount: mechanics.enemyAilments.count,
-    maxSpellBurst: modifierTexts.reduce((total, line) => {
-      const match = String(line.text).match(/^\+(\d+) Max Spell Burst$/i);
-      return total + (match ? Number(match[1]) * (line.multiplier ?? 1) : 0);
-    }, 0),
+    maxSpellBurst: maxSpellBurst.total,
     singleEnemy: true,
     weaponTypes: [
       weaponAttack.mainHand?.weapon ? weaponAttack.mainHand.type : null,
@@ -4051,6 +4058,7 @@ function calculatePlannerOnce(
       profile: source.profile,
       modifierTexts: hitOnlyLines.length ? [...ownLines, ...hitOnlyLines] : ownLines,
       castSpeed,
+      maxSpellBurst: maxSpellBurst.total,
       takenConversion: lineEffects.hero?.takenConversion || null,
       movedRecently: requestedConditions.movedRecently !== false,
       multistrikeEventsPerSecond: hitRateFacts?.multistrikeEventsPerSecond ?? null,
@@ -6071,6 +6079,8 @@ function calculatePlannerOnce(
     igniteLedger,
     ailmentCritical,
     conditions,
+    // The build's Max Spell Burst and what settles it (packages/engine/src/skills/max-spell-burst.js).
+    maxSpellBurst,
     warnings: [...new Set(warnings)],
   };
 }

@@ -274,6 +274,12 @@ export interface PlannerResult {
   murmursTideEffectPercent: number;
   tideEffectFactor: number;
   igniteLimit: number;
+  /** The build's Max Spell Burst and what settles it (packages/engine/src/skills/max-spell-burst.js). */
+  maxSpellBurst: {
+    total: number;
+    sources: { source: string; text: string; value: number; active: boolean; reason: string }[];
+    movementSpeedPercent: number;
+  };
 
   activation: SkillActivation;
   activationMediumTerra: ResultSection;
@@ -353,6 +359,7 @@ export const plannerResultKeys = [
   "murmursTideEffectPercent",
   "tideEffectFactor",
   "igniteLimit",
+  "maxSpellBurst",
   "activation",
   "activationMediumTerra",
   "afflictionRating",

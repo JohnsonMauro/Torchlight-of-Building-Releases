@@ -18,6 +18,7 @@ import {
   EXTRA_PICK_LEVEL,
 } from "./heroes/hero-trait-tree.js";
 import { picksTraitsByTier, selectedTierTraits } from "./heroes/trait-choice-groups.js";
+import { perMaxSpellBurstBonus } from "./skills/max-spell-burst.js";
 import { legendaryBaseDefenseLines } from "./gear/legendary-base-lines.js";
 import { heroTraitKeywordPlainLines } from "./text/inline-keywords.js";
 
@@ -528,6 +529,7 @@ export function characterStatTotals(planner, options = {}) {
   ];
   const totals = new Map();
   const unmatched = [];
+  const maxSpellBurst = options.maxSpellBurst ?? planner?.maxSpellBurst?.total ?? null;
   // A Dual Kismet's effects apply once even with both copies on the pact page.
   const dualSeen = new Set();
   for (const line of lines) {
@@ -537,7 +539,10 @@ export function characterStatTotals(planner, options = {}) {
       if (dualSeen.has(key)) continue;
       dualSeen.add(key);
     }
-    const contributions = parseCharacterStatClause(line.text);
+    // "+X% <stat> per stack of Max Spell Burst, up to +Y%" (Frozen Ripples) at the build's Max Spell Burst
+    // (packages/engine/src/skills/max-spell-burst.js), when the caller knows it.
+    const perStack = maxSpellBurst === null ? null : perMaxSpellBurstBonus(line.text, maxSpellBurst);
+    const contributions = parseCharacterStatClause(perStack ? `+${perStack.percent}% ${perStack.stat}` : line.text);
     if (!contributions.length) {
       unmatched.push(line);
       continue;
