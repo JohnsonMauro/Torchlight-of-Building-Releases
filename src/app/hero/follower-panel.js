@@ -389,6 +389,7 @@ export function followerPickerOptions(query = "") {
  * @typedef {object} FollowerPickerCard
  * @property {string} followerId
  * @property {string} rarityId
+ * @property {string} species The character it belongs to ("Lion Queen"); the selector opens on one card per character.
  * @property {string} search What the search box matches (name, species, title, trait and rarity), lower case.
  * @property {string | null} portrait
  * @property {string} initials Shown when there is no portrait.
@@ -411,6 +412,7 @@ export function followerPickerView(state) {
     return {
       followerId: follower.id,
       rarityId: rarity.id,
+      species: follower.species,
       search: searchText([follower.displayName, follower.species, follower.title, follower.traitName, rarity.name]),
       portrait: follower.portrait || null,
       initials: follower.name.slice(0, 2).toUpperCase(),

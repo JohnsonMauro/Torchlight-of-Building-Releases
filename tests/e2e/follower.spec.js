@@ -52,6 +52,7 @@ test("without a follower: Choose Follower opens the selector, and a choice fills
   await expect(follower.selector()).toBeHidden();
   await follower.button("Choose Follower").click();
   await expect(follower.selector()).toBeVisible();
+  await follower.selectorCharacter("Lion Queen").click();
   await follower.selectorChoice("Lion Queen Normal").click();
   await expect(follower.selector()).toBeHidden();
   await expect(follower.name()).toHaveText("Lion Queen");
@@ -64,6 +65,7 @@ test("Change Follower opens the selector with the current follower pressed", asy
   const { planner, follower } = await openFollower(page);
   await follower.button("Change Follower").click();
   await expect(follower.selector()).toBeVisible();
+  await follower.selectorCharacter("Lion Queen").click();
   await expect(follower.selectorChoice("Arianrhod Scion of Light ULT")).toHaveAttribute("aria-pressed", "true");
   await planner.expectNoErrors();
 });
@@ -102,6 +104,7 @@ test("a build imported from the game log warns on the Follower tab until a follo
   await expect(follower.tooltip()).toContainText("does not record your active follower");
   await page.mouse.move(0, 0);
   await follower.button("Choose Follower").click();
+  await follower.selectorCharacter("Lion Queen").click();
   await follower.selectorChoice("Lion Queen Normal").click();
   await expect(follower.name()).toHaveText("Lion Queen");
   await expect(follower.notice()).toBeHidden();

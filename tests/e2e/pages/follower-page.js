@@ -42,6 +42,17 @@ export class FollowerPage {
   selectorChoice(start) {
     return this.selector().getByRole("button", { name: new RegExp(`^${start}`) });
   }
+  /** A character on the selector's opening screen ("Lion Queen 4 ranks · 3 ULT"). */
+  selectorCharacter(name) {
+    return this.selector().getByRole("button", { name: new RegExp(`^${name} \\d+ ranks?`) });
+  }
+  selectorCharacters() {
+    return this.selector().locator(".follower-character-card");
+  }
+  /** The selector's way back from a character's followers. */
+  selectorPath() {
+    return this.selector().getByRole("navigation", { name: "Follower selector path" });
+  }
   skillSelector() {
     return this.page.locator("#skill-selector");
   }

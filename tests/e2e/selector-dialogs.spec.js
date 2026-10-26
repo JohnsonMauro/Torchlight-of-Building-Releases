@@ -95,11 +95,32 @@ async function openFollowerSelector(page) {
   return { planner, follower, dialog: follower.selector() };
 }
 const followerCards = (dialog) => dialog.locator(".follower-selector-card");
+const lionQueen = followerPickerOptions("").filter(({ follower }) => follower.species === "Lion Queen");
 
-test("the follower selector lists each follower per rarity, marks the current one and searches", async ({ page }) => {
+test("the follower selector opens on the four characters; a character lists its ranks and ULT followers", async ({
+  page,
+}) => {
   const { planner, follower, dialog } = await openFollowerSelector(page);
   await expect(dialog.getByRole("heading", { name: "Select Follower" })).toBeVisible();
-  await expect(followerCards(dialog)).toHaveCount(followerPickerOptions("").length);
+  await expect(follower.selectorCharacters()).toHaveText([/^Lion Queen/, /^Lone Wolf/, /^Mammoth/, /^Witch Rat/]);
+  await expect(followerCards(dialog)).toHaveCount(0);
+  // The build's follower (Arianrhod, a Lion Queen) marks its character.
+  await expect(follower.selectorCharacter("Lion Queen")).toHaveClass(/\bselected\b/);
+  await expect(follower.selectorCharacter("Lone Wolf")).not.toHaveClass(/\bselected\b/);
+  await expect(follower.selectorCharacter("Lion Queen")).toContainText("4 ranks · 3 ULT");
+  await follower.selectorCharacter("Lion Queen").click();
+  await expect(followerCards(dialog)).toHaveCount(lionQueen.length);
+  await expect(followerCards(dialog).first()).toHaveAccessibleName(/^Lion Queen Normal/);
+  await expect(follower.selectorCharacters()).toHaveCount(0);
+  await follower.selectorPath().getByRole("button", { name: "Characters", exact: true }).click();
+  await expect(follower.selectorCharacters()).toHaveCount(4);
+  await expect(followerCards(dialog)).toHaveCount(0);
+  await planner.expectNoErrors();
+});
+
+test("the follower selector marks the current follower and searches every character", async ({ page }) => {
+  const { planner, follower, dialog } = await openFollowerSelector(page);
+  await follower.selectorCharacter("Lion Queen").click();
   await expect(dialog.locator('.follower-selector-card[aria-pressed="true"]')).toHaveCount(1);
   const current = follower.selectorChoice("Arianrhod Scion of Light ULT");
   await expect(current).toHaveClass(/\bselected\b/);
@@ -114,6 +135,9 @@ test("the follower selector lists each follower per rarity, marks the current on
   await search.fill("zzz");
   await expect(followerCards(dialog)).toHaveCount(0);
   await expect(dialog.locator(".hero-selector-empty")).toHaveText("No followers match that search.");
+  // An empty search goes back to the character it was on.
+  await search.fill("");
+  await expect(followerCards(dialog)).toHaveCount(lionQueen.length);
   await planner.expectNoErrors();
 });
 
@@ -124,6 +148,8 @@ test("the follower selector shows a follower's tooltip, closes from × and outsi
   // The tooltip moves into the dialog, which scrolls it a little, and a scroll hides the tooltip: each try hovers anew.
   await expect(async () => {
     await page.mouse.move(0, 0);
+    if (!(await follower.selectorChoice("Lion Queen Normal").count()))
+      await follower.selectorCharacter("Lion Queen").click();
     await follower.selectorChoice("Lion Queen Normal").hover();
     await expect(dialog.getByRole("tooltip")).toBeVisible({ timeout: 500 });
   }).toPass();
@@ -134,7 +160,8 @@ test("the follower selector shows a follower's tooltip, closes from × and outsi
   await expect(dialog).toBeHidden();
   await follower.button("Change Follower").click();
   await expect(search).toHaveValue("");
-  await expect(followerCards(dialog)).toHaveCount(followerPickerOptions("").length);
+  await expect(follower.selectorCharacters()).toHaveCount(4);
+  await expect(followerCards(dialog)).toHaveCount(0);
   await page.mouse.click(5, 5);
   await expect(dialog).toBeHidden();
   expect((await follower.stored()).followerId).toBe("scion-of-light");
