@@ -40,7 +40,6 @@ import { dragDrop, pendingDrop, type Rect } from "./slate-drop";
 import { useSlateDrag, type SlateDragView } from "./use-slate-drag";
 import { hideTooltip } from "../../ui/tooltip/tooltip-store";
 
-const ART_CELL_PX = 72;
 const WHEEL_QUIET_MS = 80;
 
 export function SlateBoard() {
@@ -214,8 +213,10 @@ function SlateStage({ view }: { view: SlatesView }) {
   });
 
   return (
+    // As wide as the panel (#slate-board is the @container): the cell is 72px while the panel fits the grid at that size and
+    // shrinks with it below, so neither the grid nor the toolbar above it ever needs a sideways scroll.
     <div
-      className="slate-stage relative grid h-full min-h-0 min-w-[calc(var(--cell)*14)] place-items-center [--cell:72px] max-[520px]:[--cell:min(15vw,64px)]"
+      className="slate-stage relative grid h-full min-h-0 place-items-center [--cell:min(72px,calc(100cqw/6))]"
       ref={stageRef}
     >
       {/* Centred across the stage, at the height that centres it in the panel (--slate-grid-top, set above). */}
@@ -288,8 +289,8 @@ function SlatePiece({ piece, drag, onClick, onContextMenu, onPointerDown }: Slat
     "--slate-height": height,
     "--slate-base-width": piece.baseWidth,
     "--slate-base-height": piece.baseHeight,
-    "--slate-art-width": `${piece.baseWidth * ART_CELL_PX}px`,
-    "--slate-art-height": `${piece.baseHeight * ART_CELL_PX}px`,
+    "--slate-art-width": `calc(var(--cell) * ${piece.baseWidth})`,
+    "--slate-art-height": `calc(var(--cell) * ${piece.baseHeight})`,
     "--slate-rotation": `${pose.rotation}deg`,
     "--slate-flip-x": pose.flipX,
     "--slate-flip-y": pose.flipY,

@@ -278,17 +278,15 @@ test("the Slates tab shows the slate board in place of the tree, and a tree tab 
   await planner.expectNoErrors();
 });
 
-test("the slate board takes the tree's height (at least 650px), and the tree keeps it when it comes back", async ({
-  page,
-}) => {
+test("the slate board takes the tree's box, and the tree keeps it when it comes back", async ({ page }) => {
   const { planner, talents } = await openTalents(page);
   const tree = await talents.treePanel().boundingBox();
   await talents.slatesTab().click();
   const board = page.locator("#talents-view .slate-board-panel");
   await expect(board).toBeVisible();
   const slateBox = await board.boundingBox();
-  expect(Math.abs(slateBox.height - Math.max(650, Math.ceil(tree.height)))).toBeLessThanOrEqual(1);
-  expect(Math.abs(slateBox.y - tree.y)).toBeLessThanOrEqual(1);
+  for (const side of ["x", "y", "width", "height"])
+    expect(Math.abs(slateBox[side] - tree[side])).toBeLessThanOrEqual(1);
   await talents.openTree("Tree 4");
   const back = await talents.treePanel().boundingBox();
   expect(Math.abs(back.height - tree.height)).toBeLessThanOrEqual(1);

@@ -87,7 +87,8 @@ test("dragging a slate onto free cells places it there", async ({ page }) => {
 
 test("dragging a slate off the grid parks it beside the grid, unequipped", async ({ page }) => {
   const { planner, slates } = await openSlates(page);
-  await slates.drag(FALLEN, -4.5 * CELL, 0);
+  // Released a cell and a half left of the grid: the stage is the panel's width, so that is still inside it.
+  await slates.drag(FALLEN, -4 * CELL, 0);
   await expect(slates.toast()).toHaveText("Slate parked beside the grid");
   await expect(slates.piece(FALLEN)).toHaveClass(/\bparked-slate\b/);
   await expect(slates.piece(FALLEN)).toHaveAttribute("aria-label", /parked outside the grid/);

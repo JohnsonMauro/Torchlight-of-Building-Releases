@@ -22,7 +22,9 @@ const LIFTED = "cursor-grabbing opacity-90";
 /** The piece: a box of whole cells, transparent to the pointer except on its tiles. */
 export function pieceClasses({ piece, parked, dragged }: PieceLook, stateClasses: string) {
   const place = parked
-    ? "left-(--park-x) top-(--park-y)"
+    ? // Parked: where it was dropped, pulled back inside the stage if the panel has narrowed since.
+      "left-[clamp(0px,var(--park-x),calc(100%-var(--slate-width)*var(--cell)))] " +
+      "top-[clamp(0px,var(--park-y),calc(100%-var(--slate-height)*var(--cell)))]"
     : "left-[calc((var(--slate-column)-1)*var(--cell))] top-[calc((var(--slate-row)-1)*var(--cell))]";
   const layer = piece.pending
     ? "z-24"
