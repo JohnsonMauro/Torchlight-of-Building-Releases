@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { importSnapshot, loadGameIdMap } from "../../src/game-log/game-log-import.js";
 import { craftedSlateShapeForId } from "../../src/game-log/slate-shape-ids.js";
 import { slateCells } from "../../packages/engine/src/talents/slate-board.js";
+import { legendarySlateShapes } from "../../packages/engine/src/talents/slate-judgment.js";
 import { calculatePlanner } from "../../packages/engine/src/planner.js";
 import { normalizePlannerState } from "../../packages/engine/src/state/planner-state.ts";
 
@@ -144,4 +145,33 @@ test("every slate of a logged board lands on the cells the game shows (Goddess o
   assert.deepEqual(cellsOf("A Corner of Divinity"), ["4,4", "5,4", "5,5"]);
   assert.deepEqual(cellsOf("Fallen Starlight"), ["4,3", "5,3"]);
   assert.deepEqual(state.slates.parked, {});
+});
+
+test("Nether King's Divinity: Judgment logs no Direction and lies unrotated on its cell (the game's board, 2026-10-26)", async () => {
+  const scan = {
+    dumps: [
+      {
+        id: "d1",
+        stamp: "2026-10-26T11:17:13.232Z",
+        character: 1,
+        accountGroup: 1,
+        tree: {
+          player: { Level: "97", HeroId: "810", HeroPurchaseId: "4002" },
+          bag: {
+            dressingTalentBlocks: {
+              1: { Index: "22", PageId: "-4", Item: { BaseId: "394004", UniqueItmId: "0", Id: "394004_j" } },
+            },
+          },
+        },
+      },
+    ],
+  };
+  const { state } = importSnapshot(scan, "d1", await loadGameIdMap());
+  const slate = state.slates.inventory.find((item) => item.name === "Nether King's Divinity: Judgment");
+  const placement = state.slates.placements[slate.id];
+  assert.ok(placement, "placed on the board");
+  const cells = slateCells({ ...slate, shape: legendarySlateShapes[slate.name] }, placement)
+    .map((cell) => `${cell.column},${cell.row}`)
+    .sort();
+  assert.deepEqual(cells, ["2,2", "5,2", "5,5"]);
 });

@@ -16,6 +16,7 @@ import {
   baseAffixTiers,
   beltBlends,
   canPlaceSlate,
+  isJudgmentSlate,
   lockedSlateCells,
   CLOCKWORK_CORE,
   craftAffixes,
@@ -2102,7 +2103,9 @@ function resolveSlates(tree, idMap, report, state) {
     // Placement from the game's anchor cell. The log leaves Direction out when it is 0 (no dump writes "Direction [0]"),
     // so a missing one is 0, as for god-crafted slates (gameDirectionTurn).
     const shape = legendarySlateShapes[name];
-    const turned = gameDirectionTurn(item.Direction) ?? 0;
+    // Judgment logs no Direction and lies unrotated (owner's game board, 2026-10-26: cell 22, marks at 2,2 5,2 5,5).
+    const direction = item.Direction ?? (isJudgmentSlate({ name }) ? "2" : undefined);
+    const turned = gameDirectionTurn(direction) ?? 0;
     const offsets = slateOffsets({ shape }, turned, 1, 1);
     const anchor = offsets[anchorCell(shape)];
     const boardSlate = { ...crafted, shape };
