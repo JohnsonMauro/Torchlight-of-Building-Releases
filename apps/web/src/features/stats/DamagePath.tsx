@@ -40,8 +40,8 @@ const SECTION_CARD = "group/section panel m-0 overflow-hidden";
 // The summary card of a path (and of the Ill Omen card) with its heading strip.
 const SUMMARY_CARD =
   "panel m-0 grid gap-2 overflow-hidden px-3.5 pb-3 max-[560px]:px-2.5 max-[560px]:pb-2.5 compact:gap-1.5 compact:pb-2";
-const SUMMARY_HEADING = `${HEAD_STRIP} -mx-3.5 mb-0.5 px-3.5 py-2 font-display text-sm font-semibold tracking-wider text-accent uppercase max-[560px]:-mx-2.5 max-[560px]:px-2.5 compact:py-1.5`;
-const SUMMARY_HEADING_NOTE = "ml-1.5 font-sans text-xs font-normal tracking-normal text-muted normal-case";
+const SUMMARY_HEADING = `${HEAD_STRIP} -mx-3.5 mb-0.5 px-3.5 py-2 text-sm font-semibold tracking-wider text-accent uppercase max-[560px]:-mx-2.5 max-[560px]:px-2.5 compact:py-1.5`;
+const SUMMARY_HEADING_NOTE = "ml-1.5 text-xs font-normal tracking-normal text-muted normal-case";
 const INTRO = "text-xs leading-normal text-muted";
 // The windows: one tile per figure, the emphasised one tinted with the accent.
 const WINDOWS = "m-0 flex flex-wrap gap-2";

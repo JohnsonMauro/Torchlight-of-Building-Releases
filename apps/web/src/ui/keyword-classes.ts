@@ -1,6 +1,6 @@
 // A game keyword in running text: the game's cyan with a solid underline (KeywordText), and its explanation.
 export const KEYWORD = "game-keyword text-info underline underline-offset-2";
-export const KEYWORD_NAME = "block font-display text-sm font-bold text-info";
+export const KEYWORD_NAME = "block text-sm font-bold text-info";
 export const KEYWORD_DEFINITION = "mt-1 block text-xs/snug whitespace-pre-line text-text";
 // The explanations under a tooltip's text (KeywordNotes), each after a divider. The frames without padding of their own
 // (tooltip-classes.ts: gear, skill, memory, scent, pact, prism, talent node, source summary) get the frame's padding.

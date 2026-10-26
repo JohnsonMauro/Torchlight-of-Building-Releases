@@ -51,7 +51,7 @@ export function CoreTalentPickerDialog() {
           >
             <Artwork src={option.art} alt={option.name} className={`core-picker-art ${ART}`} />
             <span>
-              <strong className="block font-display text-base text-accent">{option.name}</strong>
+              <strong className="block text-base text-accent">{option.name}</strong>
               <small className="mt-1 block text-sm leading-relaxed text-muted">
                 <KeywordText text={option.description} />
               </small>

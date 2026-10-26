@@ -3,7 +3,7 @@
 
 export const HEAD = "grid grid-cols-[34px_minmax(0,1fr)] items-center gap-2 px-3 pt-2.5 pb-1";
 export const ICON = "size-8 rounded border border-(--tip-edge) bg-sunken object-contain";
-export const NAME = "min-w-0 font-display text-sm/tight font-bold text-(--tip-name)";
+export const NAME = "min-w-0 text-sm/tight font-bold text-(--tip-name)";
 export const LEVEL = "flex-none text-xs font-extrabold whitespace-nowrap text-accent";
 export const ADDED_LEVELS = "ml-0.5 font-bold";
 export const STARS = "text-xs tracking-wide text-accent";

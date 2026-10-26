@@ -16,7 +16,7 @@ import { useRegisteredDialog } from "../../ui/dialog-registry";
 const COLUMN =
   "flex flex-col items-center gap-3 rounded-md border border-(--talent-emblem)/35 bg-(--talent-emblem)/10 px-2 pt-3 pb-4";
 const PORTRAIT = "size-24 rounded-full border-2 border-(--talent-emblem)/70 object-cover max-[760px]:size-18";
-const GOD_NAME = "text-center font-display text-sm leading-tight font-bold text-text";
+const GOD_NAME = "text-center text-sm leading-tight font-bold text-text";
 /** A tree: its emblem in a ring, its name under it (the game shows the emblem alone). */
 const TREE = "talent-picker-card group flex w-full flex-col items-center gap-1 p-0 focus-visible:outline-none";
 const TREE_RING = "relative grid size-16 place-items-center rounded-full border-2 bg-sunken";
@@ -49,7 +49,7 @@ const treeLabel = (tree: TalentPickerTreeView) =>
 function TreeTooltipCard({ tree }: { tree: TalentPickerTreeView }) {
   return (
     <div className="grid gap-0.5 text-sm">
-      <strong className="font-display">{tree.name}</strong>
+      <strong>{tree.name}</strong>
       <span className="text-xs text-muted">{`${tree.kind} · ${tree.points} points`}</span>
       {tree.note ? <span className="text-xs text-warn">{tree.note}</span> : null}
     </div>

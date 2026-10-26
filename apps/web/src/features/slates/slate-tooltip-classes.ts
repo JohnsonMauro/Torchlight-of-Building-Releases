@@ -13,7 +13,7 @@ const FAMILY_EMBLEMS = [
 
 export const HEAD = `grid grid-cols-[44px_minmax(0,1fr)] items-center gap-2.5 ${FAMILY_EMBLEMS}`;
 export const ICON = "size-10.5 object-contain";
-export const TITLE = "block font-display text-sm/tight font-bold text-[var(--talent-emblem,var(--color-info))]";
+export const TITLE = "block text-sm/tight font-bold text-[var(--talent-emblem,var(--color-info))]";
 export const KICKER = "mt-2 block border-t border-line pt-2 text-xs tracking-wider text-muted";
 export const JUDGMENT = "my-2 rounded-sm border border-info/50 bg-info/10 px-2.25 py-1.5 text-xs font-bold text-info";
 export const PREVIEW = `mt-3 border-t border-line pt-2.5 ${FAMILY_EMBLEMS}`;

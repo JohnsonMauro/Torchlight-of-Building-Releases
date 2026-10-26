@@ -166,8 +166,7 @@
   --color-overlay: var(--c-overlay);
   --color-veil: var(--c-veil);
   --color-shadow: var(--c-shadow);
-  --font-display: "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  --font-sans: "Segoe UI", system-ui, Arial, sans-serif;
+  --font-sans: "Inter Variable", system-ui, sans-serif;
   --art-magic: url("../../../../src/assets/active-skill-rare-background.png");
 }
 

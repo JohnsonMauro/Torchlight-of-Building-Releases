@@ -17,7 +17,7 @@ const PANEL = "panel overflow-hidden p-5 max-[520px]:p-4";
 const PANEL_HEADING =
   "mb-4 flex min-h-16 items-center justify-between border-b border-line px-4 py-3 max-[600px]:items-start max-[600px]:gap-2.5";
 
-const PANEL_TITLE = "mt-0.5 font-display text-lg/[normal] font-bold text-text";
+const PANEL_TITLE = "mt-0.5 text-lg/[normal] font-bold text-text";
 
 /** The library's toolbar buttons, after `btn` or `btn-danger`. */
 const LIBRARY_BUTTON = "min-h-9 px-3 text-xs font-bold tracking-wide uppercase";
@@ -36,7 +36,7 @@ export function BuildsPage() {
       <div className="flex items-end justify-between gap-5 px-0.5 pt-1 pb-4 max-[600px]:flex-col max-[600px]:items-stretch">
         <div>
           <p className={EYEBROW}>Your workspace</p>
-          <h1 className="mt-0.5 mb-1 font-display text-3xl/tight font-bold tracking-tight text-text">Builds</h1>
+          <h1 className="mt-0.5 mb-1 text-3xl/tight font-bold tracking-tight text-text">Builds</h1>
           <p className="text-sm text-muted">Open a build, start a new one or import one.</p>
         </div>
         <div className="flex items-center gap-4 max-[600px]:justify-between">

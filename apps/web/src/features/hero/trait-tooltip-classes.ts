@@ -3,7 +3,7 @@
 
 export const HEAD = "flex items-center justify-between gap-4";
 export const HEAD_FOLLOWER = "border-b border-(--tip-edge) pb-2";
-export const TITLE = "min-w-0 font-display text-sm/tight font-bold";
+export const TITLE = "min-w-0 text-sm/tight font-bold";
 export const TITLE_TRAIT = "text-accent";
 export const TITLE_FOLLOWER = "text-text";
 export const HEAD_COVERAGE = "my-0 ml-auto flex-none px-1.5 py-0.5";

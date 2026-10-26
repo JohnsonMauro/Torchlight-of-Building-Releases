@@ -14,7 +14,7 @@ export function DamageSummary() {
           <div>
             <p className="text-[10px] tracking-wider text-muted uppercase">Average DPS · first {view.spanSeconds} s</p>
             <strong
-              className="font-display text-2xl text-accent-strong tabular-nums"
+              className="text-2xl font-semibold text-accent-strong tabular-nums"
               title={view.averageDps.full}
               data-damage-summary-dps=""
             >

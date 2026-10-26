@@ -6,7 +6,7 @@ export const ICON =
   "grid size-10 place-items-center overflow-hidden rounded-full border border-(--tip-edge) bg-sunken text-xl text-(--tip-accent)";
 export const ICON_ART = "size-8.5 object-contain";
 export const KICKER = "block text-[10px] font-bold tracking-widest text-(--tip-accent) uppercase";
-export const TITLE = "mt-0.75 block font-display text-sm/tight font-bold text-text";
+export const TITLE = "mt-0.75 block text-sm/tight font-bold text-text";
 export const BADGE =
   "rounded-sm border border-(--tip-edge) bg-sunken px-1.5 py-1 text-xs font-bold whitespace-nowrap text-(--tip-accent)";
 export const BODY = "px-3 py-2.25";
@@ -30,7 +30,7 @@ export const FOOTER = "block border-t border-line px-3 py-1.75 text-center text-
 // An installed prism; the frame's --tip-accent is violet.
 export const PRISM_HEAD = "grid grid-cols-[42px_1fr] items-center gap-x-2.25 gap-y-1 border-b border-line p-3";
 export const PRISM_ICON = "row-span-2 size-10 object-contain";
-export const PRISM_TITLE = "font-display text-sm/snug font-bold text-accent";
+export const PRISM_TITLE = "text-sm/snug font-bold text-accent";
 export const PRISM_KICKER = "col-start-2 text-[10px] text-muted uppercase";
 export const PRISM_BODY = "p-3";
 export const PRISM_AREA = "mb-2 text-xs text-muted";

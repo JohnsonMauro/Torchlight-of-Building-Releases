@@ -18,7 +18,7 @@ export function SiteHeader() {
         data-view="builds"
         onClick={(event) => event.preventDefault()}
       >
-        <span className="truncate font-display text-xl font-bold tracking-wider text-accent uppercase max-sm:text-lg">
+        <span className="truncate text-xl font-bold tracking-wider text-accent uppercase max-sm:text-lg">
           Torchlight of Building
         </span>
         <span className="text-xs font-semibold tracking-widest text-muted uppercase max-md:hidden">

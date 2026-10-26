@@ -4,7 +4,7 @@
 export const HEAD =
   "grid grid-cols-[32px_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1.5 border-b border-(--tip-edge) px-3 pt-3 pb-2.5";
 export const ICON = "row-start-1 size-8 rounded-sm border border-(--tip-edge) bg-sunken object-contain p-0.5";
-export const NAME = "min-w-0 font-display text-sm/tight font-bold text-(--tip-name)";
+export const NAME = "min-w-0 text-sm/tight font-bold text-(--tip-name)";
 const CHIP = "rounded-sm border px-1.5 py-1 text-[10px]/none uppercase not-italic";
 export const BASE_CHIP = `${CHIP} border-line text-muted`;
 export const RARITY_CHIP = `${CHIP} border-(--tip-edge) text-(--tip-accent)`;

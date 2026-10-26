@@ -62,7 +62,7 @@ export const MOD_CHOICE = "grid grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)] items-
 export const SELECTED_CARD =
   "grid grid-cols-[46px_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-grade-legendary/60 bg-raised p-3";
 export const SELECTED_ICON = "size-11.5 rounded-sm bg-grade-legendary/15 object-contain";
-export const SELECTED_NAME = "block font-display text-base font-bold text-grade-legendary";
+export const SELECTED_NAME = "block text-base font-bold text-grade-legendary";
 export const SELECTED_DETAIL = "block text-sm text-muted";
 export const SELECTED_CHANGE = "btn px-2.5 py-1 text-xs";
 

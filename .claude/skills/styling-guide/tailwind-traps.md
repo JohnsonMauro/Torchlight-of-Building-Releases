@@ -4,6 +4,7 @@ Part of the skill [styling-guide](SKILL.md) (§5, §7).
 
 ## 5. Type and sizes
 
+- The typeface is Inter for everything: **[typography.md](typography.md)** (§9).
 - Type, spacing and radius from Tailwind's scales; the closest step wins over an exact arbitrary value (a "+30%" on
   `text-xs` is `text-base`). Arbitrary values only for a measured geometry (`grid-cols-[77px_76px_…]` matching a
   socket size).

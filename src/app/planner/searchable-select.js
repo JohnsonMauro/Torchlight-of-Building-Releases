@@ -45,7 +45,7 @@ const affixTagClass = (family) =>
 const MAX_BADGE_CLASS =
   "max-divinity-badge inline-block flex-none rounded-sm border border-warn/60 bg-warn/15 px-1.5 py-0.5 text-[10px]/tight font-bold tracking-wide whitespace-nowrap text-warn";
 const NAME_CLASS = "text-xs";
-const REVIVED_NAME_CLASS = "font-display text-sm text-text";
+const REVIVED_NAME_CLASS = "text-sm font-semibold text-text";
 const DESCRIPTION_CLASS = "whitespace-pre-line text-xs/snug text-muted";
 const CLAMPED_DESCRIPTION_CLASS = `${DESCRIPTION_CLASS} line-clamp-2`;
 const META_CLASS = "text-xs text-dim";

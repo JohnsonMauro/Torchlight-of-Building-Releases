@@ -3,7 +3,7 @@
 
 export const HEAD = "flex items-center gap-2.5 border-b border-(--tip-edge) px-3 py-2.75";
 export const HEAD_ICON = "size-9 object-contain";
-export const TITLE = "block font-display text-sm font-bold text-(--tip-accent)";
+export const TITLE = "block text-sm font-bold text-(--tip-accent)";
 export const KICKER = "mt-0.75 block text-xs text-muted";
 export const REVIVED_BADGE =
   "mx-3 mt-2.25 inline-flex w-max items-center gap-1 rounded-sm bg-grade-magic px-2 py-0.5 text-xs font-bold tracking-wide whitespace-nowrap text-on-accent";
@@ -25,7 +25,7 @@ export const FOOTER = "block border-t border-line px-3 py-2 text-xs text-dim";
 export const SCENT_HEAD = "grid grid-cols-[44px_minmax(0,1fr)] items-center gap-2.5 border-b border-line px-3 py-2.75";
 export const SCENT_ICON = "size-10.5 rounded border border-line-strong bg-sunken object-contain";
 export const SCENT_KICKER = "mb-0.75 block text-[10px] font-extrabold tracking-wider text-muted uppercase";
-export const SCENT_TITLE = "block font-display text-sm/tight font-extrabold text-accent";
+export const SCENT_TITLE = "block text-sm/tight font-extrabold text-accent";
 export const SCENT_TAGS = "flex flex-wrap gap-1.25 px-3 pt-2";
 export const SCENT_TAG = "rounded-xs border border-line bg-raised px-1.5 py-0.75 text-[10px] text-accent uppercase";
 export const SCENT_EFFECTS = "grid gap-1.5 px-3 py-2.75";

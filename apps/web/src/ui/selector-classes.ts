@@ -30,8 +30,8 @@ export const portraitCard = (chosen: boolean): string =>
 /** The portrait's box; its border colour is the caller's. */
 export const portraitImage = "size-16 rounded-lg border-2 object-cover";
 export const portraitFallback =
-  "grid size-16 place-items-center rounded-lg border-2 border-line-strong bg-sunken font-display text-lg font-bold text-accent-strong";
-export const portraitName = "block text-center font-display text-sm";
+  "grid size-16 place-items-center rounded-lg border-2 border-line-strong bg-sunken text-lg font-bold text-accent-strong";
+export const portraitName = "block text-center text-sm";
 export const portraitCaption = "block text-center text-xs";
 
 // ---- Sage's scent and Carino's ammo: a list of icon rows -----------------------------------------------------------

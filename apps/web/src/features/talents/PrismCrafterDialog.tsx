@@ -252,9 +252,7 @@ function PrismPreview({ preview }: { preview: NonNullable<PrismCrafterView["prev
       <span className={`prism-preview-icon mx-auto mt-4 mb-2 ${PRISM_ICON}`}>
         {preview.icon ? <img src={preview.icon} alt="" /> : "✦"}
       </span>
-      <h3
-        className={`mx-2 mb-2 font-display text-lg font-bold ${preview.inverse ? "text-grade-vorax" : "text-accent"}`}
-      >
+      <h3 className={`mx-2 mb-2 text-lg font-bold ${preview.inverse ? "text-grade-vorax" : "text-accent"}`}>
         {preview.name}
       </h3>
       <small className="chip mb-4 px-2.5 py-1 text-xs">{preview.inverse ? "INVERSE IMAGE" : "ETHEREAL PRISM"}</small>

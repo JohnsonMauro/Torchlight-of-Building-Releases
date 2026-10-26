@@ -29,7 +29,7 @@ const SLOT_EMBLEM = "size-15.5 max-[1100px]:size-10.5";
 /** The small caps label over a slot's name. */
 const SLOT_LABEL = "block text-[10px] tracking-wider text-dim uppercase max-[1100px]:tracking-normal";
 const SLOT_NAME =
-  "my-1 block font-display text-sm leading-tight font-bold max-[1100px]:my-0.5 max-[1100px]:font-sans max-[1100px]:text-xs max-[1100px]:leading-[normal]";
+  "my-1 block text-sm leading-tight font-bold max-[1100px]:my-0.5 max-[1100px]:text-xs max-[1100px]:leading-[normal]";
 /** Reselect / Reset / Install Prism. */
 const TALENT_ACTION = "talent-action btn min-h-8 px-3 py-1.5 text-xs font-bold max-[760px]:px-2";
 /** Install Prism's icon, the game's: its art (white on transparent) as a mask in the button's text colour. */

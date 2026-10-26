@@ -1,6 +1,6 @@
 ---
 name: styling-guide
-description: Tailwind 4 and design-system rules of this planner — the one stylesheet, colour tokens, shared utilities, the neutral state variants, density (no empty space), the section heading pattern and the panel rhythm. Use before writing or changing any className, layout, spacing, size, font, icon size or heading in apps/web or in HTML strings under src/app and src/game-log, and before adding a shared class constant.
+description: Tailwind 4 and design-system rules of this planner — the one stylesheet, colour tokens, shared utilities, the neutral state variants, density (no empty space), the section heading pattern, the panel rhythm and the default typeface (Inter). Use before writing or changing any className, layout, spacing, size, font or typeface, icon size or heading in apps/web or in HTML strings under src/app and src/game-log, and before adding a shared class constant.
 ---
 
 # Styling and design system
@@ -13,6 +13,7 @@ matching it pixel for pixel. §1–2 hold for every class you write; the rest is
 | spacing, sizes, a panel, a heading, a counter or button in a tab, icon sizes, a new block in a tab | **[density-and-headings.md](density-and-headings.md)** (§3–4) |
 | a state's look (active, selected, disabled, hover, rarity, tier), a class or id that JS or a test reads, a hook class | **[test-read-classes.md](test-read-classes.md)** (§6, §8) |
 | font size, line height, a breakpoint, an arbitrary value, `url()`, classes inside HTML strings under `src/app` | **[tailwind-traps.md](tailwind-traps.md)** (§5, §7) |
+| the typeface, font weights, figures in columns (`tabular-nums`), a font feature | **[typography.md](typography.md)** (§9) |
 
 A change that fits several rows reads every file in them.
 

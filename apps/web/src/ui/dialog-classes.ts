@@ -8,7 +8,7 @@
 export const plainDialogClass = "dialog-panel p-5 text-sm/[normal] text-text max-[480px]:p-4";
 
 /** The dialog's title. */
-export const plainDialogTitleClass = "mb-2.5 font-display text-xl/[normal] font-bold text-accent wrap-anywhere";
+export const plainDialogTitleClass = "mb-2.5 text-xl/[normal] font-bold text-accent wrap-anywhere";
 
 /** A paragraph of the dialog's text. */
 export const plainDialogTextClass = "text-sm/normal";

@@ -43,7 +43,7 @@ export function ItemPreview({ preview }: { preview: ItemPreviewView }) {
     <article className={`${PREVIEW} ${itemCardLook(preview.className)} ${preview.className}`}>
       <header className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
         <div className="min-w-0">
-          <h3 className="font-display text-lg/tight font-bold text-(--item-name)">{preview.name}</h3>
+          <h3 className="text-lg/tight font-bold text-(--item-name)">{preview.name}</h3>
           <div className="mt-2 grid gap-1 text-sm text-muted">
             {preview.itemLevel ? (
               <p className={preview.priceless ? "text-accent" : undefined}>{preview.itemLevel}</p>

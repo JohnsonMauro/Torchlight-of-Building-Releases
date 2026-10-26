@@ -215,7 +215,7 @@ function SkillSlot({ slot }: { slot: FollowerSlotView }) {
           <span className="grid min-w-0 justify-items-start gap-0.75">
             <small className={skillCaption}>{slot.kind}</small>
             <strong
-              className={`wrap-anywhere ${slot.skillName ? "font-display text-sm leading-tight text-text" : "text-xs leading-tight text-muted"}`}
+              className={`wrap-anywhere ${slot.skillName ? "text-sm leading-tight font-semibold text-text" : "text-xs leading-tight text-muted"}`}
             >
               {slot.title}
             </strong>

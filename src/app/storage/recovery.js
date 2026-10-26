@@ -28,7 +28,7 @@ const escapeText = (value) =>
 const BODY_CLASS = "[&>:not(.recovery-screen)]:hidden!";
 const PANEL_CLASS = "panel p-5 leading-[normal] max-[520px]:p-4";
 const EYEBROW_CLASS = "mb-1.5 text-xs font-bold tracking-widest text-accent-strong uppercase";
-const TITLE_CLASS = "mb-3 font-display text-5xl/tight font-bold tracking-tight text-text max-[520px]:text-4xl";
+const TITLE_CLASS = "mb-3 text-5xl/tight font-bold tracking-tight text-text max-[520px]:text-4xl";
 
 const intro = {
   unfinished: "The planner didn't finish loading last time. Your builds are safe.",

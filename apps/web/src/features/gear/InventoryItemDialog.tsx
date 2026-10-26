@@ -75,9 +75,7 @@ export function InventoryItemDialog() {
                 alt=""
                 className="mx-auto size-14.5 rounded border-2 border-(--item-frame) bg-(--item-frame)/15 object-contain p-1.25"
               />
-              <strong className="text-center font-display text-base font-bold text-(--item-name)">
-                {view.item.name}
-              </strong>
+              <strong className="text-center text-base font-bold text-(--item-name)">{view.item.name}</strong>
               <button
                 type="button"
                 className={`btn ${QUICK_TYPE}`}

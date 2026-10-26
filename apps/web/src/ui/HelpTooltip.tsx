@@ -7,7 +7,7 @@ const KEY =
 export function HelpTooltip({ topic }: { topic: HelpTopic }) {
   return (
     <>
-      <strong className="block font-display text-sm font-bold text-accent">Controls · {topic.title}</strong>
+      <strong className="block text-sm font-bold text-accent">Controls · {topic.title}</strong>
       <ul className="mt-1.5 grid gap-1">
         {topic.items.map((item) => (
           <li key={`${item.action} ${item.text}`} className="grid grid-cols-[auto_1fr] items-start gap-2">

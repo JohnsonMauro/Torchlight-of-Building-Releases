@@ -10,7 +10,7 @@ export const heroHeader = "flex items-center gap-3 p-3";
 export const heroPortrait =
   "group/portrait relative size-16 shrink-0 overflow-hidden rounded-md border border-line-strong bg-sunken";
 /** The initials (or +) in the portrait without a picture. */
-export const heroInitials = "grid size-full place-items-center font-display text-xl font-bold text-accent";
+export const heroInitials = "grid size-full place-items-center text-xl font-bold text-accent";
 /** The button laid over the portrait: it darkens on hover or keyboard focus. */
 export const heroChange =
   "absolute inset-0 cursor-pointer border-0 bg-transparent transition-colors hover:bg-overlay focus-visible:bg-overlay focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent";
@@ -18,7 +18,7 @@ export const heroChange =
 export const heroChangeBadge =
   "absolute right-0.5 bottom-0.5 grid size-5 place-items-center rounded-full border border-line-strong bg-surface text-accent transition-transform group-hover/portrait:scale-125";
 /** The hero's main trait beside the portrait. */
-export const heroTrait = "block truncate font-display text-lg leading-tight font-bold text-accent";
+export const heroTrait = "block truncate text-lg leading-tight font-bold text-accent";
 
 /** The follower's showcase: the portrait frame over the identity card. */
 export const showcaseClass = "relative";
@@ -30,7 +30,7 @@ const portraitBox = "size-[150px] rounded-md";
 export const portraitImage = (rarity?: string | null): string =>
   `${portraitBox} relative max-w-none border object-cover ${rarityArt(rarity) || "border-line-strong bg-sunken"}`;
 /** The initials (or +) in the frame without a picture. */
-export const portraitFallback = `${portraitBox} grid place-items-center border border-line bg-raised font-display text-4xl font-bold text-accent`;
+export const portraitFallback = `${portraitBox} grid place-items-center border border-line bg-raised text-4xl font-bold text-accent`;
 const identityBox =
   "relative mx-3.5 mb-3.5 rounded-b-md border border-line bg-raised px-3 pt-3.5 pb-3.5 before:mb-1.5 before:block before:text-xs before:font-bold before:tracking-wider before:text-accent";
 /** The follower's card under the portrait, its caption reading FOLLOWER. */
@@ -38,14 +38,14 @@ export const followerIdentityClass = `${identityBox} before:content-['FOLLOWER']
 /** The hero's name: small caps over the title. */
 export const identityName = "block text-xs font-bold tracking-wider text-text uppercase";
 /** The title under the portrait (the hero's main trait, the follower's name). */
-export const identityTitle = "mt-1 mb-2 block font-display text-lg leading-tight font-bold text-accent";
+export const identityTitle = "mt-1 mb-2 block text-lg leading-tight font-bold text-accent";
 /** Change Hero / Change Follower, and the follower's special effect chip: a button. */
 export const bronzeChip = "relative inline-flex items-center btn";
 export const changeButton = `${bronzeChip} gap-1 px-2 py-1.5 text-xs font-bold before:content-['↻']`;
 
 /** No hero (or no follower): the call to choose one. */
 export const pendingClass =
-  "grid min-h-[150px] content-center gap-2 rounded-md border border-line bg-raised px-4 py-5 text-center [&>span]:text-xs [&>span]:text-muted [&>strong]:font-display [&>strong]:text-base [&>strong]:font-bold [&>strong]:text-accent";
+  "grid min-h-[150px] content-center gap-2 rounded-md border border-line bg-raised px-4 py-5 text-center [&>span]:text-xs [&>span]:text-muted [&>strong]:text-base [&>strong]:font-bold [&>strong]:text-accent";
 /** The "Choose Hero" / "Choose Follower" button of an empty panel. */
 export const chooseButton = "btn mt-2 px-3.5 py-2 text-xs font-bold tracking-wide uppercase";
 

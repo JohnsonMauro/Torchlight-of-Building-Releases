@@ -366,7 +366,7 @@ function SlateTools({ tools }: { tools: SlateToolsView }) {
       className="slate-quick-tools absolute top-[clamp(8px,var(--tool-y),calc(100%-82px))] left-[clamp(8px,var(--tool-x),calc(100%-265px))] z-30 min-w-57.5 rounded-md border border-line-strong bg-surface p-2.5 text-text shadow-lg shadow-shadow"
       style={{ "--tool-x": `${tools.x}px`, "--tool-y": `${tools.y}px` } as CSSProperties}
     >
-      <strong className="mb-2 block border-b border-line pb-1.5 font-display text-xs/snug font-bold text-accent">
+      <strong className="mb-2 block border-b border-line pb-1.5 text-xs/snug font-bold text-accent">
         {tools.name}
       </strong>
       <div className="flex gap-1">

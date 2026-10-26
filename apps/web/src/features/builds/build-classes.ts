@@ -33,8 +33,7 @@ export const ACTIVE_BUILD_ROW = "mt-0.5 flex min-w-0 items-center gap-1.5";
 export const ICON_BUTTON =
   "grid size-6 shrink-0 cursor-pointer place-items-center rounded-sm border-0 bg-transparent p-0 text-muted hover:bg-raised hover:text-accent focus-visible:bg-raised focus-visible:text-accent focus-visible:outline-none";
 export const ACTIVE_BUILD_CAPTION = "block text-[10px] font-bold tracking-widest text-muted uppercase";
-export const ACTIVE_BUILD_NAME =
-  "block max-w-[245px] truncate font-display text-sm font-bold tracking-wider text-accent uppercase";
+export const ACTIVE_BUILD_NAME = "block max-w-[245px] truncate text-sm font-bold tracking-wider text-accent uppercase";
 /** The name's field while renaming: the name's type over a bottom line. */
 export const ACTIVE_BUILD_RENAME =
-  "block w-full max-w-[245px] border-0 border-b border-line-strong bg-transparent p-0 font-display text-sm font-bold tracking-wider text-accent uppercase caret-accent outline-none focus:border-accent";
+  "block w-full max-w-[245px] border-0 border-b border-line-strong bg-transparent p-0 text-sm font-bold tracking-wider text-accent uppercase caret-accent outline-none focus:border-accent";

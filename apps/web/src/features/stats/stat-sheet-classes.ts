@@ -13,7 +13,7 @@ export const CARD = "panel overflow-hidden";
 export const HEAD_STRIP = "border-b border-line";
 
 /** A card's title: a banner's skill name or "Effective HP", "Character stats". */
-export const CARD_TITLE = "font-display text-base font-semibold tracking-wider text-accent uppercase";
+export const CARD_TITLE = "text-base font-semibold tracking-wider text-accent uppercase";
 
 /** A banner: the card, a size container; side by side with the other banner on a wide window. */
 export const BANNER = `stat-sheet-banner @container ${CARD} mb-2.5 grid min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] px-3.5 pb-3 min-[1101px]:mb-0 compact:pb-2`;
@@ -22,7 +22,7 @@ export const BANNER_TITLE = `${HEAD_STRIP} ${CARD_TITLE} -mx-3.5 mb-3 flex flex-
 
 /** The chip beside a title ("Level 31") or a tab ("12" rows). */
 export const CHIP =
-  "rounded-sm border border-accent/50 bg-accent/10 px-2 py-0.5 font-sans text-[10px] font-bold tracking-widest text-accent uppercase";
+  "rounded-sm border border-accent/50 bg-accent/10 px-2 py-0.5 text-[10px] font-bold tracking-widest text-accent uppercase";
 
 /** The recount card inside a banner: a tab strip, the figures (body), more below. */
 export const PANEL = "flex min-h-0 flex-col overflow-hidden rounded-md border border-line bg-raised";
