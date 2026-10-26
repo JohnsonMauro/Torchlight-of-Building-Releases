@@ -31,7 +31,9 @@ async function openFollower(page, state = withFollower) {
 test("shows the follower card, its special effect and its skill slots", async ({ page }) => {
   const { planner, follower } = await openFollower(page);
   await expect(follower.name()).toHaveText("Arianrhod Scion of Light");
-  await expect(follower.rarity()).toContainText("ULT · ");
+  // The rarity shows as the portrait's frame, not as text.
+  await expect(follower.portrait()).toHaveClass(/\bfollower-tint-ult\b/);
+  await expect(follower.portrait().getByRole("img", { name: "Arianrhod Scion of Light" })).toBeVisible();
   await expect(follower.specialEffect("Scion of Light")).toBeVisible();
   await expect(follower.slots()).toHaveCount(3);
   await expect(follower.slot("Tartarus: Black Hole")).toContainText("Initial skill");

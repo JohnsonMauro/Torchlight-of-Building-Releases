@@ -294,8 +294,6 @@ export function followerSkillEditorMarkup(draft) {
  * @property {string | null} portrait
  * @property {string} initials Shown when there is no portrait.
  * @property {string} tintClass Rarity tint of the portrait (" follower-tint-<id>" or "").
- * @property {string} rarityClass
- * @property {string} rarityText "ULT · Lion Queen".
  * @property {string[]} specialEffects The letter's special effect names (one per letter in the game data).
  *
  * @typedef {object} FollowerSlotView
@@ -358,8 +356,6 @@ export function followerPanelView(state) {
       portrait: follower.portrait || null,
       initials: follower.name.slice(0, 2).toUpperCase(),
       tintClass: tintClass(rarity),
-      rarityClass: rarityClass(rarity),
-      rarityText: `${rarity?.name || ""} · ${follower.species}`,
       specialEffects: followerSpecialEffects(follower).map((effect) => effect.name),
     },
     slots,

@@ -26,8 +26,8 @@ import type {
   TraitView,
 } from "@legacy/app/bridge/hero-traits-view-model.ts";
 import { Artwork } from "../../ui/Artwork";
+import { ChangePortrait } from "../../ui/ChangePortrait";
 import { CommitNumberInput } from "../../ui/CommitNumberInput";
-import { StrokeIcon } from "../../ui/StrokeIcon";
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";
 import { KISMET_DRAG_GHOST, KISMET_DRAG_GHOST_IMAGE } from "../pacts/pact-classes";
@@ -41,8 +41,6 @@ import {
   dropBlocked,
   dropEligible,
   dropTarget,
-  heroChange,
-  heroChangeBadge,
   heroHeader,
   heroInitials,
   heroPortrait,
@@ -69,7 +67,12 @@ export function HeroShowcase() {
   const hero = view?.hero;
   return (
     <div className={heroHeader}>
-      <div className={heroPortrait} id="selected-hero-portrait">
+      <ChangePortrait
+        id="selected-hero-portrait"
+        className={heroPortrait}
+        label="Change Hero"
+        onChange={() => plannerCommands().openHeroSelector()}
+      >
         {!view ? null : hero?.image ? (
           <img className="size-full object-cover" src={hero.image} alt={hero.name} />
         ) : (
@@ -77,20 +80,7 @@ export function HeroShowcase() {
             {hero ? hero.name.slice(0, 2).toUpperCase() : "+"}
           </span>
         )}
-        <button
-          type="button"
-          className={`change-hero-button ${heroChange}`}
-          aria-label="Change Hero"
-          title="Change Hero"
-          onClick={() => plannerCommands().openHeroSelector()}
-        >
-          <span className={heroChangeBadge}>
-            <StrokeIcon className="size-3">
-              <path d="M4 8h13l-3-3M20 16H7l3 3" />
-            </StrokeIcon>
-          </span>
-        </button>
-      </div>
+      </ChangePortrait>
       <div className="min-w-0">
         <span id="selected-hero-name" className={identityName}>
           {view ? (hero?.name ?? "No hero selected") : "Selena"}

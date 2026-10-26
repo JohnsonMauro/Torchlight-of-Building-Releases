@@ -16,16 +16,13 @@ export class FollowerPage {
   name() {
     return this.panel().locator("#selected-follower-name");
   }
-  rarity() {
-    return this.panel().locator("#selected-follower-rarity");
-  }
   portrait() {
     return this.panel().locator(".follower-portrait");
   }
   specialEffect(name) {
     return this.panel().getByLabel(`Special effect: ${name}`, { exact: true });
   }
-  /** A button by the end of its name ("↻ Change Follower": the icon is CSS ::before content, part of the name). */
+  /** A button by the end of its name (Change Follower is the portrait's button, Choose Follower the empty panel's). */
   button(name) {
     return this.panel().getByRole("button", { name: new RegExp(`${name}$`) });
   }

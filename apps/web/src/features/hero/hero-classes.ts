@@ -1,5 +1,5 @@
 // Class strings of the hero column shared by the hero tab (HeroTab.tsx, HeroPanel.tsx) and the follower tab
-// (features/follower): the tabs, the showcase (portrait frame and identity card), the trait rows and their art, and the
+// (features/follower): the tabs, the hero's portrait and name, the trait rows and their art, and the
 // rarity tints of memories and followers. The rows narrow with the tree (#hero-trait-tree is an @container): compact up
 // to 390 px, larger above.
 /** A tab of the hero panel (Hero Trait | Trait Path): the shared `tab`, the accent rule when .active. */
@@ -7,41 +7,16 @@ export const detailTab = "tab px-3 py-2 text-xs font-bold tracking-wider upperca
 
 /** The hero at the head of the character column: the portrait (the Change Hero control) beside the name and trait. */
 export const heroHeader = "flex items-center gap-3 p-3";
-export const heroPortrait =
-  "group/portrait relative size-16 shrink-0 overflow-hidden rounded-md border border-line-strong bg-sunken";
+export const heroPortrait = "size-16 rounded-md border border-line-strong bg-sunken";
 /** The initials (or +) in the portrait without a picture. */
 export const heroInitials = "grid size-full place-items-center text-xl font-bold text-accent";
-/** The button laid over the portrait: it darkens on hover or keyboard focus. */
-export const heroChange =
-  "absolute inset-0 cursor-pointer border-0 bg-transparent transition-colors hover:bg-overlay focus-visible:bg-overlay focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent";
-/** Its swap badge, in the corner: always shown (no hover on touch), larger while hovered. */
-export const heroChangeBadge =
-  "absolute right-0.5 bottom-0.5 grid size-5 place-items-center rounded-full border border-line-strong bg-surface text-accent transition-transform group-hover/portrait:scale-125";
 /** The hero's main trait beside the portrait. */
 export const heroTrait = "block truncate text-lg leading-tight font-bold text-accent";
 
-/** The follower's showcase: the portrait frame over the identity card. */
-export const showcaseClass = "relative";
-/** The portrait frame. */
-export const portraitClass =
-  "relative mx-3.5 mt-3.5 grid h-[205px] place-items-center overflow-hidden rounded-t-md border border-b-0 border-line bg-sunken";
-const portraitBox = "size-[150px] rounded-md";
-/** The hero's or follower's picture in the portrait frame: a plain backdrop, or a follower's rarity border and art. */
-export const portraitImage = (rarity?: string | null): string =>
-  `${portraitBox} relative max-w-none border object-cover ${rarityArt(rarity) || "border-line-strong bg-sunken"}`;
-/** The initials (or +) in the frame without a picture. */
-export const portraitFallback = `${portraitBox} grid place-items-center border border-line bg-raised text-4xl font-bold text-accent`;
-const identityBox =
-  "relative mx-3.5 mb-3.5 rounded-b-md border border-line bg-raised px-3 pt-3.5 pb-3.5 before:mb-1.5 before:block before:text-xs before:font-bold before:tracking-wider before:text-accent";
-/** The follower's card under the portrait, its caption reading FOLLOWER. */
-export const followerIdentityClass = `${identityBox} before:content-['FOLLOWER']`;
 /** The hero's name: small caps over the title. */
 export const identityName = "block text-xs font-bold tracking-wider text-text uppercase";
-/** The title under the portrait (the hero's main trait, the follower's name). */
-export const identityTitle = "mt-1 mb-2 block text-lg leading-tight font-bold text-accent";
-/** Change Hero / Change Follower, and the follower's special effect chip: a button. */
+/** The follower's special effect chip: a button. */
 export const bronzeChip = "relative inline-flex items-center btn";
-export const changeButton = `${bronzeChip} gap-1 px-2 py-1.5 text-xs font-bold before:content-['↻']`;
 
 /** No hero (or no follower): the call to choose one. */
 export const pendingClass =

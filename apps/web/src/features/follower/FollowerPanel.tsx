@@ -1,122 +1,114 @@
-// The hero panel's FOLLOWER tab: the follower card and its Tartarus Skill slots. The data is the planner's "follower"
-// source (src/app/hero/follower-panel.js followerPanelView); edits are planner commands. The card and the equipped skills
-// show their tooltips (TraitTooltip).
+// The hero panel's FOLLOWER tab: the follower on the left (its portrait, which is the Change Follower control, its name
+// and special effect) and its Tartarus Skill slots on the right; they stack when the panel is narrow. The data is the
+// planner's "follower" source (src/app/hero/follower-panel.js followerPanelView); edits are planner commands. The
+// portrait and the equipped skills show their tooltips (TraitTooltip).
+import type { ReactNode } from "react";
 import { FollowerSkillTooltip, FollowerTooltip } from "../hero/TraitTooltip";
 import type { TooltipAnchor } from "../../ui/tooltip/Tooltip";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { FollowerCardView, FollowerSlotView } from "@legacy/app/hero/follower-panel.js";
 import { Artwork } from "../../ui/Artwork";
+import { ChangePortrait } from "../../ui/ChangePortrait";
 import { useViewSource } from "../../ui/use-view-source";
 import {
   bronzeChip,
-  changeButton,
   choiceArt,
   chooseButton,
-  followerIdentityClass,
-  identityTitle,
   pendingClass,
-  portraitClass,
-  portraitFallback,
-  portraitImage,
-  rarityText,
-  showcaseClass,
+  rarityArt,
   tierDivider,
   tierLevelClass,
   tierRow,
 } from "../hero/hero-classes";
 
-// The rarity line under the follower's name.
-const rarityLine = "block text-xs font-bold tracking-wide";
-/** The rarity id in the view's " follower-tint-<id>" or "follower-rarity follower-rarity-<id>" class. */
-const rarityIn = (classes: string, prefix: string) => new RegExp(`\\b${prefix}-(\\S+)`).exec(classes)?.[1] ?? null;
+// The two columns: the follower, then its skills; side by side once the panel has room for both.
+const columns = "@container";
+const columnsGrid = "grid items-start gap-3 p-3 @min-[560px]:grid-cols-[160px_minmax(0,1fr)]";
+// The follower's column: portrait, name and special effect, centred.
+const followerColumn = "grid justify-items-center gap-2 text-center";
+// The portrait frame (rarity border and art when the follower has a rarity).
+const portraitFrame = (rarity: string | null) =>
+  `size-40 rounded-md border-2 ${rarityArt(rarity) || "border-line-strong bg-sunken"}`;
+const portraitFallback = "grid size-full place-items-center text-4xl font-bold text-accent";
+const followerName = "block text-base leading-tight font-bold text-accent";
+/** The rarity id in the view's " follower-tint-<id>" class. */
+const rarityIn = (classes: string) => /\bfollower-tint-(\S+)/.exec(classes)?.[1] ?? null;
 
 export function FollowerPanel() {
   const view = useViewSource("follower");
   if (!view) return null;
   const commands = plannerCommands();
+  const change = () => commands.openFollowerSelector();
   if (!view.card)
     return (
-      <>
-        <div className={showcaseClass}>
-          <div className={`${portraitClass} follower-portrait`}>
+      <Columns>
+        <div className={followerColumn}>
+          <ChangePortrait
+            className={`follower-portrait ${portraitFrame(null)}`}
+            label="Change Follower"
+            onChange={change}
+          >
             <span className={portraitFallback} aria-hidden="true">
               +
             </span>
-          </div>
-          <div className={followerIdentityClass}>
-            <strong className={identityTitle}>No follower selected</strong>
-            <small className={`follower-rarity mb-2 text-muted ${rarityLine}`}>Choose a follower</small>
-            <button
-              type="button"
-              className={`change-hero-button ${changeButton}`}
-              onClick={() => commands.openFollowerSelector()}
-            >
-              Change Follower
-            </button>
-          </div>
+          </ChangePortrait>
+          <strong id="selected-follower-name" className={followerName}>
+            No follower selected
+          </strong>
         </div>
         <div className={pendingClass}>
           <strong>Select a follower</strong>
           <span>Choose a follower to equip its Tartarus Skills.</span>
-          <button type="button" className={chooseButton} onClick={() => commands.openFollowerSelector()}>
+          <button type="button" className={chooseButton} onClick={change}>
             Choose Follower
           </button>
         </div>
-      </>
+      </Columns>
     );
   return (
-    <>
-      <FollowerCard card={view.card} />
-      <div className="@container grid gap-2 border-t border-line p-2.5" aria-label={view.slotsLabel}>
+    <Columns>
+      <FollowerCard card={view.card} onChange={change} />
+      <div className="@container grid gap-2" aria-label={view.slotsLabel}>
         {view.slots.map((slot) => (
           <SkillSlot key={slot.index} slot={slot} />
         ))}
       </div>
-    </>
+    </Columns>
   );
 }
 
-function FollowerCard({ card }: { card: FollowerCardView }) {
+function Columns({ children }: { children: ReactNode }) {
   return (
-    <div className={showcaseClass}>
+    <div className={columns}>
+      <div className={columnsGrid}>{children}</div>
+    </div>
+  );
+}
+
+function FollowerCard({ card, onChange }: { card: FollowerCardView; onChange: () => void }) {
+  return (
+    <div className={followerColumn}>
       <FollowerTooltip followerId={card.id}>
-        <div className={`${portraitClass} follower-portrait${card.tintClass}`} data-follower-tooltip={card.id}>
-          {card.portrait ? (
-            <img
-              className={portraitImage(rarityIn(card.tintClass, "follower-tint"))}
-              src={card.portrait}
-              alt={card.displayName}
-            />
-          ) : (
-            <span className={portraitFallback} aria-hidden="true">
-              {card.initials}
-            </span>
-          )}
-        </div>
-      </FollowerTooltip>
-      <FollowerTooltip followerId={card.id}>
-        <div className={followerIdentityClass} data-follower-tooltip={card.id}>
-          <strong id="selected-follower-name" className={identityTitle}>
-            {card.displayName}
-          </strong>
-          <div className="follower-rarity-line relative mb-2 flex flex-wrap items-center gap-x-2 gap-y-1.25">
-            <small
-              className={`${card.rarityClass} ${rarityLine} ${rarityText(rarityIn(card.rarityClass, "follower-rarity"))}`}
-              id="selected-follower-rarity"
-            >
-              {card.rarityText}
-            </small>
-            <SpecialEffect card={card} />
-          </div>
-          <button
-            type="button"
-            className={`change-hero-button ${changeButton}`}
-            onClick={() => plannerCommands().openFollowerSelector()}
+        <div data-follower-tooltip={card.id}>
+          <ChangePortrait
+            className={`follower-portrait${card.tintClass} ${portraitFrame(rarityIn(card.tintClass))}`}
+            label="Change Follower"
+            onChange={onChange}
           >
-            Change Follower
-          </button>
+            {card.portrait ? (
+              <img className="size-full object-cover" src={card.portrait} alt={card.displayName} />
+            ) : (
+              <span className={portraitFallback} aria-hidden="true">
+                {card.initials}
+              </span>
+            )}
+          </ChangePortrait>
         </div>
       </FollowerTooltip>
+      <strong id="selected-follower-name" className={followerName}>
+        {card.displayName}
+      </strong>
+      <SpecialEffect card={card} />
     </div>
   );
 }
