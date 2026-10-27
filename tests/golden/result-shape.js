@@ -121,6 +121,7 @@ export function resultShapeProblems(result) {
     durationAssumption: "string",
     stackAssumption: "string",
   });
+  types(result.exitStandStill, "exitStandStill", { maxStacks: "number", heldStacks: "number" });
   types(result.aim, "aim", {
     active: "boolean",
     charges: "number",

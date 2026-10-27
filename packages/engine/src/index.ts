@@ -184,6 +184,7 @@ export { selectPactspirit, sortPactspirits } from "./pacts/pactspirit-selection.
 export { AIM_UPTIME_AUTO_SENTINEL } from "./skills/aim-model.js";
 export { auraGainedLineStatus } from "./skills/aura-gained-effects.js";
 export { curseSlotSummary } from "./skills/curse-limit.js";
+export { SCORCH_RESISTANCE_REDUCTION_PERCENT } from "./skills/fires-allure.js";
 export { heroCanPlaceMagusInActiveSlot, isSpiritMagusSkill } from "./skills/magus-active-slot.js";
 export { assignSkillBoardSlot, moveSkillBoardSlot, skillBoardRows } from "./skills/skill-board-slots.js";
 export { classifySkillCoverage, supportClauseCoverage, supportLineCoverage } from "./skills/skill-coverage.js";

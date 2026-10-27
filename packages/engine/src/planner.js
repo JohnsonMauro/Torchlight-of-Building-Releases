@@ -127,7 +127,7 @@ import { heroTraitStatLines, heroTraitLevelBonus, characterStatTotals } from "./
 import { resolveMaxSpellBurst } from "./skills/max-spell-burst.js";
 import { resolveLineEffects } from "./text/line-effects.js";
 import { conditionalAuraEffect } from "./skills/conditional-aura-effect.js";
-import { atFullLife, atFullMana, LOW_LIFE_BELOW_PERCENT } from "./text/line-conditions.js";
+import { atFullLife, atFullMana, exitStandStillHeldStacks, LOW_LIFE_BELOW_PERCENT } from "./text/line-conditions.js";
 import { luckyCritChance, mirroredShadeTerraChargeLines } from "./combat-states.js";
 import { CHANCE_TO_DAMAGE } from "./ailments/ailment-model.js";
 import { calculateWeaponAttack, weaponLocalLineKind } from "./skills/weapon-damage-model.js";
@@ -464,6 +464,8 @@ function buildLineConditionState({
     manaRemainingPercent: manaRemaining,
     moving: conditions.moving,
     nearTarget: conditions.nearTarget,
+    // Hare's Agility: the stacks the Config tab says are held (none saved: 1; packages/engine/src/text/line-conditions.js).
+    exitStandStillStacks: state.combat.exitStandStillStacks,
     life: lifeStructural || lifeAssumed ? "low" : "full",
     lowLifeAssumed: lifeAssumed,
     lifeReason: lifeStructural
@@ -3427,6 +3429,7 @@ function calculatePlannerOnce(
     canApply: igniteOnTarget,
     nearby: conditions.firesAllureNearby !== false,
     stacks: state.combat.firesAllureScorchStacks,
+    scorchResistanceReductionPercent: state.combat.scorchResistanceReductionPercent,
     baseResistance: state.combat.targetFireResistancePercent,
     fixedResistance: fixedFireResistance ?? false,
   });
@@ -6040,6 +6043,10 @@ function calculatePlannerOnce(
     damagePaths,
     dummyRecount,
     firesAllure,
+    exitStandStill: {
+      maxStacks: lineConditionState.exitStandStillMaxStacks ?? 0,
+      heldStacks: exitStandStillHeldStacks(lineConditionState),
+    },
     lowResources,
     resistances,
     curseLimit,

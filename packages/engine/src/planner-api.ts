@@ -118,6 +118,11 @@ export interface FiresAllure {
   durationAssumption: string;
   stackAssumption: string;
 }
+/** Hare's Agility: the stacks a line grants for exiting Stand Still (maxStacks, 0 without one) and how many are held. */
+export interface ExitStandStill {
+  maxStacks: number;
+  heldStacks: number;
+}
 /** Aim: charges, uptime and what it adds. Fields present only while Aim is in the build are optional. */
 export interface AimSummary {
   active: boolean;
@@ -304,6 +309,7 @@ export interface PlannerResult {
   enemyDebuffCores: ResultSection;
   equipment: ResultSection;
   firesAllure: FiresAllure;
+  exitStandStill: ExitStandStill;
   follower: ResultSection;
   fullLife: ResultSection;
   heroMemories: ResultSection;
@@ -382,6 +388,7 @@ export const plannerResultKeys = [
   "empowerEffects",
   "enemyDebuffCores",
   "equipment",
+  "exitStandStill",
   "firesAllure",
   "follower",
   "fullLife",

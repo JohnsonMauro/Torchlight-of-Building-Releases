@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { aimUptimeControl } from "@legacy/app/configuration/aim-controls.js";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
-import { combatNumberLimits } from "#engine";
+import { combatNumberLimits, SCORCH_RESISTANCE_REDUCTION_PERCENT } from "#engine";
 import type { CombatNumber, ExclusiveChoice } from "#engine";
 import type { ConfigurationSource } from "@legacy/app/bridge/view-sources.ts";
 import { CommitNumberInput } from "../../ui/CommitNumberInput";
@@ -313,6 +313,21 @@ function Advanced({ planner, combat }: Pick<ConfigurationSource, "planner" | "co
             field="firesAllureScorchStacks"
             value={combat.firesAllureScorchStacks ?? planner.igniteLimit}
             max={planner.igniteLimit}
+          />
+        ) : null}
+        {planner.firesAllure.active ? (
+          <NumberField
+            label="Scorch resistance reduction % (Profound 20, Deep Space 30)"
+            field="scorchResistanceReductionPercent"
+            value={combat.scorchResistanceReductionPercent ?? SCORCH_RESISTANCE_REDUCTION_PERCENT}
+          />
+        ) : null}
+        {planner.exitStandStill.maxStacks > 0 ? (
+          <NumberField
+            label="Hare's Agility stacks held (one per exit from Stand Still, 2 s each)"
+            field="exitStandStillStacks"
+            value={planner.exitStandStill.heldStacks}
+            max={planner.exitStandStill.maxStacks}
           />
         ) : null}
         <NumberField

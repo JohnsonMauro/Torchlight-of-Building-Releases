@@ -289,6 +289,11 @@ export const combatNumberLimits = {
   aimBattleStacks: { min: 0, max: 3, integer: true },
   // The engine also caps the stacks at the build's Ignite limit (packages/engine/src/skills/fires-allure.js).
   firesAllureScorchStacks: { min: 0, max: 100, integer: true },
+  // Scorch's resistance reduction: 20 in Profound, 30 in Deep Space (packages/engine/src/skills/fires-allure.js).
+  scorchResistanceReductionPercent: { min: 0, max: 100, integer: false },
+  // Hare's Agility: the stacks held from exiting Stand Still; the engine caps them at the line's own maximum
+  // (packages/engine/src/text/line-conditions.js exitStandStillHeldStacks).
+  exitStandStillStacks: { min: 0, max: 20, integer: true },
   idyllStacks: { min: 0, max: 15, integer: true },
   extraMaxChanneledStacks: { min: -20, max: 20, integer: true },
   extraInitialChanneledStacks: { min: -20, max: 20, integer: true },

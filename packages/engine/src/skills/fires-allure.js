@@ -4,6 +4,10 @@ export function firesAllureDurationSources(sources) {
   return sources;
 }
 
+// Scorch lowers all of the target's Resistances by 20% in Profound and by 30% in Deep Space (TLIDB Scorch, read 2026-10-26);
+// Profound unless the Config tab says otherwise.
+export const SCORCH_RESISTANCE_REDUCTION_PERCENT = 20;
+
 // `fixedResistance`: false, true (fixed at 0: Fueling) or the fixed value (Ice to Blaze's Frostbitten line, hero trait audit B2).
 export function calculateFiresAllure({
   active,
@@ -13,6 +17,7 @@ export function calculateFiresAllure({
   stacks,
   baseResistance,
   fixedResistance = false,
+  scorchResistanceReductionPercent = SCORCH_RESISTANCE_REDUCTION_PERCENT,
 }) {
   const fixedValue =
     fixedResistance === true
@@ -21,9 +26,10 @@ export function calculateFiresAllure({
         ? fixedResistance
         : null;
   const activeStacks = active && canApply ? Math.max(0, Math.min(limit, Number.isFinite(stacks) ? stacks : limit)) : 0;
-  // Scorch buff 131 applies -20 to every resistance at ordinary effect scale;
+  // Scorch buff 131 lowers every resistance (-20 in Profound, -30 in Deep Space: the Config tab's number);
   // Fire's Allure separately applies -10 Fire Resistance per stack within 10m.
-  const scorchBaseResistanceReductionPercent = activeStacks > 0 && fixedValue == null ? 20 : 0;
+  const scorchBaseResistanceReductionPercent =
+    activeStacks > 0 && fixedValue == null ? scorchResistanceReductionPercent : 0;
   const allureFireResistanceReductionPercent = activeStacks > 0 && nearby && fixedValue == null ? activeStacks * 10 : 0;
   const reduction = scorchBaseResistanceReductionPercent + allureFireResistanceReductionPercent;
   return {

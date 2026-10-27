@@ -58,6 +58,17 @@ export const WEAPON_WORDS = {
 // Numbed: up to 10 stacks (TLIDB Ailment page). The dummy's stack count is not modeled; best case (user rule
 // 2026-10-09) is the cap while the build keeps Numbed applied (provisional).
 export const NUMBED_MAX_STACKS = 10;
+// Hare's Agility gains one stack per exit from Stand Still, each lasting 2 s (game keyword 80000500): walking without stopping
+// holds one, so 1 is held unless the Config tab sets another count (owner, 2026-10-26; the cap was held before).
+export const EXIT_STAND_STILL_DEFAULT_STACKS = 1;
+/** The stacks held from exiting Stand Still: the Config count (default 1), capped at the line's maximum; 0 without the line. */
+export function exitStandStillHeldStacks(state) {
+  const max = state?.exitStandStillMaxStacks ?? 0;
+  const requested = Number.isFinite(state?.exitStandStillStacks)
+    ? state.exitStandStillStacks
+    : EXIT_STAND_STILL_DEFAULT_STACKS;
+  return Math.max(0, Math.min(max, requested));
+}
 
 const STATE_WORDS = "Frozen|Frostbitten|Ignited|Numbed|Traumatized|Wilted|Withered|Shocked|Paralyzed|Blinded";
 const STAT_WORDS = "Strength|Dexterity|Intelligence";
@@ -329,8 +340,9 @@ const LINE_RULES = [
   // Hare's Agility (Ethereal Prism core; game affix 1525925, core audit batch B2): on leaving Stand Still (trigger 1000100) one stack
   // of buff 20480 for 2 s, up to 5; on hit within 4 m (node 189 range 400) GetBuffStack(20480) × P1 additional damage (attr 5719
   // mod 4, one additional term). Stand Still and leaving it are the Movement group's two alternatives (core audit Q10,
-  // user-confirmed 2026-10-18: best case by damage, listed in the assumptions): the moving alternative holds the stacks at the cap (user rule: movement buffs fully
-  // stacked), standing still holds none. The "+P2% Attack Speed" part (an empty effect row in the game record) is one flat bonus
+  // user-confirmed 2026-10-18: best case by damage, listed in the assumptions): the moving alternative holds the stacks the Config
+  // tab sets (exitStandStillHeldStacks: 1 by default, since each exit gives one stack for 2 s; owner, 2026-10-26), standing still
+  // holds none. The "+P2% Attack Speed" part (an empty effect row in the game record) is one flat bonus
   // while the buff is up, not per stack (user-supplied 2026-10-19, Google AI Mode answer, not tested in game).
   [
     new RegExp(`^When exiting Stand Still, gains 1 stack of buff that lasts for ${N} ?s, up to (\\d+) times$`),
@@ -1196,13 +1208,14 @@ function resolveKey(condition, state) {
     case "exitStandStillGain":
       return state.moving !== false
         ? on(
-            `moving (movement group): leaving Stand Still keeps the buff at ${params.stacks} stacks (${params.seconds} s each; user rule: movement buffs fully stacked; standing still / moving exclusive group, user-confirmed 2026-10-18)`,
+            `moving (movement group): leaving Stand Still gains 1 stack per exit, ${params.seconds} s each, up to ${params.stacks}; ${exitStandStillHeldStacks(state)} held (Config tab; standing still / moving exclusive group, user-confirmed 2026-10-18)`,
           )
         : off("standing still (movement group): Stand Still is never left, so no stacks");
     case "exitStandStillStacks": {
-      const stacks = state.exitStandStillMaxStacks ?? 0;
+      const stacks = exitStandStillHeldStacks(state);
       if (state.moving === false) return off("standing still (movement group): no stacks from leaving Stand Still");
-      if (!(stacks > 0)) return off("no line grants the stacks gained when exiting Stand Still");
+      if (!(state.exitStandStillMaxStacks > 0)) return off("no line grants the stacks gained when exiting Stand Still");
+      if (!(stacks > 0)) return off("0 stacks held from exiting Stand Still (Config tab)");
       const speedText = `+${params.attackSpeed}% Attack Speed once while the buff is up, not per stack (user-supplied 2026-10-19, Google AI Mode answer, not tested in game)`;
       if (state.nearTarget === false)
         return on(
@@ -1210,7 +1223,7 @@ function resolveKey(condition, state) {
           { factor: 0, bodyFactors: [0, 1], provisional: true },
         );
       return on(
-        `moving (movement group) and within 4 m of the dummy: ${stacks} stacks held (best case; Movement group, user-confirmed 2026-10-18), one additional term; ${speedText}`,
+        `moving (movement group) and within 4 m of the dummy: ${stacks} of ${state.exitStandStillMaxStacks} stacks held (one per exit from Stand Still, 2 s each; Config tab), one additional term; ${speedText}`,
         { factor: stacks, bodyFactors: [stacks, 1], provisional: true },
       );
     }

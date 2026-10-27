@@ -12,9 +12,30 @@ const CLOSE = "Close to the dummy";
 const DISTANT = "6 m away";
 const MOBILITY = "Mobility Skill used recently";
 
-async function openConfiguration(page) {
+const HARES_AGILITY = "Hare's Agility stacks held (one per exit from Stand Still, 2 s each)";
+const SCORCH_REDUCTION = "Scorch resistance reduction % (Profound 20, Deep Space 30)";
+
+/** The Youga build with an Ethereal Prism of `base` (its core) on Prophet (2,0), a node it leaves empty. */
+function withPrismCore(base) {
+  const state = structuredClone(youga);
+  const prism = {
+    id: "e2e-prism",
+    type: "ethereal",
+    base,
+    radiusAffix: "",
+    rareAffix: "",
+    legendaryAffix: "",
+    baseAffix: "",
+  };
+  state.talents.prismInventory = [...state.talents.prismInventory, prism];
+  state.talents.installedPrisms = { ...state.talents.installedPrisms, Prophet: prism.id };
+  state.talents.installedPrismNodes = { ...state.talents.installedPrismNodes, Prophet: "2,0" };
+  return state;
+}
+
+async function openConfiguration(page, state = youga) {
   const planner = new PlannerPage(page);
-  await planner.open(youga);
+  await planner.open(state);
   const config = new ConfigurationPage(page);
   await config.open();
   return { planner, config };
@@ -97,6 +118,27 @@ test("Advanced numbers are saved; open sections stay open across re-renders", as
   await expect(config.section("Advanced")).not.toHaveAttribute("open", "");
   await config.switch("Best case").uncheck();
   await expect(config.section("Advanced")).not.toHaveAttribute("open", "");
+  await planner.expectNoErrors();
+});
+
+test("Hare's Agility holds 1 stack until set, and the line's 5 caps what is set", async ({ page }) => {
+  const { planner, config } = await openConfiguration(page, withPrismCore("Hare's Agility"));
+  await config.openSection("Advanced");
+  await expect(config.number(HARES_AGILITY)).toHaveValue("1");
+  await config.setNumber(HARES_AGILITY, 9);
+  await expect(config.number(HARES_AGILITY)).toHaveValue("5");
+  expect((await config.storedCombat()).exitStandStillStacks).toBe(9);
+  await planner.expectNoErrors();
+});
+
+test("Scorch's resistance reduction is Profound's 20 until Deep Space's 30 is set", async ({ page }) => {
+  const { planner, config } = await openConfiguration(page, withPrismCore("Fire's Allure"));
+  await config.openSection("Advanced");
+  await expect(config.number(SCORCH_REDUCTION)).toHaveValue("20");
+  await expect(config.number(HARES_AGILITY)).toHaveCount(0);
+  await config.setNumber(SCORCH_REDUCTION, 30);
+  await expect(config.number(SCORCH_REDUCTION)).toHaveValue("30");
+  expect((await config.storedCombat()).scorchResistanceReductionPercent).toBe(30);
   await planner.expectNoErrors();
 });
 

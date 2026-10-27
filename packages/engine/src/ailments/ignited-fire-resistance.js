@@ -77,7 +77,7 @@ export function ignitedFireResistanceLines(modifierTexts = []) {
  * @param {object[]} p.modifierTexts the build's lines
  * @param {boolean} p.ignited the build keeps the dummy Ignited (Ignite or Scorch)
  * @param {number} p.basePercent the dummy's Fire Resistance setting (30)
- * @param {number} p.reductionPercent flat reductions held while Ignited (Scorch −20, Fire's Allure −10 per stack), as a positive number
+ * @param {number} p.reductionPercent flat reductions held while Ignited (Scorch −20 in Profound / −30 in Deep Space, Fire's Allure −10 per stack), as a positive number
  * @param {boolean|number} p.fixed "Fire Resistance … is fixed at 0" (Fueling: true) or at a value (Ice to Blaze while Frostbitten,
  *   hero trait audit B2): the line has nothing to scale
  * @param {string} [p.reading] defaults to the active reading
