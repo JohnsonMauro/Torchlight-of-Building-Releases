@@ -3,9 +3,9 @@ import {
   allocateTalentToMaxWithPrerequisites,
   allocateTalentWithPrerequisites,
   dazeStatus,
-  inverseImageReflectedCoordinates,
   modeledCoreTalents,
   prismBaseEffect,
+  prismPrerequisiteFreeCoordinates,
   prismReplacesCore,
   refineCoverage,
   removeTalentWithDependents,
@@ -227,7 +227,7 @@ function changeTalentRank(coordinate, delta, max = false) {
   const prism = (plannerState.talents.prismInventory || []).find(
     (item) => item.id === plannerState.talents.installedPrisms?.[panel.name],
   );
-  const prerequisiteFreeCoordinates = inverseImageReflectedCoordinates(prism, prismCoordinate);
+  const prerequisiteFreeCoordinates = prismPrerequisiteFreeCoordinates(prism, prismCoordinate, displayNodes);
   const layouts = activeTalentLayouts();
   const args = {
     panel: panel.name,

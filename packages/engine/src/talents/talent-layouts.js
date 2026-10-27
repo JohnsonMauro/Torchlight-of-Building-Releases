@@ -1,7 +1,8 @@
 // The talent trees as the talent rules read them (allocation, prerequisites, points): each tree's nodes and the edges
-// between neighbouring nodes, and for a tree with an installed Inverse Image, the nodes as it reflects them.
+// between neighbouring nodes, and for a tree with an installed prism, the nodes as it leaves them (an Inverse Image's
+// reflection, an Ethereal Prism's extra ranks).
 import { allProfessionTalentCatalogue } from "../../data/talents/all-profession-trees.generated.js";
-import { inverseImageTalentNodes } from "./prism-crafting.js";
+import { prismTalentNodes } from "./prism-crafting.js";
 
 export const talentTreeLayouts = Object.fromEntries(
   Object.entries(allProfessionTalentCatalogue).map(([name, panel]) => [
@@ -13,15 +14,16 @@ export const talentTreeLayouts = Object.fromEntries(
   ]),
 );
 
-/** The layouts with each installed Inverse Image's reflection, for a build's `talents` (its prisms and where they sit). */
+/** The layouts with each installed prism's changes to its tree, for a build's `talents` (its prisms and where they sit). */
 export function activeTalentTreeLayouts(talents = {}) {
   const layouts = { ...talentTreeLayouts };
   for (const [name, id] of Object.entries(talents.installedPrisms || {})) {
     const graph = layouts[name],
       coordinate = talents.installedPrismNodes?.[name];
     const prism = (talents.prismInventory || []).find((item) => item.id === id);
-    if (!graph || !coordinate || prism?.type !== "inverse") continue;
-    layouts[name] = { ...graph, nodes: inverseImageTalentNodes(graph.nodes, prism, coordinate) };
+    if (!graph || !coordinate || !prism) continue;
+    const nodes = prismTalentNodes(graph.nodes, prism, coordinate);
+    if (nodes !== graph.nodes) layouts[name] = { ...graph, nodes };
   }
   return layouts;
 }

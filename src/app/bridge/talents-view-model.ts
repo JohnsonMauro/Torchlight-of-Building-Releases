@@ -9,10 +9,11 @@ import {
   godTalentTrees,
   inverseImageReflectedBounds,
   inverseImageReflectedCoordinates,
-  inverseImageTalentNodes,
   MAX_TALENT_POINTS,
   prismAreaBounds,
+  prismPrerequisiteFreeCoordinates,
   prismReplacesCore,
+  prismTalentNodes,
   TALENT_THRESHOLDS,
   talentFamilies,
   talentPointTotals,
@@ -179,7 +180,7 @@ export function talentDisplayNodes(
   prism: Prism | undefined,
   prismCoordinate: string | undefined,
 ): TalentNode[] {
-  return inverseImageTalentNodes(baseLayout.nodes, prism, prismCoordinate) as TalentNode[];
+  return prismTalentNodes(baseLayout.nodes, prism, prismCoordinate) as TalentNode[];
 }
 
 const within = (bounds: { left: number; top: number; width: number; height: number }, [x, y]: Coordinate) =>
@@ -285,6 +286,11 @@ function stageView(
   const baseLayout = input.baseLayouts[panel.name];
   const hasPrism = Boolean(installedPrism);
   const reflected = inverseImageReflectedCoordinates(installedPrism, prismCoordinate) as Set<string>;
+  const prerequisiteFree = prismPrerequisiteFreeCoordinates(
+    installedPrism,
+    prismCoordinate,
+    graph.nodes,
+  ) as Set<string>;
   const prismAt = (coordinate: Coordinate) => hasPrism && coordinate.join(",") === prismCoordinate;
   const connections = graph.edges
     .filter(([x1, y1, x2, y2]) => !reflected.has(`${x1},${y1}`) && !reflected.has(`${x2},${y2}`))
@@ -324,7 +330,7 @@ function stageView(
       layouts: input.layouts,
       ranks: input.ranks,
       prismCoordinate: hasPrism ? prismCoordinate : null,
-      prerequisiteFreeCoordinates: reflected,
+      prerequisiteFreeCoordinates: prerequisiteFree,
     });
     const classes = [
       rank ? "allocated" : "",

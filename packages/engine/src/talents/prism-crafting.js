@@ -358,6 +358,67 @@ export function inverseImageTalentNodes(nodes, prism, coordinate, columns = 7, r
   ];
 }
 
+// Ethereal Prism legendary affixes that change allocation (TLIDB Ethereal Prism, Prism Gauge - Legendary, read 2026-10-26):
+// "Points can be allocated to all Micro|Medium Talent within the area N additional time(s)" raises those nodes' max rank by N;
+// "All Legendary Medium [and Medium] Talent within the area can ignore prerequisite point requirements" frees those nodes the
+// way an Inverse Image frees its reflected area (no connected talent, no column points). Provisional: the game text does not
+// say whether "prerequisite point requirements" means the connected talent, the column's points or both (a TapTap player
+// reads it as skipping the connected talent); both are freed until an in-game test says otherwise (owner, 2026-10-26).
+const EXTRA_ALLOCATIONS =
+  /Points can be allocated to all (Micro|Medium) Talent within the area (\d+) additional time\(s\)/gi;
+const IGNORE_PREREQUISITES =
+  /All (Legendary Medium|Medium) Talent within the area can ignore prerequisite point requirements/gi;
+const NODE_TYPES = { micro: "micro", medium: "medium", "legendary medium": "legendary" };
+
+const etherealLegendary = (prism) => (prism?.type === "ethereal" ? String(prism.legendaryAffix || "") : "");
+const insideArea = (bounds, [x, y]) =>
+  x >= bounds.left && x < bounds.left + bounds.width && y >= bounds.top && y < bounds.top + bounds.height;
+
+/** Extra ranks the prism's legendary affix gives each talent size in its area: { micro, medium } (0 without the affix). */
+export function prismExtraAllocations(prism) {
+  const extra = { micro: 0, medium: 0 };
+  for (const [, size, count] of etherealLegendary(prism).matchAll(EXTRA_ALLOCATIONS))
+    extra[NODE_TYPES[size.toLowerCase()]] += Number(count);
+  return extra;
+}
+
+/** The node types whose prerequisites the prism's legendary affix lifts inside its area. */
+function prismPrerequisiteFreeTypes(prism) {
+  return new Set(
+    [...etherealLegendary(prism).matchAll(IGNORE_PREREQUISITES)].map(([, size]) => NODE_TYPES[size.toLowerCase()]),
+  );
+}
+
+/**
+ * Coordinates whose talents need no prerequisites: an Inverse Image's reflected area, or the nodes of the sizes an Ethereal
+ * Prism's legendary affix frees inside its area (the prism's own node excluded).
+ */
+export function prismPrerequisiteFreeCoordinates(prism, coordinate, nodes = [], columns = 7, rows = 5) {
+  if (prism?.type === "inverse") return inverseImageReflectedCoordinates(prism, coordinate, columns, rows);
+  const types = prismPrerequisiteFreeTypes(prism);
+  if (!types.size || !coordinate) return new Set();
+  const bounds = prismAreaBounds(prism, coordinate, columns, rows);
+  return new Set(
+    nodes
+      .filter((node) => types.has(node.type) && insideArea(bounds, node.coordinate))
+      .map((node) => node.coordinate.join(","))
+      .filter((key) => key !== coordinate),
+  );
+}
+
+/** A panel's nodes as an installed prism leaves them: an Inverse Image's reflection, an Ethereal Prism's extra ranks. */
+export function prismTalentNodes(nodes, prism, coordinate, columns = 7, rows = 5) {
+  if (prism?.type === "inverse") return inverseImageTalentNodes(nodes, prism, coordinate, columns, rows);
+  const extra = prismExtraAllocations(prism);
+  if (!coordinate || !(extra.micro || extra.medium)) return nodes;
+  const bounds = prismAreaBounds(prism, coordinate, columns, rows);
+  return nodes.map((node) =>
+    extra[node.type] && insideArea(bounds, node.coordinate)
+      ? { ...node, maxRank: node.maxRank + extra[node.type] }
+      : node,
+  );
+}
+
 export function inverseImageEffectMultiplier(prism, nodeType) {
   if (prism?.type !== "inverse") return 1;
   const kind = nodeType === "legendary" ? "legendary" : nodeType === "medium" ? "medium" : "micro";

@@ -48,6 +48,29 @@ test("the tabs show the build's four trees and the total; a tab opens its tree w
   await planner.expectNoErrors();
 });
 
+test("a prism's extra allocations let a Micro in its area take points past its printed max", async ({ page }) => {
+  // Lich (5,1) is a Micro at 3 of 3, inside a 3x3 prism area on (4,0).
+  const state = structuredClone(youga);
+  state.talents.prismInventory = [
+    {
+      id: "e2e-extra",
+      type: "ethereal",
+      base: "Phantasmagoria",
+      radiusAffix: "The Effect Area expands to 3x3 Rectangle",
+      rareAffix: "",
+      legendaryAffix: "Points can be allocated to all Micro Talent within the area 2 additional time(s)",
+      baseAffix: "",
+    },
+  ];
+  state.talents.installedPrisms = { Lich: "e2e-extra" };
+  const { planner, talents } = await openTalents(page, "Tree 4", state);
+  await expect(talents.node("5,1")).toHaveAccessibleName("Unallocated micro talent, rank 3 of 5, within prism area");
+  await talents.node("5,1").click();
+  await expect(talents.node("5,1")).toHaveAccessibleName("Unallocated micro talent, rank 4 of 5, within prism area");
+  expect((await talents.stored()).ranks["Lich:5,1"]).toBe(4);
+  await planner.expectNoErrors();
+});
+
 test("the planner opens on the build's first tree", async ({ page }) => {
   const { planner, talents } = await openTalents(page, null);
   await expect(talents.tab("God tree")).toHaveClass(/\bactive\b/);

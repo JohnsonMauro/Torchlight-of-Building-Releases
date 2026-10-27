@@ -357,7 +357,8 @@ const schema = shape({
     customSupports: map(list(support, 5)),
     customSetups: list(customSetup, 20),
   }),
-  talentRanks: map(number(0, 3, true)),
+  // 3 printed ranks + up to 3 an Ethereal Prism's extra allocations add (packages/engine/src/talents/prism-crafting.js).
+  talentRanks: map(number(0, 6, true)),
   talents: shape({
     useCapturedRanks: bool,
     selectedTrees: list(text, 4),

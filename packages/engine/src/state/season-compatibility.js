@@ -10,7 +10,7 @@ import { heroCatalog } from "../../data/heroes/hero-catalog.js";
 import { allHeroTraits } from "../../data/heroes/all-hero-traits.generated.js";
 import { pactspiritCatalog } from "../../data/pacts/pactspirit-catalog.js";
 import { kismetCatalog } from "../../data/pacts/kismet-catalog.js";
-import { inverseImageReflectedCoordinates } from "../talents/prism-crafting.js";
+import { prismPrerequisiteFreeCoordinates, prismTalentNodes } from "../talents/prism-crafting.js";
 import { activeTalentTreeLayouts } from "../talents/talent-layouts.js";
 import { pruneInvalidTalentRanks } from "../talents/talent-rules.js";
 
@@ -27,7 +27,15 @@ const withoutKeys = (map = {}, drop) => Object.fromEntries(Object.entries(map).f
 // Talent ranks on a tree or node that no longer exists (or above the node's max rank: the extra points go back), core
 // talents a tree no longer offers, a prism on a node that no longer exists.
 function talentPass(state, change, trees) {
-  const nodeOf = (tree, coordinate) => trees[tree]?.nodes.find((node) => node.coordinate.join(",") === coordinate);
+  const prismOf = (tree) =>
+    (state.talents?.prismInventory || []).find((item) => item.id === state.talents?.installedPrisms?.[tree]);
+  // An Ethereal Prism's extra allocations raise the max rank of its area's nodes (prismTalentNodes).
+  const nodesOf = (tree) =>
+    prismOf(tree)?.type === "ethereal"
+      ? prismTalentNodes(trees[tree].nodes, prismOf(tree), state.talents?.installedPrismNodes?.[tree])
+      : trees[tree].nodes;
+  const nodeOf = (tree, coordinate) =>
+    trees[tree] && nodesOf(tree).find((node) => node.coordinate.join(",") === coordinate);
   const prismType = (id) => (state.talents?.prismInventory || []).find((item) => item.id === id)?.type;
   const talentRanks = {};
   for (const [key, rank] of Object.entries(state.talentRanks || {})) {
@@ -85,7 +93,7 @@ function prerequisitePass(state, change) {
       layouts,
       ranks,
       prismCoordinate,
-      prerequisiteFreeCoordinates: inverseImageReflectedCoordinates(prism, prismCoordinate),
+      prerequisiteFreeCoordinates: prismPrerequisiteFreeCoordinates(prism, prismCoordinate, layouts[panel].nodes),
     });
     ranks = result.ranks;
     for (const key of result.removed) pruned.add(key);

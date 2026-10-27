@@ -1,9 +1,9 @@
 // The talent trees: layouts (an installed Inverse Image reflects nodes), the open tree, ranks a prism change clears.
 import {
   allProfessionTalentCatalogue,
-  inverseImageReflectedCoordinates,
   inverseImageReflectionMap,
   activeTalentTreeLayouts,
+  prismPrerequisiteFreeCoordinates,
   pruneInvalidTalentRanks,
   talentTreeLayouts,
 } from "#engine";
@@ -67,7 +67,7 @@ export function reconcileTalentRanksAfterPrismChange(panel) {
     layouts,
     ranks: Object.fromEntries(talentRanks),
     prismCoordinate,
-    prerequisiteFreeCoordinates: inverseImageReflectedCoordinates(prism, prismCoordinate),
+    prerequisiteFreeCoordinates: prismPrerequisiteFreeCoordinates(prism, prismCoordinate, graph.nodes),
   });
   for (const key of result.removed) talentRanks.set(key, 0);
 }

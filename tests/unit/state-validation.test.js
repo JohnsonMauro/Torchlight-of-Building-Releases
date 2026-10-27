@@ -32,7 +32,7 @@ test("rejects wrong types and out-of-range numbers", () => {
   rejects({ combat: { conditionMode: "always" } }, "build.combat.conditionMode");
   rejects({ talents: { useCapturedRanks: "yes" } }, "build.talents.useCapturedRanks");
   rejects({ pacts: { selectedSpirits: ["a", "b", "c", "d"] } }, "build.pacts.selectedSpirits");
-  rejects({ talentRanks: { "Lich:1,1": 4 } }, "build.talentRanks.Lich:1,1");
+  rejects({ talentRanks: { "Lich:1,1": 7 } }, "build.talentRanks.Lich:1,1");
 });
 
 test("rejects oversized text, non-plain objects and prototype keys", () => {
@@ -83,4 +83,11 @@ test("clampCombatNumber keeps a typed number within what the stored build accept
     assert.doesNotThrow(() =>
       validatePlannerState({ combat: { aimBattleStacks: clampCombatNumber("aimBattleStacks", value) } }),
     );
+});
+
+// An Ethereal Prism's "Points can be allocated to all Micro|Medium Talent within the area 3 additional time(s)" (its largest
+// roll) lifts a 3-rank node to 6 (packages/engine/src/talents/prism-crafting.js prismTalentNodes).
+test("a talent rank goes up to the 6 a prism's extra allocations allow", () => {
+  assert.doesNotThrow(() => validatePlannerState({ talentRanks: { "Lich:5,1": 6 } }));
+  rejects({ talentRanks: { "Lich:5,1": 7 } }, "build.talentRanks.Lich:5,1");
 });
