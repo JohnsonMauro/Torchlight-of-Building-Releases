@@ -343,7 +343,7 @@ function stageView(
       row: node.coordinate[1] + 1,
       classes: classes.filter(Boolean).join(" "),
       type: node.type || "",
-      label: `${label}, rank ${rank} of ${max}${availability.allowed ? "" : `, ${availability.reason}`}${affected ? ", within Inverse Image reflected area" : ""}`,
+      label: `${label}, rank ${rank} of ${max}${availability.allowed ? "" : `, ${availability.reason}`}${affected ? (installedPrism?.type === "inverse" ? ", within Inverse Image reflected area" : ", within prism area") : ""}`,
       art: art.talents[panel.name]?.[node.reflectedFrom || coordinate] || node.icon || null,
       symbol: node.type === "legendary" ? "✧" : node.type === "medium" ? "◇" : "·",
       rank,

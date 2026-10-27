@@ -185,3 +185,19 @@ test("an Inverse Image mirrors its area: the reflected nodes join the tree, insi
   assert.match(reflected[0].label, /, within Inverse Image reflected area$/);
   assert.equal(result.nodes.filter((node) => node.prism).length, 1);
 });
+
+// An Ethereal Prism's area is its own, not an Inverse Image's reflection: its nodes were named as reflected (2026-10-26).
+test("the nodes in an Ethereal Prism's area are named as within the prism area", () => {
+  const result = view({
+    talents: {
+      selectedTrees: ["Goddess of Knowledge", "Prophet", "", "Lich"],
+      coreSelections: {},
+      prismInventory: [{ ...haze, radiusAffix: "The Effect Area expands to 3x3 Rectangle" }],
+      installedPrisms: { Lich: "p1" },
+      installedPrismNodes: { Lich: "1,0" },
+    },
+  });
+  const affected = result.nodes.filter((node) => node.classes.includes("prism-affected-node"));
+  assert.ok(affected.length > 0);
+  for (const node of affected) assert.match(node.label, /, within prism area$/);
+});
