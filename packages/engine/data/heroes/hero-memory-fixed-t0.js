@@ -3,9 +3,10 @@ import { heroMemoryTierAffixes } from "./hero-memory-tiers.js";
 // Hero Memory fixed affixes, T0 (ids ending in 00). The same effects occur for all three memory types. The
 // additional-damage line belongs to the T0 variant. Values: game config_modifier, 2026-10-15
 // (research/patch-ss14/game-diff.md "Hero Memory T0 fixed affixes"). The "+2 to Hero Trait Level" and Ignite rows'
-// additional damage could not be read there and keep +3%.
+// additional damage could not be read there; the game's Help Manual affix cache (client cache HelpManualV2AffixData,
+// 16_en_89_1_v7, read 2026-10-26: Memory of Origin 402151200 / 402176500 and the same rows of the other two) gives +6%.
 const originT0Effects = [
-  "+2 to Hero Trait Level · +3% additional damage",
+  "+2 to Hero Trait Level · +6% additional damage",
   "+(31–36)% Movement Speed",
   "+(5–6)% Max Fire Resistance",
   "+(5–6)% Max Cold Resistance",
@@ -38,7 +39,7 @@ const originT0Effects = [
   "Immune to Paralysis · +6% additional damage",
   "(-96–-64)% Curse effect against you",
   "+16% Cooldown Recovery Speed",
-  "Immune to Ignite Damage · -100% Ignite Effect received · +3% additional damage",
+  "Immune to Ignite Damage · -100% Ignite Effect received · +6% additional damage",
   "Immune to Wilt Damage · +6% additional damage",
   "Immune to Trauma Damage · +6% additional damage",
   // T0 only (402177700 / 402177800 / 402177900): no tier 1–3 row, so it is its own base effect.
