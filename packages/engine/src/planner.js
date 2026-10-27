@@ -3404,8 +3404,12 @@ function calculatePlannerOnce(
       ...late,
     });
   let igniteLedger = compileIgnite();
+  // Affliction rides on Damage Over Time (TLIDB Affliction; game manual: "inflicted on enemies at the same time as DoT
+  // Damage"), and Ignite is Fire Damage Over Time (TLIDB Ignite): a skill's DoT or an Ignite on the dummy carries the build's
+  // Affliction per second. Ignite on the dummy reads as the dummy kept Ignited, as Fire's Allure and True Flame read it
+  // (provisional: a rare Ignite holds the Affliction less than this; 2026-10-26).
   if (
-    !(skillDotSources.length || skillHitDotSources.length) ||
+    !(skillDotSources.length || skillHitDotSources.length || igniteOnTarget) ||
     igniteLedger.townTooltip.passiveAfflictionPerSecond + skillDotAfflictionRate <= 0
   )
     conditions.affliction = false;
@@ -3777,6 +3781,16 @@ function calculatePlannerOnce(
       .reduce((factor, line) => factor * (1 + line.value / 100), 1),
   });
   coreTalents.lines.push(...trueFlame.lines.filter((line) => line.source === "True Flame"));
+  // True Flame's share of the Affliction bonus is additional Fire Hit Damage: it joins every generic hit as that line
+  // (computeSkillHit's hit-only lines), so the hit reader applies it to the Fire part only.
+  const trueFlameHitLines = trueFlame.lines
+    .filter((line) => line.source === "True Flame")
+    .map((line) => ({
+      text: `+${Math.round(line.value * 10000) / 10000}% additional Fire Hit Damage`,
+      source: "Warlord core: True Flame",
+      origin: "derived",
+      multiplier: 1,
+    }));
   const hasSealedLife =
     aura.entries.some((entry) => entry.reservation?.resource === "life") &&
     aura.entries.some((entry) => entry.reservation?.resource === "mana");
@@ -4051,7 +4065,12 @@ function calculatePlannerOnce(
     };
     // Selena (Sing with the Tide): the Tide Effect buff's All Damage writes and the Bard Channeled Skill penalty reach every
     // generic hit (packages/engine/src/heroes/selena-tide.js hitLines).
-    const hitOnlyLines = [...blessingHitLines, ...singWithTheTide.hitLines, ...(pureHeart?.hitLines || [])];
+    const hitOnlyLines = [
+      ...blessingHitLines,
+      ...singWithTheTide.hitLines,
+      ...(pureHeart?.hitLines || []),
+      ...trueFlameHitLines,
+    ];
     // A buff for the character's "other skills" (Ice Bond's Euphoria, packages/engine/src/skills/empower-effects.js) skips the skill that grants it.
     const ownLines = sourceTexts.some((line) => line.exceptSetupKey === setup.setupKey)
       ? sourceTexts.filter((line) => line.exceptSetupKey !== setup.setupKey)
