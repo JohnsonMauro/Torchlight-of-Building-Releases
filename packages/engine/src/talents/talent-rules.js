@@ -1,4 +1,18 @@
 export const MAX_TALENT_POINTS = 115;
+// The talent points a character has (owner, 2026-10-28): 1 per level from level 3 (100 at level 100), up to 6 from the
+// maps' Treasure Troves and up to 9 from the Path of Progression (3 + 1 × 6): 115 in all, 112 at level 97 with both done.
+// Below level 3 the level gives none (provisional: the owner's recollection).
+export const TREASURE_TROVE_TALENT_POINTS = 6;
+export const PATH_OF_PROGRESSION_TALENT_POINTS = 9;
+const clampPoints = (value, max) => Math.max(0, Math.min(max, Math.trunc(Number.isFinite(value) ? value : max)));
+/** The points the build may spend: { fromLevel, treasureTroves, pathOfProgression, total }. Unset troves and progression count as done. */
+export function talentPointBudget(state) {
+  const level = Number(state?.hero?.characterLevel);
+  const fromLevel = Number.isInteger(level) && level >= 1 ? (level >= 3 ? Math.min(100, level) : 0) : 100;
+  const treasureTroves = clampPoints(state?.talents?.treasureTrovePoints, TREASURE_TROVE_TALENT_POINTS);
+  const pathOfProgression = clampPoints(state?.talents?.pathOfProgressionPoints, PATH_OF_PROGRESSION_TALENT_POINTS);
+  return { fromLevel, treasureTroves, pathOfProgression, total: fromLevel + treasureTroves + pathOfProgression };
+}
 export const TALENT_THRESHOLDS = [0, 3, 6, 9, 12, 15, 18];
 
 const key = (panel, coordinate) => `${panel}:${Array.isArray(coordinate) ? coordinate.join(",") : coordinate}`;
@@ -32,6 +46,13 @@ export function talentSuccessors(graph, coordinate) {
   });
 }
 
+// A node opens the next one only when it is full (owner, 2026-10-28: in game a 1/1 node after a 1/3 one cannot be taken;
+// the 3 points come first).
+const filled = (graph, ranks, panel, coordinate) => {
+  const node = graph.nodes.find((entry) => entry.coordinate.join(",") === coordinate.join(","));
+  return rank(ranks, panel, coordinate) >= (node?.maxRank || 1);
+};
+
 const connectedPredecessors = (graph, coordinate, prerequisiteFreeCoordinates) =>
   talentPredecessors(graph, coordinate).filter((before) => !prerequisiteFreeCoordinates?.has(before.join(",")));
 
@@ -43,14 +64,14 @@ export function canAllocateTalent({
   ranks,
   prismCoordinate,
   prerequisiteFreeCoordinates,
+  maximum = MAX_TALENT_POINTS,
 }) {
   if (node.coordinate.join(",") === prismCoordinate)
     return { allowed: false, reason: "Prism replaces this talent node" };
   const totals = talentPointTotals(layouts, ranks);
   const current = rank(ranks, panel, node.coordinate);
   if (current >= node.maxRank) return { allowed: false, reason: "Maximum rank reached" };
-  if (totals.total >= MAX_TALENT_POINTS)
-    return { allowed: false, reason: `Maximum ${MAX_TALENT_POINTS} talent points reached` };
+  if (totals.total >= maximum) return { allowed: false, reason: `All ${maximum} talent points spent` };
   if (prerequisiteFreeCoordinates?.has(node.coordinate.join(",")))
     return { allowed: true, reason: "Talent in reflected area has no prerequisites" };
   const threshold = TALENT_THRESHOLDS[node.coordinate[0]] || 0;
@@ -58,9 +79,9 @@ export function canAllocateTalent({
   const connected = connectedPredecessors(graph, node.coordinate, prerequisiteFreeCoordinates);
   if (
     connected.length &&
-    !connected.some((coordinate) => coordinate.join(",") === prismCoordinate || rank(ranks, panel, coordinate) > 0)
+    !connected.some((coordinate) => coordinate.join(",") === prismCoordinate || filled(graph, ranks, panel, coordinate))
   )
-    return { allowed: false, reason: "Requires an allocated connected talent to the left" };
+    return { allowed: false, reason: "Requires the connected talent to the left at full rank" };
   return { allowed: true, reason: "Available" };
 }
 
@@ -72,6 +93,7 @@ export function allocateTalentWithPrerequisites({
   ranks,
   prismCoordinate,
   prerequisiteFreeCoordinates,
+  maximum = MAX_TALENT_POINTS,
 }) {
   const nextRanks = { ...ranks };
   const nodeByCoordinate = new Map(graph.nodes.map((entry) => [entry.coordinate.join(","), entry]));
@@ -85,6 +107,7 @@ export function allocateTalentWithPrerequisites({
       ranks: nextRanks,
       prismCoordinate,
       prerequisiteFreeCoordinates,
+      maximum,
     });
     if (!rule.allowed) return rule;
     const entryKey = key(panel, entry.coordinate);
@@ -137,11 +160,12 @@ export function allocateTalentToMaxWithPrerequisites({
   ranks,
   prismCoordinate,
   prerequisiteFreeCoordinates,
+  maximum = MAX_TALENT_POINTS,
 }) {
-  const maximum = node.maxRank || (node.effectsPerRank ? 3 : 1);
+  const nodeMax = node.maxRank || (node.effectsPerRank ? 3 : 1);
   let nextRanks = ranks;
   const added = [];
-  while (rank(nextRanks, panel, node.coordinate) < maximum) {
+  while (rank(nextRanks, panel, node.coordinate) < nodeMax) {
     const result = allocateTalentWithPrerequisites({
       panel,
       node,
@@ -150,6 +174,7 @@ export function allocateTalentToMaxWithPrerequisites({
       ranks: nextRanks,
       prismCoordinate,
       prerequisiteFreeCoordinates,
+      maximum,
     });
     if (!result.allowed) return { allowed: false, reason: result.reason, ranks, added: [] };
     nextRanks = result.ranks;
@@ -183,7 +208,7 @@ export function pruneInvalidTalentRanks({
           (points < (TALENT_THRESHOLDS[node.coordinate[0]] || 0) ||
             (connected.length > 0 &&
               !connected.some(
-                (before) => before.join(",") === prismCoordinate || rank(nextRanks, panel, before) > 0,
+                (before) => before.join(",") === prismCoordinate || filled(graph, nextRanks, panel, before),
               ))));
       if (!invalid) continue;
       nextRanks[key(panel, node.coordinate)] = 0;
@@ -211,13 +236,13 @@ export function canRemoveTalent({ panel, node, graph, layouts, ranks, prismCoord
       reason: `A later talent still requires ${TALENT_THRESHOLDS[gated.coordinate[0]]} panel points`,
     };
   if (
-    current === 1 &&
+    current === (node.maxRank || 1) &&
     talentSuccessors(graph, node.coordinate).some(
       (coordinate) =>
         rank(nextRanks, panel, coordinate) > 0 &&
         !prerequisiteFreeCoordinates?.has(coordinate.join(",")) &&
         !connectedPredecessors(graph, coordinate, prerequisiteFreeCoordinates).some(
-          (predecessor) => predecessor.join(",") === prismCoordinate || rank(nextRanks, panel, predecessor) > 0,
+          (predecessor) => predecessor.join(",") === prismCoordinate || filled(graph, nextRanks, panel, predecessor),
         ),
     )
   )
@@ -246,7 +271,7 @@ export function removeTalentWithDependents({
         if (!rank(nextRanks, panel, successor) || prerequisiteFreeCoordinates?.has(successor.join(","))) continue;
         if (
           connectedPredecessors(graph, successor, prerequisiteFreeCoordinates).some(
-            (predecessor) => predecessor.join(",") === prismCoordinate || rank(nextRanks, panel, predecessor) > 0,
+            (predecessor) => predecessor.join(",") === prismCoordinate || filled(graph, nextRanks, panel, predecessor),
           )
         )
           continue;

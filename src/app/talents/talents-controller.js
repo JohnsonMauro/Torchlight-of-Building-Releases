@@ -9,7 +9,10 @@ import {
   prismReplacesCore,
   refineCoverage,
   removeTalentWithDependents,
+  PATH_OF_PROGRESSION_TALENT_POINTS,
+  TREASURE_TROVE_TALENT_POINTS,
   talentFamilies,
+  talentPointBudget,
   talentPointTotals,
   tliArt,
 } from "#engine";
@@ -55,6 +58,21 @@ import {
 
 let activeCoreThreshold = 12;
 export const talentCommands = {
+  // The Total points card's Treasure Troves / Path of Progression points (talent-rules.js talentPointBudget).
+  setTalentBonusPoints: (kind, text) => {
+    const field =
+      kind === "treasureTroves"
+        ? "treasureTrovePoints"
+        : kind === "pathOfProgression"
+          ? "pathOfProgressionPoints"
+          : null;
+    if (!field) return;
+    const max = field === "treasureTrovePoints" ? TREASURE_TROVE_TALENT_POINTS : PATH_OF_PROGRESSION_TALENT_POINTS;
+    const value = Number(text);
+    plannerState.talents[field] = Math.max(0, Math.min(max, Number.isFinite(value) ? Math.trunc(value) : max));
+    persistPlannerState();
+    renderTalents();
+  },
   // Talent trees (apps/web/src/features/talents).
   openTalentTree,
   removeTalentTree,
@@ -163,6 +181,7 @@ function talentsSource() {
     talents: plannerState.talents,
     slateMode: ui.talentSlateMode,
     pendingPrism: pendingPrismPlacement,
+    budget: talentPointBudget(plannerState),
   });
 }
 // The talent tree picker's data (src/app/bridge/talent-picker-view.ts): every god's trees, the open slot's choices on.
@@ -237,6 +256,7 @@ function changeTalentRank(coordinate, delta, max = false) {
     ranks: Object.fromEntries(talentRanks),
     prismCoordinate,
     prerequisiteFreeCoordinates,
+    maximum: talentPointBudget(plannerState).total,
   };
   if (delta > 0) {
     const allocation = max ? allocateTalentToMaxWithPrerequisites(args) : allocateTalentWithPrerequisites(args);

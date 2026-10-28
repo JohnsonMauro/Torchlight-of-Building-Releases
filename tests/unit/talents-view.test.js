@@ -40,6 +40,7 @@ function view(overrides = {}) {
     },
     slateMode: false,
     pendingPrism: null,
+    budget: { fromLevel: 100, treasureTroves: 6, pathOfProgression: 9, total: 115 },
     ...overrides,
   });
 }
@@ -57,6 +58,9 @@ test("the tabs show each slot's tree, the open one active, a slot after an empty
   );
   assert.equal(totalPoints, 3);
   assert.equal(maxPoints, 115);
+  // Level 97 with the Treasure Troves and the Path of Progression done: 112, and the points the tree lacks show as unused.
+  const level97 = view({ budget: { fromLevel: 97, treasureTroves: 6, pathOfProgression: 9, total: 112 } });
+  assert.deepEqual([level97.maxPoints, level97.unusedPoints], [112, 109]);
   // The Slates tab takes the active mark off the tree tabs.
   assert.equal(
     view({ slateMode: true }).tabs.some((tab) => tab.active),
@@ -200,4 +204,16 @@ test("the nodes in an Ethereal Prism's area are named as within the prism area",
   const affected = result.nodes.filter((node) => node.classes.includes("prism-affected-node"));
   assert.ok(affected.length > 0);
   for (const node of affected) assert.match(node.label, /, within prism area$/);
+});
+
+test("the talent point budget: 1 per level from level 3, up to 6 Treasure Trove and 9 Path of Progression points", async () => {
+  const { talentPointBudget } = await import("../../packages/engine/src/talents/talent-rules.js");
+  assert.equal(talentPointBudget({ hero: { characterLevel: 97 }, talents: {} }).total, 112);
+  assert.equal(talentPointBudget({ hero: { characterLevel: 100 }, talents: {} }).total, 115);
+  assert.equal(
+    talentPointBudget({ hero: { characterLevel: 97 }, talents: { treasureTrovePoints: 2, pathOfProgressionPoints: 3 } })
+      .total,
+    102,
+  );
+  assert.equal(talentPointBudget({ hero: { characterLevel: 2 }, talents: {} }).fromLevel, 0);
 });

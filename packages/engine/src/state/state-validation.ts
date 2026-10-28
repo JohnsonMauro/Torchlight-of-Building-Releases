@@ -373,6 +373,9 @@ const schema = shape({
     prismInventory: list(craftedPrism, 200),
     installedPrisms: map(text),
     installedPrismNodes: map(text),
+    // Talent points from the maps' Treasure Troves and the Path of Progression (talent-rules.js talentPointBudget).
+    treasureTrovePoints: number(0, 6, true),
+    pathOfProgressionPoints: number(0, 9, true),
   }),
   slates: shape({
     geometryVersion: number(0, 4, true),

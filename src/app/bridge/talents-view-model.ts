@@ -6,10 +6,10 @@
 import {
   allProfessionTalentCatalogue,
   canAllocateTalent,
+  MAX_TALENT_POINTS,
   godTalentTrees,
   inverseImageReflectedBounds,
   inverseImageReflectedCoordinates,
-  MAX_TALENT_POINTS,
   prismAreaBounds,
   prismPrerequisiteFreeCoordinates,
   prismReplacesCore,
@@ -73,6 +73,8 @@ export interface TalentsInput {
   slateMode: boolean;
   /** A prism waiting for the node it goes on. */
   pendingPrism: { id: string; panel: string } | null;
+  /** The points the build may spend (talent-rules.js talentPointBudget): level, Treasure Troves, Path of Progression. */
+  budget: { fromLevel: number; treasureTroves: number; pathOfProgression: number; total: number };
 }
 
 export interface TalentTabView {
@@ -85,6 +87,8 @@ export interface TalentTabView {
   active: boolean;
   /** A slot after an empty one. */
   disabled: boolean;
+  /** The points spent in its tree (shown on the tab); null for an empty slot. */
+  points: number | null;
 }
 export type CoreView =
   | {
@@ -134,7 +138,13 @@ export interface TalentsView {
   tabs: TalentTabView[];
   slateMode: boolean;
   totalPoints: number;
+  /** The points the build may spend: its level's, plus the Treasure Troves' and the Path of Progression's. */
   maxPoints: number;
+  /** Points not spent: a tree the game log left short shows here (owner, 2026-10-28). */
+  unusedPoints: number;
+  /** Every character's cap (level 100, all bonus points): the card's "spent / cap". */
+  capPoints: number;
+  budget: { fromLevel: number; treasureTroves: number; pathOfProgression: number };
   /** The open tree's family class ("talent-family-goddess-of-knowledge"): its god's colour; "" for none. */
   familyClass: string;
   /** The points spent in the open tree (they unlock its columns and its core talents). */
@@ -218,6 +228,7 @@ export function talentsView(input: TalentsInput): TalentsView {
       familyClass: talentFamilyClass(name),
       active: !input.slateMode && name === panel.name,
       disabled: slot > 0 && !selectedTrees[slot - 1],
+      points: name ? (pointTotals.panels[name] ?? 0) : null,
     };
   });
 
@@ -225,7 +236,14 @@ export function talentsView(input: TalentsInput): TalentsView {
     tabs,
     slateMode: input.slateMode,
     totalPoints: pointTotals.total,
-    maxPoints: MAX_TALENT_POINTS,
+    maxPoints: input.budget.total,
+    unusedPoints: Math.max(0, input.budget.total - pointTotals.total),
+    capPoints: MAX_TALENT_POINTS,
+    budget: {
+      fromLevel: input.budget.fromLevel,
+      treasureTroves: input.budget.treasureTroves,
+      pathOfProgression: input.budget.pathOfProgression,
+    },
     familyClass: talentFamilyClass(panel.name),
     panelPoints,
     thresholds: (TALENT_THRESHOLDS as number[]).map((points) => ({ points, reached: panelPoints >= points })),
@@ -331,6 +349,7 @@ function stageView(
       ranks: input.ranks,
       prismCoordinate: hasPrism ? prismCoordinate : null,
       prerequisiteFreeCoordinates: prerequisiteFree,
+      maximum: input.budget.total,
     });
     const classes = [
       rank ? "allocated" : "",

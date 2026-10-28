@@ -4,10 +4,12 @@
 // the planner's "talents" source (src/app/bridge/talents-view-model.ts); every edit is a planner command, and the tree,
 // core and prism dialogs stay legacy (the Slates tab's board takes the tree's place in TalentsView). Nodes, cores and the
 // installed prism show their tooltips (TalentTooltip). The state-dependent looks are in talent-classes.ts.
-import { useEffect, useRef, type CSSProperties, type MouseEvent } from "react";
+import { useEffect, useRef, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { PATH_OF_PROGRESSION_TALENT_POINTS, TREASURE_TROVE_TALENT_POINTS } from "#engine";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
 import type { CoreView, TalentsView } from "@legacy/app/bridge/talents-view-model.ts";
 import { Artwork } from "../../ui/Artwork";
+import { CommitNumberInput } from "../../ui/CommitNumberInput";
 import { familyTint } from "../../ui/talent-slate-styles";
 import { usePointerDrag } from "../../ui/use-pointer-drag";
 import { useViewSource } from "../../ui/use-view-source";
@@ -21,13 +23,17 @@ import { hideTooltip } from "../../ui/tooltip/tooltip-store";
  * A slot of the trees column (a tree, or the Slates tab): emblem beside the slot label and its name, an accent edge on
  * the left while open.
  */
-const SLOT =
-  "grid h-full min-h-0 cursor-pointer grid-cols-[66px_minmax(0,1fr)] items-center gap-3 rounded-md border border-l-2 border-line bg-raised p-3.5 text-left text-text hover:border-line-strong on:border-accent on:border-l-accent on:bg-accent/10 max-[1100px]:h-auto max-[1100px]:min-h-18 max-[1100px]:grid-cols-[48px_minmax(0,1fr)] max-[1100px]:gap-2 max-[1100px]:p-2 max-[760px]:min-h-15.5";
-const TREE_SLOT = `talent-tree-slot ${SLOT} off:cursor-not-allowed off:opacity-40`;
+const SLOT_BASE =
+  "grid h-full min-h-0 cursor-pointer items-center gap-3 rounded-md border border-l-2 border-line bg-raised p-3.5 text-left text-text hover:border-line-strong on:border-accent on:border-l-accent on:bg-accent/10 max-[1100px]:h-auto max-[1100px]:min-h-18 max-[1100px]:gap-2 max-[1100px]:p-2 max-[760px]:min-h-15.5";
+const SLOT = `${SLOT_BASE} grid-cols-[66px_minmax(0,1fr)] max-[1100px]:grid-cols-[48px_minmax(0,1fr)]`;
+// A tree tab adds a column for its points.
+const TREE_SLOT = `talent-tree-slot ${SLOT_BASE} grid-cols-[66px_minmax(0,1fr)_auto] max-[1100px]:grid-cols-[48px_minmax(0,1fr)_auto] off:cursor-not-allowed off:opacity-40`;
 /** A slot's emblem: the tree's art, or the Slates tab's statue grid. */
 const SLOT_EMBLEM = "size-15.5 max-[1100px]:size-10.5";
 /** The small caps label over a slot's name. */
 const SLOT_LABEL = "block text-[10px] tracking-wider text-dim uppercase max-[1100px]:tracking-normal";
+/** The points spent in a tree, at the tab's right. */
+const SLOT_POINTS = "shrink-0 text-lg font-bold text-accent tabular-nums max-[1100px]:text-sm";
 const SLOT_NAME =
   "my-1 block text-sm leading-tight font-bold max-[1100px]:my-0.5 max-[1100px]:text-xs max-[1100px]:leading-[normal]";
 /** Reselect / Reset / Install Prism. */
@@ -114,6 +120,11 @@ export function TalentTabs() {
             <small className={SLOT_LABEL}>{tab.label}</small>
             <strong className={SLOT_NAME}>{tab.name || (tab.disabled ? "Select previous" : "Click to select")}</strong>
           </span>
+          {tab.points !== null ? (
+            <span className={SLOT_POINTS} aria-label={`${tab.points} points`}>
+              {tab.points}
+            </span>
+          ) : null}
         </button>
       ))}
       <button
@@ -136,9 +147,42 @@ export function TalentTabs() {
           <strong className={SLOT_NAME}>Slates</strong>
         </span>
       </button>
-      <div className="talent-slot-total rounded-md bg-raised p-3.5 max-[1100px]:mt-auto max-[1100px]:p-2">
-        <small className="block text-sm text-accent uppercase">Total points</small>
-        <strong className="mt-1 block text-lg font-bold text-accent">{`${view.totalPoints} / ${view.maxPoints}`}</strong>
+      <div className="talent-slot-total grid gap-2.5 rounded-md bg-raised p-3.5 max-[1100px]:mt-auto max-[1100px]:p-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <small className="text-xs font-bold tracking-wider text-accent uppercase">Total points</small>
+          <strong
+            className="text-lg font-bold text-accent tabular-nums"
+            aria-label={`${view.totalPoints} of ${view.capPoints} points spent`}
+          >
+            {view.totalPoints}
+            <span className="text-sm font-semibold text-muted">{` / ${view.capPoints}`}</span>
+          </strong>
+        </div>
+        {view.unusedPoints ? (
+          <span className="justify-self-start rounded-sm border border-warn/50 bg-warn/10 px-2 py-0.5 text-xs font-semibold text-warn">
+            {`${view.unusedPoints} unused`}
+          </span>
+        ) : null}
+        <dl className="grid gap-1.5 border-t border-line pt-2.5 text-xs">
+          <PointsRow label="Level">
+            <span className="text-text tabular-nums">{view.budget.fromLevel}</span>
+          </PointsRow>
+          <BonusPointsField
+            label="Treasure Troves"
+            kind="treasureTroves"
+            value={view.budget.treasureTroves}
+            max={TREASURE_TROVE_TALENT_POINTS}
+          />
+          <BonusPointsField
+            label="Path of Progression"
+            kind="pathOfProgression"
+            value={view.budget.pathOfProgression}
+            max={PATH_OF_PROGRESSION_TALENT_POINTS}
+          />
+          <PointsRow label="Available" strong>
+            <span className="font-bold text-text tabular-nums">{view.maxPoints}</span>
+          </PointsRow>
+        </dl>
       </div>
     </>
   );
@@ -451,5 +495,44 @@ function StageContent({ view, drag }: { view: TalentsView; drag: ReturnType<type
         ];
       })}
     </>
+  );
+}
+
+/** A row of the Total points card: a label, its figure or field at the right. */
+function PointsRow({ label, strong = false, children }: { label: string; strong?: boolean; children: ReactNode }) {
+  return (
+    <div className={`flex min-h-6 items-center justify-between gap-2 ${strong ? "border-t border-line pt-1.5" : ""}`}>
+      <dt className={strong ? "font-bold text-text" : "text-muted"}>{label}</dt>
+      <dd className="flex items-center gap-1">{children}</dd>
+    </div>
+  );
+}
+
+/** A source of talent points beside the level (the maps' Treasure Troves, the Path of Progression): full by default. */
+function BonusPointsField({
+  label,
+  kind,
+  value,
+  max,
+}: {
+  label: string;
+  kind: "treasureTroves" | "pathOfProgression";
+  value: number;
+  max: number;
+}) {
+  return (
+    <PointsRow label={label}>
+      <CommitNumberInput
+        key={value}
+        className="field w-11 px-1.5 py-0.5 text-right text-xs tabular-nums"
+        aria-label={`${label} talent points`}
+        value={value}
+        min={0}
+        max={max}
+        step={1}
+        onCommit={(text) => plannerCommands().setTalentBonusPoints(kind, text)}
+      />
+      <span className="text-dim tabular-nums">{`/ ${max}`}</span>
+    </PointsRow>
   );
 }

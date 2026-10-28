@@ -25,8 +25,8 @@ export interface NodeLook {
 }
 
 /**
- * A node's look from the view model's state classes and the prism drag. The fill says taken (accent), blocked (sunken)
- * or open (raised); the edge, from strongest to weakest: the drop target of a dragged prism (violet ring), a prism
+ * A node's look from the view model's state classes and the prism drag. The fill says taken (white with its figure in
+ * black, as the game draws a taken node in both themes), blocked (sunken) or open (raised); the edge, from strongest to weakest: the drop target of a dragged prism (violet ring), a prism
  * placement target (warm ring, crosshair), a legendary node (warm edge, violet ring inside a prism's area), a node in a
  * prism's area (violet edge). A node under the installed prism hides unless the prism is dragged.
  */
@@ -38,7 +38,7 @@ export function nodeLook(classes: string, dropTarget: boolean, prismDragged: boo
   const affected = has.has("prism-affected-node");
   const placing = has.has("prism-placement-target") && !legendary;
 
-  const fill = allocated ? "bg-accent/20 text-text" : locked ? "bg-sunken text-dim" : "bg-raised text-muted";
+  const fill = allocated ? "bg-white text-black" : locked ? "bg-sunken text-dim" : "bg-raised text-muted";
   const edge = dropTarget
     ? "z-3 border-violet ring-4 ring-violet/50"
     : placing
@@ -56,7 +56,13 @@ export function nodeLook(classes: string, dropTarget: boolean, prismDragged: boo
                 : "border-line-strong hover:border-accent focus-visible:border-accent";
   const hidden = has.has("prism-covered-node") && !prismDragged ? "invisible" : "";
 
-  const art = allocated ? "" : locked ? "opacity-40 grayscale" : legendary ? "opacity-85" : "opacity-70 grayscale-50";
+  const art = allocated
+    ? "invert"
+    : locked
+      ? "opacity-40 grayscale"
+      : legendary
+        ? "opacity-85"
+        : "opacity-70 grayscale-50";
   const rank = allocated
     ? "bg-accent text-on-accent"
     : legendary && affected

@@ -252,13 +252,16 @@ export {
 } from "./talents/slate-judgment.js";
 export {
   MAX_TALENT_POINTS,
+  PATH_OF_PROGRESSION_TALENT_POINTS,
   TALENT_THRESHOLDS,
+  TREASURE_TROVE_TALENT_POINTS,
   allocateTalentToMaxWithPrerequisites,
   allocateTalentWithPrerequisites,
   canAllocateTalent,
   pruneInvalidTalentRanks,
   removeTalentWithDependents,
   talentEffectText,
+  talentPointBudget,
   talentPointTotals,
 } from "./talents/talent-rules.js";
 export { activeTalentTreeLayouts, talentTreeLayouts } from "./talents/talent-layouts.js";

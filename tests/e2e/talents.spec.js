@@ -7,9 +7,12 @@ import { readFileSync } from "node:fs";
 import { PlannerPage } from "./pages/planner-page.js";
 import { TalentsPage } from "./pages/talents-page.js";
 
-const youga = JSON.parse(
+const yougaL94 = JSON.parse(
   readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
 );
+// At level 94 the build spends all its 109 points (94 + 6 Treasure Troves + 9 Path of Progression); at level 100 it has
+// 6 free, so a click can add one.
+const youga = { ...yougaL94, hero: { ...yougaL94.hero, characterLevel: 100 } };
 // Tall enough for the whole tree to be on screen (the prism drag moves the mouse, which does not scroll the page).
 test.use({ viewport: { width: 1440, height: 1100 } });
 
@@ -126,7 +129,7 @@ test("a full node takes no more points; taking points off can take a dependent n
 test("a click on a node behind an empty one also fills the way to it", async ({ page }) => {
   const { planner, talents } = await openTalents(page);
   await expect(talents.node("2,1")).toHaveAccessibleName(
-    "Unallocated medium talent, rank 0 of 3, Requires an allocated connected talent to the left",
+    "Unallocated medium talent, rank 0 of 3, Requires the connected talent to the left at full rank",
   );
   await talents.node("2,1").click();
   await expect(talents.node("2,1")).toHaveAccessibleName(/rank 1 of 3/);
