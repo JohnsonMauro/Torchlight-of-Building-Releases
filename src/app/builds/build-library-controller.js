@@ -152,8 +152,15 @@ async function importBuildText(text) {
   showToast(`${imported.name} imported and active`);
 }
 // The Import dialog's Import Code (apps/web/src/features/builds/ImportBuildDialog.tsx).
+// True once the build is in the library (the dialog keeps the code in its recent imports).
 function importBuild(text) {
-  importBuildText(text).catch(() => showToast("That build code could not be read"));
+  return importBuildText(text).then(
+    () => true,
+    () => {
+      showToast("That build code could not be read");
+      return false;
+    },
+  );
 }
 function restoreSummaryText({ added, renamed, unchanged, skipped, saved }) {
   const parts = [`Restored ${added} build${added === 1 ? "" : "s"}`];

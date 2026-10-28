@@ -19,7 +19,7 @@
  * @property {() => Promise<void>} exportBuild Copies the open build's code to the clipboard (a toast says how it went).
  * @property {(kind: "treasureTroves" | "pathOfProgression", value: string) => void} setTalentBonusPoints Total points
  *   card: the talent points from the maps' Treasure Troves (0–6) or the Path of Progression (0–9).
- * @property {(text: string) => void} importBuild Adds a pasted build code as a new active build and opens the Builds view;
+ * @property {(text: string) => Promise<boolean>} importBuild Adds a pasted build code as a new active build and opens the Builds view;
  *   a toast says when the code cannot be read (the Import dialog then stays open).
  * @property {(text: string) => void} renameBuild Build strip: renames the open build (a blank or unchanged name keeps
  *   the old one).

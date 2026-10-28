@@ -79,10 +79,14 @@ test("Import keeps the dialog open on a code it cannot read", async ({ page }) =
   await dialog.getByRole("button", { name: "Import Code" }).click();
   await expect(toast(page)).toHaveText("That build code could not be read");
   await expect(dialog).toBeVisible();
-  expect((await library(page)).builds).toHaveLength(1);
-  await page.keyboard.press("Escape");
-  // The pasted text stays for the next opening.
-  await workspace(page).getByRole("button", { name: "Import", exact: true }).click();
+  // The text stays while the dialog is open, so it can be corrected.
   await expect(dialog.getByRole("textbox", { name: "Paste a build code" })).toHaveValue("not a build code");
+  expect((await library(page)).builds).toHaveLength(1);
+  // A code that could not be read is not a recent import.
+  await expect(dialog.getByRole("heading", { name: "Recent imports" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  // The next opening starts empty (owner, 2026-10-28).
+  await workspace(page).getByRole("button", { name: "Import", exact: true }).click();
+  await expect(dialog.getByRole("textbox", { name: "Paste a build code" })).toHaveValue("");
   await planner.expectNoErrors();
 });
