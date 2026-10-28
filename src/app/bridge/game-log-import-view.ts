@@ -178,61 +178,35 @@ export interface GameLogReport {
   sources?: Record<string, { chosen?: boolean; from: string[]; stale: { stamp: string; reason: string }[] }>;
   provisional: string[];
   logGaps?: { label: string }[];
+  /** Gear put on after the snapshot ("Chest: All Magic Secret Robe"): base only until the next login. */
+  gearChanged?: string[];
   notices?: string[];
 }
-/** The "From" cell of a section: none (no source), "—", or the logins it came from (an older one flagged). */
-export type GameLogFromView = null | { text: string; stale: string | null };
 export interface GameLogSummaryView {
-  /** The sections that were cut or left out of the log, for the line above the result. */
-  gaps: string;
   stamp: string;
-  fromColumn: boolean;
-  sections: { label: string; imported: number; skipped: number; from: GameLogFromView }[];
-  changed: boolean;
-  skipped: { section: string; item: string; reason: string }[];
-  notices: string[];
-  /** The provisional readings, "; "-joined, or "". */
-  provisional: string;
+  /** Short warnings, one line each: what the import could not bring and what the player does about it (owner,
+   * 2026-10-28: no list of what was imported). */
+  warnings: string[];
 }
 
-function sectionFrom(report: GameLogReport, key: string, value: SectionReport): GameLogFromView {
-  const source = report.sources?.[key];
-  if (!source) return null;
-  const stamps = [...(source.chosen && report.source?.stamp ? [report.source.stamp] : []), ...source.from];
-  if (!stamps.length || (!value.imported.length && !source.from.length)) return { text: "—", stale: null };
-  return {
-    text: [...new Set(stamps.map(gameLogLocalTime))].join(" + "),
-    stale: source.stale.length
-      ? source.stale.map((entry) => `${gameLogLocalTime(entry.stamp)}: ${entry.reason}`).join("; ")
-      : null,
-  };
-}
+/** The game writes the build only when a character is entered (40 map changes, 2 dumps in a 2026-10-28 log). */
+const RELOG = "Go back to character select, enter the character, then import again.";
 
 export function gameLogSummary(report: GameLogReport): GameLogSummaryView {
-  const sections = Object.entries(report.sections);
-  const skippedOf = (value: SectionReport) => [...value.unresolved, ...value.missing, ...value.notes];
-  return {
-    // A cut or dropped section changes the whole build (talents, gear…), so it also gets one line above the result.
-    gaps: [...new Set((report.logGaps || []).map((gap) => gap.label))].join(", "),
-    stamp: gameLogLocalTime(report.source?.stamp),
-    fromColumn: Boolean(report.sources),
-    sections: sections.map(([key, value]) => ({
-      label: SECTION_LABELS[key] || key,
-      imported: value.imported.length,
-      skipped: skippedOf(value).length,
-      from: sectionFrom(report, key, value),
-    })),
-    changed: Boolean(report.source?.changesAfter),
-    skipped: sections.flatMap(([key, value]) =>
-      skippedOf(value).map((entry) => ({
-        section: SECTION_LABELS[key] || key,
-        item: entry.item,
-        reason: entry.reason || "",
-      })),
-    ),
-    notices: report.notices || [],
-    provisional: report.provisional.join("; "),
-  };
+  const incomplete = new Set((report.logGaps || []).map((gap) => gap.label));
+  for (const [key, value] of Object.entries(report.sections))
+    if (value.missing.length || value.unresolved.length) incomplete.add(SECTION_LABELS[key] || key);
+  const warnings = [
+    ...(report.gearChanged?.length
+      ? [`Changed after this login: ${report.gearChanged.join(", ")} (no affixes yet). ${RELOG}`]
+      : report.source?.changesAfter
+        ? [`Your build changed after this login. ${RELOG}`]
+        : []),
+    ...(incomplete.size
+      ? [`The game's log left out part of: ${[...incomplete].join(", ")}. Entering the character again may fill it.`]
+      : []),
+  ];
+  return { stamp: gameLogLocalTime(report.source?.stamp), warnings };
 }
 
 /** A file of the local reader (src/game-log/game-log-local.js). */

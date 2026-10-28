@@ -199,6 +199,61 @@ const entries = (table) =>
  * `character`, a small number per character (from `characterGroups`, shareable the same way). Item ids become
  * `<base>_item<n>` tokens from `tokens` (a Map the caller may share across files so one item keeps one token).
  */
+const DUMP_HEADER = "----Socket RecvMessage STT----GetPlayerData----";
+// The lines scanGameLog reads besides a dump's tree: skill socket changes, gear / skill / slate changes, attribute snapshots.
+const SCANNED_LINE =
+  /in PageId=-6 |in PageId=-1 |ItemChange@ ProtoName=|RoleAttrMgr@Attri\.Id|AddEquipItem PageId = -1 /;
+// An item put on after the login (2026-10-28 log, a chest swap): the slot (the gear index) and the item's base, nothing more.
+const GEAR_EQUIP = /BagMgr@:AddEquipItem PageId = -1 SlotId = (\d+) ConfigBaseId = (\d+)/;
+// Its "ItemChange@ Add Id=<base>_<uuid> BagNum=1 in PageId=-1 SlotId=<n>" line, just before: the item's own id.
+const GEAR_ADD = /ItemChange@ Add Id=(\S+)(?: BagNum=\d+)? in PageId=-1 SlotId=(\d+)/;
+
+/**
+ * A filter over a log's lines, in order, that keeps only what scanGameLog reads: each dump's header, the (up to 4) lines
+ * before its tree and the tree, and the change and attribute lines. A run of dropped lines leaves one empty line, so a
+ * tree of another message never joins a dump's. Lets a reader go through a whole log (hundreds of MB; the dumps are
+ * written at login, near the start) and keep a few MB.
+ */
+export function gameLogLineFilter() {
+  const kept = [];
+  // 0: outside a dump; 1–5: the lines after a header, before its tree; -1: inside the tree.
+  let mode = 0,
+    gap = false;
+  const keep = (line) => {
+    if (gap && kept.length) kept.push("");
+    gap = false;
+    kept.push(line);
+  };
+  return {
+    push(line) {
+      if (line.includes(DUMP_HEADER)) {
+        keep(line);
+        mode = 1;
+        return;
+      }
+      if (mode !== 0) {
+        if (/^[+|]/.test(line)) {
+          kept.push(line);
+          mode = -1;
+          return;
+        }
+        if (mode > 0 && mode <= 4) {
+          kept.push(line);
+          mode += 1;
+          return;
+        }
+        mode = 0;
+      }
+      if (SCANNED_LINE.test(line)) keep(line);
+      else gap = true;
+    },
+    /** The kept lines; `tail` is the file's unterminated last line (scanGameLog's partialTail drops it). */
+    text(tail = "") {
+      return `${kept.join("\n")}${gap ? "\n" : ""}\n${tail}`;
+    },
+  };
+}
+
 export function scanGameLog(
   text,
   { accountGroups = new Map(), characterGroups = new Map(), tokens = new Map(), partialTail = false } = {},
@@ -211,14 +266,15 @@ export function scanGameLog(
   // A log the game may still be writing (`partialTail`): its last line can be partial, and a dump with no line after
   // it may be cut mid-write, so both are left out (counted in `incompleteDumps`). A dump whose header is written but
   // whose tree has not started yet, or whose header is the partial last line, counts as incomplete too.
-  const DUMP_HEADER = "----Socket RecvMessage STT----GetPlayerData----";
   const tail = partialTail ? lines.pop() : "";
   const dumps = [],
     changes = [],
     skillChanges = [],
+    gearChanges = [],
     attributeSnapshots = [];
   let incompleteDumps = tail?.includes(DUMP_HEADER) ? 1 : 0,
-    skippedDumps = 0;
+    skippedDumps = 0,
+    lastGearAdd = null;
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     if (line.includes(DUMP_HEADER)) {
@@ -257,6 +313,22 @@ export function scanGameLog(
           skippedDumps += 1;
         }
       index = Math.max(index, end - 1);
+      continue;
+    }
+    if (line.includes("AddEquipItem PageId = -1 ")) {
+      const m = GEAR_EQUIP.exec(line);
+      if (m)
+        gearChanges.push({
+          stamp: stampIso(line),
+          index: Number(m[1]),
+          baseId: m[2],
+          itemId: lastGearAdd?.slot === m[1] ? lastGearAdd.itemId : null,
+        });
+      continue;
+    }
+    if (line.includes("in PageId=-1 ")) {
+      const m = GEAR_ADD.exec(line);
+      if (m) lastGearAdd = { itemId: itemToken(m[1], tokens), slot: m[2] };
       continue;
     }
     if (line.includes("in PageId=-6 ")) {
@@ -314,6 +386,8 @@ export function scanGameLog(
     dump.changesAfter = changes.filter(inSession).length;
     // The skill sockets changed in this login's session, in order (applied over the login by collectSkillSlots).
     dump.skillChanges = skillChanges.filter(inSession);
+    // The gear put on in this login's session (slot and base only; importSnapshot never shows the old item there).
+    dump.gearChanges = gearChanges.filter(inSession);
     dump.attributeSnapshotAfter = attributeSnapshots.some((stamp) => stamp > dump.stamp && (!later || stamp < later));
   }
   return { dumps: result, changeEvents: changes.length, incompleteDumps, skippedDumps };
@@ -2903,6 +2977,65 @@ function reportSectionGaps(report, { cutSections = [], droppedSections = [] }, t
     }
 }
 
+/**
+ * The gear put on after the dump the gear came from (the chosen one, or the older one the merge took `bag` from): every
+ * same-character dump's session from that stamp on, the latest per slot.
+ */
+function gearChangesSince(merged, merge) {
+  const gearFrom = (merge && merged.merges.find((item) => item.section === "gear")?.from) || merged.chosen.stamp;
+  const latest = new Map();
+  for (const dump of [merged.chosen, ...(merge ? merged.others : [])])
+    for (const change of dump.gearChanges || [])
+      if (change.stamp > gearFrom && !(latest.get(change.index)?.stamp > change.stamp))
+        latest.set(change.index, change);
+  return [...latest.values()];
+}
+/**
+ * A slot changed after the snapshot holds the new item's base with no lines (its affixes come with the next login), never
+ * the old item (owner, 2026-10-28). The game logs the swap's slot and base only.
+ */
+function applyGearChanges(state, changes, tree, idMap, report) {
+  const worn = new Map(entries(tree.bag?.wearItems).map((entry) => [Number(entry.Index), entry.Item?.Id]));
+  // The snapshot's items as resolved, by their item id: an item moved to another slot (the two weapons swapped between
+  // hands, 2026-10-28) keeps its lines.
+  const resolved = new Map(
+    [...worn].flatMap(([index, itemId]) => {
+      const slot = GEAR_INDEX_SLOTS[index];
+      const override = state.equipmentOverrides[slot];
+      const item = state.equipmentInventory.find((entry) => entry.id === `gear-game-log-${slot}`);
+      return itemId && override && item ? [[itemId, { override, item }]] : [];
+    }),
+  );
+  for (const change of changes) {
+    const slot = GEAR_INDEX_SLOTS[change.index];
+    // The same item put back (a swap and a swap back): the snapshot's copy is still the equipped item.
+    if (!slot || (change.itemId && change.itemId === worn.get(change.index))) continue;
+    const id = `gear-game-log-${slot}`;
+    state.equipmentInventory = state.equipmentInventory.filter((item) => item.id !== id);
+    delete state.equipmentOverrides[slot];
+    worn.set(change.index, change.itemId);
+    const known = change.itemId && resolved.get(change.itemId);
+    if (known) {
+      state.equipmentInventory.push({ ...structuredClone(known.item), id, slot });
+      state.equipmentOverrides[slot] = { ...structuredClone(known.override), sourceInventoryId: id };
+      continue;
+    }
+    const [name, base] = idMap.itemBases[change.baseId] || [];
+    if (name) {
+      state.equipmentInventory.push({ id, slot, name, base, modifiers: [], affixCount: 0, source: "game-log" });
+      state.equipmentOverrides[slot] = {
+        name,
+        base,
+        modifiers: [],
+        affixCount: 0,
+        source: "game-log",
+        sourceInventoryId: id,
+      };
+    }
+    (report.gearChanged ||= []).push(`${slotLabel(slot)}: ${name || `base ${change.baseId}`}`);
+  }
+}
+
 /** Builds a planner state from one dump (merged with the character's other dumps). Returns { state, report }. */
 export function importSnapshot(scan, dumpId, idMap, { merge = true } = {}) {
   if (!idMap) throw new Error("The game id map is required (loadGameIdMap())");
@@ -2922,6 +3055,7 @@ export function importSnapshot(scan, dumpId, idMap, { merge = true } = {}) {
   state.equipmentInventory = gear.inventory;
   state.equipmentOverrides = gear.overrides;
   state.disabledEquipmentSlots = state.disabledEquipmentSlots.filter((slot) => !gear.overrides[slot]);
+  applyGearChanges(state, gearChangesSince(merged, merge), tree, idMap, report);
   resolveTalents(tree, idMap, report, state);
   resolveSkills(tree, others, idMap, report, state, merged.chosen.skillChanges || []);
   resolveSlates(tree, idMap, report, state);

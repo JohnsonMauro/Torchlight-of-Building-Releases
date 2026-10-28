@@ -2,13 +2,15 @@
 // own UE_game.log and its backups in the usual folders (TLI_GAME_LOG_DIR, then every Steam library on Windows or on
 // Linux with Proton), runs the importer's scan + sanitise (src/game-log/game-log-import.js) and returns only the
 // sanitised build dumps and the folders it looked in. The raw log text, tokens, account ids and names never leave here.
-import { open, readFile, readdir, realpath, stat } from "node:fs/promises";
+// The game keeps only its current log and two backups, so each read also keeps the lines the scan reads of every session
+// in a local archive (gameLogArchiveDir: about 1 MB a session, on this computer only) and reads the archived sessions the
+// game has since deleted (owner, 2026-10-28: a dump with the gear was lost to the rotation).
+import { mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, posix, win32 } from "node:path";
 import {
-  GAME_LOG_READ_LIMIT_BYTES,
-  decodeGameLogBytes,
   detectGameLogEncoding,
+  gameLogLineFilter,
   listSnapshots,
   loadGameIdMap,
   scanGameLog,
@@ -16,9 +18,29 @@ import {
 
 export const GAME_LOG_ENDPOINT = "/api/game-log/snapshots";
 export const MAX_GAME_LOG_FILES = 5;
-// The page's own limit for a picked log. A day's UE_game.log passes 50 MB, and the logins at its start fill what later
-// logins' dumps cut, so the reader takes as much as a picked file would.
-export const MAX_GAME_LOG_BYTES = GAME_LOG_READ_LIMIT_BYTES;
+/** Archived sessions read besides the game's own logs, newest first. */
+export const MAX_ARCHIVED_SESSIONS = 30;
+
+/**
+ * Where the archive of past sessions lives: TLI_GAME_LOG_ARCHIVE ("none": no archive, as the tests run), else the user's
+ * application data folder.
+ */
+export function gameLogArchiveDir(platform = process.platform, env = process.env, home = homedir()) {
+  if (env.TLI_GAME_LOG_ARCHIVE === "none") return null;
+  if (env.TLI_GAME_LOG_ARCHIVE) return env.TLI_GAME_LOG_ARCHIVE;
+  if (platform === "win32")
+    return join(env.LOCALAPPDATA || join(home, "AppData", "Local"), "Torchlight of Building", "game-log-archive");
+  if (platform === "darwin")
+    return join(home, "Library", "Application Support", "Torchlight of Building", "game-log-archive");
+  return join(home, ".local", "share", "torchlight-of-building", "game-log-archive");
+}
+// A session's name in the archive: its "Log file open, MM/DD/YY HH:MM:SS" first line, which the game keeps when it
+// renames the live log to a backup.
+const OPENED = /^\uFEFF?Log file open, (\d{2})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})/;
+const sessionKey = (firstLine) => {
+  const m = OPENED.exec(firstLine || "");
+  return m ? `session-20${m[3]}${m[1]}${m[2]}-${m[4]}${m[5]}${m[6]}` : null;
+};
 const LOG_NAME = /^UE_game(?:-backup-[\w.-]+)?\.log$/i;
 // The log folder inside a Steam library.
 const LOG_SUBPATH = ["steamapps", "common", "Torchlight Infinite", "UE_game", "TorchLight", "Saved", "Logs"];
@@ -94,19 +116,34 @@ async function gameLogFiles(dir) {
   return files.sort((a, b) => b.info.mtimeMs - a.info.mtimeMs);
 }
 
-/** Reads at most the last `maxBytes` of a file (UTF-8, or UTF-16 with or without a BOM); a cut first line is dropped. */
-async function readTail(file, size, maxBytes) {
+const CHUNK_BYTES = 16 * 1024 * 1024;
+/**
+ * Reads a whole log in chunks (UTF-8, or UTF-16 with or without a BOM) and keeps only the lines scanGameLog reads
+ * (gameLogLineFilter). The dumps are written at login, near the start of the file: a read of the file's end alone lost
+ * every dump of a long session (2026-10-28: a 333 MB log's four dumps sat before its last 256 MB).
+ */
+async function readScannedLines(file, size) {
   const handle = await open(file, "r");
   try {
     const head = Buffer.alloc(Math.min(size, 4096));
     await handle.read(head, 0, head.length, 0);
     const encoding = detectGameLogEncoding(head);
-    let start = size - Math.min(size, maxBytes);
-    if (encoding.startsWith("utf-16") && start % 2) start += 1;
-    const buffer = Buffer.alloc(size - start);
-    const { bytesRead } = await handle.read(buffer, 0, buffer.length, start);
-    const text = decodeGameLogBytes(buffer.subarray(0, bytesRead), encoding);
-    return size > maxBytes ? text.slice(text.indexOf("\n") + 1) : text;
+    const firstLine = new TextDecoder(encoding, { fatal: false }).decode(head).split(/\r?\n/)[0];
+    const decoder = new TextDecoder(encoding, { fatal: false });
+    const filter = gameLogLineFilter();
+    const buffer = Buffer.alloc(Math.min(size, CHUNK_BYTES) || 1);
+    let rest = "",
+      position = 0;
+    while (position < size) {
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, position);
+      if (!bytesRead) break;
+      position += bytesRead;
+      const lines = (rest + decoder.decode(buffer.subarray(0, bytesRead), { stream: true })).split(/\r?\n|\0+/);
+      rest = lines.pop();
+      for (const line of lines) filter.push(line);
+    }
+    rest += decoder.decode();
+    return { text: filter.text(rest.replace(/\r$/, "")), firstLine };
   } finally {
     await handle.close();
   }
@@ -114,7 +151,7 @@ async function readTail(file, size, maxBytes) {
 
 /**
  * Finds UE_game.log and its UE_game-backup-*.log files in the first folder of `dirs` (gameLogDirs; `dir` alone when
- * given) that holds any and returns { found: true, folder, searched, files: [{ name, modified, truncated, scan, snapshots }] } or
+ * given) that holds any and returns { found: true, folder, searched, files: [{ name, modified, scan, snapshots }] } or
  * { found: false, reason, searched }. `searched` is the folders looked in ([{ label, path }]); `scan` is scanGameLog's
  * sanitised result; `snapshots` is listSnapshots' rows (hero, level, stamp, counts).
  */
@@ -122,7 +159,7 @@ export async function readGameLogSnapshots({
   dir,
   dirs,
   maxFiles = MAX_GAME_LOG_FILES,
-  maxBytes = MAX_GAME_LOG_BYTES,
+  archive = gameLogArchiveDir(),
 } = {}) {
   const searched = dirs ?? (dir ? [{ label: "", path: dir }] : await gameLogDirs());
   let reason = FOLDER_MISSING;
@@ -133,13 +170,54 @@ export async function readGameLogSnapshots({
       reason = LOG_MISSING;
       continue;
     }
-    return { ...(await readGameLogFolder(path, candidates, maxFiles, maxBytes)), folder: path, searched };
+    return { ...(await readGameLogFolder(path, candidates, maxFiles, archive)), folder: path, searched };
   }
   return { found: false, reason, searched };
 }
 
+/** Keeps a session's scanned lines in the archive (best effort: a read never fails for it). */
+async function archiveSession(archive, key, text) {
+  try {
+    await mkdir(archive, { recursive: true });
+    await writeFile(join(archive, `${key}.log`), text, "utf8");
+  } catch {
+    // An unwritable archive (a read-only home, a full disk) only means no history; the logs themselves still read.
+  }
+}
+/** The archived sessions the game's folder no longer has, newest first, as reader sources. */
+async function archivedSessions(archive, sessionsRead) {
+  let names;
+  try {
+    names = await readdir(archive);
+  } catch {
+    return [];
+  }
+  const keys = names
+    .filter((name) => /^session-\d{8}-\d{6}\.log$/.test(name))
+    .map((name) => name.slice(0, -4))
+    .filter((key) => !sessionsRead.has(key))
+    .sort()
+    .reverse()
+    .slice(0, MAX_ARCHIVED_SESSIONS);
+  const sources = [];
+  for (const key of keys) {
+    try {
+      const path = join(archive, `${key}.log`);
+      sources.push({
+        name: `archived ${key}`,
+        modified: (await stat(path)).mtime.toISOString(),
+        text: await readFile(path, "utf8"),
+        live: false,
+      });
+    } catch {
+      continue;
+    }
+  }
+  return sources;
+}
+
 /** readGameLogSnapshots for one folder's logs (newest first): the dumps of up to `maxFiles` of them. */
-async function readGameLogFolder(dir, candidates, maxFiles, maxBytes) {
+async function readGameLogFolder(dir, candidates, maxFiles, archive) {
   const idMap = await loadGameIdMap();
   const files = [];
   // One account map, one character map and one item-token map for every file, so `accountGroup`, `character` and item
@@ -147,27 +225,37 @@ async function readGameLogFolder(dir, candidates, maxFiles, maxBytes) {
   const accountGroups = new Map(),
     characterGroups = new Map(),
     tokens = new Map();
+  const sessionsRead = new Set();
+  const sources = [];
   for (const { name, info } of candidates.slice(0, maxFiles)) {
-    let text;
     try {
-      text = await readTail(join(dir, name), info.size, maxBytes);
+      const { text, firstLine } = await readScannedLines(join(dir, name), info.size);
+      const key = sessionKey(firstLine);
+      if (key) {
+        sessionsRead.add(key);
+        if (archive) await archiveSession(archive, key, text);
+      }
+      sources.push({ name, modified: info.mtime.toISOString(), text, live: /^UE_game\.log$/i.test(name) });
     } catch {
       continue;
     }
+  }
+  if (archive) for (const archived of await archivedSessions(archive, sessionsRead)) sources.push(archived);
+  for (const source of sources) {
+    const { name, modified, live } = source;
     // The live UE_game.log may be mid-write: skip its partial last line and a dump with nothing after it.
     let scan;
     try {
-      scan = scanGameLog(text, { accountGroups, characterGroups, tokens, partialTail: /^UE_game\.log$/i.test(name) });
+      scan = scanGameLog(source.text, { accountGroups, characterGroups, tokens, partialTail: live });
     } catch {
       continue;
     } finally {
-      text = null;
+      source.text = null;
     }
     if (!scan.dumps.length) continue;
     files.push({
       name,
-      modified: info.mtime.toISOString(),
-      truncated: info.size > maxBytes,
+      modified,
       scan,
       snapshots: listSnapshots(scan, idMap),
     });

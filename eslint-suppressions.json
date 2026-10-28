@@ -1,19 +1,4 @@
 {
-  "src/app/stats/skill-hit-path.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/app/stats/stat-sheet-panel.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/app/storage/recovery-core.js": {
-    "no-empty": {
-      "count": 2
-    }
-  },
   "packages/engine/data/skills/special-support-tiers.js": {
     "no-unused-vars": {
       "count": 6
@@ -97,17 +82,27 @@
       "count": 1
     }
   },
+  "src/app/stats/skill-hit-path.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app/stats/stat-sheet-panel.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app/storage/recovery-core.js": {
+    "no-empty": {
+      "count": 2
+    }
+  },
   "src/game-log/game-log-import.js": {
     "no-unused-vars": {
       "count": 3
     },
     "no-useless-assignment": {
       "count": 2
-    }
-  },
-  "src/game-log/game-log-local.js": {
-    "no-useless-assignment": {
-      "count": 1
     }
   }
 }

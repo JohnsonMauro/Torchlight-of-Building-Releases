@@ -5,8 +5,8 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { GAME_LOG_READ_LIMIT_BYTES } from "../../src/game-log/game-log-import.js";
-import { MAX_GAME_LOG_BYTES, gameLogDirs, readGameLogSnapshots } from "../../src/game-log/game-log-local.js";
+import { gameLogLineFilter, scanGameLog } from "../../src/game-log/game-log-import.js";
+import { gameLogDirs, readGameLogSnapshots } from "../../src/game-log/game-log-local.js";
 
 const LOG_PATH = "steamapps/common/Torchlight Infinite/UE_game/TorchLight/Saved/Logs";
 
@@ -48,28 +48,48 @@ test("the first folder holding a UE_game log is read; the folders looked in come
     const missing = { label: "Steam", path: join(home, "missing") };
     const empty = { label: "Steam library", path: join(home, "empty") };
     const logs = { label: "Steam (Flatpak)", path: join(home, "logs") };
+    // The session archive lives in the test's home, never the user's (game-log-local.js gameLogArchiveDir).
+    const archive = join(home, "archive");
     mkdirSync(empty.path);
     mkdirSync(logs.path);
     writeFileSync(join(logs.path, "UE_game.log"), "nothing the scan keeps\n");
 
-    assert.deepEqual(await readGameLogSnapshots({ dirs: [missing] }), {
+    assert.deepEqual(await readGameLogSnapshots({ dirs: [missing], archive }), {
       found: false,
       reason: "The game's log folder was not found on this computer.",
       searched: [missing],
     });
-    assert.deepEqual(await readGameLogSnapshots({ dirs: [missing, empty] }), {
+    assert.deepEqual(await readGameLogSnapshots({ dirs: [missing, empty], archive }), {
       found: false,
       reason: "UE_game.log was not found in the game's log folder.",
       searched: [missing, empty],
     });
-    const read = await readGameLogSnapshots({ dirs: [missing, empty, logs] });
+    const read = await readGameLogSnapshots({ dirs: [missing, empty, logs], archive });
     assert.equal(read.found, false);
     assert.match(read.reason, /^No character data in the game logs yet\./);
     assert.equal(read.folder, logs.path);
     assert.deepEqual(read.searched, [missing, empty, logs]);
   }));
 
-test("the reader takes as much of a log as a picked file: a day's log passes 50 MB with its first logins at the start", () => {
-  assert.equal(MAX_GAME_LOG_BYTES, GAME_LOG_READ_LIMIT_BYTES);
-  assert.ok(MAX_GAME_LOG_BYTES >= 200 * 1024 * 1024);
+// The reader goes through a whole log keeping only these lines (2026-10-28: a 333 MB log's four dumps sat before the
+// last 256 MB the reader used to read, so a long session lost every dump).
+test("the line filter keeps a dump and the change lines, and a later message's tree never joins the dump", () => {
+  const log = [
+    "[2026.10.28-09.16.19:176][452]TLNetGame: Display: [Game] ----Socket SendMessage STT----GetPlayerData----SynId = 8",
+    "[2026.10.28-09.16.19:477][470]TLNetGame: Display: [Game] ----Socket RecvMessage STT----GetPlayerData----SynId = 8",
+    "+player+PlayerId [p-1]",
+    "|      +Level [90]",
+    "[2026.10.28-09.20.00:000][  1]TLLua: Display: [Game] noise",
+    "+otherMessage+field [x]",
+    "[2026.10.28-10.19.04:005][389]TLLua: Display: [Game] ItemChange@ ProtoName=PutOn start",
+    "[2026.10.28-10.19.05:000][  1]TLLua: Display: [Game] more noise",
+    "",
+  ];
+  const filter = gameLogLineFilter();
+  for (const line of log.slice(0, -1)) filter.push(line);
+  const scan = scanGameLog(filter.text(""), { partialTail: true });
+  assert.equal(scan.dumps.length, 1);
+  assert.equal(scan.dumps[0].tree.player.Level, "90");
+  assert.equal(scan.dumps[0].tree.otherMessage, undefined);
+  assert.equal(scan.dumps[0].changesAfter, 1);
 });

@@ -41,7 +41,8 @@ async function readerOutput(files, modified = "2026-10-19T14:05:00Z") {
       writeFileSync(join(dir, name), text);
       utimesSync(join(dir, name), new Date(modified), new Date(modified));
     }
-    return JSON.parse(JSON.stringify(await readGameLogSnapshots({ dir })));
+    // No session archive: a test never reads or writes the user's (src/game-log/game-log-local.js gameLogArchiveDir).
+    return JSON.parse(JSON.stringify(await readGameLogSnapshots({ dir, archive: null })));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -131,18 +132,11 @@ test("a chosen log lists its logins newest first; a login shows its summary and 
   await expect(logins(page).nth(1)).toHaveAttribute("aria-pressed", "false");
   const summary = dialog(page).locator("#import-game-log-summary");
   await expect(summary.getByText("Snapshot from 2026-10-19 13:30", { exact: true })).toBeVisible();
-  await expect(summary.locator("table th[scope=row]")).toHaveText([
-    "Character",
-    "Gear",
-    "Talents",
-    "Skills",
-    "Slates",
-    "Pacts",
-    "Hero traits and memories",
+  // No list of what was imported: one short warning per limit of the log, with what to do (owner, 2026-10-28).
+  await expect(summary.locator("table")).toHaveCount(0);
+  await expect(summary.locator(".game-log-warnings li")).toHaveText([
+    /^The game's log left out part of: .+\. Entering the character again may fill it\.$/,
   ]);
-  await expect(summary.locator("thead th")).toHaveText(["Section", "Imported", "Not imported", "From"]);
-  await expect(summary).toContainText("Some sections weren't in the game log: Equipped gear, ");
-  await expect(summary).toContainText("Followers are not imported: the game log does not record your active follower.");
   await expect(importButton(page)).toBeEnabled();
 
   await importButton(page).click();
@@ -180,20 +174,8 @@ test("a login filled from an older one and changed afterwards says both", async 
   ]);
   await logins(page).first().click();
   const summary = dialog(page).locator("#import-game-log-summary");
-  const hero = summary.locator("tr", { has: page.getByRole("rowheader", { name: "Hero traits and memories" }) });
-  await expect(hero.locator("td").nth(2)).toHaveText("2026-10-17 10:00from an older login; may be outdated");
-  await expect(hero.locator("td small")).toHaveAttribute(
-    "title",
-    "2026-10-17 10:00: logged 52 h before the selected login",
-  );
-  await expect(summary).toContainText(
-    "The build changed after this login. The game writes the build only at login, so log in again to import the current build.",
-  );
-  const skipped = summary.locator("details.game-log-skipped");
-  await expect(skipped).not.toHaveAttribute("open");
-  await skipped.locator("summary").click();
-  await expect(skipped.locator("li").first()).toHaveText(
-    "Character 1 gear, skill or slate change(s) were logged after this snapshot; the game only dumps the build at login, so re-log in to refresh it",
+  await expect(summary.locator(".game-log-warnings li").first()).toHaveText(
+    "Your build changed after this login. Go back to character select, enter the character, then import again.",
   );
   await planner.expectNoErrors();
 });
@@ -257,12 +239,7 @@ test("the local reader's log: found, each character's newest login listed and ch
     "Berserker Rehan · AngerLv 80 · 2026-10-19 12:00",
   ]);
   await expect(logins(page).first()).toHaveAttribute("aria-pressed", "true");
-  await expect(dialog(page).locator("#import-game-log-summary thead th")).toHaveText([
-    "Section",
-    "Imported",
-    "Not imported",
-    "From",
-  ]);
+  await expect(dialog(page).getByText("Snapshot from 2026-10-19 14:00", { exact: true })).toBeVisible();
   await expect(importButton(page)).toBeEnabled();
   await expect(fileInput(page)).toBeHidden();
   await expect(dialog(page).locator(".game-log-reason")).toBeHidden();

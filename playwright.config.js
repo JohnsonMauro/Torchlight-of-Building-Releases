@@ -26,7 +26,14 @@ export default defineConfig({
     { name: "build", use: { baseURL: url(buildPort) } },
   ],
   webServer: [
-    { command: vite("dev", devPort), url: url(devPort), reuseExistingServer: false, timeout: 60_000 },
+    // The dev server's game log reader keeps no session archive while the tests run (src/game-log/game-log-local.js).
+    {
+      command: vite("dev", devPort),
+      url: url(devPort),
+      reuseExistingServer: false,
+      timeout: 60_000,
+      env: { TLI_GAME_LOG_ARCHIVE: "none" },
+    },
     { command: vite("preview", buildPort), url: url(buildPort), reuseExistingServer: false, timeout: 30_000 },
   ],
 });

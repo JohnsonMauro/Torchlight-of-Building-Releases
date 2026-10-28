@@ -4,11 +4,7 @@
 // closing it drops everything.
 import { useEffect, useRef, useState } from "react";
 import { plannerCommands } from "@legacy/app/bridge/planner-commands.js";
-import type {
-  GameLogFolderView,
-  GameLogFromView,
-  GameLogSummaryView,
-} from "@legacy/app/bridge/game-log-import-view.ts";
+import type { GameLogFolderView, GameLogSummaryView } from "@legacy/app/bridge/game-log-import-view.ts";
 import {
   fieldControlClass,
   fieldHelpClass,
@@ -25,14 +21,13 @@ import { StrokeIcon } from "../../ui/StrokeIcon";
 import { useViewSource } from "../../ui/use-view-source";
 import { ICON_BUTTON } from "./build-classes";
 
-// A warning (older login, missing sections, changed build) and a step's heading.
+// A warning (a changed build, a part the log left out) and a step's heading.
 const CHANGED = "block text-xs text-warn";
 const STEP = `mt-4 mb-2 ${fieldLabelClass}`;
-const NOTE = `mt-2.5 ${fieldHelpClass}`;
 const CODE = "text-xs text-accent wrap-anywhere";
-// The counts table: right-aligned numbers, the section names on the left, accent column heads.
-const COUNTS =
-  "w-full border-collapse text-xs [&_td]:border-b [&_td]:border-line [&_td]:px-2 [&_td]:py-1 [&_td]:text-right [&_th]:border-b [&_th]:border-line [&_th]:px-2 [&_th]:py-1 [&_th]:text-right [&_tbody_th]:text-left [&_tbody_th]:font-semibold [&_tbody_th]:text-text [&_thead_th]:font-bold [&_thead_th]:text-accent [&_thead_th:first-child]:text-left";
+// The import's limits: a short warning list, each line what is missing and what to do.
+const WARNINGS =
+  "game-log-warnings mt-2.5 grid gap-1 rounded-sm border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn";
 // A login to choose; the chosen one (.active) accent-edged.
 const LOGIN =
   "grid w-full cursor-pointer gap-0.5 rounded-sm border border-line bg-sunken px-3 py-2 text-left text-xs text-text hover:border-line-strong focus-visible:outline-2 focus-visible:outline-accent on:border-accent on:bg-accent/10";
@@ -81,76 +76,17 @@ function GameLogFolder({ folder }: { folder: GameLogFolderView }) {
   );
 }
 
-function FromCell({ from }: { from: GameLogFromView }) {
-  if (!from) return <td />;
-  return (
-    <td>
-      {from.text}
-      {from.stale ? (
-        <small className={CHANGED} title={from.stale}>
-          from an older login; may be outdated
-        </small>
-      ) : null}
-    </td>
-  );
-}
-
-function Summary({ summary, selectedId }: { summary: GameLogSummaryView; selectedId: string | null }) {
+function Summary({ summary }: { summary: GameLogSummaryView }) {
   return (
     <>
-      {summary.gaps ? (
-        <p className={`mt-2.5 ${CHANGED}`}>
-          {`Some sections weren't in the game log: ${summary.gaps}. Log out and back in, then import again.`}
-        </p>
-      ) : null}
       <p className={STEP}>{`Snapshot from ${summary.stamp}`}</p>
-      <table className={COUNTS}>
-        <thead>
-          <tr>
-            <th scope="col">Section</th>
-            <th scope="col">Imported</th>
-            <th scope="col">Not imported</th>
-            {summary.fromColumn ? <th scope="col">From</th> : null}
-          </tr>
-        </thead>
-        <tbody>
-          {summary.sections.map((section) => (
-            <tr key={section.label}>
-              <th scope="row">{section.label}</th>
-              <td>{section.imported}</td>
-              <td>{section.skipped}</td>
-              {summary.fromColumn ? <FromCell from={section.from} /> : null}
-            </tr>
+      {summary.warnings.length ? (
+        <ul className={WARNINGS} role="note">
+          {summary.warnings.map((text) => (
+            <li key={text}>{text}</li>
           ))}
-        </tbody>
-      </table>
-      {summary.changed ? (
-        <p className={`mt-2.5 ${CHANGED}`}>
-          The build changed after this login. The game writes the build only at login, so log in again to import the
-          current build.
-        </p>
+        </ul>
       ) : null}
-      {summary.skipped.length ? (
-        // Closed again for every login, as the planner's markup was.
-        <details key={selectedId ?? ""} className="game-log-skipped mt-3 text-xs">
-          <summary className="cursor-pointer font-bold text-accent">{`Not imported (${summary.skipped.length})`}</summary>
-          <ul className="mt-2 max-h-55 overflow-auto pr-1">
-            {summary.skipped.map((entry, index) => (
-              <li key={index} className="border-b border-line py-1.5 leading-snug wrap-anywhere">
-                <b className="mr-1.5 text-accent">{entry.section}</b>
-                {` ${entry.item}`}
-                {entry.reason ? <small className="block text-muted">{entry.reason}</small> : null}
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
-      {summary.notices.map((text, index) => (
-        <p key={index} className={NOTE}>
-          {text}
-        </p>
-      ))}
-      {summary.provisional ? <p className={NOTE}>{`Provisional: ${summary.provisional}`}</p> : null}
     </>
   );
 }
@@ -256,6 +192,10 @@ export function ImportGameLogDialog() {
         {view?.logins.length ? (
           <>
             <p className={STEP}>Characters found in this log</p>
+            <p className={`mb-2 ${fieldHelpClass}`}>
+              The game saves your build when you enter a character, not when you change maps. Changed something? Go back
+              to character select and enter again first.
+            </p>
             <ul className="game-log-snapshots grid gap-1.5">
               {view.logins.map((login) => {
                 const selected = login.id === view.selectedId;
@@ -278,9 +218,7 @@ export function ImportGameLogDialog() {
           </>
         ) : null}
       </div>
-      <div id="import-game-log-summary">
-        {view?.summary ? <Summary summary={view.summary} selectedId={view.selectedId} /> : null}
-      </div>
+      <div id="import-game-log-summary">{view?.summary ? <Summary summary={view.summary} /> : null}</div>
       <div className={plainDialogActionsClass}>
         <button type="button" className={plainDialogButtonClass} onClick={() => closeDialog("import-game-log-dialog")}>
           Cancel
