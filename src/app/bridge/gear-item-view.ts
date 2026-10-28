@@ -3,7 +3,7 @@
 // (src/app/gear/gear-controller.js gearTooltip query) and React renders it (apps/web/src/features/gear/GearTooltip.tsx,
 // apps/web/src/ui/ModifierText.tsx). Texts close the percentage gap as the legacy markup printed them.
 import { keywordRollParts, neutralStatuses, normalizePercentageText } from "#engine";
-import { tierBadgeClasses, tierBadgeKey } from "../gear/tier-badge.ts";
+import { tierBadgeKey, tierMarkerClasses } from "../gear/tier-badge.ts";
 
 const text = (value: string) => normalizePercentageText(value);
 
@@ -96,8 +96,11 @@ export interface GearTooltipInput {
 }
 
 export interface GearTooltipRow {
-  /** Its tier badge ("T1", "L"), or the section's kind letter (I, P, S, C…). */
-  mark: { tier: { className: string; text: string } } | { kind: string };
+  /**
+   * The diamond in its tier's colour, as the game draws it (`text` is the tier, "T1" or "L", read by screen readers; "" for
+   * none): a legendary line without a tier takes L's, a corroded line the corroded colour; null for an implicit line.
+   */
+  marker: { className: string; text: string } | null;
   legendary: boolean;
   corroded: boolean;
   text: ModifierTextView;
@@ -122,18 +125,7 @@ export interface GearTooltipView {
   footer: string;
 }
 
-const KIND_LETTERS: Readonly<Record<string, string>> = {
-  Implicit: "I",
-  "Implicit · Corroded": "I",
-  "Base Affix": "BA",
-  "Belt Blend": "BL",
-  "TOWER Sequence": "TS",
-  Prefix: "P",
-  Suffix: "S",
-  "Legendary Mod": "L",
-  "Corrosion Implicit": "C",
-  Affix: "A",
-};
+const IMPLICIT_SECTIONS = new Set(["Implicit", "Implicit · Corroded"]);
 const titleCase = (value: string) =>
   value.replace(/([A-Z])/g, " $1").replace(/^./, (character) => character.toUpperCase());
 
@@ -150,11 +142,13 @@ export function gearTooltipView(input: GearTooltipInput): GearTooltipView {
       const status = input.lineStatus(entry.text),
         reason = input.curseReason(entry.text);
       if (reason && !curseNote) curseNote = reason;
+      const legendary = entry.tone === "legendary" || entry.badge === "L" || section.label === "Legendary Mod";
+      const key = entry.badge ? tierBadgeKey(entry.badge) : corroded ? "corrosion" : legendary ? "legendary" : "";
       return {
-        mark: entry.badge
-          ? { tier: { className: tierBadgeClasses(tierBadgeKey(entry.badge)), text: entry.badge } }
-          : { kind: corroded ? "C" : KIND_LETTERS[section.label] || "A" },
-        legendary: entry.tone === "legendary" || entry.badge === "L",
+        marker: IMPLICIT_SECTIONS.has(section.label)
+          ? null
+          : { className: tierMarkerClasses(key), text: entry.badge || "" },
+        legendary,
         corroded,
         text: modifierTextView(entry.text, input.lineStatus),
         coverage: coverageView(status, reason ? `${status}: ${reason}` : ""),

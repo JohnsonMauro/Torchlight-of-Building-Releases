@@ -77,11 +77,13 @@ export function GearTooltipCard({ view }: { view: GearTooltipView }) {
 function GearTooltipLine({ row }: { row: GearTooltipRow }) {
   const hooks = `${row.legendary ? "legendary-affix " : ""}${row.corroded ? "corrosion-affix " : ""}`;
   return (
-    <li className={`${hooks}${classes.ROW}`}>
-      {"tier" in row.mark ? (
-        <i className={row.mark.tier.className}>{row.mark.tier.text}</i>
+    <li className={`${hooks}${row.corroded ? classes.ROW_CORRODED : classes.ROW_PLAIN}`}>
+      {row.marker ? (
+        <i className={row.marker.className}>
+          {row.marker.text ? <span className="sr-only">{row.marker.text}</span> : null}
+        </i>
       ) : (
-        <i className={row.corroded ? classes.KIND_MARK_CORRODED : classes.KIND_MARK}>{row.mark.kind}</i>
+        <span aria-hidden="true" />
       )}
       <span className="min-w-0 whitespace-pre-line">
         <ModifierText text={row.text} />

@@ -28,7 +28,10 @@ export const tierBadgeKey = (badge: string): string => badge.toLowerCase().repla
 export const tierBadgeClasses = (key: string): string =>
   `affix-tier-badge tier-${key} mt-px inline-grid h-3.75 min-w-5.5 shrink-0 place-items-center rounded-sm border px-1 text-[10px] leading-none font-bold not-italic ${tierColours[key] ?? "border-line-strong bg-raised text-muted"}`;
 
-/** A modifier line's marker in the item preview, as the game draws it: a small diamond in its tier's colour. */
+/**
+ * A modifier line's marker in the item preview and the gear tooltip, as the game draws it: a small diamond in its tier's
+ * colour. Without a tier, a legendary line takes L's orange and a corroded line the game's red.
+ */
 const markerColours: Readonly<Record<string, string>> = {
   t0plus: "bg-grade-vorax",
   t0: "bg-grade-vorax",
@@ -40,9 +43,10 @@ const markerColours: Readonly<Record<string, string>> = {
   t6: "bg-grade-magic",
   t7: "bg-grade-magic",
   l: "bg-grade-legendary",
-  corrosion: "bg-violet",
+  legendary: "bg-grade-legendary",
+  corrosion: "bg-grade-vorax",
 };
 
-/** The marker's classes: the affix-tier-badge and tier-<key> hooks (none for a line without a tier), then the diamond. */
+/** The marker's classes: the affix-tier-badge and tier-<key> hooks (a tier's only), then the diamond. */
 export const tierMarkerClasses = (key: string): string =>
-  `${key && key !== "corrosion" ? `affix-tier-badge tier-${key} ` : ""}mt-1.5 inline-block size-2 shrink-0 rotate-45 ${markerColours[key] ?? "bg-muted"}`;
+  `${key in tierColours ? `affix-tier-badge tier-${key} ` : ""}mt-1.5 inline-block size-2 shrink-0 rotate-45 ${markerColours[key] ?? "bg-muted"}`;

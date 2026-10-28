@@ -35,15 +35,32 @@ test("each line carries its mark, its text and whether the calculation uses it",
   assert.deepEqual([view.rarity, view.rarityLabel, view.frame], ["epic", "Epic", "gear-tooltip"]);
   assert.deepEqual([view.level, view.energy], [82, 30]);
   const [implicit, prefix] = view.sections;
-  assert.deepEqual(implicit.rows[0].mark, { kind: "I" });
+  assert.equal(implicit.rows[0].marker, null);
   assert.equal(implicit.rows[0].coverage.look, "calculated");
-  assert.equal(prefix.rows[0].mark.tier.text, "T1");
-  assert.match(prefix.rows[0].mark.tier.className, /\btier-t1\b/);
+  assert.equal(prefix.rows[0].marker.text, "T1");
+  assert.match(prefix.rows[0].marker.className, /\btier-t1\b.*\brotate-45\b.*\bbg-grade-legendary\b/);
   assert.deepEqual(prefix.rows[0].text, { kind: "plain", text: "+57% gear Energy Shield" });
-  assert.deepEqual(prefix.rows[1].mark, { kind: "C" });
+  assert.equal(prefix.rows[1].marker.text, "");
+  assert.match(prefix.rows[1].marker.className, /\bbg-grade-vorax\b/);
+  assert.doesNotMatch(prefix.rows[1].marker.className, /affix-tier-badge|tier-/);
   assert.equal(prefix.rows[1].corroded, true);
   assert.deepEqual(prefix.rows[1].coverage, { status: "Not modeled", look: "pending", title: "" });
   assert.equal(view.footer, "Click to inspect · Right-click to unequip");
+});
+
+test("a legendary line without a tier takes L's orange diamond, with no tier hook", () => {
+  const view = gearTooltipView(
+    input({
+      sections: [
+        { label: "Legendary Mod", entries: [{ text: "+27% Blessing Duration", index: 0, tone: "legendary" }] },
+      ],
+    }),
+  );
+  const [row] = view.sections[0].rows;
+  assert.equal(row.legendary, true);
+  assert.equal(row.marker.text, "");
+  assert.match(row.marker.className, /\brotate-45\b.*\bbg-grade-legendary\b/);
+  assert.doesNotMatch(row.marker.className, /affix-tier-badge|tier-/);
 });
 
 test("Energy shows only where the slot takes it; an Inventory card's footer, the frame's flags", () => {

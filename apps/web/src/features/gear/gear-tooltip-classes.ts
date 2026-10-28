@@ -15,10 +15,12 @@ export const LEVEL = `${STAT} text-muted`;
 export const ENERGY = `${STAT} text-info`;
 export const SECTION = "rounded-md border border-line bg-sunken/60 p-2.5";
 export const SECTION_TITLE = "mt-0.5 mb-2 text-[10px] font-bold tracking-widest text-muted uppercase";
-/** A modifier line: its mark, its text, its coverage. `legendary-affix` / `corrosion-affix` are hooks. */
-export const ROW = "grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 text-xs/snug text-text";
-const KIND = "mt-px grid size-4 place-items-center rounded-sm border text-[10px] not-italic";
-export const KIND_MARK = `${KIND} border-line-strong text-muted`;
-export const KIND_MARK_CORRODED = `${KIND} border-grade-rare text-grade-rare`;
+/**
+ * A modifier line: its diamond (tier-badge.ts tierMarkerClasses; an empty cell for an implicit), its text, its coverage.
+ * `legendary-affix` / `corrosion-affix` are hooks; a corroded line's text is violet, as in the game.
+ */
+const ROW = "grid grid-cols-[0.5rem_minmax(0,1fr)_auto] items-start gap-x-2 text-xs/snug";
+export const ROW_PLAIN = `${ROW} text-text`;
+export const ROW_CORRODED = `${ROW} text-violet`;
 export const COVERAGE = "mt-px justify-self-end px-1 py-px";
 export const FOOT = "block border-t border-line px-4 py-2.5 text-xs text-dim";
