@@ -377,5 +377,12 @@ export { allProfessionTalentCatalogue } from "../data/talents/all-profession-tre
 export { TLIDB_PRISM_AFFIXES } from "../data/talents/prism-affixes-tlidb.generated.js";
 export { selenaScorchingBeamTalentSetup } from "../data/talents/selena-scorching-beam.js";
 
-// The game id map (0.9 MB), loaded on demand: only a game log import reads it.
-export const importGameIdMap = () => import("../data/game-id-map.generated.js").then((module) => module.gameIdMap);
+// The game id map (0.9 MB), loaded on demand: only a game log import reads it. Its blends gain the ids the generated table
+// lacks (data/belt-blend-affix-ids.js).
+export const importGameIdMap = () =>
+  Promise.all([import("../data/game-id-map.generated.js"), import("../data/belt-blend-affix-ids.js")]).then(
+    ([{ gameIdMap }, { beltBlendAffixIds }]) => ({
+      ...gameIdMap,
+      blends: { ...gameIdMap.blends, ...beltBlendAffixIds },
+    }),
+  );
