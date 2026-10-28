@@ -1,6 +1,6 @@
 // The build's tabs, one per part of the character as in the game, in the order this browser's user dragged them into
 // (BuildTabs; the planner's click handler opens a tab's section from its data-view). Stored like the theme: a viewer's
-// preference, not part of a build; "Reset view settings" (src/app/storage/recovery-core.js) clears it.
+// preference, not part of a build.
 import { useSyncExternalStore } from "react";
 import { buildTabOrder, moveBuildTab } from "@legacy/app/bridge/build-tab-order.ts";
 

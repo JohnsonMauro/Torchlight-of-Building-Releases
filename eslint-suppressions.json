@@ -11,7 +11,7 @@
   },
   "src/app/storage/recovery-core.js": {
     "no-empty": {
-      "count": 4
+      "count": 2
     }
   },
   "packages/engine/data/skills/special-support-tiers.js": {

@@ -2,8 +2,6 @@
 import { expect } from "@playwright/test";
 
 const LIBRARY_STORAGE_KEY = "tli-builder:build-library:v1";
-// apps/web/src/boot.tsx sets this session key before loading the planner and removes it once the first render has painted.
-const BOOT_FLAG_KEY = "tli-builder:booting";
 export const VIEWS = [
   "hero",
   "follower",
@@ -78,13 +76,6 @@ export class PlannerPage {
 
   /** Loads the planner as open() does and stays on the Workspace, where it starts. */
   async load(state = null) {
-    await this.page.addInitScript((key) => {
-      const remove = Storage.prototype.removeItem;
-      Storage.prototype.removeItem = function (name) {
-        if (this === sessionStorage && name === key) window.__plannerReady = true;
-        return remove.call(this, name);
-      };
-    }, BOOT_FLAG_KEY);
     if (state) {
       const library = {
         schemaVersion: 1,
@@ -114,9 +105,9 @@ export class PlannerPage {
     await this.waitUntilReady();
   }
 
-  /** Waits for the boot flag to clear on the current load (the init script above runs again on every reload). */
+  /** Waits for the current load's first render (apps/web/src/boot.tsx marks <html data-planner-ready>). */
   async waitUntilReady() {
-    await this.page.waitForFunction(() => window.__plannerReady === true, null, { timeout: 15_000 });
+    await this.page.locator("html[data-planner-ready]").waitFor({ state: "attached", timeout: 15_000 });
   }
 
   view(name) {

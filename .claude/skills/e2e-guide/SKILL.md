@@ -28,7 +28,7 @@ description: How the Playwright suite of this planner is built and how to write 
 
 - `tests/e2e/pages/<area>-page.js`: every selector the specs use lives there (`SkillsPage.resetButton()`,
   `energyTotal()`, `row(skill)`). A spec says what the user does and sees; it does not spell `#ids` or classes.
-- `PlannerPage.open(state)` seeds a one-build library in `localStorage` and waits for the boot flag to clear (the views
+- `PlannerPage.open(state)` seeds a one-build library in `localStorage` and waits for `<html data-planner-ready>` (the views
   are in the static HTML, so a click before boot is lost). `open()` with no state uses the app's default library
   (Selena's Scorching Beam build); the golden fixture's Youga build (`tests/golden/fixtures/`) covers trait-granted
   skills and supports.

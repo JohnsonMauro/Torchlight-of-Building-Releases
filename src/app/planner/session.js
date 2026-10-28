@@ -27,7 +27,7 @@ import { ui } from "./ui-state.js";
 for (const entry of tlidbSkillCatalog) tliArt.skills[entry.name] ||= entry.icon;
 for (const entry of tlidbSupportCatalog) tliArt.supports[entry.name] ||= entry.icon;
 
-// Safe mode (Recovery screen): the planner opens on the Builds page and never runs build calculations until resumed.
+// Safe mode (a build that could not be calculated offers it): the planner opens on the Builds page and never runs build calculations until resumed.
 export const calculationsPaused = (() => {
   try {
     return isSafeMode(sessionStorage);

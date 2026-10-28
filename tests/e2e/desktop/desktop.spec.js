@@ -29,9 +29,9 @@ test("desktop app loads the planner and reads the game log", async () => {
       if (message.type() === "error") errors.push(`console: ${message.text()}`);
     });
     await expect(window).toHaveURL(/^planner:\/\/app\//);
-    // boot.tsx removes this session key once the planner's first render has painted.
+    // boot.tsx marks <html data-planner-ready> once the planner's first render has finished.
     await window.waitForFunction(
-      () => document.getElementById("selected-hero-name") && sessionStorage.getItem("tli-builder:booting") === null,
+      () => document.getElementById("selected-hero-name") && document.documentElement.dataset.plannerReady === "true",
     );
     for (const name of VIEWS) {
       await expect(async () => {

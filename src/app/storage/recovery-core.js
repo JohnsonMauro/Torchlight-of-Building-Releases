@@ -1,6 +1,5 @@
-// Storage-only helpers for the boot guard, the Recovery screen and build
-// backups. This module must not import the calculator or the planner modules:
-// the Recovery screen has to work even when those fail to load or freeze.
+// Storage-only helpers for safe mode and build backups. This module must not import the calculator or the planner
+// modules: a backup has to work even when those fail to load.
 
 // Library data (never cleared by any recovery action).
 export const LIBRARY_KEY = "tli-builder:build-library:v1";
@@ -9,27 +8,8 @@ export const LEGACY_STATE_KEY = "tli-builder:selena-candidate:v1";
 export const LIBRARY_KEYS = Object.freeze([LIBRARY_KEY, LEGACY_STATE_KEY]);
 // Unreadable library values kept aside by build-library.ts (never cleared here).
 export const QUARANTINE_PREFIX = `${LIBRARY_KEY}:unreadable:`;
-export const isLibraryKey = (key) => LIBRARY_KEYS.includes(key) || String(key).startsWith(QUARANTINE_PREFIX);
 
-// Session flags.
-export const BOOT_FLAG_KEY = "tli-builder:booting";
-// Shared (localStorage) copy of the boot flag: a tab that froze and was closed
-// leaves it behind, so a new tab can still offer recovery. A marker younger than
-// BOOT_MARKER_GRACE_MS is assumed to be another tab that is still loading.
-export const BOOT_MARKER_KEY = "tli-builder:booting-marker:v1";
-export const BOOT_MARKER_GRACE_MS = 15000;
 export const SAFE_MODE_KEY = "tli-builder:safe-mode:v1";
-
-// "Reset view settings (keeps builds)": UI/session keys only.
-export const VIEW_SETTING_SESSION_KEYS = Object.freeze([
-  "tli-builder:workspace-location:v1", // open view, talent/stats panel, damage-path view, stat-sheet skill, scroll
-  "tli-builder:tab-active-build:v1", // this tab's open build (falls back to the library's last-used build)
-  SAFE_MODE_KEY,
-]);
-// UI-only settings in localStorage, listed so additions are explicit.
-export const VIEW_SETTING_LOCAL_KEYS = Object.freeze([
-  "tli-builder:build-tab-order:v1", // the build tabs' order (apps/web/src/ui/build-tabs.ts)
-]);
 
 export const BACKUP_FORMAT = "tli-builder-backup";
 export const BACKUP_VERSION = 1;
@@ -53,75 +33,8 @@ export function quarantineKeys(storage) {
     return [];
   }
 }
-const safeRemove = (storage, key) => {
-  try {
-    storage?.removeItem(key);
-    return true;
-  } catch {
-    return false;
-  }
-};
+// ---- Safe mode -----------------------------------------------------------
 
-// ---- Boot guard ----------------------------------------------------------
-
-// The previous load of this tab set the flag and never cleared it (crash or
-// freeze before the first render finished), or the URL asks for recovery.
-/**
- * @param {{ session?: Storage | null, local?: Storage | null, search?: string, now?: number }} [options]
- * @returns {{ show: true, reason: "requested" | "unfinished" } | { show: false, reason: null }}
- */
-export function shouldShowRecovery({ session, local = null, search = "", now = Date.now() } = {}) {
-  if (new URLSearchParams(search).has("recover")) return { show: true, reason: "requested" };
-  if (safeGet(session, BOOT_FLAG_KEY) !== null) return { show: true, reason: "unfinished" };
-  const marker = readBootMarker(local);
-  if (marker && now - marker.at >= BOOT_MARKER_GRACE_MS) return { show: true, reason: "unfinished" };
-  return { show: false, reason: null };
-}
-function readBootMarker(local) {
-  const text = safeGet(local, BOOT_MARKER_KEY);
-  if (text === null) return null;
-  try {
-    const marker = JSON.parse(text);
-    return Number.isFinite(marker?.at) ? marker : { token: null, at: 0 };
-  } catch {
-    return { token: null, at: 0 };
-  }
-}
-// Returns this load's token; clearBootMarker(local, token) removes the marker
-// only if no later load replaced it.
-/**
- * @param {Storage | null} local
- * @param {number} [now]
- * @returns {string}
- */
-export function markBootMarker(local, now = Date.now()) {
-  const token = `${now}-${Math.random().toString(36).slice(2, 8)}`;
-  try {
-    local?.setItem(BOOT_MARKER_KEY, JSON.stringify({ token, at: now }));
-  } catch {}
-  return token;
-}
-/**
- * @param {Storage | null} local
- * @param {string | null} [token]
- */
-export function clearBootMarker(local, token = null) {
-  if (token !== null && readBootMarker(local)?.token !== token) return;
-  safeRemove(local, BOOT_MARKER_KEY);
-}
-/**
- * @param {Storage | null} session
- * @param {number} [now]
- */
-export function markBooting(session, now = Date.now()) {
-  try {
-    session?.setItem(BOOT_FLAG_KEY, String(now));
-  } catch {}
-}
-/** @param {Storage | null} session */
-export function clearBootFlag(session) {
-  safeRemove(session, BOOT_FLAG_KEY);
-}
 export function isSafeMode(session) {
   return safeGet(session, SAFE_MODE_KEY) === "1";
 }
@@ -227,55 +140,4 @@ export function libraryFromBackup(backup) {
     } catch {}
   }
   return null;
-}
-
-// ---- Reset view settings -------------------------------------------------
-
-export function resetViewSettings({ session, local } = {}) {
-  const removed = [];
-  for (const key of VIEW_SETTING_SESSION_KEYS)
-    if (safeGet(session, key) !== null && safeRemove(session, key)) removed.push(key);
-  for (const key of VIEW_SETTING_LOCAL_KEYS) {
-    if (isLibraryKey(key)) continue;
-    if (safeGet(local, key) !== null && safeRemove(local, key)) removed.push(key);
-  }
-  return removed;
-}
-
-// ---- Raw build list (Recovery screen) ------------------------------------
-
-export function rawBuildSummary(storage) {
-  const text = safeGet(storage, LIBRARY_KEY);
-  const quarantine = quarantineKeys(storage);
-  if (text === null) return { ok: true, builds: [], quarantinedBuilds: 0, quarantine };
-  try {
-    const library = JSON.parse(text);
-    if (
-      !library ||
-      typeof library !== "object" ||
-      Array.isArray(library) ||
-      (library.builds !== undefined && !Array.isArray(library.builds))
-    )
-      throw new TypeError("unexpected shape");
-    const builds = Array.isArray(library.builds) ? library.builds : [];
-    return {
-      ok: true,
-      builds: builds.map((build, index) => ({
-        id: String(build?.id ?? ""),
-        name: String(build?.name || `Build ${index + 1}`),
-        revisions: Array.isArray(build?.revisions) ? build.revisions.length : 0,
-      })),
-      quarantinedBuilds: Array.isArray(library.quarantinedBuilds) ? library.quarantinedBuilds.length : 0,
-      quarantine,
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      builds: [],
-      error: String(error?.message || error),
-      size: text.length,
-      quarantinedBuilds: 0,
-      quarantine,
-    };
-  }
 }
