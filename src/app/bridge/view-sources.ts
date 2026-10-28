@@ -14,6 +14,7 @@ import type { HeroTraitsView } from "./hero-traits-view-model.ts";
 import type { CarinoAmmoSelectorView, SageScentSelectorView } from "./hero-dialogs-view-model.ts";
 import type { StatsView } from "./stats-view-model.ts";
 import type { DamageSummaryView } from "./damage-summary-view-model.ts";
+import type { CompositionView } from "./composition-view-model.ts";
 import type { SkillSelectorView } from "./skill-selector-view.ts";
 import type { BuildSeasonView } from "./build-season-view.ts";
 import type { GameLogImportView } from "./game-log-import-view.ts";
@@ -84,6 +85,8 @@ export interface ViewSources {
   heroTraits: HeroTraitsView;
   /** The character column's damage summary (src/app/bridge/damage-summary-view-model.ts). */
   damageSummary: DamageSummaryView;
+  /** The damage summary's Composition dialog (src/app/bridge/composition-view-model.ts). */
+  composition: CompositionView;
   /** The Stats view (src/app/bridge/stats-view-model.ts). */
   stats: StatsView;
   /** The hero selector: its opening (counted, so its search starts over) and the open build's hero. */

@@ -285,6 +285,19 @@ export interface PlannerResult {
     sources: { source: string; text: string; value: number; active: boolean; reason: string }[];
     movementSpeedPercent: number;
   };
+  /** Necklace of Firebird's Barrier Burst trigger (packages/engine/src/skills/barrier-burst.js); null without it. */
+  barrierBurst: {
+    /** The build's lines it reads (their coverage badges). */
+    lines: string[];
+    active: boolean;
+    requirements: { label: string; ok: boolean; sources: string[]; missing: string }[];
+    level: number;
+    source: string;
+    barrier: { pools: number; increasedPercent: number; additionalFactor: number; value: number };
+    damage: number;
+    usesPerSecond: number;
+    rateSetByUser: boolean;
+  } | null;
 
   activation: SkillActivation;
   activationMediumTerra: ResultSection;
@@ -366,6 +379,7 @@ export const plannerResultKeys = [
   "tideEffectFactor",
   "igniteLimit",
   "maxSpellBurst",
+  "barrierBurst",
   "activation",
   "activationMediumTerra",
   "afflictionRating",

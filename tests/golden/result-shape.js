@@ -4,6 +4,7 @@
 import { plannerResultKeys } from "../../packages/engine/src/planner-api.ts";
 
 const NULLABLE = new Set([
+  "barrierBurst",
   "dummyRecount",
   "mainSkill",
   "afflictionRating",

@@ -22,10 +22,10 @@ test("the summary's average DPS and shares are the recount card's", () => {
   assert.equal(summary.modeled, true);
   assert.equal(summary.spanSeconds, recount.spanSeconds);
   assert.deepEqual(summary.averageDps, recount.fields.find((field) => field.key === "averageDps").value);
-  const shown = recount.sources.filter((source) => source.share !== "0.0%");
+  // Every source that deals damage is listed (owner, 2026-10-28), one under 0.1% as "<0.1%" (the card's "0.0%").
   assert.deepEqual(
     summary.sources.map((source) => [source.label, source.share, source.color]),
-    shown.map((source) => [source.label, source.share, source.color]),
+    recount.sources.map((source) => [source.label, source.share === "0.0%" ? "<0.1%" : source.share, source.color]),
   );
   assert.equal(summary.mainSkill?.name, youga.mainSkill.name);
 });

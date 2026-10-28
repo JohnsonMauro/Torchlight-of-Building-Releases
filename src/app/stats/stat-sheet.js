@@ -373,7 +373,10 @@ export function statSheetModel(planner, selectedKey) {
       { label: "Base maximum stacks", value: blessing.baseMax },
       ...blessing.capSources.map((source) => ({ label: source.source + " · " + source.text, value: source.value })),
       { label: "Maximum stacks", value: blessing.maxStacks },
-      { label: "Assumed active stacks · best case", value: blessing.stacks },
+      {
+        label: `Stacks in calc · ${blessing.stacksSetByUser ? "set in Composition" : blessing.gainSources.length ? "max: the build has a gain source" : "no gain source"}`,
+        value: blessing.stacks,
+      },
       ...blessing.gainSources.map((source) => ({
         label: source.source + " · " + source.text,
         value: source.condition,

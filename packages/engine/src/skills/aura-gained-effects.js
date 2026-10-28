@@ -190,3 +190,27 @@ export function auraSpeedStatLines(auraEntries = []) {
   }
   return lines;
 }
+
+/**
+ * An active Aura's Energy Shield buff (Precise: Energy Fortress: "+N Max Energy Shield", "+X% additional Max Energy
+ * Shield"), at its effective values (its level and Aura Effect), as stat-sheet lines: the character panel counts it
+ * (owner's game panel, 2026-10-28: Shield 36,031 with the aura up).
+ */
+export function auraDefenseStatLines(auraEntries = [], activeNames = null) {
+  const lines = [];
+  for (const entry of auraEntries) {
+    if (activeNames && !activeNames.has(entry.name)) continue;
+    const effects = entry.effectiveEffects || {};
+    const source = `Aura: ${entry.name}`;
+    if (Number(effects.maxEnergyShield) > 0)
+      lines.push({ source, origin: "aura", text: `+${effects.maxEnergyShield} Max Energy Shield`, multiplier: 1 });
+    if (Number(effects.additionalMaxEnergyShieldPercent) > 0)
+      lines.push({
+        source,
+        origin: "aura",
+        text: `+${effects.additionalMaxEnergyShieldPercent}% additional Max Energy Shield`,
+        multiplier: 1,
+      });
+  }
+  return lines;
+}

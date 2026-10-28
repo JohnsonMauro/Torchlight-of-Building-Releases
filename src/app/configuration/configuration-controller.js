@@ -92,6 +92,12 @@ export const configurationCommands = {
     persistPlannerState();
     renderConfiguration();
   },
+  resetBlessingStacks: () => {
+    for (const key of ["tenacityBlessingStacks", "focusBlessingStacks", "agilityBlessingStacks"])
+      delete plannerState.combat[key];
+    persistPlannerState();
+    renderConfiguration();
+  },
 };
 export const configurationViewSources = {
   // The Config tab's data (src/app/bridge/view-sources.ts). Manual mode also needs the same build in automatic mode (which conditions

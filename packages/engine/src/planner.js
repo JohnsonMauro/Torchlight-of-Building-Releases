@@ -177,6 +177,7 @@ import {
   rotatingBuffRow,
 } from "./gear/gear-unique-modules.js";
 import { parseItemTrigger, itemTriggerEvent } from "./skills/item-triggered-skills.js";
+import { barrierBurstProfile, barrierBurstState } from "./skills/barrier-burst.js";
 import { normalizePercentageText as normalizeLineText } from "./text/percentage-text.js";
 import { spellToAttackLines } from "./combat/spell-to-attack.js";
 import { WORLD_WITHIN_LINE, worldWithinChances } from "./heroes/world-within.js";
@@ -1656,6 +1657,13 @@ function movementAssumption(planner) {
   };
 }
 
+// The Blessing stacks the user set (the damage summary's Composition dialog); unset: packages/engine/src/defense/blessing-model.js.
+const blessingHeldStacks = (combat) => ({
+  Tenacity: combat.tenacityBlessingStacks,
+  Focus: combat.focusBlessingStacks,
+  Agility: combat.agilityBlessingStacks,
+});
+
 export function calculatePlanner(input) {
   const state = normalizePlannerState(input);
   let planner = calculatePlannerOnce(state);
@@ -2767,6 +2775,7 @@ function calculatePlannerOnce(
   // Blessing passes.
   const theaInputs = theaBlessingInputs({ heroId: state.hero.selectedHeroId, modifierTexts, requestedConditions });
   const earlyBlessings = calculateBlessings({
+    heldStacks: blessingHeldStacks(state.combat),
     extraLines: theaInputs?.lines || [],
     capRules: theaInputs?.capRules || null,
     mobilityUsed,
@@ -3531,6 +3540,7 @@ function calculatePlannerOnce(
   // share of the time and 10 Main Skill triggers per gain, averaged over the Elixir casts.
   const miraculousGain = miraculousGainState(lineEffects.combat?.elixir || null, modifierTexts);
   const blessings = calculateBlessings({
+    heldStacks: blessingHeldStacks(state.combat),
     mobilityUsed,
     tangleCasts: tangles.setups.length > 0,
     fillShare: miraculousGain?.blessingShare || 0,
@@ -3901,6 +3911,57 @@ function calculatePlannerOnce(
       ]);
     });
   for (const [key, note] of itemTriggerNotes) mechanics.recognized.set(key, note);
+  // Necklace of Firebird's Barrier Burst (packages/engine/src/skills/barrier-burst.js; provisional): a hit source triggered once per
+  // Barrier while the build has a Barrier source and damage it takes itself; the main setup's supports reach it.
+  const barrierBurst = barrierBurstState({
+    modifierTexts,
+    maxLife: lineConditionState.stats?.maxLife ?? 0,
+    // The pools the character panel shows: with the active Auras' Energy Shield buffs (Precise: Energy Fortress), which
+    // the early pool stats above are calculated before.
+    maxEnergyShield: resourcePool(
+      characterStatTotals({
+        modifierTexts,
+        state,
+        heroMemories,
+        aura,
+        equipment,
+        activation: { activeNames: [...activeNames] },
+      }),
+      "maxEnergyShield",
+      0,
+      { defense: true },
+    ).value,
+    moving: conditions.moving !== false,
+    usesPerSecond: state.combat.barrierBurstsPerSecond,
+  });
+  if (barrierBurst) {
+    const missing = barrierBurst.requirements.filter((item) => !item.ok).map((item) => item.missing);
+    const note = missing.length
+      ? `Inactive: Barrier Burst needs ${missing.join("; ")}`
+      : `Barrier Burst: ${Math.round(barrierBurst.damage)} Fire per hit (75% of a ${Math.round(barrierBurst.barrier.value)} Barrier), ${barrierBurst.usesPerSecond}/s`;
+    for (const text of barrierBurst.lines) mechanics.recognized.set(normalizeLineText(String(text)).trim(), note);
+  }
+  if (barrierBurst?.active && barrierBurst.damage > 0) {
+    const granted = setups.find((setup) => setup.name === "Barrier Burst");
+    const setup = {
+      ...(catalogSkillsByName.get("Barrier Burst") || {}),
+      ...(granted || {}),
+      name: "Barrier Burst",
+      role: granted?.role || "main",
+      baseLevel: granted?.baseLevel ?? barrierBurst.level,
+      effectiveLevel: granted?.effectiveLevel ?? barrierBurst.level,
+      supports: granted?.supports || [],
+      setupKey: granted?.setupKey || "item-trigger:barrier-burst",
+      instanceId: granted?.instanceId || "item-trigger:barrier-burst",
+      enabled: true,
+    };
+    itemTriggerSources.push({
+      setup,
+      setupKey: setup.setupKey,
+      itemTrigger: { name: "Barrier Burst", source: barrierBurst.source, reason: "one per Barrier gained" },
+      profile: barrierBurstProfile(barrierBurst, catalogSkillsByName.get("Barrier Burst")),
+    });
+  }
   // Rehan (hero trait audit B10; packages/engine/src/heroes/rehan-traits.js; provisional readings, src/app/stats/open-questions.js):
   // - Anger's Burst: a triggered hit source (game row 90000; Burst Blast 90003) at its trigger rate in Berserk × the Berserk uptime,
   //   with its own additional damage lines, its level (+10% per tag-matching Skill Level line) and the Berserk-phase Rage lines in
@@ -6107,6 +6168,7 @@ function calculatePlannerOnce(
     conditions,
     // The build's Max Spell Burst and what settles it (packages/engine/src/skills/max-spell-burst.js).
     maxSpellBurst,
+    barrierBurst,
     warnings: [...new Set(warnings)],
   };
 }

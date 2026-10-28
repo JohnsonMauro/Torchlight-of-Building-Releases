@@ -295,6 +295,13 @@ export const combatNumberLimits = {
   // (packages/engine/src/text/line-conditions.js exitStandStillHeldStacks).
   exitStandStillStacks: { min: 0, max: 20, integer: true },
   idyllStacks: { min: 0, max: 15, integer: true },
+  // Blessing stacks held (the damage summary's Composition dialog); absent: the Blessing's max stacks with a gain source, else 0. The engine caps them at
+  // the build's max stacks (packages/engine/src/defense/blessing-model.js).
+  tenacityBlessingStacks: { min: 0, max: 50, integer: true },
+  focusBlessingStacks: { min: 0, max: 50, integer: true },
+  agilityBlessingStacks: { min: 0, max: 50, integer: true },
+  // Barrier Bursts per second (Necklace of Firebird: one per Barrier gained; packages/engine/src/skills/barrier-burst.js).
+  barrierBurstsPerSecond: { min: 0, max: 20, integer: false },
   extraMaxChanneledStacks: { min: -20, max: 20, integer: true },
   extraInitialChanneledStacks: { min: -20, max: 20, integer: true },
 } as const;

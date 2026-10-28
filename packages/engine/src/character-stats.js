@@ -1,6 +1,6 @@
 import { cleanGameText } from "./text/percentage-text.js";
 import { gameDamageLayer } from "./text/affix-bucket.js";
-import { auraSpeedStatLines } from "./skills/aura-gained-effects.js";
+import { auraDefenseStatLines, auraSpeedStatLines } from "./skills/aura-gained-effects.js";
 import { heroById } from "../data/heroes/hero-catalog.js";
 import { allHeroTraits } from "../data/heroes/all-hero-traits.generated.js";
 import {
@@ -245,6 +245,9 @@ const RULES = [
     (/and/i.test(m[2]) ? ["attack", "cast"] : [lower(m[2])]).map((kind) => c(`${kind}Speed`, "increased", +m[1])),
   ),
   rule("^NUM Attack Speed$", (m, signed) => (signed ? [] : [c("weaponAttackSpeed", "base", +m[1])])),
+  // "Your Max Life is set to 100" (Pedigree of Gods, Bing's slate): the pool is that value whatever else adds to it (the
+  // owner's game panel, 2026-10-28: Life 100).
+  rule("^Your Max Life is set to NUM$", (m) => [c("maxLife", "setTo", +m[1])]),
   rule("^NUM(%?) (?:(Attack and Spell|Attack|Spell) )?Critical Strike Rating$", (m, signed) =>
     !m[2] && !m[3] && !signed
       ? [c("weaponCriticalStrikeRating", "base", +m[1])]
@@ -513,6 +516,11 @@ const emptyTotal = (key) => ({
 // `options.legendaryBaseLines` (the defence view: packages/engine/src/defense/effective-hp.js, src/app/stats/stat-sheet.js) adds the equipped Legendary items'
 // base-item defence lines (Max Life, Max Energy Shield, gear Armor / Evasion / Energy Shield; packages/engine/src/gear/legendary-base-lines.js),
 // which the Legendary catalog leaves out. The damage-side totals (packages/engine/src/planner.js) do not pass it, so no damage figure moves.
+const activeNameSet = (planner) => {
+  const names = planner?.activation?.activeNames;
+  return names ? new Set(names) : null;
+};
+
 export function characterStatTotals(planner, options = {}) {
   const lines = [
     // Conditional lines the line-effects resolver made active (packages/engine/src/text/line-effects.js) are combat states, not panel stats.
@@ -525,6 +533,8 @@ export function characterStatTotals(planner, options = {}) {
     }),
     // An active Aura's added Attack and Cast Speed (Pantheon's Elegy on Precise: Swiftness; packages/engine/src/skills/aura-gained-effects.js), scaled by its Aura Effect.
     ...auraSpeedStatLines(planner?.aura?.entries || []),
+    // An active Aura's Energy Shield buff (Precise: Energy Fortress).
+    ...auraDefenseStatLines(planner?.aura?.entries || [], activeNameSet(planner)),
     ...(options.legendaryBaseLines ? legendaryBaseDefenseLines(planner?.equipment?.candidateItems || []) : []),
   ];
   const totals = new Map();
@@ -543,6 +553,17 @@ export function characterStatTotals(planner, options = {}) {
     // (packages/engine/src/skills/max-spell-burst.js), when the caller knows it.
     const perStack = maxSpellBurst === null ? null : perMaxSpellBurstBonus(line.text, maxSpellBurst);
     const contributions = parseCharacterStatClause(perStack ? `+${perStack.percent}% ${perStack.stat}` : line.text);
+    if (PER_ATTRIBUTE.test(String(line.text))) {
+      // Settled once the attribute's total is known (perAttributeFlats).
+      if (!totals.has("intelligence")) totals.set("intelligence", emptyTotal("intelligence"));
+      (totals.get("intelligence").unmatchedPerAttribute ||= []).push({
+        source: line.source,
+        origin: line.origin,
+        text: String(line.text),
+        multiplier: Number.isFinite(line.multiplier) ? line.multiplier : 1,
+      });
+      continue;
+    }
     if (!contributions.length) {
       unmatched.push(line);
       continue;
@@ -553,6 +574,7 @@ export function characterStatTotals(planner, options = {}) {
       const total = totals.get(item.stat);
       const value = item.value * multiplier;
       if (item.bucket === "additional") total.additional *= 1 + value / 100;
+      else if (item.bucket === "setTo") total.setTo = Math.min(total.setTo ?? Infinity, value);
       else total[item.bucket] += value;
       if (item.bucket === "gearFlat" || item.bucket === "gearIncreased") {
         const gear = total.gearItems.get(line.source) || { flat: 0, increased: 0 };
@@ -562,9 +584,67 @@ export function characterStatTotals(planner, options = {}) {
       total.sources.push({ source: line.source, origin: line.origin, text: line.text, bucket: item.bucket, value });
     }
   }
+  slotDefenseIncreases(lines, totals, planner);
+  perAttributeFlats(totals);
   for (const total of totals.values()) finalize(total, planner);
   const stats = [...totals.values()].sort((a, b) => rank(a.key) - rank(b.key) || a.label.localeCompare(b.label));
   return { stats, byKey: Object.fromEntries(stats.map((stat) => [stat.key, stat])), unmatched };
+}
+
+// "+100% Chest Armor Defense" / "-50% Helmet Defense" (Dual Kismet: Headless): an increase of that slot's own gear
+// defence, added to its local "+X% gear Energy Shield" (owner's game panel, 2026-10-28: the Long Night Sorcerer's Robe gives
+// (170 + 351) × (1 + 47% + 100%) = 1,287 Energy Shield with the kismet and no other chest line).
+const SLOT_DEFENSE = /^([+-][\d.]+)% (Chest Armor|Helmet|Gloves|Boots) Defense$/i;
+const DEFENSE_SLOT = { "chest armor": "chest", helmet: "helmet", gloves: "gloves", boots: "boots" };
+const GEAR_DEFENSE_STATS = ["maxEnergyShield", "armor", "evasion"];
+function slotDefenseIncreases(lines, totals, planner) {
+  const items = planner?.equipment?.candidateItems || [];
+  const seen = new Set();
+  for (const line of lines) {
+    const m = String(line.text).match(SLOT_DEFENSE);
+    if (!m) continue;
+    // A Dual Kismet's lines apply once (both copies carry them).
+    const key = `${line.source}|${line.text}`.replace(/^.*Dual Kismet/, "Dual Kismet");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const item = items.find((entry) => entry.slot === DEFENSE_SLOT[m[2].toLowerCase()]);
+    if (!item) continue;
+    for (const stat of GEAR_DEFENSE_STATS) {
+      const gear = totals.get(stat)?.gearItems.get(item.name);
+      if (!gear) continue;
+      gear.increased += Number(m[1]) * (line.multiplier ?? 1);
+      totals.get(stat).sources.push({
+        source: line.source,
+        origin: line.origin,
+        text: line.text,
+        bucket: "gearIncreased",
+        value: Number(m[1]),
+      });
+    }
+  }
+}
+
+// "+2 Max Energy Shield per 5 Intelligence" (Magister talent (5,4)): N per M points of the attribute's total, not rounded
+// (owner's game panel, 2026-10-28: the Talent part of Total Energy Shield is 225 + 173.6 at 434 Intelligence = 398).
+const PER_ATTRIBUTE = /^\+([\d.]+) Max (Energy Shield|Life|Mana) per ([\d.]+) (Strength|Dexterity|Intelligence)$/i;
+const POOL_KEY = { "energy shield": "maxEnergyShield", life: "maxLife", mana: "maxMana" };
+function perAttributeFlats(totals) {
+  for (const total of [...totals.values()]) {
+    for (const source of total.unmatchedPerAttribute || []) {
+      const m = source.text.match(PER_ATTRIBUTE);
+      const attribute = totals.get(lower(m[4]));
+      if (!attribute) continue;
+      const points = attribute.flat * (1 + attribute.increased / 100) * attribute.additional;
+      const value = (Number(m[1]) * points * source.multiplier) / Number(m[3]);
+      const key = POOL_KEY[m[2].toLowerCase()];
+      if (!totals.has(key)) totals.set(key, emptyTotal(key));
+      totals.get(key).flat += value;
+      totals
+        .get(key)
+        .sources.push({ source: source.source, origin: source.origin, text: source.text, bucket: "flat", value });
+    }
+    delete total.unmatchedPerAttribute;
+  }
 }
 
 const rank = (key) => {

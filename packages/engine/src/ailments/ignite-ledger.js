@@ -209,16 +209,22 @@ export function compileIgniteLedger({
           line.source,
           line.value,
           "Additional damage",
-          "Maximum stacks with verified gain condition",
+          "Blessing stacks: the max with a gain source, or as set in Composition",
           line.text ? { text: line.text } : undefined,
         ),
       ),
   );
   increasedSources.push(
     ...(blessings.increasedSources || []).map((line) =>
-      entry(line.source, line.value, "Increased damage", "Maximum stacks with verified gain condition", {
-        text: line.text,
-      }),
+      entry(
+        line.source,
+        line.value,
+        "Increased damage",
+        "Blessing stacks: the max with a gain source, or as set in Composition",
+        {
+          text: line.text,
+        },
+      ),
     ),
   );
   increasedSources.push(

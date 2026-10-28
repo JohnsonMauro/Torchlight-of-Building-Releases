@@ -93,9 +93,13 @@ export function parseBlessingModifier(text) {
   // reader applies its own scope rules (Spell Damage reaches Spell hits and a Spell skill's own DoT, never ailments;
   // user-confirmed 2026-10-11). Marked here so this model neither counts it twice nor lists it as unsupported.
   match = clean.match(
-    /^([+-][\d.]+)% (?:additional )?(?:[A-Za-z]+ )?damage per stack of (Tenacity|Focus|Agility) Blessing(?: owned)?$/i,
+    /^([+-][\d.]+)% (?:additional )?(?:[A-Za-z]+ )?damage (?:per|for every) stack of (Tenacity|Focus|Agility) Blessing(?: owned)?$/i,
   );
   if (match) return { kind: "lineEffect", names: namesIn(`${match[2]} Blessing`), text: clean };
+  // "Adds 10 - 12 Fire Damage to Attacks and Spells per stack of Tenacity Blessing" (Magnus' Laws): the same resolver
+  // scales the added damage by the stacks.
+  match = clean.match(/^Adds .+ Damage .*(?:per|for every) stack of (Tenacity|Focus|Agility) Blessing(?: owned)?$/i);
+  if (match) return { kind: "lineEffect", names: namesIn(`${match[1]} Blessing`), text: clean };
   if (/(?:Unable to|Cannot) gain/i.test(raw)) return null;
   match = raw.match(
     new RegExp(
@@ -227,6 +231,7 @@ export function calculateBlessings({
   stackUsers = new Set(),
   stackUserTexts = [],
   stackOverrides = {},
+  heldStacks = {},
   fillShare = 0,
   fillSource = null,
   capRules = null,
@@ -394,12 +399,26 @@ export function calculateBlessings({
     );
     const convertedGain =
       convert && blessing.name === convert.to && result[convert.from].gainSources.some((source) => source.available);
+    // What the verified gain sources hold (shown beside the stacks). The stacks are the user's (the damage summary's Composition
+    // dialog, combat.<name>BlessingStacks); when not set, the max stacks if the build has any gain source for the Blessing,
+    // its condition verified or not, and 0 without one (owner, 2026-10-27); capped at the max.
+    const convertedFrom = convert && blessing.name === convert.from;
+    blessing.estimatedStacks =
+      !convertedFrom && !cannotGain && (blessing.gainSources.some((source) => source.available) || convertedGain)
+        ? blessing.maxStacks
+        : 0;
+    const hasGainSource =
+      blessing.gainSources.length > 0 ||
+      Boolean(convert && blessing.name === convert.to && result[convert.from].gainSources.length);
+    const held = heldStacks[blessing.name];
+    blessing.stacksSetByUser = Number.isFinite(held);
     blessing.stacks =
-      convert && blessing.name === convert.from
+      convertedFrom || cannotGain
         ? 0
-        : !cannotGain && (blessing.gainSources.some((source) => source.available) || convertedGain)
-          ? blessing.maxStacks
-          : 0;
+        : Math.min(
+            blessing.maxStacks,
+            Math.max(0, blessing.stacksSetByUser ? held : hasGainSource ? blessing.maxStacks : 0),
+          );
     if (convert && blessing.name === convert.from) blessing.convertedTo = convert.to;
     // Miraculous Gain (Miraculous Touch; packages/engine/src/skills/elixir-model.js miraculousGainState, user-supplied 2026-10-19): the Blessings sit at max
     // for `fillShare` of the time; the time-averaged stacks fill the gap to max by that share.

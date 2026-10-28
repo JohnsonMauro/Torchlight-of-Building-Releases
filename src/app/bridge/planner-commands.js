@@ -115,6 +115,7 @@
  *   best option clears the pin).
  * @property {(auto: boolean) => void} setAimUptimeAuto Aim uptime derived from the build, or manual.
  * @property {(key: string, value: string) => void} setCombatValue Sets an Advanced number as typed (combat[key]).
+ * @property {() => void} resetBlessingStacks Composition dialog, Blessings: clears the stacks the user set (each Blessing back to its default).
  * @property {(slot: number) => void} openPactspiritSelector Opens the Pactspirit selector for pact slot 0–2.
  * @property {(name: string) => void} selectPactspirit Pactspirit selector: puts that Pactspirit in the slot it was opened for
  *   (swapping when it sits in another slot).

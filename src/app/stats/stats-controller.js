@@ -1,5 +1,6 @@
 // The Stats view: its prepared stat sheet and damage path, and its open questions.
 import { EMPTY_DAMAGE_SUMMARY, damageSummaryView } from "../bridge/damage-summary-view-model.ts";
+import { compositionView } from "../bridge/composition-view-model.ts";
 import { prepareDamagePath } from "../bridge/damage-path-view-model.ts";
 import { prepareStatSheet, statsView } from "../bridge/stats-view-model.ts";
 import { viewSourceChanged } from "../bridge/view-sources.ts";
@@ -44,11 +45,22 @@ export const statsViewSources = {
   // The character column's damage summary (src/app/bridge/damage-summary-view-model.ts).
   damageSummary: () =>
     calculationsPaused ? EMPTY_DAMAGE_SUMMARY : damageSummaryView(currentPlanner(), recountExcludedSources()),
+  // Its Composition dialog (src/app/bridge/composition-view-model.ts).
+  composition: () => {
+    if (calculationsPaused) return compositionView({ blessings: [] });
+    const planner = currentPlanner();
+    return compositionView({
+      blessings: planner.blessings?.entries ?? [],
+      maxSpellBurst: planner.maxSpellBurst,
+      barrierBurst: planner.barrierBurst,
+    });
+  },
 };
 
 // The damage summary sits beside every build tab: every render pass re-reads it (the build is already calculated).
 export function renderDamageSummary() {
   viewSourceChanged("damageSummary");
+  viewSourceChanged("composition");
 }
 
 // The Stats view is React (apps/web/src/features/stats): it re-reads its source.

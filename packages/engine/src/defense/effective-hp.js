@@ -103,7 +103,10 @@ function pool(totals, key, base, { defense = false, baseLabel = "", extra = null
   const extraAdditional = (extra?.additional || []).reduce((product, item) => product * (1 + item.value / 100), 1);
   const flat = stat.flat + extraFlat;
   const additional = stat.additional * extraAdditional;
-  const value = Math.max(0, (base + flat + stat.gearTotal) * (1 + increased / 100) * additional);
+  // A pool a line sets ("Your Max Life is set to 100") ignores every other source.
+  const value = Number.isFinite(stat.setTo)
+    ? stat.setTo
+    : Math.max(0, (base + flat + stat.gearTotal) * (1 + increased / 100) * additional);
   const sources = [
     ...(base ? [{ source: baseLabel, text: `${base} base`, value: base }] : []),
     ...stat.sources.map((item) => ({ source: item.source, text: item.text })),

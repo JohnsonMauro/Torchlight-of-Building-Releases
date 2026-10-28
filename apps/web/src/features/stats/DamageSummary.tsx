@@ -1,7 +1,10 @@
 // The character column's damage summary: the build's average DPS over the recount span (the Stats page's recount card,
 // same figure) with each source's share, and the main skill. It updates on every edit, beside whatever tab is open.
 // Data: the planner's "damageSummary" source (src/app/bridge/damage-summary-view-model.ts).
+import type { DamageSummarySource } from "@legacy/app/bridge/damage-summary-view-model.ts";
 import { useViewSource } from "../../ui/use-view-source";
+import { SkillTooltip } from "../skills/SkillTooltip";
+import { CompositionButton } from "./CompositionDialog";
 
 export function DamageSummary() {
   const view = useViewSource("damageSummary");
@@ -21,6 +24,7 @@ export function DamageSummary() {
               {view.averageDps.short ?? view.averageDps.full}
             </strong>
           </div>
+          <CompositionButton />
           {view.sources.length ? (
             <>
               <div className="flex h-1.5 overflow-hidden rounded-full bg-sunken" aria-hidden="true">
@@ -28,13 +32,9 @@ export function DamageSummary() {
                   <span key={source.key} style={{ width: source.width, backgroundColor: source.color }} />
                 ))}
               </div>
-              <ul className="grid gap-1 text-xs">
+              <ul className="grid gap-1.5 text-xs">
                 {view.sources.map((source) => (
-                  <li key={source.key} className="flex items-center gap-1.5">
-                    <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: source.color }} />
-                    <span className="min-w-0 flex-1 truncate text-muted">{source.label}</span>
-                    <span className="text-text tabular-nums">{source.share}</span>
-                  </li>
+                  <SourceRow key={source.key} source={source} />
                 ))}
               </ul>
             </>
@@ -49,5 +49,43 @@ export function DamageSummary() {
         </p>
       ) : null}
     </section>
+  );
+}
+
+/** A damage source: a skill shows its icon, its uses and its Spell Burst status, and its card on hover. */
+function SourceRow({ source }: { source: DamageSummarySource }) {
+  const swatch = <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: source.color }} />;
+  const share = <span className="text-text tabular-nums">{source.share}</span>;
+  if (!source.skill)
+    return (
+      <li className="flex items-center gap-1.5">
+        {swatch}
+        <span className="min-w-0 flex-1 truncate text-muted">{source.label}</span>
+        {share}
+      </li>
+    );
+  const skill = source.skill;
+  return (
+    <SkillTooltip target={{ skill: skill.name }}>
+      <li className="flex items-center gap-2" tabIndex={0} aria-label={`${skill.name}: ${source.share} of the damage`}>
+        {swatch}
+        {skill.icon ? (
+          <img
+            className="size-7 shrink-0 rounded-sm border border-line bg-sunken object-contain"
+            src={skill.icon}
+            alt=""
+          />
+        ) : null}
+        <span className="grid min-w-0 flex-1">
+          <span className="truncate text-text">{skill.name}</span>
+          {skill.detail || skill.spellBurst ? (
+            <span className={`truncate text-[10px] ${skill.spellBurstOk ? "text-ok" : "text-dim"}`}>
+              {[skill.detail, skill.spellBurst].filter(Boolean).join(" · ")}
+            </span>
+          ) : null}
+        </span>
+        {share}
+      </li>
+    </SkillTooltip>
   );
 }
