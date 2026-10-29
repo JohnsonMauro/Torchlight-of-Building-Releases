@@ -612,7 +612,7 @@
       }
     },
     "hero/selena-dance-of-the-deep/first": {
-      "sha256": "a9885f03b1a6b13943f62a89eaaf2c6471b4120bc94045ff7692d807e6504edc",
+      "sha256": "4cd97579768a9ec1aa6e8e3f5c52c50114fd3c74e704597c11ccb4417438fe66",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -622,7 +622,7 @@
       }
     },
     "hero/selena-dance-of-the-deep/last": {
-      "sha256": "552fb22e5a3f4d8873a3980070cd77882c27fd820b527460843442eb5ccfea0c",
+      "sha256": "430099e45305e70bdfa56dc7fb8a2218705a2858c172fccbbae232443bfa26c3",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,

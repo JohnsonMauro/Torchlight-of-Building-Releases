@@ -14,7 +14,7 @@ import { CARINO_MODULES } from "./carino/badges.js";
 import { BING_MODULES } from "./bing/badges.js";
 import { YOUGA_MODULES, yougaRevivedLine } from "./youga/badges.js";
 import { GEMMA_MODULES } from "./gemma/badges.js";
-import { SELENA_MODULES } from "./selena/badges.js";
+import { SELENA_MODULES, selenaRevivedLine } from "./selena/badges.js";
 import { REHAN_MODULES } from "./rehan/badges.js";
 import { ERIKA_MODULES, erikaRevivedLine } from "./erika/badges.js";
 import { THEA_MODULES } from "./thea/badges.js";
@@ -64,6 +64,8 @@ export function heroModuleRevivedLine(heroId, text) {
   if (REHAN_HEROES.has(heroId)) return rehanRevivedLine(heroId, clean);
   // Rosa – Unsullied Blade (B11): Mercury Purged's Baptism lines.
   if (heroId === "rosa-unsullied-blade") return rosaRevivedLine(heroId, clean);
+  // Selena – Dance of the Deep (B13): Red Shoes of Cruelty.
+  if (heroId === "selena-dance-of-the-deep") return selenaRevivedLine(heroId, clean);
   // Bing – Creative Genius (B12): Genius Idea Generator's Whimsy line.
   if (heroId === BING_CREATIVE) return bingRevivedLine(heroId, clean);
   return false;

@@ -132,12 +132,7 @@ const PENDING = {
   // Mercury Purged joins the intake (2026-10-29): MODULE_LINES below names its Baptism lines (packages/engine/src/heroes/rosa/badges.js).
   // Sage (B8, 2026-10-19): Omni-Elixir Side Effect and Basic Pharmacology Manuscript join the intake; MODULE_LINES below names the
   // lines the Scent Bottle module reads (packages/engine/src/heroes/sage/licorice-note.js).
-  // Selena (B13)
-  "Red Shoes of Cruelty": P(
-    "B13",
-    "the Main Terra Skill Area's damage taken from Movement Speed",
-    "While Main Terra Skill is active, increases the damage taken",
-  ),
+  // Selena (B13): Red Shoes of Cruelty joins the intake (2026-10-29): MODULE_LINES below (packages/engine/src/heroes/selena/badges.js).
 };
 
 // Lines of an exclusive revival that a hero module reads (hero trait audit B4): they join the intake so the module sees them in
@@ -209,6 +204,11 @@ const MODULE_LINES = {
   "Ancestral Hate": ["Seething Spirit consumes"],
   // Rosa – Unsullied Blade (B11): each Baptism while its ailment is on the dummy (packages/engine/src/heroes/rosa/badges.js).
   "Mercury Purged": ["When inflicting Frostbite", "When inflicting Ignite", "When inflicting Numbed"],
+  // Selena – Dance of the Deep (B13): the Main Terra Skill Area's damage taken from Movement Speed, and the True Damage taken.
+  "Red Shoes of Cruelty": [
+    "While Main Terra Skill is active, takes True Damage",
+    "While Main Terra Skill is active, increases",
+  ],
   "Starfall Wasteland": [
     "Seething Spirit now only uses",
     "Generates 15 Rage",

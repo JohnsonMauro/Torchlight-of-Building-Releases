@@ -122,6 +122,62 @@ export function paradiseBadge(line, module, ctx) {
   );
 }
 
+// Red Shoes of Cruelty (revived memory; TLIDB keyword 2026-10-29, tlidb-pages/memory-revival-2026-10-29): "While Main Terra Skill
+// is active, additionally increases the damage taken by enemies within the Terra Skill Area by a percentage that equals 38% of
+// Movement Speed bonus, up to 75%" (the hover's "additionally"; the older page text lacks it) and the True Damage the character
+// takes (8% of the bonus, up to 15% of Max Life and Energy Shield: defensive). The Movement Speed bonus is the stat sheet's total,
+// counted in full (movement is constant, user rule 2026-10-14); the dummy stays inside the Main Terra Skill (Dance of the Deep).
+const RED_SHOES_TAKEN =
+  /^While Main Terra Skill is active, (?:additionally )?increases the damage taken by enemies within the Terra Skill Area by a percentage that equals ([\d.]+)% of Movement Speed bonus, up to ([\d.]+)%$/i;
+const RED_SHOES_SELF =
+  /^While Main Terra Skill is active, takes True Damage equal to a percentage of Max Life and Energy Shield/i;
+
+export function redShoesBadge(line, module, ctx) {
+  const { state, entries, entry, derive } = ctx;
+  if (RED_SHOES_SELF.test(line.clean)) {
+    entries.push({
+      source: line.source,
+      origin: line.origin || "trait",
+      text: line.clean,
+      active: false,
+      conditionText: `${module.label}: True Damage the character takes (defensive)`,
+      status: "No DPS effect",
+      provisional: true,
+      bodies: [],
+      condition: "heroModule",
+      group: null,
+      module: module.key,
+    });
+    return;
+  }
+  const match = line.clean.match(RED_SHOES_TAKEN);
+  if (!match) {
+    entry(line, { ...module, status: "Not modeled" }, false, "this Red Shoes of Cruelty clause is not read");
+    return;
+  }
+  const speed = Math.max(0, Number(state.movementSpeedPercent) || 0);
+  const percent = round(Math.min(num(match[2]), (num(match[1]) / 100) * speed));
+  const active = Boolean(state.mainIsTerra) && percent > 0;
+  const body = `+${percent}% additional damage taken`;
+  entry(
+    line,
+    module,
+    active,
+    active
+      ? `${match[1]}% × ${round(speed)}% Movement Speed = +${percent}% additional damage taken on the dummy inside the Main Terra Skill${percent >= num(match[2]) ? " (capped)" : ""}`
+      : !state.mainIsTerra
+        ? "no active Main Terra Skill"
+        : "no Movement Speed bonus",
+    [body],
+  );
+  if (active) derive(body, line.source, "Red Shoes of Cruelty: the dummy inside the Main Terra Skill");
+}
+
+/** Selena's hero-exclusive revived lines the modules read: Red Shoes of Cruelty. */
+export function selenaRevivedLine(heroId, clean) {
+  return heroId === "selena-dance-of-the-deep" && (RED_SHOES_TAKEN.test(clean) || RED_SHOES_SELF.test(clean));
+}
+
 export const SELENA_MODULES = Object.freeze([
   {
     key: "crimsonTide",
@@ -194,5 +250,15 @@ export const SELENA_MODULES = Object.freeze([
     rule: "TLIDB Activation_Medium_Terra (captured 2026-10-13; user-stated reading confirmed): seals 20% Mana (Life with Drenched Hem); with an enemy within 25 m, triggers the supported Terra skill when Terra Charge reaches max (no use time: a DoT Terra recasts every Max Terra Charge × charge interval and consumes them all), −30% Movement Speed for 2 s; +30% additional damage for the supported skill (hits and its own DoT, the support rule). Silencing Severance also stops other Activation Mediums on the Main Skill. Sealed Mana Compensation does not reduce the 20% seal (user-confirmed 2026-10-13). Provisional: a skill-hit Terra keeps its recast-on-expiry cadence.",
     lines: /Activation Medium/i,
     badge: activationMediumTerraBadge,
+  },
+  {
+    key: "redShoes",
+    heroes: /^selena-dance-of-the-deep$/,
+    label: "Selena: Red Shoes of Cruelty",
+    status: "Provisional",
+    rule: "Red Shoes of Cruelty (revived memory; TLIDB keyword): while the Main Terra Skill is active, the dummy inside its area takes additional damage equal to 38% of the Movement Speed bonus, up to 75% (the stat sheet's Movement Speed total, counted in full: movement is constant, user rule 2026-10-14); the True Damage the character takes (8% of the bonus, up to 15% of Max Life and Energy Shield) is defensive. Provisional: the bonus read as the stat sheet's total increase.",
+    lines:
+      /^While Main Terra Skill is active, (?:takes True Damage|(?:additionally )?increases the damage taken by enemies within the Terra Skill Area)/i,
+    badge: redShoesBadge,
   },
 ]);
