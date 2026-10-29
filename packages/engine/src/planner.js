@@ -136,6 +136,7 @@ import { felineFigureState, vendettaStingState, VENDETTAS_STING } from "./heroes
 import { motoIrisState, minionHeroTraits, mergingStreamOrigins } from "./heroes/moto-iris-traits.js";
 import { theaBlessingInputs, theaState, INSIDE_REALM_CONDITION } from "./heroes/thea-traits.js";
 import { sageState } from "./heroes/sage-traits.js";
+import { bingState } from "./heroes/bing-traits.js";
 import { carinoState, CARINO_HEROES, RETURNING_SWITCH, SPECIAL_AMMO_LEVEL } from "./heroes/carino-traits.js";
 import {
   rehanState,
@@ -3032,6 +3033,17 @@ function calculatePlannerOnce(
     inputs: lineConditionState.rehanInputs || {},
   });
   const rehanRates = Boolean(lineConditionState.rehan?.needsRates);
+  // Bing – Creative Genius (hero trait audit B12, first part; packages/engine/src/heroes/bing-traits.js): the Whimsy Explosion cadence, Whimsy
+  // Signal on the dummy and Whimsy. Flash of Brilliance reads the Main Skill's uses per second the hit pass measured, so a build
+  // with the pick runs the measuring pass.
+  lineConditionState.bing = bingState({
+    heroId: lineConditionState.heroId,
+    modifierTexts,
+    requestedConditions,
+    dealsSpell: Boolean(lineConditionState.activeTags?.has?.("Spell")),
+    mainUsesPerSecond: hitRateFacts?.bing ? hitRateFacts.bing.mainUsesPerSecond : null,
+  });
+  const bingRates = Boolean(lineConditionState.bing?.needsRates);
   // Bing – Blast Nova's Firepower Coverage (Q-H15): the badge and the switch read it (packages/engine/src/heroes/hero-trait-modules.js "firepower").
   lineConditionState.firepowerCoverage = firepowerCoverage;
   const theaFocus = lineConditionState.thea?.wisdom?.cycle ? lineConditionState.thea.wisdom.cycle.averageFocus : null;
@@ -3057,7 +3069,8 @@ function calculatePlannerOnce(
       erikaRates ||
       sageRates ||
       carinoRates ||
-      rehanRates);
+      rehanRates ||
+      bingRates);
   if (probeDebuffHitRates) skipVariation = true;
   // Moto / Iris (hero trait audit B6; packages/engine/src/heroes/moto-iris-traits.js): the loadout's trait state, before the line effects (its module
   // entries and best-case switches) and the Minions (their trait inputs); the badges settle after the Minion pass.
@@ -6032,6 +6045,19 @@ function calculatePlannerOnce(
         attackIncreasedPercent: weaponAttack.attackSpeed?.increasedPercent || 0,
         rageAttackSpeedPercent:
           (lineConditionState.rehan?.averageBodies || []).find((item) => item.key === "attackSpeedPerRage")?.value || 0,
+      };
+    }
+    // Bing – Creative Genius (hero trait audit B12): the Main Skill's uses per second (Flash of Brilliance's procs); a skill an item
+    // puts in its place (Necklace of Firebird's Barrier Burst: "Replaces the Main Skill") counts as the Main Skill.
+    if (bingRates) {
+      const mainKeys = new Set([
+        resolvedMain?.setupKey,
+        ...itemTriggerSources.filter((item) => item.setup?.role === "main").map((item) => item.setupKey),
+      ]);
+      facts.bing = {
+        mainUsesPerSecond: skillHits
+          .filter((hit) => hit.modeled && mainKeys.has(hit.setupKey))
+          .reduce((sum, hit) => sum + (hit.rate?.usesPerSecond || 0), 0),
       };
     }
     if (carinoRates)

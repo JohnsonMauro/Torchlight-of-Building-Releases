@@ -49,6 +49,7 @@ import {
 import { SAGE, sageClauseKey, sageLineRead, sageRevivedLine } from "./sage-traits.js";
 import { CARINO_HEROES, RETURNING_SWITCH, carinoModuleOf, carinoLineRead, carinoRevivedLine } from "./carino-traits.js";
 import { REHAN_HEROES, rehanModuleOf, rehanLineRead, rehanRevivedLine } from "./rehan-traits.js";
+import { BING_CREATIVE, bingClauseKey, bingLineRead, bingRevivedLine, bingSwitches } from "./bing-traits.js";
 
 // Youga clause → badge module (packages/engine/src/heroes/youga-ultimate-one.js YOUGA_PATTERNS).
 const YOUGA_GROUPS = Object.freeze({
@@ -134,6 +135,14 @@ export const HERO_MODULES = Object.freeze([
     label: "Bing: Firepower Coverage",
     status: "Provisional",
     rule: 'Q-H15 recommended reading (provisional): "Cannot use Main Skills" is applied, so the Main Skill deals no damage of its own; the bombs that replace it are not modeled (hero trait audit B12). Best-case switch: off keeps the Main Skill\'s damage.',
+  },
+  // Bing – Creative Genius's Whimsy side (hero trait audit B12, first part; packages/engine/src/heroes/bing-traits.js settles the state).
+  {
+    key: "bingWhimsy",
+    heroes: /^bing-creative-genius$/,
+    label: "Bing: Whimsy",
+    status: "Provisional",
+    rule: "Whimsy Explosions each time Whimsy Essence reaches 100 (20 per second × (1 + Whimsy Essence Recovery Speed)) while a skill deals Spell Damage, plus Flash of Brilliance's procs (1 ÷ (interval + 1 ÷ (chance × Main Skill uses))). Whimsy Signal on the dummy (20%, Trouble Maker's value, × (1 + Whimsy Signal Effect)) up min(1, 5 s × explosions per second); Whimsy (Mind Domain) held at max standing in the energy field (best-case switch) while a field comes within 10 s, each stack 5% × (1 + Whimsy Effect), multiplying. Ingenuity Overload is not modeled yet.",
   },
   {
     key: "illusion",
@@ -505,6 +514,9 @@ const MODULE_LINES = {
   },
   ouroboros: { test: (text) => carinoModuleOf(text) === "ouroboros" },
   firepower: /^Cannot use Main Skills$/i,
+  // Bing – Creative Genius (B12, first part): every clause packages/engine/src/heroes/bing-traits.js reads, Genius Idea Generator's first line
+  // included; the Spell Burst hit line and Multi-Coupling Equation's Max Spell Burst stay with the generic readers.
+  bingWhimsy: { test: (text) => Boolean(bingClauseKey(text) || bingClauseKey(text, { revived: true })) },
   // Rehan (B10): every clause packages/engine/src/heroes/rehan-traits.js reads (its revived lines included); plain lines (Hysteria's Missing Life, Split Form's
   // Max Life and Life Regain, Ritual's Movement Speed, Ancestral Hate's defensive lines) stay with the generic readers.
   rage: { test: (text) => rehanModuleOf(text) === "rage" || rehanModuleOf(text, { revived: true }) === "rage" },
@@ -1199,6 +1211,8 @@ export function heroModuleRevivedLine(heroId, text) {
   if (CARINO_HEROES.has(heroId)) return carinoRevivedLine(heroId, clean);
   // Rehan (B10): Hero's Resourcefulness, Furious Roar, Ancestral Hate's Life cost, Starfall Wasteland.
   if (REHAN_HEROES.has(heroId)) return rehanRevivedLine(heroId, clean);
+  // Bing – Creative Genius (B12): Genius Idea Generator's Whimsy line.
+  if (heroId === BING_CREATIVE) return bingRevivedLine(heroId, clean);
   return false;
 }
 
@@ -1244,6 +1258,8 @@ export function resolveHeroModules(modifierTexts = [], state = {}) {
   const carino = { switched: false, returning: false, firepower: false };
   // Rehan (B10): the best-case switches are listed once per call.
   const rehan = { switched: false };
+  // Bing – Creative Genius (B12): the energy-field switch is listed once per call.
+  const bing = { switched: false };
   let takenConversion = null;
   // `extra`: markers a reader keys on (Rehan, B10: `rehanPhase` on the time-averaged Rage lines, `rehanNonBurst` on Tunnel Vision's
   // penalty; packages/engine/src/planner.js swaps them on Burst, the Seething Spirit and the disarmed player).
@@ -1371,6 +1387,42 @@ export function resolveHeroModules(modifierTexts = [], state = {}) {
           });
       }
       const read = sageLineRead(heroId, line.clean, state.sage || null, { revived: line.origin === "memory" });
+      if (!read) {
+        entry(line, { ...module, status: "Not modeled" }, false, "this clause is not read");
+        continue;
+      }
+      const active = read.status === "In calc";
+      entries.push({
+        source: line.source,
+        origin: line.origin || "trait",
+        text: line.clean,
+        active,
+        conditionText: `${module.label}: ${read.reason}`,
+        status: read.status,
+        provisional: true,
+        bodies: read.bodies.map((body) => ({ body, derivedText: active ? body : null, readers: ["hero"] })),
+        condition: "heroModule",
+        group: null,
+        module: module.key,
+      });
+      if (active) for (const body of read.bodies) derive(body, line.source, read.reason);
+      continue;
+    }
+    // Bing – Creative Genius (B12; packages/engine/src/heroes/bing-traits.js bingLineRead): each clause's status and its derived lines.
+    if (module.key === "bingWhimsy") {
+      if (!bing.switched) {
+        bing.switched = true;
+        for (const item of bingSwitches(state.bing))
+          timedEffects.push({
+            ...item,
+            source: module.label,
+            target: "self",
+            toggle: true,
+            provisional: true,
+            parts: [],
+          });
+      }
+      const read = bingLineRead(heroId, line.clean, state.bing || null, { revived: line.origin === "memory" });
       if (!read) {
         entry(line, { ...module, status: "Not modeled" }, false, "this clause is not read");
         continue;

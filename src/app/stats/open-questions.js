@@ -1982,6 +1982,27 @@ export const OPEN_QUESTIONS = Object.freeze([
     source: `${HERO_TRAIT_AUDIT} (§6 Q-H15)`,
     appliesWhen: (ctx) => ctx.heroId === "bing-blast-nova" && Boolean(ctx.lineState.firepowerCoverage),
   },
+  // Hero trait audit B12, first part (2026-10-29; packages/engine/src/heroes/bing-traits.js): Bing – Creative Genius's Whimsy side.
+  {
+    id: "bing-whimsy",
+    title: "Creative Genius: Whimsy Explosion cadence, Whimsy Signal and Whimsy stacks",
+    question:
+      "How often does a Whimsy Explosion go off on the dummy, how long is Whimsy Signal up, and are the Whimsy stacks held at max while standing in the energy field? Do the Whimsy stacks multiply each other, and does a triggered Main Skill use count as casting it for Flash of Brilliance?",
+    evidence: "provisional",
+    current:
+      "Provisional (hero trait audit B12): one Whimsy Explosion each time Whimsy Essence reaches 100 (20 per second × (1 + Whimsy Essence Recovery Speed)) while a skill deals Spell Damage, plus Flash of Brilliance's procs, 1 ÷ (interval + 1 ÷ (chance × Main Skill uses per second)), a triggered use counting as a cast; Inspiration Overflow's Essence is not read. Whimsy Signal (20%, or Trouble Maker's value, × (1 + Whimsy Signal Effect)) is up min(1, 5 s × explosions per second). With Mind Domain the stacks are held at max standing in the field (best-case switch \"Whimsy: standing in the energy field\") while a field comes within Whimsy's 10 s; each stack is 5% × (1 + Whimsy Effect) and they multiply: (1 + w)^N − 1. Whimsy Explosion's own damage is not published, so it deals none here.",
+    alternatives: [
+      { reading: "The Whimsy stacks add (N × w)", effect: "less Whimsy damage at high stack counts" },
+      {
+        reading: "The field ends before the stacks reach max",
+        effect: "fewer Whimsy stacks with long build-ups (0.5 s per stack)",
+      },
+      { reading: "Triggered Main Skill uses do not roll Flash of Brilliance", effect: "fewer Whimsy Explosions" },
+    ],
+    test: "On the dummy with Mind Domain, stand in the energy field and read the Whimsy stacks and their duration on the buff bar; read the dummy's Whimsy Signal debuff timer over 30 s; compare a hit's damage with 1 and with max Whimsy stacks.",
+    source: "Bing – Creative Genius module (packages/engine/src/heroes/bing-traits.js, 2026-10-29)",
+    appliesWhen: (ctx) => ctx.heroId === "bing-creative-genius" && Boolean(ctx.lineState.bing?.base),
+  },
   // Hero trait audit B10 (2026-10-19; packages/engine/src/heroes/rehan-traits.js, packages/engine/src/heroes/hero-trait-modules.js, packages/engine/src/planner.js): Rehan (Anger, Seething Silhouette)
   // and its revived affixes. Shown only for Rehan.
   {

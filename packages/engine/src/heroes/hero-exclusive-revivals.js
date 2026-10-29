@@ -102,12 +102,12 @@ const PENDING = {
   // MODULE_LINES below names the lines the Carino module reads (packages/engine/src/heroes/carino-traits.js).
   // Erika (B5, 2026-10-19): Charging Tail and Vengeful Night Wraith join the intake; MODULE_LINES below names the lines the
   // Lightning Shadow / Vendetta's Sting modules read (packages/engine/src/heroes/erika-traits.js, packages/engine/src/heroes/hero-trait-modules.js).
-  // Bing (B12)
+  // Bing (B12): Genius Idea Generator's Whimsy line joins the intake (MODULE_LINES below, packages/engine/src/heroes/bing-traits.js); its Ingenuity
+  // Overload line waits for that engine.
   "Bing's Big Bang Pack": P("B12", "Bing's bomb engine", "When bombs deal damage"),
   "Genius Idea Generator": P(
     "B12",
-    "Bing's Whimsy / Ingenuity Overload engine",
-    "+2 to Whimsy Explosion",
+    "Bing's Ingenuity Overload engine",
     "+1 to Max Spell Burst and +60% additional Spell Damage for Spells triggered by Ingenuity Overload",
   ),
   // Gemma (B3, 2026-10-19): First Flake of Strange Snow joins the intake (packages/engine/src/combat-states.js reads its deemed Frostbite Rating and
@@ -201,6 +201,8 @@ const MODULE_LINES = {
     "+20% additional Projectile Damage when Deflection is active",
   ],
   "Self-Imposed Shackles": ["+30% additional Heat Up Effect"],
+  // Bing – Creative Genius (B12): Whimsy Effect and Whimsy Signal Effect (packages/engine/src/heroes/bing-traits.js).
+  "Genius Idea Generator": ["+2 to Whimsy Explosion Projectile Quantity"],
   // Rehan (B10): Burst Blast and its on-hit / skill-use changes (Hero's Resourcefulness), Furious Roar's crit trigger and its Burst
   // penalty, Ancestral Hate's Life cost (Hysteria's Rage), Starfall Wasteland's Spirit lines; Ancestral Hate's Regain Interval and
   // damage-taken lines go to the generic readers.
