@@ -5,7 +5,7 @@
 const num = (text) => Number(String(text).replace("−", "-"));
 
 export function holyDomainBadge(line, module, ctx) {
-  const { state, traits, entries, timedEffects, entry, derive, rosa } = ctx;
+  const { state, traits, timedEffects, entry, derive, neutral, rosa } = ctx;
   const pressed = state.requestedConditions?.traitSkillOnCooldown !== false;
   const domain =
     traits.some((item) =>
@@ -66,19 +66,12 @@ export function holyDomainBadge(line, module, ctx) {
     /^Restores \d+ Murderous Intent when Blocking$/i.test(line.clean) ||
     /^For every \d+ Murderous Intent you currently have, \+\d+(?:\.\d+)? ?% Holy Domain radius/i.test(line.clean)
   )
-    entries.push({
-      source: line.source,
-      origin: line.origin || "trait",
-      text: line.clean,
-      active: false,
-      conditionText: `${module.label}: the Holy Domain is already held at uptime 1 from the 4 per second regeneration (Q-H7); radius and Block Chance change no dummy figure`,
-      status: "No DPS effect",
-      provisional: true,
-      bodies: [],
-      condition: "heroModule",
-      group: null,
-      module: module.key,
-    });
+    neutral(
+      line,
+      module,
+      "No DPS effect",
+      `the Holy Domain is already held at uptime 1 from the 4 per second regeneration (Q-H7); radius and Block Chance change no dummy figure`,
+    );
   else
     entry(
       line,

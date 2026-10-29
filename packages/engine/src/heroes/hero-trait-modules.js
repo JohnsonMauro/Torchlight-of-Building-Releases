@@ -138,10 +138,39 @@ export function resolveHeroModules(modifierTexts = [], state = {}) {
       group: null,
       module: module.key,
     });
+  // A line a module reads that moves no damage (defensive, settled elsewhere, the dummy already inside): its status and why.
+  const neutral = (line, module, status, why) =>
+    entries.push({
+      source: line.source,
+      origin: line.origin || "trait",
+      text: line.clean,
+      active: false,
+      conditionText: `${module.label}: ${why}`,
+      status,
+      provisional: true,
+      bodies: [],
+      condition: "heroModule",
+      group: null,
+      module: module.key,
+    });
   const moduleFor = (line) => heroModuleFor(heroId, line.clean);
   // What a hero's badge handler reads (each hero's badges.js): the call's lists, the entry / derive helpers and the per-call
   // caches and switch flags.
-  const ctx = { heroId, state, traits, entries, derived, timedEffects, entry, derive, moduleFor, youga, gemma, b6 };
+  const ctx = {
+    heroId,
+    state,
+    traits,
+    entries,
+    derived,
+    timedEffects,
+    entry,
+    derive,
+    neutral,
+    moduleFor,
+    youga,
+    gemma,
+    b6,
+  };
   // The readings a handler hands back to the return below.
   ctx.out = { illusion: null, spacetime: null, takenConversion: null };
   Object.assign(ctx, { thea, rosa, sage, carino, rehan, bing });

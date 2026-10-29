@@ -107,7 +107,7 @@ function resolveColdPulse(traits, state) {
 }
 
 export function purgatoryBadge(line, module, ctx) {
-  const { state, traits, entries, timedEffects, entry, derive } = ctx;
+  const { state, traits, entries, timedEffects, entry, derive, neutral } = ctx;
   let match;
   const base = traits.map((item) => item.clean.match(PATTERNS.purgatoryBase)).find(Boolean);
   const duration =
@@ -170,33 +170,19 @@ export function purgatoryBadge(line, module, ctx) {
       `${charges} charges, recovering one at a time on the ${cooldown} s cooldown (provisional): a Purgatory is recast as soon as the last one ends while a charge is ready, so the 5 s / 20 s windows and the recount hold it longer from t = 0; the long-run uptime stays ${round(uptime * 100)}%`,
     );
   else if (PATTERNS.purgatoryMechanism.test(line.clean))
-    entries.push({
-      source: line.source,
-      origin: "trait",
-      text: line.clean,
-      active: false,
-      conditionText: `${module.label}: the mechanism the Purgatory model assumes (auto-cast whenever no Purgatory is up and a charge is ready, one Purgatory that follows you with the dummy inside; ${text}); the line itself changes no figure`,
-      status: "No DPS effect",
-      provisional: true,
-      bodies: [],
-      condition: "heroModule",
-      group: null,
-      module: module.key,
-    });
+    neutral(
+      line,
+      module,
+      "No DPS effect",
+      `the mechanism the Purgatory model assumes (auto-cast whenever no Purgatory is up and a charge is ready, one Purgatory that follows you with the dummy inside; ${text}); the line itself changes no figure`,
+    );
   else if (PATTERNS.purgatoryArea.test(line.clean))
-    entries.push({
-      source: line.source,
-      origin: "trait",
-      text: line.clean,
-      active: false,
-      conditionText: `${module.label}: the dummy is already inside Purgatory (it follows you, within 10 m), so a larger area changes no dummy damage`,
-      status: "No DPS effect",
-      provisional: true,
-      bodies: [],
-      condition: "heroModule",
-      group: null,
-      module: module.key,
-    });
+    neutral(
+      line,
+      module,
+      "No DPS effect",
+      `the dummy is already inside Purgatory (it follows you, within 10 m), so a larger area changes no dummy damage`,
+    );
   else if (PATTERNS.purgatoryOnKill.test(line.clean))
     entries.push({
       source: line.source,
@@ -456,25 +442,12 @@ export function frostfireBadge(line, module, ctx) {
 }
 
 export function coldPulseBadge(line, module, ctx) {
-  const { state, traits, entries, timedEffects, entry, derive, gemma } = ctx;
+  const { state, traits, timedEffects, entry, derive, gemma } = ctx;
   let match;
   const read = gemma.coldPulse || (gemma.coldPulse = resolveColdPulse(traits, state));
   const { pulse } = read;
   const off = read.reason;
-  const neutral = (status, why) =>
-    entries.push({
-      source: line.source,
-      origin: "trait",
-      text: line.clean,
-      active: false,
-      conditionText: `${module.label}: ${why}`,
-      status,
-      provisional: true,
-      bodies: [],
-      condition: "heroModule",
-      group: null,
-      module: module.key,
-    });
+  const neutral = (status, why) => ctx.neutral(line, module, status, why);
   const cadence = pulse
     ? `a Cold Pulse ${pulse.pulsesPerSecond} times per second (every ${read.intervalSeconds} s${read.blooming ? ", plus Blooming Frost Flower's" : ""}) from t = 0`
     : "";

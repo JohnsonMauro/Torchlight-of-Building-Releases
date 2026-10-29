@@ -273,23 +273,10 @@ export function resolveSpacetimeState(traitLines = [], state = {}) {
 }
 
 export function illusionBadge(line, module, ctx) {
-  const { state, traits, entries, entry, derive, youga } = ctx;
+  const { state, traits, entry, derive, youga } = ctx;
   // Hero trait audit B4 (packages/engine/src/heroes/youga/spacetime-illusion.js): one Illusion state per call; each clause reads it.
   const read = youga.illusion || (youga.illusion = resolveIllusionState(traits, state));
-  const neutral = (status, why) =>
-    entries.push({
-      source: line.source,
-      origin: line.origin || "trait",
-      text: line.clean,
-      active: false,
-      conditionText: `${module.label}: ${why}`,
-      status,
-      provisional: true,
-      bodies: [],
-      condition: "heroModule",
-      group: null,
-      module: module.key,
-    });
+  const neutral = (status, why) => ctx.neutral(line, module, status, why);
   const noIllusion = "no Spacetime Illusion use line in the build";
   const pending = read && !read.measured ? " (held before the hit pass measures the rates)" : "";
   if (PATTERNS.illusionUse.test(line.clean)) {
@@ -344,19 +331,10 @@ export function illusionBadge(line, module, ctx) {
     );
   } else if (PATTERNS.makeItQuick.test(line.clean)) {
     if (read.endlessMana)
-      entries.push({
-        source: line.source,
-        origin: "trait",
-        text: line.clean,
-        active: false,
-        conditionText: `${module.label}: with Eeeendless Mana as well nothing limits the Illusion's rate (Q-H5): the planner keeps Eeeendless Mana's rate (your Main Skill cast rate) until an in-game count`,
-        status: "Not modeled",
-        provisional: true,
-        bodies: [],
-        condition: "heroModule",
-        group: null,
-        module: module.key,
-      });
+      neutral(
+        "Not modeled",
+        `with Eeeendless Mana as well nothing limits the Illusion's rate (Q-H5): the planner keeps Eeeendless Mana's rate (your Main Skill cast rate) until an in-game count`,
+      );
     else
       neutral(
         "No DPS effect",
@@ -425,23 +403,10 @@ export function illusionBadge(line, module, ctx) {
 }
 
 export function elapseBadge(line, module, ctx) {
-  const { state, traits, entries, entry, derive, youga } = ctx;
+  const { state, traits, entry, derive, youga } = ctx;
   let match;
   const read = youga.spacetime || (youga.spacetime = resolveSpacetimeState(traits, state));
-  const neutral = (status, why) =>
-    entries.push({
-      source: line.source,
-      origin: line.origin || "trait",
-      text: line.clean,
-      active: false,
-      conditionText: `${module.label}: ${why}`,
-      status,
-      provisional: true,
-      bodies: [],
-      condition: "heroModule",
-      group: null,
-      module: module.key,
-    });
+  const neutral = (status, why) => ctx.neutral(line, module, status, why);
   const noDot =
     "the build deals no damage over time, so Twisted Spacetime has nothing to record (and no DoT to cast it)";
   if (!read) {

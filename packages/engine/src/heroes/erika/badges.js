@@ -387,7 +387,7 @@ function erikaVendettaEntry(line, module, state, { entry, derive, timedEffects, 
 // Erika (Wind Stalker): packages/engine/src/heroes/erika/wind-stalker.js settles these against the build's multistriking hits (state.windStalker:
 // windStalkerState before the hits, resolveWindStalker after them).
 export function stalkerBadge(line, module, ctx) {
-  const { state, entries, entry, derive } = ctx;
+  const { state, entry, derive, neutral } = ctx;
   let match;
   const ws = state.windStalker || null;
   const text = line.clean.replace(/ ,/g, ",");
@@ -410,19 +410,12 @@ export function stalkerBadge(line, module, ctx) {
         : `standing still (the Movement group's choice): no Stalker from movement${held > 0 ? `; Stalker comes from Max Multistrike Count events (${held} stacks held)` : ""}`,
     );
   } else if (/^Your Multistrike Count will not be interrupted during Stalker$/i.test(text)) {
-    entries.push({
-      source: line.source,
-      origin: "trait",
-      text: line.clean,
-      active: false,
-      conditionText: `${module.label}: moving or using other skills interrupts Multistrike (game manual 1001020121); the planner never interrupts it on the dummy, so this has no DPS effect`,
-      status: "No DPS effect",
-      provisional: true,
-      bodies: [],
-      condition: "heroModule",
-      group: null,
-      module: module.key,
-    });
+    neutral(
+      line,
+      module,
+      "No DPS effect",
+      `moving or using other skills interrupts Multistrike (game manual 1001020121); the planner never interrupts it on the dummy, so this has no DPS effect`,
+    );
   } else if (/^At Max Multistrike Count, \+\d+ to Max Stalker Stacks, up to \+\d+, until Stalker ends$/i.test(text)) {
     entry(
       line,
@@ -517,48 +510,22 @@ export function stalkerBadge(line, module, ctx) {
 }
 
 export function lightningShadowBadge(line, module, ctx) {
-  const { state, entries, entry, derive } = ctx;
+  const { state, entry, derive, neutral } = ctx;
   erikaLightningEntry(line, module, state, {
     entry,
     derive,
-    neutral: (status, why) =>
-      entries.push({
-        source: line.source,
-        origin: line.origin || "trait",
-        text: line.clean,
-        active: false,
-        conditionText: `${module.label}: ${why}`,
-        status,
-        provisional: true,
-        bodies: [],
-        condition: "heroModule",
-        group: null,
-        module: module.key,
-      }),
+    neutral: (status, why) => neutral(line, module, status, why),
   });
 }
 
 export function vendettaStingBadge(line, module, ctx) {
-  const { state, entries, timedEffects, entry, derive } = ctx;
+  const { state, entries, timedEffects, entry, derive, neutral } = ctx;
   erikaVendettaEntry(line, module, state, {
     entry,
     derive,
     timedEffects,
     entries,
-    neutral: (status, why) =>
-      entries.push({
-        source: line.source,
-        origin: line.origin || "trait",
-        text: line.clean,
-        active: false,
-        conditionText: `${module.label}: ${why}`,
-        status,
-        provisional: true,
-        bodies: [],
-        condition: "heroModule",
-        group: null,
-        module: module.key,
-      }),
+    neutral: (status, why) => neutral(line, module, status, why),
   });
 }
 

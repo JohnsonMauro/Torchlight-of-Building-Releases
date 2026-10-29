@@ -133,21 +133,9 @@ const RED_SHOES_SELF =
   /^While Main Terra Skill is active, takes True Damage equal to a percentage of Max Life and Energy Shield/i;
 
 export function redShoesBadge(line, module, ctx) {
-  const { state, entries, entry, derive } = ctx;
+  const { state, entry, derive, neutral } = ctx;
   if (RED_SHOES_SELF.test(line.clean)) {
-    entries.push({
-      source: line.source,
-      origin: line.origin || "trait",
-      text: line.clean,
-      active: false,
-      conditionText: `${module.label}: True Damage the character takes (defensive)`,
-      status: "No DPS effect",
-      provisional: true,
-      bodies: [],
-      condition: "heroModule",
-      group: null,
-      module: module.key,
-    });
+    neutral(line, module, "No DPS effect", "True Damage the character takes (defensive)");
     return;
   }
   const match = line.clean.match(RED_SHOES_TAKEN);
