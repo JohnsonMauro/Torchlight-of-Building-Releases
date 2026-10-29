@@ -133,7 +133,8 @@ import { CHANCE_TO_DAMAGE } from "./ailments/ailment-model.js";
 import { calculateWeaponAttack, weaponLocalLineKind } from "./skills/weapon-damage-model.js";
 import { calculateVendettaTriggers, hitCritChances } from "./heroes/erika/vendetta-model.js";
 import { felineFigureState, vendettaStingState, VENDETTAS_STING } from "./heroes/erika/traits.js";
-import { motoIrisState, minionHeroTraits, mergingStreamOrigins } from "./heroes/moto-iris-traits.js";
+import { motoIrisState, minionHeroTraits } from "./heroes/minion-heroes.js";
+import { mergingStreamOrigins } from "./heroes/iris/vigilant-breeze.js";
 import { theaBlessingInputs, theaState, INSIDE_REALM_CONDITION } from "./heroes/thea/traits.js";
 import { sageState } from "./heroes/sage/licorice-note.js";
 import { bingState } from "./heroes/bing/creative-genius.js";
@@ -3072,7 +3073,7 @@ function calculatePlannerOnce(
       rehanRates ||
       bingRates);
   if (probeDebuffHitRates) skipVariation = true;
-  // Moto / Iris (hero trait audit B6; packages/engine/src/heroes/moto-iris-traits.js): the loadout's trait state, before the line effects (its module
+  // Moto / Iris (hero trait audit B6; packages/engine/src/heroes/minion-heroes.js): the loadout's trait state, before the line effects (its module
   // entries and best-case switches) and the Minions (their trait inputs); the badges settle after the Minion pass.
   lineConditionState.motoIris = motoIrisState({
     heroId: lineConditionState.heroId,
@@ -4806,7 +4807,7 @@ function calculatePlannerOnce(
     classify: classifyMinionLine,
     localKind: weaponLocalLineKind,
   });
-  // Moto / Iris (hero trait audit B6; packages/engine/src/heroes/moto-iris-traits.js): each Minion's trait inputs (Overload, Charge Calling, Nourishment's
+  // Moto / Iris (hero trait audit B6; packages/engine/src/heroes/minion-heroes.js): each Minion's trait inputs (Overload, Charge Calling, Nourishment's
   // extras, the Vigilant state, Merging Stream's Origins), the Spirit Magi first (Nourishing Spring Rain's troops read them).
   const motoIris = lineConditionState.motoIris || null;
   const mergingOrigins =
@@ -4968,7 +4969,7 @@ function calculatePlannerOnce(
   const minions = minionGroups.map((group) => results.get(group)).filter(Boolean);
   // Empower (Alchemist core; packages/engine/src/minions/minion-cores.js): one Spirit Magus in the map, the strongest kept (best case).
   const spiritMagiLimit = applySpiritMagiLimit(minions, modifierTexts);
-  // Moto / Iris (B6): the Minions' results settle the module badges (packages/engine/src/heroes/moto-iris-traits.js b6LineStatus).
+  // Moto / Iris (B6): the Minions' results settle the module badges (packages/engine/src/heroes/minion-heroes.js b6LineStatus).
   if (motoIris) {
     motoIris.minions = minions.map((minion) => ({
       key: minion.minionKey,

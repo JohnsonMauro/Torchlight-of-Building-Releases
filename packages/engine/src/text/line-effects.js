@@ -265,7 +265,7 @@ export function resolveLineEffects(modifierTexts = [], state = null) {
   const origin = resolveOrigins({ summons: state?.spiritMagusSummons || [], modifierTexts });
   // Merging Stream (Iris – Vigilant Breeze, hero trait audit B6): "Iris is not affected by Origin of Spirit Magus Effects, and all
   // basic Origin of Spirit Magus Effects will be applied to all Spirit Magi": no summoner line; packages/engine/src/minions/minion-damage-model.js applies
-  // them to the Magi (packages/engine/src/heroes/moto-iris-traits.js mergingStreamOrigins).
+  // them to the Magi (packages/engine/src/heroes/iris/vigilant-breeze.js mergingStreamOrigins).
   const originToMagi = Boolean(state?.motoIris?.vigilant?.merging && !state.motoIris.vigilant.merging.noOriginLine);
   if (!originToMagi) derived.push(...origin.derived);
   for (const line of originToMagi ? [] : origin.derived) {

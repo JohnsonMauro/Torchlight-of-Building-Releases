@@ -8,13 +8,8 @@ import { multistrikeSequence } from "../skills/skill-hit-model.js";
 import { skillTiming } from "../../data/skills/skill-timing.generated.js";
 
 import { BOND } from "./minion-cores.js";
-import {
-  KEYWORDS,
-  RECENTLY_SECONDS as RECENT_SECONDS,
-  TROOP_FAMILIES,
-  vigilantBreezeMax,
-  vigilantBreezeAt,
-} from "../heroes/moto-iris-traits.js";
+import { KEYWORDS, RECENTLY_SECONDS as RECENT_SECONDS, TROOP_FAMILIES } from "../heroes/minion-hero-lines.js";
+import { vigilantBreezeMax, vigilantBreezeAt } from "../heroes/iris/vigilant-breeze.js";
 const TROOP_FAMILY = new Set(TROOP_FAMILIES);
 
 // Minion damage path (2026-10-11; research/base-damage-skills-2026-10-11.md). Minions are independent of the player:
@@ -610,7 +605,7 @@ function combineBuffs(active, skillType) {
  *   pressed whenever off cooldown from the summon cast on (best case; also forced by an auto-trigger trait), "summon" = only
  *   the summon cast counts (the trait's "casting the Active Skill is considered as casting the Trait Skill"; open whether the
  *   Magus it creates receives the stacks), "none" = never.
- * @param {object|null} p.heroTraits Moto / Iris trait inputs for this Minion (hero trait audit B6; packages/engine/src/heroes/moto-iris-traits.js, built
+ * @param {object|null} p.heroTraits Moto / Iris trait inputs for this Minion (hero trait audit B6; packages/engine/src/heroes/minion-heroes.js, built
  *   by packages/engine/src/planner.js minionHeroTraits): { readTexts, layers (static Minion layers: Overload, Nourishing Spring Rain's Growth,
  *   Unstoppable Wave …), overloadRamp, extraCount, nourish (Growing Breeze extras), troopNourish, vigilant, selfDestruct, magiCount }.
  */
@@ -1024,7 +1019,7 @@ export function calculateMinion({
     };
   };
 
-  // Charge Calling (Moto – Charge Calling, hero trait audit B6; packages/engine/src/heroes/moto-iris-traits.js, provisional): with Charge Calling held
+  // Charge Calling (Moto – Charge Calling, hero trait audit B6; packages/engine/src/heroes/moto/charge-calling.js, provisional): with Charge Calling held
   // (6 s / 6 s, pressed on cooldown) every summon cast creates 1 (+ Rally) + 1 Synthetic Troop Minions that self-destruct 1 s
   // after (keyword: 115% of Base Damage, Physical Attack, Melee, Area), at most the skill's quantity + 1 alive, so explosions/s =
   // min(summon casts/s × troops per cast, alive ÷ 1 s). Summon casts: Fuel War with War's trigger of the Main Summon Skill, or the
@@ -1499,7 +1494,7 @@ export function calculateMinion({
       ? windrider.stacks + nourish.extraStacksPerTraitCast
       : nourish.stacksPerTraitCast + nourish.extraStacksPerTraitCast;
   // "100% of your Empower Skill Effect bonus is also applied to Spirit Magi's Nourishment" and Grow With Them's Origin share (B6):
-  // the shared bonuses in one Nourishment Effect factor (packages/engine/src/heroes/moto-iris-traits.js; plain "+X% Empower Skill Effect" lines only).
+  // the shared bonuses in one Nourishment Effect factor (packages/engine/src/heroes/iris/growing-breeze.js; plain "+X% Empower Skill Effect" lines only).
   const nourishEffectFactor = nourishPlus?.effectFactor ?? 1;
   const nourishEffect = nourish && !nourish.noLossNoBonus ? nourish.effectPercent * nourishEffectFactor : 0;
   const traitCooldown = windrider ? windrider.intervalSeconds : nourish?.traitCooldownSeconds || 5;
@@ -2077,7 +2072,7 @@ export function calculateMinion({
     warnings,
     assumptions,
     modeled: steadyDps > 0,
-    // Hero trait audit B6 (packages/engine/src/heroes/moto-iris-traits.js): what the Moto / Iris inputs did on this Minion (the module badges read it).
+    // Hero trait audit B6 (packages/engine/src/heroes/minion-heroes.js): what the Moto / Iris inputs did on this Minion (the module badges read it).
     heroTraits: heroTraits
       ? {
           ...heroTraitState,

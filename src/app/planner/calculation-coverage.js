@@ -550,7 +550,7 @@ const HERO_ENGINE_PENDING = {
   // packages/engine/src/heroes/hero-trait-modules.js "theaWisdom" / "theaIncarnation" / "theaBlasphemer").
   // Youga – Spacetime Elapse: modeled by hero trait audit B4 (packages/engine/src/heroes/hero-trait-modules.js "elapse").
   // Moto (Order Calling, Charge Calling) and Iris (Growing Breeze, Vigilant Breeze): modeled by hero trait audit B6
-  // (packages/engine/src/heroes/moto-iris-traits.js; packages/engine/src/heroes/hero-trait-modules.js "overload" / "chargeCalling" / "irisGrowing" / "irisVigilant").
+  // (packages/engine/src/heroes/minion-heroes.js; packages/engine/src/heroes/hero-trait-modules.js "overload" / "chargeCalling" / "irisGrowing" / "irisVigilant").
   "rosa-high-court-chariot": [[/^For every 1 ?% Block Ratio, .*additional No Guard Effect/i, "b11"]],
   "rosa-unsullied-blade": [
     [/^Mana can be consumed via methods other than Mystic Mercury/i, "b11"],

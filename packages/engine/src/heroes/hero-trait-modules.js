@@ -25,16 +25,11 @@ import {
   INCISIVE_CLOSE_CONDITION,
   cleanErika,
 } from "./erika/traits.js";
-import {
-  ORDER_CALLING,
-  CHARGE_CALLING,
-  GROWING_BREEZE,
-  VIGILANT_BREEZE,
-  b6ClauseKey,
-  b6LineStatus,
-  b6RevivedLine,
-  b6Switches,
-} from "./moto-iris-traits.js";
+import { b6ClauseKey, b6LineStatus, b6RevivedLine, b6Switches } from "./minion-heroes.js";
+import { ORDER_CALLING } from "./moto/order-calling.js";
+import { CHARGE_CALLING } from "./moto/charge-calling.js";
+import { GROWING_BREEZE } from "./iris/growing-breeze.js";
+import { VIGILANT_BREEZE } from "./iris/vigilant-breeze.js";
 import {
   WISDOM,
   INCARNATION,
@@ -382,7 +377,7 @@ export const HERO_MODULES = Object.freeze([
     status: "Not modeled",
     rule: 'Glacial Night: "Enemies are inflicted with Condensed Frost". Neither TLIDB nor the readable game records define what Condensed Frost does (buff 81233 has no readable effect), so its effect and "+X% Condensed Frost Effect" are not modeled.',
   },
-  // Moto and Iris (hero trait audit B6, 2026-10-19; packages/engine/src/heroes/moto-iris-traits.js settles the states, packages/engine/src/minions/minion-damage-model.js applies
+  // Moto and Iris (hero trait audit B6, 2026-10-19; packages/engine/src/heroes/minion-heroes.js settles the states, packages/engine/src/minions/minion-damage-model.js applies
   // them to the Minions; these entries carry the badges, from state.motoIris, settled after the Minion pass in packages/engine/src/planner.js).
   {
     key: "overload",
@@ -544,7 +539,7 @@ const MODULE_LINES = {
   // packages/engine/src/combat-states.js (its Max Frostbite Rating), so it stays out.
   coldPulse: { test: (text) => /Cold Pulse/i.test(text) && !/^\+\d+ (?:to )?Max Frostbite Rating/i.test(text) },
   condensedFrost: /Condensed Frost/i,
-  // Moto / Iris (B6): the clauses packages/engine/src/heroes/moto-iris-traits.js reads for each loadout.
+  // Moto / Iris (B6): the clauses packages/engine/src/heroes/minion-heroes.js reads for each loadout.
   overload: { test: (text) => Boolean(b6ClauseKey(ORDER_CALLING, text)) },
   chargeCalling: { test: (text) => Boolean(b6ClauseKey(CHARGE_CALLING, text)) },
   irisGrowing: { test: (text) => Boolean(b6ClauseKey(GROWING_BREEZE, text)) },
@@ -1297,7 +1292,7 @@ export function resolveHeroModules(modifierTexts = [], state = {}) {
     }
     // Youga – The Ultimate One (packages/engine/src/heroes/youga/the-ultimate-one.js yougaLineStatus): each clause's status and reason from the Clockwork
     // Core / trait-skill state (build-level before the hits, settled after them).
-    // Moto / Iris (B6; packages/engine/src/heroes/moto-iris-traits.js b6LineStatus): each clause's status from state.motoIris (settled after the Minions).
+    // Moto / Iris (B6; packages/engine/src/heroes/minion-heroes.js b6LineStatus): each clause's status from state.motoIris (settled after the Minions).
     if (["overload", "chargeCalling", "irisGrowing", "irisVigilant"].includes(module.key)) {
       if (!b6.switched) {
         b6.switched = true;

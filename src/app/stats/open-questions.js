@@ -1383,7 +1383,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       (traitPicked(ctx, "erika-vendettas-sting", "Feline Fury") ||
         ctx.hasText(/^For every 3 casts of Vendetta, generates/i)),
   },
-  // Hero trait audit B6 (2026-10-19; packages/engine/src/heroes/moto-iris-traits.js, packages/engine/src/minions/minion-damage-model.js, packages/engine/src/heroes/hero-trait-modules.js): Moto (Order
+  // Hero trait audit B6 (2026-10-19; packages/engine/src/heroes/minion-heroes.js, packages/engine/src/minions/minion-damage-model.js, packages/engine/src/heroes/hero-trait-modules.js): Moto (Order
   // Calling, Charge Calling) and Iris (Growing Breeze, Vigilant Breeze). Shown only for those loadouts.
   {
     id: "moto-overload-uptime",
