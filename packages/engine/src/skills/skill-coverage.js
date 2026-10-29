@@ -28,7 +28,7 @@ const UNSUSTAINED_SKILLS = {
 };
 // Skills whose own effect the planner does not model (Not modeled, with the reason). Youga's trait skills (catalog entries
 // from scripts/import-tlidb-skill-catalog.mjs) deal no damage of their own; what they do acts through Youga's Clockwork Core
-// (packages/engine/src/heroes/youga-ultimate-one.js; yougaSkillCoverage below reads it). These reasons stand only without that state.
+// (packages/engine/src/heroes/youga/the-ultimate-one.js; yougaSkillCoverage below reads it). These reasons stand only without that state.
 const UNMODELED_SKILLS = {
   "Stasis Vault":
     "Youga trait skill: Slow in the vault and its Clockwork Core projectile effects (Penetrate, Recall) are not modeled",
@@ -41,7 +41,7 @@ export const STASIS_VAULT_DAMAGE_REASON =
 export const STASIS_VAULT_AREA_REASON =
   "widens Stasis Vault (TLIDB: 50% of Skill Area bonuses apply to its 10 m radius, up to 140%); the Recall count, the Recall cooldown and the Vault uptime do not depend on the radius, and the dummy stands inside the vault (best case), so no figure moves; whether it matters in game is unconfirmed (see Open questions)";
 // Supports whose effect only reaches an unmodeled part of the skill (Not modeled, with the reason). Clockwork Core is the
-// support Youga's base trait grants (packages/engine/src/heroes/trait-board-grants.js); its effects are read by packages/engine/src/heroes/youga-ultimate-one.js
+// support Youga's base trait grants (packages/engine/src/heroes/trait-board-grants.js); its effects are read by packages/engine/src/heroes/youga/the-ultimate-one.js
 // (yougaCoreCoverage below), so its reason here stands only without that state.
 const UNMODELED_SUPPORTS = {
   "Clockwork Core":
@@ -323,7 +323,7 @@ function enemyAilmentFrom(planner, name) {
 const result = (status, reason = "", damage = false) =>
   damage ? { status, reason, damage: true } : { status, reason };
 
-// Youga – The Ultimate One's trait skills and Clockwork Core (packages/engine/src/heroes/youga-ultimate-one.js, planner.yougaUltimateOne): what each
+// Youga – The Ultimate One's trait skills and Clockwork Core (packages/engine/src/heroes/youga/the-ultimate-one.js, planner.yougaUltimateOne): what each
 // does on the dummy, from the settled state; null without that state (another hero), so the fixed reasons above stand.
 const pct = (value) => `${Math.round(value * 1000) / 10}%`;
 function yougaSkillCoverage(planner, skillName) {
@@ -845,7 +845,7 @@ function refineSupportClause(planner, setup, supportName, clause, base) {
     !/damage/i.test(clause.text)
   )
     return result("No DPS effect", STASIS_VAULT_AREA_REASON);
-  // Youga – I Will Hunt You Down (packages/engine/src/heroes/youga-ultimate-one.js): the Clockwork Core skill's Jumps raise its Max Recall Count and its
+  // Youga – I Will Hunt You Down (packages/engine/src/heroes/youga/the-ultimate-one.js): the Clockwork Core skill's Jumps raise its Max Recall Count and its
   // Penetrations its Recalled-hit bonus, so those support clauses reach the dummy through Recall even though one dummy has no
   // other enemy to Jump to or Penetrate into (2026-10-18: they read "no rule" / Not on dummy).
   const youga = planner?.yougaUltimateOne;
@@ -909,7 +909,7 @@ function refineSupportClause(planner, setup, supportName, clause, base) {
     );
   }
   // Main Terra: every Critical Strike Rating increase reaching it lengthens The Cycle I Resist's Terra duration (user-confirmed
-  // 2026-10-13; packages/engine/src/heroes/selena-dance.js resolveCycleResist reads the Main Terra's own support clauses).
+  // 2026-10-13; packages/engine/src/heroes/selena/dance-of-the-deep.js resolveCycleResist reads the Main Terra's own support clauses).
   if (
     clause.family === "crit" &&
     clause.kind === "ratingPercent" &&

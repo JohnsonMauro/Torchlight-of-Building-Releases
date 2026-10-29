@@ -7,7 +7,7 @@ import { skillHitDamageNewSkills } from "../../data/skills/skill-hit-damage-new-
 import { skillTiming } from "../../data/skills/skill-timing.generated.js";
 import { tlidbSkillCatalog } from "../../data/catalogs/tlidb.js";
 import { MINION_SKILL_PROFILES } from "../minions/minion-profiles.js";
-import { VENDETTA_PROFILES } from "../heroes/vendetta-model.js";
+import { VENDETTA_PROFILES } from "../heroes/erika/vendetta-model.js";
 
 // Damage-source profiles: what each skill setup deals, from game data and TLIDB text.
 //
@@ -300,7 +300,7 @@ const SKILL_DOT_PROFILES = Object.freeze(
 // Weapon Attack Damage skills (packages/engine/src/skills/attack-hit-profiles.js) share the engine with the weapon model (packages/engine/src/skills/weapon-damage-model.js).
 // Minion skills ("% of Base Damage": Spirit Magus, Synthetic Troop and Modularization skills) go through the Minion
 // engine (packages/engine/src/minions/minion-damage-model.js, engine "minion"); a setup of any of a Minion's skills activates that Minion.
-// Vendetta / Endless Vendetta (packages/engine/src/heroes/vendetta-model.js, engine "trigger-main") deal no damage of their own: they trigger the Main Skill.
+// Vendetta / Endless Vendetta (packages/engine/src/heroes/erika/vendetta-model.js, engine "trigger-main") deal no damage of their own: they trigger the Main Skill.
 export const SKILL_DAMAGE_PROFILES = Object.freeze({
   ...SKILL_HIT_PROFILES,
   ...ATTACK_HIT_PROFILES,

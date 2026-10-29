@@ -145,7 +145,7 @@ function scaledText(value, factor) {
 
 /**
  * @param {object} p { elixirs: [{ name, setupKey, bottle?, extraProgressPerSecond?, extraProgressSources? }], lines: modifier lines
- *   with `clean` (non-derived) }. A Sage Scent Bottle Elixir (hero trait audit B8, packages/engine/src/heroes/sage-traits.js) carries `bottle` ("basic"):
+ *   with `clean` (non-derived) }. A Sage Scent Bottle Elixir (hero trait audit B8, packages/engine/src/heroes/sage/licorice-note.js) carries `bottle` ("basic"):
  *   it takes the bottle-only "+X% additional Elixir Skill Effect for the Elixir Skills from any Scent Bottle" lines on top of the
  *   build's, and its own Charging Progress per second from the Functional Ingredient. Each setup carries its own `effectFactor`
  *   and `activeShare` (an Effect Elixir's uptime; a Restoration Elixir's restoring time share).

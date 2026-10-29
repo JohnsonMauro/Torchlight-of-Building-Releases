@@ -62,7 +62,7 @@ export function tangleSetups(setups = [], activeNames = new Set()) {
   );
 }
 
-// Youga – The Ultimate One's Clockwork Core (packages/engine/src/heroes/youga-ultimate-one.js): the supported skill is attached to the Core as a
+// Youga – The Ultimate One's Clockwork Core (packages/engine/src/heroes/youga/the-ultimate-one.js): the supported skill is attached to the Core as a
 // Spell Tangle at Max Tangle Quantity, so it is a Tangle Skill whose Tangles are all activated (on the Core, not on enemies):
 // none is inactivated, and Dormant Entanglement gives it nothing. `coreSetupKey` names it; `extraQuantity` carries Max Tangle
 // Quantity lines a trait derives (Artificial Moon: +1 per +1 Max Sentry Quantity). `conditions.tangleTriggers` is the cadence

@@ -24,7 +24,7 @@
 //   { kind: "union", schedules: [...] }                                  1 − Π(1 − level): one debuff (max 1 stack) from
 //       several independent sources (Paralysis from Grudge and Witch Antelope)
 //   { kind: "steps", points: [[t, level], …], sustained }                a piecewise-constant level a module computes itself
-//       (Erika's Stalker / Hunting Instinct multistrike states, packages/engine/src/heroes/erika-wind-stalker.js): the level of the last point at or
+//       (Erika's Stalker / Hunting Instinct multistrike states, packages/engine/src/heroes/erika/wind-stalker.js): the level of the last point at or
 //       before t (0 before the first); `sustained` is the long-run level the ledgers hold
 // Reach of a part: `type` (null: all damage; "Elemental": Fire, Cold and Lightning; else one damage type), `reach`
 // ("all", "hit" or "dot") and optionally `keys` (only the sources whose share carries one of these keys, e.g. one skill's

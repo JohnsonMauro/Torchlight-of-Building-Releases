@@ -1,7 +1,7 @@
 // Erika – Lightning Shadow and Vendetta's Sting (hero trait audit batch B5, 2026-10-19, research/hero-traits-audit-2026-10-19.md
 // §5 B5, §8 B5, §6 Q-H10 / Q-H12). Pure: reads the build's trait lines (origin "trait") and the hero-exclusive revived lines the
 // modules read (Charging Tail, Vengeful Night Wraith; packages/engine/src/heroes/hero-exclusive-revivals.js MODULE_LINES) and returns the states the
-// engines apply: packages/engine/src/combat-states.js (Numbed on the dummy), packages/engine/src/heroes/vendetta-model.js (the Vendetta triggers), packages/engine/src/planner.js (the
+// engines apply: packages/engine/src/combat-states.js (Numbed on the dummy), packages/engine/src/heroes/erika/vendetta-model.js (the Vendetta triggers), packages/engine/src/planner.js (the
 // derived lines, the Activation Medium block) and packages/engine/src/heroes/hero-trait-modules.js (the badges).
 //
 // Sourced (TLIDB keyword tooltips, Torchlight_Hyperlink_hover, fetched 2026-10-19 and saved in research/tlidb/fetch-cache):
@@ -32,7 +32,7 @@
 // - Q-H12 (recommended reading): Active slot 3 holds a Lv. 20 Vendetta (Endless Vendetta with Swift Stalk), the same rule as
 //   Youga's Spacetime Dictator (packages/engine/src/heroes/trait-board-grants.js).
 // - Incisive: held at 2 m (best-case switch "erikaIncisiveClose"); gained at the end of each Vendetta cast; its uptime from the
-//   Vendetta cycle (packages/engine/src/heroes/vendetta-model.js) once the hit pass measures it, held at 1 before. Incisive Effect scales the +20% and
+//   Vendetta cycle (packages/engine/src/heroes/erika/vendetta-model.js) once the hit pass measures it, held at 1 before. Incisive Effect scales the +20% and
 //   Mortal Gambit's +5% damage taken (an additional base effect).
 // - Leisurely Stroll: "Vendetta has no Cooldown" while Hasten is held reaches Vendetta only (Endless Vendetta keeps its 10 s);
 //   its +20% additional Attack Speed reaches every Vendetta cast (Endless Vendetta's repeats too).

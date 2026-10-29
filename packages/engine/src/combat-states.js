@@ -7,7 +7,7 @@ import { AFFLICTION_DAMAGE_PER_POINT } from "./game-attribute-defaults.js";
 import { classifyHitLine, splitHitLineText } from "./skills/skill-hit-lines.js";
 import { LUCKY_DAMAGE_PATTERNS, readLuckyDamage, luckyRollAverage, luckyCritChance } from "./combat/lucky-damage.js";
 import { STORM_COMMAND_LINE, resolveStormCommand } from "./talents/storm-command.js";
-import { sageOwnedLine } from "./heroes/sage-traits.js";
+import { sageOwnedLine } from "./heroes/sage/licorice-note.js";
 import {
   ELIXIR_PROGRESS_LINE,
   ELIXIR_EFFECT_LINE,
@@ -329,7 +329,7 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
       ...line,
       clean: cleanGameText(String(line.text ?? "")),
     }));
-  // Sage's trait and revived lines are read and badged by its module (packages/engine/src/heroes/sage-traits.js, hero trait audit B8); the Elixir engine
+  // Sage's trait and revived lines are read and badged by its module (packages/engine/src/heroes/sage/licorice-note.js, hero trait audit B8); the Elixir engine
   // still reads them below (Scent of Ambition's duration, the bottle-only moon line, Omni-Elixir Side Effect's -50%).
   const find = (pattern) => lines.filter((line) => pattern.test(line.clean) && !sageOwnedLine(state.heroId, line));
   const values = (pattern, index = 1) =>
@@ -742,13 +742,13 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
     if (value > 0) derive(`+${value}% additional damage`, line.source, `${fortitudeStacks} Fortitude stacks`);
   }
 
-  // ---- Elixir Skills (core audit B8, packages/engine/src/skills/elixir-model.js; Sage's Basic Scent Bottle Elixir joins from packages/engine/src/heroes/sage-traits.js) ----
+  // ---- Elixir Skills (core audit B8, packages/engine/src/skills/elixir-model.js; Sage's Basic Scent Bottle Elixir joins from packages/engine/src/heroes/sage/licorice-note.js) ----
   // Uptime on the dummy comes only from "Elixir Skills gain N Charging Progress every second" (the dummy is never defeated); each
   // value line of an up Elixir Effect becomes a time-averaged derived line × Elixir Skill Effect (Tailored Remedy included).
   const elixirSetups = Array.isArray(state.elixirSetups) ? state.elixirSetups : [];
   const hasElixir = elixirSetups.length > 0 || Boolean(state.elixirSkill);
   // Sage (hero trait audit B8): the Scent Bottle setup is in state.elixirSetups; Scent of Ambition's and Everlasting Nectar's Elixir
-  // Skill Effect lines (time-averaged, packages/engine/src/heroes/sage-traits.js) join the engine's lines.
+  // Skill Effect lines (time-averaged, packages/engine/src/heroes/sage/licorice-note.js) join the engine's lines.
   const elixirs = hasElixir
     ? resolveElixirs({ elixirs: elixirSetups, lines: [...lines, ...(state.sage?.elixirExtraLines || [])] })
     : null;
@@ -1839,7 +1839,7 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
     for (const type of ["Weaken", "Slow", "Taunt", "Blinding"]) holdCc(type, { kind: "full" });
   if (find(PATTERNS.paralysisDealDamage).length && dealsDamage) holdCc("Weaken", { kind: "full" });
   // Sacrificial Pawn (Thea – Blasphemer's Disgraced Minister on the Desecrated dummy, alone; TLIDB keyword: "considered a Crowd
-  // Control Effect"; hero trait audit B7, packages/engine/src/heroes/thea-traits.js).
+  // Control Effect"; hero trait audit B7, packages/engine/src/heroes/thea/traits.js).
   if (state.thea?.blasphemer?.pawn) holdCc("Sacrificial Pawn", { kind: "full" });
   for (const line of find(PATTERNS.channelWeaken)) {
     const radius = num(line.clean.match(PATTERNS.channelWeaken)[2]);
@@ -2116,7 +2116,7 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
   // Skill Damage while having Mirrored Shade" and "+1 Max Terra Charge Stacks when Mirrored Shade reaches max stacks" (the max
   // is not in the saved data). Best case (condition mirroredShade): the player stands on the Main Terra Skill; own buff, so the
   // stacks are full from t = 0 when pre-built; otherwise the damage starts after the first interval and the cap is assumed
-  // reached (provisional). The Terra Charge line reaches packages/engine/src/heroes/selena-dance.js through packages/engine/src/planner.js (icemirrorTerraChargeLines).
+  // reached (provisional). The Terra Charge line reaches packages/engine/src/heroes/selena/dance-of-the-deep.js through packages/engine/src/planner.js (icemirrorTerraChargeLines).
   for (const line of find(PATTERNS.mirroredGain)) {
     const interval = num(line.clean.match(PATTERNS.mirroredGain)[1]);
     const damage = sum(values(PATTERNS.mirroredDamage)),
@@ -2353,7 +2353,7 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
     );
 
   // ---- Numbed ----
-  // Erika – Lightning Shadow (hero trait audit B5, Q-H10 provisional; packages/engine/src/heroes/erika-traits.js felineFigureState): Feline Figure's
+  // Erika – Lightning Shadow (hero trait audit B5, Q-H10 provisional; packages/engine/src/heroes/erika/traits.js felineFigureState): Feline Figure's
   // Numbed on the dummy (its average stacks, at most 10; another Numbed source keeps the dummy at 10) and the "additional Numbed
   // Effect" lines as one multiplier (the trait lines, Wild Lightning, Charging Equation, Charging Tail on Feline Figure's share).
   const felineFigure = state.felineFigure?.active ? state.felineFigure : null;
@@ -2703,7 +2703,7 @@ export function deteriorationFrom(modifierTexts = [], state = {}, entries = []) 
 
 /**
  * Icemirror's "+N to Max Terra Charge Stacks when Mirrored Shade reaches max stacks" as a Terra Charge line for
- * packages/engine/src/heroes/selena-dance.js (the Terra Charge model resolves before the line effects): with the Mirrored Shade gain line, a Main
+ * packages/engine/src/heroes/selena/dance-of-the-deep.js (the Terra Charge model resolves before the line effects): with the Mirrored Shade gain line, a Main
  * Terra Skill to stand on and the mirroredShade condition on (best case: the stacks reach their cap; provisional).
  */
 export function mirroredShadeTerraChargeLines(

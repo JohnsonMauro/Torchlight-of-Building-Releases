@@ -20,8 +20,8 @@
 //   Terra Skill (centred on you and following you, the dummy within 10 m inside it: best case) the dummy is Cursed, so
 //   "against Cursed enemies" lines hold. Ominous's Ill Omen is modeled in packages/engine/src/ailments/ill-omen.js (best-case Elite loop, condition illOmen).
 
-import { activationMediumDotTrigger } from "../skills/trigger-interval.js";
-import { classifyHitLine } from "../skills/skill-hit-lines.js";
+import { activationMediumDotTrigger } from "../../skills/trigger-interval.js";
+import { classifyHitLine } from "../../skills/skill-hit-lines.js";
 
 export const DANCE_OF_THE_DEEP = "selena-dance-of-the-deep";
 export const TERRA_CHARGE_BASE_PERCENT = 26;

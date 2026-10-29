@@ -7,7 +7,7 @@ import {
 import { ailmentStateNames } from "../ailments/enemy-ailments.js";
 import { CONSUMED_COMBO_POINTS, COMBO_POINTS_PER_STARTER } from "../skills/combo-points.js";
 import { regainsIn } from "../defense/regain-model.js";
-import { WORLD_WITHIN_LINE, worldWithinChances } from "../heroes/world-within.js";
+import { WORLD_WITHIN_LINE, worldWithinChances } from "../heroes/iris/world-within.js";
 
 // One condition resolver for every line source (research/talent-batch-2026-10-12.md §7.1, chunk 2): support clauses
 // (packages/engine/src/supports/support-effects.js delegates here), talent nodes, cores, gear, slates, pacts and kismets (packages/engine/src/text/line-effects.js).
@@ -714,7 +714,7 @@ const LINE_RULES = [
   // "… for you and your Minions" (Deepfreeze: game affix 152531504 [10] writes attr 5109 twice, with and without the Minion tag
   // 5002060): the player's copy; the Minion model reads the Minion share from the same line (packages/engine/src/minions/minion-damage-model.js).
   [/^(\+?-?\d.*? Damage) for you and your Minions$/, (m) => ({ body: m[1], key: "youAndMinions" })],
-  // World Within (packages/engine/src/heroes/world-within.js): each Spirit Magus's Enhanced-skill chance from its element's resistance (Rock Magus: Armor);
+  // World Within (packages/engine/src/heroes/iris/world-within.js): each Spirit Magus's Enhanced-skill chance from its element's resistance (Rock Magus: Armor);
   // packages/engine/src/planner.js gives each Magus its share (no body of its own).
   [
     WORLD_WITHIN_LINE,
@@ -1006,7 +1006,7 @@ function resolveKey(condition, state) {
         provisional: true,
       });
     // Q-H9 (hero trait audit B7, recommended reading): the dummy never loses Life, except where a line deems it at Low Life: Thea –
-    // Incarnation of the Gods' Incarnation deems it for 6.5 s of every 10 s from the first hit (packages/engine/src/heroes/thea-traits.js), the share the
+    // Incarnation of the Gods' Incarnation deems it for 6.5 s of every 10 s from the first hit (packages/engine/src/heroes/thea/traits.js), the share the
     // "against Low Life enemies" bodies take (provisional).
     case "enemyLowLife": {
       const deem = state.thea?.incarnation?.deem;

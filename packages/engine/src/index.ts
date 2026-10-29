@@ -114,8 +114,8 @@ export {
 export { voraxBaseAffixSlotPool } from "./gear/vorax-base-affixes.js";
 
 // Heroes
-export { carinoSpecialAmmoOptions } from "./heroes/carino-special-ammo.js";
-export { catsNightSafariStatus } from "./heroes/erika-wind-stalker.js";
+export { carinoSpecialAmmoOptions } from "./heroes/carino/special-ammo.js";
+export { catsNightSafariStatus } from "./heroes/erika/wind-stalker.js";
 export { isExclusiveRevival } from "./heroes/hero-exclusive-revivals.js";
 export { switchHeroLoadout } from "./heroes/hero-loadouts.js";
 export { heroMemoryLineCoverage, revivedAffixCoverage } from "./heroes/hero-memory-model.js";

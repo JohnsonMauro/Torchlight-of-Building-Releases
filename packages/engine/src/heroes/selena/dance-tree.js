@@ -2,7 +2,7 @@
 // Ultimate One) runs on packages/engine/src/heroes/hero-trait-tree.js; these exports keep Selena's earlier names. Her picks now live in
 // `hero.treeTraits["selena-dance-of-the-deep"]` (row-indexed, the same form `hero.selenaDanceTraits` had; that field is
 // migrated on read: packages/engine/src/heroes/hero-trait-tree.js storedTreeRows / migrateTreeTraits).
-import { heroTraitTree, treeRules, TREE_ROW_LEVELS, TREE_ROW_NAMES, SELENA_DANCE_HERO_ID } from "./hero-trait-tree.js";
+import { heroTraitTree, treeRules, TREE_ROW_LEVELS, TREE_ROW_NAMES, SELENA_DANCE_HERO_ID } from "../hero-trait-tree.js";
 
 const tree = heroTraitTree(SELENA_DANCE_HERO_ID);
 const rules = treeRules(tree, tree.rows);

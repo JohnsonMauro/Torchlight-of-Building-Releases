@@ -1,4 +1,4 @@
-import { selenaSingWithTheTide } from "../../data/heroes/selena-sing-with-the-tide.js";
+import { selenaSingWithTheTide } from "../../../data/heroes/selena-sing-with-the-tide.js";
 
 const trait = selenaSingWithTheTide.choices.level60.find((choice) => choice.name === "Sea Foam Nocturne");
 const tideEffectByLevel = trait.valuesByTraitLevel.tideEffectPerChannelStackPercent;

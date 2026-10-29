@@ -54,8 +54,8 @@
 //   Infusion). Onset of Depravity's True Damage is once per Elite: not on the dummy. Inverted Shrine's self Desecration is held
 //   while you Desecrate the dummy.
 
-import { normalizePercentageText } from "../text/percentage-text.js";
-import { classifyDoubleDamageLine } from "../combat/double-damage.js";
+import { normalizePercentageText } from "../../text/percentage-text.js";
+import { classifyDoubleDamageLine } from "../../combat/double-damage.js";
 
 export const WISDOM = "thea-wisdom-of-the-gods";
 export const INCARNATION = "thea-incarnation-of-the-gods";

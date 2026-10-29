@@ -83,8 +83,8 @@ export const isExclusiveRevival = (name) => exclusiveRevivalLoadout(name) !== nu
 
 // Exclusive revivals read by name in their hero module (their text never joins the intake).
 export const MODULE_REVIVALS = Object.freeze({
-  "Ceaseless Tide": "packages/engine/src/heroes/selena-tide.js",
-  "Cat's Night Safari": "packages/engine/src/heroes/erika-wind-stalker.js",
+  "Ceaseless Tide": "packages/engine/src/heroes/selena/sing-with-the-tide.js",
+  "Cat's Night Safari": "packages/engine/src/heroes/erika/wind-stalker.js",
   "+1 Max Youga Count in the Universe": "packages/engine/src/heroes/hero-trait-tree.js",
 });
 
@@ -97,12 +97,12 @@ export const MODULE_REVIVALS = Object.freeze({
 const P = (batch, engine, ...starts) => starts.map((start) => ({ start, batch, engine }));
 const PENDING = {
   // Rehan (B10, 2026-10-19): Hero's Resourcefulness, Furious Roar and Starfall Wasteland join the intake; MODULE_LINES below names the
-  // lines the Rehan module reads (packages/engine/src/heroes/rehan-traits.js).
+  // lines the Rehan module reads (packages/engine/src/heroes/rehan/traits.js).
   // Carino (B9, 2026-10-19): Royal Arsenal's Noble line, Into the Night and Self-Imposed Shackles' Heat Up line join the intake;
-  // MODULE_LINES below names the lines the Carino module reads (packages/engine/src/heroes/carino-traits.js).
+  // MODULE_LINES below names the lines the Carino module reads (packages/engine/src/heroes/carino/traits.js).
   // Erika (B5, 2026-10-19): Charging Tail and Vengeful Night Wraith join the intake; MODULE_LINES below names the lines the
-  // Lightning Shadow / Vendetta's Sting modules read (packages/engine/src/heroes/erika-traits.js, packages/engine/src/heroes/hero-trait-modules.js).
-  // Bing (B12): Genius Idea Generator's Whimsy line joins the intake (MODULE_LINES below, packages/engine/src/heroes/bing-traits.js); its Ingenuity
+  // Lightning Shadow / Vendetta's Sting modules read (packages/engine/src/heroes/erika/traits.js, packages/engine/src/heroes/hero-trait-modules.js).
+  // Bing (B12): Genius Idea Generator's Whimsy line joins the intake (MODULE_LINES below, packages/engine/src/heroes/bing/creative-genius.js); its Ingenuity
   // Overload line waits for that engine.
   "Bing's Big Bang Pack": P("B12", "Bing's bomb engine", "When bombs deal damage"),
   "Genius Idea Generator": P(
@@ -121,7 +121,7 @@ const PENDING = {
     "The Main Skill is supported by a Lv. 40 Advanced Elemental Impact",
   ),
   // Thea (B7, 2026-10-19): The Place of Oracle (and its Blessing variants), Crossing the Divine Threshold and Inverted Shrine join the
-  // intake; MODULE_LINES below names the lines the Thea modules read (packages/engine/src/heroes/thea-traits.js).
+  // intake; MODULE_LINES below names the lines the Thea modules read (packages/engine/src/heroes/thea/traits.js).
   // Youga (B4, 2026-10-19): Telepathy Expert, Fifth Cosmic Velocity, To Myself in Another Spacetime and Private Universe join the
   // intake; MODULE_LINES below names the lines the Spacetime modules read (packages/engine/src/heroes/hero-trait-modules.js), the rest go to the generic
   // readers (Spell Burst Charge Speed and hit damage, packages/engine/src/skills/skill-hit-model.js; Skill Area).
@@ -137,7 +137,7 @@ const PENDING = {
     "When inflicting Numbed",
   ),
   // Sage (B8, 2026-10-19): Omni-Elixir Side Effect and Basic Pharmacology Manuscript join the intake; MODULE_LINES below names the
-  // lines the Scent Bottle module reads (packages/engine/src/heroes/sage-traits.js).
+  // lines the Scent Bottle module reads (packages/engine/src/heroes/sage/licorice-note.js).
   // Selena (B13)
   "Red Shoes of Cruelty": P(
     "B13",
@@ -156,8 +156,8 @@ const MODULE_LINES = {
     "The casting interval of Twisted Spacetime",
   ],
   "Private Universe": ["+40% Spacetime Turbulence Duration", "Twisted Spacetime only follows you"],
-  // Erika (B5): Feline Figure's crit and its Numbed (packages/engine/src/combat-states.js through packages/engine/src/heroes/erika-traits.js felineFigureState); the
-  // Phantom's Vendetta casts (packages/engine/src/heroes/vendetta-model.js).
+  // Erika (B5): Feline Figure's crit and its Numbed (packages/engine/src/combat-states.js through packages/engine/src/heroes/erika/traits.js felineFigureState); the
+  // Phantom's Vendetta casts (packages/engine/src/heroes/erika/vendetta-model.js).
   "Charging Tail": ["Feline Figure can now land Critical Strikes", "On Critical Strike, the effect of Numbed"],
   "Vengeful Night Wraith": ["For every 3 casts of Vendetta", "+30% additional Phantom Damage"],
   // Moto and Iris (B6): Overload Effect stacks, the Synthetic Troops' Life / Energy Shield (Heroic Sacrifice), Nourishment on
@@ -180,7 +180,7 @@ const MODULE_LINES = {
   ],
   "Soft Storm": ["While in Vigilant, for every 2 use(s)", "Spirit Magi cannot use the Ultimate"],
   "Blowing Breeze": ["While in Vigilant, for every 1 use(s)"],
-  // Thea (B7): God's Boon's Tenacity / Agility effect and the Max Blessing Stacks lines (the Blessing model through packages/engine/src/heroes/thea-traits.js),
+  // Thea (B7): God's Boon's Tenacity / Agility effect and the Max Blessing Stacks lines (the Blessing model through packages/engine/src/heroes/thea/traits.js),
   // Crossing the Divine Threshold's outside-the-Realm Blessing line, Inverted Shrine's self Desecration.
   "The Place of Oracle": ["During God's Boon"],
   "The Place of Oracle: Agility": ["+2 to Max Agility Blessing Stacks"],
@@ -188,7 +188,7 @@ const MODULE_LINES = {
   "The Place of Oracle: Tenacity": ["+2 to Max Tenacity Blessing Stacks"],
   "Crossing the Divine Threshold": ["+1 to max stacks of all Blessings while outside the Divine Realm"],
   "Inverted Shrine": ["Inflicts Desecration on yourself", "+50% additional Erosion Damage when you have Desecration"],
-  // Sage (B8): the Ingredient swap and Ingredient Effect (packages/engine/src/heroes/sage-traits.js); "-50% Elixir Skill Effect" is also read by the Elixir
+  // Sage (B8): the Ingredient swap and Ingredient Effect (packages/engine/src/heroes/sage/licorice-note.js); "-50% Elixir Skill Effect" is also read by the Elixir
   // engine (packages/engine/src/skills/elixir-model.js) like any Elixir Skill Effect line, its badge the module's.
   "Omni-Elixir Side Effect": ["Adds the unselected Ingredient effects", "-50% Elixir Skill Effect"],
   "Basic Pharmacology Manuscript": ["+80% additional Ingredient Effect applied to Basic Scent Bottle"],
@@ -201,7 +201,7 @@ const MODULE_LINES = {
     "+20% additional Projectile Damage when Deflection is active",
   ],
   "Self-Imposed Shackles": ["+30% additional Heat Up Effect"],
-  // Bing – Creative Genius (B12): Whimsy Effect and Whimsy Signal Effect (packages/engine/src/heroes/bing-traits.js).
+  // Bing – Creative Genius (B12): Whimsy Effect and Whimsy Signal Effect (packages/engine/src/heroes/bing/creative-genius.js).
   "Genius Idea Generator": ["+2 to Whimsy Explosion Projectile Quantity"],
   // Rehan (B10): Burst Blast and its on-hit / skill-use changes (Hero's Resourcefulness), Furious Roar's crit trigger and its Burst
   // penalty, Ancestral Hate's Life cost (Hysteria's Rage), Starfall Wasteland's Spirit lines; Ancestral Hate's Regain Interval and

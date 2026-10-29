@@ -22,11 +22,11 @@
 // estimateApplicationReapingOpening exactly; further application sources use a mean-field
 // ready mass.
 //
-// This module is pure: it imports only the pure Spacetime Turbulence helpers (packages/engine/src/heroes/youga-spacetime.js) and never mutates its
+// This module is pure: it imports only the pure Spacetime Turbulence helpers (packages/engine/src/heroes/youga/spacetime.js) and never mutates its
 // inputs.
 
 /** Output bin width: the ~30 Hz server tick (equals REAP_TICK_SECONDS in reaping-model.js). */
-import { turbulenceSeries, twistedSpacetime } from "../heroes/youga-spacetime.js";
+import { turbulenceSeries, twistedSpacetime } from "../heroes/youga/spacetime.js";
 
 export const RECOUNT_STEP_SECONDS = 1 / 30;
 
@@ -657,7 +657,7 @@ export function simulateDummyTimeline(inputs, { seconds = 60, stepSeconds = RECO
     const series = (bySource.illOmen = new Float64Array(bins));
     for (const key of builders) for (let b = 0; b < bins; b++) series[b] += bySource[key][b] * illOmenFactor;
   }
-  // Spacetime Turbulence (Youga – Spacetime Elapse, hero trait audit B4, Q-H6; packages/engine/src/heroes/youga-spacetime.js): at each move the recorded
+  // Spacetime Turbulence (Youga – Spacetime Elapse, hero trait audit B4, Q-H6; packages/engine/src/heroes/youga/spacetime.js): at each move the recorded
   // share of every DoT and Reap series since the previous move lands at once.
   const turbulence =
     inputs.turbulence?.intervalSeconds > 0

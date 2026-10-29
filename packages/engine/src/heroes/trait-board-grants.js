@@ -193,7 +193,7 @@ function withClockworkCore(setup, order, grant, profile) {
         }
       : support,
   );
-  // No effect lines for the engines: Clockwork Core's clauses are read by packages/engine/src/heroes/youga-ultimate-one.js from the trait lines; the
+  // No effect lines for the engines: Clockwork Core's clauses are read by packages/engine/src/heroes/youga/the-ultimate-one.js from the trait lines; the
   // tooltip shows the keyword text.
   supports.push({
     name: CLOCKWORK_CORE.name,

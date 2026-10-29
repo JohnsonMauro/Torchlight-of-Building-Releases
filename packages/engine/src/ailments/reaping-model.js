@@ -36,7 +36,7 @@ const rawInterval = (source, recoverySeconds, totalDotDps, successfulApplication
           : recoverySeconds + 1 / successfulApplicationsPerSecond;
 const perAilmentType =
   /^When Reaping, \+(\d+(?:\.\d+)?)% additional Reaping Duration for each type of Damaging Ailment the enemy has$/i;
-// "When Reaping, +X% chance to Reap 2 times" (Sage – Licorice Note's Twinspine Flower Ingredient, time-averaged by packages/engine/src/heroes/sage-traits.js;
+// "When Reaping, +X% chance to Reap 2 times" (Sage – Licorice Note's Twinspine Flower Ingredient, time-averaged by packages/engine/src/heroes/sage/licorice-note.js;
 // hero trait audit B8, provisional): each trigger Reaps 1 + chance times on average, read as a factor on the seconds every Reap
 // settles (the same expected damage; chances add, capped at 100%).
 export const REAP_TWICE_LINE = /^When Reaping, \+(\d+(?:\.\d+)?)% chance to Reap 2 times$/i;

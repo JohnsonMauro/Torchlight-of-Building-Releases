@@ -1,4 +1,4 @@
-// Cast-speed-scaled Activation Medium trigger cooldowns (shared by packages/engine/src/skills/skill-hit-model.js and packages/engine/src/heroes/selena-dance.js).
+// Cast-speed-scaled Activation Medium trigger cooldowns (shared by packages/engine/src/skills/skill-hit-model.js and packages/engine/src/heroes/selena/dance-of-the-deep.js).
 // Activation Medium: Wind Rhythm ("X% of the bonuses and additional bonuses for Cast Speed is also applied to the Cooldown
 // Recovery Speed of this Support Skill and the supported skill"; provisional reading): the trigger cooldown is divided by
 // (1 + Σ Cooldown Recovery Speed + share × Σ Cast Speed) × Π(additional factors). The build creator's calculator (DonTheCrown's

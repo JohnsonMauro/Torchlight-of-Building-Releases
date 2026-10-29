@@ -605,7 +605,7 @@ export function strikeHitsPerUse(components = [], hitsOf = (component) => compon
 /**
  * Projectiles of one hit group that reach the dummy per use, without Shotgun falloff: a fan's falloff-weighted hits
  * (`hitsPerUse` = per-use hits × shotgun.total) count each landing projectile once (× shotgun.reached / shotgun.total). Youga's
- * Recall (packages/engine/src/heroes/youga-ultimate-one.js) returns every one of them as a full-damage fresh hit.
+ * Recall (packages/engine/src/heroes/youga/the-ultimate-one.js) returns every one of them as a full-damage fresh hit.
  */
 export function recalledProjectilesPerUse(component) {
   const hits = Number(component?.hitsPerUse) || 0;
@@ -629,7 +629,7 @@ export function recalledProjectilesPerUse(component) {
  * @param {object} p.target { resistancePercent: { Fire, Cold, Lightning, Erosion }, armourPercent, nonPhysicalArmourPercent }
  * @param {boolean} p.targetCursed
  * @param {object[]} p.extraTaken typed enemy damage-taken lines the planner settles ({ source, text, value, types })
- * @param {object} p.multistrikeEffects hero states on Multistrike sequences (packages/engine/src/heroes/erika-wind-stalker.js): { steps: [{ source,
+ * @param {object} p.multistrikeEffects hero states on Multistrike sequences (packages/engine/src/heroes/erika/wind-stalker.js): { steps: [{ source,
  *   text, states: [{ weight, initialCountBonus, repeatAdditionalPercent, maxCountAdditionalPercent, incrementAdditionalPercent }] }] }
  *   — each step's states are cumulative; each step becomes one additional-damage line (its factor over the previous step)
  * @param {object[]} p.extraCritOnly enemy crit-taken debuffs on the crit share ({ source, text, value }; Mark, packages/engine/src/combat/mark-effect.js)
@@ -666,7 +666,7 @@ export function calculateSkillHit({
   // The build's Max Spell Burst (packages/engine/src/skills/max-spell-burst.js); without it, the plain "+N Max Spell Burst" lines.
   maxSpellBurst: buildMaxSpellBurst = null,
 } = {}) {
-  // Hero effects on one skill (packages/engine/src/heroes/youga-ultimate-one.js: Clockwork Core's Tangle cadence, its shared bonuses, Recall hits,
+  // Hero effects on one skill (packages/engine/src/heroes/youga/the-ultimate-one.js: Clockwork Core's Tangle cadence, its shared bonuses, Recall hits,
   // the crit cooldown reduction, the Spell Burst rules, the Alternate Spacetime lines): skill-local plain lines join the
   // modifier lines read below.
   if (heroEffects?.extraModifierTexts?.length) modifierTexts = [...modifierTexts, ...heroEffects.extraModifierTexts];
@@ -1201,7 +1201,7 @@ export function calculateSkillHit({
     notes.push(
       `${profile.name}: Multistrike ${multistrikeChance}% → ${round(multistrike.expectedExtraAttacks)} extra attacks per attack (TLIDB glossary), cycle ${round(multistrike.cycleIntervals)} attack intervals (+20% Attack Speed during Multistrikes), strikes ×${round(multistrike.rateFactor)} per second; increasing damage read as +${multistrikeIncrement}% × count (provisional).`,
     );
-    // Hero states on the sequence (Erika: Stalker, initial Multistrike Count, Hunting Instinct; packages/engine/src/heroes/erika-wind-stalker.js): each
+    // Hero states on the sequence (Erika: Stalker, initial Multistrike Count, Hunting Instinct; packages/engine/src/heroes/erika/wind-stalker.js): each
     // step's expected damage per sequence over the previous step's, as its own additional-damage line (the working).
     const base = {
       chancePercent: multistrikeChance,
@@ -1261,7 +1261,7 @@ export function calculateSkillHit({
     }, 0);
   const spellBurstStacks = Math.floor(maxSpellBurst);
   // A rate-model skill whose own text lets it activate Spell Burst (Rehan – Hero's Resourcefulness: "Burst becomes Burst Blast and
-  // can activate Spell Burst"; hero trait audit B10, packages/engine/src/heroes/rehan-traits.js burstProfile) is not blocked by its rate model.
+  // can activate Spell Burst"; hero trait audit B10, packages/engine/src/heroes/rehan/traits.js burstProfile) is not blocked by its rate model.
   const spellBurstBlock = !skillTags.has("Spell")
     ? "it is not a Spell Skill"
     : timing?.cooldownSeconds > 0
@@ -1957,7 +1957,7 @@ export function calculateSkillHit({
       addedSources: [],
     };
   });
-  // Recalled hits (packages/engine/src/heroes/youga-ultimate-one.js; provisional): the recalling hit group (its typed parts share a strike key) lands
+  // Recalled hits (packages/engine/src/heroes/youga/the-ultimate-one.js; provisional): the recalling hit group (its typed parts share a strike key) lands
   // again `hitsFactor` times per use on average, as its own strike, with the Recalled-only lines. Added flat damage and
   // conversions reach it like the group it copies.
   // Each Recall is a full-damage fresh hit (user-supplied 2026-10-18; no Shotgun falloff), so it counts the projectiles that
@@ -2184,7 +2184,7 @@ export function calculateSkillHit({
   // Additional damage a granted support gives this skill (packages/engine/src/planner.js: Activation Medium: Terra on the Main Terra Skill).
   const grantedLines = [
     ...(profile.grantedAdditional || []).map((line) => ({ ...line, category: "Additional damage", origin: "skill" })),
-    // Hero lines on this skill (Clockwork Core's shared bonuses: packages/engine/src/heroes/youga-ultimate-one.js).
+    // Hero lines on this skill (Clockwork Core's shared bonuses: packages/engine/src/heroes/youga/the-ultimate-one.js).
     ...(heroEffects?.additional || [])
       .filter((line) => line.value)
       .map((line) => ({ ...line, category: "Additional damage", origin: "trait" })),

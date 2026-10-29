@@ -319,7 +319,7 @@ export const SUPPORT_CLAUSE_RULES = [
     ),
     build: (m) => ({ value: num(m[1]) }),
   },
-  // Ground Divide (TLIDB support text): Terra Charge stacks and restoration speed of the supported Terra skill (packages/engine/src/heroes/selena-dance.js).
+  // Ground Divide (TLIDB support text): Terra Charge stacks and restoration speed of the supported Terra skill (packages/engine/src/heroes/selena/dance-of-the-deep.js).
   {
     family: "terraCharge",
     pattern: /^\+?(\d+) Max Terra Charge stacks for the supported skill$/i,
@@ -1613,7 +1613,7 @@ function clauseStatus(clause, support, ctx) {
       return s(
         "In calc",
         clause.kind === "max"
-          ? "Max Terra Charge Stacks of the supported Terra skill: charges consumed per cast (packages/engine/src/heroes/selena-dance.js)"
+          ? "Max Terra Charge Stacks of the supported Terra skill: charges consumed per cast (packages/engine/src/heroes/selena/dance-of-the-deep.js)"
           : "Terra Charge restoration of the supported skill: the 0.5 s charge interval ÷ (1 + Σ%) (game manual: Restoration Duration = base ÷ (1 + all non-additional bonuses))",
         ["terra-charge"],
       );
@@ -1733,7 +1733,7 @@ export function resolveSupportEffects(setup, ctx = {}) {
     cooldown: ctx.cooldown ?? null,
     rateModel: ctx.rateModel ?? profile?.useModel?.kind === "rate",
     terra: ctx.terra ?? profile?.useModel?.kind === "terra",
-    // A recast Terra DoT (Frost Terra) triggered by Activation Medium: Wind Rhythm (packages/engine/src/heroes/selena-dance.js windRhythmTerraTrigger).
+    // A recast Terra DoT (Frost Terra) triggered by Activation Medium: Wind Rhythm (packages/engine/src/heroes/selena/dance-of-the-deep.js windRhythmTerraTrigger).
     windRhythmTerraDot:
       ctx.windRhythmTerraDot ??
       Boolean(

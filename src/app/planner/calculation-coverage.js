@@ -436,11 +436,11 @@ function noMemoryInSlot(heroId, traitName, planner = coverageContext()) {
 // Selena (Dance of the Deep) trait lines (badge batch 2026-10-13). The tooltip shows the TLIDB progression text
 // ("( +35 / +45 / … )% additional damage taken by enemies affected by Crimson Tide"), which no reader matches; the planner
 // carries the levelled copy (packages/engine/src/character-stats.js heroTraitStatLines, source "Hero trait: <name> (Lv N…)") and judges it in
-// planner.lineEffects.lines (hero modules, Life sealed, Cursed: the same state packages/engine/src/heroes/selena-dance.js applies). The badge reads
+// planner.lineEffects.lines (hero modules, Life sealed, Cursed: the same state packages/engine/src/heroes/selena/dance-of-the-deep.js applies). The badge reads
 // that levelled line: its line-effects entry when it has one (active → In calc, else Inactive with the condition), else the
 // plain readers on the levelled text. Without a planner for this hero the progression collapses to its first value.
 const DANCE_OF_THE_DEEP_ID = "selena-dance-of-the-deep";
-// Erika (Wind Stalker) batch 2026-10-14: the same levelled-line reading as Dance of the Deep (packages/engine/src/heroes/erika-wind-stalker.js and the
+// Erika (Wind Stalker) batch 2026-10-14: the same levelled-line reading as Dance of the Deep (packages/engine/src/heroes/erika/wind-stalker.js and the
 // "stalker" hero module carry the Stalker clauses); an entry's "No DPS effect" / "Not on dummy" status passes through.
 const WIND_STALKER_ID = "erika-wind-stalker";
 // Thea – Wisdom of The Gods and Youga – The Ultimate One (trait trees, 2026-10-15): their tree traits print TLIDB progressions
@@ -530,10 +530,10 @@ const ENGINE = {
   b11: ["B11", "Rosa's No Guard / Mercury Pts engine"],
 };
 const HERO_ENGINE_PENDING = {
-  // Carino (Ranger of Glory, Lethal Flash, Zealot of War): modeled by hero trait audit B9 (packages/engine/src/heroes/carino-traits.js, packages/engine/src/heroes/hero-trait-modules.js
+  // Carino (Ranger of Glory, Lethal Flash, Zealot of War): modeled by hero trait audit B9 (packages/engine/src/heroes/carino/traits.js, packages/engine/src/heroes/hero-trait-modules.js
   // "ammo" / "specialAmmo" / "heatUp" / "deflection" / "ouroboros").
-  // Erika – Lightning Shadow and Vendetta's Sting: modeled by hero trait audit B5 (packages/engine/src/heroes/erika-traits.js, packages/engine/src/heroes/hero-trait-modules.js).
-  // Rehan (Anger, Seething Silhouette): modeled by hero trait audit B10 (packages/engine/src/heroes/rehan-traits.js, packages/engine/src/heroes/hero-trait-modules.js "rage" / "burst" /
+  // Erika – Lightning Shadow and Vendetta's Sting: modeled by hero trait audit B5 (packages/engine/src/heroes/erika/traits.js, packages/engine/src/heroes/hero-trait-modules.js).
+  // Rehan (Anger, Seething Silhouette): modeled by hero trait audit B10 (packages/engine/src/heroes/rehan/traits.js, packages/engine/src/heroes/hero-trait-modules.js "rage" / "burst" /
   // "spirit"); Hysteria's Rage gains (left to B10 by B2) are read there, its Missing Life line by the generic reader (B2).
   "bing-blast-nova": [
     [/^Base Bomb Throwing Speed is/i, "b12bomb"],
@@ -546,7 +546,7 @@ const HERO_ENGINE_PENDING = {
     [/Whimsy Essence Recovery Speed$/i, "b12whimsy"],
     [/^When casting Ingenuity Overload ?, gains Buff Effect/i, "b12whimsy"],
   ],
-  // Thea (Wisdom of The Gods, Incarnation of the Gods, Blasphemer): modeled by hero trait audit B7 (packages/engine/src/heroes/thea-traits.js,
+  // Thea (Wisdom of The Gods, Incarnation of the Gods, Blasphemer): modeled by hero trait audit B7 (packages/engine/src/heroes/thea/traits.js,
   // packages/engine/src/heroes/hero-trait-modules.js "theaWisdom" / "theaIncarnation" / "theaBlasphemer").
   // Youga – Spacetime Elapse: modeled by hero trait audit B4 (packages/engine/src/heroes/hero-trait-modules.js "elapse").
   // Moto (Order Calling, Charge Calling) and Iris (Growing Breeze, Vigilant Breeze): modeled by hero trait audit B6
@@ -556,7 +556,7 @@ const HERO_ENGINE_PENDING = {
     [/^Mana can be consumed via methods other than Mystic Mercury/i, "b11"],
     [/^For every 1000 Max Mana you have, \+10 ?% Max Mercury Pts/i, "b11"],
   ],
-  // Sage – Licorice Note: modeled by hero trait audit B8 (packages/engine/src/heroes/sage-traits.js, packages/engine/src/heroes/hero-trait-modules.js "sageScent").
+  // Sage – Licorice Note: modeled by hero trait audit B8 (packages/engine/src/heroes/sage/licorice-note.js, packages/engine/src/heroes/hero-trait-modules.js "sageScent").
 };
 /** The engine a hero trait line waits for ({ batch, engine }), or null. */
 export function heroTraitPendingEngine(heroId, line) {
@@ -568,12 +568,12 @@ const pendingReason = (pending) => `Not modeled: needs ${pending.engine} (hero t
 
 /** Why a base-trait "Artificial Moon:" line is Inactive (what is missing), or "" when it is not gated off. */
 // Youga – The Ultimate One's board lines (packages/engine/src/heroes/trait-board-grants.js): what the planner applies. The Clockwork Core line and the
-// trait skills' effects are read by packages/engine/src/heroes/youga-ultimate-one.js (the module's badge and the skill badges carry their reasons).
+// trait skills' effects are read by packages/engine/src/heroes/youga/the-ultimate-one.js (the module's badge and the skill badges carry their reasons).
 function yougaBoardLineReason(line) {
   const text = squash(line),
     grant = TRAIT_SLOT_GRANTS[text];
   if (grant)
-    return `${text}: applied. ${grant.skill} (Lv. 20 trait skill; the skill takes no energy, supports added to it cost energy as usual) takes Active slot ${grant.row + 1}, and the skill placed there is left out of the calculation${text === "Spacetime Conqueror" ? "; -15% Movement Speed is read" : ""}. What ${grant.skill} does on the dummy is on its skill badge (packages/engine/src/heroes/youga-ultimate-one.js).`;
+    return `${text}: applied. ${grant.skill} (Lv. 20 trait skill; the skill takes no energy, supports added to it cost energy as usual) takes Active slot ${grant.row + 1}, and the skill placed there is left out of the calculation${text === "Spacetime Conqueror" ? "; -15% Movement Speed is read" : ""}. What ${grant.skill} does on the dummy is on its skill badge (packages/engine/src/heroes/youga/the-ultimate-one.js).`;
   return "";
 }
 
@@ -633,7 +633,7 @@ function selenaTideLineStatus(line, planner) {
   // The Tide entries apply only with Selena (Sing with the Tide) selected (packages/engine/src/ailments/ignite-ledger.js checks the hero id).
   const selena = !planner?.state?.hero || planner.state.hero.selectedHeroId === "selena-sing-with-the-tide";
   const held = (key) => (!conditions ? "In calc" : selena && conditions[key] ? "In calc" : "Inactive");
-  // Selena traits batch (2026-10-13; packages/engine/src/heroes/selena-tide.js): Loud Song is in calc only through Ceaseless Tide (deemed Loud Song
+  // Selena traits batch (2026-10-13; packages/engine/src/heroes/selena/sing-with-the-tide.js): Loud Song is in calc only through Ceaseless Tide (deemed Loud Song
   // while Bard; the planner keeps the Bard state otherwise), Chantey of Sinking with it, Undersea Ballad's Skill Area share
   // while the Tide holds, Sea Foam's count from the build's channel lines, and the Artificial Moon line while an equipped memory
   // carries the Artificial Moon revived affix (user-confirmed 2026-10-13: no base-trait-level requirement; Inactive without one).
@@ -641,7 +641,7 @@ function selenaTideLineStatus(line, planner) {
   if (/^Artificial Moon:?$/i.test(text) || /^Click the Trait Slot/i.test(text)) return "No DPS effect";
   if (/^In the Loud Song state, /i.test(text)) return tide?.ceaselessTide ? "In calc" : "Not modeled";
   // The base trait's Loud Song form line (-20% additional Attack and Cast Speed, +80% additional Tide Effect): applied with
-  // Ceaseless Tide (packages/engine/src/heroes/selena-tide.js, packages/engine/src/planner.js loudSongSpeedLines); before 2026-10-19 it badged No DPS effect
+  // Ceaseless Tide (packages/engine/src/heroes/selena/sing-with-the-tide.js, packages/engine/src/planner.js loudSongSpeedLines); before 2026-10-19 it badged No DPS effect
   // (hero trait audit B1, F6).
   if (/^In Loud Song form, /i.test(text)) return tide?.ceaselessTide ? "In calc" : "Not modeled";
   if (/^For every 1 s in the Loud Song state/i.test(text))
@@ -689,7 +689,7 @@ export function heroTraitCoverage(heroId, traitName, lines, selected) {
   if (noMemoryInSlot(heroId, traitName)) return "Inactive";
   // Idyll of the Tide: its stacks persist while the Tide is up (user-confirmed 2026-10-09) and own buffs start built
   // (prebuiltSelfBuffs), so the planner applies the configured stacks (15, the cap) × per-level value × Tide Effect
-  // (packages/engine/src/heroes/selena-tide.js); the line reads In calc while the Idyll condition holds, and the trait follows its lines.
+  // (packages/engine/src/heroes/selena/sing-with-the-tide.js); the line reads In calc while the Idyll condition holds, and the trait follows its lines.
   // Sea Foam's "Min Channeled Stacks takes effect twice on Bard Song" belongs to the Bard Song channel (not modeled).
   if (heroId === "selena-sing-with-the-tide" && traitName === "Sea Foam Nocturne") return "Partly modeled";
   // Undersea Ballad and Chantey of Sinking: user-confirmed readings 2026-10-13 (increased Tide Effect).

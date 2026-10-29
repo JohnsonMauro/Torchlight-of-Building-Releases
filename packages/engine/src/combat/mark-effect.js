@@ -15,7 +15,7 @@ import { KEYWORD_RADII_METERS } from "./dummy-target.js";
 //   The additional Critical Strike Damage taken reaches the crit share of hits only (ailments and Reaps never crit). The
 //     Evasion reduction has no damage effect on the dummy.
 //   Not read: Mark Effect that stacks per enemy affected or per recent use (Euphoria, supports).
-//   Erika's Artificial Moon (2026-10-14; packages/engine/src/heroes/erika-wind-stalker.js windStalkerMoonMark): "While Stalker is active, marks all
+//   Erika's Artificial Moon (2026-10-14; packages/engine/src/heroes/erika/wind-stalker.js windStalkerMoonMark): "While Stalker is active, marks all
 //     enemies within +8 m. +30% Mark Effect" arrives as `extraSources` (on "stalker": no hit needed, the player stands within
 //     8 m of the dummy, best case) and `extraEffects`, only when the Artificial Moon gate passes and Stalker is held.
 export const MARK_KEYWORD = Object.freeze({

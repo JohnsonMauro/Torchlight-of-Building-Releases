@@ -61,10 +61,10 @@
 //   more as a full hit (best-case switch `carinoReturningHits`: the dummy stands on the return path).
 // - Royal Arsenal (revived): the Main Skill's enabled Noble supports count as activated.
 
-import { normalizePercentageText } from "../text/percentage-text.js";
-import { tlidbSkillCatalog, tlidbSupportCatalog } from "../../data/catalogs/tlidb.js";
-import { supportCanSupportProjectile } from "./carino-special-ammo.js";
-import { ASSUMED_MOVEMENT_METERS_PER_SECOND } from "../combat/dummy-target.js";
+import { normalizePercentageText } from "../../text/percentage-text.js";
+import { tlidbSkillCatalog, tlidbSupportCatalog } from "../../../data/catalogs/tlidb.js";
+import { supportCanSupportProjectile } from "./special-ammo.js";
+import { ASSUMED_MOVEMENT_METERS_PER_SECOND } from "../../combat/dummy-target.js";
 
 export const RANGER = "carino-ranger-of-glory";
 export const LETHAL = "carino-lethal-flash";

@@ -155,7 +155,7 @@ export function calculateHeroMemories(hero = {}, options = {}) {
         intakeOnly.push({ source, memoryId: memory.id, text, enabled: true });
       }
     }
-    // Cat's Night Safari (Hero Trait Exclusive: Wind Stalker) is modeled in packages/engine/src/heroes/erika-wind-stalker.js (Hunting Instinct).
+    // Cat's Night Safari (Hero Trait Exclusive: Wind Stalker) is modeled in packages/engine/src/heroes/erika/wind-stalker.js (Hunting Instinct).
     const catsNightSafari =
       hero.selectedHeroId === "erika-wind-stalker" &&
       normalizeRevivedAffix(memory.revivedAffix || "") === "Cat's Night Safari" &&

@@ -49,7 +49,7 @@ export function sageScentSelectorView(kind: SageScentKind): SageScentSelectorVie
   };
 }
 
-/** A support the Special Ammo selector lists (packages/engine/src/heroes/carino-special-ammo.js carinoSpecialAmmoOptions). */
+/** A support the Special Ammo selector lists (packages/engine/src/heroes/carino/special-ammo.js carinoSpecialAmmoOptions). */
 export interface CarinoAmmoOption {
   name: string;
   icon?: string;

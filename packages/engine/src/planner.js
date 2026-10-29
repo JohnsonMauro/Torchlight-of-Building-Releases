@@ -51,9 +51,9 @@ import {
   collectReapingModifiers,
 } from "./ailments/reaping-model.js";
 import { collectBuildMechanics } from "./build-mechanics.js";
-import { resolveSingWithTheTide } from "./heroes/selena-tide.js";
+import { resolveSingWithTheTide } from "./heroes/selena/sing-with-the-tide.js";
 import { auraGainedEffects, auraCastSpeedLines, auraGainedEffectLines } from "./skills/aura-gained-effects.js";
-import { windStalkerState, resolveWindStalker, windStalkerMoonMark } from "./heroes/erika-wind-stalker.js";
+import { windStalkerState, resolveWindStalker, windStalkerMoonMark } from "./heroes/erika/wind-stalker.js";
 import {
   YOUGA_ULTIMATE_ONE,
   blockNonMainTangles,
@@ -63,9 +63,9 @@ import {
   resolveYougaUltimateOne,
   yougaPlainState,
   projectileMechanics,
-} from "./heroes/youga-ultimate-one.js";
+} from "./heroes/youga/the-ultimate-one.js";
 import { resolveHeroModules, resolveIllusionState } from "./heroes/hero-trait-modules.js";
-import { settleIllusionStream } from "./heroes/youga-spacetime.js";
+import { settleIllusionStream } from "./heroes/youga/spacetime.js";
 import { passiveSupportLines } from "./supports/passive-support-lines.js";
 import {
   GASH,
@@ -83,7 +83,7 @@ import {
   resolveCycleResist,
   windRhythmTerraTrigger,
   buildCooldownRecoveryLines,
-} from "./heroes/selena-dance.js";
+} from "./heroes/selena/dance-of-the-deep.js";
 import {
   collectNormalizedGearModifiers,
   calculateTalentSlateCandidate,
@@ -131,13 +131,13 @@ import { atFullLife, atFullMana, exitStandStillHeldStacks, LOW_LIFE_BELOW_PERCEN
 import { luckyCritChance, mirroredShadeTerraChargeLines } from "./combat-states.js";
 import { CHANCE_TO_DAMAGE } from "./ailments/ailment-model.js";
 import { calculateWeaponAttack, weaponLocalLineKind } from "./skills/weapon-damage-model.js";
-import { calculateVendettaTriggers, hitCritChances } from "./heroes/vendetta-model.js";
-import { felineFigureState, vendettaStingState, VENDETTAS_STING } from "./heroes/erika-traits.js";
+import { calculateVendettaTriggers, hitCritChances } from "./heroes/erika/vendetta-model.js";
+import { felineFigureState, vendettaStingState, VENDETTAS_STING } from "./heroes/erika/traits.js";
 import { motoIrisState, minionHeroTraits, mergingStreamOrigins } from "./heroes/moto-iris-traits.js";
-import { theaBlessingInputs, theaState, INSIDE_REALM_CONDITION } from "./heroes/thea-traits.js";
-import { sageState } from "./heroes/sage-traits.js";
-import { bingState } from "./heroes/bing-traits.js";
-import { carinoState, CARINO_HEROES, RETURNING_SWITCH, SPECIAL_AMMO_LEVEL } from "./heroes/carino-traits.js";
+import { theaBlessingInputs, theaState, INSIDE_REALM_CONDITION } from "./heroes/thea/traits.js";
+import { sageState } from "./heroes/sage/licorice-note.js";
+import { bingState } from "./heroes/bing/creative-genius.js";
+import { carinoState, CARINO_HEROES, RETURNING_SWITCH, SPECIAL_AMMO_LEVEL } from "./heroes/carino/traits.js";
 import {
   rehanState,
   withRehanHits,
@@ -145,7 +145,7 @@ import {
   burstProfile,
   burstAdditionalLines,
   BURST_SETUP_KEY,
-} from "./heroes/rehan-traits.js";
+} from "./heroes/rehan/traits.js";
 const B6_MODULE_KEYS = new Set(["overload", "chargeCalling", "irisGrowing", "irisVigilant"]);
 import { auraBaseIgnite, compileIgniteLedger } from "./ailments/ignite-ledger.js";
 import {
@@ -181,7 +181,7 @@ import { parseItemTrigger, itemTriggerEvent } from "./skills/item-triggered-skil
 import { barrierBurstProfile, barrierBurstState } from "./skills/barrier-burst.js";
 import { normalizePercentageText as normalizeLineText } from "./text/percentage-text.js";
 import { spellToAttackLines } from "./combat/spell-to-attack.js";
-import { WORLD_WITHIN_LINE, worldWithinChances } from "./heroes/world-within.js";
+import { WORLD_WITHIN_LINE, worldWithinChances } from "./heroes/iris/world-within.js";
 import { HIT_GAIN } from "./defense/blessing-model.js";
 import { resolveEmpowerEffects, EMPOWER_MODELED_SKILLS } from "./skills/empower-effects.js";
 import { resolvePeriodicBurst } from "./supports/periodic-burst.js";
@@ -281,7 +281,7 @@ const exclusiveConditionGroups = [
     ],
   },
   {
-    // Thea – Incarnation of the Gods (hero trait audit B7, packages/engine/src/heroes/thea-traits.js): standing inside or outside the Divine Realm (cast on
+    // Thea – Incarnation of the Gods (hero trait audit B7, packages/engine/src/heroes/thea/traits.js): standing inside or outside the Divine Realm (cast on
     // the dummy) cannot both hold. Outside by default (Tenacity converts to Agility; Might Flow, Divine Realm Power's speed,
     // Crossing the Divine Threshold, Divine Spirit); inside is compared while the Realm is active (Agility converts to Tenacity;
     // Divine Realm Power's damage). Provisional.
@@ -321,7 +321,7 @@ const exclusiveConditionGroups = [
 // (requested lowLifeAssumed / lowManaAssumed). Full Life additionally needs at least 95% of Max Life unsealed
 // (user-confirmed 2026-10-12; Full Mana by analogy, provisional): packages/engine/src/text/line-conditions.js atFullLife / atFullMana. The early use rate for "the next Main Skill every X s" is an estimate
 // from the cast-speed ledger (spells) or the weapon's attacks per second (attacks), before Blessings and Aim.
-// The Cycle I Resist Reaps on a Main Terra recast (packages/engine/src/heroes/selena-dance.js resolveCycleResist): a Reaping source for the "on Reap"
+// The Cycle I Resist Reaps on a Main Terra recast (packages/engine/src/heroes/selena/dance-of-the-deep.js resolveCycleResist): a Reaping source for the "on Reap"
 // gain conditions (Focus Blessing when Reaping, Blur on Reap) while a Main Terra Skill is active.
 // Mobility Skills installed and enabled on the skill board (catalog Mobility tag), for "after using Mobility Skills" lines
 // (user rule 2026-10-14: mobility skill use is constant when the build has one; packages/engine/src/text/line-conditions.js "mobility").
@@ -421,7 +421,7 @@ function buildLineConditionState({
   const lifeRemaining = Math.max(0, aura.lifeRemainingPercent ?? 100);
   const manaRemaining = Math.max(0, aura.manaRemainingPercent ?? 100);
   return {
-    // Selena (Dance of the Deep): The Paradise I Curse curses enemies inside an active Main Terra Skill (packages/engine/src/heroes/selena-dance.js).
+    // Selena (Dance of the Deep): The Paradise I Curse curses enemies inside an active Main Terra Skill (packages/engine/src/heroes/selena/dance-of-the-deep.js).
     cursed:
       curseLimit.active.length > 0 ||
       mechanics.curses.active.length > 0 ||
@@ -667,7 +667,7 @@ function buildLineConditionState({
     // Medium Talents (talent-panel nodes of type "legendary" with points, replaced nodes left out; slate talents not counted).
     knockbackDistancePercent: knockbackDistanceSources.reduce((sum, item) => sum + item.value, 0),
     knockbackDistanceSources,
-    // World Within (packages/engine/src/heroes/world-within.js): the effective resistances and the Armor pool (stat sheet, no Aura buffs; provisional).
+    // World Within (packages/engine/src/heroes/iris/world-within.js): the effective resistances and the Armor pool (stat sheet, no Aura buffs; provisional).
     worldWithinInputs: {
       resistances: Object.fromEntries((resistances?.entries || []).map((entry) => [entry.element, entry.effective])),
       armor: resourcePool(statTotals, "armor", 0, { defense: true }).value,
@@ -710,10 +710,10 @@ function buildLineConditionState({
         resolvedMain && activeNames.has(resolvedMain.name) && (resolvedMain.tags || []).includes("Terra"),
       ),
     }),
-    // Erika (Wind Stalker; packages/engine/src/heroes/erika-wind-stalker.js): the build's Stalker clauses and whether an active Attack skill can
+    // Erika (Wind Stalker; packages/engine/src/heroes/erika/wind-stalker.js): the build's Stalker clauses and whether an active Attack skill can
     // Multistrike (support or passive Multistrike chance; Mobility, Channeled and Sentry skills cannot). The planner replaces it
     // with the settled state once the hits are computed (resolveWindStalker).
-    // Erika – Lightning Shadow (hero trait audit B5; packages/engine/src/heroes/erika-traits.js): the character's Movement Speed total (Wild Lightning).
+    // Erika – Lightning Shadow (hero trait audit B5; packages/engine/src/heroes/erika/traits.js): the character's Movement Speed total (Wild Lightning).
     movementSpeedPercent: stat("movementSpeed"),
     windStalker: windStalkerState({
       heroId: state.hero.selectedHeroId,
@@ -744,7 +744,7 @@ function buildLineConditionState({
         });
       })(),
     }),
-    // Youga – The Ultimate One (packages/engine/src/heroes/youga-ultimate-one.js): the build-level Clockwork Core / trait-skill state (no hit rates yet);
+    // Youga – The Ultimate One (packages/engine/src/heroes/youga/the-ultimate-one.js): the build-level Clockwork Core / trait-skill state (no hit rates yet);
     // the planner replaces it with the settled state once the hits are computed (resolveYougaUltimateOne).
     yougaUltimateOne: yougaUltimateOneState({
       heroId: state.hero.selectedHeroId,
@@ -852,7 +852,7 @@ function buildLineConditionState({
         (setup) => setup.enabled !== false && activeNames.has(setup.name) && (setup.tags || []).includes("Elixir"),
       )
       .map((setup) => ({ name: setup.name, setupKey: setup.setupKey })),
-    // Sage – Licorice Note (hero trait audit B8; packages/engine/src/heroes/sage-traits.js): Everlasting Nectar's Max Life / Mana bonuses (increased) and the
+    // Sage – Licorice Note (hero trait audit B8; packages/engine/src/heroes/sage/licorice-note.js): Everlasting Nectar's Max Life / Mana bonuses (increased) and the
     // installed Empower / Curse Skills Pungent Stimulant Salt prepares.
     sageInputs: {
       maxLifeIncreasedPercent: Number(statsByKey.maxLife?.increased) || 0,
@@ -877,7 +877,7 @@ function buildLineConditionState({
         )
         .map((setup) => setup.name),
     },
-    // Carino (hero trait audit B9; packages/engine/src/heroes/carino-traits.js): the active Projectile skills with a hit model, the increased Attack / Cast /
+    // Carino (hero trait audit B9; packages/engine/src/heroes/carino/traits.js): the active Projectile skills with a hit model, the increased Attack / Cast /
     // Projectile Speed (Reload Speed, Special Ammo reload chance), the supports on the skill panel (a Special Ammo support there is
     // not consumed) and the Main Skill's enabled Noble supports (Royal Arsenal).
     carinoInputs: {
@@ -903,7 +903,7 @@ function buildLineConditionState({
               .map((support) => support.name)
           : [],
     },
-    // Rehan (hero trait audit B10; packages/engine/src/heroes/rehan-traits.js): the Main Skill (the Seething Spirit casts it), the character level ("per 1
+    // Rehan (hero trait audit B10; packages/engine/src/heroes/rehan/traits.js): the Main Skill (the Seething Spirit casts it), the character level ("per 1
     // levels"), Max Life / Energy Shield (Split Form, Hysteria), the Skill Area bonus (Uncontrolled Anger) and the weapon's Attack Speed
     // bonuses before the derived lines (Rampaging's share for the badges; the Burst source reads the final weapon model).
     rehanInputs: {
@@ -1077,15 +1077,15 @@ function withRecountConditionAssumptions(recount, groups, planner) {
       // Selena hero traits (Selena traits batch 2026-10-13): the states and provisional readings each trait model ran with.
       ...(planner.singWithTheTide?.assumptions || []),
       ...(planner.danceOfTheDeep?.assumptions || []),
-      // Erika (Wind Stalker) Stalker / Hunting Instinct states (packages/engine/src/heroes/erika-wind-stalker.js; provisional readings).
+      // Erika (Wind Stalker) Stalker / Hunting Instinct states (packages/engine/src/heroes/erika/wind-stalker.js; provisional readings).
       ...(planner.windStalker?.assumptions || []),
-      // Youga – The Ultimate One: Clockwork Core, the trait skills, Recall, Governance and Centralization (packages/engine/src/heroes/youga-ultimate-one.js;
+      // Youga – The Ultimate One: Clockwork Core, the trait skills, Recall, Governance and Centralization (packages/engine/src/heroes/youga/the-ultimate-one.js;
       // provisional readings).
       ...(planner.yougaUltimateOne?.assumptions || []),
       // Enemy-debuff cores (core audit batch B4): Self-Delusion's crowd control count, Juggernaut's and Open Wounds' stacks, Escalating
       // Affliction's per-point value and Blunt's Injury Buffer.
       ...(planner.enemyDebuffCores?.assumptions || []),
-      // Activation Medium: Terra and The Cycle I Resist (Selena Dance traits, user answers 2026-10-13; packages/engine/src/heroes/selena-dance.js).
+      // Activation Medium: Terra and The Cycle I Resist (Selena Dance traits, user answers 2026-10-13; packages/engine/src/heroes/selena/dance-of-the-deep.js).
       ...(planner.activationMediumTerra?.active
         ? [
             {
@@ -1095,7 +1095,7 @@ function withRecountConditionAssumptions(recount, groups, planner) {
             },
           ]
         : []),
-      // Activation Medium: Wind Rhythm recasting a Terra DoT (packages/engine/src/heroes/selena-dance.js windRhythmTerraTrigger; provisional).
+      // Activation Medium: Wind Rhythm recasting a Terra DoT (packages/engine/src/heroes/selena/dance-of-the-deep.js windRhythmTerraTrigger; provisional).
       ...Object.entries(planner.windRhythmTerra || {}).map(([setupKey, wind]) => ({
         id: `windRhythmTerra:${setupKey}`,
         value: wind.intervalSeconds,
@@ -1118,11 +1118,11 @@ function withRecountConditionAssumptions(recount, groups, planner) {
             },
           ]
         : []),
-      // Sage – Licorice Note (hero trait audit B8; packages/engine/src/heroes/sage-traits.js): the Basic Scent Bottle, Scent of Ambition, Everlasting Nectar.
+      // Sage – Licorice Note (hero trait audit B8; packages/engine/src/heroes/sage/licorice-note.js): the Basic Scent Bottle, Scent of Ambition, Everlasting Nectar.
       ...(planner.lineEffects?.state?.sage?.assumptions || []),
-      // Carino (hero trait audit B9; packages/engine/src/heroes/carino-traits.js): the ammo cadence, Special Ammo / Magic Shot, Heat Up, Deflection, Evil Ouroboros.
+      // Carino (hero trait audit B9; packages/engine/src/heroes/carino/traits.js): the ammo cadence, Special Ammo / Magic Shot, Heat Up, Deflection, Evil Ouroboros.
       ...(planner.lineEffects?.state?.carino?.assumptions || []),
-      // Rehan (hero trait audit B10; packages/engine/src/heroes/rehan-traits.js): the Rage cycle, Burst, Tunnel Vision, the Seething Spirit, Disarmed.
+      // Rehan (hero trait audit B10; packages/engine/src/heroes/rehan/traits.js): the Rage cycle, Burst, Tunnel Vision, the Seething Spirit, Disarmed.
       ...(planner.lineEffects?.state?.rehan?.assumptions || []),
       // Empower Skill effects on other damage (packages/engine/src/skills/empower-effects.js; frost-terra audit 2026-10-13).
       ...(planner.empowerEffects?.entries || []).map((entry) => ({
@@ -1424,7 +1424,7 @@ export function bestCaseAssumptions(planner) {
           : `Best case: cast every ${nourishment.traitCooldownSeconds ?? 5} s for Nourishment stacks`,
       text: `Trait Skill: ${requested.traitSkillOnCooldown !== false ? `best case, cast every ${nourishment.traitCooldownSeconds ?? 5} s for Nourishment stacks` : "never cast (condition off)"}.`,
     });
-  // Youga – The Ultimate One (packages/engine/src/heroes/youga-ultimate-one.js; provisional readings): the trait skills pressed on cooldown (the same
+  // Youga – The Ultimate One (packages/engine/src/heroes/youga/the-ultimate-one.js; provisional readings): the trait skills pressed on cooldown (the same
   // switch as Iris' Trait Skill), Recalled projectiles hitting the dummy, and Clockwork Core's every-Tangle-triggers reading.
   const youga = planner.yougaUltimateOne;
   if (youga?.active) {
@@ -1863,7 +1863,7 @@ function calculatePlannerOnce(
   // Hero traits (talent batch chunk 4, §6.2): the selected traits' lines join the build's lines (origin "trait"), so plain
   // clauses ("+38% additional damage", Carino: Zealot of War) reach every engine and the hero modules
   // (packages/engine/src/heroes/hero-trait-modules.js) read theirs. Selena: Sing with the Tide keeps its dedicated model (packages/engine/src/planner.js Tide
-  // conditions, packages/engine/src/heroes/selena-tide.js hitLines, packages/engine/src/heroes/sea-foam-nocturne.js): none of its lines join, so nothing is counted twice.
+  // conditions, packages/engine/src/heroes/selena/sing-with-the-tide.js hitLines, packages/engine/src/heroes/selena/sea-foam-nocturne.js): none of its lines join, so nothing is counted twice.
   // Non-memory "+N to [Non-Base] Hero Trait Level" lines (packages/engine/src/character-stats.js heroTraitLevelBonus) raise the 45/60/75
   // trait levels, max 5; a memory's own line raises only its slot's trait (user-observed 2026-10-13).
   const traitLevelBonus = heroTraitLevelBonus(modifierTexts);
@@ -2258,7 +2258,7 @@ function calculatePlannerOnce(
     mainCandidates.find((setup) => setup.role === "main" && setup.enabled) ||
     mainCandidates.find((setup) => setup.role === "main") ||
     null;
-  // Activation Medium: Terra (Silencing Severance; packages/engine/src/heroes/selena-dance.js resolveActivationMediumTerra, TLIDB 2026-10-13): on an
+  // Activation Medium: Terra (Silencing Severance; packages/engine/src/heroes/selena/dance-of-the-deep.js resolveActivationMediumTerra, TLIDB 2026-10-13): on an
   // active Main Terra Skill it adds +30% additional damage, triggers the skill at max Terra Charge and seals 20% Mana (Life with
   // Drenched Hem). "Main Skills cannot be supported by other Activation Mediums": the Main Skill's other Activation Medium
   // supports are switched off for this pass.
@@ -2304,7 +2304,7 @@ function calculatePlannerOnce(
           }
         : support,
     );
-  // Youga – The Ultimate One (packages/engine/src/heroes/youga-ultimate-one.js): "Non-Main Skills cannot be tangled" switches the Tangle supports off on
+  // Youga – The Ultimate One (packages/engine/src/heroes/youga/the-ultimate-one.js): "Non-Main Skills cannot be tangled" switches the Tangle supports off on
   // every skill but the Main Skill (Active slot 1, user-stated 2026-10-15; provisional reading: the support has no effect).
   // Clockwork Core's skill is a Tangle Skill whose Tangles all sit on the Core (packages/engine/src/ailments/tangle-model.js coreSetupKey).
   const yougaMainKey =
@@ -2318,11 +2318,11 @@ function calculatePlannerOnce(
       ? blockNonMainTangles({ modifierTexts, setups, mainSetupKey: yougaMainKey })
       : [];
   const yougaCoreKey = traitBoard.summary?.clockworkCore?.applied ? traitBoard.summary.clockworkCore.setupKey : null;
-  // Selena (Dance of the Deep; packages/engine/src/heroes/selena-dance.js): "Non-Main Terra Skill cannot deal damage" takes other Terra skills off
+  // Selena (Dance of the Deep; packages/engine/src/heroes/selena/dance-of-the-deep.js): "Non-Main Terra Skill cannot deal damage" takes other Terra skills off
   // the dummy, and the Terra Charge state (Max Terra Charge Stacks, Artificial Moon's 32% per charge) sets the Terra skills'
   // Terra Charge line. Without these lines the state is the default (1 charge at 26%) and nothing changes.
   // A Terra skill's own support clauses on Terra Charge (Ground Divide: +1 Max Terra Charge, Restoration Speed; frost-terra audit
-  // 2026-10-13) join that skill's Terra Charge state only (packages/engine/src/heroes/selena-dance.js terraChargesForSetup).
+  // 2026-10-13) join that skill's Terra Charge state only (packages/engine/src/heroes/selena/dance-of-the-deep.js terraChargesForSetup).
   const buildMaxSpellBurst = maxSpellBurst.total;
   // Icemirror's Mirrored Shade at max stacks (packages/engine/src/combat-states.js; best case, condition mirroredShade) adds Max Terra Charge on
   // the Main Terra Skill the player stands on.
@@ -2771,7 +2771,7 @@ function calculatePlannerOnce(
   // Blessing model on this pass's early facts (any modeled hit holds on-hit gains; Reaping from the build's Reaping
   // lines). The final Blessing model below stays the one the damage ledgers read.
   const mobilityUsed = mobilitySkillNames(setups).length > 0 && requestedConditions.mobilitySkillUsed !== false;
-  // Thea (hero trait audit B7; packages/engine/src/heroes/thea-traits.js): the Divine Blessing cycle as a Blessing gain source, the revived Max Blessing
+  // Thea (hero trait audit B7; packages/engine/src/heroes/thea/traits.js): the Divine Blessing cycle as a Blessing gain source, the revived Max Blessing
   // Stacks lines and the max-stack rules (Predicted Justice, the Divine Realm's conversion, Blasphemer's inversion), in both
   // Blessing passes.
   const theaInputs = theaBlessingInputs({ heroId: state.hero.selectedHeroId, modifierTexts, requestedConditions });
@@ -2933,7 +2933,7 @@ function calculatePlannerOnce(
   // Youga – Spacetime Illusion (hero trait audit B4): the Main Skill's own cast rate, every cast per second and the character's
   // increased Cast Speed the hit pass measured (Eeeendless Mana's rate, the moon's and I'm Out of Mana's stacks, Make it Quick).
   lineConditionState.yougaSpacetime = hitRateFacts?.youga ?? null;
-  // Erika – Lightning Shadow / Vendetta's Sting (hero trait audit B5; packages/engine/src/heroes/erika-traits.js): Feline Figure's Numbed state (Charging
+  // Erika – Lightning Shadow / Vendetta's Sting (hero trait audit B5; packages/engine/src/heroes/erika/traits.js): Feline Figure's Numbed state (Charging
   // Tail reads the Main Skill's crit chance the hit pass measured) and the Vendetta's Sting state (Incisive's uptime from the
   // measured Vendetta cycle; held at 1 before).
   lineConditionState.felineFigure = felineFigureState({
@@ -2952,7 +2952,7 @@ function calculatePlannerOnce(
     vendetta: hitRateFacts?.erika?.vendetta ?? null,
   });
   lineConditionState.erikaActivationMediumBlocked = erikaActivationMediumBlocked;
-  // Thea (hero trait audit B7; packages/engine/src/heroes/thea-traits.js): God's Boon's cadence and the Focus it consumes, the Divine Realm, the dummy deemed
+  // Thea (hero trait audit B7; packages/engine/src/heroes/thea/traits.js): God's Boon's cadence and the Focus it consumes, the Divine Realm, the dummy deemed
   // at Low Life, Desecration. The Focus held drops to its God's Boon cycle average for the line conditions and the Blessing model.
   lineConditionState.thea = theaState({
     heroId: lineConditionState.heroId,
@@ -2976,7 +2976,7 @@ function calculatePlannerOnce(
       ),
     },
   });
-  // Sage – Licorice Note (hero trait audit B8; packages/engine/src/heroes/sage-traits.js): the Basic Scent Bottle's Elixir joins the Elixir setups (its
+  // Sage – Licorice Note (hero trait audit B8; packages/engine/src/heroes/sage/licorice-note.js): the Basic Scent Bottle's Elixir joins the Elixir setups (its
   // Functional Ingredient reads the crit hits and Reaps the hit pass measured), with the Elixir Skill Effect lines Scent of Ambition
   // and Everlasting Nectar add; the Ingredients, prepared Empower / Curse and Elixir of Immortality settle in the module.
   lineConditionState.sage = sageState({
@@ -3005,7 +3005,7 @@ function calculatePlannerOnce(
     lineConditionState.elixirSkill = true;
   }
   const sageRates = Boolean(lineConditionState.sage?.needsRates);
-  // Carino (hero trait audit B9; packages/engine/src/heroes/carino-traits.js): the ammo cadence (Q-H8), Special Ammo and Magic Shot, Heat Up, Deflection, Evil
+  // Carino (hero trait audit B9; packages/engine/src/heroes/carino/traits.js): the ammo cadence (Q-H8), Special Ammo and Magic Shot, Heat Up, Deflection, Evil
   // Ouroboros. The use-rate factor and the Heat Up cycle read the Projectile casts per second the hit pass measured (before it, the
   // rate factor is 1 and Heat Up is held at max), so a Carino build with ammo runs the measuring pass.
   lineConditionState.carino = carinoState({
@@ -3022,7 +3022,7 @@ function calculatePlannerOnce(
     },
   });
   const carinoRates = Boolean(lineConditionState.carino?.needsRates);
-  // Rehan (hero trait audit B10; packages/engine/src/heroes/rehan-traits.js): the Rage cycle (Q-H1), Burst, Tunnel Vision (Q-H15), the Seething Spirit and
+  // Rehan (hero trait audit B10; packages/engine/src/heroes/rehan/traits.js): the Rage cycle (Q-H1), Burst, Tunnel Vision (Q-H15), the Seething Spirit and
   // Disarmed. The cycle reads the uses per second the hit pass measured (before it, Berserk is held), so a Rehan build runs the
   // measuring pass.
   lineConditionState.rehan = rehanState({
@@ -3033,7 +3033,7 @@ function calculatePlannerOnce(
     inputs: lineConditionState.rehanInputs || {},
   });
   const rehanRates = Boolean(lineConditionState.rehan?.needsRates);
-  // Bing – Creative Genius (hero trait audit B12, first part; packages/engine/src/heroes/bing-traits.js): the Whimsy Explosion cadence, Whimsy
+  // Bing – Creative Genius (hero trait audit B12, first part; packages/engine/src/heroes/bing/creative-genius.js): the Whimsy Explosion cadence, Whimsy
   // Signal on the dummy and Whimsy. Flash of Brilliance reads the Main Skill's uses per second the hit pass measured, so a build
   // with the pick runs the measuring pass.
   lineConditionState.bing = bingState({
@@ -3095,7 +3095,7 @@ function calculatePlannerOnce(
     traitSupports: state.hero?.heroTraitSupports || {},
   });
   const lineEffects = resolveLineEffects(modifierTexts, lineConditionState);
-  // Prophecy of Punishment (Thea – Wisdom of The Gods; packages/engine/src/heroes/thea-traits.js): Lucky Damage for the share of time Focus equals Agility,
+  // Prophecy of Punishment (Thea – Wisdom of The Gods; packages/engine/src/heroes/thea/traits.js): Lucky Damage for the share of time Focus equals Agility,
   // as the fractional roll count with the same expected roll (provisional); a Lucky line of the build keeps its own count.
   const theaLuckyRolls =
     lineConditionState.thea?.wisdom?.punishment?.share > 0 ? lineConditionState.thea.wisdom.punishment.luckyRolls : 1;
@@ -3313,7 +3313,7 @@ function calculatePlannerOnce(
     state.hero.selectedTraits.level60 === "Idyll of the Tide" &&
     conditions.tideContact !== false &&
     requestedConditions.idyll !== false;
-  // Selena (Sing with the Tide) trait state (packages/engine/src/heroes/selena-tide.js; Selena traits batch 2026-10-13): trait levels, the Tide Effect
+  // Selena (Sing with the Tide) trait state (packages/engine/src/heroes/selena/sing-with-the-tide.js; Selena traits batch 2026-10-13): trait levels, the Tide Effect
   // scale (Murmurs, Loud Song via Ceaseless Tide, Sea Foam, Undersea Ballad, Chantey of Sinking), the enemy-on-Tide entry, the
   // lines the generic skill hits read and the Artificial Moon lines (base trait Lv5 with an Artificial Moon memory).
   // Bard Song (user-stated 2026-10-13, uncertain): in Bard it turns non-channeled skills into channeled ones; its interval and
@@ -3477,7 +3477,7 @@ function calculatePlannerOnce(
       (collectAllReapingSources(modifierTexts).length > 0 ||
         skillDotSources.some((source) => source.profile.builtInReaping) ||
         skillHitSources.some((source) => source.profile.builtInReaping))) ||
-    // The Cycle I Resist Reaps on every Main Terra recast (packages/engine/src/heroes/selena-dance.js), as the early Blessing model counts it.
+    // The Cycle I Resist Reaps on every Main Terra recast (packages/engine/src/heroes/selena/dance-of-the-deep.js), as the early Blessing model counts it.
     cycleResistReaps(modifierTexts, resolvedMain, activeNames);
   const blurSources = collectBlurSources({
     equipment,
@@ -3835,7 +3835,7 @@ function calculatePlannerOnce(
   // Mark on the dummy (packages/engine/src/combat/mark-effect.js; 2026-10-14): a build with a Mark source keeps the dummy Marked (best case, the
   // targetMarked switch); its "+10% additional Critical Strike Damage taken" × (1 + Mark Effect) joins every hit's crit share
   // (settled after the hits).
-  // Erika's Artificial Moon (packages/engine/src/heroes/erika-wind-stalker.js windStalkerMoonMark; 2026-10-14): a Mark source and +30% Mark Effect while Stalker is held.
+  // Erika's Artificial Moon (packages/engine/src/heroes/erika/wind-stalker.js windStalkerMoonMark; 2026-10-14): a Mark source and +30% Mark Effect while Stalker is held.
   const markState = resolveMark({
     modifierTexts,
     enabled: requestedConditions.targetMarked !== false,
@@ -3975,7 +3975,7 @@ function calculatePlannerOnce(
       profile: barrierBurstProfile(barrierBurst, catalogSkillsByName.get("Barrier Burst")),
     });
   }
-  // Rehan (hero trait audit B10; packages/engine/src/heroes/rehan-traits.js; provisional readings, src/app/stats/open-questions.js):
+  // Rehan (hero trait audit B10; packages/engine/src/heroes/rehan/traits.js; provisional readings, src/app/stats/open-questions.js):
   // - Anger's Burst: a triggered hit source (game row 90000; Burst Blast 90003) at its trigger rate in Berserk × the Berserk uptime,
   //   with its own additional damage lines, its level (+10% per tag-matching Skill Level line) and the Berserk-phase Rage lines in
   //   place of the time-averaged ones (it fires only while Berserk); Tunnel Vision's penalty does not reach it.
@@ -4069,7 +4069,7 @@ function calculatePlannerOnce(
     mobilityUsed: requestedConditions.mobilitySkillUsed !== false,
     nearTarget: conditions.nearTarget !== false,
   });
-  // Carino's ammo cycle (hero trait audit B9, Q-H8; packages/engine/src/heroes/carino-traits.js): Projectile casts × the share of time they are available.
+  // Carino's ammo cycle (hero trait audit B9, Q-H8; packages/engine/src/heroes/carino/traits.js): Projectile casts × the share of time they are available.
   const carinoAmmo = lineConditionState.carino;
   const carinoRateEffects = (setup) =>
     carinoAmmo?.rate?.measured &&
@@ -4080,7 +4080,7 @@ function calculatePlannerOnce(
           rateNote: `Carino ammo (Q-H8, provisional): ${carinoAmmo.rate.mode === "heatCycle" ? `the Heat Up cycle (${carinoAmmo.ammo.magazine} ammo casts, ${carinoAmmo.heat?.phaseSeconds} s of Blank Firing, a ${carinoAmmo.ammo.reloadSeconds} s reload)` : `magazine ${carinoAmmo.ammo.magazine}, reload ${carinoAmmo.ammo.reloadSeconds} s, Projectile Skills unavailable while reloading`} at ${Math.round(carinoAmmo.rate.castsPerSecond * 1000) / 1000} Projectile casts/s: available ${Math.round(carinoAmmo.rate.factor * 10000) / 100}% of the time`,
         }
       : null;
-  // `extra` adds inputs a second pass settles (Erika's Multistrike states, packages/engine/src/heroes/erika-wind-stalker.js).
+  // `extra` adds inputs a second pass settles (Erika's Multistrike states, packages/engine/src/heroes/erika/wind-stalker.js).
   const computeSkillHit = (source, extra = {}) => {
     const setup = source.setup;
     // Rehan (hero trait audit B10): a source's own Rage-phase lines (Burst and the Seething Spirit: Berserk; a disarmed player: the
@@ -4138,7 +4138,7 @@ function calculatePlannerOnce(
       additionalFactor: characterSpeedFactor / Math.max(1e-9, Math.max(0, 1 + characterSpeed.increasedPercent / 100)),
     };
     // Selena (Sing with the Tide): the Tide Effect buff's All Damage writes and the Bard Channeled Skill penalty reach every
-    // generic hit (packages/engine/src/heroes/selena-tide.js hitLines).
+    // generic hit (packages/engine/src/heroes/selena/sing-with-the-tide.js hitLines).
     const hitOnlyLines = [
       ...blessingHitLines,
       ...singWithTheTide.hitLines,
@@ -4208,13 +4208,13 @@ function calculatePlannerOnce(
     // Distance (exclusive group "Distance"): a projectile fan lands ceil(n / 2) standing close, one at range (packages/engine/src/combat/shotgun-effect.js).
     common.nearTarget = conditions.nearTarget !== false;
     common.extraCritOnly = markState.critOnlyLine ? [markState.critOnlyLine] : [];
-    // Youga – The Ultimate One's first-pass effects (packages/engine/src/heroes/youga-ultimate-one.js yougaPreEffects: the Spell Burst rules and the
+    // Youga – The Ultimate One's first-pass effects (packages/engine/src/heroes/youga/the-ultimate-one.js yougaPreEffects: the Spell Burst rules and the
     // Clockwork Core lines that need no hit rate); the settled effects arrive through `extra` (resolveYougaUltimateOne).
     // Core audit B8: an ordinary Tangle Skill with 2+ activated Tangles uses × activated (packages/engine/src/ailments/tangle-model.js tangleHitEffects).
     const yougaPre = yougaPreEffects(lineConditionState.yougaUltimateOne, setup.setupKey),
       tangleCadence = tangleHitEffects(tangles, setup.setupKey);
     common.heroEffects = yougaPre && tangleCadence ? { ...yougaPre, ...tangleCadence } : yougaPre || tangleCadence;
-    // Carino (hero trait audit B9; packages/engine/src/heroes/carino-traits.js): the ammo cycle's use-rate factor on Projectile skills (Q-H8), once the
+    // Carino (hero trait audit B9; packages/engine/src/heroes/carino/traits.js): the ammo cycle's use-rate factor on Projectile skills (Q-H8), once the
     // measuring pass has the cast rate; Evil Ouroboros's returning hits and a Special Ammo cast's bonus lines arrive through `extra`.
     const carinoFactor = carinoRateEffects(setup);
     if (carinoFactor)
@@ -4314,7 +4314,7 @@ function calculatePlannerOnce(
     return calculateSkillHit({ ...common, crit: critFor(first.rate.hitsPerSecond) });
   };
   let skillHits = allHitSources.map((source) => computeSkillHit(source));
-  // Erika (Wind Stalker; packages/engine/src/heroes/erika-wind-stalker.js): Stalker, Cat's Punches' initial Multistrike Count, Cat's Scratch and Hunting
+  // Erika (Wind Stalker; packages/engine/src/heroes/erika/wind-stalker.js): Stalker, Cat's Punches' initial Multistrike Count, Cat's Scratch and Hunting
   // Instinct (Cat's Night Safari) act on the Multistrike sequences. Their stacks follow the hits' Max Multistrike Count events, so
   // the multistriking hits are computed again with the settled states (the sequence timing does not depend on them).
   const windStalker = lineConditionState.windStalker
@@ -4333,7 +4333,7 @@ function calculatePlannerOnce(
     ).entries.filter((entry) => entry.module === "stalker");
     lineEffects.lines = [...lineEffects.lines.filter((entry) => entry.module !== "stalker"), ...settled];
   }
-  // Youga – The Ultimate One (packages/engine/src/heroes/youga-ultimate-one.js): the trait skills' uptimes, Recall, Centralization and Governance follow
+  // Youga – The Ultimate One (packages/engine/src/heroes/youga/the-ultimate-one.js): the trait skills' uptimes, Recall, Centralization and Governance follow
   // the supported skill's hit and crit rates, so that skill (and any cooldown-bound skill, for the crit cooldown reduction) is
   // computed again with the settled effects. The 5 s / 20 s windows follow the trait skills' cast schedule (t = 0, then on
   // cooldown): the supported skill's damage in each state relative to the sustained one, as a steps part.
@@ -4378,7 +4378,7 @@ function calculatePlannerOnce(
     ).entries.filter((entry) => /^youga/.test(entry.module || ""));
     lineEffects.lines = [...lineEffects.lines.filter((entry) => !/^youga/.test(entry.module || "")), ...settled];
   }
-  // Carino (hero trait audit B9; packages/engine/src/heroes/carino-traits.js; provisional readings, src/app/stats/open-questions.js):
+  // Carino (hero trait audit B9; packages/engine/src/heroes/carino/traits.js; provisional readings, src/app/stats/open-questions.js):
   // - Evil Ouroboros: a Horizontal Projectile skill with at least 1 Penetration passes through the dummy, reaches its max range and
   //   returns, hitting it once more (the hit model's returning-hit component, as Youga's Recall; best-case switch carinoReturningHits).
   // - Special Ammo: a share of the Projectile casts consume one (or, under Magic Shot, several) Special Ammo and gain the slot
@@ -4526,7 +4526,7 @@ function calculatePlannerOnce(
       lineEffects.lines = [...lineEffects.lines.filter((entry) => entry.module !== "ouroboros"), ...settled];
     }
   }
-  // Rehan (hero trait audit B10; packages/engine/src/heroes/rehan-traits.js; provisional): the Seething Spirit casts the Main Skill at the player's own use rate
+  // Rehan (hero trait audit B10; packages/engine/src/heroes/rehan/traits.js; provisional): the Seething Spirit casts the Main Skill at the player's own use rate
   // for it (× Fury's Onslaught's -30%) while Berserk (Ritual of Offering: always; Fury's Onslaught: while the Main Skill is used within
   // every 2 s), each a full use with the Berserk lines, Ritual's +X% and Fury's offset (Starfall Wasteland: +1 Projectile Quantity and
   // Penetration, its returning projectiles); its uses join the Main Skill's hit (its ailments are not counted). Then the badges read
@@ -4668,7 +4668,7 @@ function calculatePlannerOnce(
   const mark = settleMark(markState, skillHits);
   let illusion = lineEffects.hero?.illusion;
   const illusionHit = illusion ? skillHits.find((hit) => hit.modeled && hit.setupKey === resolvedMain?.setupKey) : null;
-  // Hero trait audit B4 (packages/engine/src/heroes/youga-spacetime.js): the Illusion state settled with this pass's Main Skill cast rate and the
+  // Hero trait audit B4 (packages/engine/src/heroes/youga/spacetime.js): the Illusion state settled with this pass's Main Skill cast rate and the
   // character's increased Cast Speed (Eeeendless Mana's rate, Make it Quick); the moon's and I'm Out of Mana's stacks keep the
   // measuring pass's rates (they are lines the hits already read).
   let yougaIllusionFacts = null;
@@ -4754,7 +4754,7 @@ function calculatePlannerOnce(
     };
   })();
   // Crimson Gash's Gash (official patch notes: "+12% additional Terra Skill Damage (multiplies), −40% Terra Charge Recovery Speed,
-  // up to 8 stacks, lasts 3 s"). The recovery penalty is in the Terra Charge interval (packages/engine/src/heroes/selena-dance.js settleGash).
+  // up to 8 stacks, lasts 3 s"). The recovery penalty is in the Terra Charge interval (packages/engine/src/heroes/selena/dance-of-the-deep.js settleGash).
   // "additional Terra Skill Damage" reaches Terra skills' hits only, not their own DoT (user-confirmed 2026-10-13 for the Dance
   // base trait's line; the same wording here), so a DoT-only Main Terra gains no damage; on Terra hits it is not modeled.
   const mainTerraHasHits = modeledSkillHits.some(
@@ -4842,7 +4842,7 @@ function calculatePlannerOnce(
       : [];
     // Trait lines reach the Minions as `traitLines` (raw); a trait's resolved conditional Minion body (Radiation Field's "for
     // every Aura affecting you and your Minions"; hero trait audit B2) is a derived line the raw text does not carry, so it joins.
-    // World Within (Iris; hero trait audit B2, packages/engine/src/heroes/world-within.js): this Magus's Enhanced-skill chance from its element's resistance
+    // World Within (Iris; hero trait audit B2, packages/engine/src/heroes/iris/world-within.js): this Magus's Enhanced-skill chance from its element's resistance
     // (Rock Magus: Armor) joins its trait lines; the raw line is read here, so it leaves the Minion model's unread list.
     const worldWithin = (lineEffects.lines || []).find((entry) => entry.condition === "worldWithin");
     const worldChance = worldWithin?.active
@@ -4898,7 +4898,7 @@ function calculatePlannerOnce(
       bond: minionBond,
       summonCastSpeed: minionSummonCast,
       // The resolved Scorch curse on the dummy (as for skill hits); derived debuff lines arrive through modifierTexts.
-      // Selena: the enemy-on-Tide entry is a target attribute (5720), so Minion hits take it too (packages/engine/src/heroes/selena-tide.js takenLines).
+      // Selena: the enemy-on-Tide entry is a target attribute (5720), so Minion hits take it too (packages/engine/src/heroes/selena/sing-with-the-tide.js takenLines).
       extraTaken: [
         ...(conditions.scorch
           ? [
@@ -5133,10 +5133,10 @@ function calculatePlannerOnce(
           ? (damageCombat.targetErosionResistancePercent ?? 30)
           : (damageCombat[`target${type}ResistancePercent`] ?? 30);
   // A DoT profile's recast cadence (below), shared with its Terra Charge line: a cast consumes the charges gained since the last
-  // one, up to Max Terra Charge Stacks (packages/engine/src/heroes/selena-dance.js; 1 at the default max, so the line is unchanged then).
+  // one, up to Max Terra Charge Stacks (packages/engine/src/heroes/selena/dance-of-the-deep.js; 1 at the default max, so the line is unchanged then).
   // Activation Medium: Terra triggers the Main Terra Skill each time its charges refill to max (no use time; TLIDB).
   // Activation Medium: Wind Rhythm on a recast Terra DoT (Frost Terra): the Terra is recast at each trigger, every cooldown ÷
-  // ((1 + CDR + share × Cast Speed) × additional Cast Speed) with the skill's own Cast Speed (packages/engine/src/heroes/selena-dance.js
+  // ((1 + CDR + share × Cast Speed) × additional Cast Speed) with the skill's own Cast Speed (packages/engine/src/heroes/selena/dance-of-the-deep.js
   // windRhythmTerraTrigger; the creator's calc v0.3, user-provided 2026-10-13; provisional). Activation Medium: Terra switches it off.
   const dotCastRate = (source) =>
     characterCastSpeed({
@@ -5378,7 +5378,7 @@ function calculatePlannerOnce(
   );
   const followerDamage = followerDamageSources(followerSelection(state), { resistanceFor: targetResistanceFor });
   if (lineEffects.follower) lineEffects.follower.damageSources = followerDamage;
-  // The Cycle I Resist (Selena Dance of the Deep; packages/engine/src/heroes/selena-dance.js resolveCycleResist): a Reap on every Main Terra recast while
+  // The Cycle I Resist (Selena Dance of the Deep; packages/engine/src/heroes/selena/dance-of-the-deep.js resolveCycleResist): a Reap on every Main Terra recast while
   // the previous Main Terra lasts. The recast interval is the Main Terra's own cadence: a DoT Terra's (Activation Medium: Terra's
   // trigger when granted), or a skill-hit Terra's use rate (recast on expiry, so nothing is left to Reap). The Terras last 6 s
   // (TLIDB, Frost Terra / Thornfield; a skill-hit Terra's useModel duration).
@@ -5450,7 +5450,7 @@ function calculatePlannerOnce(
   // skill's hits happen to be modeled first (2026-10-11: Speed Phantom / Corrosion Focus hits beside a Wilting Beam main).
   const mainDot = skillDots.find((dot) => dot.modeled && dot.setupKey === resolvedMain?.setupKey) || null;
   const scheduleHit = mainHit || (mainDot ? null : modeledSkillHits[0] || null);
-  // Vendetta / Endless Vendetta (packages/engine/src/heroes/vendetta-model.js): triggers of the Main Skill's modeled hit, reported as the net gain over
+  // Vendetta / Endless Vendetta (packages/engine/src/heroes/erika/vendetta-model.js): triggers of the Main Skill's modeled hit, reported as the net gain over
   // plain attacking (the Main Skill's own rate is already counted above).
   const triggerSkills = calculateVendettaTriggers({
     sources: damageSources.filter((source) => source.status === "modeled" && source.profile.engine === "trigger-main"),
@@ -5609,7 +5609,7 @@ function calculatePlannerOnce(
           minion: true,
           dps: seconds === 5 || seconds === 20 ? minionWindowDps(minion, seconds) : minion.combat.dps,
         })),
-        // Main Skill triggers (packages/engine/src/heroes/vendetta-model.js): the net gain of the triggered uses over the attacks their casts replace.
+        // Main Skill triggers (packages/engine/src/heroes/erika/vendetta-model.js): the net gain of the triggered uses over the attacks their casts replace.
         ...modeledTriggers.map((trigger) => ({
           key: trigger.key,
           name: `${trigger.name} (triggers ${trigger.main.name}; net)`,
@@ -5632,7 +5632,7 @@ function calculatePlannerOnce(
       // Ill Omen True Damage from the damage that builds stacks (DoT and Reaping; hits do not).
       const stackBuildingDps = dots.reduce((sum, dot) => sum + dot.dps, 0) + reaping.reapingDps;
       const illOmenWindowDps = illOmenDps(illOmen, stackBuildingDps);
-      // Spacetime Turbulence (Youga – Spacetime Elapse, hero trait audit B4, Q-H6; packages/engine/src/heroes/youga-spacetime.js): each move re-deals the
+      // Spacetime Turbulence (Youga – Spacetime Elapse, hero trait audit B4, Q-H6; packages/engine/src/heroes/youga/spacetime.js): each move re-deals the
       // recorded share of the DoT and Reaping damage; a window releases the moves inside it (the recount times them exactly).
       const turbulenceFactor = spacetime?.turbulence ? spacetime.spacetime.windowFactor(seconds) : 0;
       const turbulence =
@@ -5694,7 +5694,7 @@ function calculatePlannerOnce(
               firstUseSeconds: hit.rate.firstUseSeconds,
               provisional: hit.rate.hitsPerUseBasis === "provisional" ? hit.rate.hitsPerUseNote : null,
             })),
-            // Main Skill triggers: one net lump per cycle at the end of its sequence (provisional shape; packages/engine/src/heroes/vendetta-model.js).
+            // Main Skill triggers: one net lump per cycle at the end of its sequence (provisional shape; packages/engine/src/heroes/erika/vendetta-model.js).
             ...modeledTriggers.map((trigger) => ({
               key: trigger.key,
               label: `${trigger.name} (triggers ${trigger.main.name}; net)`,

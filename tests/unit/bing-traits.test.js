@@ -1,9 +1,9 @@
-// Bing – Creative Genius's Whimsy side (packages/engine/src/heroes/bing-traits.js, hero trait audit B12 first part): the Whimsy
+// Bing – Creative Genius's Whimsy side (packages/engine/src/heroes/bing/creative-genius.js, hero trait audit B12 first part): the Whimsy
 // Explosion cadence, Whimsy Signal on the dummy, Whimsy stacks, and Genius Idea Generator's Whimsy line, read through the hero
 // module (packages/engine/src/heroes/hero-trait-modules.js). Trait texts as the game data prints them (the " ," spacing included).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BING_CREATIVE, bingState } from "../../packages/engine/src/heroes/bing-traits.js";
+import { BING_CREATIVE, bingState } from "../../packages/engine/src/heroes/bing/creative-genius.js";
 import { resolveHeroModules } from "../../packages/engine/src/heroes/hero-trait-modules.js";
 import { exclusiveRevivalState } from "../../packages/engine/src/heroes/hero-exclusive-revivals.js";
 

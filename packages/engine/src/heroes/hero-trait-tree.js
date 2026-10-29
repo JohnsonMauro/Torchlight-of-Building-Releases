@@ -1,6 +1,6 @@
 // Hero trait trees (SS14, 2026-10-15): the heroes whose 45 / 60 / 75 traits are picked on a tree instead of one per level.
 // Selena – Dance of the Deep (since SS13), Thea – Wisdom of The Gods (revamped in SS14) and Youga – The Ultimate One (new in
-// SS14) share the rules Selena's tree had (packages/engine/src/heroes/selena-dance-tree.js keeps her old exports on top of this module):
+// SS14) share the rules Selena's tree had (packages/engine/src/heroes/selena/dance-tree.js keeps her old exports on top of this module):
 // - the tree comes from TLIDB (tools/import-hero-traits.mjs: `tree.nodes` with each node's parent; the base trait is the
 //   root); a node can be picked once its parent is picked (the base trait counts as picked);
 // - `hero.treeTraits[heroId]` is row-indexed: index 0 / 1 / 2 = the Lv.45 / 60 / 75 memory row ("" for an empty row, trailing

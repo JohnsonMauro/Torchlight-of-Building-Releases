@@ -42,8 +42,8 @@
 // window from the first moment 5 Interest is reached (1 Interest per 1 s of damage to an Elite, the first at the first hit)
 // to the horizon, and 100% uptime in the sustained figure. Interest has no duration of its own while the dummy is hit.
 
-import { multistrikeSequence, multistrikeStatesDamage } from "../skills/skill-hit-model.js";
-import { revivedAffixCounts } from "./hero-exclusive-revivals.js";
+import { multistrikeSequence, multistrikeStatesDamage } from "../../skills/skill-hit-model.js";
+import { revivedAffixCounts } from "../hero-exclusive-revivals.js";
 
 export const WIND_STALKER = "erika-wind-stalker";
 export const STALKER = Object.freeze({

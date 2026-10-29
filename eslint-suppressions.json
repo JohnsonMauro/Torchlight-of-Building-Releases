@@ -19,12 +19,12 @@
       "count": 1
     }
   },
-  "packages/engine/src/heroes/carino-traits.js": {
+  "packages/engine/src/heroes/carino/traits.js": {
     "no-useless-assignment": {
       "count": 2
     }
   },
-  "packages/engine/src/heroes/erika-traits.js": {
+  "packages/engine/src/heroes/erika/traits.js": {
     "no-unused-vars": {
       "count": 1
     }
@@ -34,12 +34,12 @@
       "count": 1
     }
   },
-  "packages/engine/src/heroes/sage-traits.js": {
+  "packages/engine/src/heroes/sage/licorice-note.js": {
     "no-useless-assignment": {
       "count": 2
     }
   },
-  "packages/engine/src/heroes/youga-ultimate-one.js": {
+  "packages/engine/src/heroes/youga/the-ultimate-one.js": {
     "no-unused-vars": {
       "count": 2
     }

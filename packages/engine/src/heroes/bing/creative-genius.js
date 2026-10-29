@@ -27,7 +27,7 @@
 // - Ingenuity Overload and the traits built on it (the extra Main Skill cast, its Max Spell Burst, the Contingency Machines,
 //   the Movement Speed and damage taken while casting it) are not modeled yet: Not modeled with that reason.
 
-import { cleanGameText } from "../text/percentage-text.js";
+import { cleanGameText } from "../../text/percentage-text.js";
 
 export const BING_CREATIVE = "bing-creative-genius";
 export const ENERGY_FIELD_SWITCH = "bingInEnergyField";

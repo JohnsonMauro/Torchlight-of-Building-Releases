@@ -1034,7 +1034,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     source: `${HERO_TRAIT_AUDIT} (§5 B2)`,
     appliesWhen: (ctx) => traitPicked(ctx, "gemma-ice-fire-fusion", "Ice to Blaze"),
   },
-  // Hero trait audit B3 (2026-10-19; packages/engine/src/heroes/gemma-traits.js, packages/engine/src/heroes/hero-trait-modules.js): Gemma's provisional readings.
+  // Hero trait audit B3 (2026-10-19; packages/engine/src/heroes/gemma/traits.js, packages/engine/src/heroes/hero-trait-modules.js): Gemma's provisional readings.
   {
     id: "gemma-frostfire-rampage-cycle",
     title: "Frostfire Rampage: do casts during the cooldown count?",
@@ -1145,7 +1145,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     source: `${HERO_TRAIT_AUDIT} (§5 B3)`,
     appliesWhen: (ctx) => traitPicked(ctx, "gemma-flame-of-pleasure", "Dress Licker"),
   },
-  // Hero trait audit B4 (2026-10-19; packages/engine/src/heroes/youga-spacetime.js, packages/engine/src/heroes/hero-trait-modules.js): Youga – Spacetime Illusion and Spacetime
+  // Hero trait audit B4 (2026-10-19; packages/engine/src/heroes/youga/spacetime.js, packages/engine/src/heroes/hero-trait-modules.js): Youga – Spacetime Illusion and Spacetime
   // Elapse's provisional readings (Q-H5, Q-H6).
   {
     id: "youga-illusion-rate",
@@ -1262,7 +1262,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       ctx.heroId === "youga-spacetime-elapse" &&
       ctx.hasText(/^When dealing damage to enemies in Twisted Spacetime, Reaps/i),
   },
-  // Hero trait audit B5 (2026-10-19; packages/engine/src/heroes/erika-traits.js, packages/engine/src/heroes/vendetta-model.js, packages/engine/src/heroes/hero-trait-modules.js): Erika – Lightning
+  // Hero trait audit B5 (2026-10-19; packages/engine/src/heroes/erika/traits.js, packages/engine/src/heroes/erika/vendetta-model.js, packages/engine/src/heroes/hero-trait-modules.js): Erika – Lightning
   // Shadow and Vendetta's Sting. Shown only for those Erika loadouts.
   {
     id: "erika-feline-figure-cadence",
@@ -1507,7 +1507,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     appliesWhen: (ctx) =>
       ctx.heroId === "iris-vigilant-breeze" && traitPicked(ctx, "iris-vigilant-breeze", "Vigilant Breeze"),
   },
-  // Hero trait audit B7 (2026-10-19; packages/engine/src/heroes/thea-traits.js, packages/engine/src/defense/blessing-model.js, packages/engine/src/heroes/hero-trait-modules.js): Thea (Wisdom of The
+  // Hero trait audit B7 (2026-10-19; packages/engine/src/heroes/thea/traits.js, packages/engine/src/defense/blessing-model.js, packages/engine/src/heroes/hero-trait-modules.js): Thea (Wisdom of The
   // Gods, Incarnation of the Gods, Blasphemer) and Rosa's Holy Domain duration (Q-H7). Shown only for those loadouts.
   {
     id: "thea-divine-blessing-cycle",
@@ -1646,7 +1646,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       ctx.heroId === "rosa-high-court-chariot" &&
       ctx.hasText(/^While inside the Holy Domain ?, \+\d+(?:\.\d+)? ?% additional damage$/i),
   },
-  // Hero trait audit B8 (2026-10-19; packages/engine/src/heroes/sage-traits.js, packages/engine/src/skills/elixir-model.js, packages/engine/src/heroes/hero-trait-modules.js "sageScent"): Sage – Licorice
+  // Hero trait audit B8 (2026-10-19; packages/engine/src/heroes/sage/licorice-note.js, packages/engine/src/skills/elixir-model.js, packages/engine/src/heroes/hero-trait-modules.js "sageScent"): Sage – Licorice
   // Note's Scent Bottles. Shown only for Sage.
   {
     id: "sage-scent-bottle-slots",
@@ -1805,7 +1805,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     source: `${HERO_TRAIT_AUDIT} (§5 B8)`,
     appliesWhen: (ctx) => ctx.heroId === "sage-licorice-note" && Boolean(ctx.lineState.sage?.omni),
   },
-  // Hero trait audit B9 (2026-10-19; packages/engine/src/heroes/carino-traits.js, packages/engine/src/heroes/hero-trait-modules.js, packages/engine/src/planner.js): Carino (Ranger of Glory, Lethal
+  // Hero trait audit B9 (2026-10-19; packages/engine/src/heroes/carino/traits.js, packages/engine/src/heroes/hero-trait-modules.js, packages/engine/src/planner.js): Carino (Ranger of Glory, Lethal
   // Flash, Zealot of War). Shown only for Carino; Firepower Coverage (Q-H15) only for Bing – Blast Nova with the pick.
   {
     id: "carino-ammo-cadence",
@@ -1982,7 +1982,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     source: `${HERO_TRAIT_AUDIT} (§6 Q-H15)`,
     appliesWhen: (ctx) => ctx.heroId === "bing-blast-nova" && Boolean(ctx.lineState.firepowerCoverage),
   },
-  // Hero trait audit B12, first part (2026-10-29; packages/engine/src/heroes/bing-traits.js): Bing – Creative Genius's Whimsy side.
+  // Hero trait audit B12, first part (2026-10-29; packages/engine/src/heroes/bing/creative-genius.js): Bing – Creative Genius's Whimsy side.
   {
     id: "bing-whimsy",
     title: "Creative Genius: Whimsy Explosion cadence, Whimsy Signal and Whimsy stacks",
@@ -2000,10 +2000,10 @@ export const OPEN_QUESTIONS = Object.freeze([
       { reading: "Triggered Main Skill uses do not roll Flash of Brilliance", effect: "fewer Whimsy Explosions" },
     ],
     test: "On the dummy with Mind Domain, stand in the energy field and read the Whimsy stacks and their duration on the buff bar; read the dummy's Whimsy Signal debuff timer over 30 s; compare a hit's damage with 1 and with max Whimsy stacks.",
-    source: "Bing – Creative Genius module (packages/engine/src/heroes/bing-traits.js, 2026-10-29)",
+    source: "Bing – Creative Genius module (packages/engine/src/heroes/bing/creative-genius.js, 2026-10-29)",
     appliesWhen: (ctx) => ctx.heroId === "bing-creative-genius" && Boolean(ctx.lineState.bing?.base),
   },
-  // Hero trait audit B10 (2026-10-19; packages/engine/src/heroes/rehan-traits.js, packages/engine/src/heroes/hero-trait-modules.js, packages/engine/src/planner.js): Rehan (Anger, Seething Silhouette)
+  // Hero trait audit B10 (2026-10-19; packages/engine/src/heroes/rehan/traits.js, packages/engine/src/heroes/hero-trait-modules.js, packages/engine/src/planner.js): Rehan (Anger, Seething Silhouette)
   // and its revived affixes. Shown only for Rehan.
   {
     id: "rehan-rage-cycle",

@@ -4,7 +4,7 @@ import { prismAreaBounds, prismNodeAffixes } from "../talents/prism-crafting.js"
 import { normalizePercentageText } from "../text/percentage-text.js";
 import { ailmentStateNames } from "../ailments/enemy-ailments.js";
 import { withoutSlateCoreName } from "../text/granted-core-lines.js";
-import { applyTheaCapRules } from "../heroes/thea-traits.js";
+import { applyTheaCapRules } from "../heroes/thea/traits.js";
 
 export const blessingNames = ["Tenacity", "Focus", "Agility"];
 
@@ -376,7 +376,7 @@ export function calculateBlessings({
   // Conditional Blessing lines the shared resolver made active (packages/engine/src/text/line-effects.js; e.g. Deceiver's Might "+1 to Max
   // Focus Blessing Stacks if you have landed a Critical Strike or Reaped in the last 8s").
   for (const line of extraLines) add(line.text, line.source);
-  // Thea's max-stack rules (hero trait audit B7, packages/engine/src/heroes/thea-traits.js; provisional): Predicted Justice's shared bonus, the Divine Realm's
+  // Thea's max-stack rules (hero trait audit B7, packages/engine/src/heroes/thea/traits.js; provisional): Predicted Justice's shared bonus, the Divine Realm's
   // Agility / Tenacity transfer, Blasphemer's inversion into Max Desecration Stacks. The Divine Realm's conversion moves the converted
   // Blessing's stacks (and its gains) to the other one below.
   const theaRules = capRules ? applyTheaCapRules(result, capRules) : null;

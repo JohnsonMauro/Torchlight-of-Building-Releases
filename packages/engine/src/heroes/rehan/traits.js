@@ -56,8 +56,8 @@
 //   Ancestral Hate (30% of current Life per Spirit skill), current Life read as Max Life (an upper bound); the dummy never attacks.
 // - Rage Infusion: stacks = min(max, Rage gained per second × 4 s ÷ 25) in each phase (game buff 80204: 4 s).
 
-import { normalizePercentageText } from "../text/percentage-text.js";
-import { buildSkillHitProfile } from "../skills/skill-hit-profiles.js";
+import { normalizePercentageText } from "../../text/percentage-text.js";
+import { buildSkillHitProfile } from "../../skills/skill-hit-profiles.js";
 
 export const ANGER = "rehan-anger";
 export const SEETHING = "rehan-seething-silhouette";

@@ -1,7 +1,7 @@
-import { selenaSingWithTheTide as tideData } from "../../data/heroes/selena-sing-with-the-tide.js";
+import { selenaSingWithTheTide as tideData } from "../../../data/heroes/selena-sing-with-the-tide.js";
 import { calculateSeaFoamNocturne } from "./sea-foam-nocturne.js";
-import { parseCharacterStatClause } from "../character-stats.js";
-import { slotTraitLevel } from "./hero-memory-rules.js";
+import { parseCharacterStatClause } from "../../character-stats.js";
+import { slotTraitLevel } from "../hero-memory-rules.js";
 
 // Selena (Sing with the Tide): the trait state every damage engine reads (Selena traits batch, 2026-10-13;
 // research/selena-traits-2026-10-13.md). Sources, by clause:

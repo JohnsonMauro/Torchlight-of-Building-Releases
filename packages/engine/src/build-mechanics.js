@@ -97,7 +97,7 @@ export function collectBuildMechanics({
   // Channeled stacks: Scorching Beam has 5; supports and talents raise the cap and the floor.
   let maxStacks = BASE_MAX_CHANNELED_STACKS,
     minStacks = 0;
-  // Build-line vs support tallies (Selena traits batch: Sea Foam Nocturne reads the character fields, packages/engine/src/heroes/sea-foam-nocturne.js).
+  // Build-line vs support tallies (Selena traits batch: Sea Foam Nocturne reads the character fields, packages/engine/src/heroes/selena/sea-foam-nocturne.js).
   let lineMaxStacks = 0,
     lineMinStacks = 0,
     supportMaxStacks = 0,

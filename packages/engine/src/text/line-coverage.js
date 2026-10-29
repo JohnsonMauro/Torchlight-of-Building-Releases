@@ -785,7 +785,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     aimLineMoves(Number(aimTiming[1]), /Duration/i.test(aimTiming[2]) ? "duration" : "cooldown", planner)
   )
     return "In calc";
-  // Youga – The Ultimate One (packages/engine/src/heroes/youga-ultimate-one.js): the Clockwork Core's share of Cooldown Recovery Speed and Skill Effect
+  // Youga – The Ultimate One (packages/engine/src/heroes/youga/the-ultimate-one.js): the Clockwork Core's share of Cooldown Recovery Speed and Skill Effect
   // Duration, and the trait skills' durations and cooldowns, read both pools (hero trait audit B1, F6: I Meet the Selves's
   // Skill Effect Duration moved the dummy figure while it badged Counted in stats).
   const youga = planner?.yougaUltimateOne;
@@ -810,9 +810,9 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
       (hero.treeTraits?.[hero.selectedHeroId] || []).some(Boolean);
     return hero.selectedHeroId && (picked || !/Non-Base/i.test(text)) ? "In calc" : "Inactive";
   }
-  // Terra Charge Recovery / Restoration Speed (packages/engine/src/heroes/selena-dance.js resolveTerraCharges): sets the charge interval, so the charges
+  // Terra Charge Recovery / Restoration Speed (packages/engine/src/heroes/selena/dance-of-the-deep.js resolveTerraCharges): sets the charge interval, so the charges
   // a Main Terra cast consumes; In calc while the Main Terra Skill is active, Inactive otherwise. "+X% Terra Skill Duration"
-  // lengthens The Cycle I Resist's T (packages/engine/src/heroes/selena-dance.js resolveCycleResist): In calc while that Reap is active. Both read
+  // lengthens The Cycle I Resist's T (packages/engine/src/heroes/selena/dance-of-the-deep.js resolveCycleResist): In calc while that Reap is active. Both read
   // "Not modeled" before (Kismet: Growth Ring; pact badge audit 2026-10-13).
   if (/^[+-]?[\d.]+% Terra Charge (?:Recovery|Restoration) Speed$/i.test(text) && planner?.danceOfTheDeep)
     return planner.danceOfTheDeep.mainIsTerra ? "In calc" : "Inactive";
@@ -1486,7 +1486,7 @@ function clauseStatus(text, planner, { allowGeneric = true } = {}) {
     return "In calc";
   }
   // "Cannot inflict Reap": In calc where the build has a Reaping source it switches off, including The Cycle I Resist's Reap
-  // on each Main Terra recast (packages/engine/src/heroes/selena-dance.js resolveCycleResist; the Reaping model drops it, packages/engine/src/ailments/reaping-model.js).
+  // on each Main Terra recast (packages/engine/src/heroes/selena/dance-of-the-deep.js resolveCycleResist; the Reaping model drops it, packages/engine/src/ailments/reaping-model.js).
   if (/^Cannot inflict Reap$/i.test(text) && planner?.modifierTexts)
     return planner.modifierTexts.some((line) => parseReapingSource(String(line.text), "x")) ||
       (planner.damageSources || []).some((source) => source.profile?.builtInReaping) ||

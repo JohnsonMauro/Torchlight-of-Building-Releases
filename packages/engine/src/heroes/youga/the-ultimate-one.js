@@ -70,10 +70,10 @@
 //   "+X% effect for Selves of All Realms" multiplies each Alternate Spacetime value and its cap.
 // - Windows: the trait skills are cast at t = 0 (own buffs built before engaging) and then on cooldown; the 5 s / 20 s windows
 //   follow that schedule (packages/engine/src/combat/timed-effects.js steps on the supported skill's hits).
-import { normalizePercentageText } from "../text/percentage-text.js";
-import { tlidbSkillCatalog } from "../../data/catalogs/tlidb.js";
-import { BASE_MAX_TANGLE_QUANTITY, HIGHEST_MAX_TANGLE_QUANTITY, TANGLE_SUPPORTS } from "../ailments/tangle-model.js";
-import { recalledProjectilesPerUse } from "../skills/skill-hit-model.js";
+import { normalizePercentageText } from "../../text/percentage-text.js";
+import { tlidbSkillCatalog } from "../../../data/catalogs/tlidb.js";
+import { BASE_MAX_TANGLE_QUANTITY, HIGHEST_MAX_TANGLE_QUANTITY, TANGLE_SUPPORTS } from "../../ailments/tangle-model.js";
+import { recalledProjectilesPerUse } from "../../skills/skill-hit-model.js";
 
 export const YOUGA_ULTIMATE_ONE = "youga-the-ultimate-one";
 export const CLOCKWORK_CORE_NAME = "Clockwork Core";
