@@ -97,11 +97,12 @@ test("the hero module derives the dummy's Whimsy Signal and your Whimsy, and bad
   const status = (start) => entries.find((item) => item.text.startsWith(start))?.status;
   assert.equal(status("When Whimsy Essence reaches 100"), "In calc");
   assert.equal(status("Whimsy Explosion spawns an energy field"), "In calc");
-  assert.equal(status("When Ingenuity Essence reaches 100"), "Not modeled");
+  // Ingenuity Overload (2026-10-29): the Trait Skill click (switch on by default) uses it, so the click line is read.
+  assert.equal(status("When Ingenuity Essence reaches 100"), "In calc");
   assert.equal(status("+2 to Whimsy Explosion Projectile Quantity"), "Partly modeled");
 });
 
-test("Genius Idea Generator: its Whimsy line joins the intake, its Ingenuity Overload line waits for that engine", () => {
+test("Genius Idea Generator: both its lines join the intake and the Bing module reads them", () => {
   const hero = {
     selectedHeroId: BING_CREATIVE,
     equippedMemoryIds: { level45: "m1" },
@@ -110,7 +111,10 @@ test("Genius Idea Generator: its Whimsy line joins the intake, its Ingenuity Ove
   const revival = exclusiveRevivalState(hero, hero.memoryInventory[0]);
   assert.deepEqual(revival.intake, [
     "+2 to Whimsy Explosion Projectile Quantity, +100% Whimsy Effect, +40% Whimsy Signal Effect",
+    "+1 to Max Spell Burst and +60% additional Spell Damage for Spells triggered by Ingenuity Overload",
   ]);
-  assert.equal(revival.lines.find((item) => item.moduleRead)?.text.startsWith("+2 to Whimsy"), true);
-  assert.match(revival.lines.find((item) => item.pending)?.pending.engine, /Ingenuity Overload/);
+  assert.equal(
+    revival.lines.every((item) => item.moduleRead && !item.pending),
+    true,
+  );
 });

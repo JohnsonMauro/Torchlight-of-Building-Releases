@@ -272,23 +272,23 @@
       }
     },
     "hero/bing-creative-genius/first": {
-      "sha256": "3557a9562af486b5de46ab5b330dc219b842860067c5043ba462d943bdd0745b",
+      "sha256": "829656115522563757c8c70963354ed0407d0b95c6fad4eaf71d6b8a7eb51240",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
-        "dps5s": 299294894.3482735,
-        "dps20s": 311079630.2670349,
-        "dpsSteady": 315008174.0822786,
-        "warnings": 69
+        "dps5s": 309051650.29005027,
+        "dps20s": 321220150.2551376,
+        "dpsSteady": 325276615.4191566,
+        "warnings": 70
       }
     },
     "hero/bing-creative-genius/last": {
-      "sha256": "acddced81ad96320a31eb3492b821188c8d3c84c945835e3fce897e03e6a8ac4",
+      "sha256": "51d0e1bc17c01ee7fb122bf738619b8cdd35bf11d6f44a492d49ce7d9139291a",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
-        "dps5s": 299294894.3482735,
-        "dps20s": 311079630.2670349,
-        "dpsSteady": 315008174.0822786,
-        "warnings": 69
+        "dps5s": 309051650.29005027,
+        "dps20s": 321220150.2551376,
+        "dpsSteady": 325276615.4191566,
+        "warnings": 70
       }
     },
     "hero/gemma-ice-fire-fusion/first": {

@@ -1369,11 +1369,20 @@ export function calculateSkillHit({
     notes.push(
       `${profile.name}: cannot activate Spell Burst: ${spellBurstBlock}${/provisional/.test(spellBurstBlock) ? "" : spellBurstBlock === heroEffects?.spellBurstBlock ? ` (${heroEffects.spellBurstBlockSource || "trait text"})` : " (game manual)"}.`,
     );
+  // Bing – Creative Genius's Ingenuity Overload (packages/engine/src/heroes/bing/creative-genius.js; owner 2026-10-29: the written text,
+  // provisional): "Triggers your Main Skill once immediately (this skill must be able to activate Spell Burst). +200% additional Max
+  // Spell Burst for the skill this time and immediately charges it to the max". Each Overload's triggered cast activates Spell Burst
+  // with ⌊(Max Spell Burst + Genius Idea Generator's +1) × 3⌋ stacks: 1 + that many casts, all cast by Spell Burst (game manual),
+  // without player time; Genius Idea Generator's +X% additional Spell Damage reaches the triggered cast.
+  const overloadInput =
+    canSpellBurst && heroEffects?.ingenuityOverload?.perSecond > 0 ? heroEffects.ingenuityOverload : null;
+  const overloadStacks = overloadInput ? Math.floor((maxSpellBurst + (overloadInput.maxSpellBurstBonus || 0)) * 3) : 0;
+  const overloadCastsPerSecond = overloadInput ? overloadInput.perSecond * (1 + overloadStacks) : 0;
   const spellBurst = canSpellBurst
     ? (() => {
         const activationsPerSecond = 1 / Math.max(spellBurstCharge.seconds, intervalSeconds);
-        const extraUsesPerSecond = spellBurstStacks * activationsPerSecond;
-        const burstCastsPerSecond = (1 + spellBurstStacks) * activationsPerSecond;
+        const extraUsesPerSecond = spellBurstStacks * activationsPerSecond + overloadCastsPerSecond;
+        const burstCastsPerSecond = (1 + spellBurstStacks) * activationsPerSecond + overloadCastsPerSecond;
         const bonusLines = [
           ...supports.effects.spellBurst
             .filter((line) => line.kind === "hitAdditional")
@@ -1408,6 +1417,16 @@ export function calculateSkillHit({
           share,
           rateFactor: 1 + extraUsesPerSecond * intervalSeconds,
           averageDamageFactor: 1 + share * (bonusFactor - 1),
+          overload: overloadInput
+            ? {
+                perSecond: overloadInput.perSecond,
+                stacks: overloadStacks,
+                castsPerSecond: overloadCastsPerSecond,
+                triggeredShare:
+                  overloadInput.perSecond / (1 / intervalSeconds + extraUsesPerSecond + heroTriggerUsesPerSecond),
+                additionalPercent: overloadInput.additionalPercent || 0,
+              }
+            : null,
         };
       })()
     : null;
@@ -1429,6 +1448,19 @@ export function calculateSkillHit({
       ),
     );
   }
+  if (spellBurst?.overload) {
+    const o = spellBurst.overload;
+    notes.push(
+      `${profile.name}: Ingenuity Overload ${round(o.perSecond)} per second, each the triggered cast + ${o.stacks} Spell Burst cast(s) (⌊(Max Spell Burst ${maxSpellBurst}${overloadInput.maxSpellBurstBonus ? ` + ${overloadInput.maxSpellBurstBonus}` : ""}) × 3⌋, +200% additional Max Spell Burst, charged to the max): +${round(o.castsPerSecond)} casts per second, all cast by Spell Burst, without player time (provisional, the written text).`,
+    );
+    if (o.additionalPercent)
+      supports.additional.push({
+        source: "Genius Idea Generator",
+        text: `+${o.additionalPercent}% additional Spell Damage for Spells triggered by Ingenuity Overload: ${round(o.triggeredShare * 100)}% of casts are the triggered cast`,
+        value: o.additionalPercent * o.triggeredShare,
+        category: "Additional damage",
+      });
+  }
   if (spellBurst) {
     if (spellBurst.averageDamageFactor !== 1)
       supports.additional.push({
@@ -1438,7 +1470,7 @@ export function calculateSkillHit({
         category: "Additional damage",
       });
     notes.push(
-      `${profile.name}: Spell Burst ${spellBurstStacks} stack(s), fully charged in ${round(spellBurst.fullChargeSeconds)} s = 2 s ÷ ${round(1 + spellBurstCharge.increasedPercent / 100)} ÷ ${round(spellBurstCharge.additionalFactor)} (game manual), activated every ${round(1 / spellBurst.activationsPerSecond)} s = max(charge time, use interval ${round(intervalSeconds)} s); each activation is the activating cast + ${spellBurstStacks} automatic cast(s), all cast by Spell Burst (game manual); +${round(spellBurst.extraUsesPerSecond)} casts per second without player time (user-confirmed 2026-10-12: automatic casts take no manual cast time; the period is not rounded; additional Charge Speed shortens the charge).`,
+      `${profile.name}: Spell Burst ${spellBurstStacks} stack(s), fully charged in ${round(spellBurst.fullChargeSeconds)} s = 2 s ÷ ${round(1 + spellBurstCharge.increasedPercent / 100)} ÷ ${round(spellBurstCharge.additionalFactor)} (game manual), activated every ${round(1 / spellBurst.activationsPerSecond)} s = max(charge time, use interval ${round(intervalSeconds)} s); each activation is the activating cast + ${spellBurstStacks} automatic cast(s), all cast by Spell Burst (game manual); +${round(spellBurst.extraUsesPerSecond - (spellBurst.overload?.castsPerSecond || 0))} casts per second without player time (user-confirmed 2026-10-12: automatic casts take no manual cast time; the period is not rounded; additional Charge Speed shortens the charge).`,
     );
   }
   const rateFactor = multistrike?.rateFactor ?? spellBurst?.rateFactor ?? 1;

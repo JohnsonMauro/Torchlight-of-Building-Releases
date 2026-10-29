@@ -102,14 +102,9 @@ const PENDING = {
   // MODULE_LINES below names the lines the Carino module reads (packages/engine/src/heroes/carino/traits.js).
   // Erika (B5, 2026-10-19): Charging Tail and Vengeful Night Wraith join the intake; MODULE_LINES below names the lines the
   // Lightning Shadow / Vendetta's Sting modules read (packages/engine/src/heroes/erika/lightning-shadow.js, packages/engine/src/heroes/erika/vendettas-sting.js, packages/engine/src/heroes/hero-trait-modules.js).
-  // Bing (B12): Genius Idea Generator's Whimsy line joins the intake (MODULE_LINES below, packages/engine/src/heroes/bing/creative-genius.js); its Ingenuity
-  // Overload line waits for that engine.
+  // Bing (B12): Genius Idea Generator's lines join the intake (MODULE_LINES below, packages/engine/src/heroes/bing/creative-genius.js): its
+  // Whimsy line and, since 2026-10-29, its Ingenuity Overload line (the Overload's casts, packages/engine/src/skills/skill-hit-model.js).
   "Bing's Big Bang Pack": P("B12", "Bing's bomb engine", "When bombs deal damage"),
-  "Genius Idea Generator": P(
-    "B12",
-    "Bing's Ingenuity Overload engine",
-    "+1 to Max Spell Burst and +60% additional Spell Damage for Spells triggered by Ingenuity Overload",
-  ),
   // Gemma (B3, 2026-10-19): First Flake of Strange Snow joins the intake (packages/engine/src/combat-states.js reads its deemed Frostbite Rating and
   // additional Frostbite Effect) and so does Sweet Pain's Erosion Magus Origin (packages/engine/src/skills/origin-of-spirit-magus.js: defensive, No DPS
   // effect). Three-Chambered Heart joins it too (2026-10-29): its granted Lv. 40 Advanced Elemental Impact reads the written
@@ -185,7 +180,10 @@ const MODULE_LINES = {
   ],
   "Self-Imposed Shackles": ["+30% additional Heat Up Effect"],
   // Bing – Creative Genius (B12): Whimsy Effect and Whimsy Signal Effect (packages/engine/src/heroes/bing/creative-genius.js).
-  "Genius Idea Generator": ["+2 to Whimsy Explosion Projectile Quantity"],
+  "Genius Idea Generator": [
+    "+2 to Whimsy Explosion Projectile Quantity",
+    "+1 to Max Spell Burst and +60% additional Spell Damage",
+  ],
   // Rehan (B10): Burst Blast and its on-hit / skill-use changes (Hero's Resourcefulness), Furious Roar's crit trigger and its Burst
   // penalty, Ancestral Hate's Life cost (Hysteria's Rage), Starfall Wasteland's Spirit lines; Ancestral Hate's Regain Interval and
   // damage-taken lines go to the generic readers.

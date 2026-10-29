@@ -3043,6 +3043,7 @@ function calculatePlannerOnce(
     requestedConditions,
     dealsSpell: Boolean(lineConditionState.activeTags?.has?.("Spell")),
     mainUsesPerSecond: hitRateFacts?.bing ? hitRateFacts.bing.mainUsesPerSecond : null,
+    maxSpellBurst: maxSpellBurst.total,
   });
   const bingRates = Boolean(lineConditionState.bing?.needsRates);
   // Bing – Blast Nova's Firepower Coverage (Q-H15): the badge and the switch read it (packages/engine/src/heroes/hero-trait-modules.js "firepower").
@@ -4254,6 +4255,9 @@ function calculatePlannerOnce(
           .filter(Boolean)
           .join("; "),
       };
+    // Bing – Creative Genius's Ingenuity Overload (packages/engine/src/heroes/bing/creative-genius.js): its Main Skill casts (hit model).
+    if (lineConditionState.bing?.overload?.perSecond > 0 && setup.setupKey === resolvedMain?.setupKey)
+      common.heroEffects = { ...(common.heroEffects || {}), ingenuityOverload: lineConditionState.bing.overload };
     // Lines for triggered skills (Hair-trigger, packages/engine/src/combat-states.js; core audit batch B3): applied by the hit model to triggered uses.
     common.triggeredSkillAdditional = lineEffects.combat?.buffs?.triggeredSkillAdditional || [];
     // Tangle casts are triggered (Hair-trigger; user-supplied 2026-10-19, Google AI Mode answer, not tested in game).

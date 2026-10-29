@@ -47,7 +47,13 @@ export const cleanBing = (text) =>
     .trim();
 
 const OVERLOAD_REASON =
-  "Ingenuity Overload (it triggers the Main Skill once with +200% additional Max Spell Burst, charged to the max) is not modeled yet (hero trait audit B12)";
+  "this Ingenuity Overload clause (Hyper-Resonance's buff, the Contingency Machines, Movement Speed, damage taken) is not read; the Overload's Main Skill casts are (hero trait audit B12)";
+// Ingenuity Overload (keyword, tlidb-pages/hero-keywords-2026-10-29; owner 2026-10-29: model what is written, provisional): each Whimsy
+// Explosion restores 25 Ingenuity Essence; at 100 the Overload is used (the Trait Skill click, held as pressed whenever ready by
+// the Trait Skill switch, or Auto-Ingenuity Program) and triggers the Main Skill once with +200% additional Max Spell Burst,
+// charged to the max (packages/engine/src/skills/skill-hit-model.js reads the casts).
+const INGENUITY_PER_EXPLOSION = 25;
+const INGENUITY_PER_OVERLOAD = 100;
 
 export const BING_PATTERNS = Object.freeze({
   // Creative Genius (base trait).
@@ -78,12 +84,20 @@ export const BING_PATTERNS = Object.freeze({
   ),
   // Auto-Ingenuity Program.
   autoOverload: /^When Ingenuity Essence reaches 100, triggers Ingenuity Overload$/i,
+  // Ingenious Chaos Principle and Law of Ingenuity (read before the Overload family below).
+  chaos: new RegExp(`^${N}% Ingenuity Essence restoration per Max Spell Burst$`, "i"),
+  law: new RegExp(`^Ingenuity Overload has a ${N}% chance to not consume Ingenuity Essence$`, "i"),
   recovery: new RegExp(`^${N}% Whimsy Essence Recovery Speed$`, "i"),
   // Ingenuity Overload family.
   overload: /Ingenuity Overload|Ingenuity Essence restoration per Max Spell Burst|Contingency Inspiration Machines/i,
   // Genius Idea Generator (revived, Lunar Phase): "+2 to Whimsy Explosion Projectile Quantity, +100% Whimsy Effect, +40% Whimsy
   // Signal Effect".
   genius: /^\+\d+ to Whimsy Explosion Projectile Quantity, \+[\d.]+% Whimsy Effect, \+[\d.]+% Whimsy Signal Effect$/i,
+  // Its second line: "+1 to Max Spell Burst and +60% additional Spell Damage for Spells triggered by Ingenuity Overload".
+  geniusOverload: new RegExp(
+    `^\\+(\\d+) to Max Spell Burst and ${N}% additional Spell Damage for Spells triggered by Ingenuity Overload$`,
+    "i",
+  ),
 });
 const TRAIT_KEYS = [
   "essence",
@@ -98,10 +112,12 @@ const TRAIT_KEYS = [
   "brainstormEssence",
   "flash",
   "autoOverload",
+  "chaos",
+  "law",
   "recovery",
   "overload",
 ];
-const REVIVED_KEYS = ["genius"];
+const REVIVED_KEYS = ["genius", "geniusOverload"];
 
 /** The clause key of a Creative Genius line (trait or revived), or null. `revived`: match only the revived keys. */
 export function bingClauseKey(text, { revived = false } = {}) {
@@ -130,6 +146,7 @@ const sumClauses = (modifierTexts, name) =>
  * @param {object} p.requestedConditions the combat conditions (the energy-field switch)
  * @param {boolean} p.dealsSpell a skill of the build deals Spell Damage
  * @param {number|null} p.mainUsesPerSecond the Main Skill's uses per second the hit pass measured (null before it)
+ * @param {number} p.maxSpellBurst the build's Max Spell Burst (packages/engine/src/skills/max-spell-burst.js)
  */
 export function bingState({
   heroId = "",
@@ -137,6 +154,7 @@ export function bingState({
   requestedConditions = {},
   dealsSpell = false,
   mainUsesPerSecond = null,
+  maxSpellBurst = 0,
 } = {}) {
   if (heroId !== BING_CREATIVE) return null;
   const traits = modifierTexts
@@ -167,6 +185,25 @@ export function bingState({
   const maxStacks = domain ? num(domain[2]) : 0;
   const whimsyPercent = ((1 + stackPercent / 100) ** maxStacks - 1) * 100;
   const whimsyUptime = domain && inField ? Math.min(1, WHIMSY_SECONDS * explosionsPerSecond) : 0;
+  // Ingenuity Overload: Overloads per second from the Ingenuity the Whimsy Explosions restore.
+  const memoryClause = (key) =>
+    modifierTexts
+      .filter((line) => line && line.origin === "memory")
+      .map((line) => cleanBing(line.text).match(BING_PATTERNS[key]))
+      .find(Boolean) || null;
+  const sumMatches = (key) => traits.reduce((total, text) => total + num(text.match(BING_PATTERNS[key])?.[1] ?? 0), 0);
+  const auto = Boolean(first("autoOverload"));
+  const click = Boolean(first("overloadClick"));
+  const pressed = requestedConditions.traitSkillOnCooldown !== false;
+  const trigger = auto ? "auto" : click && pressed ? "click" : null;
+  const chaosPercent = sumMatches("chaos");
+  const ingenuityPerExplosion = INGENUITY_PER_EXPLOSION * (1 + (chaosPercent * Math.max(0, maxSpellBurst)) / 100);
+  const keepChance = Math.min(0.99, Math.max(0, sumMatches("law") / 100));
+  const genius = memoryClause("geniusOverload");
+  const overloadsPerSecond =
+    trigger && explosionsPerSecond > 0
+      ? (explosionsPerSecond * ingenuityPerExplosion) / (INGENUITY_PER_OVERLOAD * (1 - keepChance))
+      : 0;
   return {
     base,
     dealsSpell,
@@ -196,6 +233,19 @@ export function bingState({
           value: round(whimsyPercent * whimsyUptime),
         }
       : null,
+    overload: {
+      trigger,
+      click,
+      auto,
+      pressed,
+      chaosPercent,
+      ingenuityPerExplosion: round(ingenuityPerExplosion),
+      keepChance: round(keepChance),
+      perSecond: round(overloadsPerSecond),
+      maxSpellBurstBonus: genius ? num(genius[1]) : 0,
+      additionalPercent: genius ? num(genius[2]) : 0,
+      source: "Ingenuity Overload",
+    },
     // The Flash of Brilliance procs read the Main Skill's measured uses, so a build with the pick runs the measuring pass.
     needsRates: Boolean(base && dealsSpell && flash),
   };
@@ -292,7 +342,34 @@ export function bingLineRead(heroId, text, state, { revived = false } = {}) {
       return L("Not on dummy", "an execute / on-kill effect (the training dummy is never defeated)");
     case "overloadClick":
     case "autoOverload":
+    case "chaos":
+    case "law":
+    case "geniusOverload": {
+      const o = state.overload;
+      if (!state.dealsSpell) return L("Inactive", noSpell);
+      if (key === "overloadClick" && o.auto)
+        return L(
+          "No DPS effect",
+          "Auto-Ingenuity Program uses the Overload at 100 Ingenuity, so the click is not needed",
+        );
+      if (!o.trigger)
+        return L(
+          "Inactive",
+          "the Trait Skill switch is off and no Auto-Ingenuity Program: no Ingenuity Overload is used",
+        );
+      const rate = `${state.explosionsPerSecond} Whimsy Explosions per second × ${o.ingenuityPerExplosion} Ingenuity (25${o.chaosPercent ? ` × (1 + ${o.chaosPercent}% × Max Spell Burst)` : ""}) ÷ 100${o.keepChance ? ` ÷ (1 − ${round(o.keepChance * 100)}% not consumed)` : ""} = ${o.perSecond} Overloads per second (${o.trigger === "auto" ? "Auto-Ingenuity Program" : "the Trait Skill clicked whenever ready: best case"}); each triggers the Main Skill once with +200% additional Max Spell Burst, charged to the max (provisional)`;
+      if (key === "geniusOverload")
+        return L(
+          "In calc",
+          `+${o.maxSpellBurstBonus} Max Spell Burst for the triggered cast's Spell Burst and +${o.additionalPercent}% additional Spell Damage on the triggered cast; ${rate}`,
+        );
+      return L("In calc", rate);
+    }
     case "ingenuityStart":
+      return L(
+        "No DPS effect",
+        "Ingenuity at a stage start or revival: the steady cycle on the dummy is read from the Whimsy Explosions",
+      );
     case "overload":
       return L("Not modeled", OVERLOAD_REASON);
     case "genius": {
