@@ -1261,7 +1261,7 @@ export function calculateSkillHit({
     }, 0);
   const spellBurstStacks = Math.floor(maxSpellBurst);
   // A rate-model skill whose own text lets it activate Spell Burst (Rehan – Hero's Resourcefulness: "Burst becomes Burst Blast and
-  // can activate Spell Burst"; hero trait audit B10, packages/engine/src/heroes/rehan/traits.js burstProfile) is not blocked by its rate model.
+  // can activate Spell Burst"; hero trait audit B10, packages/engine/src/heroes/rehan/anger.js burstProfile) is not blocked by its rate model.
   const spellBurstBlock = !skillTags.has("Spell")
     ? "it is not a Spell Skill"
     : timing?.cooldownSeconds > 0

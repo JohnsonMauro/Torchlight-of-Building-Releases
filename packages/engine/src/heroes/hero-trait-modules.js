@@ -28,7 +28,8 @@ import { settleTheaCrowdControl } from "./thea/blasphemer.js";
 import { SAGE, sageClauseKey, sageLineRead, sageRevivedLine } from "./sage/licorice-note.js";
 import { CARINO_HEROES, RETURNING_SWITCH, carinoModuleOf, carinoRevivedLine } from "./carino/trait-lines.js";
 import { carinoLineRead } from "./carino/traits.js";
-import { REHAN_HEROES, rehanModuleOf, rehanLineRead, rehanRevivedLine } from "./rehan/traits.js";
+import { REHAN_HEROES, rehanModuleOf, rehanRevivedLine } from "./rehan/trait-lines.js";
+import { rehanLineRead } from "./rehan/traits.js";
 import { BING_CREATIVE, bingClauseKey, bingLineRead, bingRevivedLine, bingSwitches } from "./bing/creative-genius.js";
 
 // Youga clause → badge module (packages/engine/src/heroes/youga/the-ultimate-one.js YOUGA_PATTERNS).

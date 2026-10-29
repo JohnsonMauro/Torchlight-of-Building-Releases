@@ -56,386 +56,31 @@
 //   Ancestral Hate (30% of current Life per Spirit skill), current Life read as Max Life (an upper bound); the dummy never attacks.
 // - Rage Infusion: stacks = min(max, Rage gained per second × 4 s ÷ 25) in each phase (game buff 80204: 4 s).
 
-import { normalizePercentageText } from "../../text/percentage-text.js";
-import { buildSkillHitProfile } from "../../skills/skill-hit-profiles.js";
-
-export const ANGER = "rehan-anger";
-export const SEETHING = "rehan-seething-silhouette";
-export const REHAN_HEROES = new Set([ANGER, SEETHING]);
-export const TUNNEL_VISION_SWITCH = "rehanTunnelVision";
-export const SPIRIT_RETURN_SWITCH = "rehanSpiritReturn";
-export const BURST_SETUP_KEY = "rehan:burst";
-export const INFUSION_RECENT_SECONDS = 4;
-// Fury's Onslaught's second game parameter by rank (tier records 320012 01–05; SS13 = SS14): the Spirit's Berserk additional damage.
-export const FURY_SPIRIT_OFFSET = Object.freeze({ 40: -33.33, 47: -36.31, 54: -39.02, 61: -41.52, 68: -43.82 });
-export const KEYWORDS = Object.freeze({
-  rage: Object.freeze({
-    maxRage: 100,
-    source:
-      "TLIDB keyword Rage (hover ece24b16): a Berserker exclusive energy with a default upper limit of 100; at max Rage the Berserker enters Berserk",
-  }),
-  berserk: Object.freeze({
-    bonusFactor: 2,
-    source:
-      "TLIDB keyword Berserk (hover b3645c45): gains bonuses twice the Max Rage while Berserk is active; Berserk expires when you run out of Rage",
-  }),
-  burst: Object.freeze({
-    weaponPercent: 340,
-    radiusMeters: 3,
-    perLevelAdditionalPercent: 10,
-    level: 1,
-    gameRow: 90000,
-    tags: Object.freeze(["Attack", "Melee", "Physical", "Triggered", "Area", "Strength", "Dexterity"]),
-    source:
-      "TLIDB keyword Burst (hover 46230009): 340% of Weapon Damage to enemies within 3 m (dual wielding: the average of both weapons), +10% additional damage (multiplies) per +1 Skill Level; game row config_skill_damage 90000 (one Lv. 1 row, 340% Weapon Damage)",
-  }),
-  burstBlast: Object.freeze({
-    min: 1166,
-    max: 1944,
-    effectiveness: 288,
-    type: "Physical",
-    gameRow: 90003,
-    tags: Object.freeze(["Spell", "Physical", "Triggered", "Area", "Strength", "Dexterity"]),
-    source:
-      "TLIDB keyword Burst Blast (hover 219965c8): 1166–1944 Spell Physical Damage within 3 m, damage effect 288%; game row config_skill_damage 90003 (Physical 1166–1944, 288%)",
-  }),
-  seethingSpirit:
-    "TLIDB keyword Seething Spirit (hover bfe0c1e9): an ancestor spirit that casts your Non-Mobility and Non-Channeled Main Melee Attack Skills when it appears",
-  disarm: "TLIDB keyword Disarm (hover a54e950b): deemed unarmed and unable to use Attack Skills when disarmed",
-});
-const EPS = 1e-9;
-const round = (value) => Math.round(value * 10000) / 10000;
-const pct = (value) => Math.round(value * 10000) / 100;
-const fmt = (value) => (Number.isFinite(value) ? String(round(value)) : "∞");
-export const cleanRehan = (text) =>
-  normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .replace(/(\d) %/g, "$1%")
-    .replace(/ ([,.:;])/g, "$1")
-    .replace(/^\+ (\d)/, "+$1")
-    .replace(/\bnon- /gi, "non-")
-    .trim();
-
-const N = "(\\d+(?:\\.\\d+)?)";
-export const REHAN_PATTERNS = Object.freeze({
-  // Rage outside Berserk and the Berserk state (both loadouts).
-  rageMelee: new RegExp(`^When not in the Berserk state, each Melee Attack Skill generates ${N} Rage$`, "i"),
-  rageChannel: new RegExp(
-    `^When not in the Berserk state, each stack of Melee Attack Skill channeled generates ${N} Rage$`,
-    "i",
-  ),
-  enter: /^Enter Berserk automatically at Max Rage$/i,
-  drain: new RegExp(`^While Berserk is active, ${N} Rage is consumed per second$`, "i"),
-  // Anger.
-  perRage: new RegExp(`^\\+?${N}% additional damage and \\+?${N}% Movement Speed for every ${N} Rage you have$`, "i"),
-  burstTrigger: new RegExp(`^Attacks trigger Burst once on hit while Berserk is active\\. Cooldown: ${N} ?s$`, "i"),
-  burstPerLevel: new RegExp(`^\\+?${N}% additional Burst Damage per ${N} levels?$`, "i"),
-  moonCdr: new RegExp(`^\\+?${N}% Burst Cooldown Recovery Speed for every ${N} Rage$`, "i"),
-  furyGen: new RegExp(`^Generates ${N} Rage per second instead of consuming Rage while Berserk is active$`, "i"),
-  furyCost: new RegExp(`^When triggering Burst, consumes ${N} Rage$`, "i"),
-  frenzyCrit: new RegExp(`^\\+?${N}% Critical Strike Rating for every ${N} Rage$`, "i"),
-  frenzyGain: new RegExp(`^When Burst lands a Critical Strike, generates ${N} Rage\\. Interval: ${N} ?s$`, "i"),
-  tunnelPenalty: new RegExp(`^-${N}% additional damage for non-Burst skills$`, "i"),
-  burstAdditional: /^([+-]\d+(?:\.\d+)?)% additional Burst Damage$/i,
-  rampaging: new RegExp(
-    `^${N}% of the bonus and additional bonus to Attack Speed is also applied to Burst's Cooldown Recovery Speed$`,
-    "i",
-  ),
-  burstArea: new RegExp(`^\\+${N}% additional Burst Area$`, "i"),
-  areaToBurst: new RegExp(`^For every \\+${N}% Skill Area, \\+${N}% additional Burst Damage, up to \\+?${N}%$`, "i"),
-  // Seething Silhouette.
-  attackSpeedPerRage: new RegExp(`^\\+${N}% Attack Speed for every ${N} Rage$`, "i"),
-  berserkMove: new RegExp(`^\\+${N}% Movement Speed while Berserk is active$`, "i"),
-  twice: /^Gains bonuses twice the Max Rage while Berserk is active$/i,
-  castCost: new RegExp(
-    `^Casting Melee Attack Skills no longer generates Rage and consumes ${N} points of Rage instead while Berserk is active\\. The mode ends when Rage runs out$`,
-    "i",
-  ),
-  berserkArea: new RegExp(`^\\+${N}% Skill Area while Berserk is active$`, "i"),
-  berserkDamage: new RegExp(`^\\+${N}% additional damage while Berserk is active$`, "i"),
-  doubleDamage: new RegExp(`^\\+${N}% chance to deal Double Damage every ${N} points of Rage you have$`, "i"),
-  ownSpirit: /^Own Seething Spirit$/i,
-  ritualSpirit: /^Seething Spirit will always exist and attack automatically while Berserk is active$/i,
-  disarmed: /^You are Disarmed while Berserk is active$/i,
-  spiritDamage: new RegExp(`^\\+${N}% additional Seething Spirit Damage$`, "i"),
-  ritualSelfDamage: new RegExp(
-    `^While Berserk is active, takes Secondary Physical Damage equal to ${N}% of current Life every ${N} ?s\\. This damage is not affected by bonuses$`,
-    "i",
-  ),
-  onslaughtSpirit: new RegExp(
-    `^When a Melee Main Skill is used while Berserk is active, Seething Spirit appears and automatically attacks for ${N} ?s\\. Using the Melee Main Skill again will refresh the Seething Spirit's duration$`,
-    "i",
-  ),
-  spiritSpeed: new RegExp(`^-${N}% additional Seething Spirit Attack Speed$`, "i"),
-  onslaughtRage: new RegExp(
-    `^Rage will no longer be naturally consumed while Berserk is active\\. The Rage consumed by Melee Attack Skills will be halved\\. \\+${N}% additional damage dealt by the player$`,
-    "i",
-  ),
-  hysteriaTaken: new RegExp(
-    `^Generates ${N} points? of Rage when taking damage equal to ${N}% of the sum of Max Life and Max Energy Shield$`,
-    "i",
-  ),
-  hysteriaConsumed: new RegExp(`^Generate ${N} Rage for every ${N}% Max Life consumed$`, "i"),
-  growing: new RegExp(
-    `^Gains ${N} additional Rage when Seething Spirit uses a skill\\. The Rage gained is doubled when Seething Spirit deals Double Damage\\. Interval: ${N} ?s$`,
-    "i",
-  ),
-  splitForm: new RegExp(`^\\+${N}% Rage gained for every ${N} Max Life$`, "i"),
-  // Split Form's Max Life line: a plain stat line (the stat sheet reads it) that also feeds the Rage-gained line above.
-  splitLife: /^([+-]?\d+(?:\.\d+)?)% additional Max Life$/i,
-  infusion: new RegExp(
-    `^\\+${N}% additional damage per ${N} points of Rage gained recently\\. Stacks up to ${N} times$`,
-    "i",
-  ),
-  infusionDisarm: new RegExp(
-    `^You will no longer be Disarmed after Berserk has been active for ${N} ?s\\. \\+${N}% Rage gained$`,
-    "i",
-  ),
-  // Hero-exclusive revivals: Hero's Resourcefulness and Furious Roar (Anger).
-  blast: /^Burst becomes Burst Blast and can activate Spell Burst$/i,
-  onHit: /^All conditions of this trait that trigger on attack are changed to trigger on hit$/i,
-  skillUse:
-    /^The Base Trait effect that generates Rage from using Melee Skills is changed to generating Rage upon skill use\./i,
-  roarTrigger: new RegExp(
-    `^Attacks trigger Burst once on Critical Strike while Berserk is active\\. Cooldown: ${N} ?s$`,
-    "i",
-  ),
-  roarPenalty: /^([+-]\d+(?:\.\d+)?)% additional Burst Damage$/i,
-  // Ancestral Hate's Life cost and Starfall Wasteland (Seething Silhouette).
-  hateConsume: new RegExp(`^Seething Spirit consumes ${N}% of current Life when using skills$`, "i"),
-  starfallRanged: /^Seething Spirit now only uses Ranged Projectile Skills \(except Channeled and Parabolic Skills\)$/i,
-  starfallRage: new RegExp(`^Generates ${N} Rage when using a Ranged Skill$`, "i"),
-  starfallProjectiles: new RegExp(
-    `^\\+(\\d+) to Projectile Quantity, \\+(\\d+) Horizontal Projectile Jump\\(s\\), \\+(\\d+) Horizontal Projectile Penetration\\(s\\), \\+${N}% Projectile Size for Ranged Skills cast by Seething Spirit$`,
-    "i",
-  ),
-  starfallReturn: new RegExp(
-    `^${N}% chance for Ranged Skills cast by Seething Spirit to return after reaching their max range$`,
-    "i",
-  ),
-});
-// Each clause's badge module (packages/engine/src/heroes/hero-trait-modules.js).
-const GROUP = Object.freeze({
-  rageMelee: "rage",
-  rageChannel: "rage",
-  enter: "rage",
-  drain: "rage",
-  perRage: "rage",
-  furyGen: "rage",
-  frenzyCrit: "rage",
-  attackSpeedPerRage: "rage",
-  berserkMove: "rage",
-  twice: "rage",
-  castCost: "rage",
-  berserkArea: "rage",
-  berserkDamage: "rage",
-  doubleDamage: "rage",
-  disarmed: "rage",
-  ritualSelfDamage: "rage",
-  onslaughtRage: "rage",
-  hysteriaTaken: "rage",
-  hysteriaConsumed: "rage",
-  splitForm: "rage",
-  splitLife: "rage",
-  infusion: "rage",
-  infusionDisarm: "rage",
-  skillUse: "rage",
-  starfallRage: "rage",
-  burstTrigger: "burst",
-  burstPerLevel: "burst",
-  moonCdr: "burst",
-  furyCost: "burst",
-  frenzyGain: "burst",
-  tunnelPenalty: "burst",
-  burstAdditional: "burst",
-  rampaging: "burst",
-  burstArea: "burst",
-  areaToBurst: "burst",
-  blast: "burst",
-  onHit: "burst",
-  roarTrigger: "burst",
-  roarPenalty: "burst",
-  ownSpirit: "spirit",
-  ritualSpirit: "spirit",
-  spiritDamage: "spirit",
-  onslaughtSpirit: "spirit",
-  spiritSpeed: "spirit",
-  growing: "spirit",
-  hateConsume: "spirit",
-  starfallRanged: "spirit",
-  starfallProjectiles: "spirit",
-  starfallReturn: "spirit",
-});
-const KEY_ORDER = Object.keys(GROUP);
-export const REHAN_REVIVED_KEYS = new Set([
-  "blast",
-  "onHit",
-  "skillUse",
-  "roarTrigger",
-  "roarPenalty",
-  "hateConsume",
-  "starfallRanged",
-  "starfallRage",
-  "starfallProjectiles",
-  "starfallReturn",
-]);
-const REVIVED_HERO = {
-  blast: ANGER,
-  onHit: ANGER,
-  skillUse: ANGER,
-  roarTrigger: ANGER,
-  roarPenalty: ANGER,
-  hateConsume: SEETHING,
-  starfallRanged: SEETHING,
-  starfallRage: SEETHING,
-  starfallProjectiles: SEETHING,
-  starfallReturn: SEETHING,
-};
-
-/** The clause key of a Rehan line, or null. `revived`: only the revived keys. */
-export function rehanClauseKey(text, { revived = false } = {}) {
-  const clean = cleanRehan(text);
-  const keys = revived ? [...REHAN_REVIVED_KEYS] : KEY_ORDER.filter((key) => !REHAN_REVIVED_KEYS.has(key));
-  return keys.find((key) => REHAN_PATTERNS[key].test(clean)) || null;
-}
-/** The badge module of a Rehan line ("rage", "burst", "spirit"), or null. */
-export const rehanModuleOf = (text, options) => GROUP[rehanClauseKey(text, options)] || null;
-/** Whether a revived (memory) line of this loadout is read here. */
-export function rehanRevivedLine(heroId, text) {
-  const key = rehanClauseKey(text, { revived: true });
-  return Boolean(key) && REVIVED_HERO[key] === heroId;
-}
-
-const linesOf = (modifierTexts, heroId) =>
-  modifierTexts
-    .filter(
-      (line) =>
-        line &&
-        line.origin !== "derived" &&
-        !line.lineEffect &&
-        (line.origin === "trait" || (line.origin === "memory" && rehanRevivedLine(heroId, line.text))),
-    )
-    .map((line) => ({ ...line, clean: cleanRehan(line.text) }));
-const all = (lines, key) =>
-  lines.flatMap((line) => {
-    const match = line.clean.match(REHAN_PATTERNS[key]);
-    return match && (REHAN_REVIVED_KEYS.has(key) ? line.origin === "memory" : line.origin === "trait")
-      ? [{ line, match }]
-      : [];
-  });
-const first = (lines, key) => all(lines, key)[0] || null;
-const plainSum = (modifierTexts, pattern) =>
-  modifierTexts
-    .filter((line) => line && line.origin !== "derived" && !line.lineEffect)
-    .reduce((total, line) => {
-      const match = cleanRehan(line.text).match(pattern);
-      return total + (match ? Number(match[1]) * (line.multiplier ?? 1) : 0);
-    }, 0);
-const MAX_RAGE = /^\+(\d+(?:\.\d+)?) (?:to )?Max Rage$/i;
-const RAGE_GAINED = /^([+-]?\d+(?:\.\d+)?)% Rage gained$/i;
-const DOUBLE_DAMAGE = /^\+(\d+(?:\.\d+)?)% chance to deal Double Damage$/i;
-
-/** Burst's hit profile (packages/engine/src/skills/skill-hit-profiles.js builder): the attack row (340% Weapon Damage) or, with Hero's Resourcefulness, Burst Blast. */
-export function burstProfile({ blast = false } = {}) {
-  const levels = (row) => Object.fromEntries(Array.from({ length: 20 }, (_, index) => [String(index + 1), row]));
-  const keyword = blast ? KEYWORDS.burstBlast : KEYWORDS.burst;
-  const definition = blast
-    ? {
-        name: "Burst Blast",
-        delivery: "spell-area",
-        components: [
-          {
-            key: "blast",
-            label: "Burst Blast",
-            groupId: keyword.gameRow,
-            group: {
-              id: keyword.gameRow,
-              synthetic: `game row ${keyword.gameRow}`,
-              levels: levels({
-                kind: "hit",
-                effectiveness: keyword.effectiveness,
-                entries: [{ type: keyword.type, min: keyword.min, max: keyword.max }],
-              }),
-            },
-            perUse: 1,
-            basis: "text",
-            note: "one area hit within 3 m per trigger (the dummy inside: best case)",
-          },
-        ],
-        notes: [
-          `Burst Blast (hero trait audit B10): ${keyword.source}. Its single row is read at every level; levels add +10% additional damage each (multiplies).`,
-        ],
-      }
-    : {
-        name: "Burst",
-        delivery: "attack-melee",
-        weaponScaling: { baseTypes: ["Physical"], restriction: null },
-        components: [
-          {
-            key: "burst",
-            label: "Burst",
-            groupId: keyword.gameRow,
-            group: {
-              id: keyword.gameRow,
-              synthetic: `game row ${keyword.gameRow}`,
-              levels: levels({ kind: "hit", effectiveness: keyword.weaponPercent, entries: [] }),
-            },
-            perUse: 1,
-            basis: "text",
-            note: "one area explosion within 3 m per trigger (the dummy inside: best case)",
-          },
-        ],
-        notes: [
-          `Burst (hero trait audit B10): ${keyword.source}. Its single row is read at every level; levels add +10% additional damage each (multiplies).`,
-        ],
-      };
-  const profile = buildSkillHitProfile(definition);
-  const tags = [...keyword.tags];
-  return Object.freeze({
-    ...profile,
-    tags,
-    spell: blast,
-    mainStats: tags.filter((tag) => ["Strength", "Dexterity", "Intelligence"].includes(tag)),
-    useModel: {
-      kind: "rate",
-      usesPerSecond: 0,
-      firstUseSeconds: null,
-      note: "triggered by the trait (hero trait audit B10)",
-    },
-    spellBurstAllowed: blast,
-    sources: {
-      tlidb: blast ? "https://tlidb.com/en/Burst_Blast" : "https://tlidb.com/en/Burst",
-      gameData: `config_skill_damage group ${keyword.gameRow} (one Lv. 1 row; SS14 flat extraction 2026-10-15)`,
-      timing: "triggered by Anger (no use time)",
-    },
-  });
-}
-
-const spiritEligible = (main, starfall) => {
-  if (!main) return { ok: false, reason: "no active Main Skill" };
-  const tags = new Set(main.tags || []);
-  if (starfall) {
-    if (!tags.has("Ranged") || !tags.has("Projectile"))
-      return {
-        ok: false,
-        reason: `Starfall Wasteland: the Spirit only uses Ranged Projectile Skills, and ${main.name} is not one`,
-      };
-    if (tags.has("Channeled") || tags.has("Parabolic"))
-      return { ok: false, reason: `Starfall Wasteland: ${main.name} is a Channeled or Parabolic skill` };
-    return { ok: true, reason: "" };
-  }
-  if (!tags.has("Melee") || !tags.has("Attack"))
-    return {
-      ok: false,
-      reason: `the Seething Spirit casts Main Melee Attack Skills (TLIDB keyword), and ${main.name} is not one`,
-    };
-  if (tags.has("Mobility") || tags.has("Channeled"))
-    return {
-      ok: false,
-      reason: `the Seething Spirit casts Non-Mobility and Non-Channeled skills (TLIDB keyword), and ${main.name} is a Mobility or Channeled skill`,
-    };
-  return { ok: true, reason: "" };
-};
+import {
+  REHAN_HEROES,
+  REHAN_PATTERNS,
+  TUNNEL_VISION_SWITCH,
+  SPIRIT_RETURN_SWITCH,
+  ANGER,
+  KEYWORDS,
+  INFUSION_RECENT_SECONDS,
+  EPS,
+  round,
+  pct,
+  fmt,
+  cleanRehan,
+  rehanClauseKey,
+  linesOf,
+  all,
+  first,
+  plainSum,
+  MAX_RAGE,
+  RAGE_GAINED,
+  DOUBLE_DAMAGE,
+  L,
+} from "./trait-lines.js";
+import { burstState, tunnelState, burstCadence, angerRead } from "./anger.js";
+import { spiritCasts, spiritState, seethingRead } from "./seething-silhouette.js";
 
 /**
  * @param {object} p
@@ -524,78 +169,29 @@ export function rehanState({
   const outBonusLevel = outGain > EPS || !measured ? maxRage / 2 : 0;
 
   // ---- Seething Spirit: its casts in Berserk (for Growing Anger / Hysteria) ----
-  const ritual = has("ritualSpirit"),
-    onslaught = one("onslaughtSpirit"),
-    starfall = has("starfallRanged");
-  // "Own Seething Spirit" grants the Spirit; Ritual of Offering / Fury's Onslaught say when it attacks.
-  const spiritSource = !has("ownSpirit") ? null : ritual ? "ritual" : onslaught ? "onslaught" : null;
-  const eligible = spiritEligible(inputs.main, starfall);
-  const speedLine = one("spiritSpeed");
-  const spiritSpeedFactor = speedLine ? Math.max(0, 1 - Number(speedLine.match[1]) / 100) : 1;
-  const onslaughtSeconds = onslaught ? Number(onslaught.match[1]) : 0;
-  const spiritPresence =
-    !spiritSource || !eligible.ok
-      ? 0
-      : spiritSource === "ritual" || !measured
-        ? 1
-        : Math.min(1, onslaughtSeconds * inside.main);
-  const spiritUsesIn = spiritPresence > 0 && measured ? inside.main * spiritSpeedFactor * spiritPresence : 0;
+  const { starfall, spiritSource, eligible, spiritSpeedFactor, onslaughtSeconds, spiritPresence, spiritUsesIn } =
+    spiritCasts({
+      one,
+      has,
+      inputs,
+      measured,
+      inside,
+    });
 
   // ---- Burst (Anger): its triggers in Berserk (Righteous Fury's cost, Frenzy Furious's gain read them) ----
-  const trigger = one("burstTrigger"),
-    roar = one("roarTrigger");
-  const moon = one("moonCdr"),
-    rampaging = one("rampaging"),
-    levelLine = one("burstPerLevel"),
-    areaLine = one("areaToBurst");
-  const characterLevel = Number(inputs.characterLevel?.level) || 100;
   const skillArea = Math.max(0, Number(inputs.skillAreaPercent) || 0);
-  const burst =
-    trigger || roar
-      ? {
-          blast: has("blast"),
-          onHit: has("onHit"),
-          base: Boolean(trigger),
-          cooldownSeconds: Number((trigger || roar).match[1]),
-          roar: roar ? { cooldownSeconds: Number(roar.match[1]) } : null,
-          moonPercent: moon ? (Number(moon.match[1]) * berserkLevel) / Number(moon.match[2]) : 0,
-          rampagingShare: rampaging ? Number(rampaging.match[1]) / 100 : 0,
-          perLevel: levelLine
-            ? {
-                percent: Number(levelLine.match[1]),
-                per: Number(levelLine.match[2]),
-                level: characterLevel,
-                stored: Boolean(inputs.characterLevel?.stored),
-                value: round(
-                  Number(levelLine.match[1]) * Math.floor(characterLevel / Number(levelLine.match[2]) + EPS),
-                ),
-              }
-            : null,
-          additional: [...all(lines, "burstAdditional"), ...all(lines, "roarPenalty")].map((item) => ({
-            source: item.line.source,
-            text: item.line.clean,
-            value: Number(item.match[1]),
-          })),
-          area: areaLine
-            ? {
-                per: Number(areaLine.match[1]),
-                gain: Number(areaLine.match[2]),
-                cap: Number(areaLine.match[3]),
-                skillArea: round(skillArea),
-                value: Math.min(
-                  Number(areaLine.match[3]),
-                  Math.floor(skillArea / Number(areaLine.match[1]) + EPS) * Number(areaLine.match[2]),
-                ),
-              }
-            : null,
-          events: { attack: inside.attack, attackCrit: inside.attackCrit, hits: inside.hits },
-          critChance: round(Math.max(0, Math.min(1, fact("burstCritChance")))),
-          measured,
-        }
-      : null;
-  const burstRateIn = burst ? burstCadence({ burst, rage: { uptime: 1 } }, inputs.attackSpeed || null).inBerserk : 0;
-  if (burst) burst.burstRateIn = round(burstRateIn);
-  const burstCrit = burst ? burst.critChance : 0;
+  const { trigger, roar, burst, burstRateIn, burstCrit } = burstState({
+    one,
+    has,
+    all,
+    lines,
+    inputs,
+    berserkLevel,
+    inside,
+    fact,
+    measured,
+    skillArea,
+  });
 
   // ---- Berserk: the net Rage change per second (phase A: disarmed, phase B: attacking) ----
   const drain = one("drain"),
@@ -790,84 +386,24 @@ export function rehanState({
   };
 
   // ---- Seething Spirit ----
-  const spiritDamage = one("spiritDamage");
-  const furyBonus = onslaughtRage ? Number(onslaughtRage.match[1]) : 0;
-  const furyOffset = onslaughtRage ? (FURY_SPIRIT_OFFSET[furyBonus] ?? null) : null;
-  const projectiles = one("starfallProjectiles"),
-    returning = one("starfallReturn");
-  const spirit = spiritSource
-    ? {
-        source: spiritSource,
-        eligible: eligible.ok,
-        reason: eligible.reason,
-        mainSetupKey: inputs.main?.setupKey || null,
-        mainName: inputs.main?.name || null,
-        starfall,
-        presence: round(spiritPresence),
-        onslaughtSeconds,
-        speedFactor: round(spiritSpeedFactor),
-        usesInBerserk: round(spiritUsesIn),
-        active: eligible.ok && spiritPresence > 0 && uptime > 0,
-        additional: [
-          ...(spiritDamage
-            ? [
-                {
-                  source: spiritDamage.line.source,
-                  text: `${spiritDamage.line.clean} (Seething Spirit casts)`,
-                  value: Number(spiritDamage.match[1]),
-                },
-              ]
-            : []),
-          ...(onslaughtRage && furyOffset !== null
-            ? [
-                {
-                  source: onslaughtRage.line.source,
-                  text: `${furyOffset}% additional damage for the Seething Spirit while Berserk (Fury's Onslaught: game record 187841424's second parameter, the Spirit's offset to the player's +${furyBonus}%)`,
-                  value: furyOffset,
-                },
-              ]
-            : []),
-        ],
-        extraLines:
-          projectiles && starfall
-            ? [
-                {
-                  text: `+${projectiles.match[1]} Projectile Quantity`,
-                  source: projectiles.line.source,
-                  origin: "memory",
-                  multiplier: 1,
-                },
-                {
-                  text: `+${projectiles.match[3]} Horizontal Projectile Penetration(s)`,
-                  source: projectiles.line.source,
-                  origin: "memory",
-                  multiplier: 1,
-                },
-              ]
-            : [],
-        returning:
-          returning && starfall
-            ? {
-                percent: Number(returning.match[1]),
-                on: requestedConditions[SPIRIT_RETURN_SWITCH] !== false,
-                source: returning.line.source,
-                active: false,
-                reason: "settled with the Spirit's casts",
-              }
-            : null,
-        doubleChance: round(spiritDoubleChance),
-      }
-    : null;
+  const spirit = spiritState({
+    one,
+    onslaughtRage,
+    spiritSource,
+    eligible,
+    inputs,
+    starfall,
+    spiritPresence,
+    onslaughtSeconds,
+    spiritSpeedFactor,
+    spiritUsesIn,
+    uptime,
+    requestedConditions,
+    spiritDoubleChance,
+  });
 
   // ---- Tunnel Vision ----
-  const tunnelLine = one("tunnelPenalty");
-  const tunnel = tunnelLine
-    ? {
-        percent: Number(tunnelLine.match[1]),
-        on: requestedConditions[TUNNEL_VISION_SWITCH] !== false,
-        source: tunnelLine.line.source,
-      }
-    : null;
+  const tunnel = tunnelState(one, requestedConditions);
 
   const state = {
     heroId,
@@ -978,91 +514,6 @@ export function rehanPhaseLines(state, weighting = "average") {
     },
   }));
 }
-
-/** Burst's cooldown and trigger rate (Rampaging reads the weapon model's Attack Speed bonuses). */
-export function burstCadence(state, attackSpeed = null) {
-  const burst = state?.burst;
-  if (!burst) return null;
-  const share = burst.rampagingShare || 0;
-  const increased = share * Math.max(0, Number(attackSpeed?.increasedPercent) || 0);
-  const additionalFactor = share
-    ? (attackSpeed?.sources || [])
-        .filter((line) => line.additional && Number(line.value))
-        .reduce((product, line) => product * Math.max(0, 1 + (share * Number(line.value)) / 100), 1)
-    : 1;
-  const cdrPercent = burst.moonPercent + increased;
-  const events = burst.onHit ? burst.events.hits : burst.events.attack;
-  const critEvents = burst.events.attackCrit;
-  const measured = burst.measured;
-  const fromEvents = (rate, cd) => (!measured ? 1 / cd : rate > EPS ? 1 / Math.max(1 / rate, cd) : 0);
-  // The trigger rates for a Cooldown Recovery Speed (the build's, or one part left out: the badges' leave-one-out reading).
-  const ratesFor = (percent, additional) => {
-    const factor = Math.max(EPS, 1 + percent / 100) * additional;
-    const cooldown = burst.cooldownSeconds / factor,
-      roarCooldown = burst.roar ? burst.roar.cooldownSeconds / factor : null;
-    const hitRate = burst.base ? fromEvents(events, cooldown) : 0,
-      roarRate = burst.roar ? fromEvents(critEvents, roarCooldown) : 0;
-    return { cooldown, roarCooldown, hitRate, roarRate, inBerserk: hitRate + roarRate };
-  };
-  const { cooldown, roarCooldown, hitRate, roarRate, inBerserk } = ratesFor(cdrPercent, additionalFactor);
-  const binds =
-    !measured ||
-    (events > EPS && 1 / events < cooldown - EPS) ||
-    (Boolean(burst.roar) && critEvents > EPS && 1 / critEvents < roarCooldown - EPS);
-  const moonMatters =
-    burst.moonPercent > 0 && Math.abs(ratesFor(increased, additionalFactor).inBerserk - inBerserk) > EPS;
-  const rampagingMatters = share > 0 && Math.abs(ratesFor(burst.moonPercent, 1).inBerserk - inBerserk) > EPS;
-  const uptime = state.rage.uptime;
-  return {
-    cooldownSeconds: round(cooldown),
-    baseCooldownSeconds: burst.cooldownSeconds,
-    cdrPercent: round(cdrPercent),
-    moonPercent: round(burst.moonPercent),
-    rampagingIncreased: round(increased),
-    rampagingAdditionalFactor: round(additionalFactor),
-    eventsPerSecond: round(events),
-    eventKind: burst.onHit ? "uses of every hitting skill" : "Attack Skill uses",
-    hitRate: round(hitRate),
-    roarRate: round(roarRate),
-    roarCooldownSeconds: roarCooldown === null ? null : round(roarCooldown),
-    critEventsPerSecond: round(critEvents),
-    binds,
-    moonMatters,
-    rampagingMatters,
-    inBerserk: round(inBerserk),
-    usesPerSecond: round(inBerserk * uptime),
-    uptime,
-    measured,
-  };
-}
-
-/** The Burst source's additional damage lines (packages/engine/src/planner.js heroEffects.additional) with its level bonus. */
-export function burstAdditionalLines(state, { levels = 0 } = {}) {
-  const burst = state?.burst;
-  if (!burst) return [];
-  const lines = [];
-  if (burst.perLevel?.value)
-    lines.push({
-      source: "Hero trait: Anger",
-      text: `+${burst.perLevel.percent}% additional Burst Damage per ${burst.perLevel.per} level × character level ${burst.perLevel.level}${burst.perLevel.stored ? "" : " (not stored: the default 100)"} = +${burst.perLevel.value}%`,
-      value: burst.perLevel.value,
-    });
-  for (const line of burst.additional) lines.push({ source: line.source, text: line.text, value: line.value });
-  if (burst.area?.value)
-    lines.push({
-      source: "Hero trait: Uncontrolled Anger",
-      text: `For every +${burst.area.per}% Skill Area, +${burst.area.gain}% additional Burst Damage: +${burst.area.skillArea}% Skill Area → +${burst.area.value}% (cap ${burst.area.cap}%)`,
-      value: burst.area.value,
-    });
-  if (levels > 0)
-    lines.push({
-      source: "Burst: Skill Level",
-      text: `+${levels} Skill Level(s) × +10% additional damage (multiplies, TLIDB Burst keyword) = +${round((1.1 ** levels - 1) * 100)}%`,
-      value: round((1.1 ** levels - 1) * 100),
-    });
-  return lines;
-}
-
 /** The state with the settled Burst cadence (the final weapon model) and the computed Burst / Spirit hits, for the badges. */
 export function withRehanHits(
   state,
@@ -1141,8 +592,6 @@ function withAssumptions(state) {
   return { ...state, switches, assumptions };
 }
 
-const L = (status, reason, extra = {}) => ({ status, reason, ...extra });
-
 /** One Rehan clause: { key, status, reason, bodies }, or null when the line is not a Rehan clause. */
 export function rehanLineRead(heroId, text, state, { revived = false } = {}) {
   if (!REHAN_HEROES.has(heroId)) return null;
@@ -1153,7 +602,7 @@ export function rehanLineRead(heroId, text, state, { revived = false } = {}) {
 
 function lineRead(key, text, state) {
   if (!state) return L("Inactive", "Rehan's lines are not in the build");
-  const { rage, burst, spirit, tunnel, cadence } = state;
+  const { rage, burst, cadence } = state;
   const measured = state.measured;
   const pending = measured ? "" : " (held before the hit pass measures the rates)";
   const cycle = !rage.enters
@@ -1376,163 +825,11 @@ function lineRead(key, text, state) {
       return L("No DPS effect", "Movement Speed");
     case "berserkArea":
       return L("No DPS effect", "Skill Area: the dummy stands within the area");
-    // ---- Burst ----
-    case "burstTrigger":
-    case "roarTrigger":
-    case "blast":
-      if (burstIdle) return L("Inactive", burstIdle);
-      if (key === "roarTrigger")
-        return cadence.roarRate > 0
-          ? L(
-              "In calc",
-              `+${fmt(cadence.roarRate)} Bursts/s in Berserk on attack Critical Strikes (${fmt(cadence.critEventsPerSecond)}/s), its own ${fmt(cadence.roarCooldownSeconds)} s cooldown (provisional)`,
-            )
-          : L("Inactive", "no attack Critical Strike");
-      if (key === "blast")
-        return L(
-          "In calc",
-          `Burst Blast (${KEYWORDS.burstBlast.min}–${KEYWORDS.burstBlast.max} Spell Physical at ${KEYWORDS.burstBlast.effectiveness}%, game row ${KEYWORDS.burstBlast.gameRow}) replaces Burst and can activate Spell Burst (provisional)`,
-        );
-      return L(
-        "In calc",
-        `${fmt(burstUses)} Bursts/s: 1 ÷ max(1 ÷ ${fmt(cadence.eventsPerSecond)} ${cadence.eventKind}/s, cooldown ${fmt(cadence.cooldownSeconds)} s) in Berserk × ${pct(rage.uptime)}% uptime (provisional)${pending}`,
-      );
-    case "onHit": {
-      if (burstIdle) return L("Inactive", burstIdle);
-      const hits = Number(state.facts?.hitUses) || 0,
-        attacks = Number(state.facts?.attackUses) || 0;
-      return measured && hits > attacks + EPS
-        ? L("In calc", `Burst triggers on the hits of every skill (${fmt(hits)} uses/s; Attacks ${fmt(attacks)}/s)`)
-        : L("Inactive", `every skill that hits here is an Attack, so the change adds no trigger${pending}`);
-    }
-    case "burstPerLevel":
-    case "burstAdditional":
-    case "roarPenalty":
-    case "areaToBurst":
-      if (burstIdle) return L("Inactive", burstIdle);
-      if (key === "areaToBurst")
-        return burst.area?.value > 0
-          ? L(
-              "In calc",
-              `+${burst.area.skillArea}% Skill Area → +${burst.area.value}% additional Burst Damage (cap ${burst.area.cap}%)`,
-            )
-          : L("Inactive", "no Skill Area bonus");
-      if (key === "burstPerLevel")
-        return L(
-          "In calc",
-          `× character level ${burst.perLevel.level}${burst.perLevel.stored ? "" : " (not stored: the default 100)"} = +${burst.perLevel.value}% additional Burst Damage ("per 1 levels" read as the character level: provisional)`,
-        );
-      return L("In calc", "on Burst's hits");
-    case "moonCdr":
-    case "rampaging":
-      if (burstIdle) return L("Inactive", burstIdle);
-      if (key === "rampaging" && !(cadence.rampagingIncreased > 0 || cadence.rampagingAdditionalFactor > 1))
-        return L("Inactive", "no Attack Speed bonus");
-      if (measured && !(key === "moonCdr" ? cadence.moonMatters : cadence.rampagingMatters))
-        return L(
-          "Inactive",
-          `the attacks trigger Burst every ${fmt(1 / Math.max(EPS, cadence.eventsPerSecond))} s, slower than its cooldown even without this line (${fmt(cadence.cooldownSeconds)} s with it), so it changes nothing`,
-        );
-      return L(
-        "In calc",
-        `Burst cooldown ${fmt(cadence.baseCooldownSeconds)} s ÷ (1 + ${fmt(cadence.cdrPercent)}%)${cadence.rampagingAdditionalFactor > 1 ? ` ÷ ${fmt(cadence.rampagingAdditionalFactor)}` : ""} = ${fmt(cadence.cooldownSeconds)} s (${cadence.binds ? "the cooldown binds" : "Burst now follows every attack: without the line the cooldown binds"}; Artificial Moon at ${rage.berserkLevel} Rage${cadence.rampagingIncreased ? `, Rampaging +${fmt(cadence.rampagingIncreased)}%` : ""}; provisional)${pending}`,
-      );
-    case "furyCost":
-      if (burstIdle) return L("Inactive", burstIdle);
-      return rage.matters.furyCost
-        ? L("In calc", `${fmt(rage.furyCostRate)} Rage/s consumed by Bursts (${cycle})`)
-        : L(
-            "No DPS effect",
-            `Rage stays at max: the ${fmt(rage.natural)} Rage/s Righteous Fury generates outweighs the ${fmt(rage.furyCostRate)} Rage/s the Bursts cost`,
-          );
-    case "frenzyGain":
-      if (burstIdle) return L("Inactive", burstIdle);
-      if (!(rage.frenzyRate > EPS))
-        return L(
-          "Inactive",
-          measured ? "Burst lands no Critical Strike" : "Burst's crits are measured by the hit pass",
-        );
-      return rage.matters.frenzy
-        ? L(
-            "In calc",
-            `+${fmt(rage.frenzyRate)} Rage/s in Berserk from Burst Critical Strikes (${pct(burst.critChance)}% crit; ${cycle})`,
-          )
-        : L("No DPS effect", "Berserk is permanent without it (Rage stays at max)");
-    case "tunnelPenalty":
-      if (!tunnel) return L("Inactive", "Tunnel Vision is not in the build");
-      return tunnel.on
-        ? L(
-            "In calc",
-            `applied (Q-H15, provisional): -${tunnel.percent}% additional damage on every hit, damage over time and ailment except Burst's hits${burstDealt ? "" : "; Burst deals no damage here, so the build's main damage source is missing"}`,
-            { bodies: [`-${tunnel.percent}% additional damage`] },
-          )
-        : L("Inactive", "switched off (best-case assumptions): the non-Burst skills keep their damage");
-    case "burstArea":
-      return L("No DPS effect", "Burst's area: the dummy stands within 3 m (best case)");
-    // ---- Seething Spirit ----
-    case "ownSpirit":
-    case "ritualSpirit":
-    case "onslaughtSpirit":
-    case "spiritDamage":
-    case "spiritSpeed":
-    case "growing":
-    case "hateConsume":
-    case "starfallRanged":
-    case "starfallProjectiles":
-    case "starfallReturn": {
-      if (!spirit)
-        return key === "hateConsume"
-          ? L("No DPS effect", "a Life cost: no Seething Spirit in the build (Ritual of Offering or Fury's Onslaught)")
-          : L("Inactive", "no Seething Spirit (Ritual of Offering or Fury's Onslaught)");
-      if (!spirit.eligible) return L("Inactive", spirit.reason);
-      if (!spirit.active)
-        return L(
-          "Inactive",
-          spirit.presence > 0 ? cycle : `the Main Skill is not used within every ${spirit.onslaughtSeconds} s`,
-        );
-      const settled = state.spiritHit;
-      if (settled && !settled.modeled)
-        return L(
-          "Inactive",
-          `the Spirit's casts deal no damage here${settled.inactiveReason ? ` (${settled.inactiveReason})` : ""}`,
-        );
-      if (key === "hateConsume")
-        return rage.consumedRate > EPS && rage.matters.consumed
-          ? L("In calc", `Hysteria: ${fmt(rage.consumedRate)} Rage/s in Berserk from the Life consumed (provisional)`)
-          : L("No DPS effect", "a Life cost (Hysteria would turn it into Rage)");
-      if (key === "growing")
-        return !(rage.growingRate > EPS)
-          ? L("Inactive", `the Spirit's casts are measured by the hit pass${pending}`)
-          : rage.matters.growing
-            ? L(
-                "In calc",
-                `+${fmt(rage.growingRate)} Rage/s in Berserk (${fmt(spirit.usesInBerserk)} Spirit casts/s, doubled on its ${pct(spirit.doubleChance)}% Double Damage; ${cycle})`,
-              )
-            : L("No DPS effect", "Berserk never ends without it");
-      if (key === "starfallReturn") {
-        const ret = spirit.returning;
-        if (!ret) return L("Inactive", "Starfall Wasteland is not in the build");
-        if (!ret.on) return L("Inactive", "switched off");
-        return ret.active
-          ? L(
-              "In calc",
-              `${ret.percent}% of the Spirit's projectiles pass through the dummy (Penetration) and return through it: +${round(ret.percent / 100)} hits per projectile (best case: the dummy on the return path; provisional)`,
-            )
-          : L("Inactive", ret.reason || "the Spirit's projectiles do not penetrate");
-      }
-      if (key === "starfallProjectiles")
-        return L(
-          "In calc",
-          "+1 Projectile Quantity and +1 Horizontal Projectile Penetration on the Spirit's casts (Jumps and Projectile Size: no DPS effect on one dummy)",
-        );
-      if (key === "spiritSpeed") return L("In calc", `the Spirit casts at ×${spirit.speedFactor} your use rate`);
-      if (key === "spiritDamage") return L("In calc", "on the Spirit's casts");
-      return L(
-        "In calc",
-        `${settled ? `${fmt(settled.usesPerSecond)} Spirit casts/s of ${spirit.mainName} (${fmt(settled.dps)} DPS)` : `the Spirit casts ${spirit.mainName}`}: ${spirit.source === "ritual" ? "always while Berserk" : `while ${spirit.mainName} is used within every ${spirit.onslaughtSeconds} s (${pct(spirit.presence)}%)`}, × ${pct(rage.uptime)}% Berserk uptime (provisional)`,
-      );
-    }
     default:
-      return L("Not modeled", "this Rehan clause is not read");
+      return (
+        angerRead(key, state, { cycle, pending, measured, burstUses, burstDealt, burstIdle }) ??
+        seethingRead(key, state, { cycle, pending }) ??
+        L("Not modeled", "this Rehan clause is not read")
+      );
   }
 }
