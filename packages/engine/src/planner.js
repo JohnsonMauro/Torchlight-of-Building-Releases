@@ -140,7 +140,8 @@ import { theaBlessingInputs, theaState } from "./heroes/thea/traits.js";
 import { INSIDE_REALM_CONDITION } from "./heroes/thea/trait-lines.js";
 import { sageState } from "./heroes/sage/licorice-note.js";
 import { bingState } from "./heroes/bing/creative-genius.js";
-import { carinoState, CARINO_HEROES, RETURNING_SWITCH, SPECIAL_AMMO_LEVEL } from "./heroes/carino/traits.js";
+import { carinoState } from "./heroes/carino/traits.js";
+import { CARINO_HEROES, RETURNING_SWITCH, SPECIAL_AMMO_LEVEL } from "./heroes/carino/trait-lines.js";
 import {
   rehanState,
   withRehanHits,

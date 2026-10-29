@@ -19,7 +19,7 @@
       "count": 1
     }
   },
-  "packages/engine/src/heroes/carino/traits.js": {
+  "packages/engine/src/heroes/carino/lethal-flash.js": {
     "no-useless-assignment": {
       "count": 2
     }

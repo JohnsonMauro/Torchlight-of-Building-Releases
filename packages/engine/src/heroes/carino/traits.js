@@ -61,326 +61,37 @@
 //   more as a full hit (best-case switch `carinoReturningHits`: the dummy stands on the return path).
 // - Royal Arsenal (revived): the Main Skill's enabled Noble supports count as activated.
 
-import { normalizePercentageText } from "../../text/percentage-text.js";
-import { tlidbSkillCatalog, tlidbSupportCatalog } from "../../../data/catalogs/tlidb.js";
-import { supportCanSupportProjectile } from "./special-ammo.js";
-import { ASSUMED_MOVEMENT_METERS_PER_SECOND } from "../../combat/dummy-target.js";
-
-export const RANGER = "carino-ranger-of-glory";
-export const LETHAL = "carino-lethal-flash";
-export const ZEALOT = "carino-zealot-of-war";
-export const CARINO_HEROES = new Set([RANGER, LETHAL, ZEALOT]);
-export const DEFLECTION_SWITCH = "carinoDeflection";
-export const RETURNING_SWITCH = "carinoReturningHits";
-export const SPECIAL_AMMO_LEVEL = 20;
-export const KEYWORDS = Object.freeze({
-  reload:
-    "TLIDB keyword Reload (hover bb23b3f1): reloads the whole magazine; Projectile Skills cannot be used while reloading",
-  specialAmmo:
-    "TLIDB keyword Special Ammo (hover bab6adde): a chance to reload the slot's special ammo; consumed with the support's effects when the support is not on the skill panel and can support Projectile Skills",
-  magicShot: Object.freeze({
-    ammoPerCast: 3,
-    source:
-      "TLIDB keyword Magic Shot (hover 948139d0): each Projectile Skill used or triggered consumes 3 ammo; several special ammo grant every consumed support's effects; reloading is instant",
-  }),
-  blankFiring:
-    "TLIDB keyword Blank Firing (hover 548823c3): Projectile Skills can be used without ammo; no ammo benefits apply",
-  burningRed: Object.freeze({
-    seconds: 10,
-    heatUpEffectPercent: 100,
-    source:
-      "TLIDB keyword Burning Red (hover 3c9df3ab): lasts 10 s; no Overheated or reload while active; gains 100% Heat Up effect bonuses; forced reload when it ends",
-  }),
-  deflection: "TLIDB keyword Deflection (hover fd631f6a): 6% less damage taken per stack, up to 4; consumed when hit",
-});
-const EPS = 1e-9;
-const round = (value) => Math.round(value * 10000) / 10000;
-const pct = (value) => Math.round(value * 10000) / 100;
-export const cleanCarino = (text) =>
-  normalizePercentageText(String(text ?? ""))
-    .replace(/\s+/g, " ")
-    .replace(/(\d) %/g, "$1%")
-    .replace(/ ([,.:;])/g, "$1")
-    .replace(/^\+ (\d)/, "+$1")
-    .trim();
-
-const N = "(\\d+(?:\\.\\d+)?)";
-const P = "\\+?(\\d+(?:\\.\\d+)?)";
-export const CARINO_PATTERNS = Object.freeze({
-  // Shared ammo clauses.
-  consume: /^Projectile Skills consume ammo$/i,
-  ammoBonus: new RegExp(`^\\+${N}% additional (?:Projectile )?Damage when consuming ammo$`, "i"),
-  magazine: /^\+(\d+) initial Magazine Capacity$/i,
-  // Ranger of Glory.
-  reloadClick: new RegExp(`^Click the Trait Skill to reload the magazine\\. Base reloading time is ${N} ?s$`, "i"),
-  unavailable: /^Projectile Skills are unavailable while reloading$/i,
-  reloadShare: new RegExp(
-    `^${N}% of the max bonus to Attack Speed or Cast Speed is also applied to Reload Speed$`,
-    "i",
-  ),
-  reloadMove: new RegExp(`^While reloading, \\+${N}% Movement Speed$`, "i"),
-  autoReload: /^Always auto- ?reloading ammo; Reloading can be interrupted\.?$/i,
-  moonSpecial: new RegExp(`^\\+${N}% chance to Reload Special Ammo\\. \\+${N}% Magic Shot Duration$`, "i"),
-  slotsNoble:
-    /^\+(\d+) Special Ammo slot\(s\)\. These slots can be installed with Projectile-exclusive Magnificent and Noble Support Skills$/i,
-  slots: /^\+(\d+) Special Ammo slot\(s\)$/i,
-  reloadChance: new RegExp(`^\\+${N}% chance to reload special ammo$`, "i"),
-  specialBonus: new RegExp(
-    `^\\+${N}% additional damage dealt by this Projectile Skill if a Special Ammo is consumed$`,
-    "i",
-  ),
-  magicShotGain: new RegExp(
-    `^${N}% chance to gain Magic Shot for ${N} ?s when consuming a Special Ammo\\. Interval: ${N} ?s\\.?$`,
-    "i",
-  ),
-  landslideAll: /^While Magic Shot is active, using or triggering Projectile Skills consume all ammo in the magazine$/i,
-  landslideBonus: new RegExp(`^\\+${N}% additional damage for every Special Ammo consumed$`, "i"),
-  galeShare: new RegExp(
-    `^${N}% of the increase/decrease on Attack and Cast Speed is also applied to reload chance of special ammo$`,
-    "i",
-  ),
-  galeOrder: /^Reload Special Ammo slots in order$/i,
-  neverStopping: new RegExp(
-    `^While Magic Shot is active, for every Special Ammo consumed, extends Magic Shot's Duration by ${N} ?s$`,
-    "i",
-  ),
-  arsenalNoble: new RegExp(
-    `^For every activated Noble Support Skill, \\+${N}% additional Projectile Damage, up to ${N}%$`,
-    "i",
-  ),
-  // Lethal Flash.
-  autoReloadQuantity: new RegExp(
-    `^Always auto-reload ammo, reloading (\\d+) ammo each time\\. Reload Time: ${N} ?s$`,
-    "i",
-  ),
-  castWhileReloading: /^Projectile Skills can be cast while reloading, but will interrupt the reloading process$/i,
-  returning: new RegExp(
-    `^After reaching their max range, Projectiles will return and travel an additional ${N}% of that distance, hitting the enemies on their path again$`,
-    "i",
-  ),
-  reloadSpeedPer: new RegExp(`^${P}% Reload Speed for every 1% Projectile Speed$`, "i"),
-  reloadQuantityPer: new RegExp(`^\\+(\\d+) to Reload Quantity for every ${N}% Projectile Speed$`, "i"),
-  deflectionBonus: new RegExp(`^\\+${N}% additional Projectile Damage while having Deflection$`, "i"),
-  nightMax: /^\+(\d+) to Max Deflection$/i,
-  nightDuration: new RegExp(
-    `^Deflection is no longer consumed when hit, but Deflection now only lasts for ${N} ?s$`,
-    "i",
-  ),
-  nightBonus: new RegExp(`^\\+${N}% additional Projectile Damage when Deflection is active$`, "i"),
-  // Zealot of War.
-  reloadBase: new RegExp(`^Base reloading time is ${N} ?s$`, "i"),
-  magazinePerQuantity:
-    /^For every \+1 Projectile Quantity or \+1 Split Quantity, \+(\d+) Magazine Capacity \(excludes the Projectile Quantity and Split Quantity provided by the skill itself and linked Support Skills\)$/i,
-  heatEffect: new RegExp(`^\\+${N}% Heat Up Effect$`, "i"),
-  blank: /^Allows Blank Firing$/i,
-  heatGain: /^While having ammo, for every ammo consumed, gains 1 stack of Heat Up$/i,
-  overheatGain: /^During Blank Firing, gains Overheated when casting a Projectile Skill$/i,
-  heatValue: new RegExp(
-    `^Heat Up: For every stack of Heat Up, ${P}% additional Projectile Skill Damage and ${P} Projectile Max Deviation Angle$`,
-    "i",
-  ),
-  forcedReload: new RegExp(`^Forced to reload once Overheated has been active for ${N} ?s$`, "i"),
-  heatLoss: /^After reloading, loses all stacks of Heat Up and Overheated$/i,
-  ceasefireStart: /^Starts with max stacks of Heat Up but does not reload ammo at the beginning$/i,
-  ceasefireHold: /^While active, Overheated can last without forcing reload$/i,
-  burningRed: /^At Max Heat Up Stacks, enter Burning Red instead of Overheated$/i,
-  burningRedReload: /^Reload immediately when Burning Red ends$/i,
-  heatSpeed: new RegExp(
-    `^Heat Up gains an additional effect: For every stack of Heat Up, ${P}% additional Attack and Cast Speed$`,
-    "i",
-  ),
-  shackles: new RegExp(`^\\+${N}% additional Heat Up Effect after stopping movement\\. Lasts ${N} ?s$`, "i"),
-});
-// Each clause's badge module (packages/engine/src/heroes/hero-trait-modules.js).
-const GROUP = Object.freeze({
-  consume: "ammo",
-  ammoBonus: "ammo",
-  magazine: "ammo",
-  reloadClick: "ammo",
-  unavailable: "ammo",
-  reloadShare: "ammo",
-  reloadMove: "ammo",
-  autoReload: "ammo",
-  autoReloadQuantity: "ammo",
-  castWhileReloading: "ammo",
-  reloadSpeedPer: "ammo",
-  reloadQuantityPer: "ammo",
-  reloadBase: "ammo",
-  magazinePerQuantity: "ammo",
-  moonSpecial: "specialAmmo",
-  slotsNoble: "specialAmmo",
-  slots: "specialAmmo",
-  reloadChance: "specialAmmo",
-  specialBonus: "specialAmmo",
-  magicShotGain: "specialAmmo",
-  landslideAll: "specialAmmo",
-  landslideBonus: "specialAmmo",
-  galeShare: "specialAmmo",
-  galeOrder: "specialAmmo",
-  neverStopping: "specialAmmo",
-  arsenalNoble: "specialAmmo",
-  returning: "ouroboros",
-  deflectionBonus: "deflection",
-  nightMax: "deflection",
-  nightDuration: "deflection",
-  nightBonus: "deflection",
-  heatEffect: "heatUp",
-  blank: "heatUp",
-  heatGain: "heatUp",
-  overheatGain: "heatUp",
-  heatValue: "heatUp",
-  forcedReload: "heatUp",
-  heatLoss: "heatUp",
-  ceasefireStart: "heatUp",
-  ceasefireHold: "heatUp",
-  burningRed: "heatUp",
-  burningRedReload: "heatUp",
-  heatSpeed: "heatUp",
-  shackles: "heatUp",
-});
-const KEY_ORDER = Object.keys(GROUP);
-export const CARINO_REVIVED_KEYS = new Set(["arsenalNoble", "nightMax", "nightDuration", "nightBonus", "shackles"]);
-const REVIVED_HERO = {
-  arsenalNoble: RANGER,
-  nightMax: LETHAL,
-  nightDuration: LETHAL,
-  nightBonus: LETHAL,
-  shackles: ZEALOT,
-};
-
-/** The clause key of a Carino line, or null. `revived`: only the revived keys. */
-export function carinoClauseKey(text, { revived = false } = {}) {
-  const clean = cleanCarino(text);
-  const keys = revived ? [...CARINO_REVIVED_KEYS] : KEY_ORDER.filter((key) => !CARINO_REVIVED_KEYS.has(key));
-  return keys.find((key) => CARINO_PATTERNS[key].test(clean)) || null;
-}
-/** The badge module of a Carino trait line ("ammo", "specialAmmo", "heatUp", "deflection", "ouroboros"), or null. */
-export const carinoModuleOf = (text, options) => GROUP[carinoClauseKey(text, options)] || null;
-/** Whether a revived (memory) line of this loadout is read here (Royal Arsenal's Noble line, Into the Night, Self-Imposed Shackles). */
-export function carinoRevivedLine(heroId, text) {
-  const key = carinoClauseKey(text, { revived: true });
-  return Boolean(key) && REVIVED_HERO[key] === heroId;
-}
-
-const linesOf = (modifierTexts, heroId) =>
-  modifierTexts
-    .filter(
-      (line) =>
-        line &&
-        line.origin !== "derived" &&
-        !line.lineEffect &&
-        (line.origin === "trait" || (line.origin === "memory" && carinoRevivedLine(heroId, line.text))),
-    )
-    .map((line) => ({ ...line, clean: cleanCarino(line.text) }));
-const all = (lines, key) =>
-  lines.flatMap((line) => {
-    const match = line.clean.match(CARINO_PATTERNS[key]);
-    return match && (CARINO_REVIVED_KEYS.has(key) ? line.origin === "memory" : line.origin === "trait")
-      ? [{ line, match }]
-      : [];
-  });
-const first = (lines, key) => all(lines, key)[0] || null;
-const sumOf = (items, index = 1) =>
-  items.reduce((total, item) => total + Number(item.match[index]) * (item.line.multiplier ?? 1), 0);
-// Build-wide plain lines (non-derived) matching a pattern: the summed value of group 1.
-const plainSum = (modifierTexts, pattern) =>
-  modifierTexts
-    .filter((line) => line && line.origin !== "derived" && !line.lineEffect)
-    .reduce((total, line) => {
-      const match = cleanCarino(line.text).match(pattern);
-      return total + (match ? Number(match[1] ?? match[2]) * (line.multiplier ?? 1) : 0);
-    }, 0);
-const PROJECTILE_QUANTITY = /^(?:Projectile Quantity \+(\d+)|\+(\d+) (?:to )?Projectile Quantity)$/i;
-const SPLIT_QUANTITY = /^\+(\d+(?:\.\d+)?) (?:to )?(?:Parabolic Projectile Splits quantity|Split Quantity)$/i;
-const RELOAD_SPEED = /^([+-]?\d+(?:\.\d+)?)% Reload Speed$/i;
-const MAGIC_SHOT_DURATION = /^([+-]?\d+(?:\.\d+)?)% Magic Shot Duration$/i;
-// Deflection gain sources (gear, talents, kismets, cores): what keeps "having Deflection" on the dummy.
-const DEFLECTION_SOURCES = [
-  { pattern: /^For every (\d+(?:\.\d+)?) ?m moved, gains (\d+) stack\(s\) of Deflection$/i, kind: "movement" },
-  { pattern: /^Gains (\d+) stack\(s\) of Deflection when Reaping\.? Interval:? (\d+(?:\.\d+)?) ?s$/i, kind: "reaping" },
-  {
-    pattern: /^Gains (\d+) stack\(s\) of Deflection every (\d+(?:\.\d+)?) ?s if you have been hit recently$/i,
-    kind: "hitRecently",
-  },
-  { pattern: /^Gains max stacks of Deflection if you haven't been hit recently$/i, kind: "notHitRecently" },
-  { pattern: /^Gains max stacks of Deflection on Evade$/i, kind: "evade" },
-];
-
-/** Ranger of Glory's Special Ammo slots: which selections count and why the others do not. */
-function specialAmmoSlots(hero, { expert, prepared, installedSupportNames = [] }) {
-  const selections = Array.isArray(hero?.carinoSpecialAmmoSupports) ? hero.carinoSpecialAmmoSupports : [];
-  const installed = new Set(installedSupportNames);
-  return [0, 1, 2]
-    .map((index) => {
-      const name = String(selections[index] || "");
-      if (!name) return null;
-      const open = index < 2 ? Boolean(expert) : Boolean(prepared);
-      const support = tlidbSupportCatalog.find((entry) => entry.name === name) || null;
-      const premium = support && ["magnificent", "noble"].includes(support.category);
-      const reason = !open
-        ? index < 2
-          ? "slot opened by Ammo Expert (not picked)"
-          : "slot opened by Well Prepared (not picked)"
-        : !support
-          ? "not a support in the catalog"
-          : premium && !prepared
-            ? "Magnificent and Noble supports need Well Prepared"
-            : !supportCanSupportProjectile(support, tlidbSkillCatalog)
-              ? "cannot support Projectile Skills"
-              : installed.has(name)
-                ? "it is on the skill panel (Special Ammo keyword: then it is not consumed)"
-                : "";
-      return { index, name, category: support?.category || null, eligible: !reason, reason };
-    })
-    .filter(Boolean);
-}
+import {
+  LETHAL,
+  ZEALOT,
+  CARINO_HEROES,
+  DEFLECTION_SWITCH,
+  SPECIAL_AMMO_LEVEL,
+  CARINO_PATTERNS,
+  EPS,
+  round,
+  pct,
+  cleanCarino,
+  carinoClauseKey,
+  linesOf,
+  all,
+  first,
+  sumOf,
+  plainSum,
+  PROJECTILE_QUANTITY,
+  SPLIT_QUANTITY,
+  RELOAD_SPEED,
+  L,
+} from "./trait-lines.js";
+import { specialAmmoState, settleSpecialAmmoVariants, arsenalState, rangerRead } from "./ranger-of-glory.js";
+import { deflectionState, returningState, lethalRead } from "./lethal-flash.js";
+import { heatUpState, zealotRead } from "./zealot-of-war.js";
 
 /** The ammo cycle's Projectile use-rate factor (Q-H8). */
 export function rangerRateFactor({ magazine, reloadSeconds, castsPerSecond }) {
   if (!(castsPerSecond > 0) || !(magazine > 0)) return 1;
   return magazine / (magazine + reloadSeconds * castsPerSecond);
 }
-
-/**
- * Heat Up over one Zealot of War cycle (Incinerated Glory): casts 1..M with k stacks, then `phaseSeconds` of Blank Firing at M stacks
- * (Overheated until the forced reload, or Burning Red), then the reload. Returns the cast- and time-weighted effective stacks
- * (stacks × the phase's Heat Up Effect factor) and the use-rate factor.
- */
-export function heatUpCycle({
-  magazine,
-  castsPerSecond,
-  phaseSeconds,
-  reloadSeconds,
-  ammoEffect = 1,
-  blankEffect = 1,
-  clears = true,
-}) {
-  const M = Math.max(0, magazine),
-    r = castsPerSecond;
-  if (!(r > 0) || !(M > 0))
-    return {
-      castWeighted: M * blankEffect,
-      timeWeighted: M * blankEffect,
-      rateFactor: 1,
-      castsPerCycle: null,
-      cycleSeconds: null,
-    };
-  const blankCasts = phaseSeconds * r;
-  // The ammo phase: casts 1..M at 1..M stacks when the reload cleared them, else at M.
-  const ammoStackSum = clears ? (M * (M + 1)) / 2 : M * M;
-  const ammoStackSeconds = clears ? (M * (M - 1)) / (2 * r) : (M * M) / r;
-  const castWeighted = (ammoEffect * ammoStackSum + blankEffect * blankCasts * M) / (M + blankCasts);
-  const castingSeconds = M / r + phaseSeconds;
-  const timeWeighted = (ammoEffect * ammoStackSeconds + blankEffect * phaseSeconds * M) / castingSeconds;
-  return {
-    castWeighted,
-    timeWeighted,
-    rateFactor: (M + blankCasts) / (M + blankCasts + reloadSeconds * r),
-    castsPerCycle: M + blankCasts,
-    cycleSeconds: castingSeconds + reloadSeconds,
-  };
-}
-
 /**
  * @param {object} p
  * @param {string} p.heroId the selected loadout
@@ -463,92 +174,7 @@ export function carinoState({
     projectileSpeed: round(projectileSpeed),
   };
 
-  // ---- Heat Up (Zealot of War) ----
-  const blank = Boolean(first(lines, "blank")),
-    heatGain = Boolean(first(lines, "heatGain"));
-  const heatValueLine = first(lines, "heatValue"),
-    heatSpeedLine = first(lines, "heatSpeed");
-  const ceasefire = Boolean(first(lines, "ceasefireStart")),
-    ceasefireHold = Boolean(first(lines, "ceasefireHold"));
-  const burning = Boolean(first(lines, "burningRed"));
-  const forced = first(lines, "forcedReload"),
-    overheat = Boolean(first(lines, "overheatGain")),
-    clears = Boolean(first(lines, "heatLoss"));
-  const shackles = first(lines, "shackles");
-  const heatIncreased = sumOf(all(lines, "heatEffect"));
-  const standing = moving === false;
-  const shacklesFactor = shackles && standing ? 1 + Number(shackles.match[1]) / 100 : 1;
-  const effectFactor = (extraIncreased = 0) => (1 + (heatIncreased + extraIncreased) / 100) * shacklesFactor;
-  let heat = null;
-  if (heroId === ZEALOT && (heatValueLine || heatSpeedLine || ceasefire || heatGain)) {
-    const gains = blank && heatGain;
-    const maxStacks = magazine;
-    let mode,
-      castWeighted,
-      timeWeighted,
-      rateFactor = 1,
-      cycle = null,
-      phaseSeconds = 0;
-    const baseEffect = effectFactor(0),
-      burningEffect = effectFactor(KEYWORDS.burningRed.heatUpEffectPercent);
-    if (ceasefire && (!gains || ceasefireHold)) {
-      // Ceasefire: max stacks from the start and nothing clears them (no forced reload; without Incinerated Glory no clearing line).
-      mode = "ceasefire";
-      castWeighted = timeWeighted = maxStacks * baseEffect;
-    } else if (gains && !burning && !(overheat && forced)) {
-      // Blank Firing with nothing that forces a reload (no Overheated gain or no forced-reload line): the stacks reach max on the
-      // first magazine and stay there.
-      mode = "held";
-      castWeighted = timeWeighted = maxStacks * baseEffect;
-    } else if (gains) {
-      // Burning Red (Extreme Heat) or the forced reload after Overheated ends the Blank Firing phase; the reload clears the stacks
-      // only with Incinerated Glory's clearing line (else every cast after the first magazine reads max stacks).
-      phaseSeconds = burning ? KEYWORDS.burningRed.seconds : Number(forced.match[1]);
-      mode = burning ? "burningRed" : "overheated";
-      cycle = heatUpCycle({
-        magazine: maxStacks,
-        castsPerSecond: r,
-        phaseSeconds,
-        reloadSeconds,
-        ammoEffect: baseEffect,
-        blankEffect: burning ? burningEffect : baseEffect,
-        clears,
-      });
-      castWeighted = cycle.castWeighted;
-      timeWeighted = cycle.timeWeighted;
-      rateFactor = cycle.rateFactor;
-    } else {
-      mode = "none";
-      castWeighted = timeWeighted = 0;
-    }
-    const perStack = heatValueLine ? Number(heatValueLine.match[1]) : 0;
-    const speedPerStack = heatSpeedLine ? Number(heatSpeedLine.match[1]) : 0;
-    heat = {
-      mode,
-      gains,
-      blank,
-      ceasefire,
-      burning,
-      overheat,
-      forced: Boolean(forced),
-      clears,
-      maxStacks,
-      phaseSeconds,
-      castWeighted: round(castWeighted),
-      timeWeighted: round(timeWeighted),
-      rateFactor: round(rateFactor),
-      cycle,
-      effect: round(baseEffect),
-      burningEffect: round(burningEffect),
-      heatIncreased: round(heatIncreased),
-      shackles: shackles ? { percent: Number(shackles.match[1]), active: standing } : null,
-      perStack,
-      damagePercent: round(perStack * castWeighted),
-      speedPerStack,
-      speedPercent: round(speedPerStack * timeWeighted),
-      measured: r !== null,
-    };
-  }
+  const heat = heatUpState(lines, { heroId, moving, magazine, r, reloadSeconds });
 
   // ---- Use-rate factor of the Projectile skills (Q-H8) ----
   const unavailable = Boolean(first(lines, "unavailable"));
@@ -568,100 +194,16 @@ export function carinoState({
     }
   } else if (consumes && projectile && lethal) rateMode = "noDowntime";
 
-  // ---- Special Ammo and Magic Shot (Ranger of Glory) ----
-  const expertSlots = all(lines, "slots"),
-    preparedSlots = all(lines, "slotsNoble");
-  const expert = expertSlots.length > 0,
-    prepared = preparedSlots.length > 0;
-  let special = null;
-  if (expert || prepared) {
-    const slots = specialAmmoSlots(hero, {
-      expert,
-      prepared,
-      installedSupportNames: inputs.installedSupportNames || [],
-    });
-    const eligible = slots.filter((slot) => slot.eligible);
-    const moon = first(lines, "moonSpecial");
-    const gale = first(lines, "galeShare");
-    const galeBonus = gale ? (Number(gale.match[1]) / 100) * (attackInc + castInc) : 0;
-    const chancePercent = sumOf(all(lines, "reloadChance")) + (moon ? Number(moon.match[1]) : 0) + galeBonus;
-    const chance = Math.max(0, Math.min(1, chancePercent / 100));
-    const bonusLines = all(lines, "specialBonus").map((item) => ({
-      source: item.line.source,
-      text: item.line.clean,
-      value: Number(item.match[1]),
-    }));
-    const landslideBonus = first(lines, "landslideBonus");
-    const landslideAll = Boolean(first(lines, "landslideAll"));
-    const gain = first(lines, "magicShotGain");
-    const never = first(lines, "neverStopping");
-    const n = eligible.length;
-    const M = Math.max(1, magazine);
-    const castsOut = r !== null ? r * rateFactorOut : null;
-    let magic = null;
-    if (gain && n > 0 && chance > 0) {
-      const gainChance = Number(gain.match[1]) / 100,
-        baseSeconds = Number(gain.match[2]),
-        interval = Number(gain.match[3]);
-      const durationPercent = (moon ? Number(moon.match[2]) : 0) + plainSum(modifierTexts, MAGIC_SHOT_DURATION);
-      const d0 = baseSeconds * (1 + durationPercent / 100);
-      const castsPerReloadIn = landslideAll ? 1 : Math.max(1, M / KEYWORDS.magicShot.ammoPerCast);
-      const lambdaOut = castsOut !== null ? (n * chance * castsOut) / M : null;
-      const lambdaIn = r !== null ? (n * chance * r) / castsPerReloadIn : null;
-      const extension = never ? Number(never.match[1]) : 0;
-      let duration = d0,
-        uptime = 0,
-        waitSeconds = null,
-        permanent = false;
-      if (r !== null && r > 0) {
-        if (extension > 0) {
-          const load = extension * lambdaIn;
-          if (load >= 1 - EPS) {
-            duration = Infinity;
-            permanent = true;
-          } else duration = d0 / (1 - load);
-        }
-        const lambda = duration > interval ? lambdaIn : lambdaOut;
-        waitSeconds = lambda > 0 ? 1 / (gainChance * lambda) : Infinity;
-        uptime = permanent
-          ? 1
-          : Number.isFinite(waitSeconds)
-            ? Math.min(1, duration / Math.max(duration, interval + waitSeconds))
-            : 0;
-      }
-      magic = {
-        gainChance,
-        baseSeconds,
-        intervalSeconds: interval,
-        durationPercent: round(durationPercent),
-        baseDurationSeconds: round(d0),
-        durationSeconds: Number.isFinite(duration) ? round(duration) : Infinity,
-        permanent,
-        extension,
-        castsPerReloadIn: round(castsPerReloadIn),
-        landslide: landslideAll,
-        lambdaOut: lambdaOut === null ? null : round(lambdaOut),
-        lambdaIn: lambdaIn === null ? null : round(lambdaIn),
-        waitSeconds: waitSeconds === null ? null : Number.isFinite(waitSeconds) ? round(waitSeconds) : Infinity,
-        uptime: round(uptime),
-      };
-    }
-    special = {
-      slots,
-      eligible,
-      n,
-      chance: round(chance),
-      chancePercent: round(chancePercent),
-      galeBonus: round(galeBonus),
-      bonusLines,
-      landslideBonus: landslideBonus
-        ? { source: landslideBonus.line.source, value: Number(landslideBonus.match[1]) }
-        : null,
-      landslideAll,
-      magic,
-      galeOrder: Boolean(first(lines, "galeOrder")),
-    };
-  }
+  const special = specialAmmoState(lines, {
+    hero,
+    inputs,
+    modifierTexts,
+    attackInc,
+    castInc,
+    magazine,
+    r,
+    rateFactorOut,
+  });
   // Time-weighted rate factor: Magic Shot has instant reloads (no downtime) for its uptime.
   const magicUptime = special?.magic?.uptime || 0;
   const rateFactor =
@@ -674,156 +216,10 @@ export function carinoState({
     measured: r !== null,
   };
 
-  // Per-cast distribution of the consumed supports (subsets of the eligible slots) and the special-cast bonus lines.
-  if (special && special.n > 0 && special.chance > 0) {
-    const M = Math.max(1, magazine),
-      p = special.chance,
-      n = special.n;
-    const castsOut = (1 - magicUptime) * rateFactorOut,
-      castsIn = magicUptime;
-    const shareIn = castsOut + castsIn > 0 ? castsIn / (castsOut + castsIn) : 0;
-    const perReloadIn = special.magic ? special.magic.castsPerReloadIn : 1;
-    const outsideEach = Math.min(1 / n, p / M);
-    const variants = [];
-    for (let mask = 1; mask < 1 << n; mask++) {
-      const members = special.eligible.filter((_, index) => mask & (1 << index));
-      const size = members.length;
-      const outside = size === 1 ? outsideEach : 0;
-      const inside = special.magic
-        ? special.eligible.reduce((product, _, index) => product * (mask & (1 << index) ? p : 1 - p), 1) / perReloadIn
-        : 0;
-      const weight = (1 - shareIn) * outside + shareIn * inside;
-      if (weight > EPS)
-        variants.push({
-          names: members.map((slot) => slot.name),
-          count: size,
-          weight: round(weight),
-          additional: [
-            ...special.bonusLines.map((line) => ({
-              source: line.source,
-              text: `${line.text} (a Special Ammo consumed)`,
-              value: line.value,
-            })),
-            ...(special.landslideBonus
-              ? [
-                  {
-                    source: special.landslideBonus.source,
-                    text: `+${special.landslideBonus.value}% additional damage for every Special Ammo consumed × ${size}`,
-                    value: special.landslideBonus.value * size,
-                  },
-                ]
-              : []),
-          ],
-        });
-    }
-    special.shareIn = round(shareIn);
-    special.variants = variants;
-    special.specialShare = round(variants.reduce((total, item) => total + item.weight, 0));
-  } else if (special) {
-    special.variants = [];
-    special.specialShare = 0;
-    special.shareIn = 0;
-  }
-
-  // ---- Deflection (Lethal Flash) ----
-  const deflectionBonus = first(lines, "deflectionBonus"),
-    nightBonus = first(lines, "nightBonus"),
-    nightDuration = first(lines, "nightDuration");
-  let deflection = null;
-  if (deflectionBonus || nightBonus || nightDuration) {
-    const limit = nightDuration ? Number(nightDuration.match[1]) : Infinity;
-    const sources = modifierTexts
-      .filter((line) => line && line.origin !== "derived" && !line.lineEffect)
-      .flatMap((line) => {
-        const clean = cleanCarino(line.text);
-        const rule = DEFLECTION_SOURCES.find((item) => item.pattern.test(clean));
-        if (!rule) return [];
-        const match = clean.match(rule.pattern);
-        let active = false,
-          every = null,
-          why = "";
-        if (rule.kind === "movement") {
-          every = Number(match[1]) / ASSUMED_MOVEMENT_METERS_PER_SECOND;
-          active = moving !== false && every <= limit + EPS;
-          why =
-            moving === false
-              ? "standing still (Movement group)"
-              : `every ${round(every)} s at the assumed ${ASSUMED_MOVEMENT_METERS_PER_SECOND} m/s (the planner's movement placeholder, unsourced)`;
-        } else if (rule.kind === "reaping") {
-          every = Number(match[2]);
-          active = Boolean(inputs.hasReaping) && every <= limit + EPS;
-          why = inputs.hasReaping ? `when Reaping, every ${every} s at most` : "the build has no Reaping source";
-        } else if (rule.kind === "hitRecently") {
-          every = Number(match[2]);
-          active = Boolean(inputs.hitRecently) && every <= limit + EPS;
-          why = inputs.hitRecently
-            ? `every ${every} s while hit recently (best case)`
-            : "the Hit or blocked recently switch is off";
-        } else if (rule.kind === "notHitRecently") {
-          active = !inputs.hitRecently;
-          why = inputs.hitRecently
-            ? "the build is assumed hit recently (the Hit or blocked recently switch)"
-            : "not hit recently (the dummy never attacks)";
-          every = 0;
-        } else {
-          active = false;
-          why = "on Evade: the dummy never attacks";
-        }
-        if (every !== null && every > limit + EPS && !why.startsWith("standing") && rule.kind !== "evade")
-          why = `${why}; regained every ${round(every)} s, slower than Into the Night's ${limit} s`;
-        return [
-          {
-            source: line.source,
-            text: clean,
-            kind: rule.kind,
-            active,
-            everySeconds: every === null ? null : round(every),
-            reason: why,
-          },
-        ];
-      });
-    const on = requestedConditions[DEFLECTION_SWITCH] !== false;
-    const held = on && sources.some((item) => item.active);
-    deflection = {
-      on,
-      held,
-      limitSeconds: Number.isFinite(limit) ? limit : null,
-      sources,
-      reason: !sources.length
-        ? "no Deflection gain source in the build (movement, Reaping or hit-recently lines)"
-        : !on
-          ? "the Deflection switch is off"
-          : held
-            ? `held: ${sources
-                .filter((item) => item.active)
-                .map((item) => `${item.source} (${item.reason})`)
-                .join("; ")}; the dummy never attacks, so it is not consumed (best case)`
-            : sources.map((item) => `${item.source}: ${item.reason}`).join("; "),
-    };
-  }
-
-  // ---- Evil Ouroboros (Lethal Flash) ----
-  const returningLine = first(lines, "returning");
-  const returning = returningLine
-    ? {
-        percent: Number(returningLine.match[1]),
-        on: requestedConditions[RETURNING_SWITCH] !== false,
-        source: returningLine.line.source,
-        setups: [],
-      }
-    : null;
-
-  // ---- Royal Arsenal (revived, Ranger of Glory) ----
-  const arsenalLine = first(lines, "arsenalNoble");
-  const arsenal = arsenalLine
-    ? (() => {
-        const per = Number(arsenalLine.match[1]),
-          cap = Number(arsenalLine.match[2]);
-        const nobles = inputs.mainNobleSupports || [];
-        const value = round(Math.min(cap, per * nobles.length));
-        return { per, cap, nobles, value, source: arsenalLine.line.source };
-      })()
-    : null;
+  settleSpecialAmmoVariants(special, { magazine, rateFactorOut, magicUptime });
+  const deflection = deflectionState(lines, { modifierTexts, moving, inputs, requestedConditions });
+  const returning = returningState(lines, { requestedConditions });
+  const arsenal = arsenalState(lines, { inputs });
 
   // ---- Switches and assumptions ----
   const switches = [];
@@ -903,9 +299,6 @@ export function carinoState({
     ),
   };
 }
-
-const L = (status, reason, extra = {}) => ({ status, reason, ...extra });
-
 /** One Carino clause: { key, status, reason, bodies }, or null when the line is not a Carino clause. */
 export function carinoLineRead(heroId, text, state, { revived = false } = {}) {
   if (!CARINO_HEROES.has(heroId)) return null;
@@ -923,7 +316,7 @@ export function carinoLineRead(heroId, text, state, { revived = false } = {}) {
 function lineRead(key, text, state) {
   if (!state) return L("Inactive", "Carino's lines are not in the build");
   const noProjectile = "no active Projectile skill";
-  const { ammo, rate, heat, special, deflection, returning, arsenal } = state;
+  const { ammo, rate, heat, special } = state;
   const cadence =
     rate.mode === "reload"
       ? rate.measured
@@ -1021,241 +414,12 @@ function lineRead(key, text, state) {
             "No DPS effect",
             `Lethal Flash: casting interrupts the reload, so the casts have no downtime (Q-H8, provisional) and the reload ${key === "reloadQuantityPer" || key === "autoReloadQuantity" ? "quantity" : "speed"} changes no dummy figure${key === "reloadSpeedPer" ? ` (Reload Speed +${ammo.perSpeedBonus}% from +${ammo.projectileSpeed}% Projectile Speed)` : key === "reloadQuantityPer" ? ` (${ammo.reloadQuantity} per reload)` : ""}`,
           );
-    // ---- Special Ammo ----
-    case "slots":
-    case "slotsNoble":
-    case "reloadChance":
-    case "moonSpecial":
-    case "galeShare": {
-      if (!special) return L("Inactive", "no Special Ammo slot (Ammo Expert / Well Prepared)");
-      const skipped = special.slots.filter((slot) => !slot.eligible);
-      const skippedText = skipped.length
-        ? `; not counted: ${skipped.map((slot) => `${slot.name} (${slot.reason})`).join(", ")}`
-        : "";
-      if (!state.projectile) return L("Inactive", noProjectile);
-      if (!special.n)
-        return L("Inactive", `no counted Special Ammo support in the slots (Hero → Special Ammo)${skippedText}`);
-      if (key === "galeShare" && !(special.galeBonus > 0)) return L("Inactive", "no increased Attack or Cast Speed");
-      if (key === "moonSpecial" && !special.magic)
-        return L(
-          "In calc",
-          `+${text.match(CARINO_PATTERNS.moonSpecial)[1]}% special-ammo reload chance: ${pct(special.chance)}% per slot (the Magic Shot Duration part needs Ammo Expert's Magic Shot)`,
-        );
-      return L(
-        "In calc",
-        `${special.eligible.map((slot) => slot.name).join(", ")} (Lv. ${SPECIAL_AMMO_LEVEL}): reload chance ${pct(special.chance)}% per slot per magazine reload (${special.chancePercent}%${special.galeBonus ? `, Crushing Gale Trigger +${special.galeBonus}%` : ""}, capped at 100%) → ${pct(special.specialShare)}% of Projectile casts consume a Special Ammo and gain its support's hit effects (provisional)${skippedText}`,
-      );
-    }
-    case "specialBonus":
-    case "landslideBonus": {
-      if (!special?.n || !state.projectile)
-        return L("Inactive", !state.projectile ? noProjectile : "no counted Special Ammo support in the slots");
-      return L(
-        "In calc",
-        `on the ${pct(special.specialShare)}% of Projectile casts that consume a Special Ammo${key === "landslideBonus" ? ", per Special Ammo consumed" : ""} (variant hits; provisional)`,
-      );
-    }
-    case "magicShotGain":
-    case "neverStopping":
-    case "landslideAll": {
-      const magic = special?.magic;
-      if (!magic)
-        return L(
-          "Inactive",
-          !special?.n
-            ? "no counted Special Ammo support in the slots"
-            : "no Special Ammo is consumed (reload chance 0)",
-        );
-      if (!(magic.uptime > 0))
-        return L(
-          "Inactive",
-          rate.measured
-            ? "no Special Ammo consumed on the dummy"
-            : "Magic Shot's uptime follows the Projectile cast rate the hit pass measures",
-        );
-      if (key === "neverStopping")
-        return magic.extension > 0
-          ? L(
-              "In calc",
-              magic.permanent
-                ? `${magic.extension} s per Special Ammo consumed × ${magic.lambdaIn}/s under Magic Shot >= 1 s per second: Magic Shot never ends (provisional)`
-                : `Magic Shot lasts ${magic.durationSeconds} s (${magic.baseDurationSeconds} s ÷ (1 − ${magic.extension} s × ${magic.lambdaIn} Special Ammo/s); provisional)`,
-            )
-          : L("Inactive", "no extension");
-      if (key === "landslideAll")
-        return L(
-          "In calc",
-          `under Magic Shot each cast consumes the whole magazine and the instant reload refills every slot (chance ${pct(special.chance)}%), so every cast consumes the loaded Special Ammo together (provisional)`,
-        );
-      return L(
-        "In calc",
-        `Magic Shot up ${pct(magic.uptime)}% of the time (${magic.permanent ? "permanent" : `${magic.durationSeconds} s every max(${magic.durationSeconds} s, ${magic.intervalSeconds} s + ${magic.waitSeconds} s expected wait at ${magic.gainChance * 100}% per Special Ammo)`}): 3 ammo per cast, instant reloads (no downtime), the loaded Special Ammo consumed together every ${magic.castsPerReloadIn} cast(s) (provisional)`,
-      );
-    }
-    case "galeOrder":
-      return !special?.n
-        ? L("Inactive", "no counted Special Ammo support in the slots")
-        : L(
-            "No DPS effect",
-            "the order changes which support a reload fills first, not how many Special Ammo are consumed (each slot is rolled at every reload; provisional)",
-          );
-    case "arsenalNoble": {
-      if (!arsenal) return L("Inactive", "Royal Arsenal is not in the build");
-      const body = `+${arsenal.value}% additional Projectile Damage`;
-      if (!state.projectile) return L("Inactive", noProjectile);
-      return arsenal.value > 0
-        ? L(
-            "In calc",
-            `${arsenal.nobles.length} activated Noble support(s) on the Main Skill (${arsenal.nobles.join(", ")}) × ${arsenal.per}% (up to ${arsenal.cap}%): ${body} (provisional)`,
-            { bodies: [body] },
-          )
-        : L("Inactive", "no Noble support on the Main Skill");
-    }
-    // ---- Evil Ouroboros ----
-    case "returning": {
-      if (!returning) return L("Inactive", "Evil Ouroboros is not in the build");
-      if (!state.projectile) return L("Inactive", noProjectile);
-      if (!returning.on) return L("Inactive", "the returning-projectiles switch is off");
-      const hitting = returning.setups.filter((item) => item.active);
-      if (!returning.setups.length)
-        return L(
-          "In calc",
-          "each projectile that passes through the dummy returns and hits it again (settled with the hits)",
-        );
-      return hitting.length
-        ? L(
-            "In calc",
-            `${hitting.map((item) => `${item.name}: ${item.reason}`).join("; ")} (best case: the dummy on the return path; provisional)`,
-          )
-        : L("Inactive", returning.setups.map((item) => `${item.name}: ${item.reason}`).join("; "));
-    }
-    // ---- Deflection ----
-    case "deflectionBonus":
-    case "nightBonus": {
-      if (!deflection) return L("Inactive", "no Deflection line");
-      const value = Number(text.match(CARINO_PATTERNS[key])[1]);
-      const body = `+${value}% additional Projectile Damage`;
-      if (!state.projectile) return L("Inactive", noProjectile);
-      return deflection.held
-        ? L("In calc", `Deflection ${deflection.reason}: ${body} (provisional)`, { bodies: [body] })
-        : L("Inactive", deflection.reason);
-    }
-    case "nightMax":
-      return L(
-        "No DPS effect",
-        "Max Deflection: no line in this build reads the Deflection stack count (its damage reduction is defence)",
-      );
-    case "nightDuration":
-      return deflection?.held
-        ? L(
-            "No DPS effect",
-            `the dummy never attacks, so Deflection is never consumed either way; the ${deflection.limitSeconds} s duration is met: ${deflection.reason}`,
-          )
-        : L("Inactive", deflection?.reason || "no Deflection gain source");
-    // ---- Heat Up ----
-    case "heatValue": {
-      if (!heat) return L("Inactive", "no Heat Up state");
-      if (!state.projectile) return L("Inactive", noProjectile);
-      if (!(heat.castWeighted > 0))
-        return L(
-          "Inactive",
-          "no Heat Up stacks (Incinerated Glory's gain needs Blank Firing; Ceasefire starts at max)",
-        );
-      const body = `+${heat.damagePercent}% additional Projectile Damage`;
-      return L(
-        "In calc",
-        `${heat.perStack}% × ${heat.castWeighted} effective stacks per cast (${heat.mode === "ceasefire" || heat.mode === "held" ? `${heat.maxStacks} held` : "the cycle's cast-weighted average"}, × Heat Up Effect${heat.mode === "burningRed" ? " and Burning Red's +100%" : ""}) = ${body} (provisional)`,
-        { bodies: [body] },
-      );
-    }
-    case "heatSpeed": {
-      if (!heat || !(heat.timeWeighted > 0)) return L("Inactive", "no Heat Up stacks");
-      if (!state.projectile) return L("Inactive", noProjectile);
-      const body = `+${heat.speedPercent}% additional Attack and Cast Speed`;
-      return L(
-        "In calc",
-        `${heat.speedPerStack}% × ${heat.timeWeighted} effective stacks (time-weighted over the casting time) = ${body} (scaled by Heat Up Effect; provisional)`,
-        { bodies: [body] },
-      );
-    }
-    case "heatEffect":
-    case "shackles": {
-      if (!heat || !(heat.castWeighted > 0) || !(heat.perStack > 0 || heat.speedPerStack > 0))
-        return L("Inactive", "no Heat Up value line reads the effect (Incinerated Glory / Eternal Flames)");
-      if (key === "shackles" && !heat.shackles?.active)
-        return L("Inactive", 'moving (Movement group): "after stopping movement" needs standing still');
-      return L(
-        "In calc",
-        `Heat Up Effect ×${heat.effect} (increased +${heat.heatIncreased}%${heat.shackles?.active ? `, ×${1 + heat.shackles.percent / 100} after stopping movement (standing still)` : ""}) on every Heat Up value`,
-      );
-    }
-    case "blank":
-    case "heatGain":
-    case "overheatGain":
-    case "forcedReload":
-    case "heatLoss": {
-      if (!heat) return L("Inactive", "no Heat Up state");
-      if (!state.projectile) return L("Inactive", noProjectile);
-      if (heat.mode === "ceasefire")
-        return key === "blank"
-          ? L("In calc", "Ceasefire: Blank Firing from the start keeps the max stacks with no reload (provisional)")
-          : L("No DPS effect", "Ceasefire: the stacks start at max and no reload ever clears them");
-      if (!heat.gains) return L("Inactive", "Heat Up stacks need Blank Firing and the per-ammo gain together");
-      if (heat.mode === "held")
-        return key === "blank" || key === "heatGain"
-          ? L(
-              "In calc",
-              `the stacks reach max (${heat.maxStacks}) on the first magazine and Blank Firing keeps them: nothing forces a reload (provisional)`,
-            )
-          : L(
-              "No DPS effect",
-              `nothing forces a reload (${!heat.overheat ? "no Overheated gain" : "no forced-reload line"}), so the stacks stay at max`,
-            );
-      if (heat.mode === "burningRed" && (key === "overheatGain" || key === "forcedReload"))
-        return L(
-          "No DPS effect",
-          "Extreme Heat: Burning Red replaces Overheated, and Burning Red's end forces the reload",
-        );
-      const ramp = heat.clears
-        ? `casts 1..${heat.maxStacks} at 1..${heat.maxStacks} stacks`
-        : `${heat.maxStacks} stacks on every cast (no clearing line)`;
-      return L(
-        "In calc",
-        heat.measured
-          ? `the cycle: ${ramp}, then ${heat.phaseSeconds} s ${heat.mode === "burningRed" ? "of Burning Red" : "of Blank Firing (Overheated forces the reload)"} at ${heat.maxStacks}, a ${ammo.reloadSeconds} s reload${heat.clears ? " clears them" : ""}: ${heat.castWeighted} effective stacks per cast, casts available ${pct(heat.rateFactor)}% of the time (provisional)`
-          : "the cycle follows the Projectile cast rate the hit pass measures",
-      );
-    }
-    case "ceasefireStart":
-    case "ceasefireHold": {
-      if (!heat) return L("Inactive", "no Heat Up state");
-      if (!state.projectile) return L("Inactive", noProjectile);
-      if (heat.mode !== "ceasefire") return L("Inactive", "Ceasefire's state needs its start line");
-      return heat.perStack > 0 || heat.speedPerStack > 0
-        ? L("In calc", `Heat Up held at ${heat.maxStacks} stacks (the magazine capacity), never cleared (provisional)`)
-        : L("Inactive", "no Heat Up value line (Incinerated Glory / Eternal Flames) reads the stacks");
-    }
-    case "burningRed":
-    case "burningRedReload": {
-      if (!heat) return L("Inactive", "no Heat Up state");
-      if (heat.mode !== "burningRed")
-        return L(
-          "Inactive",
-          heat.mode === "ceasefire"
-            ? "Ceasefire: the stacks start at max"
-            : "Burning Red needs Heat Up stacks from Incinerated Glory",
-        );
-      if (key === "burningRedReload")
-        return L(
-          "No DPS effect",
-          "the Burning Red keyword already forces the reload when it ends (the cycle reloads there)",
-        );
-      return L(
-        "In calc",
-        `at ${heat.maxStacks} stacks: ${KEYWORDS.burningRed.seconds} s of Burning Red (Heat Up Effect +${KEYWORDS.burningRed.heatUpEffectPercent}%, read as increased: ×${heat.burningEffect}), then the reload (provisional)`,
-      );
-    }
     default:
-      return L("Not modeled", "this Carino clause is not read");
+      return (
+        rangerRead(key, text, state) ??
+        lethalRead(key, text, state) ??
+        zealotRead(key, text, state) ??
+        L("Not modeled", "this Carino clause is not read")
+      );
   }
 }
