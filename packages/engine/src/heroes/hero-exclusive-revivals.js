@@ -123,7 +123,7 @@ const PENDING = {
   // Thea (B7, 2026-10-19): The Place of Oracle (and its Blessing variants), Crossing the Divine Threshold and Inverted Shrine join the
   // intake; MODULE_LINES below names the lines the Thea modules read (packages/engine/src/heroes/thea/traits.js).
   // Youga (B4, 2026-10-19): Telepathy Expert, Fifth Cosmic Velocity, To Myself in Another Spacetime and Private Universe join the
-  // intake; MODULE_LINES below names the lines the Spacetime modules read (packages/engine/src/heroes/hero-trait-modules.js), the rest go to the generic
+  // intake; MODULE_LINES below names the lines the Spacetime modules read (packages/engine/src/heroes/youga/badges.js), the rest go to the generic
   // readers (Spell Burst Charge Speed and hit damage, packages/engine/src/skills/skill-hit-model.js; Skill Area).
   // Moto and Iris (B6, 2026-10-19): Machine's Joy, Peril of Synthetic Troops, Nourishing Spring Rain, Nature's Party, Soft Storm and
   // Blowing Breeze join the intake; MODULE_LINES below names the lines the Moto / Iris modules read (packages/engine/src/heroes/minion-heroes.js).

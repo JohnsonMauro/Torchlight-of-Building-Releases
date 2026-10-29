@@ -1,5 +1,5 @@
 // Youga – Spacetime Elapse (hero trait audit batch B4, 2026-10-19; research/hero-traits-audit-2026-10-19.md §5 B4, §8 B4, §6 Q-H6).
-// Pure helpers: packages/engine/src/heroes/hero-trait-modules.js reads the trait lines into a state, packages/engine/src/planner.js applies
+// Pure helpers: packages/engine/src/heroes/youga/badges.js reads the trait lines into a state, packages/engine/src/planner.js applies
 // Spacetime Turbulence to the damage paths, packages/engine/src/combat/dummy-recount.js times the Turbulence releases. Every reading here
 // is provisional (src/app/stats/open-questions.js lists them for Youga).
 //

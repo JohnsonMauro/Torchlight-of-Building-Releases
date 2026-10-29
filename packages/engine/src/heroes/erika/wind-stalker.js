@@ -3,7 +3,7 @@
 // additional damage", "+X% additional Attack Speed", "The Main Skill is supported by Lv. 10 Multistrike") already reach the
 // engines. This module settles the Stalker and Multistrike clauses the plain readers cannot, and the hero-exclusive revived
 // affix Cat's Night Safari (Hunting Instinct). packages/engine/src/skills/skill-hit-model.js applies the result to every Attack hit that
-// Multistrikes (multistrikeSequence); packages/engine/src/heroes/hero-trait-modules.js carries the badges.
+// Multistrikes (multistrikeSequence); packages/engine/src/heroes/erika/badges.js carries the badges.
 //
 // Sourced (TLIDB tlidb.com/en/Wind_Stalker and its keyword tooltips, captured 2026-10-14; game manual entries in
 // config_multi_language_en, quoted in packages/engine/src/skills/skill-hit-model.js multistrikeSequence):

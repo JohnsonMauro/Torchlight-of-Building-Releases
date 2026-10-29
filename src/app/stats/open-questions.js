@@ -1145,7 +1145,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     source: `${HERO_TRAIT_AUDIT} (§5 B3)`,
     appliesWhen: (ctx) => traitPicked(ctx, "gemma-flame-of-pleasure", "Dress Licker"),
   },
-  // Hero trait audit B4 (2026-10-19; packages/engine/src/heroes/youga/spacetime-illusion.js, packages/engine/src/heroes/youga/spacetime-elapse.js, packages/engine/src/heroes/hero-trait-modules.js): Youga – Spacetime Illusion and Spacetime
+  // Hero trait audit B4 (2026-10-19; packages/engine/src/heroes/youga/spacetime-illusion.js, packages/engine/src/heroes/youga/spacetime-elapse.js, packages/engine/src/heroes/youga/badges.js): Youga – Spacetime Illusion and Spacetime
   // Elapse's provisional readings (Q-H5, Q-H6).
   {
     id: "youga-illusion-rate",

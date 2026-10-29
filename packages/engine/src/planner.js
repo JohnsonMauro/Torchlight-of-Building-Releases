@@ -64,7 +64,8 @@ import {
   yougaPlainState,
   projectileMechanics,
 } from "./heroes/youga/the-ultimate-one.js";
-import { resolveHeroModules, resolveIllusionState } from "./heroes/hero-trait-modules.js";
+import { resolveHeroModules } from "./heroes/hero-trait-modules.js";
+import { resolveIllusionState } from "./heroes/youga/badges.js";
 import { settleIllusionStream } from "./heroes/youga/spacetime-illusion.js";
 import { passiveSupportLines } from "./supports/passive-support-lines.js";
 import {
@@ -502,7 +503,7 @@ function buildLineConditionState({
         modifierTexts.some((line) =>
           /^When dealing damage to enemies in Twisted Spacetime, Reaps /i.test(String(line.text ?? "").trim()),
         )),
-    // Youga – Spacetime Illusion / Elapse (hero trait audit B4; packages/engine/src/heroes/hero-trait-modules.js): Cooldown Recovery Speed for Me and
+    // Youga – Spacetime Illusion / Elapse (hero trait audit B4; packages/engine/src/heroes/youga/badges.js): Cooldown Recovery Speed for Me and
     // Myself (the stat sheet's increased total; plain build-wide "additional" lines summed), the character's increased Cast Speed
     // on the stat sheet (Make it Quick before the hit pass), damage over time on the dummy (Twisted Spacetime's cast) and whether
     // the Main Skill can Spell Burst (Telepathy Expert). The hit pass's rates arrive as `yougaSpacetime` (hitRateFacts.youga).
@@ -4653,7 +4654,7 @@ function calculatePlannerOnce(
         consumers: active ? ["skill-hit"] : [],
       });
   }
-  // Spacetime Illusion (packages/engine/src/heroes/hero-trait-modules.js; provisional): extra Main Skill uses at the Illusion's rate, each a full
+  // Spacetime Illusion (packages/engine/src/heroes/youga/badges.js; provisional): extra Main Skill uses at the Illusion's rate, each a full
   // use of the Main Skill ("considered your castings"); "Unable to cast the Main Skill" removes the player's own uses.
   // An item-triggered skill that computes no damage here (weapon restriction, no weapon damage): its line reads Inactive.
   for (const source of itemTriggerSources) {
@@ -4726,7 +4727,7 @@ function calculatePlannerOnce(
       ...(illusionHit.notes || []),
       `Spacetime Illusion: +${Math.round(illusion.usesPerSecond * 1000) / 1000} Main Skill uses/s (provisional; windows use the steady rate)${stream.note ? `; ${stream.note}` : ""}`,
     ];
-    // The badges read the settled Illusion state (packages/engine/src/heroes/hero-trait-modules.js).
+    // The badges read the settled Illusion state (packages/engine/src/heroes/youga/badges.js).
     const settled = resolveHeroModules(
       modifierTexts.filter((line) => (line.origin === "trait" || line.origin === "memory") && !line.lineEffect),
       {
@@ -5398,7 +5399,7 @@ function calculatePlannerOnce(
     mainSupportClauses: resolvedMain?.supportEffects?.clauses || [],
   });
   if (cycleResist?.reap) builtInReaps.push(cycleResist.reap);
-  // Youga – Spacetime Elapse (hero trait audit B4; packages/engine/src/heroes/hero-trait-modules.js resolveSpacetimeState): To Myself in Another
+  // Youga – Spacetime Elapse (hero trait audit B4; packages/engine/src/heroes/youga/badges.js resolveSpacetimeState): To Myself in Another
   // Spacetime's Reap of every DoT, once per its interval while the dummy is in Twisted Spacetime (always, with DoT on it).
   const spacetime = lineEffects.hero?.spacetime || null;
   if (spacetime?.toMyselfReap) builtInReaps.push(spacetime.toMyselfReap);

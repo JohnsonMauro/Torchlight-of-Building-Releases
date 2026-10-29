@@ -2,7 +2,7 @@
 // Pure: reads the build's trait lines (origin "trait") and the revived lines the module reads (Vengeful Night Wraith;
 // packages/engine/src/heroes/hero-exclusive-revivals.js MODULE_LINES) and returns the state the engines apply:
 // packages/engine/src/heroes/erika/vendetta-model.js (the Vendetta triggers), packages/engine/src/planner.js (the derived lines, the Activation
-// Medium block) and packages/engine/src/heroes/hero-trait-modules.js (the badges).
+// Medium block) and packages/engine/src/heroes/erika/badges.js (the badges).
 //
 // Sourced (TLIDB keyword tooltips, Torchlight_Hyperlink_hover, fetched 2026-10-19 and saved in research/tlidb/fetch-cache):
 // - Incisive (ef32e8ab…): "Within 5m, damage dealt increases the closer you are to the enemy, up to +20% additional Attack Damage

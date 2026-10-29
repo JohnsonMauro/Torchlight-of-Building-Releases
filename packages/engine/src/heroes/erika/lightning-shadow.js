@@ -1,7 +1,7 @@
 // Erika – Lightning Shadow (hero trait audit batch B5, 2026-10-19, research/hero-traits-audit-2026-10-19.md §5 B5, §8 B5, §6 Q-H10).
 // Pure: reads the build's trait lines (origin "trait") and the revived lines the module reads (Charging Tail;
 // packages/engine/src/heroes/hero-exclusive-revivals.js MODULE_LINES) and returns the state the engines apply: packages/engine/src/combat-states.js
-// (Numbed on the dummy), packages/engine/src/planner.js (the derived lines) and packages/engine/src/heroes/hero-trait-modules.js (the badges).
+// (Numbed on the dummy), packages/engine/src/planner.js (the derived lines) and packages/engine/src/heroes/erika/badges.js (the badges).
 //
 // Sourced (TLIDB keyword tooltips, Torchlight_Hyperlink_hover, fetched 2026-10-19 and saved in research/tlidb/fetch-cache):
 // - Electrify (507ee3bc…): "For every stack of Electrify, Feline Figure inflicts 1 stack of Numbed on enemies within the area".

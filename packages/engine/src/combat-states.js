@@ -847,7 +847,7 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
   // ---- enemy debuffs ----
   // Audit of debuffs held from t = 0 in the 5 s / 20 s windows (pact scripted-effects batch 2026-10-13; the dummy starts clean):
   //   built from zero now (packages/engine/src/combat/timed-effects.js): the Ice Cage, the "Every N s … Stacks up to M" debuff (Impending), Numbed
-  //   (one stack per main-skill use), Witch Antelope's Paralysis turns, Melting Flames, Purgatory (packages/engine/src/heroes/hero-trait-modules.js);
+  //   (one stack per main-skill use), Witch Antelope's Paralysis turns, Melting Flames, Purgatory (packages/engine/src/heroes/gemma/badges.js);
   //   correct as held: Frail, the Infiltrations, Spell-hit resistance shred, on-hit Paralysis (4 s base duration, refreshed by
   //   hits), Frostbite and Freeze (a fixed rating on the first Cold hit), skill and gear-triggered curses (applied by the first
   //   cast or hit), Blizzard's hit debuff (6 s, refreshed every 2 s), Crimson Tide (from the first Terra cast) and the
