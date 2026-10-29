@@ -10,6 +10,7 @@ import { SAGE, sageRevivedLine } from "./sage/licorice-note.js";
 import { CARINO_HEROES, carinoRevivedLine } from "./carino/trait-lines.js";
 import { REHAN_HEROES, rehanRevivedLine } from "./rehan/trait-lines.js";
 import { BING_CREATIVE, bingRevivedLine } from "./bing/creative-genius.js";
+import { BLAST_NOVA, blastNovaRevivedLine } from "./bing/blast-nova.js";
 import { CARINO_MODULES } from "./carino/badges.js";
 import { BING_MODULES } from "./bing/badges.js";
 import { YOUGA_MODULES, yougaRevivedLine } from "./youga/badges.js";
@@ -68,6 +69,8 @@ export function heroModuleRevivedLine(heroId, text) {
   if (heroId === "selena-dance-of-the-deep") return selenaRevivedLine(heroId, clean);
   // Bing – Creative Genius (B12): Genius Idea Generator's Whimsy line.
   if (heroId === BING_CREATIVE) return bingRevivedLine(heroId, clean);
+  // Bing – Blast Nova: Bing's Big Bang Pack (the bomb model).
+  if (heroId === BLAST_NOVA) return blastNovaRevivedLine(heroId, clean);
   return false;
 }
 

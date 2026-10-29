@@ -1,3 +1,4 @@
+import { throwsBombs } from "../heroes/bing/blast-nova.js";
 import { cleanGameText } from "../text/percentage-text.js";
 import { mainStatParts } from "./main-stats.js";
 import { passiveSupportLines } from "../supports/passive-support-lines.js";
@@ -1474,9 +1475,34 @@ export function calculateSkillHit({
     );
   }
   const rateFactor = multistrike?.rateFactor ?? spellBurst?.rateFactor ?? 1;
+  // Bing – Blast Nova's bombs (packages/engine/src/heroes/bing/blast-nova.js; provisional, the written text): a Non-channeling, Non-Sentry
+  // Attack Projectile Main Skill throws bombs instead, at the base throwing speed × the skill's Attack Speed bonus (its weapon's base
+  // speed left out) × the additional throwing speed lines, each throw its bombs; each bomb is one use of the skill's projectiles.
+  const bombs =
+    heroEffects?.blastNova &&
+    throwsBombs([...skillTags]) &&
+    !channel &&
+    !sentry_ &&
+    intervalSeconds > 0 &&
+    !inactiveReason
+      ? heroEffects.blastNova
+      : null;
+  const bombsPerSecond = bombs
+    ? bombs.throwsPerSecondBase *
+      (speedFactor / Math.max(1e-9, attackSpeed?.weaponAttacksPerSecond || 1)) *
+      bombs.throwFactor *
+      bombs.bombsPerThrow
+    : 0;
+  if (bombs)
+    notes.push(
+      `${profile.name}: throws bombs instead (Blast Nova, provisional): ${bombs.throwsPerSecondBase} throw/s × ${round(speedFactor / Math.max(1e-9, attackSpeed?.weaponAttacksPerSecond || 1))} Attack Speed bonus${bombs.throwFactor !== 1 ? ` × ${bombs.throwFactor} additional Bomb Throwing Speed` : ""} × ${bombs.bombsPerThrow} bombs = ${round(bombsPerSecond)} bombs per second, each one use of its projectiles.`,
+    );
   // A hero's use-rate factor (Clockwork Core: every attached Tangle triggers the skill; I Will Hunt You Down's Cast Speed).
-  const heroRateFactor =
-    Number.isFinite(heroEffects?.rateFactor) && heroEffects.rateFactor > 0 ? heroEffects.rateFactor : 1;
+  const heroRateFactor = bombs
+    ? (bombsPerSecond * intervalSeconds) / Math.max(1e-9, rateFactor)
+    : Number.isFinite(heroEffects?.rateFactor) && heroEffects.rateFactor > 0
+      ? heroEffects.rateFactor
+      : 1;
   // A hero trigger component with `manualCasts: false` replaces the player's own casts as a hit source (Clockwork Core: the
   // player's cast only summons or moves the Core and fires nothing; user-decided 2026-10-18 from game-code evidence,
   // research/youga-recall-mechanics-2026-10-18.md R1), so only the trigger component deals hits.
@@ -2548,6 +2574,22 @@ export function calculateSkillHit({
         category: "Additional damage",
         scopeTypes: [...ELEMENTAL_TYPES],
       });
+  }
+  // Blast Nova's bomb damage lines and Bing's Big Bang Pack's Spare Bombs: count × min(1, share × the bomb's crit chance) Spare Bombs
+  // per bomb (one generation), each at the Spare Bomb's additional damage.
+  if (bombs) {
+    supports.additional.push(...bombs.additional.map((line) => ({ ...line, category: "Additional damage" })));
+    if (bombs.spare) {
+      const chance = Math.min(1, (bombs.spare.critSharePercent / 100) * critChance);
+      const value = bombs.spare.count * chance * (1 + bombs.spare.additionalPercent / 100) * 100;
+      if (value)
+        supports.additional.push({
+          source: bombs.spare.source,
+          text: `Spare Bombs: ${bombs.spare.count} × ${round(chance * 100)}% (${bombs.spare.critSharePercent}% of the ${round(critChance * 100)}% crit chance) at ${bombs.spare.additionalPercent}% additional damage per bomb (one generation; provisional)`,
+          value,
+          category: "Additional damage",
+        });
+    }
   }
   // Advanced Elemental Impact (Three-Chambered Heart): every Elemental type of the final hit parts once they hold two.
   for (const clause of supports.effects.clauses.filter(

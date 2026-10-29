@@ -252,7 +252,7 @@
       }
     },
     "hero/bing-blast-nova/first": {
-      "sha256": "1655e3dd7cb35396a93803c95369cd0f5358ac233c123aa4175025f4e5a0c9b0",
+      "sha256": "b85d1b06a3bd492de949cacd450230c2d4c27f9876bb3442707fd211b0328df2",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -262,7 +262,7 @@
       }
     },
     "hero/bing-blast-nova/last": {
-      "sha256": "2d45e0600186473c8c6830e4ac7b5bf3a07553e05395201bf7264fc8e804f3bb",
+      "sha256": "c32d0c9f166596ee161c0dba9671283a561c07934ab593aa40ce7170e37d2741",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,

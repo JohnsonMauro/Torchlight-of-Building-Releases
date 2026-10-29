@@ -140,6 +140,7 @@ import { mergingStreamOrigins } from "./heroes/iris/vigilant-breeze.js";
 import { theaBlessingInputs, theaState } from "./heroes/thea/traits.js";
 import { INSIDE_REALM_CONDITION } from "./heroes/thea/trait-lines.js";
 import { sageState } from "./heroes/sage/licorice-note.js";
+import { blastNovaBombState, throwsBombs } from "./heroes/bing/blast-nova.js";
 import { bingState } from "./heroes/bing/creative-genius.js";
 import { carinoState } from "./heroes/carino/traits.js";
 import { CARINO_HEROES, RETURNING_SWITCH, SPECIAL_AMMO_LEVEL } from "./heroes/carino/trait-lines.js";
@@ -2365,6 +2366,14 @@ function calculatePlannerOnce(
   // "Cannot use Main Skills" is unconditional, so the Main Skill deals no damage of its own. The bombs that replace it ("Automatically
   // throws bombs at nearby enemies") are not modeled (batch B12), so a warning names the missing source. Best-case switch
   // `bingFirepowerNoMain` (default on: the penalty applied; off: the Main Skill keeps its damage).
+  // Bing – Blast Nova's bombs (packages/engine/src/heroes/bing/blast-nova.js; provisional, the written text): an Attack Projectile Main
+  // Skill throws bombs instead (the hit model's heroEffects.blastNova); then Firepower Coverage's bombs are those, not a lost source.
+  const blastNova = blastNovaBombState({
+    heroId: state.hero.selectedHeroId,
+    modifierTexts,
+    moving: requestedConditions.moving !== false,
+  });
+  const mainThrowsBombs = Boolean(blastNova && resolvedMain && throwsBombs(resolvedMain.tags));
   const firepowerCoverage =
     state.hero.selectedHeroId === "bing-blast-nova" &&
     modifierTexts.some(
@@ -2378,7 +2387,8 @@ function calculatePlannerOnce(
     )
       ? {
           mainName: resolvedMain?.name || null,
-          applied: requestedConditions.bingFirepowerNoMain !== false && Boolean(resolvedMain),
+          bombs: mainThrowsBombs,
+          applied: requestedConditions.bingFirepowerNoMain !== false && Boolean(resolvedMain) && !mainThrowsBombs,
         }
       : null;
   if (firepowerCoverage?.applied)
@@ -3046,8 +3056,10 @@ function calculatePlannerOnce(
     maxSpellBurst: maxSpellBurst.total,
   });
   const bingRates = Boolean(lineConditionState.bing?.needsRates);
-  // Bing – Blast Nova's Firepower Coverage (Q-H15): the badge and the switch read it (packages/engine/src/heroes/hero-trait-modules.js "firepower").
+  // Bing – Blast Nova's Firepower Coverage (Q-H15): the badge and the switch read it (packages/engine/src/heroes/bing/badges.js "firepower");
+  // the bomb badges read the bomb state.
   lineConditionState.firepowerCoverage = firepowerCoverage;
+  if (blastNova) lineConditionState.blastNova = { ...blastNova, mainThrowsBombs, mainName: resolvedMain?.name || null };
   const theaFocus = lineConditionState.thea?.wisdom?.cycle ? lineConditionState.thea.wisdom.cycle.averageFocus : null;
   if (theaFocus !== null && lineConditionState.blessingStacks)
     lineConditionState.blessingStacks.Focus = Math.min(lineConditionState.blessingStacks.Focus ?? 0, theaFocus);
@@ -4255,6 +4267,9 @@ function calculatePlannerOnce(
           .filter(Boolean)
           .join("; "),
       };
+    // Bing – Blast Nova's bombs in place of the Main Skill's uses (hit model).
+    if (mainThrowsBombs && setup.setupKey === resolvedMain?.setupKey)
+      common.heroEffects = { ...(common.heroEffects || {}), blastNova };
     // Bing – Creative Genius's Ingenuity Overload (packages/engine/src/heroes/bing/creative-genius.js): its Main Skill casts (hit model).
     if (lineConditionState.bing?.overload?.perSecond > 0 && setup.setupKey === resolvedMain?.setupKey)
       common.heroEffects = { ...(common.heroEffects || {}), ingenuityOverload: lineConditionState.bing.overload };

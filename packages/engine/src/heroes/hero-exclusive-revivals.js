@@ -93,8 +93,8 @@ export const MODULE_REVIVALS = Object.freeze({
 // start of the line.
 // Partial intakes are avoided where the affix's cost would apply without its gain (Fifth Cosmic Velocity's -99% Charge Speed
 // without the instant charges, Telepathy Expert's -20% without the shared Spell Burst): every line of such an affix waits for its
-// engine (Omni-Elixir Side Effect's -50% Elixir Skill Effect joins with its added Ingredients since B8).
-const P = (batch, engine, ...starts) => starts.map((start) => ({ start, batch, engine }));
+// engine (Omni-Elixir Side Effect's -50% Elixir Skill Effect joins with its added Ingredients since B8). Entries:
+// { start, batch, engine }. None at present (2026-10-29: every exclusive revival's lines are read).
 const PENDING = {
   // Rehan (B10, 2026-10-19): Hero's Resourcefulness, Furious Roar and Starfall Wasteland join the intake; MODULE_LINES below names the
   // lines the Rehan module reads (packages/engine/src/heroes/rehan/traits.js).
@@ -103,8 +103,8 @@ const PENDING = {
   // Erika (B5, 2026-10-19): Charging Tail and Vengeful Night Wraith join the intake; MODULE_LINES below names the lines the
   // Lightning Shadow / Vendetta's Sting modules read (packages/engine/src/heroes/erika/lightning-shadow.js, packages/engine/src/heroes/erika/vendettas-sting.js, packages/engine/src/heroes/hero-trait-modules.js).
   // Bing (B12): Genius Idea Generator's lines join the intake (MODULE_LINES below, packages/engine/src/heroes/bing/creative-genius.js): its
-  // Whimsy line and, since 2026-10-29, its Ingenuity Overload line (the Overload's casts, packages/engine/src/skills/skill-hit-model.js).
-  "Bing's Big Bang Pack": P("B12", "Bing's bomb engine", "When bombs deal damage"),
+  // Whimsy line and, since 2026-10-29, its Ingenuity Overload line (the Overload's casts, packages/engine/src/skills/skill-hit-model.js);
+  // Bing's Big Bang Pack too (2026-10-29, the bomb model, packages/engine/src/heroes/bing/blast-nova.js).
   // Gemma (B3, 2026-10-19): First Flake of Strange Snow joins the intake (packages/engine/src/combat-states.js reads its deemed Frostbite Rating and
   // additional Frostbite Effect) and so does Sweet Pain's Erosion Magus Origin (packages/engine/src/skills/origin-of-spirit-magus.js: defensive, No DPS
   // effect). Three-Chambered Heart joins it too (2026-10-29): its granted Lv. 40 Advanced Elemental Impact reads the written
@@ -184,6 +184,8 @@ const MODULE_LINES = {
     "+2 to Whimsy Explosion Projectile Quantity",
     "+1 to Max Spell Burst and +60% additional Spell Damage",
   ],
+  // Bing – Blast Nova (B12): the Spare Bombs (packages/engine/src/heroes/bing/blast-nova.js).
+  "Bing's Big Bang Pack": ["When bombs deal damage"],
   // Rehan (B10): Burst Blast and its on-hit / skill-use changes (Hero's Resourcefulness), Furious Roar's crit trigger and its Burst
   // penalty, Ancestral Hate's Life cost (Hysteria's Rage), Starfall Wasteland's Spirit lines; Ancestral Hate's Regain Interval and
   // damage-taken lines go to the generic readers.
