@@ -1,5 +1,5 @@
 {
-  "node": "v24.22.1",
+  "node": "v26.13.0",
   "cases": {
     "default": {
       "sha256": "d9f0cff6912a6ffdf77f0bdec71578bfde3f17bf48bacadb36cbbe5326df1be3",
@@ -572,7 +572,7 @@
       }
     },
     "hero/rosa-unsullied-blade/first": {
-      "sha256": "31564addf25d197ea3f61404fac6e7c98472ab7be1385a1a6a71d9136e7fe2aa",
+      "sha256": "c0769b9bc3c73bdff600dac1696a918e416ff1ecc0f5194352a87eedd87f7cd8",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -582,7 +582,7 @@
       }
     },
     "hero/rosa-unsullied-blade/last": {
-      "sha256": "326f6559e6eb3a9626ffdf5d5a3e284e5ef2827ad254dec714eb5802b2ea6645",
+      "sha256": "ee3827a86e4263edc3c2815eaa765a698e6089322ffa681826648382b9d7a2a8",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,

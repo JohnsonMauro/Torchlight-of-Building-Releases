@@ -129,13 +129,7 @@ const PENDING = {
   // Blowing Breeze join the intake; MODULE_LINES below names the lines the Moto / Iris modules read (packages/engine/src/heroes/minion-heroes.js).
   // Rosa (B11)
   "Between the Holy Land and Hell": P("B11", "Rosa's Holy Domain / Repent to the Light", "Gains Repent to the Light"),
-  "Mercury Purged": P(
-    "B11",
-    "Rosa's Mercury Baptism engine",
-    "When inflicting Frostbite",
-    "When inflicting Ignite",
-    "When inflicting Numbed",
-  ),
+  // Mercury Purged joins the intake (2026-10-29): MODULE_LINES below names its Baptism lines (packages/engine/src/heroes/rosa/badges.js).
   // Sage (B8, 2026-10-19): Omni-Elixir Side Effect and Basic Pharmacology Manuscript join the intake; MODULE_LINES below names the
   // lines the Scent Bottle module reads (packages/engine/src/heroes/sage/licorice-note.js).
   // Selena (B13)
@@ -213,6 +207,8 @@ const MODULE_LINES = {
   ],
   "Furious Roar": ["Attacks trigger Burst once on Critical Strike", "-20% additional Burst Damage"],
   "Ancestral Hate": ["Seething Spirit consumes"],
+  // Rosa – Unsullied Blade (B11): each Baptism while its ailment is on the dummy (packages/engine/src/heroes/rosa/badges.js).
+  "Mercury Purged": ["When inflicting Frostbite", "When inflicting Ignite", "When inflicting Numbed"],
   "Starfall Wasteland": [
     "Seething Spirit now only uses",
     "Generates 15 Rage",

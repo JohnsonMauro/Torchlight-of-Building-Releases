@@ -19,7 +19,7 @@ import { REHAN_MODULES } from "./rehan/badges.js";
 import { ERIKA_MODULES, erikaRevivedLine } from "./erika/badges.js";
 import { THEA_MODULES } from "./thea/badges.js";
 import { SAGE_MODULES } from "./sage/badges.js";
-import { ROSA_MODULES } from "./rosa/badges.js";
+import { ROSA_MODULES, rosaRevivedLine } from "./rosa/badges.js";
 import { MINION_HERO_MODULES } from "./minion-hero-badges.js";
 
 // Per-hero trait mechanics (research/talent-batch-2026-10-12.md §6.2, chunk 4). Trait lines join planner.modifierTexts
@@ -62,6 +62,8 @@ export function heroModuleRevivedLine(heroId, text) {
   if (CARINO_HEROES.has(heroId)) return carinoRevivedLine(heroId, clean);
   // Rehan (B10): Hero's Resourcefulness, Furious Roar, Ancestral Hate's Life cost, Starfall Wasteland.
   if (REHAN_HEROES.has(heroId)) return rehanRevivedLine(heroId, clean);
+  // Rosa – Unsullied Blade (B11): Mercury Purged's Baptism lines.
+  if (heroId === "rosa-unsullied-blade") return rosaRevivedLine(heroId, clean);
   // Bing – Creative Genius (B12): Genius Idea Generator's Whimsy line.
   if (heroId === BING_CREATIVE) return bingRevivedLine(heroId, clean);
   return false;
