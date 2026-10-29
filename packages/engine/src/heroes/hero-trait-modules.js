@@ -22,17 +22,9 @@ import { ORDER_CALLING } from "./moto/order-calling.js";
 import { CHARGE_CALLING } from "./moto/charge-calling.js";
 import { GROWING_BREEZE } from "./iris/growing-breeze.js";
 import { VIGILANT_BREEZE } from "./iris/vigilant-breeze.js";
-import {
-  WISDOM,
-  INCARNATION,
-  BLASPHEMER,
-  THEA_HEROES,
-  theaClauseKey,
-  theaLineRead,
-  theaRevivedLine,
-  theaSwitches,
-  settleTheaCrowdControl,
-} from "./thea/traits.js";
+import { WISDOM, INCARNATION, BLASPHEMER, THEA_HEROES, theaClauseKey, theaRevivedLine } from "./thea/trait-lines.js";
+import { theaLineRead, theaSwitches } from "./thea/traits.js";
+import { settleTheaCrowdControl } from "./thea/blasphemer.js";
 import { SAGE, sageClauseKey, sageLineRead, sageRevivedLine } from "./sage/licorice-note.js";
 import { CARINO_HEROES, RETURNING_SWITCH, carinoModuleOf, carinoLineRead, carinoRevivedLine } from "./carino/traits.js";
 import { REHAN_HEROES, rehanModuleOf, rehanLineRead, rehanRevivedLine } from "./rehan/traits.js";
