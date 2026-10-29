@@ -1,13 +1,9 @@
 import { cleanGameText } from "../text/percentage-text.js";
 import { yougaClauseKey, yougaLineStatus } from "./youga/the-ultimate-one.js";
-import {
-  coldPulseState,
-  frostfireCycle,
-  frostfireLevels,
-  infernalAverageStacks,
-  purgatoryIntervals,
-  stepsOf,
-} from "./gemma/traits.js";
+import { stepsOf } from "./gemma/timeline.js";
+import { frostfireCycle, frostfireLevels } from "./gemma/ice-fire-fusion.js";
+import { coldPulseState } from "./gemma/frostbitten-heart.js";
+import { infernalAverageStacks, purgatoryIntervals } from "./gemma/flame-of-pleasure.js";
 import { curseTakenPercentAtLevel } from "../skills/curse-model.js";
 import {
   ILLUSION_RECENT_SECONDS,
@@ -16,15 +12,11 @@ import {
   makeItQuickDamage,
   meAndMyselfFrequency,
   stacksHeld,
-  twistedSpacetime,
-} from "./youga/spacetime.js";
-import {
-  LIGHTNING_PATTERNS,
-  VENDETTA_PATTERNS,
-  INCISIVE,
-  INCISIVE_CLOSE_CONDITION,
-  cleanErika,
-} from "./erika/traits.js";
+} from "./youga/spacetime-illusion.js";
+import { twistedSpacetime } from "./youga/spacetime-elapse.js";
+import { cleanErika } from "./erika/trait-lines.js";
+import { LIGHTNING_PATTERNS } from "./erika/lightning-shadow.js";
+import { VENDETTA_PATTERNS, INCISIVE, INCISIVE_CLOSE_CONDITION } from "./erika/vendettas-sting.js";
 import { b6ClauseKey, b6LineStatus, b6RevivedLine, b6Switches } from "./minion-heroes.js";
 import { ORDER_CALLING } from "./moto/order-calling.js";
 import { CHARGE_CALLING } from "./moto/charge-calling.js";
@@ -144,21 +136,21 @@ export const HERO_MODULES = Object.freeze([
     heroes: /^youga-spacetime-illusion$/,
     label: "Youga: Spacetime Illusion",
     status: "Provisional",
-    rule: "\"The Spacetime Illusion uses your Main Skill once every 1.5 s. The Spacetime Illusion's castings are considered your castings\": an extra stream of Main Skill uses at (1 ÷ 1.5 s) × (1 + Spacetime Illusion Cast Frequency), each a full use of the Main Skill (modeled skill hits only); a Spell Main Skill that can Spell Burst does so on the Illusion's casts with its own charge. Hero trait audit B4 (packages/engine/src/heroes/youga/spacetime.js; provisional): Me and Myself's Cast Frequency per +5% Cooldown Recovery Speed or 2.5% additional, the moon's Cooldown Recovery Speed stacks per cast (you and the Illusion), Eeeendless Mana's rate (Q-H5: the Illusion's own casting action at your Main Skill cast rate; with Make it Quick as well the rate is an open question) and its damage per 4% Cast Frequency and 25% Mana seal, Make it Quick's Cast Speed share, I'm Out of Mana's stacks (Illusion casts in the last 4 s; Mana assumed sufficient), Telepathy Expert's shared Spell Burst.",
+    rule: "\"The Spacetime Illusion uses your Main Skill once every 1.5 s. The Spacetime Illusion's castings are considered your castings\": an extra stream of Main Skill uses at (1 ÷ 1.5 s) × (1 + Spacetime Illusion Cast Frequency), each a full use of the Main Skill (modeled skill hits only); a Spell Main Skill that can Spell Burst does so on the Illusion's casts with its own charge. Hero trait audit B4 (packages/engine/src/heroes/youga/spacetime-illusion.js; provisional): Me and Myself's Cast Frequency per +5% Cooldown Recovery Speed or 2.5% additional, the moon's Cooldown Recovery Speed stacks per cast (you and the Illusion), Eeeendless Mana's rate (Q-H5: the Illusion's own casting action at your Main Skill cast rate; with Make it Quick as well the rate is an open question) and its damage per 4% Cast Frequency and 25% Mana seal, Make it Quick's Cast Speed share, I'm Out of Mana's stacks (Illusion casts in the last 4 s; Mana assumed sufficient), Telepathy Expert's shared Spell Burst.",
   },
   {
     key: "elapse",
     heroes: /^youga-spacetime-elapse$/,
     label: "Youga: Twisted Spacetime",
     status: "Provisional",
-    rule: 'Hero trait audit B4 (packages/engine/src/heroes/youga/spacetime.js; Q-H6 recommended reading, provisional): damage over time on the dummy casts Twisted Spacetime at once and again every casting interval (2 s; To Myself in Another Spacetime: 1 s); each recast moves it and extends it by 2 s, so it never ends (uptime 1, the dummy inside). Each move releases Spacetime Turbulence: the dummy, the only enemy within (a Boss, so an Elite), takes the whole record, record% × (1 + Spacetime Pause\'s and Spacetime Speed-up\'s "to all recorded damage", Speed-up at the whole seconds lasted) of the DoT and Reaping damage dealt since the last move, at once. Turbulence durations change no dummy damage. "Additional Damage" is not modeled separately. Spacetime Upheaval\'s +X% additional Damage Over Time holds whenever the build deals damage over time.',
+    rule: 'Hero trait audit B4 (packages/engine/src/heroes/youga/spacetime-elapse.js; Q-H6 recommended reading, provisional): damage over time on the dummy casts Twisted Spacetime at once and again every casting interval (2 s; To Myself in Another Spacetime: 1 s); each recast moves it and extends it by 2 s, so it never ends (uptime 1, the dummy inside). Each move releases Spacetime Turbulence: the dummy, the only enemy within (a Boss, so an Elite), takes the whole record, record% × (1 + Spacetime Pause\'s and Spacetime Speed-up\'s "to all recorded damage", Speed-up at the whole seconds lasted) of the DoT and Reaping damage dealt since the last move, at once. Turbulence durations change no dummy damage. "Additional Damage" is not modeled separately. Spacetime Upheaval\'s +X% additional Damage Over Time holds whenever the build deals damage over time.',
   },
   {
     key: "purgatory",
     heroes: /^gemma-flame-of-pleasure$/,
     label: "Gemma: Purgatory",
     status: "Provisional",
-    rule: "Purgatory lasts 5 s (+ \"Purgatory Duration\" lines) with an 8 s cooldown and is auto-cast whenever available: uptime = duration ÷ cooldown (≤ 1), the dummy inside it (it follows the player). The ≤ 1 s auto-cast check delay is ignored (an upper bound). Its damage-taken and Fire lines apply at that uptime in sustained figures; the 5 s / 20 s windows and the recount follow the casts from t = 0 (best case). Hero trait audit B3 (packages/engine/src/heroes/gemma/traits.js; provisional): extra Purgatory Charges recover one at a time on the cooldown (the long-run uptime is unchanged; the windows recast at once), Infernal Damnation's ⌊seconds active⌋ stacks, Banquet of Bliss's Scorch on the dummy inside it, Dress Licker's Physical → Fire taken conversion on hits.",
+    rule: "Purgatory lasts 5 s (+ \"Purgatory Duration\" lines) with an 8 s cooldown and is auto-cast whenever available: uptime = duration ÷ cooldown (≤ 1), the dummy inside it (it follows the player). The ≤ 1 s auto-cast check delay is ignored (an upper bound). Its damage-taken and Fire lines apply at that uptime in sustained figures; the 5 s / 20 s windows and the recount follow the casts from t = 0 (best case). Hero trait audit B3 (packages/engine/src/heroes/gemma/flame-of-pleasure.js; provisional): extra Purgatory Charges recover one at a time on the cooldown (the long-run uptime is unchanged; the windows recast at once), Infernal Damnation's ⌊seconds active⌋ stacks, Banquet of Bliss's Scorch on the dummy inside it, Dress Licker's Physical → Fire taken conversion on hits.",
   },
   {
     key: "crimsonTide",
@@ -249,7 +241,7 @@ export const HERO_MODULES = Object.freeze([
     status: "Provisional",
     rule: "TLIDB keyword Stalker: \"+13% additional damage during Multistrike for every stack of Stalker. Initial max stacks: 3. Lasts for 4s\". Stacks held = min(max stacks, gains per second × 4 s): gains from movement (Moving) or 1 per Max Multistrike Count event (Cat's Punches); Cat's Vision raises the max by 1 per event, up to +3; Cat's Punches adds +1 initial Multistrike Count per 3 stacks. Provisional: \"during Multistrike\" = the repeated attacks; the initial count shifts every count of the sequence (packages/engine/src/skills/skill-hit-model.js multistrikeSequence); Cat's Scratch's increment is held while events come within 4 s. 2026-10-14: Interest (share × the build's Movement Speed, capped, as additional Attack Damage), Cat Dive (per-level value × Movement Speed % chance per repeated attack to take the Max Multistrike Count attack's increment; user-confirmed reading, provisional) and Artificial Moon's Mark (+30% Mark Effect while Stalker is held) are read; Movement Speed is held in full (movement is constant, user rule).",
   },
-  // Erika – Lightning Shadow and Vendetta's Sting (hero trait audit B5, 2026-10-19; packages/engine/src/heroes/erika/traits.js settles the states,
+  // Erika – Lightning Shadow and Vendetta's Sting (hero trait audit B5, 2026-10-19; packages/engine/src/heroes/erika/lightning-shadow.js, packages/engine/src/heroes/erika/vendettas-sting.js settles the states,
   // packages/engine/src/combat-states.js applies Feline Figure's Numbed, packages/engine/src/heroes/erika/vendetta-model.js the Vendetta clauses; these entries carry the badges).
   {
     key: "lightningShadow",
@@ -354,7 +346,7 @@ export const HERO_MODULES = Object.freeze([
     status: "Provisional",
     rule: 'Q-H7 recommended reading (provisional): Murderous Intent restores 4 per second and a Holy Domain costs 15, so the Trait Skill (pressed whenever 15 are ready: the Trait Skill switch) recasts it every 3.75 s; the Domain is read as lasting at least that long (its duration is not in the trait text or the readable records: open question), so it is held at uptime 1, centred on you with the dummy pulled inside: "While inside the Holy Domain, +44% additional damage" holds. The other Holy Domain and Murderous Intent clauses (Unbreakable Stand, Invulnerability, Divine Intervention, Desperation, Improvision) are batch B11.',
   },
-  // Gemma (hero trait audit B3, 2026-10-19; packages/engine/src/heroes/gemma/traits.js): the Frostfire Rampage cycle (Q-H4), Cold Pulse and the
+  // Gemma (hero trait audit B3, 2026-10-19; packages/engine/src/heroes/gemma/): the Frostfire Rampage cycle (Q-H4), Cold Pulse and the
   // Purgatory extensions. Before B3 the Rampage read Not modeled ("whether casts during the cooldown count is not in the text").
   {
     key: "frostfire",
@@ -416,7 +408,7 @@ const PATTERNS = {
   illusionDamage: /^([+-]?\d+(?:\.\d+)?)% additional Spacetime Illusion Damage$/i,
   illusionUnableMain: /^Unable to cast the Main Skill$/i,
   illusionLimit: /^\+(\d+) Spacetime Illusion upper limit$/i,
-  // Hero trait audit B4 (packages/engine/src/heroes/youga/spacetime.js).
+  // Hero trait audit B4 (packages/engine/src/heroes/youga/spacetime-illusion.js, packages/engine/src/heroes/youga/spacetime-elapse.js).
   illusionOwn: /^Own Spacetime Illusion$/i,
   illusionRecall: /^While having Spacetime Illusion ?, click the Trait Skill to recall Spacetime Illusion$/i,
   illusionMoon:
@@ -578,7 +570,7 @@ const MODULE_LINES = {
   activationMediumTerra: /Activation Medium/i,
 };
 
-// Gemma (hero trait audit B3): the Frostfire Rampage cycle from the build's Ice-Fire Fusion lines (packages/engine/src/heroes/gemma/traits.js).
+// Gemma (hero trait audit B3): the Frostfire Rampage cycle from the build's Ice-Fire Fusion lines (packages/engine/src/heroes/gemma/ice-fire-fusion.js).
 // `state.fireColdCastsPerSecond`: the Fire / Cold skills' casts per second the hit pass measured (packages/engine/src/planner.js hitRateFacts);
 // before that pass, 5 casts per cooldown are assumed.
 const sumOf = (traits, pattern) =>
@@ -608,7 +600,7 @@ function resolveFrostfire(traits, state) {
     state.prebuiltSelfBuffs !== false ? 0 : castsPerSecond > 0 ? (castsNeeded - 1) / castsPerSecond : 0;
   return { cycle, casting: casting && cycle.uptime > 0, castsNeeded, castsPerSecond, startSeconds };
 }
-// Gemma – Frostbitten Heart (B3): the Cold Pulse cadence (packages/engine/src/heroes/gemma/traits.js coldPulseState).
+// Gemma – Frostbitten Heart (B3): the Cold Pulse cadence (packages/engine/src/heroes/gemma/frostbitten-heart.js coldPulseState).
 function resolveColdPulse(traits, state) {
   const trigger = traits.map((item) => item.clean.match(PATTERNS.pulseTrigger)).find(Boolean);
   if (!trigger) return { pulse: null, reason: "no Cold Pulse trigger in the build" };
@@ -630,7 +622,7 @@ function resolveColdPulse(traits, state) {
   return { pulse, intervalSeconds, blooming, frostbitten, otherFrostbiteOnHit, reason: "" };
 }
 
-// Youga – Spacetime Illusion (hero trait audit B4; packages/engine/src/heroes/youga/spacetime.js). `state.yougaSpacetime` carries what the hit pass
+// Youga – Spacetime Illusion (hero trait audit B4; packages/engine/src/heroes/youga/spacetime-illusion.js). `state.yougaSpacetime` carries what the hit pass
 // measured (packages/engine/src/planner.js hitRateFacts.youga, then the settled pass): the Main Skill's own cast rate, every cast per second
 // (yours and the Illusion's) and the character's increased Cast Speed. Before the hits: the moon and I'm Out of Mana held at
 // their caps, Eeeendless Mana at the frequency rate.
@@ -752,7 +744,7 @@ export function resolveIllusionState(traitLines = [], state = {}) {
   };
 }
 
-// Youga – Spacetime Elapse (hero trait audit B4; packages/engine/src/heroes/youga/spacetime.js): Twisted Spacetime and Turbulence on the dummy (Q-H6).
+// Youga – Spacetime Elapse (hero trait audit B4; packages/engine/src/heroes/youga/spacetime-elapse.js): Twisted Spacetime and Turbulence on the dummy (Q-H6).
 // `state.dealsDamageOverTime`: an active damaging ailment or skill DoT (packages/engine/src/planner.js).
 export function resolveSpacetimeState(traitLines = [], state = {}) {
   const traits =
@@ -811,7 +803,7 @@ export function resolveSpacetimeState(traitLines = [], state = {}) {
   };
 }
 
-// ---- Erika – Lightning Shadow and Vendetta's Sting (hero trait audit B5; packages/engine/src/heroes/erika/traits.js) ----
+// ---- Erika – Lightning Shadow and Vendetta's Sting (hero trait audit B5; packages/engine/src/heroes/erika/lightning-shadow.js, packages/engine/src/heroes/erika/vendettas-sting.js) ----
 // `state.felineFigure` (felineFigureState) and `state.erikaVendetta` (vendettaStingState) come from packages/engine/src/planner.js; the engines
 // apply them (packages/engine/src/combat-states.js Numbed, packages/engine/src/heroes/erika/vendetta-model.js triggers); these entries carry the badges and the derived lines.
 const pct = (value) => Math.round(value * 10000) / 100;
@@ -1689,7 +1681,7 @@ export function resolveHeroModules(modifierTexts = [], state = {}) {
       continue;
     }
     if (module.key === "illusion") {
-      // Hero trait audit B4 (packages/engine/src/heroes/youga/spacetime.js): one Illusion state per call; each clause reads it.
+      // Hero trait audit B4 (packages/engine/src/heroes/youga/spacetime-illusion.js): one Illusion state per call; each clause reads it.
       const read = youga.illusion || (youga.illusion = resolveIllusionState(traits, state));
       const neutral = (status, why) =>
         entries.push({
@@ -1826,7 +1818,7 @@ export function resolveHeroModules(modifierTexts = [], state = {}) {
           module,
           Boolean(state.mainCanSpellBurst),
           state.mainCanSpellBurst
-            ? "each Spell Burst the Illusion consumes also attempts yours: your activations come from your casts and the Illusion's (packages/engine/src/heroes/youga/spacetime.js settleIllusionStream; provisional)"
+            ? "each Spell Burst the Illusion consumes also attempts yours: your activations come from your casts and the Illusion's (packages/engine/src/heroes/youga/spacetime-illusion.js settleIllusionStream; provisional)"
             : "the Main Skill cannot Spell Burst (no Max Spell Burst, or not a Spell that can)",
         );
       } else if (
@@ -1974,7 +1966,7 @@ export function resolveHeroModules(modifierTexts = [], state = {}) {
       const text = `uptime ${round(uptime * 100)}% (${round(duration)} s every ${cooldown} s; auto-cast delay ignored: provisional)`;
       // Audit of held debuffs (pact scripted-effects batch 2026-10-13): auto-cast whenever available, so a cast at t = 0 (best
       // case, user 2026-10-13); the 5 s / 20 s windows and the recount follow the casts, sustained figures keep the uptime.
-      // With extra charges (B3) the casts come from the charge simulation (packages/engine/src/heroes/gemma/traits.js purgatoryIntervals).
+      // With extra charges (B3) the casts come from the charge simulation (packages/engine/src/heroes/gemma/flame-of-pleasure.js purgatoryIntervals).
       const intervals = purgatoryIntervals({ durationSeconds: duration, cooldownSeconds: cooldown, charges });
       const inPurgatory = (t) => (intervals.some(([start, end]) => t >= start - 1e-9 && t < end - 1e-9) ? 1 : 0);
       const cast =

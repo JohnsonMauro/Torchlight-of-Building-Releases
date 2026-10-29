@@ -532,7 +532,7 @@ const ENGINE = {
 const HERO_ENGINE_PENDING = {
   // Carino (Ranger of Glory, Lethal Flash, Zealot of War): modeled by hero trait audit B9 (packages/engine/src/heroes/carino/traits.js, packages/engine/src/heroes/hero-trait-modules.js
   // "ammo" / "specialAmmo" / "heatUp" / "deflection" / "ouroboros").
-  // Erika – Lightning Shadow and Vendetta's Sting: modeled by hero trait audit B5 (packages/engine/src/heroes/erika/traits.js, packages/engine/src/heroes/hero-trait-modules.js).
+  // Erika – Lightning Shadow and Vendetta's Sting: modeled by hero trait audit B5 (packages/engine/src/heroes/erika/lightning-shadow.js, packages/engine/src/heroes/erika/vendettas-sting.js, packages/engine/src/heroes/hero-trait-modules.js).
   // Rehan (Anger, Seething Silhouette): modeled by hero trait audit B10 (packages/engine/src/heroes/rehan/traits.js, packages/engine/src/heroes/hero-trait-modules.js "rage" / "burst" /
   // "spirit"); Hysteria's Rage gains (left to B10 by B2) are read there, its Missing Life line by the generic reader (B2).
   "bing-blast-nova": [

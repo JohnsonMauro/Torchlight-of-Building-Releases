@@ -24,7 +24,7 @@
       "count": 2
     }
   },
-  "packages/engine/src/heroes/erika/traits.js": {
+  "packages/engine/src/heroes/erika/trait-lines.js": {
     "no-unused-vars": {
       "count": 1
     }

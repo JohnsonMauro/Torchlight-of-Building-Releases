@@ -101,7 +101,7 @@ const PENDING = {
   // Carino (B9, 2026-10-19): Royal Arsenal's Noble line, Into the Night and Self-Imposed Shackles' Heat Up line join the intake;
   // MODULE_LINES below names the lines the Carino module reads (packages/engine/src/heroes/carino/traits.js).
   // Erika (B5, 2026-10-19): Charging Tail and Vengeful Night Wraith join the intake; MODULE_LINES below names the lines the
-  // Lightning Shadow / Vendetta's Sting modules read (packages/engine/src/heroes/erika/traits.js, packages/engine/src/heroes/hero-trait-modules.js).
+  // Lightning Shadow / Vendetta's Sting modules read (packages/engine/src/heroes/erika/lightning-shadow.js, packages/engine/src/heroes/erika/vendettas-sting.js, packages/engine/src/heroes/hero-trait-modules.js).
   // Bing (B12): Genius Idea Generator's Whimsy line joins the intake (MODULE_LINES below, packages/engine/src/heroes/bing/creative-genius.js); its Ingenuity
   // Overload line waits for that engine.
   "Bing's Big Bang Pack": P("B12", "Bing's bomb engine", "When bombs deal damage"),
@@ -156,7 +156,7 @@ const MODULE_LINES = {
     "The casting interval of Twisted Spacetime",
   ],
   "Private Universe": ["+40% Spacetime Turbulence Duration", "Twisted Spacetime only follows you"],
-  // Erika (B5): Feline Figure's crit and its Numbed (packages/engine/src/combat-states.js through packages/engine/src/heroes/erika/traits.js felineFigureState); the
+  // Erika (B5): Feline Figure's crit and its Numbed (packages/engine/src/combat-states.js through packages/engine/src/heroes/erika/lightning-shadow.js felineFigureState); the
   // Phantom's Vendetta casts (packages/engine/src/heroes/erika/vendetta-model.js).
   "Charging Tail": ["Feline Figure can now land Critical Strikes", "On Critical Strike, the effect of Numbed"],
   "Vengeful Night Wraith": ["For every 3 casts of Vendetta", "+30% additional Phantom Damage"],

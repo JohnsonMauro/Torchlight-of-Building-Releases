@@ -2,7 +2,7 @@ import { allSkillEffects } from "../../../data/skills/all-skill-effects.generate
 import { skillTiming } from "../../../data/skills/skill-timing.generated.js";
 import { tlidbSkillCatalog } from "../../../data/catalogs/tlidb.js";
 import { classifyHitLine } from "../../skills/skill-hit-lines.js";
-import { incisiveUptime } from "./traits.js";
+import { incisiveUptime } from "./vendettas-sting.js";
 
 // Vendetta and Endless Vendetta (engine "trigger-main"): player-activated skills that trigger the equipped Main Skill.
 //
@@ -25,7 +25,7 @@ import { incisiveUptime } from "./traits.js";
 // The figure reported is the net gain over plain attacking: triggered uses minus the Main Skill uses lost to the Vendetta cast time
 // (the Main Skill's own hit model already counts its full rate). Combo Main Skills: a trigger is read as one Combo Starter 1 hit.
 //
-// Erika – Vendetta's Sting (hero trait audit B5, 2026-10-19; packages/engine/src/heroes/erika/traits.js vendettaStingState, provisional readings listed
+// Erika – Vendetta's Sting (hero trait audit B5, 2026-10-19; packages/engine/src/heroes/erika/vendettas-sting.js vendettaStingState, provisional readings listed
 // there): the "+X% additional Attack Damage for skills triggered by Vendetta" lines, Swift Stalk's +X% to Elites (the dummy is a
 // Boss) and Feline Fury's Excess Critical Strike Chance bonus add in one pool (the game records write the same attribute, 5719
 // add), one multiplier on every triggered use; Feline Fury's extra trigger chance per Vendetta cast (Effective Critical Strike

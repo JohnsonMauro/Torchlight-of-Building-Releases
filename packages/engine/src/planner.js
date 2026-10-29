@@ -65,7 +65,7 @@ import {
   projectileMechanics,
 } from "./heroes/youga/the-ultimate-one.js";
 import { resolveHeroModules, resolveIllusionState } from "./heroes/hero-trait-modules.js";
-import { settleIllusionStream } from "./heroes/youga/spacetime.js";
+import { settleIllusionStream } from "./heroes/youga/spacetime-illusion.js";
 import { passiveSupportLines } from "./supports/passive-support-lines.js";
 import {
   GASH,
@@ -132,7 +132,8 @@ import { luckyCritChance, mirroredShadeTerraChargeLines } from "./combat-states.
 import { CHANCE_TO_DAMAGE } from "./ailments/ailment-model.js";
 import { calculateWeaponAttack, weaponLocalLineKind } from "./skills/weapon-damage-model.js";
 import { calculateVendettaTriggers, hitCritChances } from "./heroes/erika/vendetta-model.js";
-import { felineFigureState, vendettaStingState, VENDETTAS_STING } from "./heroes/erika/traits.js";
+import { felineFigureState } from "./heroes/erika/lightning-shadow.js";
+import { vendettaStingState, VENDETTAS_STING } from "./heroes/erika/vendettas-sting.js";
 import { motoIrisState, minionHeroTraits } from "./heroes/minion-heroes.js";
 import { mergingStreamOrigins } from "./heroes/iris/vigilant-breeze.js";
 import { theaBlessingInputs, theaState, INSIDE_REALM_CONDITION } from "./heroes/thea/traits.js";
@@ -714,7 +715,7 @@ function buildLineConditionState({
     // Erika (Wind Stalker; packages/engine/src/heroes/erika/wind-stalker.js): the build's Stalker clauses and whether an active Attack skill can
     // Multistrike (support or passive Multistrike chance; Mobility, Channeled and Sentry skills cannot). The planner replaces it
     // with the settled state once the hits are computed (resolveWindStalker).
-    // Erika – Lightning Shadow (hero trait audit B5; packages/engine/src/heroes/erika/traits.js): the character's Movement Speed total (Wild Lightning).
+    // Erika – Lightning Shadow (hero trait audit B5; packages/engine/src/heroes/erika/lightning-shadow.js): the character's Movement Speed total (Wild Lightning).
     movementSpeedPercent: stat("movementSpeed"),
     windStalker: windStalkerState({
       heroId: state.hero.selectedHeroId,
@@ -2934,7 +2935,7 @@ function calculatePlannerOnce(
   // Youga – Spacetime Illusion (hero trait audit B4): the Main Skill's own cast rate, every cast per second and the character's
   // increased Cast Speed the hit pass measured (Eeeendless Mana's rate, the moon's and I'm Out of Mana's stacks, Make it Quick).
   lineConditionState.yougaSpacetime = hitRateFacts?.youga ?? null;
-  // Erika – Lightning Shadow / Vendetta's Sting (hero trait audit B5; packages/engine/src/heroes/erika/traits.js): Feline Figure's Numbed state (Charging
+  // Erika – Lightning Shadow / Vendetta's Sting (hero trait audit B5; packages/engine/src/heroes/erika/lightning-shadow.js, packages/engine/src/heroes/erika/vendettas-sting.js): Feline Figure's Numbed state (Charging
   // Tail reads the Main Skill's crit chance the hit pass measured) and the Vendetta's Sting state (Incisive's uptime from the
   // measured Vendetta cycle; held at 1 before).
   lineConditionState.felineFigure = felineFigureState({
@@ -4669,7 +4670,7 @@ function calculatePlannerOnce(
   const mark = settleMark(markState, skillHits);
   let illusion = lineEffects.hero?.illusion;
   const illusionHit = illusion ? skillHits.find((hit) => hit.modeled && hit.setupKey === resolvedMain?.setupKey) : null;
-  // Hero trait audit B4 (packages/engine/src/heroes/youga/spacetime.js): the Illusion state settled with this pass's Main Skill cast rate and the
+  // Hero trait audit B4 (packages/engine/src/heroes/youga/spacetime-illusion.js): the Illusion state settled with this pass's Main Skill cast rate and the
   // character's increased Cast Speed (Eeeendless Mana's rate, Make it Quick); the moon's and I'm Out of Mana's stacks keep the
   // measuring pass's rates (they are lines the hits already read).
   let yougaIllusionFacts = null;
@@ -5633,7 +5634,7 @@ function calculatePlannerOnce(
       // Ill Omen True Damage from the damage that builds stacks (DoT and Reaping; hits do not).
       const stackBuildingDps = dots.reduce((sum, dot) => sum + dot.dps, 0) + reaping.reapingDps;
       const illOmenWindowDps = illOmenDps(illOmen, stackBuildingDps);
-      // Spacetime Turbulence (Youga – Spacetime Elapse, hero trait audit B4, Q-H6; packages/engine/src/heroes/youga/spacetime.js): each move re-deals the
+      // Spacetime Turbulence (Youga – Spacetime Elapse, hero trait audit B4, Q-H6; packages/engine/src/heroes/youga/spacetime-elapse.js): each move re-deals the
       // recorded share of the DoT and Reaping damage; a window releases the moves inside it (the recount times them exactly).
       const turbulenceFactor = spacetime?.turbulence ? spacetime.spacetime.windowFactor(seconds) : 0;
       const turbulence =

@@ -1034,7 +1034,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     source: `${HERO_TRAIT_AUDIT} (§5 B2)`,
     appliesWhen: (ctx) => traitPicked(ctx, "gemma-ice-fire-fusion", "Ice to Blaze"),
   },
-  // Hero trait audit B3 (2026-10-19; packages/engine/src/heroes/gemma/traits.js, packages/engine/src/heroes/hero-trait-modules.js): Gemma's provisional readings.
+  // Hero trait audit B3 (2026-10-19; packages/engine/src/heroes/gemma/, packages/engine/src/heroes/hero-trait-modules.js): Gemma's provisional readings.
   {
     id: "gemma-frostfire-rampage-cycle",
     title: "Frostfire Rampage: do casts during the cooldown count?",
@@ -1145,7 +1145,7 @@ export const OPEN_QUESTIONS = Object.freeze([
     source: `${HERO_TRAIT_AUDIT} (§5 B3)`,
     appliesWhen: (ctx) => traitPicked(ctx, "gemma-flame-of-pleasure", "Dress Licker"),
   },
-  // Hero trait audit B4 (2026-10-19; packages/engine/src/heroes/youga/spacetime.js, packages/engine/src/heroes/hero-trait-modules.js): Youga – Spacetime Illusion and Spacetime
+  // Hero trait audit B4 (2026-10-19; packages/engine/src/heroes/youga/spacetime-illusion.js, packages/engine/src/heroes/youga/spacetime-elapse.js, packages/engine/src/heroes/hero-trait-modules.js): Youga – Spacetime Illusion and Spacetime
   // Elapse's provisional readings (Q-H5, Q-H6).
   {
     id: "youga-illusion-rate",
@@ -1262,7 +1262,7 @@ export const OPEN_QUESTIONS = Object.freeze([
       ctx.heroId === "youga-spacetime-elapse" &&
       ctx.hasText(/^When dealing damage to enemies in Twisted Spacetime, Reaps/i),
   },
-  // Hero trait audit B5 (2026-10-19; packages/engine/src/heroes/erika/traits.js, packages/engine/src/heroes/erika/vendetta-model.js, packages/engine/src/heroes/hero-trait-modules.js): Erika – Lightning
+  // Hero trait audit B5 (2026-10-19; packages/engine/src/heroes/erika/lightning-shadow.js, packages/engine/src/heroes/erika/vendettas-sting.js, packages/engine/src/heroes/erika/vendetta-model.js, packages/engine/src/heroes/hero-trait-modules.js): Erika – Lightning
   // Shadow and Vendetta's Sting. Shown only for those Erika loadouts.
   {
     id: "erika-feline-figure-cadence",

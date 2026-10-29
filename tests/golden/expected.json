@@ -332,7 +332,7 @@
       }
     },
     "hero/gemma-flame-of-pleasure/first": {
-      "sha256": "0ae518529a3853931aace1dec977dcae2460fe28b29bd9e0bb2ee92db8e339e5",
+      "sha256": "bfe5616e8a571b561b06c9f62494d22bc055dae57645245bf7015b35e6669a42",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 332176021.5141698,
@@ -342,7 +342,7 @@
       }
     },
     "hero/gemma-flame-of-pleasure/last": {
-      "sha256": "42c8bd4cd44a6591969a5811f38825b96c4898342b74a60e66bd71a25927528b",
+      "sha256": "d57925efd25cf78ed01ab5fa651b2d3b2497b9f828dceb5ce946185eea26a45d",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 332176021.5141698,
@@ -412,7 +412,7 @@
       }
     },
     "hero/youga-spacetime-illusion/first": {
-      "sha256": "d32f68a20b106c16102754b4e53f922024e19e3415278d72eddcf1037c72f147",
+      "sha256": "41e40284d8d3c736775d6f63cfb0b2377dd342e67f599b465f0888d3d07a2fd3",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 256189011.22735015,
@@ -422,7 +422,7 @@
       }
     },
     "hero/youga-spacetime-illusion/last": {
-      "sha256": "d00f053ce2a1386a5c9cf4126f072dd371c7d4198e943f14b0e569145a7d140d",
+      "sha256": "cd80ab822442ad5ba2e74d9e4f9ddaf20cbc87a6c292ebebf10a5d1d5836d074",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 256189011.22735015,
@@ -432,7 +432,7 @@
       }
     },
     "hero/youga-spacetime-elapse/first": {
-      "sha256": "a74265fec8f1342ef7a394f0ca0933c11aa8c54d5bd32584ee90c4a5e4c22f0e",
+      "sha256": "32c4b5c5dfd585152f42efd645aa44280098ef22bc526cd80409b9d6ea822e53",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,
@@ -442,7 +442,7 @@
       }
     },
     "hero/youga-spacetime-elapse/last": {
-      "sha256": "020945ae07bb88fe0d0daa25d8d17207f524bba7513fc70e62fb5f1d78295bbc",
+      "sha256": "5fe11b0f805bd1654733b19aa4a7765ff9a6b6c7d7022fda4cac3459fbc47c85",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 229086911.38908297,

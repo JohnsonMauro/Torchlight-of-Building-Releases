@@ -173,7 +173,7 @@ export function collectEnemyAilments({
       add(name, damagingAilments.includes(name), line.source, "inflicted by the follower's skill");
     }
   }
-  // Gemma – Frostbitten Heart (hero trait audit B3, 2026-10-19; packages/engine/src/heroes/gemma/traits.js): "When dealing Cold Damage, triggers Cold
+  // Gemma – Frostbitten Heart (hero trait audit B3, 2026-10-19; packages/engine/src/heroes/gemma/frostbitten-heart.js): "When dealing Cold Damage, triggers Cold
   // Pulse at the enemy's location. Interval: 4 s" and "Inflicts Frostbite when Cold Pulse hits an enemy": an active skill that
   // deals Cold Damage (its tag, added Cold, a conversion to Cold) keeps the dummy Frostbitten (held between pulses, as every
   // Frostbite source here; provisional). Read last, so another Frostbite source keeps its own reason.

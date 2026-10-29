@@ -2353,7 +2353,7 @@ export function resolveCombatStates(modifierTexts = [], state = {}) {
     );
 
   // ---- Numbed ----
-  // Erika – Lightning Shadow (hero trait audit B5, Q-H10 provisional; packages/engine/src/heroes/erika/traits.js felineFigureState): Feline Figure's
+  // Erika – Lightning Shadow (hero trait audit B5, Q-H10 provisional; packages/engine/src/heroes/erika/lightning-shadow.js felineFigureState): Feline Figure's
   // Numbed on the dummy (its average stacks, at most 10; another Numbed source keeps the dummy at 10) and the "additional Numbed
   // Effect" lines as one multiplier (the trait lines, Wild Lightning, Charging Equation, Charging Tail on Feline Figure's share).
   const felineFigure = state.felineFigure?.active ? state.felineFigure : null;
