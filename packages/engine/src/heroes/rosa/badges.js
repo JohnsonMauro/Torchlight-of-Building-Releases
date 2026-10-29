@@ -116,9 +116,25 @@ export function mercuryPurgedBadge(line, module, ctx) {
   if (onDummy) derive(offense, line.source, `${baptism} (Mercury Purged)`);
 }
 
-/** Rosa's hero-exclusive revived lines the modules read: Mercury Purged's three Baptism lines. */
+// Between the Holy Land and Hell (revived memory, Rosa – High Court Chariot; TLIDB keyword 2026-10-29): "Gains Repent to the Light
+// for 8s after casting the Trait Skill". Repent to the Light attacks the character inside the Holy Domain (a fixed 10 Physical
+// Damage after every 2 casts) and each blocked self-attack gives +1% Block Ratio and its Upper Limit, up to 15 stacks: defensive.
+const REPENT = /^Gains Repent to the Light for [\d.]+ ?s after casting the Trait Skill$/i;
+
+export function repentBadge(line, module, ctx) {
+  ctx.neutral(
+    line,
+    module,
+    "No DPS effect",
+    "Repent to the Light attacks you inside the Holy Domain for +1% Block Ratio and Block Ratio Upper Limit per blocked attack (up to 15): defensive",
+  );
+}
+
+/** Rosa's hero-exclusive revived lines the modules read: Mercury Purged's Baptisms, Between the Holy Land and Hell. */
 export function rosaRevivedLine(heroId, clean) {
-  return heroId === "rosa-unsullied-blade" && MERCURY_PURGED.test(clean);
+  if (heroId === "rosa-unsullied-blade") return MERCURY_PURGED.test(clean);
+  if (heroId === "rosa-high-court-chariot") return REPENT.test(clean);
+  return false;
 }
 
 export const ROSA_MODULES = Object.freeze([
@@ -141,5 +157,14 @@ export const ROSA_MODULES = Object.freeze([
     rule: "Mercury Purged (revived memory): each line grants its Baptism for 8 s on inflicting its ailment, so the Baptism holds while the build inflicts that ailment on the dummy (Frostbite: Baptism: Impassive, -30% additional Cold Damage taken and +60% Skill Area; Ignite: Baptism: Rage, -30% additional Fire Damage taken and +30% additional damage on Critical Strike; Numbed: Baptism: Indolent, -30% additional Lightning Damage taken and +30% additional Max Damage; TLIDB keywords). Provisional: whether the three Baptisms can be held at once.",
     lines: MERCURY_PURGED,
     badge: mercuryPurgedBadge,
+  },
+  {
+    key: "repent",
+    heroes: /^rosa-high-court-chariot$/,
+    label: "Rosa: Between the Holy Land and Hell",
+    status: "Provisional",
+    rule: "Between the Holy Land and Hell (revived memory): Repent to the Light for 8 s after the Trait Skill attacks you inside the Holy Domain (a fixed 10 Physical Damage after every 2 casts, 0.1 s interval) and each blocked self-attack gives +1% Block Ratio and Block Ratio Upper Limit, up to 15 stacks (TLIDB keyword): defensive, no DPS effect.",
+    lines: REPENT,
+    badge: repentBadge,
   },
 ]);

@@ -552,7 +552,7 @@
       }
     },
     "hero/rosa-high-court-chariot/first": {
-      "sha256": "61db507a7876f9f195f6e1cf5ea71e61950ac1a7f1b7d5fc9fafb93970439ff2",
+      "sha256": "48167c0ed308eaa2955982c6753bdac629cb66ee1a300e458b3ee6c64d6fcb11",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 274903004.49383247,
@@ -562,7 +562,7 @@
       }
     },
     "hero/rosa-high-court-chariot/last": {
-      "sha256": "353d8e432f8daa851c74d806accfb7b3c87f5bf3c767595e5510d0e096cb7401",
+      "sha256": "7ff234c23155a59f4883e26e5dc1942095d7cb2726ef2948ea55845b2a9b613a",
       "summary": {
         "mainSkill": "Homing Frost Bolt",
         "dps5s": 274903004.49383247,

@@ -127,9 +127,8 @@ const PENDING = {
   // readers (Spell Burst Charge Speed and hit damage, packages/engine/src/skills/skill-hit-model.js; Skill Area).
   // Moto and Iris (B6, 2026-10-19): Machine's Joy, Peril of Synthetic Troops, Nourishing Spring Rain, Nature's Party, Soft Storm and
   // Blowing Breeze join the intake; MODULE_LINES below names the lines the Moto / Iris modules read (packages/engine/src/heroes/minion-heroes.js).
-  // Rosa (B11)
-  "Between the Holy Land and Hell": P("B11", "Rosa's Holy Domain / Repent to the Light", "Gains Repent to the Light"),
-  // Mercury Purged joins the intake (2026-10-29): MODULE_LINES below names its Baptism lines (packages/engine/src/heroes/rosa/badges.js).
+  // Rosa (B11, 2026-10-29): Mercury Purged and Between the Holy Land and Hell join the intake; MODULE_LINES below names their lines
+  // (packages/engine/src/heroes/rosa/badges.js).
   // Sage (B8, 2026-10-19): Omni-Elixir Side Effect and Basic Pharmacology Manuscript join the intake; MODULE_LINES below names the
   // lines the Scent Bottle module reads (packages/engine/src/heroes/sage/licorice-note.js).
   // Selena (B13): Red Shoes of Cruelty joins the intake (2026-10-29): MODULE_LINES below (packages/engine/src/heroes/selena/badges.js).
@@ -204,6 +203,8 @@ const MODULE_LINES = {
   "Ancestral Hate": ["Seething Spirit consumes"],
   // Rosa – Unsullied Blade (B11): each Baptism while its ailment is on the dummy (packages/engine/src/heroes/rosa/badges.js).
   "Mercury Purged": ["When inflicting Frostbite", "When inflicting Ignite", "When inflicting Numbed"],
+  // Rosa – High Court Chariot (B11): Repent to the Light (defensive).
+  "Between the Holy Land and Hell": ["Gains Repent to the Light"],
   // Selena – Dance of the Deep (B13): the Main Terra Skill Area's damage taken from Movement Speed, and the True Damage taken.
   "Red Shoes of Cruelty": [
     "While Main Terra Skill is active, takes True Damage",

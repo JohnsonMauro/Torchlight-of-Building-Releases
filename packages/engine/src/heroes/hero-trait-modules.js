@@ -62,8 +62,8 @@ export function heroModuleRevivedLine(heroId, text) {
   if (CARINO_HEROES.has(heroId)) return carinoRevivedLine(heroId, clean);
   // Rehan (B10): Hero's Resourcefulness, Furious Roar, Ancestral Hate's Life cost, Starfall Wasteland.
   if (REHAN_HEROES.has(heroId)) return rehanRevivedLine(heroId, clean);
-  // Rosa – Unsullied Blade (B11): Mercury Purged's Baptism lines.
-  if (heroId === "rosa-unsullied-blade") return rosaRevivedLine(heroId, clean);
+  // Rosa (B11): Mercury Purged's Baptism lines, Between the Holy Land and Hell's Repent to the Light.
+  if (heroId === "rosa-unsullied-blade" || heroId === "rosa-high-court-chariot") return rosaRevivedLine(heroId, clean);
   // Selena – Dance of the Deep (B13): Red Shoes of Cruelty.
   if (heroId === "selena-dance-of-the-deep") return selenaRevivedLine(heroId, clean);
   // Bing – Creative Genius (B12): Genius Idea Generator's Whimsy line.
