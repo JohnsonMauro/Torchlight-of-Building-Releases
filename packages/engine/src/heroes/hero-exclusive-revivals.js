@@ -112,14 +112,9 @@ const PENDING = {
   ),
   // Gemma (B3, 2026-10-19): First Flake of Strange Snow joins the intake (packages/engine/src/combat-states.js reads its deemed Frostbite Rating and
   // additional Frostbite Effect) and so does Sweet Pain's Erosion Magus Origin (packages/engine/src/skills/origin-of-spirit-magus.js: defensive, No DPS
-  // effect). Advanced Elemental Impact stays out: TLIDB gives only its base text ("+12% additional damage for 2 other types of
-  // Elemental Damage if the supported skill recently dealt 1 type of Elemental Damage", level not stated) and no level table,
-  // and the readable game data has no record of it, so the Lv. 40 value is unknown.
-  "Three-Chambered Heart": P(
-    "B3",
-    "Advanced Elemental Impact's Lv. 40 values (TLIDB publishes no level table; not in the readable game data)",
-    "The Main Skill is supported by a Lv. 40 Advanced Elemental Impact",
-  ),
+  // effect). Three-Chambered Heart joins it too (2026-10-29): its granted Lv. 40 Advanced Elemental Impact reads the written
+  // "+12%" (no level table anywhere; packages/engine/data/skills/granted-support-progression.js) on the Main Skill through the
+  // item-granted support path (packages/engine/src/gear/gear-unique-modules.js grantedMainSkillSupports).
   // Thea (B7, 2026-10-19): The Place of Oracle (and its Blessing variants), Crossing the Divine Threshold and Inverted Shrine join the
   // intake; MODULE_LINES below names the lines the Thea modules read (packages/engine/src/heroes/thea/traits.js).
   // Youga (B4, 2026-10-19): Telepathy Expert, Fifth Cosmic Velocity, To Myself in Another Spacetime and Private Universe join the

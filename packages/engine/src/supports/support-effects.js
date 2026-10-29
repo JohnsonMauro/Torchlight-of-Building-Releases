@@ -1,4 +1,5 @@
 import { supportProgression } from "../../data/skills/support-progression.generated.js";
+import { grantedSupportProgression } from "../../data/skills/granted-support-progression.js";
 import { dummyTarget, explicitRadiusHolds, DISTANT_STANDING_METERS } from "../combat/dummy-target.js";
 import { residualNonDamageStatus } from "../text/line-families.js";
 import { resolveLineCondition } from "../text/line-conditions.js";
@@ -26,6 +27,16 @@ export function allElementalState(dealtTypes = []) {
   const dealt = new Set(dealtTypes || []);
   const missing = ELEMENTAL.filter((type) => !dealt.has(type));
   return { active: missing.length === 0, missing };
+}
+
+/**
+ * Advanced Elemental Impact (Three-Chambered Heart): "+X% additional damage for 2 other types of Elemental Damage if the
+ * supported skill recently dealt 1 type of Elemental Damage". Each Elemental type the skill deals gains it from another type
+ * it deals, so it reaches every dealt Elemental type once the skill deals two of them (provisional reading of the text).
+ */
+export function otherElementalState(dealtTypes = []) {
+  const types = ELEMENTAL.filter((type) => (dealtTypes || []).includes(type));
+  return { active: types.length >= 2, types };
 }
 
 /**
@@ -242,6 +253,15 @@ export const SUPPORT_CLAUSE_RULES = [
       "i",
     ),
     build: (m) => ({ value: num(m[1]), typed: "Elemental", scope: scopeFor("Elemental") }),
+  },
+  // Advanced Elemental Impact (Three-Chambered Heart's granted support): every dealt Elemental type while the skill deals two.
+  {
+    family: "otherElementalAdditional",
+    pattern: new RegExp(
+      `^${N}% additional damage for 2 other types of Elemental Damage if the supported skill recently dealt 1 type of Elemental Damage$`,
+      "i",
+    ),
+    build: (m) => ({ value: num(m[1]) }),
   },
   // Hunting Tempo (reworked, 2026-10-15 patch update): buffed next N uses per 6 m moved; the Knockback half has no dummy effect.
   {
@@ -876,7 +896,7 @@ function configFor(setup, support, specialSupportConfigs = {}) {
 // Raw clauses of one support: { text, origin, level?, tier?, stars? }.
 function supportClauses(setup, support, ctx) {
   const name = support.name;
-  const entry = supportProgression[name];
+  const entry = supportProgression[name] ?? grantedSupportProgression[name];
   const level = supportLevel(support);
   const special = isSpecial(name);
   const config = configFor(setup, support, ctx.specialSupportConfigs);
@@ -1058,6 +1078,7 @@ function clauseStatus(clause, support, ctx) {
         "dotAdditional",
         "perStack",
         "allElementalAdditional",
+        "otherElementalAdditional",
         "movementCharges",
       ].includes(clause.family)
     )
@@ -1118,6 +1139,20 @@ function clauseStatus(clause, support, ctx) {
             ])
           : s("Inactive", `the damage over time is ${ctx.damageType || "untyped"}`);
       return s("Not modeled", "read on skill hits and skill DoTs only");
+    }
+    case "otherElementalAdditional": {
+      if (engine !== "skill-hit") return s("Not modeled", "read on skill hits only");
+      const { active, types } = otherElementalState(ctx.dealtTypes || []);
+      return active
+        ? s(
+            "In calc",
+            `the skill deals ${types.join(" and ")}: each takes it from the other; "recently" held while the skill is used continuously`,
+            ["skill-hit"],
+          )
+        : s(
+            "Inactive",
+            `the skill deals ${types.length ? `only ${types[0]}` : "no Elemental Damage"}: no other Elemental type to raise`,
+          );
     }
     case "movementCharges": {
       // Hunting Tempo (2026-10-15 patch update): per-metre, so it follows the Movement group.

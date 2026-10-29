@@ -9,6 +9,7 @@ import {
   supportEffectsFor,
   projectileQuantityFalloff,
   allElementalState,
+  otherElementalState,
   movementChargeShare,
   ASSUMED_MOVEMENT_METERS_PER_SECOND,
 } from "../supports/support-effects.js";
@@ -2514,6 +2515,24 @@ export function calculateSkillHit({
         value: clause.value,
         category: "Additional damage",
         scopeTypes: [...ELEMENTAL_TYPES],
+      });
+  }
+  // Advanced Elemental Impact (Three-Chambered Heart): every Elemental type of the final hit parts once they hold two.
+  for (const clause of supports.effects.clauses.filter(
+    (item) => item.family === "otherElementalAdditional" && item.value,
+  )) {
+    const { active, types } = otherElementalState(finalTypes);
+    if (!active)
+      notes.push(
+        `${clause.support}: the supported skill deals ${types.length ? `only ${types[0]}` : "no Elemental Damage"}, so "${clause.text}" raises nothing.`,
+      );
+    else
+      supports.additional.push({
+        source: clause.source,
+        text: `${clause.text} (Lv.${clause.level ?? "?"}) — the hits deal ${types.join(" and ")}, each raised by the other; "recently" held while the skill is used continuously`,
+        value: clause.value,
+        category: "Additional damage",
+        scopeTypes: types,
       });
   }
   for (const clause of supports.effects.clauses.filter(

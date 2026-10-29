@@ -111,7 +111,7 @@ import { skillProgression } from "../data/skills/skill-progression.generated.js"
 import { calculateSkillDot, skillDotAfflictionPerSecond } from "./skills/skill-dot-model.js";
 import { calculateSkillHit } from "./skills/skill-hit-model.js";
 import { skillHitDotComponents, skillHitTiming } from "./skills/skill-hit-profiles.js";
-import { resolveSupportEffects, allElementalState } from "./supports/support-effects.js";
+import { resolveSupportEffects, allElementalState, otherElementalState } from "./supports/support-effects.js";
 import { calculateMinion, groupMinionSources, classifyMinionLine } from "./minions/minion-damage-model.js";
 import {
   commanderGambitState,
@@ -4639,7 +4639,6 @@ function calculatePlannerOnce(
     const clauses = (setups.find((setup) => setup.setupKey === hit.setupKey)?.supportEffects?.clauses || []).filter(
       (clause) => clause.family === "allElementalAdditional",
     );
-    if (!clauses.length) continue;
     const dealt = (hit.components || [])
       .filter((component) => (component.roll?.min || 0) + (component.roll?.max || 0) > 0)
       .map((component) => component.type);
@@ -4652,6 +4651,19 @@ function calculatePlannerOnce(
           ? `the hits deal Fire, Cold and Lightning (own types, conversions, added flat damage); applies to the Elemental hit parts and the skill's own Elemental damage over time; "recently" is held while the skill is used continuously`
           : `the supported skill doesn't deal all three Elemental types (missing: ${missing.join(", ")})`,
         consumers: active ? ["skill-hit"] : [],
+      });
+    // Advanced Elemental Impact (Three-Chambered Heart): two dealt Elemental types in the final hit parts.
+    const other = otherElementalState(dealt);
+    for (const clause of (
+      setups.find((setup) => setup.setupKey === hit.setupKey)?.supportEffects?.clauses || []
+    ).filter((item) => item.family === "otherElementalAdditional"))
+      Object.assign(clause, {
+        active: other.active,
+        status: other.active ? "In calc" : "Inactive",
+        reason: other.active
+          ? `the hits deal ${other.types.join(" and ")} (own types, conversions, added flat damage), each raised by the other; "recently" is held while the skill is used continuously`
+          : `the skill deals ${other.types.length ? `only ${other.types[0]}` : "no Elemental Damage"}: no other Elemental type to raise`,
+        consumers: other.active ? ["skill-hit"] : [],
       });
   }
   // Spacetime Illusion (packages/engine/src/heroes/youga/badges.js; provisional): extra Main Skill uses at the Illusion's rate, each a full

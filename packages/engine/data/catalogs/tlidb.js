@@ -44,7 +44,25 @@ const itemGrantedSkills = [
 export const tlidbSkillCatalog = [...merge(tlidbSkillCatalogGenerated, skillCatalogOverrides), ...itemGrantedSkills];
 for (const entry of tlidbSkillCatalog) entry.effects ??= allSkillEffects[entry.name] || [];
 
-export const tlidbSupportCatalog = merge(tlidbSupportCatalogGenerated, supportCatalogOverrides);
+// Supports only a revived memory or an item grants (packages/engine/data/skills/granted-support-progression.js holds their text):
+// `exclusiveFor` names the grant, so the support selector never offers them; `grantedBy` names it on the support card.
+const itemGrantedSupports = [
+  {
+    name: "Advanced Elemental Impact",
+    tags: ["Support"],
+    level: 40,
+    effects: [
+      "Supports skills that deal damage. +12% additional damage for 2 other types of Elemental Damage if the supported skill recently dealt 1 type of Elemental Damage"
+    ],
+    passiveOnly: false,
+    category: "granted",
+    exclusiveFor: "Three-Chambered Heart",
+    grantedBy: "Three-Chambered Heart",
+    source: "https://tlidb.com/en/Advanced_Elemental_Impact"
+  }
+];
+
+export const tlidbSupportCatalog = [...merge(tlidbSupportCatalogGenerated, supportCatalogOverrides), ...itemGrantedSupports];
 
 export const tlidbEquipmentCatalog = [
   {
