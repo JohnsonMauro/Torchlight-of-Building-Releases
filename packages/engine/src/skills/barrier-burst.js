@@ -2,8 +2,9 @@
 // keyword texts, not measured in game):
 // - "Replaces the Main Skill with Lv. N Barrier Burst" and "When you have a Barrier, triggers the Main Skill upon taking
 //   damage, then removes Barrier": one Barrier Burst per Barrier, fired as soon as damage is taken while it is up.
-// - Requirements read from the build: a Barrier source ("gain a Barrier …"; "for every X m you move" needs the moving
-//   condition) and damage the character deals itself ("Takes N True Damage every …" / "when casting a skill").
+// - Requirements read from the build: a Barrier source (the planner's list, packages/engine/src/defense/barrier-sources.js:
+//   Guard, "for every X m you move") and damage the character deals itself ("Takes N True Damage every …" /
+//   "when casting a skill").
 // - Barrier (keyword "Barrier"): "Gains a Shield equal to 20% of the sum of Max Life and Max Energy Shield"; "+X% Barrier
 //   Shield" lines add (increased), "+X% additional Barrier Shield" lines multiply (the game's attribute screen shows the
 //   two totals: 112% and 20% on the owner's build, matching the lines).
@@ -20,8 +21,6 @@ const BURST_OF_BARRIER = 0.75;
 
 const TRIGGER = /^When you have a Barrier ?, triggers the Main Skill upon taking damage, then removes Barrier$/i;
 const GRANT = /^Replaces the Main Skill with Lv\. (\d+) Barrier Burst$/i;
-const BARRIER_GAIN = /\bgains? an? Barrier\b/i;
-const BARRIER_ON_MOVE = /for every ([\d.]+) ?m you move/i;
 const SELF_DAMAGE = /^Takes [\d.]+ True Damage (?:every [\d.]+ ?s|when casting a skill)/i;
 const BARRIER_INCREASED = /^([+-][\d.]+)% Barrier Shield$/i;
 const BARRIER_ADDITIONAL = /^([+-][\d.]+)% additional Barrier Shield$/i;
@@ -51,26 +50,22 @@ export function barrierBurstState({
   modifierTexts = [],
   maxLife = 0,
   maxEnergyShield = 0,
-  moving = true,
+  barrierSources = [],
   usesPerSecond = null,
 } = {}) {
   const lines = clauses(modifierTexts);
   const trigger = lines.find((line) => TRIGGER.test(line.text));
   const grant = lines.map((line) => line.text.match(GRANT)).find(Boolean);
   if (!trigger || !grant) return null;
-  const barrierLines = lines.filter((line) => BARRIER_GAIN.test(line.text) && !TRIGGER.test(line.text));
-  const movementOnly = barrierLines.length > 0 && barrierLines.every((line) => BARRIER_ON_MOVE.test(line.text));
   const selfDamage = lines.filter((line) => SELF_DAMAGE.test(line.text));
   const requirements = [
     {
       label: "A Barrier source",
-      ok: barrierLines.length > 0 && (!movementOnly || moving),
-      sources: barrierLines.map((line) => `${line.source}: ${line.text}`),
-      missing: !barrierLines.length
-        ? "no line gains a Barrier"
-        : movementOnly && !moving
-          ? "standing still (the Barrier comes from moving)"
-          : "",
+      ok: barrierSources.some((source) => source.available),
+      sources: barrierSources.map((source) => `${source.source}: ${source.text || source.trigger}`),
+      missing: barrierSources.some((source) => source.available)
+        ? ""
+        : "no Barrier source (Guard on a channeled skill, a movement Barrier)",
     },
     {
       label: "Damage taken while the Barrier is up",
@@ -96,12 +91,16 @@ export function barrierBurstState({
   const used = [
     trigger,
     ...lines.filter((line) => GRANT.test(line.text)),
-    ...barrierLines,
     ...selfDamage,
     ...lines.filter((line) => BARRIER_INCREASED.test(line.text) || BARRIER_ADDITIONAL.test(line.text)),
   ];
   return {
-    lines: [...new Set(used.map((line) => line.original))],
+    lines: [
+      ...new Set([
+        ...used.map((line) => line.original),
+        ...barrierSources.filter((source) => source.text).map((source) => source.text),
+      ]),
+    ],
     active: requirements.every((item) => item.ok),
     requirements,
     level: Number(grant[1]),

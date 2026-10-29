@@ -17,7 +17,7 @@ import { skillGameTags } from "../data/skills/support-eligibility.generated.js";
 import { blessingRecoverySources } from "./defense/blessing-gear-effects.js";
 import { calculateAim } from "./skills/aim-model.js";
 import { trueDamageSettleScale } from "./combat/true-damage.js";
-import { guardBarrierSources } from "./defense/barrier-sources.js";
+import { guardBarrierSources, movementBarrierSources } from "./defense/barrier-sources.js";
 import { aegisOfFireAssumption } from "./defense/aegis-of-fire.js";
 import { calculateBlock } from "./defense/block-model.js";
 import { collectBlurSources } from "./combat/blur-sources.js";
@@ -1234,10 +1234,10 @@ function withRecountConditionAssumptions(recount, groups, planner) {
   };
 }
 
-// Barrier is automatic: it holds whenever a Guard-supported channeled skill is in the build
-// (barrier-sources.js). User-confirmed 2026-10-10: the Barrier from Guard is permanent in the
-// SS21 Selena build, so "when having Barrier" lines (A Corner of Divinity's Tenacity Blessing
-// gain) count as active for the whole window. Listed here so the assumption is visible.
+// Barrier is automatic: it holds whenever the build has a Barrier source (barrier-sources.js): a Guard-supported channeled
+// skill (user-confirmed 2026-10-10: the Barrier from Guard is permanent in the SS21 Selena build) or a movement Barrier
+// (owner, 2026-10-29: a build that carries it moves to gain it). "When having Barrier" lines (Pedigree of Gods' Tenacity
+// Blessing gain) then count as active for the whole window. Listed here so the assumption is visible.
 function barrierAssumption(planner) {
   const sources = (planner.barrierSources || []).filter((source) => source.available).map((source) => source.source);
   const dependents = (planner.blessings?.entries || []).flatMap((blessing) =>
@@ -1250,12 +1250,12 @@ function barrierAssumption(planner) {
     return {
       id: "condition:barrier",
       value: false,
-      text: `Barrier: inactive (no Guard-supported channeled skill)${uses}.`,
+      text: `Barrier: inactive (no Guard-supported channeled skill, no movement Barrier)${uses}.`,
     };
   return {
     id: "condition:barrier",
     value: true,
-    text: `Barrier: active (automatic, ${sources.join(", ")}; Guard's Barrier is permanent, user-confirmed 2026-10-10)${uses}.`,
+    text: `Barrier: active (automatic, ${sources.join(", ")}; Guard's Barrier is permanent, user-confirmed 2026-10-10; a build with a movement Barrier moves to gain it)${uses}.`,
   };
 }
 
@@ -2709,7 +2709,8 @@ function calculatePlannerOnce(
     talentState: state.talents,
     blockedRecently: requestedConditions.blockedRecently !== false,
   });
-  const barrierSources = guardBarrierSources(setups);
+  // Every Barrier source of the build, the one list the Blessing gains, Barrier Burst and the Energy Shield pool read.
+  const barrierSources = [...guardBarrierSources(setups), ...movementBarrierSources(modifierTexts)];
   const conditions = {
     ...requestedConditions,
     lowLife: lowResources.lowLife,
@@ -3943,7 +3944,7 @@ function calculatePlannerOnce(
       0,
       { defense: true },
     ).value,
-    moving: conditions.moving !== false,
+    barrierSources,
     usesPerSecond: state.combat.barrierBurstsPerSecond,
   });
   if (barrierBurst) {

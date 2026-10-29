@@ -273,26 +273,6 @@ function barrierShieldBonus(modifierTexts) {
   return { increased, additional, sources };
 }
 
-// Barrier from movement: "100% chance to gain a Barrier for every 5 m you move" (Perishing Inferno Flame Ring). The planner's
-// movement condition is the best case (moving constantly, user rule 2026-10-10), so a Barrier is up whenever moving holds.
-function movementBarrierSources(modifierTexts, moving) {
-  const sources = [];
-  for (const line of modifierTexts) {
-    if (line.origin === "derived") continue;
-    const match = stripName(cleanGameText(String(line.text || ""))).match(
-      /^(\d+(?:\.\d+)?)% chance to gain a Barrier for every ([\d.]+) ?m you move$/i,
-    );
-    if (match)
-      sources.push({
-        source: line.source,
-        trigger: `${match[1]}% chance per ${match[2]} m moved (moving: best case)`,
-        available: Boolean(moving),
-        movement: true,
-      });
-  }
-  return sources;
-}
-
 // Hit-damage-taken lines: "-15% additional damage taken while Blur is active". Ailment / Damage Over Time
 // lines do not match (they are not hit damage). Conditions map to the planner's combat conditions.
 const TAKEN =
@@ -835,11 +815,9 @@ export function effectiveHpModel(planner, options = {}) {
   const lifeReservedPercent = planner.aura?.lifeReservedPercent || 0;
   const usableLife = round(life.value * Math.max(0, 1 - lifeReservedPercent / 100));
   const basePool = usableLife + energyShield.value;
-  // Barrier: Guard, or a movement Barrier while moving (the planner's movement condition). One Barrier at a time (TLIDB).
-  const barrierSource = [
-    ...(planner.barrierSources || []),
-    ...movementBarrierSources(modifierTexts, planner.conditions?.moving !== false),
-  ].find((source) => source.available);
+  // Barrier: Guard, or a movement Barrier while moving (packages/engine/src/defense/barrier-sources.js). One Barrier at a time
+  // (TLIDB).
+  const barrierSource = (planner.barrierSources || []).find((source) => source.available);
   const shieldBonus = barrierShieldBonus(modifierTexts);
   const barrierShield = barrierSource
     ? round(0.2 * (life.value + energyShield.value) * (1 + shieldBonus.increased / 100) * shieldBonus.additional)
