@@ -10,10 +10,12 @@
 //   two totals: 112% and 20% on the owner's build, matching the lines).
 // - Barrier Burst: "Deals Spell Fire Damage equal to 75% of Barrier Rating to nearby enemies"; "can activate Spell Burst when
 //   triggered" (so the trigger does not block Spell Burst; owner, 2026-10-27: each activation consumes a full Spell Burst).
-// - Uses per second: one per Barrier gained. Movement speed in m/s is not modeled, so the rate is the Composition dialog's
-//   input (combat.barrierBurstsPerSecond), 1 per second until set (an assumption, said in the notes).
+// - Uses per second: one per Barrier gained. A movement Barrier ("for every X m you move") gains them at the character's
+//   Movement Speed (the build moves to gain it, owner 2026-10-29); without one, 1 per second (an assumption, said in the
+//   notes). The Composition dialog's input (combat.barrierBurstsPerSecond) replaces either.
 import { normalizePercentageText } from "../text/percentage-text.js";
 import { buildSkillHitProfile } from "./skill-hit-profiles.js";
+import { BASE_MOVEMENT_METERS_PER_SECOND, movementBarriersPerSecond } from "../defense/barrier-sources.js";
 
 export const BARRIER_BURST_DEFAULT_PER_SECOND = 1;
 const BARRIER_OF_POOLS = 0.2;
@@ -52,6 +54,7 @@ export function barrierBurstState({
   maxEnergyShield = 0,
   barrierSources = [],
   usesPerSecond = null,
+  movementSpeedPercent = 0,
 } = {}) {
   const lines = clauses(modifierTexts);
   const trigger = lines.find((line) => TRIGGER.test(line.text));
@@ -86,7 +89,15 @@ export function barrierBurstState({
   }, 1);
   const pools = Math.max(0, maxLife) + Math.max(0, maxEnergyShield);
   const barrier = BARRIER_OF_POOLS * pools * Math.max(0, 1 + increasedPercent / 100) * additionalFactor;
-  const rate = Number.isFinite(usesPerSecond) ? Math.max(0, usesPerSecond) : BARRIER_BURST_DEFAULT_PER_SECOND;
+  const moving = movementBarriersPerSecond(barrierSources, movementSpeedPercent);
+  /** @type {"user" | "movement" | "assumed"} */
+  const rateFrom = Number.isFinite(usesPerSecond) ? "user" : moving > 0 ? "movement" : "assumed";
+  const rate =
+    rateFrom === "user"
+      ? Math.max(0, usesPerSecond)
+      : rateFrom === "movement"
+        ? moving
+        : BARRIER_BURST_DEFAULT_PER_SECOND;
   // The build's lines this reads (their coverage badges: packages/engine/src/planner.js mechanics.recognized).
   const used = [
     trigger,
@@ -108,11 +119,22 @@ export function barrierBurstState({
     barrier: { pools, increasedPercent, additionalFactor, value: barrier },
     damage: BURST_OF_BARRIER * barrier,
     usesPerSecond: rate,
-    rateSetByUser: Number.isFinite(usesPerSecond),
+    rateFrom,
+    movementSpeed: {
+      percent: movementSpeedPercent,
+      metersPerSecond: BASE_MOVEMENT_METERS_PER_SECOND * Math.max(0, 1 + movementSpeedPercent / 100),
+    },
   };
 }
 
 const levels = (row) => Object.fromEntries(Array.from({ length: 20 }, (_, index) => [String(index + 1), row]));
+
+const rateNote = (state) =>
+  state.rateFrom === "user"
+    ? "set in Composition"
+    : state.rateFrom === "movement"
+      ? `moving at ${Math.round(state.movementSpeed.metersPerSecond * 100) / 100} m/s = ${BASE_MOVEMENT_METERS_PER_SECOND} m/s × (1 + ${state.movementSpeed.percent}% Movement Speed), the movement Barrier's distance; set yours in Composition`
+      : "assumed; set yours in Composition";
 
 /** Barrier Burst's hit profile at the build's Barrier: one Fire Spell hit of 75% of it per trigger. */
 export function barrierBurstProfile(state, catalogEntry = {}) {
@@ -149,7 +171,7 @@ export function barrierBurstProfile(state, catalogEntry = {}) {
       kind: "rate",
       usesPerSecond: state.usesPerSecond,
       firstUseSeconds: state.usesPerSecond > 0 ? 1 / state.usesPerSecond : null,
-      note: `one per Barrier gained: ${state.usesPerSecond}/s (${state.rateSetByUser ? "set in Composition" : "assumed; set yours in Composition"})`,
+      note: `one per Barrier gained: ${Math.round(state.usesPerSecond * 1000) / 1000}/s (${rateNote(state)})`,
     },
     // "This skill can activate Spell Burst when triggered" (its own text).
     spellBurstAllowed: true,

@@ -172,8 +172,7 @@ export function CompositionButton() {
               <span className="grid gap-0.5">
                 <strong className="text-sm">Barrier Bursts per second</strong>
                 <span className="text-xs text-muted">
-                  One per Barrier gained (every 5 m moved).{" "}
-                  {view.barrierBurst.rateSetByUser ? "Set by you." : "Assumed 1: count yours in game and set it."}
+                  One per Barrier gained (every 5 m moved). {view.barrierBurst.rateNote}
                 </span>
               </span>
               <CommitNumberInput

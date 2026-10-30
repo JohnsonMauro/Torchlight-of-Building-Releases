@@ -3961,12 +3961,14 @@ function calculatePlannerOnce(
     ).value,
     barrierSources,
     usesPerSecond: state.combat.barrierBurstsPerSecond,
+    // The settled Movement Speed bonus (with the "per stack of Max Spell Burst" lines): the movement Barrier's cadence.
+    movementSpeedPercent: maxSpellBurst.movementSpeedPercent,
   });
   if (barrierBurst) {
     const missing = barrierBurst.requirements.filter((item) => !item.ok).map((item) => item.missing);
     const note = missing.length
       ? `Inactive: Barrier Burst needs ${missing.join("; ")}`
-      : `Barrier Burst: ${Math.round(barrierBurst.damage)} Fire per hit (75% of a ${Math.round(barrierBurst.barrier.value)} Barrier), ${barrierBurst.usesPerSecond}/s`;
+      : `Barrier Burst: ${Math.round(barrierBurst.damage)} Fire per hit (75% of a ${Math.round(barrierBurst.barrier.value)} Barrier), ${Math.round(barrierBurst.usesPerSecond * 1000) / 1000}/s`;
     for (const text of barrierBurst.lines) mechanics.recognized.set(normalizeLineText(String(text)).trim(), note);
   }
   if (barrierBurst?.active && barrierBurst.damage > 0) {

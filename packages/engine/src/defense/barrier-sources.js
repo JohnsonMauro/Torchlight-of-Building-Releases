@@ -24,6 +24,18 @@ const labelFree = (text) =>
     .replace(/^\[[^\]]+\]\s*/, "")
     .replace(/^(?:[A-Z][\w' ]+: )+(?=\d)/, "");
 
+// The character's base Movement Speed (game manual, as packages/engine/src/skills/max-spell-burst.js reads it; not checked in
+// game): the speed is this × (1 + Movement Speed bonus).
+export const BASE_MOVEMENT_METERS_PER_SECOND = 6.5;
+
+/** Barriers per second a moving character gains from the movement sources, at a Movement Speed bonus in percent. */
+export function movementBarriersPerSecond(sources, movementSpeedPercent) {
+  const speed = BASE_MOVEMENT_METERS_PER_SECOND * Math.max(0, 1 + movementSpeedPercent / 100);
+  return sources
+    .filter((source) => source.movement && source.available && source.meters > 0)
+    .reduce((sum, source) => sum + ((source.chancePercent / 100) * speed) / source.meters, 0);
+}
+
 // Barrier from movement: "100% chance to gain a Barrier for every 5 m you move" (Perishing Inferno Flame Ring). Owner,
 // 2026-10-29: a build that carries it moves to gain it, so the line alone holds the Barrier (not the Moving condition).
 export function movementBarrierSources(modifierTexts) {
@@ -40,6 +52,8 @@ export function movementBarrierSources(modifierTexts) {
         trigger: `${match[1]}% chance per ${match[2]} m moved (the build moves to gain it)`,
         available: true,
         movement: true,
+        chancePercent: Number(match[1]),
+        meters: Number(match[2]),
       });
   }
   return sources;

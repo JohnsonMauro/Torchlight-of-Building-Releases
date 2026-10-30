@@ -39,7 +39,8 @@ export interface CompositionBarrierBurst {
   /** One hit's base Fire damage (75% of the Barrier). */
   hitBase: number;
   usesPerSecond: number;
-  rateSetByUser: boolean;
+  /** Where the triggers per second come from: "Set by you.", the movement reading, or the assumed 1. */
+  rateNote: string;
 }
 export interface CompositionView {
   rows: BlessingConfigRow[];
@@ -61,7 +62,8 @@ interface BarrierBurstState {
   barrier: { pools: number; increasedPercent: number; additionalFactor: number; value: number };
   damage: number;
   usesPerSecond: number;
-  rateSetByUser: boolean;
+  rateFrom: "user" | "movement" | "assumed";
+  movementSpeed: { percent: number; metersPerSecond: number };
 }
 interface SpellBurstState {
   total: number;
@@ -74,6 +76,14 @@ export interface CompositionInput {
 }
 
 const whole = (value: number) => Math.round(value).toLocaleString("en-US");
+const hundredths = (value: number) => Math.round(value * 100) / 100;
+
+function barrierRateNote({ rateFrom, movementSpeed, usesPerSecond }: BarrierBurstState): string {
+  if (rateFrom === "user") return "Set by you.";
+  if (rateFrom === "movement")
+    return `${hundredths(usesPerSecond)} while moving at ${hundredths(movementSpeed.metersPerSecond)} m/s (+${hundredths(movementSpeed.percent)}% Movement Speed): count yours in game and set it.`;
+  return "Assumed 1: count yours in game and set it.";
+}
 
 export function compositionView({
   blessings,
@@ -108,7 +118,7 @@ export function compositionView({
         barrierFormula: `20% × ${whole(barrierBurst.barrier.pools)} (Max Life + Max Energy Shield) × ${Math.round((1 + barrierBurst.barrier.increasedPercent / 100) * 1000) / 1000} × ${Math.round(barrierBurst.barrier.additionalFactor * 1000) / 1000}`,
         hitBase: barrierBurst.damage,
         usesPerSecond: barrierBurst.usesPerSecond,
-        rateSetByUser: barrierBurst.rateSetByUser,
+        rateNote: barrierRateNote(barrierBurst),
       }
     : null;
   const spellBurst =

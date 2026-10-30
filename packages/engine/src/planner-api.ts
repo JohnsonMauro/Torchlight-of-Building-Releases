@@ -296,7 +296,9 @@ export interface PlannerResult {
     barrier: { pools: number; increasedPercent: number; additionalFactor: number; value: number };
     damage: number;
     usesPerSecond: number;
-    rateSetByUser: boolean;
+    /** The triggers per second: the Composition input, the movement Barrier at the Movement Speed, or the assumed 1. */
+    rateFrom: "user" | "movement" | "assumed";
+    movementSpeed: { percent: number; metersPerSecond: number };
   } | null;
 
   activation: SkillActivation;
