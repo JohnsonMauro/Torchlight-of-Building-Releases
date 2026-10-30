@@ -106,6 +106,8 @@
  *   summary.
  * @property {() => void} importGameLogBuild Import from game: adds the chosen login's build as a new active build, closes
  *   the dialog and opens the Builds view.
+ * @property {() => Promise<void>} clearGameLogBackups Import from game: deletes the game's old logs (UE_game-backup-*.log;
+ *   UE_game.log stays) and looks the log up again.
  * @property {() => void} closeGameLogImport Import from game was closed: drops the log, its logins and any read under
  *   way.
  * @property {(auto: boolean) => void} setBestCaseMode Config tab: Best case (automatic conditions) on, or manual.

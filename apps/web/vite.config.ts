@@ -32,13 +32,19 @@ function serveAssets(request: IncomingMessage, response: ServerResponse, next: C
   createReadStream(file).pipe(response);
 }
 
-async function serveGameLog(request: IncomingMessage, response: ServerResponse): Promise<void> {
+type GameLogHandler = "handleGameLogSnapshotsRequest" | "handleGameLogBackupsRequest";
+/** The local game log reader's endpoints: GET /api/game-log/snapshots, DELETE /api/game-log/backups. */
+const gameLogEndpoint = (handler: GameLogHandler) => (request: IncomingMessage, response: ServerResponse) =>
+  serveGameLog(handler, request, response);
+async function serveGameLog(
+  handler: GameLogHandler,
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> {
   try {
     // Run-time URL: a literal specifier would be bundled into this config by Vite's config loader.
-    const { handleGameLogSnapshotsRequest } = await import(
-      pathToFileURL(resolve(repoRoot, "src/game-log/game-log-local.js")).href
-    );
-    await handleGameLogSnapshotsRequest(request, response);
+    const reader = await import(pathToFileURL(resolve(repoRoot, "src/game-log/game-log-local.js")).href);
+    await reader[handler](request, response);
   } catch (error) {
     console.error(`game-log endpoint: ${(error as Error).message}`);
     if (!response.headersSent) {
@@ -53,10 +59,12 @@ function plannerAssets(): Plugin {
     name: "tli-planner-assets",
     configureServer(server) {
       server.middlewares.use("/src/assets", serveAssets);
-      server.middlewares.use("/api/game-log/snapshots", serveGameLog);
+      server.middlewares.use("/api/game-log/snapshots", gameLogEndpoint("handleGameLogSnapshotsRequest"));
+      server.middlewares.use("/api/game-log/backups", gameLogEndpoint("handleGameLogBackupsRequest"));
     },
     configurePreviewServer(server) {
-      server.middlewares.use("/api/game-log/snapshots", serveGameLog);
+      server.middlewares.use("/api/game-log/snapshots", gameLogEndpoint("handleGameLogSnapshotsRequest"));
+      server.middlewares.use("/api/game-log/backups", gameLogEndpoint("handleGameLogBackupsRequest"));
     },
     closeBundle() {
       cpSync(assetsRoot, join(outDir, "src/assets"), { recursive: true });

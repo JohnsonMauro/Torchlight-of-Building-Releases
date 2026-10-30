@@ -46,19 +46,30 @@ function appFile(requestUrl) {
 
 const fromApp = (event) => String(event.senderFrame?.url || "").startsWith(`${appOrigin}/`);
 
-// "Import from game": the same read-only reader as the dev server's /api/game-log/snapshots, reached through the
-// preload bridge because the app is served from planner://, not the local HTTP server.
+// "Import from game": the same reader as the dev server's /api/game-log/snapshots (and its "Delete old game logs",
+// /api/game-log/backups), reached through the preload bridge because the app is served from planner://, not the local HTTP
+// server.
 let gameLogReader = null;
+const loadGameLogReader = () =>
+  (gameLogReader ||= import(
+    pathToFileURL(path.join(app.getAppPath(), "src", "game-log", "game-log-local.js")).toString()
+  ));
 ipcMain.handle("game-log:snapshots", async (event) => {
   if (!fromApp(event)) return { found: false, reason: "Not available here." };
   try {
-    gameLogReader ||= import(
-      pathToFileURL(path.join(app.getAppPath(), "src", "game-log", "game-log-local.js")).toString()
-    );
-    return await (await gameLogReader).readGameLogSnapshots();
+    return await (await loadGameLogReader()).readGameLogSnapshots();
   } catch {
     gameLogReader = null;
     return { found: false, reason: "The game log could not be read." };
+  }
+});
+ipcMain.handle("game-log:clear-backups", async (event) => {
+  if (!fromApp(event)) return null;
+  try {
+    return await (await loadGameLogReader()).clearGameLogBackups();
+  } catch {
+    gameLogReader = null;
+    return null;
   }
 });
 

@@ -262,6 +262,49 @@ test("the local reader's log: found, each character's newest login listed and ch
   await planner.expectNoErrors();
 });
 
+// "Delete old game logs" (owner, 2026-10-30, as log trackers do): the game's UE_game-backup-*.log files, deleted through
+// DELETE /api/game-log/backups after a confirmation; UE_game.log stays and the log is looked up again.
+test("the game's old logs are deleted after a confirmation, and the log is looked up again", async ({ page }) => {
+  const body = await readerOutput({ "UE_game.log": gameLogText(TWO_LOGINS) });
+  let backups = { count: 2, bytes: 359 * 1024 * 1024 };
+  const deletes = [];
+  await page.route("**/api/game-log/backups", (route) => {
+    deletes.push(route.request().method());
+    const removed = backups;
+    backups = { count: 0, bytes: 0 };
+    return route.fulfill({ json: { removed: removed.count, bytes: removed.bytes, folder: body.folder } });
+  });
+  const planner = new PlannerPage(page);
+  await page.route("**/api/game-log/snapshots", (route) => route.fulfill({ json: { ...body, backups } }));
+  await planner.load(youga);
+  await page.locator(".workspace-actions").getByRole("button", { name: "Import from game" }).click();
+  const clear = dialog(page).getByRole("button", { name: "Delete old game logs (2 · 359 MB)" });
+  const confirm = page.getByRole("dialog", { name: "Delete old game logs?" });
+  await expect(clear).toBeVisible();
+
+  await clear.click();
+  await expect(confirm).toContainText("This deletes the game's 2 old logs (UE_game-backup-*.log, 359 MB)");
+  await confirm.getByRole("button", { name: "Keep Logs" }).click();
+  await expect(confirm).toBeHidden();
+  expect(deletes).toEqual([]);
+
+  await clear.click();
+  await confirm.getByRole("button", { name: "Delete Logs" }).click();
+  await expect(status(page)).toHaveText("Deleted 2 old game logs (359 MB). UE_game.log was kept.");
+  expect(deletes).toEqual(["DELETE"]);
+  await expect(dialog(page).getByRole("button", { name: /^Delete old game logs/ })).toBeHidden();
+  // UE_game.log is read again: its logins are back.
+  await expect(logins(page)).toHaveCount(2);
+  await planner.expectNoErrors();
+});
+
+test("no old game logs, no delete button", async ({ page }) => {
+  const planner = await openDialog(page, await readerOutput({ "UE_game.log": gameLogText(TWO_LOGINS) }));
+  await expect(logins(page)).toHaveCount(2);
+  await expect(dialog(page).getByRole("button", { name: /^Delete old game logs/ })).toBeHidden();
+  await planner.expectNoErrors();
+});
+
 test("a login that cannot be turned into a build says so and keeps Import off", async ({ page }) => {
   const body = await readerOutput({ "UE_game.log": gameLogText(TWO_LOGINS) });
   // The second file's login (another account) has no data at all, so the importer throws on it.

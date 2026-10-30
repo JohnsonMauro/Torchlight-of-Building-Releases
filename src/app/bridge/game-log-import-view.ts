@@ -262,6 +262,21 @@ export interface GameLogFoundView {
   folder: string;
 }
 
+/** The game's old logs the local reader saw (UE_game-backup-*.log): how many and their size, or null when there are none. */
+export interface GameLogBackupsView {
+  count: number;
+  /** "359 MB" (whole MB; "under 1 MB" for less). */
+  size: string;
+}
+export function gameLogBackups(
+  backups: { count?: number; bytes?: number } | null | undefined,
+): GameLogBackupsView | null {
+  const count = Number(backups?.count) || 0;
+  if (count <= 0) return null;
+  const megabytes = Math.round((Number(backups?.bytes) || 0) / (1024 * 1024));
+  return { count, size: megabytes >= 1 ? `${megabytes} MB` : "under 1 MB" };
+}
+
 /** A folder the game's log may be in, with what it is ("Steam", "Windows · Steam"…; "" when nothing to say). */
 export interface GameLogFolderView {
   label: string;
@@ -298,4 +313,6 @@ export interface GameLogImportView {
   logins: GameLogLoginView[];
   selectedId: string | null;
   summary: GameLogSummaryView | null;
+  /** The game's old logs in the found folder ("Delete old game logs"), or null. */
+  backups: GameLogBackupsView | null;
 }

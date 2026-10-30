@@ -5,7 +5,7 @@
 // The game keeps only its current log and two backups, so each read also keeps the lines the scan reads of every session
 // in a local archive (gameLogArchiveDir: about 1 MB a session, on this computer only) and reads the archived sessions the
 // game has since deleted (owner, 2026-10-28: a dump with the gear was lost to the rotation).
-import { mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, readdir, realpath, stat, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, posix, win32 } from "node:path";
 import {
@@ -17,6 +17,7 @@ import {
 } from "./game-log-import.js";
 
 export const GAME_LOG_ENDPOINT = "/api/game-log/snapshots";
+export const GAME_LOG_BACKUPS_ENDPOINT = "/api/game-log/backups";
 export const MAX_GAME_LOG_FILES = 5;
 /** Archived sessions read besides the game's own logs, newest first. */
 export const MAX_ARCHIVED_SESSIONS = 30;
@@ -42,6 +43,8 @@ const sessionKey = (firstLine) => {
   return m ? `session-20${m[3]}${m[1]}${m[2]}-${m[4]}${m[5]}${m[6]}` : null;
 };
 const LOG_NAME = /^UE_game(?:-backup-[\w.-]+)?\.log$/i;
+// The game's rotated old logs (the live one is UE_game.log).
+const BACKUP_NAME = /^UE_game-backup-[\w.-]+\.log$/i;
 // The log folder inside a Steam library.
 const LOG_SUBPATH = ["steamapps", "common", "Torchlight Infinite", "UE_game", "TorchLight", "Saved", "Logs"];
 const FOLDER_MISSING = "The game's log folder was not found on this computer.";
@@ -326,7 +329,44 @@ async function readGameLogFolder(dir, candidates, maxFiles, archive) {
         },
       }));
   }
-  return { found: true, files };
+  const backups = candidates.filter(({ name }) => BACKUP_NAME.test(name));
+  return {
+    found: true,
+    files,
+    backups: { count: backups.length, bytes: backups.reduce((total, { info }) => total + info.size, 0) },
+  };
+}
+
+/**
+ * Deletes the game's old logs (owner, 2026-10-30: the import dialog's "Delete old game logs", as log trackers do): the
+ * UE_game-backup-*.log files of the first folder of `dirs` (gameLogDirs) that holds game logs. The live UE_game.log stays.
+ * Each backup's session is kept in the archive first (the lines the scan reads), so its build dumps still import. Returns
+ * { removed, bytes, folder }; a file the game holds stays.
+ */
+export async function clearGameLogBackups({ dir, dirs, archive = gameLogArchiveDir() } = {}) {
+  const searched = dirs ?? (dir ? [{ label: "", path: dir }] : await gameLogDirs());
+  for (const { path } of searched) {
+    const candidates = await gameLogFiles(path);
+    if (!candidates?.length) continue;
+    let removed = 0,
+      bytes = 0;
+    for (const { name, info } of candidates.filter((file) => BACKUP_NAME.test(file.name))) {
+      try {
+        if (archive) {
+          const { text, firstLine } = await readScannedLines(join(path, name), info.size);
+          const key = sessionKey(firstLine);
+          if (key) await archiveSession(archive, key, text);
+        }
+        await unlink(join(path, name));
+        removed += 1;
+        bytes += info.size;
+      } catch {
+        // Locked or vanished: it stays for the next clearing.
+      }
+    }
+    return { removed, bytes, folder: path };
+  }
+  return { removed: 0, bytes: 0, folder: null };
 }
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1"]);
@@ -349,6 +389,33 @@ const sendJson = (response, status, body, extra = {}) => {
   });
   response.end(JSON.stringify(body));
 };
+
+/** An Origin header, when the browser sends one, must name this machine too (a page elsewhere cannot delete the logs). */
+const isLocalOrigin = (origin) => {
+  if (!origin) return true;
+  try {
+    return isLocalHostHeader(new URL(origin).host);
+  } catch {
+    return false;
+  }
+};
+
+/** Handles DELETE /api/game-log/backups: deletes the game's old logs. No path parameter, no CORS headers. */
+export async function handleGameLogBackupsRequest(request, response, options = {}) {
+  if (!isLocalHostHeader(request.headers.host) || !isLocalOrigin(request.headers.origin)) {
+    sendJson(response, 403, { error: "Forbidden host" });
+    return;
+  }
+  if (request.method !== "DELETE") {
+    sendJson(response, 405, { error: "Method not allowed" }, { Allow: "DELETE" });
+    return;
+  }
+  try {
+    sendJson(response, 200, await clearGameLogBackups(options));
+  } catch {
+    sendJson(response, 500, { error: "The old game logs could not be deleted." });
+  }
+}
 
 /** Handles GET /api/game-log/snapshots. No path parameter, no CORS headers. */
 export async function handleGameLogSnapshotsRequest(request, response, options = {}) {

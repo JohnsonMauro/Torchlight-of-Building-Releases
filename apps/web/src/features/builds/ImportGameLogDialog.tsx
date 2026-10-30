@@ -16,6 +16,7 @@ import {
   plainDialogTextClass,
   plainDialogTitleClass,
 } from "../../ui/dialog-classes";
+import { ConfirmDialog } from "../../ui/ConfirmDialog";
 import { closeDialog, registerDialog } from "../../ui/dialog-registry";
 import { StrokeIcon } from "../../ui/StrokeIcon";
 import { useViewSource } from "../../ui/use-view-source";
@@ -28,6 +29,8 @@ const CODE = "text-xs text-accent wrap-anywhere";
 // The import's limits: a short warning list, each line what is missing and what to do.
 const WARNINGS =
   "game-log-warnings mt-2.5 grid gap-1 rounded-sm border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn";
+// A link-like action under the found log; the destructive one in the danger colour.
+const LINK_ACTION = "cursor-pointer text-xs underline";
 // A login to choose; the chosen one (.active) accent-edged.
 const LOGIN =
   "grid w-full cursor-pointer gap-0.5 rounded-sm border border-line bg-sunken px-3 py-2 text-left text-xs text-text hover:border-line-strong focus-visible:outline-2 focus-visible:outline-accent on:border-accent on:bg-accent/10";
@@ -103,136 +106,171 @@ export function ImportGameLogDialog() {
     fileInput.current?.focus();
   }, [picker]);
   const status = view?.status ?? null;
+  const backups = view?.found ? view.backups : null;
+  const [confirmClear, setConfirmClear] = useState(false);
   return (
-    <dialog
-      id="import-game-log-dialog"
-      ref={registerDialog}
-      className={`${plainDialogClass} w-125`}
-      aria-labelledby="import-game-log-title"
-      onClose={() => plannerCommands().closeGameLogImport()}
-    >
-      <h2 id="import-game-log-title" className={plainDialogTitleClass}>
-        Import from game
-      </h2>
-      <p id="import-game-log-found" className={`game-log-found ${plainDialogTextClass}`} hidden={!view?.found}>
-        {view?.found ? (
-          <>
-            {"Found "}
-            <strong className="text-accent">{view.found.name}</strong>
-            {` (updated ${view.found.updated})`}
-          </>
+    <>
+      <dialog
+        id="import-game-log-dialog"
+        ref={registerDialog}
+        className={`${plainDialogClass} w-125`}
+        aria-labelledby="import-game-log-title"
+        onClose={() => plannerCommands().closeGameLogImport()}
+      >
+        <h2 id="import-game-log-title" className={plainDialogTitleClass}>
+          Import from game
+        </h2>
+        <p id="import-game-log-found" className={`game-log-found ${plainDialogTextClass}`} hidden={!view?.found}>
+          {view?.found ? (
+            <>
+              {"Found "}
+              <strong className="text-accent">{view.found.name}</strong>
+              {` (updated ${view.found.updated})`}
+            </>
+          ) : null}
+        </p>
+        {view?.found?.folder ? (
+          <ul className="game-log-found-folder mt-1.5 grid">
+            <GameLogFolder folder={{ label: "", path: view.found.folder }} />
+          </ul>
         ) : null}
-      </p>
-      {view?.found?.folder ? (
-        <ul className="game-log-found-folder mt-1.5 grid">
-          <GameLogFolder folder={{ label: "", path: view.found.folder }} />
-        </ul>
-      ) : null}
-      <p id="import-game-log-auto-privacy" className={`mt-2 ${fieldHelpClass}`} hidden={!view?.found}>
-        Read from the game's log folder on this computer by the planner. Only build data is kept; nothing is uploaded or
-        stored.
-      </p>
-      <p className="mt-1.5" hidden={!view?.chooseOther}>
-        <button
-          type="button"
-          className="cursor-pointer text-xs text-accent underline hover:text-accent-strong"
-          onClick={() => {
-            focusPicker.current = true;
-            plannerCommands().showGameLogPicker();
-          }}
-        >
-          Choose a different file…
-        </button>
-      </p>
-      <p className={plainDialogTextClass} hidden={!picker}>
-        {"Pick "}
-        <code className={CODE}>UE_game.log</code>
-        {" from the game's log folder. The game writes your build to it each time you log in to a character."}
-      </p>
-      <div hidden={!picker || !view?.folders.length}>
-        <p className={STEP}>Log folders</p>
-        <ul className="game-log-folders grid gap-2">
-          {view?.folders.map((folder) => (
-            <GameLogFolder key={folder.path} folder={folder} />
-          ))}
-        </ul>
-      </div>
-      <label className={`mt-4 grid gap-2 ${fieldLabelClass}`} hidden={!picker}>
-        Game log
-        <input
-          // A new opening starts with no file chosen.
-          key={view?.session ?? 0}
-          id="import-game-log-file"
-          ref={fileInput}
-          type="file"
-          accept=".log"
-          className={`${fieldControlClass} font-normal file:mr-2.5 file:btn file:px-2.5 file:py-1 file:text-xs`}
-          onChange={(event) => plannerCommands().chooseGameLogFile(event.target.files?.[0] ?? null)}
-        />
-      </label>
-      <p className={`mt-2 ${fieldHelpClass}`} hidden={!picker}>
-        The log is read in this browser only. It is not uploaded or stored.
-      </p>
-      <p id="import-game-log-reason" className={`game-log-reason mt-2 ${fieldHelpClass}`} hidden={!view?.reason}>
-        {view?.reason}
-      </p>
-      <p id="import-game-log-status" className={`text-warn ${status ? "mt-3" : ""}`} role="status" aria-live="polite">
-        {!status ? null : "text" in status ? (
-          status.text
-        ) : (
-          <>
-            <span>{status.message}</span>
-            {status.details ? (
-              <small className="game-log-details mt-1 block text-xs text-muted">{status.details}</small>
-            ) : null}
-          </>
-        )}
-      </p>
-      <div id="import-game-log-snapshots">
-        {view?.logins.length ? (
-          <>
-            <p className={STEP}>Characters found in this log</p>
-            <p className={`mb-2 ${fieldHelpClass}`}>
-              The game saves your build when you enter a character, not when you change maps. Changed something? Go back
-              to character select and enter again first.
-            </p>
-            <ul className="game-log-snapshots grid gap-1.5">
-              {view.logins.map((login) => {
-                const selected = login.id === view.selectedId;
-                return (
-                  <li key={login.id}>
-                    <button
-                      type="button"
-                      className={`${selected ? "active" : ""} ${LOGIN}`}
-                      aria-pressed={selected}
-                      onClick={() => plannerCommands().selectGameLogSnapshot(login.id)}
-                    >
-                      <strong className="text-sm text-accent">{login.title}</strong>
-                      <span className="text-muted">{login.when}</span>
-                      {login.changed ? <small className={CHANGED}>{login.changed}</small> : null}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </>
-        ) : null}
-      </div>
-      <div id="import-game-log-summary">{view?.summary ? <Summary summary={view.summary} /> : null}</div>
-      <div className={plainDialogActionsClass}>
-        <button type="button" className={plainDialogButtonClass} onClick={() => closeDialog("import-game-log-dialog")}>
-          Cancel
-        </button>
-        <button
-          type="button"
-          data-import-game-log-build=""
-          className={primaryDialogButtonClass}
-          disabled={!view?.summary}
-          onClick={() => plannerCommands().importGameLogBuild()}
-        >
-          Import as new build
-        </button>
-      </div>
-    </dialog>
+        <p id="import-game-log-auto-privacy" className={`mt-2 ${fieldHelpClass}`} hidden={!view?.found}>
+          Read from the game's log folder on this computer by the planner. Only build data is kept; nothing is uploaded
+          or stored.
+        </p>
+        <p className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1" hidden={!view?.chooseOther && !backups}>
+          {view?.chooseOther ? (
+            <button
+              type="button"
+              className={`${LINK_ACTION} text-accent hover:text-accent-strong`}
+              onClick={() => {
+                focusPicker.current = true;
+                plannerCommands().showGameLogPicker();
+              }}
+            >
+              Choose a different file…
+            </button>
+          ) : null}
+          {backups ? (
+            <button
+              type="button"
+              className={`${LINK_ACTION} text-danger hover:text-danger/80`}
+              onClick={() => setConfirmClear(true)}
+            >
+              {`Delete old game logs (${backups.count} · ${backups.size})`}
+            </button>
+          ) : null}
+        </p>
+        <p className={plainDialogTextClass} hidden={!picker}>
+          {"Pick "}
+          <code className={CODE}>UE_game.log</code>
+          {" from the game's log folder. The game writes your build to it each time you log in to a character."}
+        </p>
+        <div hidden={!picker || !view?.folders.length}>
+          <p className={STEP}>Log folders</p>
+          <ul className="game-log-folders grid gap-2">
+            {view?.folders.map((folder) => (
+              <GameLogFolder key={folder.path} folder={folder} />
+            ))}
+          </ul>
+        </div>
+        <label className={`mt-4 grid gap-2 ${fieldLabelClass}`} hidden={!picker}>
+          Game log
+          <input
+            // A new opening starts with no file chosen.
+            key={view?.session ?? 0}
+            id="import-game-log-file"
+            ref={fileInput}
+            type="file"
+            accept=".log"
+            className={`${fieldControlClass} font-normal file:mr-2.5 file:btn file:px-2.5 file:py-1 file:text-xs`}
+            onChange={(event) => plannerCommands().chooseGameLogFile(event.target.files?.[0] ?? null)}
+          />
+        </label>
+        <p className={`mt-2 ${fieldHelpClass}`} hidden={!picker}>
+          The log is read in this browser only. It is not uploaded or stored.
+        </p>
+        <p id="import-game-log-reason" className={`game-log-reason mt-2 ${fieldHelpClass}`} hidden={!view?.reason}>
+          {view?.reason}
+        </p>
+        <p id="import-game-log-status" className={`text-warn ${status ? "mt-3" : ""}`} role="status" aria-live="polite">
+          {!status ? null : "text" in status ? (
+            status.text
+          ) : (
+            <>
+              <span>{status.message}</span>
+              {status.details ? (
+                <small className="game-log-details mt-1 block text-xs text-muted">{status.details}</small>
+              ) : null}
+            </>
+          )}
+        </p>
+        <div id="import-game-log-snapshots">
+          {view?.logins.length ? (
+            <>
+              <p className={STEP}>Characters found in this log</p>
+              <p className={`mb-2 ${fieldHelpClass}`}>
+                The game saves your build when you enter a character, not when you change maps. Changed something? Go
+                back to character select and enter again first.
+              </p>
+              <ul className="game-log-snapshots grid gap-1.5">
+                {view.logins.map((login) => {
+                  const selected = login.id === view.selectedId;
+                  return (
+                    <li key={login.id}>
+                      <button
+                        type="button"
+                        className={`${selected ? "active" : ""} ${LOGIN}`}
+                        aria-pressed={selected}
+                        onClick={() => plannerCommands().selectGameLogSnapshot(login.id)}
+                      >
+                        <strong className="text-sm text-accent">{login.title}</strong>
+                        <span className="text-muted">{login.when}</span>
+                        {login.changed ? <small className={CHANGED}>{login.changed}</small> : null}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          ) : null}
+        </div>
+        <div id="import-game-log-summary">{view?.summary ? <Summary summary={view.summary} /> : null}</div>
+        <div className={plainDialogActionsClass}>
+          <button
+            type="button"
+            className={plainDialogButtonClass}
+            onClick={() => closeDialog("import-game-log-dialog")}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            data-import-game-log-build=""
+            className={primaryDialogButtonClass}
+            disabled={!view?.summary}
+            onClick={() => plannerCommands().importGameLogBuild()}
+          >
+            Import as new build
+          </button>
+        </div>
+      </dialog>
+      {/* A sibling, not a child: a nested dialog's close would reach the import dialog's onClose and drop the log. */}
+      <ConfirmDialog
+        id="clear-game-log-backups-confirm"
+        titleId="clear-game-log-backups-title"
+        messageId="clear-game-log-backups-message"
+        open={confirmClear}
+        title="Delete old game logs?"
+        message={`This deletes the game's ${backups?.count ?? 0} old ${backups?.count === 1 ? "log" : "logs"} (UE_game-backup-*.log, ${backups?.size ?? ""}) from its log folder. UE_game.log stays, and the planner keeps the build data it read from them.`}
+        cancelLabel="Keep Logs"
+        confirmLabel="Delete Logs"
+        onCancel={() => setConfirmClear(false)}
+        onConfirm={() => {
+          setConfirmClear(false);
+          plannerCommands().clearGameLogBackups();
+        }}
+      />
+    </>
   );
 }

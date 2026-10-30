@@ -2,11 +2,17 @@
 // and the libraries its libraryfolders.vdf lists; the first folder holding a UE_game log is read.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gameLogLineFilter, scanGameLog } from "../../src/game-log/game-log-import.js";
-import { gameLogDirs, readGameLogSnapshots } from "../../src/game-log/game-log-local.js";
+import {
+  clearGameLogBackups,
+  gameLogDirs,
+  handleGameLogBackupsRequest,
+  readGameLogSnapshots,
+} from "../../src/game-log/game-log-local.js";
+import { gameLogText, TWO_LOGINS } from "../e2e/fixtures/game-log.js";
 
 const LOG_PATH = "steamapps/common/Torchlight Infinite/UE_game/TorchLight/Saved/Logs";
 
@@ -69,6 +75,88 @@ test("the first folder holding a UE_game log is read; the folders looked in come
     assert.match(read.reason, /^No character data in the game logs yet\./);
     assert.equal(read.folder, logs.path);
     assert.deepEqual(read.searched, [missing, empty, logs]);
+  }));
+
+// "Delete old game logs" (owner, 2026-10-30, as log trackers do): the game's rotated UE_game-backup-*.log files go; the
+// live UE_game.log stays, and each backup's session is kept in the planner's archive first, so no build dump is lost.
+const BACKUP = "UE_game-backup-2026.10.18-10.00.00.log";
+function gameFolder(home) {
+  const logs = { label: "", path: join(home, "logs") };
+  mkdirSync(logs.path);
+  writeFileSync(join(logs.path, "UE_game.log"), gameLogText([TWO_LOGINS[1]]));
+  writeFileSync(
+    join(logs.path, BACKUP),
+    gameLogText([TWO_LOGINS[0]]).replace("10/19/26 11:59:00", "10/18/26 10:00:00"),
+  );
+  writeFileSync(join(logs.path, "notes.txt"), "not a game log");
+  return logs;
+}
+
+test("the reader says how many old game logs the folder holds and their size", () =>
+  withHome(async (home) => {
+    const logs = gameFolder(home);
+    const read = await readGameLogSnapshots({ dirs: [logs], archive: null });
+    assert.equal(read.found, true);
+    assert.equal(read.backups.count, 1);
+    assert.ok(read.backups.bytes > 0);
+  }));
+
+test("clearing deletes only the game's old logs, after keeping their sessions in the archive", () =>
+  withHome(async (home) => {
+    const logs = gameFolder(home);
+    const archive = join(home, "archive");
+    const cleared = await clearGameLogBackups({ dirs: [logs], archive });
+    assert.equal(cleared.removed, 1);
+    assert.equal(cleared.folder, logs.path);
+    assert.deepEqual(readdirSync(logs.path).sort(), ["UE_game.log", "notes.txt"]);
+    assert.ok(existsSync(join(archive, "session-20261018-100000.log")), "the backup's session is kept first");
+    // Its login still reads, from the archive.
+    const read = await readGameLogSnapshots({ dirs: [logs], archive });
+    assert.equal(read.backups.count, 0);
+    assert.deepEqual(read.files.map((file) => file.name).sort(), ["UE_game.log", "archived session-20261018-100000"]);
+  }));
+
+test("clearing with no game log folder removes nothing", () =>
+  withHome(async (home) => {
+    assert.deepEqual(await clearGameLogBackups({ dirs: [{ label: "", path: join(home, "missing") }], archive: null }), {
+      removed: 0,
+      bytes: 0,
+      folder: null,
+    });
+  }));
+
+/** A request and a response for the endpoint handlers: what they write comes back in `sent`. */
+function exchange({ method = "DELETE", host = "127.0.0.1:4173", origin } = {}) {
+  const sent = {};
+  const request = { method, headers: { host, ...(origin ? { origin } : {}) } };
+  const response = {
+    writeHead: (status, headers) => Object.assign(sent, { status, headers }),
+    end: (body) => Object.assign(sent, { body: body ? JSON.parse(body) : null }),
+  };
+  return { request, response, sent };
+}
+
+test("the old-logs endpoint deletes on DELETE from this machine and refuses anything else", () =>
+  withHome(async (home) => {
+    const logs = gameFolder(home);
+    const options = { dirs: [logs], archive: null };
+    const refuse = async (request, status) => {
+      const call = exchange(request);
+      await handleGameLogBackupsRequest(call.request, call.response, options);
+      assert.equal(call.sent.status, status, JSON.stringify(request));
+      assert.ok(existsSync(join(logs.path, BACKUP)));
+    };
+    await refuse({ method: "GET" }, 405);
+    await refuse({ method: "POST" }, 405);
+    await refuse({ host: "evil.example:4173" }, 403);
+    await refuse({ origin: "https://evil.example" }, 403);
+
+    const call = exchange({ origin: "http://127.0.0.1:4173" });
+    await handleGameLogBackupsRequest(call.request, call.response, options);
+    assert.equal(call.sent.status, 200);
+    assert.equal(call.sent.body.removed, 1);
+    assert.ok(!existsSync(join(logs.path, BACKUP)));
+    assert.ok(existsSync(join(logs.path, "UE_game.log")));
   }));
 
 // The reader goes through a whole log keeping only these lines (2026-10-28: a 333 MB log's four dumps sat before the

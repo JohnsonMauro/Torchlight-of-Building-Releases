@@ -10,6 +10,7 @@ import {
 import { displayTexts } from "../bridge/display-text.ts";
 import {
   gameLogAutoSnapshots,
+  gameLogBackups,
   gameLogBuildName,
   gameLogFileStatus,
   gameLogFolders,
@@ -33,6 +34,7 @@ export const gameLogImportCommands = {
   showGameLogPicker: () => setGameLogView({ chooseOther: false, picker: true }),
   selectGameLogSnapshot,
   importGameLogBuild,
+  clearGameLogBackups,
   closeGameLogImport: resetGameLogImport,
 };
 export const gameLogImportViewSources = {
@@ -56,6 +58,7 @@ const CLOSED_GAME_LOG_VIEW = {
   reason: "",
   status: null,
   selectedId: null,
+  backups: null,
 };
 let gameLogView = CLOSED_GAME_LOG_VIEW;
 const gameLogLocalServer = () =>
@@ -117,6 +120,7 @@ async function findGameLog() {
     setGameLogView({
       status: null,
       picker: true,
+      backups: null,
       folders,
       reason: result && result.found === false && result.reason ? result.reason : autoGameLogUnavailable(),
     });
@@ -129,8 +133,46 @@ async function findGameLog() {
     found: gameLogFound(result.files[0], result.folder || ""),
     chooseOther: true,
     folders,
+    backups: gameLogBackups(result.backups),
   });
   await selectGameLogSnapshot(gameLogRows[0].id);
+}
+// "Delete old game logs" (owner, 2026-10-30, as log trackers do): the game's UE_game-backup-*.log files go (the desktop bridge
+// or the dev server's DELETE /api/game-log/backups; src/game-log/game-log-local.js clearGameLogBackups keeps each one's session
+// in the archive first). UE_game.log stays; the log is looked up again at once.
+async function requestClearGameLogBackups() {
+  if (typeof window.tliDesktop?.clearGameLogBackups === "function") return window.tliDesktop.clearGameLogBackups();
+  if (!gameLogLocalServer()) return null;
+  const response = await fetch("api/game-log/backups", {
+    method: "DELETE",
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok || !/json/.test(response.headers.get("content-type") || "")) return null;
+  return response.json();
+}
+async function clearGameLogBackups() {
+  let result;
+  try {
+    result = await requestClearGameLogBackups();
+  } catch {
+    result = null;
+  }
+  if (!result) {
+    setGameLogView({ status: { text: "The old game logs could not be deleted." } });
+    return;
+  }
+  const freed = gameLogBackups({ count: result.removed, bytes: result.bytes });
+  gameLogReadToken += 1;
+  clearGameLogResults();
+  await findGameLog();
+  setGameLogView({
+    status: {
+      text: freed
+        ? `Deleted ${freed.count} old game ${freed.count === 1 ? "log" : "logs"} (${freed.size}). UE_game.log was kept.`
+        : "No old game log could be deleted (the game may still hold it). UE_game.log was kept.",
+    },
+  });
 }
 async function selectGameLogSnapshot(id) {
   const source = gameLogSources.get(id),

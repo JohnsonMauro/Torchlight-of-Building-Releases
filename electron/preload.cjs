@@ -1,5 +1,6 @@
-// Sandboxed preload. `gameLogSnapshots` is read-only: the main process reads the game's fixed log folder and returns
-// only sanitised build dumps (src/game-log/game-log-local.js); no path or other argument crosses the bridge. `updates` drives the
+// Sandboxed preload. `gameLogSnapshots` reads the game's fixed log folder in the main process and returns only sanitised
+// build dumps (src/game-log/game-log-local.js); `clearGameLogBackups` deletes that folder's old logs (UE_game-backup-*.log,
+// never UE_game.log); no path or other argument crosses the bridge. `updates` drives the
 // update banner (src/app/planner/update-banner.js): status pushes from electron/updater.cjs and argument-free actions.
 const { contextBridge, ipcRenderer } = require("electron");
 
@@ -18,6 +19,7 @@ contextBridge.exposeInMainWorld(
   "tliDesktop",
   Object.freeze({
     gameLogSnapshots: () => ipcRenderer.invoke("game-log:snapshots"),
+    clearGameLogBackups: () => ipcRenderer.invoke("game-log:clear-backups"),
     updates: Object.freeze({
       onStatus: (listener) => {
         if (typeof listener !== "function") return () => {};
