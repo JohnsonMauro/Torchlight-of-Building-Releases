@@ -452,7 +452,8 @@ export function followerCadence(selection) {
     (sum, text) => sum + (Number(String(text).match(/^\+(\d+(?:\.\d+)?)% Cast Speed$/i)?.[1]) || 0),
     0,
   );
-  let entries = cadencePass(skills, 0, castSpeed);
+  let entries = cadencePass(skills, 0, castSpeed),
+    dashStacks = 0;
   const dash = skills.find((skill) =>
     /Cooldown Recovery Speed for this skill for each cast of a Mobility Skill other than this skill recently/i.test(
       skill.lines.join("\n"),
@@ -462,9 +463,30 @@ export function followerCadence(selection) {
     const others = entries
       .filter((entry) => entry.name !== dash.name && entry.skill.tags.includes("Mobility"))
       .reduce((sum, entry) => sum + entry.castsPerSecond * FOLLOWER_RECENT_SECONDS, 0);
-    if (others > 0) entries = cadencePass(skills, Math.min(10, others), castSpeed);
+    if (others > 0) {
+      dashStacks = Math.min(10, others);
+      entries = cadencePass(skills, dashStacks, castSpeed);
+    }
   }
+  const disarm = disarmCastSpeed(skills, entries);
+  if (disarm) entries = cadencePass(skills, dashStacks, castSpeed + disarm.castSpeedPercent);
   return new Map(entries.map((entry) => [entry.name, withExtraTriggers(entry)]));
+}
+
+// Disarm (support affix): "Disarms this unit for 6s after casting this skill. +50% Cast Speed and +100% Skill Area for
+// Followers while being Disarmed". Disarmed stops Attacks only, so a follower whose skills are all Spells keeps casting, at
+// the Cast Speed for the share of the time it is Disarmed (6 s after each cast of the skill; owner, 2026-10-30: the written
+// text). With an Attack skill the stopped attacks are not modeled (the affix reads Not modeled).
+const DISARM_LINE =
+  /^Disarms this unit for (\d+(?:\.\d+)?) ?s after casting this skill\. \+(\d+(?:\.\d+)?)% Cast Speed and \+(\d+(?:\.\d+)?)% Skill Area for Followers while being Disarmed$/i;
+const followerAttackSkills = (skills) => skills.filter((skill) => (skill.tags || []).includes("Attack"));
+function disarmCastSpeed(skills, entries) {
+  const skill = skills.find((item) => (item.affixLines || []).some((text) => DISARM_LINE.test(clean(text))));
+  if (!skill || followerAttackSkills(skills).length) return null;
+  const match = skill.affixLines.map((text) => clean(text).match(DISARM_LINE)).find(Boolean);
+  const own = entries.find((entry) => entry.name === skill.name);
+  const uptime = Math.min(1, Number(match[1]) * (own?.castsPerSecond || 0));
+  return uptime > 0 ? { castSpeedPercent: Number(match[2]) * uptime, uptime, match } : null;
 }
 
 // ---- Extra triggers: Amplification: Rekindled Embers ----------------------------------------------------------------
@@ -1081,6 +1103,25 @@ export const FOLLOWER_BUFFS = [
       "best case: the follower casts Lightning Beam (3 beams, no cooldown) at the dummy, so the stacks stay at max, held from t = 0 in the 5 s / 20 s windows; Spell hits only, not DoT, ailments or Reaps (2026-10-18 user-supplied: Spell Damage taken is hit-only)",
   },
   {
+    // Speed Phantom: "Enemies take +12% additional Spell Damage when this skill hits". No duration is named (TLIDB tiers I and
+    // III, the client's Help Manual cache, 2026-10-30), so it is read as Blazing Meteor's Fire Infiltration is: held while the
+    // follower keeps hitting the dummy (owner, 2026-10-30; provisional).
+    id: "followerSpeedPhantom",
+    skill: "Tartarus: Speed Phantom",
+    label: "Speed Phantom: Spell Damage taken",
+    target: "enemy",
+    needsNear: false,
+    engine: "spellTaken",
+    pattern: /^Enemies take \+(\d+(?:\.\d+)?)% additional Spell Damage when this skill hits$/i,
+    derive: (match, ctx) => ({
+      text: `+${round(Number(match[1]))}% additional Spell Damage taken`,
+      origin: "derived",
+      summary: `+${round(Number(match[1]))}% additional Spell Damage taken on the dummy, ${cadenceText(ctxEntry(ctx))}`,
+    }),
+    reason:
+      "best case: the follower keeps hitting the dummy, so the debuff is held (no duration is named: provisional, as Blazing Meteor's Fire Infiltration); Spell hits only",
+  },
+  {
     id: "followerThunderSlash",
     skill: "Origin Tartarus: Thunder Slash",
     label: "Thunder Slash: Steep Strike Damage",
@@ -1685,13 +1726,6 @@ export const FOLLOWER_LINE_RULES = [
     reason: NO_STEEP,
   },
   {
-    skill: "Tartarus: Speed Phantom",
-    pattern: /^Enemies take \+\d+(?:\.\d+)?% additional Spell Damage when this skill hits$/i,
-    status: "Not modeled",
-    reason:
-      "the debuff's duration is not in the text (nor on the player's Speed Phantom), so its uptime at the follower's 3 s cooldown is unknown",
-  },
-  {
     skill: "Tartarus: Frost Spike",
     pattern: /additional Shadow Damage for nearby allies/i,
     status: "Not modeled",
@@ -2075,9 +2109,9 @@ const AFFIX_STATUS = [
   [/:$/, "No DPS effect", "a heading of the affix text"],
   [/eliminates|upon defeating|when defeated/i, "Not on dummy", "the training dummy is never defeated or eliminated"],
   [
-    /^(?:Silences|Disarms) this unit for/i,
+    /^Silences this unit for/i,
     "Not modeled",
-    "the follower's cadence while Silenced or Disarmed (no Spells or Attacks for 6 s, faster casts of the other kind) is not modeled",
+    "the follower's cadence while Silenced (no Spells for 6 s, faster Attacks) is not modeled",
   ],
   [
     /^Clears \d+ Affliction when this skill deals damage/i,
@@ -2250,6 +2284,24 @@ function readAffixLine(line, base) {
   if (markerReading) return markerReading;
   const buff = AFFIX_BUFFS.find((item) => item.pattern.test(text));
   if (buff) return { buff, match: text.match(buff.pattern), ctx };
+  const disarm = text.match(DISARM_LINE);
+  if (disarm) {
+    const skills = (ctx.selection?.skills || []).map((item) => item.skill).filter(Boolean);
+    const attacks = followerAttackSkills(skills);
+    if (attacks.length)
+      return {
+        status: "Not modeled",
+        reason: `Disarmed stops ${attacks.map((skill) => skill.name).join(", ")} for ${disarm[1]} s after each cast: that cadence is not modeled`,
+      };
+    const speed = disarmCastSpeed(
+      skills.map((skill) => ({ ...skill, affixLines: [line.text] })),
+      [...(base.cadence?.values?.() || [])],
+    );
+    return {
+      status: "In calc",
+      reason: `Disarmed stops Attacks only and the follower's skills are all Spells, so it keeps casting, at +${disarm[2]}% Cast Speed while Disarmed (${round((speed?.uptime ?? 0) * 100)}% of the time: ${disarm[1]} s after each cast): its Spells are cast faster (its cadence); the +${disarm[3]}% Skill Area changes nothing on one dummy`,
+    };
+  }
   return affixStatus(text);
 }
 
