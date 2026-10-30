@@ -3989,6 +3989,12 @@ function calculatePlannerOnce(
       profile: barrierBurstProfile(barrierBurst, catalogSkillsByName.get("Barrier Burst")),
     });
   }
+  // The Main Skill's hit sources: the build's own, or a skill an item puts in its place (Necklace of Firebird's Barrier Burst:
+  // "Replaces the Main Skill"), which "your Main Skill" effects then reach.
+  const mainSkillKeys = new Set([
+    resolvedMain?.setupKey,
+    ...itemTriggerSources.filter((item) => item.setup?.role === "main").map((item) => item.setupKey),
+  ]);
   // Rehan (hero trait audit B10; packages/engine/src/heroes/rehan/traits.js; provisional readings, src/app/stats/open-questions.js):
   // - Anger's Burst: a triggered hit source (game row 90000; Burst Blast 90003) at its trigger rate in Berserk × the Berserk uptime,
   //   with its own additional damage lines, its level (+10% per tag-matching Skill Level line) and the Berserk-phase Rage lines in
@@ -4271,7 +4277,7 @@ function calculatePlannerOnce(
     if (mainThrowsBombs && setup.setupKey === resolvedMain?.setupKey)
       common.heroEffects = { ...(common.heroEffects || {}), blastNova };
     // Bing – Creative Genius's Ingenuity Overload (packages/engine/src/heroes/bing/creative-genius.js): its Main Skill casts (hit model).
-    if (lineConditionState.bing?.overload?.perSecond > 0 && setup.setupKey === resolvedMain?.setupKey)
+    if (lineConditionState.bing?.overload?.perSecond > 0 && mainSkillKeys.has(setup.setupKey))
       common.heroEffects = { ...(common.heroEffects || {}), ingenuityOverload: lineConditionState.bing.overload };
     // Lines for triggered skills (Hair-trigger, packages/engine/src/combat-states.js; core audit batch B3): applied by the hit model to triggered uses.
     common.triggeredSkillAdditional = lineEffects.combat?.buffs?.triggeredSkillAdditional || [];
@@ -6079,16 +6085,11 @@ function calculatePlannerOnce(
           (lineConditionState.rehan?.averageBodies || []).find((item) => item.key === "attackSpeedPerRage")?.value || 0,
       };
     }
-    // Bing – Creative Genius (hero trait audit B12): the Main Skill's uses per second (Flash of Brilliance's procs); a skill an item
-    // puts in its place (Necklace of Firebird's Barrier Burst: "Replaces the Main Skill") counts as the Main Skill.
+    // Bing – Creative Genius (hero trait audit B12): the Main Skill's uses per second (Flash of Brilliance's procs).
     if (bingRates) {
-      const mainKeys = new Set([
-        resolvedMain?.setupKey,
-        ...itemTriggerSources.filter((item) => item.setup?.role === "main").map((item) => item.setupKey),
-      ]);
       facts.bing = {
         mainUsesPerSecond: skillHits
-          .filter((hit) => hit.modeled && mainKeys.has(hit.setupKey))
+          .filter((hit) => hit.modeled && mainSkillKeys.has(hit.setupKey))
           .reduce((sum, hit) => sum + (hit.rate?.usesPerSecond || 0), 0),
       };
     }

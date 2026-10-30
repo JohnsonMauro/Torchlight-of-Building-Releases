@@ -93,3 +93,41 @@ test("Genius Idea Generator adds +1 Max Spell Burst to the Overload and +60% on 
   assert.equal(genius.rate.spellBurst.overload.stacks, plain.stacks + 3);
   assert.ok(genius.ledger.additional.some((line) => line.source === "Genius Idea Generator"));
 });
+
+// Necklace of Firebird: "Replaces the Main Skill with Lv. N Barrier Burst", so Barrier Burst is the Main Skill the Overload
+// triggers (the build's own Main Skill is switched off while the necklace is worn).
+test("the Overload's casts reach Barrier Burst when Necklace of Firebird replaces the Main Skill", () => {
+  const state = JSON.parse(
+    readFileSync(new URL("../golden/fixtures/youga-the-ultimate-one-l94.state.json", import.meta.url), "utf8"),
+  );
+  state.hero = switchHeroLoadout(state.hero, BING);
+  const lines = [
+    "When you have a Barrier, triggers the Main Skill upon taking damage, then removes Barrier\nReplaces the Main Skill with Lv. 20 Barrier Burst",
+    "+20 % additional Barrier Shield -100 % additional Armor",
+  ];
+  state.equipmentOverrides.necklace = {
+    name: "Necklace of Firebird",
+    base: "Necklace",
+    rarity: "legendary",
+    legendaryModifiers: lines,
+    modifiers: lines,
+    implicitModifiers: [],
+  };
+  const ring = state.equipmentOverrides.leftRing;
+  state.equipmentOverrides.leftRing = {
+    ...ring,
+    modifiers: [
+      ...ring.modifiers,
+      "100% chance to gain a Barrier for every 5 m you move",
+      "Takes 10 True Damage every 0.1s",
+    ],
+  };
+  state.combat = {
+    ...state.combat,
+    conditionMode: "manual",
+    bestCaseOverrides: { ...state.combat?.bestCaseOverrides, traitSkillOnCooldown: true },
+  };
+  const burst = calculatePlanner(normalizePlannerState(state)).skillHits.find((hit) => hit.name === "Barrier Burst");
+  assert.ok(burst, "Barrier Burst is a hit source");
+  assert.ok(burst.rate.spellBurst?.overload?.perSecond > 0, "the Overload reaches Barrier Burst's Spell Burst");
+});
