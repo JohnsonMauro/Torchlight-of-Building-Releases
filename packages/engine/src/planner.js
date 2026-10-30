@@ -3054,6 +3054,7 @@ function calculatePlannerOnce(
     dealsSpell: Boolean(lineConditionState.activeTags?.has?.("Spell")),
     mainUsesPerSecond: hitRateFacts?.bing ? hitRateFacts.bing.mainUsesPerSecond : null,
     maxSpellBurst: maxSpellBurst.total,
+    spellBurst: hitRateFacts?.bing?.spellBurst || null,
   });
   const bingRates = Boolean(lineConditionState.bing?.needsRates);
   // Bing – Blast Nova's Firepower Coverage (Q-H15): the badge and the switch read it (packages/engine/src/heroes/bing/badges.js "firepower");
@@ -6085,12 +6086,22 @@ function calculatePlannerOnce(
           (lineConditionState.rehan?.averageBodies || []).find((item) => item.key === "attackSpeedPerRage")?.value || 0,
       };
     }
-    // Bing – Creative Genius (hero trait audit B12): the Main Skill's uses per second (Flash of Brilliance's procs).
+    // Bing – Creative Genius (hero trait audit B12): the Main Skill's uses per second (Flash of Brilliance's procs) and the
+    // Spell Burst activations per second, an Overload's triggered cast included (Inspiration Overflow's Essence).
     if (bingRates) {
+      const bursts = skillHits.filter((hit) => hit.modeled && hit.rate?.spellBurst);
       facts.bing = {
         mainUsesPerSecond: skillHits
           .filter((hit) => hit.modeled && mainSkillKeys.has(hit.setupKey))
           .reduce((sum, hit) => sum + (hit.rate?.usesPerSecond || 0), 0),
+        spellBurst: {
+          activationsPerSecond: bursts.reduce(
+            (sum, hit) =>
+              sum + (hit.rate.spellBurst.activationsPerSecond || 0) + (hit.rate.spellBurst.overload?.perSecond || 0),
+            0,
+          ),
+          stacks: maxSpellBurst.total,
+        },
       };
     }
     if (carinoRates)

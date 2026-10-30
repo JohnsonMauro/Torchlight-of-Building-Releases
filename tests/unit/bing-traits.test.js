@@ -118,3 +118,20 @@ test("Genius Idea Generator: both its lines join the intake and the Bing module 
     true,
   );
 });
+
+test("Inspiration Overflow: (5 + 6 per 2 stacks consumed) Whimsy Essence per Spell Burst activation, at most once per 1 s", () => {
+  const overflow = line(
+    "Instantly restores 5 Whimsy Essence when activating Spell Burst , and restores 6 additional Whimsy Essence for every 2 stacks of Spell Burst Charge consumed. Interval: 1s",
+    "Hero trait: Inspiration Overflow (Lv 3)",
+  );
+  // 0.5 activations per second, 6 stacks each: 0.5 × (5 + 6 × 3) = 11.5 Essence per second on top of the 20.
+  const half = state([...BASE, overflow], { spellBurst: { activationsPerSecond: 0.5, stacks: 6 } });
+  assert.equal(half.overflowEssencePerSecond, 11.5);
+  assert.equal(half.explosionsPerSecond, 0.315);
+  assert.equal(half.needsRates, true);
+  // 3 activations per second: the 1 s interval allows one restore per second.
+  const fast = state([...BASE, overflow], { spellBurst: { activationsPerSecond: 3, stacks: 7 } });
+  assert.equal(fast.overflowEssencePerSecond, 23);
+  // Before the hit pass measures the activations: nothing added.
+  assert.equal(state([...BASE, overflow]).overflowEssencePerSecond, 0);
+});

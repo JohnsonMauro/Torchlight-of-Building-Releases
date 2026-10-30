@@ -18,7 +18,8 @@
 // - Whimsy Explosions: one each time Whimsy Essence reaches 100 (20 per second × (1 + Whimsy Essence Recovery Speed)) while a
 //   skill deals Spell Damage, plus Flash of Brilliance's procs: one per interval T after a cast rolls its chance p, so
 //   1 ÷ (T + 1 ÷ (p × Main Skill uses per second)); a triggered use of the Main Skill counts as casting it. Inspiration
-//   Overflow's Essence on Spell Burst is not read (a lower bound on the cadence).
+//   Overflow adds its Essence per Spell Burst activation the hit pass measured (an Overload's triggered cast activates one
+//   too), at most once per its interval, with the stacks of a full Spell Burst.
 // - Whimsy Signal on the dummy: uptime min(1, 5 s × explosions per second); its value is the base 20% (Trouble Maker: the
 //   value it names) × (1 + Σ "Whimsy Signal Effect").
 // - Whimsy (Mind Domain): you stand in the energy field (best-case switch), so the stacks reach the max and hold while a new
@@ -64,6 +65,10 @@ export const BING_PATTERNS = Object.freeze({
     /^When Ingenuity Essence reaches 100, clicking the Trait Skill causes Inspiration Machines to use Ingenuity Overload$/i,
   // Inspiration Overflow (its "additional Hit Damage for skills cast by Spell Burst" line is the generic Spell Burst reader's).
   overflowEssence: /^Instantly restores \d+(?:\.\d+)? Whimsy Essence when activating Spell Burst/i,
+  overflowAmounts: new RegExp(
+    `^Instantly restores ${N} Whimsy Essence when activating Spell Burst, and restores ${N} additional Whimsy Essence for every (\\d+) stacks of Spell Burst Charge consumed\\. Interval: ${N} ?s$`,
+    "i",
+  ),
   ingenuityStart: /^Instantly restores \d+(?:\.\d+)? Ingenuity Essence after entering a stage or reviving$/i,
   // Mind Domain.
   mindDomain: new RegExp(
@@ -147,6 +152,8 @@ const sumClauses = (modifierTexts, name) =>
  * @param {boolean} p.dealsSpell a skill of the build deals Spell Damage
  * @param {number|null} p.mainUsesPerSecond the Main Skill's uses per second the hit pass measured (null before it)
  * @param {number} p.maxSpellBurst the build's Max Spell Burst (packages/engine/src/skills/max-spell-burst.js)
+ * @param {{activationsPerSecond: number, stacks: number}|null} p.spellBurst the Spell Burst activations per second and the stacks
+ *   each consumes, as the hit pass measured them (null before it)
  */
 export function bingState({
   heroId = "",
@@ -155,6 +162,7 @@ export function bingState({
   dealsSpell = false,
   mainUsesPerSecond = null,
   maxSpellBurst = 0,
+  spellBurst = null,
 } = {}) {
   if (heroId !== BING_CREATIVE) return null;
   const traits = modifierTexts
@@ -163,7 +171,25 @@ export function bingState({
   const first = (key) => traits.map((text) => text.match(BING_PATTERNS[key])).find(Boolean) || null;
   const base = Boolean(first("signal")) && Boolean(first("essence"));
   const recoveryPercent = sumClauses(modifierTexts, "Whimsy Essence Recovery Speed");
-  const essencePerSecond = Math.max(0, ESSENCE_PER_SECOND * (1 + recoveryPercent / 100));
+  // Inspiration Overflow: per Spell Burst activation, at most once per interval; each activation consumes a full Spell Burst
+  // (owner, 2026-10-27).
+  const overflowMatch = first("overflowAmounts");
+  const overflow = overflowMatch
+    ? {
+        essence: num(overflowMatch[1]),
+        perStacks: num(overflowMatch[2]),
+        stacks: num(overflowMatch[3]),
+        intervalSeconds: num(overflowMatch[4]),
+      }
+    : null;
+  const burstActivations = Math.max(0, spellBurst?.activationsPerSecond || 0);
+  const overflowEssencePerSecond =
+    overflow && burstActivations > 0
+      ? Math.min(burstActivations, 1 / overflow.intervalSeconds) *
+        (overflow.essence + overflow.perStacks * Math.floor(Math.max(0, spellBurst.stacks || 0) / overflow.stacks))
+      : 0;
+  const essencePerSecond =
+    Math.max(0, ESSENCE_PER_SECOND * (1 + recoveryPercent / 100)) + (dealsSpell ? overflowEssencePerSecond : 0);
   const essenceExplosions = base && dealsSpell ? essencePerSecond / ESSENCE_PER_EXPLOSION : 0;
   const flashMatch = first("flash");
   const flash = flashMatch ? { chance: num(flashMatch[1]) / 100, intervalSeconds: num(flashMatch[2]) } : null;
@@ -208,6 +234,8 @@ export function bingState({
     base,
     dealsSpell,
     recoveryPercent,
+    overflow,
+    overflowEssencePerSecond: round(overflowEssencePerSecond),
     essencePerSecond: round(essencePerSecond),
     essenceExplosions: round(essenceExplosions),
     flash,
@@ -246,8 +274,9 @@ export function bingState({
       additionalPercent: genius ? num(genius[2]) : 0,
       source: "Ingenuity Overload",
     },
-    // The Flash of Brilliance procs read the Main Skill's measured uses, so a build with the pick runs the measuring pass.
-    needsRates: Boolean(base && dealsSpell && flash),
+    // The Flash of Brilliance procs read the Main Skill's measured uses and Inspiration Overflow the measured Spell Burst
+    // activations, so a build with either pick runs the measuring pass.
+    needsRates: Boolean(base && dealsSpell && (flash || overflow)),
   };
 }
 
@@ -270,7 +299,7 @@ export function bingSwitches(state) {
 const L = (status, reason, bodies = []) => ({ status, reason, bodies });
 const cadence = (state) => {
   const parts = [
-    `${state.essencePerSecond} Whimsy Essence per second: a Whimsy Explosion every ${round(100 / state.essencePerSecond)} s`,
+    `${state.essencePerSecond} Whimsy Essence per second${state.overflowEssencePerSecond > 0 ? ` (${state.overflowEssencePerSecond} from Inspiration Overflow)` : ""}: a Whimsy Explosion every ${round(100 / state.essencePerSecond)} s`,
   ];
   if (state.flashExplosions > 0) parts.push(`Flash of Brilliance +${state.flashExplosions} per second`);
   return `${parts.join(", ")} (${state.explosionsPerSecond} per second; provisional)`;
@@ -321,6 +350,11 @@ export function bingLineRead(heroId, text, state, { revived = false } = {}) {
     case "mindDomain":
       return whimsyOn ? L("In calc", whimsyReason(), [whimsyBody(state)]) : L("Inactive", whimsyReason());
     case "overflowEssence": {
+      if (state.overflowEssencePerSecond > 0)
+        return L(
+          "In calc",
+          `${state.overflow.essence} + ${state.overflow.perStacks} per ${state.overflow.stacks} Spell Burst stacks consumed, at most once per ${state.overflow.intervalSeconds} s: +${state.overflowEssencePerSecond} Whimsy Essence per second; ${cadence(state)}`,
+        );
       const held = state.signal.uptime >= 1 && (!state.whimsy || state.whimsy.uptime >= 1 || !state.whimsy.inField);
       return held
         ? L(
