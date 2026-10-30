@@ -54,3 +54,28 @@ test("a prism's base attribute with no text in the game data is a note, not an u
     ],
   );
 });
+
+// 2026-10-30 (owner's Phantasmagoria prism): the id map writes the rare affix as "+10.5% Aura Effect" while the planner's
+// option (TLIDB's tier) reads "10.5% Aura Effect"; a "+" before a number must not keep them apart.
+test("a prism's random affixes import whatever sign the id map gives their numbers", async () => {
+  const idMap = await loadGameIdMap();
+  const lich = Object.entries(idMap.professions).find(([, name]) => name === "Lich")[0];
+  const snapshot = hazeOnLich(lich, []);
+  snapshot.dumps[0].tree.geniusInfos.info[4].prismInfo.item.Prefix = {
+    1: { Id: "1224308011" },
+    2: { Id: "1224300521" },
+    3: { Id: "1224310071" },
+  };
+  const { state, report } = importSnapshot(snapshot, "d1", idMap);
+  const prism = state.talents.prismInventory[0];
+  assert.equal(prism.radiusAffix, "The Effect Area expands to 3x3 Rectangle");
+  assert.equal(prism.rareAffix, "All Legendary Medium Talent within the area also gain: 10.5% Aura Effect");
+  assert.match(
+    prism.legendaryAffix,
+    /^When activating 2 Legendary Medium Talent within the area, Gains Spell Aggression/,
+  );
+  assert.deepEqual(
+    report.sections.talents.unresolved.filter((entry) => /prism affix/.test(entry.item)),
+    [],
+  );
+});

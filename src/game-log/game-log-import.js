@@ -1424,8 +1424,14 @@ function resolveTalents(tree, idMap, report, state) {
 // those come from TLIDB's table (scripts/fetch-tlidb-prism-affixes.js).
 const prismAffixEntry = (idMap, id) => idMap.affixes[id] || TLIDB_PRISM_AFFIXES[id] || null;
 // TLIDB writes "The area of effect expands to" where the planner's options say "The Effect Area expands to".
+// A "+" before a number does not tell two prism affixes apart: the id map writes "+10.5% Aura Effect" where the planner's
+// option (TLIDB's higher tier) reads "10.5% Aura Effect" (2026-10-30, the owner's Phantasmagoria prism).
 const prismSignature = (text) =>
-  affixSignature(String(text).replace(/^The area of effect expands to\b/i, "The Effect Area expands to"));
+  affixSignature(
+    String(text)
+      .replace(/^The area of effect expands to\b/i, "The Effect Area expands to")
+      .replace(/\+(?=\d)/g, ""),
+  );
 
 function resolvePrism(info, treeName, nodes, idMap, report, state) {
   const prism = info.prismInfo,
