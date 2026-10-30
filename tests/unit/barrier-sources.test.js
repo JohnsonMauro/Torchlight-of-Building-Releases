@@ -79,3 +79,35 @@ test("Barrier Bursts per second follow the movement Barrier and the Movement Spe
   // The Composition input still wins.
   assert.equal(burst({ movementSpeedPercent: 54, usesPerSecond: 0.5 }).usesPerSecond, 0.5);
 });
+
+// A movement Barrier is gained while moving, so it is 20% of Max Life + the Max Energy Shield the character has while moving:
+// "+16% additional Max Energy Shield while moving" (Long Night Sorcerer's Boots) raises it.
+test("a movement Barrier takes the 'while moving' additional Max Energy Shield", async () => {
+  const { barrierBurstState } = await import("../../packages/engine/src/skills/barrier-burst.js");
+  const { movementBarrierSources } = await import("../../packages/engine/src/defense/barrier-sources.js");
+  const lines = [
+    {
+      text: "When you have a Barrier, triggers the Main Skill upon taking damage, then removes Barrier\nReplaces the Main Skill with Lv. 25 Barrier Burst",
+      source: "Necklace of Firebird",
+    },
+    { text: "Takes 10 True Damage every 0.1s", source: "Robe" },
+    { text: "+16% additional Max Energy Shield while moving", source: "Boots" },
+  ];
+  const ring = { text: MOVEMENT_BARRIER, source: "Ring" };
+  const moving = barrierBurstState({
+    modifierTexts: [...lines, ring],
+    maxLife: 100,
+    maxEnergyShield: 1000,
+    barrierSources: movementBarrierSources([ring]),
+  });
+  assert.ok(Math.abs(moving.barrier.value - 0.2 * (100 + 1160)) < 1e-9, String(moving.barrier.value));
+  assert.ok(moving.lines.includes("+16% additional Max Energy Shield while moving"));
+  // Without a movement Barrier the character need not move: the line does not count.
+  const guard = barrierBurstState({
+    modifierTexts: lines,
+    maxLife: 100,
+    maxEnergyShield: 1000,
+    barrierSources: [{ source: "Guard support · Skill", trigger: "Every 5 uses", available: true }],
+  });
+  assert.ok(Math.abs(guard.barrier.value - 0.2 * 1100) < 1e-9, String(guard.barrier.value));
+});

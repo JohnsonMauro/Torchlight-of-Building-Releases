@@ -7,7 +7,8 @@
 //   "when casting a skill").
 // - Barrier (keyword "Barrier"): "Gains a Shield equal to 20% of the sum of Max Life and Max Energy Shield"; "+X% Barrier
 //   Shield" lines add (increased), "+X% additional Barrier Shield" lines multiply (the game's attribute screen shows the
-//   two totals: 112% and 20% on the owner's build, matching the lines).
+//   two totals: 112% and 20% on the owner's build, matching the lines). A movement Barrier is gained while moving, so
+//   "+X% additional Max Energy Shield while moving" lines multiply the Energy Shield it reads.
 // - Barrier Burst: "Deals Spell Fire Damage equal to 75% of Barrier Rating to nearby enemies"; "can activate Spell Burst when
 //   triggered" (so the trigger does not block Spell Burst; owner, 2026-10-27: each activation consumes a full Spell Burst).
 // - Uses per second: one per Barrier gained. A movement Barrier ("for every X m you move") gains them at the character's
@@ -26,6 +27,7 @@ const GRANT = /^Replaces the Main Skill with Lv\. (\d+) Barrier Burst$/i;
 const SELF_DAMAGE = /^Takes [\d.]+ True Damage (?:every [\d.]+ ?s|when casting a skill)/i;
 const BARRIER_INCREASED = /^([+-][\d.]+)% Barrier Shield$/i;
 const BARRIER_ADDITIONAL = /^([+-][\d.]+)% additional Barrier Shield$/i;
+const ES_WHILE_MOVING = /^([+-][\d.]+)% additional Max Energy Shield while moving$/i;
 
 const clean = (text) =>
   normalizePercentageText(String(text || ""))
@@ -87,7 +89,14 @@ export function barrierBurstState({
     const match = line.text.match(BARRIER_ADDITIONAL);
     return match ? product * (1 + (Number(match[1]) * line.multiplier) / 100) : product;
   }, 1);
-  const pools = Math.max(0, maxLife) + Math.max(0, maxEnergyShield);
+  // A movement Barrier is gained while moving: its Shield reads the Max Energy Shield the character has while moving.
+  const movesForBarrier = barrierSources.some((source) => source.movement && source.available);
+  const movingShieldLines = movesForBarrier ? lines.filter((line) => ES_WHILE_MOVING.test(line.text)) : [];
+  const movingShieldFactor = movingShieldLines.reduce(
+    (product, line) => product * (1 + (Number(line.text.match(ES_WHILE_MOVING)[1]) * line.multiplier) / 100),
+    1,
+  );
+  const pools = Math.max(0, maxLife) + Math.max(0, maxEnergyShield) * movingShieldFactor;
   const barrier = BARRIER_OF_POOLS * pools * Math.max(0, 1 + increasedPercent / 100) * additionalFactor;
   const moving = movementBarriersPerSecond(barrierSources, movementSpeedPercent);
   /** @type {"user" | "movement" | "assumed"} */
@@ -104,6 +113,7 @@ export function barrierBurstState({
     ...lines.filter((line) => GRANT.test(line.text)),
     ...selfDamage,
     ...lines.filter((line) => BARRIER_INCREASED.test(line.text) || BARRIER_ADDITIONAL.test(line.text)),
+    ...movingShieldLines,
   ];
   return {
     lines: [
@@ -116,7 +126,7 @@ export function barrierBurstState({
     requirements,
     level: Number(grant[1]),
     source: trigger.source,
-    barrier: { pools, increasedPercent, additionalFactor, value: barrier },
+    barrier: { pools, increasedPercent, additionalFactor, movingShieldFactor, value: barrier },
     damage: BURST_OF_BARRIER * barrier,
     usesPerSecond: rate,
     rateFrom,
