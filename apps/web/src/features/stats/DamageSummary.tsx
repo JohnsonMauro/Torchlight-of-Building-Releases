@@ -32,7 +32,8 @@ export function DamageSummary() {
                   <span key={source.key} style={{ width: source.width, backgroundColor: source.color }} />
                 ))}
               </div>
-              <ul className="grid gap-1.5 text-xs">
+              {/* grid-cols-1: a long label truncates instead of widening the column (its min-content) past the panel. */}
+              <ul className="grid grid-cols-1 gap-1.5 text-xs">
                 {view.sources.map((source) => (
                   <SourceRow key={source.key} source={source} />
                 ))}
@@ -60,7 +61,9 @@ function SourceRow({ source }: { source: DamageSummarySource }) {
     return (
       <li className="flex items-center gap-1.5">
         {swatch}
-        <span className="min-w-0 flex-1 truncate text-muted">{source.label}</span>
+        <span className="min-w-0 flex-1 truncate text-muted" title={source.label}>
+          {source.label}
+        </span>
         {share}
       </li>
     );

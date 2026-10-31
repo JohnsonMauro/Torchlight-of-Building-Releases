@@ -24,6 +24,13 @@ export class HeroPage {
   portrait() {
     return this.page.locator("#selected-hero-portrait");
   }
+  /** The character column's damage summary and its damage sources, one row each. */
+  damageSummary() {
+    return this.page.locator("#damage-summary");
+  }
+  damageSources() {
+    return this.damageSummary().getByRole("listitem");
+  }
   changeHero() {
     return this.page.locator("#build-editor").getByRole("button", { name: "Change Hero", exact: true });
   }
