@@ -10,7 +10,7 @@ import {
   prismMutationDownside,
   prismNodeAffixes,
 } from "../talents/prism-crafting.js";
-import { grantedCoreLine, nameReadCoreGrant, isNameReadCoreClause } from "./granted-core-lines.js";
+import { grantedCoreLine, nameReadCoreGrant, isNameReadCoreClause, withEachCoreOnce } from "./granted-core-lines.js";
 import { NAMED_GEAR_AFFIX_LINES } from "./named-gear-affixes.js";
 import { migrateSlateTalentText } from "../state/talent-text-migrations.js";
 
@@ -213,5 +213,10 @@ export function collectModifierTexts({
   // clauses the totals do not read (heroMemories.intakeOnly), which only the generic engines see.
   for (const line of [...(heroMemories.lines || []), ...(heroMemories.intakeOnly || [])])
     if (line.enabled !== false) push(line.text, line.source, "memory");
-  return lines;
+  // A core is had once: a second grant of it, or a grant of a core the panel has (an Ethereal Prism's included), adds nothing.
+  const panelCores = new Set([
+    ...talents.flatMap((panel) => (panel.activeCores || []).map((core) => core.name)),
+    ...lines.filter((line) => line.origin === "core" && line.grantedCore).map((line) => line.grantedCore),
+  ]);
+  return withEachCoreOnce(lines, panelCores);
 }

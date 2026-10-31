@@ -99,6 +99,26 @@ export function grantedCoreNames(modifierTexts = []) {
 }
 
 /**
+ * A core talent is had once (owner, 2026-10-31: "[Beacon] +2 Max Spell Burst" on two items counted +4): the lines of a core
+ * granted outside the panel (a "[Core]" gear line, a Pedigree of Gods slate core) stay only for the first item or slate that
+ * grants it, and go when the talent panel has that core. The panel's own core lines (origin "core") always stay.
+ * @param {object[]} lines the intake's lines (collectModifierTexts)
+ * @param {Set<string>} panelCores the cores the talent panels have
+ */
+export function withEachCoreOnce(lines, panelCores) {
+  const grantedBy = new Map();
+  return lines.filter((line) => {
+    const name = line?.grantedCore;
+    if (!name || line.origin === "core") return true;
+    if (panelCores.has(name)) return false;
+    // Slot too: two copies of one item in both Ring slots are two grants, so the second goes.
+    const grant = `${line.origin}|${line.source}|${line.slot ?? ""}`;
+    if (!grantedBy.has(name)) grantedBy.set(name, grant);
+    return grantedBy.get(name) === grant;
+  });
+}
+
+/**
  * A slate affix with a Pedigree of Gods core's "Name — " lead removed ("Magister: Lv.2 Core Talent: Bunch — +1 to Max Focus
  * Blessing Stacks" → "Magister: Lv.2 Core Talent: +1 to Max Focus Blessing Stacks"), so the models that read slate affixes
  * through their "Class: <Talent type>:" prefix read a core's clauses like any talent's (core audit batch B1: Bunch's +1 Max
