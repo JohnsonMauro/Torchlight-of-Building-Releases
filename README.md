@@ -4,7 +4,7 @@ An unofficial, fan-made build planner and damage calculator for **Torchlight: In
 
 **▶ Use it in your browser: [tomselleck09.github.io/Torchlight-of-Building-Releases](https://tomselleck09.github.io/Torchlight-of-Building-Releases/)**
 
-**⬇ Or download the Windows app from [Releases](https://github.com/TomSelleck09/Torchlight-of-Building-Releases/releases/latest)**
+**⬇ Or download the Windows app, TLI Planner, from [Releases](https://github.com/JohnsonMauro/Torchlight-of-Building-Releases/releases/latest)**
 
 > **Calculations are a work in progress.** Many mechanics are modeled, but some are only partly modeled or not modeled yet. Every tooltip line has a badge (*In calc*, *Not modeled*, and so on), so you can see what is counted. Treat the figures as estimates, not exact in-game numbers.
 
@@ -30,10 +30,10 @@ If the game is installed on the same PC, one click imports the last character yo
 
 ## Install and update
 
-Download the latest version from the **[Releases page](https://github.com/TomSelleck09/Torchlight-of-Building-Releases/releases/latest)**. There are two options:
+Download the latest version from the **[Releases page](https://github.com/JohnsonMauro/Torchlight-of-Building-Releases/releases/latest)**. There are two options:
 
-- **Installer** (`TLI-Build-Planner-Setup-0.2.0.exe`), recommended. It updates itself from inside the app.
-- **Portable** (`TLI-Build-Planner-0.2.0-portable.exe`), no install needed. The app tells you when a new version is out and opens this page.
+- **Installer** (`TLI-Planner-Setup-<version>.exe`), recommended. It updates itself from inside the app.
+- **Portable** (`TLI-Planner-<version>-portable.exe`), no install needed. The app tells you when a new version is out and opens this page.
 
 Prefer the browser? Use it online: https://tomselleck09.github.io/Torchlight-of-Building-Releases/ (Import from game asks you to pick your UE_game.log)
 
@@ -49,11 +49,11 @@ Prefer the browser? Use it online: https://tomselleck09.github.io/Torchlight-of-
 - Windows 10 or 11, 64-bit
 - Import from game needs the game installed on the same PC
 
+TLI Planner installs beside the original Torchlight of Building app (its own folder, shortcuts and build library); move builds across with the export / import codes.
+
 ## VirusTotal
 
-Scanned on VirusTotal: [Installer v0.2.0](https://www.virustotal.com/gui/file/1d5e263d6c13ff306e16ae9afb811f36cb77cb6900d41523dc5bea33d7174cdb) · [Portable v0.2.0](https://www.virustotal.com/gui/file/fe274fe2b91034d13c19150d8860c9d108fb6f651a4380db9047f15c53be6102)
-
-A few heuristic engines can flag unsigned Electron apps, so an occasional detection like that is expected.
+A few heuristic engines can flag unsigned Electron apps, so an occasional detection is expected.
 
 ## Disclaimer
 

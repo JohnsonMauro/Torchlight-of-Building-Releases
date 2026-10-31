@@ -1,6 +1,8 @@
 {
-  "name": "tli-builder",
-  "productName": "Torchlight of Building",
+  "name": "tli-planner",
+  "productName": "TLI Planner",
+  "description": "Build planner and damage calculator for Torchlight: Infinite",
+  "author": "Johnson Mauro",
   "version": "0.2.0",
   "private": true,
   "type": "module",
@@ -52,8 +54,8 @@
     "vite": "8.3.5"
   },
   "build": {
-    "appId": "com.tlibuilder.planner",
-    "productName": "Torchlight of Building",
+    "appId": "io.github.johnsonmauro.tli-planner",
+    "productName": "TLI Planner",
     "asar": true,
     "directories": {
       "output": "dist"
@@ -61,6 +63,7 @@
     "files": [
       "electron/**",
       "dist-web/**",
+      "!dist-web/**/*.map",
       "src/**/*.{js,ts}",
       "packages/engine/**/*.{js,ts,json}",
       "package.json"
@@ -78,14 +81,14 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "artifactName": "TLI-Build-Planner-Setup-${version}.exe"
+      "artifactName": "TLI-Planner-Setup-${version}.exe"
     },
     "portable": {
-      "artifactName": "TLI-Build-Planner-${version}-portable.exe"
+      "artifactName": "TLI-Planner-${version}-portable.exe"
     },
     "publish": {
       "provider": "github",
-      "owner": "TomSelleck09",
+      "owner": "JohnsonMauro",
       "repo": "Torchlight-of-Building-Releases",
       "releaseType": "release"
     }

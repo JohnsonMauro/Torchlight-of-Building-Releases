@@ -8,7 +8,7 @@
 // "up-to-date" or "error" to the banner. No electron import here: main.cjs injects what it needs, so tests can run
 // this module under plain Node.
 
-const RELEASES_OWNER = "TomSelleck09";
+const RELEASES_OWNER = "JohnsonMauro";
 const RELEASES_REPO = "Torchlight-of-Building-Releases";
 const RELEASES_URL = `https://github.com/${RELEASES_OWNER}/${RELEASES_REPO}/releases`;
 const RELEASE_PAGE_URL = `${RELEASES_URL}/latest`;

@@ -4,15 +4,7 @@ const { pathToFileURL } = require("node:url");
 const { createUpdateController } = require("./updater.cjs");
 
 const appOrigin = "planner://app";
-const PRODUCT_NAME = "Torchlight of Building";
-
-// Versions up to 0.1.x ran as "tli-builder", so their profile (build library in Local Storage) lives in the
-// "tli-builder" folder next to the default one. Keep using it after the rename; an explicit --user-data-dir wins.
-const userDataSwitch = app.commandLine.getSwitchValue("user-data-dir");
-app.setPath(
-  "userData",
-  userDataSwitch ? path.resolve(userDataSwitch) : path.join(path.dirname(app.getPath("userData")), "tli-builder"),
-);
+const PRODUCT_NAME = "TLI Planner";
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -79,7 +71,7 @@ let mainWindow = null;
 const updates = createUpdateController({
   mode: app.isPackaged && !process.env.PORTABLE_EXECUTABLE_DIR ? "installer" : "release-page",
   currentVersion: app.getVersion(),
-  userAgent: `Torchlight-of-Building/${app.getVersion()}`,
+  userAgent: `TLI-Planner/${app.getVersion()}`,
   send: (status) => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("update:status", status);
   },
