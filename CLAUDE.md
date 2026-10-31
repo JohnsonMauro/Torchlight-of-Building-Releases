@@ -104,3 +104,12 @@ are deleted. Details and the reference screen: `styling-guide`.
 Commit messages: one imperative sentence that says what changed for the user or the code ("Move the Skills reset into
 the section heading"), body only when the why is not obvious. Structure and behaviour in separate commits when both
 happen (`refactor-guide`). No AI attribution of any kind.
+
+Branches: `main` carries our work (CI, Pages, releases). `upstream-main` mirrors TomSelleck09's `main`, reference only:
+`git fetch upstream && git push origin upstream/main:upstream-main` (fast-forward, never a commit of ours).
+
+## Releases
+
+The version lives in `package.json` and equals the tag (`v0.1.0`). Every user-facing change adds a line under
+`## [Unreleased]` in `CHANGELOG.md`. A pushed `v*` tag runs `.github/workflows/windows-installers.yml`, which drafts the
+GitHub release with the installers; publishing it (and pushing the tag) needs the owner's go.

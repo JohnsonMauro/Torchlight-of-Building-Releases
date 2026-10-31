@@ -12,7 +12,7 @@ rebase onto it and never open PRs there. We read his diff and port by hand.
 
 **Last upstream commit ported: `7059768` (2026-10-19).** Update this line in the port's commit.
 
-1. `git fetch upstream` and read `upstream/main`, never a stale local copy.
+1. `git fetch upstream` and read `upstream/main` (the remote ref; our `upstream-main` branch is only its mirror), never a stale local copy.
 2. Read `git diff 7059768..upstream/main` (the commit above), file by file.
 3. The upstream commit you port up to goes in the commit body and in the line above.
 
