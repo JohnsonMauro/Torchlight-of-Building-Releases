@@ -95,8 +95,9 @@ are deleted. Details and the reference screen: `styling-guide`.
 - Never touch `packages/engine/data/**/*.generated.js` by hand; never run `pnpm golden:update` to make a red test green without
   reading `pnpm golden:diff` first.
 - Never lower a guard to make it pass (eslint-suppressions, dom-ratchet baseline up, a skipped test).
-- `package.json` `build.publish` still points at upstream's releases: electron-updater would replace our build with
-  his. Repoint or disable it before a desktop build of ours.
+- Never give the desktop app upstream's identity back (appId, `productName` "Torchlight of Building", the
+  `tli-builder` profile, his releases in `build.publish` or `electron/updater.cjs`): ours is "TLI Planner" and installs
+  beside his. Windows installers come from `.github/workflows/windows-installers.yml` (a `v*` tag → draft release).
 
 ## Git
 
