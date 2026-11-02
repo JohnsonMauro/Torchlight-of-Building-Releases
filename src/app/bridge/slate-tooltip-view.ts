@@ -1,6 +1,7 @@
-// A Divinity Slate's tooltip (on the board or in the Slate Inventory): its art as posed, its affixes by group (a core
-// talent affix shows its full text while Alt is held; an affix only one slate can apply says so), Judgment's boost, and
-// a copy slate's copied affixes. Pure; the planner passes in what depends on the open build
+// A Divinity Slate's tooltip (on the board or in the Slate Inventory): its art as posed, its affixes by group, Judgment's
+// boost, and a copy slate's copied affixes. A talent affix reads as the game shows it (owner's screenshot, 2026-11-02): a
+// diamond in its node type's colour and the effect alone, one stat per line; a core talent affix shows the core's name and
+// its effect while Alt is held; an affix only one slate can apply says so. Pure; the planner passes in what depends on the open build
 // (src/app/slates/slates-controller.js slateTooltip query) and React renders it
 // (apps/web/src/features/slates/SlateTooltip.tsx).
 import { normalizePercentageText } from "#engine";
@@ -14,10 +15,15 @@ export interface SlateAffixText {
   family: string;
   rest: string;
 }
+/** A talent affix's node type, the colour of its diamond; "" for an affix that is no talent node. */
+export type SlateAffixKind = "micro" | "medium" | "legendary" | "core" | "";
 export interface SlateAffixView {
   text: SlateAffixText;
-  /** A core talent affix: its short form; `text` is then its full form, shown while Alt is held. */
+  /** A core talent affix: the core's name; `text` is then its effect, shown while Alt is held. */
   core: SlateAffixText | null;
+  kind: SlateAffixKind;
+  /** A talent affix's tree and node type ("Warlord · Micro Talent"), which the game does not print; "" otherwise. */
+  origin: string;
   /** Only one copy of this effect is active across equipped slates. */
   limited: boolean;
   coverage: CoverageView;
@@ -61,7 +67,10 @@ export interface SlateTooltipInput {
   copiedCoverage: (affix: string) => CoverageView;
 }
 
-const CORE_AFFIX = /^(.+?): (Lv\.[12] Core Talent): (.+?)(?:\s+[—–]\s+|$)/;
+// "<Tree>: <Type> Talent: <effect>"; a core's effect is "<Name> — <effect>".
+const TALENT_AFFIX = /^(.+?): (Micro|Medium|Legendary Medium|Lv\.[12] Core) Talent: (.+)$/s;
+const KIND: Record<string, SlateAffixKind> = { Micro: "micro", Medium: "medium", "Legendary Medium": "legendary" };
+const plain = (rest: string): SlateAffixText => ({ tree: "", family: "", rest: text(rest) });
 
 export function slateTooltipView(input: SlateTooltipInput): SlateTooltipView {
   const affixText = (affix: string): SlateAffixText => {
@@ -76,13 +85,17 @@ export function slateTooltipView(input: SlateTooltipInput): SlateTooltipView {
     .map((group) => ({
       title: group.title,
       affixes: group.affixes.filter(Boolean).map((affix): SlateAffixView => {
-        const core = affix.match(CORE_AFFIX);
-        return {
-          text: affixText(input.display(affix)),
-          core: core ? affixText(`${core[1]}: ${core[3]}`) : null,
-          limited: input.limited(affix),
-          coverage: input.coverage(affix),
-        };
+        const shown = input.display(affix);
+        const talent = shown.match(TALENT_AFFIX);
+        const own = { limited: input.limited(affix), coverage: input.coverage(affix) };
+        if (!talent) return { text: affixText(shown), core: null, kind: "", origin: "", ...own };
+        const [, tree, type, effect] = talent;
+        const origin = `${text(tree)} · ${type} Talent`;
+        if (type.startsWith("Lv.")) {
+          const [name, ...rest] = effect.split(/\s+[—–]\s+/);
+          return { text: plain(rest.join(" — ") || name), core: plain(name), kind: "core", origin, ...own };
+        }
+        return { text: plain(effect.split(/\s+·\s+/).join("\n")), core: null, kind: KIND[type], origin, ...own };
       }),
     }))
     .filter((group) => group.affixes.length);

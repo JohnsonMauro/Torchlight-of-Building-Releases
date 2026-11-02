@@ -89,7 +89,7 @@ function slateTooltip(id) {
           ["Brand Talent Nodes", slate.brands],
         ]
       : legendaryTalentSlotTypes[template]
-        ? [["Talent Affixes", affixes]]
+        ? [["Fixed Talent Nodes", affixes]]
         : slate.copyRule
           ? [["Fixed Affix", affixes.length ? affixes : [slate.copyRule]]]
           : [

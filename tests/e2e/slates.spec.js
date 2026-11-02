@@ -188,5 +188,11 @@ test("hovering a slate shows its affixes", async ({ page }) => {
     await expect(slates.tooltip()).toBeVisible({ timeout: 500 });
   }).toPass();
   await expect(slates.tooltip()).toContainText("Pedigree of Gods");
+  // As the game lists them: a diamond in the node type's colour, the effect alone, a core by its name.
+  await expect(slates.tooltip()).toContainText("Fixed Talent Nodes");
+  expect(await slates.tooltipDiamonds()).toEqual(["medium", "legendary", "medium", "core"]);
+  await expect(slates.tooltip()).toContainText("2.5% Life Regain");
+  await expect(slates.tooltip()).not.toContainText("Medium Talent:");
+  await expect(slates.tooltip().getByText("Three Birds with One Stone", { exact: true })).toBeVisible();
   await planner.expectNoErrors();
 });

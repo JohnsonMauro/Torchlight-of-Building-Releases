@@ -23,14 +23,19 @@ export const TREE = "font-extrabold text-[var(--talent-emblem,var(--color-text))
 export const SECTION = "not-first:mt-3 not-first:border-t not-first:border-line not-first:pt-2.5";
 export const HEADING = "mb-1.75 text-[10px] font-bold tracking-widest text-muted uppercase";
 export const LIST = "grid gap-2";
-export const AFFIX = "text-xs/normal wrap-anywhere";
-export const CORE_AFFIX = "-ml-1.75 border-l-3 border-info bg-info/10 p-2";
-export const LIMITED_AFFIX = "-ml-1.75 border-l-3 border-warn bg-warn/10 px-2 py-2.5";
-export const CORE_BADGE =
-  "mb-1.25 inline-block rounded-sm border border-info/60 bg-info/15 px-1.5 py-0.5 text-[10px]/tight font-bold tracking-wider text-info uppercase";
-export const CORE_SUMMARY = "block font-bold text-info";
-export const CORE_HINT = "mt-1 block text-xs text-muted";
-export const CORE_DETAIL = "mt-1.75 block border-l-2 border-info bg-info/10 px-2 py-1.75 leading-snug text-text";
+// An affix as the game lists it: a diamond in its talent node type's colour (owner's screenshot, 2026-11-02: Micro blue,
+// Medium purple, core orange; Legendary Medium orange too, not yet seen in the game), the effect beside it.
+export const AFFIX = "grid grid-cols-[0.5rem_minmax(0,1fr)] gap-x-2 text-xs/normal wrap-anywhere";
+export const DIAMOND = [
+  "mt-[0.45em] size-2 rotate-45 bg-dim",
+  "data-[kind=micro]:bg-grade-magic data-[kind=medium]:bg-grade-rare",
+  "data-[kind=legendary]:bg-grade-legendary data-[kind=core]:bg-grade-legendary",
+].join(" ");
+export const EFFECT = "block whitespace-pre-line text-text";
+/** A core's name, as the game links it. */
+export const CORE_NAME = "block font-bold text-info underline underline-offset-2";
+export const CORE_HINT = "mt-0.5 block text-xs text-dim";
+export const CORE_DETAIL = "mt-1 block border-l-2 border-info bg-info/10 px-2 py-1.5 leading-snug text-text";
 export const BADGES = "mt-2 flex flex-wrap items-center gap-1";
 export const LIMIT_BADGE =
   "inline-block w-max max-w-full rounded-sm border border-warn/60 bg-warn/15 px-1.5 py-0.5 text-[10px]/tight font-bold text-warn";

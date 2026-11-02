@@ -25,17 +25,45 @@ const input = (overrides = {}) => ({
   ...overrides,
 });
 
-test("a slate lists its affixes by group; a core affix has a short form, a single-copy one says so", () => {
+test("a slate lists its affixes by group; a core affix shows its name, a single-copy one says so", () => {
   const view = slateTooltipView(input());
   assert.equal(view.kicker, "DIVINITY SLATE · LEGENDARY");
   assert.deepEqual(view.pose, { rotation: 270, flipX: -1, flipY: 1 });
   assert.equal(view.groups.length, 1);
   const [core, cold] = view.groups[0].affixes;
-  assert.deepEqual(core.core, { tree: "Lich", family: "talent-family-goddess-of-knowledge", rest: ": Frostbite" });
-  assert.equal(core.text.rest, ": Lv.1 Core Talent: Frostbite — the core's full text");
+  // As the game shows it: the core's name by a core diamond; its effect is the text Alt shows.
+  assert.equal(core.kind, "core");
+  assert.equal(core.origin, "Lich · Lv.1 Core Talent");
+  assert.deepEqual(core.core, { tree: "", family: "", rest: "Frostbite" });
+  assert.deepEqual(core.text, { tree: "", family: "", rest: "the core's full text" });
   assert.equal(cold.core, null);
+  assert.equal(cold.kind, "");
   assert.equal(cold.limited, true);
   assert.equal(cold.text.rest, ": +10% cold damage");
+});
+
+test("a talent affix shows its effect by its node type's diamond, one stat per line, its tree and type kept aside", () => {
+  const view = slateTooltipView(
+    input({
+      groups: [
+        {
+          title: "Fixed Talent Nodes",
+          affixes: [
+            "Warlord: Micro Talent: +3% Max Life · +3% Max Energy Shield",
+            "Lich: Medium Talent: 7.5% Energy Shield Charge Speed",
+            "Machinist: Legendary Medium Talent: +8% additional Minion Damage",
+          ],
+        },
+      ],
+    }),
+  );
+  const [micro, medium, legendary] = view.groups[0].affixes;
+  assert.deepEqual([micro.kind, medium.kind, legendary.kind], ["micro", "medium", "legendary"]);
+  assert.deepEqual(micro.text, { tree: "", family: "", rest: "+3% Max Life\n+3% Max Energy Shield" });
+  assert.equal(micro.origin, "Warlord · Micro Talent");
+  assert.equal(medium.text.rest, "7.5% Energy Shield Charge Speed");
+  assert.equal(legendary.origin, "Machinist · Legendary Medium Talent");
+  assert.equal(legendary.core, null);
 });
 
 test("an affix of no god's tree stays plain; a slate without affixes says so", () => {

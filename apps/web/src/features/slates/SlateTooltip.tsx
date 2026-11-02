@@ -83,37 +83,42 @@ export function SlateCard({ view }: { view: SlateTooltipView }) {
   );
 }
 
+/** An affix as the game shows it: its node type's diamond, then the effect (a core: its name, its effect under Alt). */
 function SlateAffix({ affix }: { affix: SlateAffixView }) {
   const altHeld = useAltHeld();
-  const look = affix.core ? classes.CORE_AFFIX : affix.limited ? classes.LIMITED_AFFIX : "";
   return (
-    <li className={`${classes.AFFIX} ${look}`}>
-      {affix.core ? (
-        <>
-          <strong className={classes.CORE_BADGE}>Core Talent</strong>
-          <span className={classes.CORE_SUMMARY}>
-            <AffixText text={affix.core} />
-          </span>
-          {altHeld ? (
-            <span className={classes.CORE_DETAIL}>
-              <AffixText text={affix.text} />
+    <li className={classes.AFFIX}>
+      <span className={classes.DIAMOND} data-kind={affix.kind || undefined} title={affix.origin || undefined} />
+      <div className="min-w-0">
+        {affix.core ? (
+          <>
+            <span className={classes.CORE_NAME}>
+              <AffixText text={affix.core} />
             </span>
-          ) : (
-            <small className={classes.CORE_HINT}>Hold Alt for details</small>
-          )}
-        </>
-      ) : (
-        <span className="block">
-          <AffixText text={affix.text} />
-        </span>
-      )}
-      <div className={classes.BADGES}>
-        {affix.limited ? (
-          <strong className={classes.LIMIT_BADGE} title="Only one copy of this effect is active across equipped slates">
-            Max active: 1
-          </strong>
-        ) : null}
-        <CoverageBadge coverage={affix.coverage} />
+            {altHeld ? (
+              <span className={classes.CORE_DETAIL}>
+                <AffixText text={affix.text} />
+              </span>
+            ) : (
+              <small className={classes.CORE_HINT}>Hold Alt for the core's effect</small>
+            )}
+          </>
+        ) : (
+          <span className={classes.EFFECT}>
+            <AffixText text={affix.text} />
+          </span>
+        )}
+        <div className={classes.BADGES}>
+          {affix.limited ? (
+            <strong
+              className={classes.LIMIT_BADGE}
+              title="Only one copy of this effect is active across equipped slates"
+            >
+              Max active: 1
+            </strong>
+          ) : null}
+          <CoverageBadge coverage={affix.coverage} />
+        </div>
       </div>
     </li>
   );

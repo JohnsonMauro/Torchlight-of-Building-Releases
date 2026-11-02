@@ -58,6 +58,12 @@ export class SlatesPage {
   tooltip() {
     return this.page.getByRole("tooltip");
   }
+  /** The node types of the slate tooltip's affix diamonds, in order ("micro", "medium", "legendary", "core"; "" for none). */
+  async tooltipDiamonds() {
+    return this.tooltip()
+      .locator("li > span:first-child")
+      .evaluateAll((diamonds) => diamonds.map((diamond) => diamond.dataset.kind || ""));
+  }
   toast() {
     return this.page.locator("#toast");
   }
