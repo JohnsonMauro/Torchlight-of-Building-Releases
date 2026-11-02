@@ -24,9 +24,11 @@ export function lockedSlateCells(characterLevel) {
 export function slateOnLockedCell(slate, placement, locked) {
   return locked.size > 0 && slateCells(slate, placement).some((cell) => locked.has(key(cell.column, cell.row)));
 }
+// Slates whose orientation is fixed where they lie; Nether King's Judgment among them (owner, 2026-11-02).
+const FIXED_SLATES = new Set(["Space Rift", "Residence of Stars", "Nether King's Divinity: Judgment"]);
 export function slateTransformRules(slate) {
   const name = typeof slate === "string" ? slate : slate?.template || slate?.name;
-  if (name === "Space Rift" || name === "Residence of Stars") return { rotate: false, flip: false };
+  if (FIXED_SLATES.has(name)) return { rotate: false, flip: false };
   if (name === "Pedigree of Gods") return { rotate: false, flip: true };
   return { rotate: true, flip: true };
 }

@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { slatesView, slateTiles } from "../../src/app/bridge/slates-view-model.ts";
 import { dragDrop, pendingDrop } from "../../apps/web/src/features/slates/slate-drop.ts";
-import { canPlaceSlate, lockedSlateCells } from "../../packages/engine/src/talents/slate-board.js";
+import { canPlaceSlate, lockedSlateCells, slateTransformRules } from "../../packages/engine/src/talents/slate-board.js";
 
 const rect = (left, top, width, height) => ({ left, top, width, height, right: left + width, bottom: top + height });
 // A 432 px grid (72 px cells) at (300, 100) inside a 1000 x 600 stage at (0, 0).
@@ -184,4 +184,11 @@ test("below character level 90 the board's eight outer cells are locked: shown s
     ["3,1", "4,1", "1,3", "6,3", "1,4", "6,4", "3,6", "4,6"],
   );
   assert.equal(view.unlockLevel, 90);
+});
+
+test("a slate's turns: Judgment, Space Rift and Residence of Stars lie fixed, Pedigree of Gods only flips, the rest turn and flip", () => {
+  assert.deepEqual(slateTransformRules("Nether King's Divinity: Judgment"), { rotate: false, flip: false });
+  assert.deepEqual(slateTransformRules({ template: "Space Rift", name: "x" }), { rotate: false, flip: false });
+  assert.deepEqual(slateTransformRules("Pedigree of Gods"), { rotate: false, flip: true });
+  assert.deepEqual(slateTransformRules("Fallen Starlight"), { rotate: true, flip: true });
 });

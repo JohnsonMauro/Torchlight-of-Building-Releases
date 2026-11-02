@@ -86,6 +86,17 @@ test("clicking a slate selects it and shows its tools", async ({ page }) => {
   await planner.expectNoErrors();
 });
 
+test("Judgment lies fixed: its tools have no rotate or flip, and its keys turn nothing", async ({ page }) => {
+  const { planner, slates } = await openSlates(page, fullBoard);
+  const before = (await slates.stored()).placements.judgment;
+  await slates.tile("judgment").click();
+  await expect(slates.tools()).toHaveCount(3);
+  await expect(slates.tools()).toContainText(["Move", "Edit affixes", "Remove"]);
+  for (const key of ["d", "a", "s", "w"]) await page.keyboard.press(key);
+  expect((await slates.stored()).placements.judgment).toEqual(before);
+  await planner.expectNoErrors();
+});
+
 test("dragging a slate onto free cells places it there", async ({ page }) => {
   const { planner, slates } = await openSlates(page);
   await slates.drag(FALLEN, -CELL, CELL);
