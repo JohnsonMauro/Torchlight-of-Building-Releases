@@ -33,7 +33,6 @@ export interface KismetDragHandlers {
 }
 
 const START_DISTANCE = 5;
-const CLICK_QUIET_MS = 400;
 const CONTEXT_MENU_QUIET_MS = 300;
 
 export function useKismetDrag(handlers: KismetDragHandlers) {
@@ -42,7 +41,7 @@ export function useKismetDrag(handlers: KismetDragHandlers) {
     latest.current = handlers;
   });
   const drag = useRef<Drag | null>(null);
-  const quietClickUntil = useRef(0);
+  const swallowNextClick = useRef(false);
   const quietContextMenuUntil = useRef(0);
   const [view, setView] = useState<{ source: string | null; target: string | null; copy: boolean }>({
     source: null,
@@ -76,7 +75,12 @@ export function useKismetDrag(handlers: KismetDragHandlers) {
     setView({ source: null, target: null, copy: false });
     if (current.copy) quietContextMenuUntil.current = performance.now() + CONTEXT_MENU_QUIET_MS;
     if (!current.moved) return;
-    quietClickUntil.current = performance.now() + CLICK_QUIET_MS;
+    // The click the release makes comes in the same task, after however long the drop takes (a slow drop let it
+    // through a time window: CI, 2026-11-02); the next task ends the swallow, as useSlateDrag does.
+    swallowNextClick.current = true;
+    setTimeout(() => {
+      swallowNextClick.current = false;
+    }, 0);
     const target = cancelled ? null : targetAt(event.clientX, event.clientY, current.kind);
     if (target) latest.current.onDrop(current, target, current.copy);
     else latest.current.onInvalidDrop();
@@ -173,10 +177,10 @@ export function useKismetDrag(handlers: KismetDragHandlers) {
     /** The slot being dragged from (null after a right-click turned the drag into a copy) and the slot under the pointer. */
     source: view.copy ? null : view.source,
     target: view.target,
-    /** True, once, for the click right after a drop (within 400 ms). */
+    /** True, once, for the click a drop's release makes. */
     swallowClick: () => {
-      const swallow = performance.now() < quietClickUntil.current;
-      quietClickUntil.current = 0;
+      const swallow = swallowNextClick.current;
+      swallowNextClick.current = false;
       return swallow;
     },
     /** True for the context menu right after a copy. */

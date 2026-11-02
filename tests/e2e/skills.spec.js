@@ -104,6 +104,16 @@ test("right-clicking a support removes it", async ({ page }) => {
   await planner.expectNoErrors();
 });
 
+test("a slow drop does not let its click through to the skill it landed on", async ({ page }) => {
+  // CI, 2026-11-02: on a slow runner the click after the drop came past the 400 ms it was swallowed for and opened the
+  // selector of the skill dropped onto.
+  const { planner, skills } = await openSkills(page, youga);
+  await skills.drag(skills.socket("Replace Ice Bond"), skills.socket("Replace Timid"), { dropTakesMs: 600 });
+  await expect(skills.toast()).toHaveText("Active skills swapped");
+  await expect(skills.selector()).toBeHidden();
+  await planner.expectNoErrors();
+});
+
 test("dragging a skill onto another row swaps them; a drop off the board puts it back", async ({ page }) => {
   const { planner, skills } = await openSkills(page, youga);
   await skills.drag(skills.socket("Replace Ice Bond"), skills.socket("Replace Timid"));

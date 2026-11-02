@@ -74,12 +74,28 @@ export class SkillsPage {
     await this.view().scrollIntoViewIfNeeded();
   }
   /** Drags with the mouse from one element to another, in steps (the planner starts a drag after 5 px). */
-  async drag(from, to, { copy = false } = {}) {
+  /**
+   * Drags `from` onto `to`. `dropTakesMs` makes the drop slow, as on a slow computer: the release's handling (the drop and
+   * what it recalculates) holds the page that long before the click that follows it.
+   */
+  async drag(from, to, { copy = false, dropTakesMs = 0 } = {}) {
     await from.scrollIntoViewIfNeeded();
     const start = await from.boundingBox();
     await this.page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
     await this.page.mouse.down();
     await this.page.mouse.move(start.x + start.width / 2 + 20, start.y + start.height / 2, { steps: 4 });
+    // Added after the drag's own listener, so it runs after the drop.
+    if (dropTakesMs)
+      await this.page.evaluate((ms) => {
+        window.addEventListener(
+          "pointerup",
+          () => {
+            const until = performance.now() + ms;
+            while (performance.now() < until);
+          },
+          { once: true },
+        );
+      }, dropTakesMs);
     // The target may sit below the window: scroll to it mid-drag, as a user would.
     await to.scrollIntoViewIfNeeded();
     const end = await to.boundingBox();

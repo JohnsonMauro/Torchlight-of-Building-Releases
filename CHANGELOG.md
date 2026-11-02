@@ -6,6 +6,11 @@ app (up to its 0.2.0) are not described here.
 
 ## [Unreleased]
 
+### Fixed
+
+- On a slow computer, dropping a dragged skill or Kismet no longer also clicks where it lands (which opened that skill's
+  selector or took the Kismet off its node).
+
 ## [0.2.0] - 2026-11-02
 
 ### Added

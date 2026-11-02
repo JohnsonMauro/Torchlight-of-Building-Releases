@@ -154,6 +154,20 @@ test("an equipped Kismet moves to another slot by drag, and is copied with a rig
   await planner.expectNoErrors();
 });
 
+test("a slow Kismet drop does not let its click through to the node it landed on", async ({ page }) => {
+  // CI, 2026-11-02: on a slow runner the click after a drop came past the 400 ms it was swallowed for and acted on the
+  // node dropped on (the move then the copy lost the Kismet).
+  const { planner, pacts } = await openPacts(page, withKismet);
+  const first = pacts.node(DREAMWEAVER, "Elemental Damage I", 0);
+  const second = pacts.node(DREAMWEAVER, "Elemental Damage I", 1);
+  await pacts.drag(first, second, { dropTakesMs: 600 });
+  await expect(second).toHaveAttribute("aria-label", /drag to move/);
+  await pacts.drag(second, first, { copy: true, dropTakesMs: 600 });
+  await expect(first).toHaveAttribute("aria-label", /drag to move/);
+  expect(Object.keys((await pacts.storedPacts()).kismetSlots).sort()).toEqual([`${DREAMWEAVER}:0`, `${DREAMWEAVER}:1`]);
+  await planner.expectNoErrors();
+});
+
 // ---- The Kismet crafter (right-click on a Kismet node).
 const crafter = (pacts) => pacts.kismetCrafter();
 const choices = (pacts) => crafter(pacts).locator(".kismet-choice");
