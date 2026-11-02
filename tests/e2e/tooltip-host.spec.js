@@ -97,6 +97,31 @@ test("Alt shows a named affix's effect while held", async ({ page }) => {
   await planner.expectNoErrors();
 });
 
+test("while Alt is held the keywords' explanations move beside the tooltip, on the side away from the pointer", async ({
+  page,
+}) => {
+  const { planner, gear } = await openGear(page);
+  const keywords = page.getByRole("complementary", { name: "Keywords" });
+  // The slots' tooltips open right of the pointer, so the explanations go further right; Main Hand is near the bottom.
+  // (The other sides: tests/unit/tooltip-place.test.js.)
+  for (const slot of ["helmet", "mainHand"]) {
+    await hoverUntilShown(page, gear.slot(slot));
+    await expect(tooltip(page).getByRole("region", { name: "Keywords" })).toBeVisible();
+    await expect(keywords).toBeHidden();
+    await page.keyboard.down("Alt");
+    await expect(keywords).toBeVisible();
+    await expect(tooltip(page).getByRole("region", { name: "Keywords" })).toHaveCount(0);
+    const main = await tooltip(page).boundingBox();
+    const notes = await keywords.boundingBox();
+    expect(notes.x).toBeGreaterThanOrEqual(main.x + main.width);
+    expect(notes.y + notes.height).toBeLessThanOrEqual(900);
+    expect(main.y + main.height).toBeLessThanOrEqual(900);
+    await page.keyboard.up("Alt");
+    await expect(keywords).toBeHidden();
+  }
+  await planner.expectNoErrors();
+});
+
 test("a section's ? help shows on focus and toggles with Enter", async ({ page }) => {
   const { planner } = await openGear(page);
   const help = planner.buildTabs("equipment").getByRole("button", { name: "Gear controls", exact: true });

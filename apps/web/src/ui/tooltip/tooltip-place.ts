@@ -1,6 +1,6 @@
 // Where the tooltip sits, kept inside the window: below and right of the point it opened at (or the pointer it follows),
 // left of it when its width does not fit on the right; or beside its element (left of it when it fits, else right),
-// level with its top.
+// level with its top. The keywords' explanations shown beside it while Alt is held sit on its side away from the pointer.
 import type { TooltipRequest } from "./tooltip-store";
 
 const POINTER_GAP = 18,
@@ -38,4 +38,31 @@ function besideAnchor(tooltip: HTMLElement, anchor: HTMLElement): [number, numbe
     Math.max(MARGIN, window.innerHeight - tooltip.offsetHeight - BOTTOM_MARGIN),
   );
   return [Math.max(MARGIN, left), top];
+}
+
+/** Places the keywords' explanations (`notes`) beside the placed `tooltip`, the pointer being at x. */
+export function placeBesideTooltip(notes: HTMLElement, tooltip: HTMLElement, x: number): void {
+  const box = tooltip.getBoundingClientRect();
+  notes.style.left = `${besideTooltipLeft(box, notes.offsetWidth, x, window.innerWidth)}px`;
+  notes.style.top = `${Math.max(MARGIN, Math.min(box.top, window.innerHeight - notes.offsetHeight - BOTTOM_MARGIN))}px`;
+}
+
+/**
+ * The left edge of a `width` wide panel beside a tooltip spanning `main`: on the tooltip's far side from the pointer (x)
+ * when it fits there, else on its near side, else as far that way as the window allows.
+ */
+export function besideTooltipLeft(
+  main: { left: number; right: number },
+  width: number,
+  x: number,
+  viewportWidth: number,
+): number {
+  const right = main.right + BESIDE_GAP,
+    left = main.left - BESIDE_GAP - width;
+  const fitsRight = right + width <= viewportWidth - MARGIN,
+    fitsLeft = left >= MARGIN;
+  const away = main.left >= x ? "right" : "left";
+  if (away === "right" ? fitsRight : fitsLeft) return away === "right" ? right : left;
+  if (away === "right" ? fitsLeft : fitsRight) return away === "right" ? left : right;
+  return away === "right" ? Math.max(MARGIN, viewportWidth - width - MARGIN) : MARGIN;
 }

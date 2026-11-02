@@ -102,4 +102,7 @@ const OTHER_KINDS = [
   "[&.basic-talent-tooltip[data-talent-type=prism-core]]:[--tip-accent:var(--color-grade-rare)]",
 ].join(" ");
 
+/** The heading of the keywords' panel beside a tooltip (TooltipHost, while Alt is held). */
+export const KEYWORDS_HEADING = "block text-[10px] font-bold tracking-widest text-muted uppercase";
+
 export const PLANNER_TOOLTIP = [FRAME, RARITY, GEAR, SKILL, QOL_HELP, DAMAGE_SOURCE, OTHER_KINDS].join(" ");
