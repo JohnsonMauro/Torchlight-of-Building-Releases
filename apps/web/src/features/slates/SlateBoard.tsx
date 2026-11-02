@@ -345,46 +345,56 @@ function SlatePiece({ piece, drag, onClick, onContextMenu, onPointerDown }: Slat
   );
 }
 
-// The selected slate's tool buttons, Remove at the far end.
-const TOOL = "size-8 p-0 text-sm";
+// The selected slate's tools, one under the other: each says what it does and its key, Remove last. The menu's
+// height (up to seven tools) keeps it inside the board: --tool-y is clamped to 100% less that height.
+const TOOL = "flex h-8 w-full items-center justify-start gap-2 px-2 text-xs whitespace-nowrap";
+const TOOL_ICON = "w-4 text-center text-sm";
+const TOOL_KEY = "ml-auto rounded-xs border border-line px-1 text-[10px]/4 text-muted";
 
 function SlateTools({ tools }: { tools: SlateToolsView }) {
   const commands = plannerCommands();
-  const tool = (title: string, symbol: string, action: () => void, danger = false) => (
+  const tool = (label: string, key: string, symbol: string, action: () => void, danger = false) => (
     <button
       type="button"
-      className={`${TOOL} ${danger ? "btn-danger ml-auto" : "btn"}`}
-      title={title}
-      aria-label={title}
+      className={`${TOOL} ${danger ? "btn-danger mt-1" : "btn"}`}
+      aria-label={key ? `${label} (${key})` : label}
       onClick={action}
     >
-      {symbol}
+      <span className={TOOL_ICON} aria-hidden="true">
+        {symbol}
+      </span>
+      {label}
+      {key ? (
+        <kbd className={TOOL_KEY} aria-hidden="true">
+          {key}
+        </kbd>
+      ) : null}
     </button>
   );
   return (
     <div
-      className="slate-quick-tools absolute top-[clamp(8px,var(--tool-y),calc(100%-82px))] left-[clamp(8px,var(--tool-x),calc(100%-265px))] z-30 min-w-57.5 rounded-md border border-line-strong bg-surface p-2.5 text-text shadow-lg shadow-shadow"
+      className="slate-quick-tools absolute top-[clamp(8px,var(--tool-y),calc(100%-316px))] left-[clamp(8px,var(--tool-x),calc(100%-248px))] z-30 w-60 rounded-md border border-line-strong bg-surface p-2.5 text-text shadow-lg shadow-shadow"
       style={{ "--tool-x": `${tools.x}px`, "--tool-y": `${tools.y}px` } as CSSProperties}
     >
       <strong className="mb-2 block border-b border-line pb-1.5 text-xs/snug font-bold text-accent">
         {tools.name}
       </strong>
-      <div className="flex gap-1">
-        {tool("Move", "✥", () => commands.startSlateMove(tools.id))}
+      <div className="grid gap-1">
+        {tool("Move", "", "✥", () => commands.startSlateMove(tools.id))}
         {tools.rules.rotate ? (
           <>
-            {tool("Rotate clockwise (D)", "↻", () => commands.transformSlate(tools.id, { rotate: 1 }))}
-            {tool("Rotate counter-clockwise (A)", "↶", () => commands.transformSlate(tools.id, { rotate: -1 }))}
+            {tool("Rotate clockwise", "D", "↻", () => commands.transformSlate(tools.id, { rotate: 1 }))}
+            {tool("Rotate counter-clockwise", "A", "↶", () => commands.transformSlate(tools.id, { rotate: -1 }))}
           </>
         ) : null}
         {tools.rules.flip ? (
           <>
-            {tool("Flip horizontal (S)", "↔", () => commands.transformSlate(tools.id, { flip: "x" }))}
-            {tool("Flip vertical (W)", "↕", () => commands.transformSlate(tools.id, { flip: "y" }))}
+            {tool("Flip horizontal", "S", "↔", () => commands.transformSlate(tools.id, { flip: "x" }))}
+            {tool("Flip vertical", "W", "↕", () => commands.transformSlate(tools.id, { flip: "y" }))}
           </>
         ) : null}
-        {tool("Edit affixes", "✎", () => commands.editSlate(tools.id))}
-        {tool("Remove", "×", () => commands.removeSlate(tools.id), true)}
+        {tool("Edit affixes", "", "✎", () => commands.editSlate(tools.id))}
+        {tool("Remove", "", "×", () => commands.removeSlate(tools.id), true)}
       </div>
     </div>
   );

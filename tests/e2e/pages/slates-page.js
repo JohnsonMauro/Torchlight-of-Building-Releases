@@ -41,7 +41,7 @@ export class SlatesPage {
     return this.piece(id).locator(":scope > i").first();
   }
   tool(title) {
-    return this.board().locator(".slate-quick-tools").getByTitle(title, { exact: true });
+    return this.board().locator(".slate-quick-tools").getByRole("button", { name: title, exact: true });
   }
   tools() {
     return this.board().locator(".slate-quick-tools button");

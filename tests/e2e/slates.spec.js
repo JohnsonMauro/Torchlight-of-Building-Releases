@@ -70,6 +70,19 @@ test("clicking a slate selects it and shows its tools", async ({ page }) => {
   await expect(slates.tools()).toHaveCount(7);
   for (const title of ["Move", "Rotate clockwise (D)", "Rotate counter-clockwise (A)", "Flip horizontal (S)", "Remove"])
     await expect(slates.tool(title)).toBeVisible();
+  // Each tool says what it does, one under the other.
+  await expect(slates.tools()).toContainText([
+    "Move",
+    "Rotate clockwise",
+    "Rotate counter-clockwise",
+    "Flip horizontal",
+    "Flip vertical",
+    "Edit affixes",
+    "Remove",
+  ]);
+  const boxes = await slates.tools().evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect()));
+  for (const [above, below] of boxes.slice(1).map((box, index) => [boxes[index], box]))
+    expect(below.top).toBeGreaterThanOrEqual(above.bottom);
   await planner.expectNoErrors();
 });
 
