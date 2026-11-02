@@ -2,9 +2,7 @@
 
 An unofficial, fan-made build planner and damage calculator for **Torchlight: Infinite** (SS14 Tartarus).
 
-**▶ Use it in your browser: [tomselleck09.github.io/Torchlight-of-Building-Releases](https://tomselleck09.github.io/Torchlight-of-Building-Releases/)**
-
-**⬇ Or download the Windows app, TLI Planner, from [Releases](https://github.com/JohnsonMauro/Torchlight-of-Building-Releases/releases/latest)**
+**⬇ Download the Windows app, TLI Planner, from [Releases](https://github.com/JohnsonMauro/Torchlight-of-Building-Releases/releases/latest)**
 
 > **Calculations are a work in progress.** Many mechanics are modeled, but some are only partly modeled or not modeled yet. Every tooltip line has a badge (*In calc*, *Not modeled*, and so on), so you can see what is counted. Treat the figures as estimates, not exact in-game numbers.
 
@@ -34,8 +32,6 @@ Download the latest version from the **[Releases page](https://github.com/Johnso
 
 - **Installer** (`TLI-Planner-Setup-<version>.exe`), recommended. It updates itself from inside the app.
 - **Portable** (`TLI-Planner-<version>-portable.exe`), no install needed. The app tells you when a new version is out and opens this page.
-
-Prefer the browser? Use it online: https://tomselleck09.github.io/Torchlight-of-Building-Releases/ (Import from game asks you to pick your UE_game.log)
 
 **Windows SmartScreen:** the app isn't code-signed, so the first launch shows "Windows protected your PC". Click **More info → Run anyway**.
 

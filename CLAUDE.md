@@ -105,7 +105,7 @@ Commit messages: one imperative sentence that says what changed for the user or 
 the section heading"), body only when the why is not obvious. Structure and behaviour in separate commits when both
 happen (`refactor-guide`). No AI attribution of any kind.
 
-Branches: `main` carries our work (CI, Pages, releases). `upstream-main` mirrors TomSelleck09's `main`, reference only:
+Branches: `main` carries our work (CI, releases; no web deploy, owner 2026-11-02). `upstream-main` mirrors TomSelleck09's `main`, reference only:
 `git fetch upstream && git push origin upstream/main:upstream-main` (fast-forward, never a commit of ours).
 
 ## Releases

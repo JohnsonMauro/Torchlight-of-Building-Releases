@@ -39,21 +39,3 @@ jobs:
           name: playwright-traces
           path: test-results/
           retention-days: 7
-      - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: dist-web/
-
-  deploy-pages:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: check
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v5
